@@ -174,6 +174,10 @@ export function parseHermesDatabase(path: string): ParseUnitResult {
     );
     const speechBySession = new Map<string, string[]>();
     const result: ParsedThread[] = [];
+    diagnostics.threadsOverLimit = Math.max(
+      0,
+      sessions.length - SESSION_LIMITS.maxThreadsPerUnit
+    );
     for (const session of sessions.slice(0, SESSION_LIMITS.maxThreadsPerUnit)) {
       const kind = classifyChild(session);
       const rows = messageQuery
@@ -238,7 +242,7 @@ export function parseHermesDatabase(path: string): ParseUnitResult {
   return {
     threads,
     diagnostics,
-    complete: true,
+    complete: diagnostics.threadsOverLimit === 0,
     parser: HERMES_PARSER,
   };
 }

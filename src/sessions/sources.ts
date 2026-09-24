@@ -21,7 +21,15 @@ import { access, lstat, readdir, realpath, stat } from "node:fs/promises";
 // node:os homedir: no Bun equivalent.
 import { homedir } from "node:os";
 // node:path: no Bun path utilities.
-import { basename, isAbsolute, join, relative, sep } from "node:path";
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 
 import type { ParseUnitResult, SessionHarness } from "./types";
 
@@ -419,11 +427,34 @@ export async function parseUnit(unit: SessionUnit): Promise<ParseUnitResult> {
   }
 }
 
-/** Directories GNO itself owns, which a source may never include. */
+/**
+ * A filesystem or drive root (`/`, `C:\`, a UNC share root): never a session
+ * archive or source, since either would span the whole volume.
+ */
+export function isFilesystemRoot(path: string): boolean {
+  const absolute = resolve(path);
+  return dirname(absolute) === absolute;
+}
+
+/** Refuse a filesystem root; `what` names the path in the message. */
+export function assertNotFilesystemRoot(path: string, what: string): void {
+  if (isFilesystemRoot(path)) {
+    throw new SessionsError(
+      "SESSIONS_UNSAFE_PATH",
+      `${what} cannot be a filesystem or drive root; choose a dedicated directory.`
+    );
+  }
+}
+
+/**
+ * Directories GNO itself owns, which a source may never include, and
+ * filesystem roots, which would walk the whole volume.
+ */
 export function assertSafeSourceRoot(
   root: string,
   protectedRoots: readonly string[]
 ): void {
+  assertNotFilesystemRoot(root, "A session source");
   for (const protectedRoot of protectedRoots) {
     if (isWithin(protectedRoot, root)) {
       throw new SessionsError(

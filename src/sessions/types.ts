@@ -108,6 +108,12 @@ export interface UnitDiagnostics {
    * Reported per thread, so one such thread cannot hold the unit back.
    */
   threadsWithoutHuman: number;
+  /**
+   * Database units: threads left unread because the unit reached
+   * `maxThreadsPerUnit`; the unit stays incomplete so its checkpoint does
+   * not advance past them.
+   */
+  threadsOverLimit: number;
   /** Format revision reported by the source, when recorded. */
   formatVersion?: string;
 }
@@ -122,6 +128,7 @@ export const emptyDiagnostics = (): UnitDiagnostics => ({
   truncatedTail: false,
   humanTurnsMissing: false,
   threadsWithoutHuman: 0,
+  threadsOverLimit: 0,
 });
 
 const SAFE_KIND = /[^A-Za-z0-9_.:/-]/g;

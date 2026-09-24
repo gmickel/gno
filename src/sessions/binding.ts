@@ -15,36 +15,25 @@ import { Database } from "bun:sqlite";
 
 // Configures the platform SQLite before any Database opens (macOS).
 import "../store/sqlite/setup";
-// node:fs/promises realpath: no Bun equivalent.
-import { realpath } from "node:fs/promises";
-// node:path: no Bun path utilities.
-import { basename, dirname, join, resolve } from "node:path";
-
 import type { Config } from "../config/types";
 
 import { canonicalizeIndexName, isValidIndexName } from "../app/index-name";
+import { canonicalOperationalPath } from "../core/config-write-lock";
 import { SessionsError } from "./types";
 
 /** `schema_meta` key naming the archive config an index is bound to. */
 const SESSION_BINDING_META_KEY = "session_archive_config";
 
 /**
- * Canonical identity of a config path. A config that does not exist yet
- * (init binds the index before writing it) resolves through its real parent
- * directory, so the marker matches the path the file later realpaths to
- * (e.g. macOS `/var` -> `/private/var`, Windows short or case variants).
+ * Canonical identity of a config path: the same resolution the config writer
+ * uses for its write target and lock. An existing file realpaths; a missing
+ * one (init checks the binding before writing it) resolves through its
+ * nearest existing ancestor, and a dangling symlink through its target, so
+ * the marker matches the path the file later realpaths to (e.g. macOS `/var`
+ * -> `/private/var`, Windows short or case variants).
  */
-export async function canonicalConfigPath(configPath: string): Promise<string> {
-  const absolute = resolve(configPath);
-  try {
-    return await realpath(absolute);
-  } catch {
-    try {
-      return join(await realpath(dirname(absolute)), basename(absolute));
-    } catch {
-      return absolute;
-    }
-  }
+export function canonicalConfigPath(configPath: string): Promise<string> {
+  return canonicalOperationalPath(configPath);
 }
 
 /** Read the binding marker of an index database without creating it. */

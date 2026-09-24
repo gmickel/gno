@@ -13,7 +13,13 @@
  *   copied between generations or into a fork keep their entry `id` and are
  *   archived once.
  * - Legacy JSONL (`agents/<agentId>/sessions/<sessionId>.jsonl`): a
- *   `{type:"session"}` header followed by entries.
+ *   `{type:"session"}` header followed by entries. A header `parentSession`
+ *   marks a child transcript, which may be an operator fork or a spawned
+ *   subagent with forked context; the sibling `sessions.json` index tells
+ *   them apart (`spawnedBy` or a `:subagent:` key). Copied entries keep the
+ *   parent's entry ids and are skipped by reading the parent transcript. An
+ *   unclassified child withholds its first prompt, and a child whose parent
+ *   is unreadable archives nothing; both stay incomplete as format drift.
  *
  * Human speech is a `message` entry with `role=user` and text content,
  * unless its provenance marks inter-session or internal-system input, it is
@@ -26,6 +32,9 @@
  */
 
 import type { Database } from "bun:sqlite";
+
+// node:path has no Bun path utilities
+import { basename, dirname, isAbsolute, join } from "node:path";
 
 import {
   emptyDiagnostics,
@@ -81,6 +90,8 @@ const NON_HUMAN_PROVENANCE = new Set(["inter_session", "internal_system"]);
 
 interface EntryContext {
   agentInstruction: boolean;
+  /** Withhold the next user prompt (a child that may be a subagent). */
+  withholdFirstPrompt?: boolean;
   seen: Set<string>;
   diagnostics: UnitDiagnostics;
   turns: ParsedTurn[];
@@ -140,7 +151,8 @@ function acceptEntry(
       (provenance !== undefined && NON_HUMAN_PROVENANCE.has(provenance)) ||
       text.includes(INTERNAL_CONTEXT_MARKER) ||
       text.trim() === RUNTIME_CONTINUATION;
-    if (injected) {
+    if (injected || context.withholdFirstPrompt) {
+      if (!injected) context.withholdFirstPrompt = false;
       context.diagnostics.injectedSkipped += 1;
       return true;
     }
@@ -151,6 +163,67 @@ function acceptEntry(
 // ─────────────────────────────────────────────────────────────────────────────
 // Legacy JSONL
 // ─────────────────────────────────────────────────────────────────────────────
+
+interface IndexEntry {
+  key: string;
+  spawnedBy?: string;
+}
+
+/** Find this transcript's entry in the sibling `sessions.json` index. */
+async function findIndexEntry(
+  path: string,
+  sessionId: string
+): Promise<IndexEntry | undefined> {
+  const file = Bun.file(join(dirname(path), "sessions.json"));
+  try {
+    if (!(await file.exists()) || file.size > SESSION_LIMITS.maxSourceBytes) {
+      return undefined;
+    }
+    const index: unknown = await file.json();
+    if (!isRecord(index)) return undefined;
+    const name = basename(path);
+    for (const [key, entry] of Object.entries(index)) {
+      if (!isRecord(entry)) continue;
+      const file = stringField(entry.sessionFile);
+      if (
+        entry.sessionId === sessionId ||
+        (file !== undefined && basename(file) === name)
+      ) {
+        return { key, spawnedBy: stringField(entry.spawnedBy) };
+      }
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+/** Entry ids of the parent transcript, or undefined when it is unreadable. */
+async function parentEntryIds(
+  path: string,
+  parentSession: string
+): Promise<Set<string> | undefined> {
+  const file = isAbsolute(parentSession)
+    ? parentSession
+    : join(
+        dirname(path),
+        parentSession.endsWith(".jsonl")
+          ? basename(parentSession)
+          : `${parentSession}.jsonl`
+      );
+  if (file === path) return undefined;
+  const ids = new Set<string>();
+  try {
+    if (!(await Bun.file(file).exists())) return undefined;
+    for await (const { record } of readJsonlRecords(file, emptyDiagnostics())) {
+      const id = stringField(record.id);
+      if (id && record.type !== "session") ids.add(id);
+    }
+  } catch {
+    return undefined;
+  }
+  return ids;
+}
 
 export async function parseOpenClawJsonl(
   path: string
@@ -164,6 +237,9 @@ export async function parseOpenClawJsonl(
     turns: [],
   };
   let full = false;
+  let lineage: "main" | "subagent" | "fork" = "main";
+  let parentThreadId: string | undefined;
+  let unclassified = false;
   for await (const { lineNumber, record } of readJsonlRecords(
     path,
     diagnostics
@@ -175,6 +251,42 @@ export async function parseOpenClawJsonl(
         typeof record.version === "number" || typeof record.version === "string"
           ? String(record.version)
           : undefined;
+      const threadId = stringField(record.id);
+      const parent = stringField(record.parentSession);
+      const indexEntry = threadId
+        ? await findIndexEntry(path, threadId)
+        : undefined;
+      const spawned =
+        indexEntry !== undefined &&
+        (indexEntry.spawnedBy !== undefined ||
+          indexEntry.key.includes(":subagent:"));
+      if (spawned) {
+        lineage = "subagent";
+        context.agentInstruction = true;
+        parentThreadId = indexEntry.spawnedBy ?? parent;
+      } else if (parent) {
+        lineage = "fork";
+        parentThreadId = parent;
+        // A child the index cannot classify may be a subagent with forked
+        // context: its first prompt is withheld rather than archived as human.
+        unclassified = indexEntry === undefined;
+        context.withholdFirstPrompt = unclassified;
+      }
+      if (parent) {
+        const copied = await parentEntryIds(path, parent);
+        if (!copied) {
+          // Copied-history boundary unknown: archive nothing rather than
+          // duplicate the parent.
+          noteUnknownKind(diagnostics, "child_parent_unavailable");
+          return {
+            threads: [],
+            diagnostics,
+            complete: false,
+            parser: OPENCLAW_PARSER,
+          };
+        }
+        for (const id of copied) context.seen.add(id);
+      }
       continue;
     }
     if (full) continue;
@@ -189,22 +301,27 @@ export async function parseOpenClawJsonl(
       parser: OPENCLAW_PARSER,
     };
   }
-  const parent = stringField(header.parentSession);
-  diagnostics.humanTurnsMissing = missingHumanTurns(context.turns);
+  if (unclassified) noteUnknownKind(diagnostics, "child_session_unclassified");
+  if (lineage === "main") {
+    diagnostics.humanTurnsMissing = missingHumanTurns(context.turns);
+  }
   return {
     threads: [
       {
         harness: "openclaw",
         threadId,
         sessionId: threadId,
-        parentThreadId: parent,
-        kind: parent ? "fork" : "main",
+        parentThreadId,
+        kind: lineage,
         cwd: context.cwd,
         turns: context.turns,
       },
     ],
     diagnostics,
-    complete: !diagnostics.truncatedTail && !diagnostics.humanTurnsMissing,
+    complete:
+      !diagnostics.truncatedTail &&
+      !diagnostics.humanTurnsMissing &&
+      !unclassified,
     parser: OPENCLAW_PARSER,
   };
 }
@@ -308,6 +425,10 @@ export function parseOpenClawDatabase(path: string): ParseUnitResult {
       const rightFork = nodes.get(right)?.fork_source_session_key ? 1 : 0;
       return leftFork - rightFork || left.localeCompare(right);
     });
+    diagnostics.threadsOverLimit = Math.max(
+      0,
+      keys.length - SESSION_LIMITS.maxThreadsPerUnit
+    );
     for (const key of keys.slice(0, SESSION_LIMITS.maxThreadsPerUnit)) {
       const node = nodes.get(key);
       const spawned = Boolean(node?.spawned_by) || key.includes(":subagent:");
@@ -369,7 +490,7 @@ export function parseOpenClawDatabase(path: string): ParseUnitResult {
   return {
     threads,
     diagnostics,
-    complete: true,
+    complete: diagnostics.threadsOverLimit === 0,
     parser: OPENCLAW_PARSER,
   };
 }

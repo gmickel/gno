@@ -497,3 +497,160 @@ describe("SQLite snapshot reads", () => {
     });
   });
 });
+
+describe("OpenClaw legacy JSONL lineage", () => {
+  const PARENT = "0c1a0000-0000-4000-8000-00000000aa01";
+  const CHILD = "0c1a0000-0000-4000-8000-00000000aa02";
+  const line = (value: unknown) => `${JSON.stringify(value)}\n`;
+  const header = (id: string, parentSession?: string) =>
+    line({
+      type: "session",
+      version: 4,
+      id,
+      timestamp: "2026-09-19T09:00:00.000Z",
+      cwd: "/work/lineage",
+      ...(parentSession ? { parentSession } : {}),
+    });
+  const message = (id: string, role: string, text: string) =>
+    line({
+      type: "message",
+      id,
+      timestamp: "2026-09-19T09:00:01.000Z",
+      message: { role, content: [{ type: "text", text }] },
+    });
+
+  /** Parent transcript plus a child that copies its entries by id. */
+  async function writeLineage(
+    name: string,
+    index?: Record<string, unknown>,
+    options: { parentFile?: boolean } = {}
+  ): Promise<string> {
+    const dir = join(tmp, "openclaw-lineage", name);
+    if (options.parentFile !== false) {
+      await Bun.write(
+        join(dir, `${PARENT}.jsonl`),
+        header(PARENT) +
+          message("p1", "user", "Parent human question") +
+          message("p2", "assistant", "Parent answer")
+      );
+    }
+    const child = join(dir, `${CHILD}.jsonl`);
+    await Bun.write(
+      child,
+      header(CHILD, PARENT) +
+        message("p1", "user", "Parent human question") +
+        message("p2", "assistant", "Parent answer") +
+        message("c1", "user", "Child first prompt") +
+        message("c2", "assistant", "Child answer")
+    );
+    if (index)
+      await Bun.write(join(dir, "sessions.json"), JSON.stringify(index));
+    return child;
+  }
+
+  test("a spawned subagent's task prompt is never human; copied history skipped", async () => {
+    const child = await writeLineage("subagent", {
+      "agent:main:main": { sessionId: PARENT },
+      "agent:main:subagent:s1": {
+        sessionId: CHILD,
+        spawnedBy: "agent:main:main",
+      },
+    });
+    const result = await parseOpenClawJsonl(child);
+    expect(result.complete).toBe(true);
+    const [thread] = result.threads;
+    expect(thread?.kind).toBe("subagent");
+    expect(thread?.parentThreadId).toBe("agent:main:main");
+    expect(thread?.turns.map((turn) => [turn.role, turn.text])).toEqual([
+      ["assistant", "Child answer"],
+    ]);
+    expect(result.diagnostics.copiedHistorySkipped).toBe(2);
+    expect(result.diagnostics.injectedSkipped).toBe(1);
+  });
+
+  test("a :subagent: session key marks a subagent without spawnedBy", async () => {
+    const child = await writeLineage("subagent-key", {
+      "agent:main:subagent:s2": { sessionId: CHILD },
+    });
+    const result = await parseOpenClawJsonl(child);
+    expect(result.threads[0]?.kind).toBe("subagent");
+    expect(result.threads[0]?.turns.some((turn) => turn.role === "human")).toBe(
+      false
+    );
+  });
+
+  test("a classified fork keeps its own prompt as human and skips copied history", async () => {
+    const child = await writeLineage("fork", {
+      "agent:main:main": { sessionId: PARENT },
+      "agent:main:fork1": { sessionId: CHILD },
+    });
+    const result = await parseOpenClawJsonl(child);
+    expect(result.complete).toBe(true);
+    const [thread] = result.threads;
+    expect(thread?.kind).toBe("fork");
+    expect(thread?.parentThreadId).toBe(PARENT);
+    expect(thread?.turns.map((turn) => [turn.role, turn.text])).toEqual([
+      ["human", "Child first prompt"],
+      ["assistant", "Child answer"],
+    ]);
+    expect(result.diagnostics.copiedHistorySkipped).toBe(2);
+  });
+
+  test("an unclassified child fails safe: first prompt not human, unit incomplete as drift", async () => {
+    const child = await writeLineage("unclassified");
+    const result = await parseOpenClawJsonl(child);
+    expect(result.complete).toBe(false);
+    expect(result.diagnostics.unknownKinds.child_session_unclassified).toBe(1);
+    expect(result.threads[0]?.turns.some((turn) => turn.role === "human")).toBe(
+      false
+    );
+  });
+
+  test("a child whose parent transcript is unavailable archives nothing", async () => {
+    const child = await writeLineage(
+      "orphan",
+      { "agent:main:fork2": { sessionId: CHILD } },
+      { parentFile: false }
+    );
+    const result = await parseOpenClawJsonl(child);
+    expect(result.complete).toBe(false);
+    expect(result.threads).toEqual([]);
+    expect(result.diagnostics.unknownKinds.child_parent_unavailable).toBe(1);
+  });
+});
+
+describe("database thread cap", () => {
+  const OVER_CAP = 50_001;
+
+  test("hermes: more sessions than the cap keeps the unit incomplete", () => {
+    const path = join(tmp, "hermes-cap.db");
+    const db = new Database(path, { create: true });
+    db.exec(
+      "CREATE TABLE sessions (id TEXT PRIMARY KEY); CREATE TABLE messages (id INTEGER PRIMARY KEY, session_id TEXT, role TEXT, content TEXT);"
+    );
+    db.exec(
+      `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ${OVER_CAP}) INSERT INTO sessions SELECT printf('s%06d', i) FROM n`
+    );
+    db.close();
+    const result = parseHermesDatabase(path);
+    expect(result.threads.length).toBe(50_000);
+    expect(result.complete).toBe(false);
+    expect(result.diagnostics.threadsOverLimit).toBe(1);
+  });
+
+  test("openclaw: more session keys than the cap keeps the unit incomplete", () => {
+    const path = join(tmp, "openclaw-cap.sqlite");
+    const db = new Database(path, { create: true });
+    db.exec(
+      "CREATE TABLE session_windows (session_id TEXT, session_key TEXT); CREATE TABLE transcript_events (session_id TEXT, seq INTEGER, event_json TEXT);"
+    );
+    db.exec(
+      `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ${OVER_CAP}) INSERT INTO session_windows SELECT printf('w%06d', i), printf('agent:main:k%06d', i) FROM n`
+    );
+    db.close();
+    const result = parseOpenClawDatabase(path);
+    expect(result.threads.length).toBe(50_000);
+    expect(result.complete).toBe(false);
+    expect(result.diagnostics.threadsOverLimit).toBe(1);
+  });
+});

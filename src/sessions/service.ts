@@ -995,6 +995,11 @@ export class SessionsService {
         `${diagnostics.threadsWithoutHuman} main threads have assistant turns but no recognised human turn`
       );
     }
+    if (diagnostics.threadsOverLimit > 0) {
+      receiptWarnings.push(
+        `${diagnostics.threadsOverLimit} threads beyond the per-unit thread limit were not read`
+      );
+    }
     if (diagnostics.humanTurnsMissing) {
       receiptWarnings.push(
         "assistant turns without any recognised human turn: possible format drift"
@@ -1168,9 +1173,11 @@ export class SessionsService {
         ? {
             reason: diagnostics.truncatedTail
               ? "truncated_tail"
-              : diagnostics.malformedRecords > 0
-                ? "malformed_records"
-                : "format_drift",
+              : diagnostics.threadsOverLimit > 0
+                ? "over_limit"
+                : diagnostics.malformedRecords > 0
+                  ? "malformed_records"
+                  : "format_drift",
           }
         : {}),
       threads: written.length,

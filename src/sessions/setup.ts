@@ -28,7 +28,12 @@ import {
   readIndexBinding,
   writeIndexBinding,
 } from "./binding";
-import { assertSafeSourceRoot, canonicalPath, isWithin } from "./sources";
+import {
+  assertNotFilesystemRoot,
+  assertSafeSourceRoot,
+  canonicalPath,
+  isWithin,
+} from "./sources";
 import { SESSION_HARNESSES, type SessionHarness, SessionsError } from "./types";
 
 /** GNO-owned directories plus the archive: never readable as a source. */
@@ -91,14 +96,17 @@ async function assertOutsideCuratedCollections(
 }
 
 /**
- * Record the archive binding in the index at init time, so the index refuses
- * other configs before the first import has written anything.
+ * Check the index can be bound to this archive config, run `commit` (the
+ * config change), and record the binding only once it succeeds, so a failed
+ * init never leaves an index bound to a config that is not an archive. The
+ * check runs first so an index in use refuses before the config is written.
  */
-async function bindArchiveIndex(
+async function bindArchiveIndex<T extends { ok: boolean }>(
   configPath: string,
   indexName: string,
-  archiveRoot: string
-): Promise<void> {
+  archiveRoot: string,
+  commit: () => Promise<T>
+): Promise<T> {
   const existing = (await Bun.file(configPath).exists())
     ? await loadConfig(configPath)
     : null;
@@ -106,8 +114,6 @@ async function bindArchiveIndex(
     throw new SessionsError("SESSIONS_INVALID_INPUT", existing.error.message);
   }
   const config = existing?.ok ? existing.value : createDefaultConfig();
-  // The config's directory must exist so its canonical path is final.
-  await mkdir(dirname(resolve(configPath)), { recursive: true });
   const dbPath = getIndexDbPath(indexName);
   await mkdir(dirname(dbPath), { recursive: true });
   const store = new SqliteAdapter();
@@ -134,7 +140,9 @@ async function bindArchiveIndex(
         `Index "${indexName}" already holds other collections or belongs to another archive; choose a new index name for the session archive.`
       );
     }
-    writeIndexBinding(db, canonical);
+    const result = await commit();
+    if (result.ok) writeIndexBinding(db, canonical);
+    return result;
   } finally {
     await store.close();
   }
@@ -200,6 +208,8 @@ export async function initSessionArchive(input: InitArchiveInput): Promise<{
       "Collection names are lowercase alphanumeric with hyphens/underscores, 1-64 chars."
     );
   }
+  // Lexically before creating anything, and again once symlinks resolve.
+  assertNotFilesystemRoot(input.archiveRoot, "The session archive");
   const insideGnoDirs = (path: string): boolean =>
     protectedRoots(undefined).some((root) => isWithin(resolve(root), path));
   if (!insideGnoDirs(resolve(input.archiveRoot))) {
@@ -207,6 +217,7 @@ export async function initSessionArchive(input: InitArchiveInput): Promise<{
   }
   const archiveRoot =
     (await canonicalPath(input.archiveRoot)) ?? resolve(input.archiveRoot);
+  assertNotFilesystemRoot(archiveRoot, "The session archive");
   if (insideGnoDirs(archiveRoot)) {
     throw new SessionsError(
       "SESSIONS_UNSAFE_PATH",
@@ -214,69 +225,75 @@ export async function initSessionArchive(input: InitArchiveInput): Promise<{
     );
   }
   await assertOutsideCuratedCollections(archiveRoot);
-  await bindArchiveIndex(input.configPath, input.indexName, archiveRoot);
   let created = false;
-  const result = await applyConfigFileChange(
-    {
-      configPath: input.configPath,
-      createConfigIfMissing: () => {
-        created = true;
-        return createDefaultConfig();
-      },
-    },
-    (config) => {
-      const existing = config.sessions;
-      if (
-        existing &&
-        (existing.index !== input.indexName ||
-          resolve(existing.archiveRoot) !== archiveRoot)
-      ) {
-        return {
-          ok: false,
-          code: "SESSIONS_BINDING_MISMATCH",
-          error:
-            "This config is already bound to a different archive index or root; it is never retargeted silently.",
-        };
-      }
-      if (!existing) {
-        const unrelated = config.collections.filter(
-          (collection) => !isWithin(archiveRoot, resolve(collection.path))
-        );
-        if (unrelated.length > 0) {
-          return {
-            ok: false,
-            code: "SESSIONS_INVALID_INPUT",
-            error:
-              "This config already holds collections outside the archive; use a new dedicated config file for the session archive.",
+  const result = await bindArchiveIndex(
+    input.configPath,
+    input.indexName,
+    archiveRoot,
+    () =>
+      applyConfigFileChange(
+        {
+          configPath: input.configPath,
+          createConfigIfMissing: () => {
+            created = true;
+            return createDefaultConfig();
+          },
+        },
+        (config) => {
+          const existing = config.sessions;
+          if (
+            existing &&
+            (existing.index !== input.indexName ||
+              resolve(existing.archiveRoot) !== archiveRoot)
+          ) {
+            return {
+              ok: false,
+              code: "SESSIONS_BINDING_MISMATCH",
+              error:
+                "This config is already bound to a different archive index or root; it is never retargeted silently.",
+            };
+          }
+          if (!existing) {
+            const unrelated = config.collections.filter(
+              (collection) => !isWithin(archiveRoot, resolve(collection.path))
+            );
+            if (unrelated.length > 0) {
+              return {
+                ok: false,
+                code: "SESSIONS_INVALID_INPUT",
+                error:
+                  "This config already holds collections outside the archive; use a new dedicated config file for the session archive.",
+              };
+            }
+          }
+          const sessions: SessionsConfig = existing ?? {
+            index: input.indexName,
+            archiveRoot,
+            sources: [],
           };
+          const collections = [...config.collections];
+          const current = collections.find(
+            (item) => item.name === input.collection
+          );
+          if (current) {
+            if (
+              resolve(current.path) !==
+              resolve(join(archiveRoot, input.collection))
+            ) {
+              return {
+                ok: false,
+                code: "SESSIONS_INVALID_INPUT",
+                error: `Collection "${input.collection}" already exists with a different path.`,
+              };
+            }
+          } else {
+            collections.push(
+              archiveCollectionDefinition(archiveRoot, input.collection)
+            );
+          }
+          return { ok: true, config: { ...config, sessions, collections } };
         }
-      }
-      const sessions: SessionsConfig = existing ?? {
-        index: input.indexName,
-        archiveRoot,
-        sources: [],
-      };
-      const collections = [...config.collections];
-      const current = collections.find(
-        (item) => item.name === input.collection
-      );
-      if (current) {
-        if (
-          resolve(current.path) !== resolve(join(archiveRoot, input.collection))
-        ) {
-          return {
-            ok: false,
-            code: "SESSIONS_INVALID_INPUT",
-            error: `Collection "${input.collection}" already exists with a different path.`,
-          };
-        }
-      } else {
-        collections.push(
-          archiveCollectionDefinition(archiveRoot, input.collection)
-        );
-      }
-      return { ok: true, config: { ...config, sessions, collections } };
-    }
+      )
   );
   if (!result.ok) {
     throw new SessionsError(
@@ -313,6 +330,7 @@ export async function addSessionSource(input: AddSourceInput): Promise<Config> {
       "Source path must be absolute."
     );
   }
+  assertNotFilesystemRoot(input.path, "A session source");
   const canonical = await canonicalPath(input.path);
   if (!canonical) {
     throw new SessionsError(
@@ -320,6 +338,7 @@ export async function addSessionSource(input: AddSourceInput): Promise<Config> {
       "The source path does not exist or is not readable."
     );
   }
+  assertNotFilesystemRoot(canonical, "A session source");
   const result = await applyConfigFileChange(
     { configPath: input.configPath },
     (config) => {
