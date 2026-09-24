@@ -29,7 +29,9 @@
  *    Their complete schemas remain pinned by the current byte-exact golden;
  *    the historical SDK capture is immutable. fn-169 additionally adds exactly
  *    two read-only compiled-context tools, pinned by the current golden and
- *    removed only for the historical comparison.
+ *    removed only for the historical comparison. fn-171 likewise adds
+ *    exactly two session-archive tools (`gno_sessions_status` read,
+ *    `gno_sessions_import` write), pinned and removed the same way.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -265,6 +267,17 @@ const COMPILED_CONTEXT_TOOLS = new Set([
   "gno_context_compiled_check",
 ]);
 
+const SESSION_ARCHIVE_TOOLS = new Set([
+  "gno_sessions_status",
+  "gno_sessions_import",
+]);
+
+/** Tools added after the historical capture; pinned by the current golden. */
+const ADDITIVE_TOOLS = new Set([
+  ...COMPILED_CONTEXT_TOOLS,
+  ...SESSION_ARCHIVE_TOOLS,
+]);
+
 const TYPED_FILTER_TOOLS = new Set([
   "gno_context",
   "gno_ask",
@@ -304,7 +317,7 @@ function withoutTypedFilterExtension(tool: WireTool): Record<string, unknown> {
 function normalizeToolsList(line: string): string {
   const envelope = parseJsonRpc<ToolsListEnvelope>(line);
   const tools = envelope.result.tools
-    .filter((tool) => !COMPILED_CONTEXT_TOOLS.has(tool.name))
+    .filter((tool) => !ADDITIVE_TOOLS.has(tool.name))
     .map((tool) => {
       const {
         execution: _execution,
@@ -436,7 +449,7 @@ describe("MCP legacy 2025-11-25 wire parity", () => {
           .filter((tool) => !historicalNames.has(tool.name))
           .map((tool) => tool.name)
       )
-    ).toEqual(COMPILED_CONTEXT_TOOLS);
+    ).toEqual(ADDITIVE_TOOLS);
     for (const tool of actualTools.filter((entry) =>
       COMPILED_CONTEXT_TOOLS.has(entry.name)
     )) {

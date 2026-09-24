@@ -315,7 +315,9 @@ with the code in `details.code` and the `MemoryError` as `cause`.
 These are exclusions, not gaps. Each one is a decision.
 
 - **No automatic capture.** Nothing observes an agent's turns and stores
-  facts on its own. Every fact is an explicit `remember` call.
+  facts on its own. Every fact is an explicit `remember` call. Imported
+  [agent sessions](SESSIONS.md) are no exception: they are evidence in a
+  separate archive, never promoted to facts.
 - **No model in the write path.** GNO never extracts facts from prose,
   never decides whether a likely match is "the same" fact, and never merges
   records. Embeddings are used only to rank candidates; the caller decides.
@@ -330,6 +332,30 @@ These are exclusions, not gaps. Each one is a decision.
 - **No write path outside the contract.** The adapters below map harness
   slots onto the four surfaces above; none of them adds a way to store a
   fact that bypasses `remember`.
+
+## Session evidence and remembered facts
+
+[`gno sessions`](SESSIONS.md) imports local agent conversations into a
+separate archive. Those turns are evidence of what was said; memory holds
+what is currently believed. The two stay apart:
+
+- Session archives are ordinary collections on their own config/index pair.
+  They are not memory-managed, so `recall` never returns a session turn and
+  `remember` cannot write into an archive collection.
+- Nothing moves from a session into memory automatically. An assistant turn
+  in particular is a proposal, not a decision.
+- To keep a decision found in a session, read the human turn, then store the
+  fact yourself and point back to the evidence:
+
+```bash
+gno --config ~/gno-sessions/archive.yml --index sessions \
+  search "queue backend" --author human --tags-all project/api
+gno remember "The api queue uses SQLite, not Postgres" --scope project:api \
+  --add --source "gno://sessions-work/.gno/records/…?index=sessions"
+```
+
+The `--source` text is stored verbatim with the fact; the session turn stays
+where it is, with its own speaker label and provenance.
 
 ## Adapters
 

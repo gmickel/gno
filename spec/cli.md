@@ -9,13 +9,13 @@ This document specifies the command-line interface for GNO, a local knowledge in
 
 ### Exit Codes
 
-| Code | Name        | Description                                                                                |
-| ---- | ----------- | ------------------------------------------------------------------------------------------ |
-| 0    | SUCCESS     | Command completed successfully                                                             |
-| 1    | VALIDATION  | Validation or usage error (bad args, missing required params)                              |
-| 2    | RUNTIME     | Runtime failure (IO, DB, conversion, model, network)                                       |
-| 3    | NOT_RUNNING | `--status`/`--stop` found no live matching process                                         |
-| 4    | BUSY        | Write-lease contention on `index` / `update` / `embed`; a lost `remember --supersede` race |
+| Code | Name        | Description                                                                                                                |
+| ---- | ----------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 0    | SUCCESS     | Command completed successfully                                                                                             |
+| 1    | VALIDATION  | Validation or usage error (bad args, missing required params)                                                              |
+| 2    | RUNTIME     | Runtime failure (IO, DB, conversion, model, network)                                                                       |
+| 3    | NOT_RUNNING | `--status`/`--stop` found no live matching process                                                                         |
+| 4    | BUSY        | Write-lease contention on `index` / `update` / `embed`; a lost `remember --supersede` race; a concurrent `sessions import` |
 
 ### Global Flags
 
@@ -86,6 +86,7 @@ equivalent files fail closed as ambiguous.
 | capture            | yes    | no      | no    | no   | no    | terminal |
 | remember           | yes    | no      | no    | no   | no    | terminal |
 | recall             | yes    | no      | no    | no   | no    | terminal |
+| sessions           | yes    | no      | no    | no   | no    | terminal |
 | get                | yes    | no      | no    | yes  | no    | terminal |
 | multi-get          | yes    | yes     | no    | yes  | no    | terminal |
 | ls                 | yes    | yes     | no    | yes  | no    | terminal |
@@ -1819,6 +1820,123 @@ errors (a bad `--max-facts` / `--max-tokens` carries
 ```bash
 gno recall "deploy branch" --scope project:gno
 gno recall "kindergarten" --scope family --max-facts 3 --json > receipt.json
+```
+
+---
+
+### gno sessions
+
+Discover and manually import local agent sessions (Codex, Claude Code,
+OpenClaw, Hermes) into a dedicated session archive. Thin adapters over the
+core sessions service (`src/sessions/service.ts`). A fresh installation
+imports, watches, hooks and schedules nothing; every import is an explicit
+invocation.
+
+**Archive pair (binding):**
+
+- A session archive is one dedicated config file (carrying a `sessions`
+  block) paired with one named index. Every archive command passes both
+  explicitly: `gno --config <archive.yml> --index <name> sessions ...`.
+- `sessions init` refuses the default config file and the `default` index.
+- Before every command (all of `gno`, not only `sessions`), a config whose
+  `sessions.index` differs from `--index` exits `VALIDATION`
+  (`SESSIONS_BINDING_MISMATCH`), and an index recorded as an archive exits
+  `VALIDATION` when opened with any other config (including cross-index
+  `get`). Plain `gno update` on the default config therefore never reads the
+  archive.
+- The archive root must lie outside GNO's config/data/cache directories so
+  `gno reset`, index cleanup or uninstall cannot remove it.
+
+**Synopsis:**
+
+```bash
+gno sessions [discover] [--json]
+gno --config <archive.yml> --index <name> sessions init --archive <dir> --collection <name> [--json]
+gno --config <archive.yml> --index <name> sessions source add <id> --harness <codex|claude-code|openclaw|hermes> --path <root> --collection <name> [--project <prefix>=<collection>...] [--json]
+gno --config <archive.yml> --index <name> sessions source remove <id> [--json]
+gno --config <archive.yml> --index <name> sessions import (--source <id> | <paths...> --collection <name>) [--format <harness>] [--dry-run] [--limit <n>] [--json]
+gno --config <archive.yml> --index <name> sessions status [--json]
+gno --config <archive.yml> --index <name> sessions prune --source <id> [--apply] [--json]
+```
+
+**discover** (default): previews supported local roots (`$CODEX_HOME` or
+`~/.codex/sessions`; `~/.claude/projects` and `$CLAUDE_CONFIG_DIR/projects`;
+`$OPENCLAW_STATE_DIR` or `~/.openclaw`; `$HERMES_HOME` or `~/.hermes`) with
+unit counts, sizes and sampled format versions. Never imports and needs no
+archive. Output: `sessions-discovery` schema.
+
+**init**: creates or extends the archive config (idempotent). Adds the
+`sessions` block (`index`, `archiveRoot`) and one archive collection at
+`<archive>/<collection>` with the JSONL record mapping. A config already bound
+to another index or root is never retargeted.
+
+**source add / remove**: registers an owner-approved source root, file or
+database with a default archive collection (created under the archive root
+when missing). `--project <prefix>=<collection>` maps recorded working
+directories under `prefix` to another archive collection. Removing a source
+keeps its archive. Registration never imports.
+
+**import**: parses the selected source (or explicit paths), classifies turns
+structurally, redacts, and writes one sanitized JSONL archive file per
+thread, then syncs the changed files through the ordinary JSONL record
+adapter.
+
+- Selection is required: `--source <id>` (uses the registered collection and
+  project mappings) or explicit absolute paths plus `--collection`.
+  `--collection` with `--source` is rejected.
+- `--format` overrides structural detection for path imports.
+- `--dry-run` parses and reports without writing archive files, checkpoint
+  state or index rows.
+- `--limit <n>` bounds the number of changed units processed; unchanged units
+  do not count; the rest are reported as `deferredUnits`.
+- Reruns are idempotent: a unit whose fingerprint, parser, redaction and
+  archive format are unchanged is skipped; a changed unit is re-rendered and
+  compared with the archived bytes. Turn IDs are stable across appends.
+- A unit whose final line is cut mid-write, or whose structure drifted (for
+  example assistant turns without any recognised human turn), is
+  `incomplete`: its readable threads are archived but its checkpoint does not
+  advance, and the next run retries it.
+- A thread whose recorded working directories map to different collections
+  is quarantined (`skipped_policy`, reason `mixed_domain`) instead of being
+  written to the less restricted one.
+- Imports on one archive serialize on `<archive>/.gno-sessions/import.lock`;
+  a concurrent run exits `BUSY` (`SESSIONS_BUSY`).
+- A source file that disappears keeps its archive; `status` reports it as
+  `sourceUnavailable`. When the redaction rules or the configured literals
+  (`sessions.redaction.literals`) change, units with a source are re-rendered
+  and archives without a source are rescanned in place; a parser change
+  cannot reparse a missing source and is reported instead.
+- Output: `sessions-import-receipt` schema. `status` is `complete`,
+  `partial` (any incomplete, failed, unsupported or deferred unit, or failed
+  lexical sync), `failed` (every processed unit failed) or `nothing_to_do`.
+  Receipts carry counts, per-unit outcomes with safe locators (never host
+  paths), lexical readiness and the embedding backlog. Embeddings are not
+  generated by import; run `gno embed` on the archive pair.
+
+**status**: archive collections with thread counts, and per source its
+availability, unit counts (complete, incomplete, failed, pending),
+`sourceUnavailable`, `staleParser` and last import time. Output:
+`sessions-status` schema.
+
+**prune**: lists archived units whose source is gone (preview by default);
+`--apply` deletes exactly those archive files and syncs the index. Source
+deletion alone never removes archive files.
+
+**Exit codes:** `VALIDATION` (1) for selection, destination, binding,
+unknown source/collection, unsafe path and unsupported format errors;
+`BUSY` (4) for `SESSIONS_BUSY`; `RUNTIME` (2) for an import whose status is
+`failed`. The JSON error envelope carries the core code in
+`details.sessionsCode`.
+
+**Examples:**
+
+```bash
+gno sessions
+gno --config ~/gno-sessions/archive.yml --index sessions sessions init --archive ~/gno-sessions/archive --collection sessions-work
+gno --config ~/gno-sessions/archive.yml --index sessions sessions source add codex --harness codex --path ~/.codex/sessions --collection sessions-work
+gno --config ~/gno-sessions/archive.yml --index sessions sessions import --source codex --dry-run
+gno --config ~/gno-sessions/archive.yml --index sessions sessions import --source codex --json
+gno --config ~/gno-sessions/archive.yml --index sessions query "why did we pick sqlite" --category harness/codex --author human
 ```
 
 ---
@@ -4130,20 +4248,22 @@ Write-lease contention on `index` / `update` / `embed` does not use the generic 
 
 ## Environment Variables
 
-| Variable                   | Description                                                                                                                |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `GNO_CONFIG_DIR`           | Override config directory                                                                                                  |
-| `GNO_DATA_DIR`             | Override data directory (DB location)                                                                                      |
-| `GNO_CACHE_DIR`            | Override cache directory (models)                                                                                          |
-| `NO_COLOR`                 | Disable colored output (standard)                                                                                          |
-| `PAGER`                    | Pager for long output (default: less -R on Unix, built-in on Windows)                                                      |
-| `GNO_SKILLS_HOME_OVERRIDE` | Override home dir for skill user scope (testing)                                                                           |
-| `GNO_MEMORY_CALLER`        | Default `--caller` identity for `gno remember` / `gno recall`                                                              |
-| `GNO_MEMORY_SESSION`       | Default `--session` identity for `gno remember` / `gno recall`                                                             |
-| `CLAUDE_SKILLS_DIR`        | Override Claude skills directory                                                                                           |
-| `CODEX_SKILLS_DIR`         | Override Codex skills directory                                                                                            |
-| `CLAUDE_CONFIG_DIR`        | Claude Code config dir; `gno agents` resolves Claude's instruction file under it (suppressed by an explicit home override) |
-| `CODEX_HOME`               | Codex config dir; same rule as `CLAUDE_CONFIG_DIR`                                                                         |
+| Variable                   | Description                                                                                                                                                                     |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GNO_CONFIG_DIR`           | Override config directory                                                                                                                                                       |
+| `GNO_DATA_DIR`             | Override data directory (DB location)                                                                                                                                           |
+| `GNO_CACHE_DIR`            | Override cache directory (models)                                                                                                                                               |
+| `NO_COLOR`                 | Disable colored output (standard)                                                                                                                                               |
+| `PAGER`                    | Pager for long output (default: less -R on Unix, built-in on Windows)                                                                                                           |
+| `GNO_SKILLS_HOME_OVERRIDE` | Override home dir for skill user scope (testing)                                                                                                                                |
+| `GNO_MEMORY_CALLER`        | Default `--caller` identity for `gno remember` / `gno recall`                                                                                                                   |
+| `GNO_MEMORY_SESSION`       | Default `--session` identity for `gno remember` / `gno recall`                                                                                                                  |
+| `CLAUDE_SKILLS_DIR`        | Override Claude skills directory                                                                                                                                                |
+| `CODEX_SKILLS_DIR`         | Override Codex skills directory                                                                                                                                                 |
+| `CLAUDE_CONFIG_DIR`        | Claude Code config dir; `gno agents` resolves Claude's instruction file under it (suppressed by an explicit home override); `gno sessions discover` also checks its `projects/` |
+| `CODEX_HOME`               | Codex config dir; same rule as `CLAUDE_CONFIG_DIR`; `gno sessions discover` checks its `sessions/`                                                                              |
+| `OPENCLAW_STATE_DIR`       | OpenClaw state dir checked by `gno sessions discover` (else `$OPENCLAW_HOME/.openclaw` or `~/.openclaw`)                                                                        |
+| `HERMES_HOME`              | Hermes home checked by `gno sessions discover` (else `~/.hermes`)                                                                                                               |
 
 ---
 

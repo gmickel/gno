@@ -132,6 +132,8 @@ walk the model through:
 - private retrieval traces/replay and Knowledge Delta inspection
 - project affinity, explainable content boosts, and collection egress policy
 - JSONL, mail, calendar, transcript, and browser-export source adapters
+- manual agent-session import into a separate archive, and citing session
+  turns as evidence rather than facts
 - provenance-aware browser clipping and typed second-brain capture recipes
 - tagging, contexts, and per-collection embedding models
 - publishing notes as gno.sh reader snapshots (`publish export`)
@@ -145,7 +147,8 @@ progressive disclosure — the model only pulls them when it needs them:
 - [mcp-reference.md](mcp-reference.md) — MCP tool and resource contract
 - [examples.md](examples.md) — end-to-end usage patterns
 - [recipes/](recipes/) — task-shaped second-brain workflows for lookup,
-  capture, meetings, email context, source summaries, ideas, and citations
+  capture, meetings, email context, source summaries, ideas, citations,
+  memory, and past agent sessions
 
 ## Agent tooling contract
 

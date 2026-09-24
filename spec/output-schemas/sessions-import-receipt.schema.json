@@ -1,0 +1,156 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/sessions-import-receipt@1.0",
+  "title": "GNO Session Import Receipt",
+  "description": "Shared receipt of a manual session import on every surface (CLI `gno sessions import --json`, MCP gno_sessions_import, REST POST /api/sessions/import, SDK client.importSessions()). Derived from SessionImportReceipt in src/sessions/types.ts. Receipts never contain host paths or session content.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "dryRun",
+    "index",
+    "sourceIds",
+    "status",
+    "counts",
+    "turns",
+    "units",
+    "unitsTruncated",
+    "deferredUnits",
+    "lexical",
+    "embedding",
+    "warnings"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "dryRun": {
+      "type": "boolean",
+      "description": "True when nothing was written to the archive, checkpoint state or index."
+    },
+    "index": { "type": "string", "minLength": 1 },
+    "sourceIds": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "status": {
+      "enum": ["complete", "partial", "failed", "nothing_to_do"],
+      "description": "partial whenever any unit is incomplete, failed, unsupported or deferred, or lexical sync failed; a partial import is never reported complete."
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "imported",
+        "updated",
+        "unchanged",
+        "skippedPolicy",
+        "unsupported",
+        "incomplete",
+        "failed"
+      ],
+      "properties": {
+        "imported": { "type": "integer", "minimum": 0 },
+        "updated": { "type": "integer", "minimum": 0 },
+        "unchanged": { "type": "integer", "minimum": 0 },
+        "skippedPolicy": { "type": "integer", "minimum": 0 },
+        "unsupported": { "type": "integer", "minimum": 0 },
+        "incomplete": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "turns": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "human",
+        "assistant",
+        "redactions",
+        "injectedSkipped",
+        "copiedHistorySkipped",
+        "overLimit"
+      ],
+      "properties": {
+        "human": { "type": "integer", "minimum": 0 },
+        "assistant": { "type": "integer", "minimum": 0 },
+        "redactions": { "type": "integer", "minimum": 0 },
+        "injectedSkipped": { "type": "integer", "minimum": 0 },
+        "copiedHistorySkipped": { "type": "integer", "minimum": 0 },
+        "overLimit": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "units": {
+      "type": "array",
+      "maxItems": 200,
+      "items": { "$ref": "#/$defs/unit" }
+    },
+    "unitsTruncated": { "type": "boolean" },
+    "deferredUnits": { "type": "integer", "minimum": 0 },
+    "lexical": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "collections"],
+      "properties": {
+        "status": { "enum": ["ready", "failed", "skipped"] },
+        "collections": { "type": "array", "items": { "type": "string" } },
+        "error": { "type": "string" }
+      }
+    },
+    "embedding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["backlog"],
+      "properties": {
+        "backlog": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Chunks awaiting embeddings in the archive index; null on dry runs."
+        }
+      }
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "unit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceId",
+        "harness",
+        "locator",
+        "outcome",
+        "threads",
+        "turns",
+        "collections"
+      ],
+      "properties": {
+        "sourceId": { "type": "string" },
+        "harness": {
+          "enum": ["codex", "claude-code", "openclaw", "hermes", null]
+        },
+        "locator": {
+          "type": "string",
+          "description": "Safe locator inside the source root (file name or database path), never a host path."
+        },
+        "outcome": {
+          "enum": [
+            "imported",
+            "updated",
+            "unchanged",
+            "skipped_policy",
+            "unsupported",
+            "incomplete",
+            "failed"
+          ]
+        },
+        "reason": { "type": "string" },
+        "threads": { "type": "integer", "minimum": 0 },
+        "turns": { "type": "integer", "minimum": 0 },
+        "collections": { "type": "array", "items": { "type": "string" } },
+        "unknownKinds": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        },
+        "warnings": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

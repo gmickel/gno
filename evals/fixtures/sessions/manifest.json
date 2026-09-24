@@ -1,0 +1,30 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "README.md": "681d88b1101a0043bf870e3c1edaac3f4df3cb7acff1fdba67b95081ae811d6f",
+    "cases.json": "ba5a6f3c938884522d76c24c535c2a12fd9785477ff1ea92ecdb63428c284422",
+    "gold/work/claude-code/cc-a1-sub.jsonl": "dcbe18a07720a89f095c669549b9aac0d3cd2686a642df69acb495794c9058a5",
+    "gold/work/claude-code/cc-a1.jsonl": "c2a4c73084b0810b7e2fd57529dbca1b671abe843fdcebfb6adf2334cb0f0c76",
+    "gold/work/claude-code/cc-b1.jsonl": "38bb81e36135e15e461fed3613ce63e18a14629bf37b62d77bf12d32646a4fd4",
+    "gold/work/codex/cx-a1-sub.jsonl": "d9428d5d7eae529846360e346ce29ad4cad76af4b0c5462289f1be1d81c7feaf",
+    "gold/work/codex/cx-a1.jsonl": "7469294e9609a10a1786954e8dad4cda61c015b0712b1ce7a8d63a82577cdd07",
+    "gold/work/codex/cx-b1.jsonl": "72e95dee3ec3158618382c01a76c2dc8b8fe5ecf53a04b7c5a2e8b146b4efb6b",
+    "gold/work/codex/cx-exec.jsonl": "6597e64292d088cce421724b2f81d94084f7148bde0db2f53858a73a4c6cb6bd",
+    "gold/work/hermes/h-invoice.jsonl": "bc54cd6ae210db96880fc35472e24feff10818bc5810196318b7edbda9da1e77",
+    "gold/work/hermes/h-orchid-delegate.jsonl": "60bf4d3da306ef36018bad5f1e7537d45b163515e2bd23851e90ce9554e1d72c",
+    "gold/work/hermes/h-orchid.jsonl": "5aac2fc20402884f8b379031adedd52fafc517414d59697948990d46cd86e1d1",
+    "gold/work/openclaw/oc-c1.jsonl": "50a50ec7a43778787834814a52c526b875291ffd3a53619ddc78816de7fc9a66",
+    "gold/work/openclaw/oc-db-main.jsonl": "510919a471e4c34727055d555aa264ca2dd369e93f3bf85e76f2bdda48ec16f3",
+    "gold/work/openclaw/oc-db-sub.jsonl": "333d4bb5f39d048ddac9dfbfff1dd5489347b9642a753a2afa4d4fa4898d424d",
+    "native/claude-code/projects/-work-a-api/e7a1c1a0-0000-4000-8000-00000000a001.jsonl": "be6eb3ed1b3cdf2659317b6538db259f75502fd664e57edc5d77c032cac5686d",
+    "native/claude-code/projects/-work-a-api/e7a1c1a0-0000-4000-8000-00000000a001/subagents/agent-b7c2.jsonl": "a4603f98aef33db1adaf6c1eab6dff0e92c80f06f6b439686c06647baf059f08",
+    "native/claude-code/projects/-work-b-api/e7a1c1a0-0000-4000-8000-00000000b001.jsonl": "e86d0c0c1f4443af960da39595b83c628949b35eaf3b87e3aaee3fa86eb12b7a",
+    "native/codex/2025/12/01/rollout-2025-12-01T15-00-00-0000e7a1-0000-7000-8000-00000000b001.jsonl": "30635578d4292c928e727fa440ffa71a79aa60901e778591371669f59fcf4949",
+    "native/codex/2026/09/10/rollout-2026-09-10T09-00-00-0000e7a1-0000-7000-8000-00000000a001.jsonl": "e92660605abd7e211be5e4488e9d71e5d107fde03739f03376076fc79ca3834a",
+    "native/codex/2026/09/10/rollout-2026-09-10T09-30-00-0000e7a1-0000-7000-8000-00000000a002.jsonl": "a545d5b0845dcf0a9c08bea3f608af3579501cd7811279a79267a073083db491",
+    "native/codex/2026/09/11/rollout-2026-09-11T06-00-00-0000e7a1-0000-7000-8000-00000000c001.jsonl": "4daa9bd08980381b67d5e1990199eb42f609935ede8adb2f2b99667091391392",
+    "native/openclaw/agents/main/sessions/e7a10c1a-0000-4000-8000-00000000c001.jsonl": "b5ed434f3675a7ffa9d6431267760f9729f29d8e757276951ce54ffbc162df25",
+    "sql/hermes-state.sql": "3ba64df6a07cc190468e731855f29fb5639090bf0b1cff01be002be8c4074639",
+    "sql/openclaw-agent.sql": "98af5fefe7e1404d4d08c72138e4b282b97e9616b6206ce8b9a58c9d3ffddb94"
+  }
+}

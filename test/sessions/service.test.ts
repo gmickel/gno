@@ -18,10 +18,15 @@ import {
   SessionsService,
 } from "../../src/sessions/service";
 import { importLockPath } from "../../src/sessions/state";
-import { SessionsError } from "../../src/sessions/types";
+import { type SessionHarness, SessionsError } from "../../src/sessions/types";
 import { openScopedIndexStore } from "../../src/store/sqlite/scoped-index";
 import { safeRm } from "../helpers/cleanup";
-import { FIXTURE_SECRETS, FIXTURES, tempDir } from "./helpers";
+import {
+  buildSqliteFixtures,
+  FIXTURE_SECRETS,
+  FIXTURES,
+  tempDir,
+} from "./helpers";
 
 const INDEX = "sessions";
 const CODEX_MAIN =
@@ -213,6 +218,27 @@ describe("manual selection (R1)", () => {
         "SESSIONS_UNSAFE_PATH"
       )
     );
+  });
+
+  test("a path import detects each directory layout by structure", async () => {
+    const sqlite = await buildSqliteFixtures(join(root, "sqlite"));
+    const cases: Array<[string, SessionHarness]> = [
+      [join(FIXTURES, "claude-code/projects"), "claude-code"],
+      [sqlite.hermesRoot, "hermes"],
+      [sqlite.openclawRoot, "openclaw"],
+    ];
+    for (const [path, harness] of cases) {
+      const receipt = await withService((service) =>
+        service.import(
+          { paths: [path], collection: "work", dryRun: true },
+          { allowPaths: true }
+        )
+      );
+      expect(receipt.units.length).toBeGreaterThan(0);
+      expect(new Set(receipt.units.map((unit) => unit.harness))).toEqual(
+        new Set([harness])
+      );
+    }
   });
 
   test("an unrecognised file is reported unsupported, not guessed", async () => {
@@ -423,28 +449,27 @@ describe("import, idempotency and reconciliation (R3, R4)", () => {
     expect(persisted).not.toContain(codexRoot);
   });
 
-  test("a redaction rule added later rescans archives whose source is gone", async () => {
+  test("a redaction literal added later rewrites every archive, with or without its source", async () => {
     await withService((service) =>
       service.import({ sourceId: "codex-main" }, { allowPaths: false })
     );
+    expect(await readAll(join(archiveRoot, "work"))).toContain(
+      "beta checklist"
+    );
     await rename(join(codexRoot, CODEX_MAIN), join(root, "gone.jsonl"));
-    const statePath = join(archiveRoot, ".gno-sessions", "state.json");
-    const state = await Bun.file(statePath).json();
-    for (const unit of Object.values(
-      state.sources["codex-main"].units
-    ) as Array<{ redaction: number }>) {
-      unit.redaction = 0;
-    }
-    await Bun.write(statePath, JSON.stringify(state));
     const config = await loadArchiveConfig();
-    config.sessions!.redaction = { literals: ["alpha queue"] };
+    config.sessions!.redaction = {
+      literals: ["alpha queue", "beta checklist"],
+    };
     await saveConfigToPath(config, configPath);
     await withService((service) =>
       service.import({ sourceId: "codex-main" }, { allowPaths: false })
     );
-    expect(await readAll(join(archiveRoot, "work"))).not.toContain(
-      "alpha queue"
-    );
+    const archived = await readAll(join(archiveRoot, "work"));
+    // The source of the "alpha queue" thread is gone: rescanned in place.
+    expect(archived).not.toContain("alpha queue");
+    // The "beta checklist" source still exists: re-rendered.
+    expect(archived).not.toContain("beta checklist");
     expect(await searchArchive("alpha queue SQLite")).toEqual([]);
   });
 
@@ -536,6 +561,46 @@ describe("archive isolation (R8)", () => {
     } finally {
       await opened.store.close();
     }
+  });
+
+  test("init binds the index before any import and refuses an index in use", async () => {
+    const curated = join(root, "curated.yml");
+    await Bun.write(curated, 'version: "1.0"\ncollections: []\n');
+    const curatedConfig = (await loadConfig(curated)) as {
+      ok: true;
+      value: Config;
+    };
+    await expectSessionsError(
+      assertSessionBinding({
+        config: curatedConfig.value,
+        configPath: curated,
+        indexName: INDEX,
+        dbPath: getIndexDbPath(INDEX),
+      }),
+      "SESSIONS_BINDING_MISMATCH"
+    );
+    const notes = join(root, "notes");
+    await mkdir(notes, { recursive: true });
+    const used = await initStore({
+      configPath: curated,
+      indexName: "used",
+      allowEmptyCollections: true,
+    });
+    if (!used.ok) throw new Error(used.error);
+    await used.store.syncCollections([
+      { name: "notes", path: notes, pattern: "**/*", include: [], exclude: [] },
+    ]);
+    await used.store.close();
+    await expectSessionsError(
+      initSessionArchive({
+        configPath: join(root, "second.yml"),
+        indexName: "used",
+        archiveRoot: join(root, "second-archive"),
+        collection: "work",
+      }),
+      "SESSIONS_BINDING_MISMATCH"
+    );
+    expect(await Bun.file(join(root, "second.yml")).exists()).toBe(false);
   });
 
   test("archive collections are not memory-managed and live under the archive root", async () => {

@@ -254,6 +254,39 @@ gno recall "kindergarten" --scope family --max-facts 3 --max-tokens 256 --json >
   lexical with the reason; recall never downloads a model.
 - Nothing in scope prints the self-teaching line naming `gno remember`.
 
+## Sessions
+
+Manual import of local agent conversations (Codex, Claude Code, OpenClaw,
+Hermes) into a dedicated archive: one config file with a `sessions` block
+plus one named index. Every command except `discover` passes both flags;
+the archive config with another index (or the archive index with another
+config) fails with `SESSIONS_BINDING_MISMATCH`. Full guide: `docs/SESSIONS.md`.
+
+```bash
+gno sessions discover [--json]            # preview local stores; never imports
+gno --config ~/gno-sessions/archive.yml --index sessions sessions init --archive ~/gno-sessions/archive --collection sessions-work
+gno --config ~/gno-sessions/archive.yml --index sessions sessions source add codex --harness codex --path ~/.codex/sessions --collection sessions-work --project ~/work/api=sessions-api
+gno --config ~/gno-sessions/archive.yml --index sessions sessions import --source codex --dry-run
+gno --config ~/gno-sessions/archive.yml --index sessions sessions import --source codex --limit 200 --json
+gno --config ~/gno-sessions/archive.yml --index sessions sessions import /abs/session.jsonl --collection sessions-work --format codex
+gno --config ~/gno-sessions/archive.yml --index sessions sessions status --json
+gno --config ~/gno-sessions/archive.yml --index sessions sessions prune --source codex [--apply]
+gno --config ~/gno-sessions/archive.yml --index sessions sessions source remove codex   # archive kept
+```
+
+- `--harness`/`--format`: `codex`, `claude-code`, `openclaw`, `hermes`. Paths
+  are absolute. `--collection` is for path imports and rejected with
+  `--source`.
+- Receipt `status`: `complete`, `partial` (incomplete, failed, unsupported,
+  or deferred units; exit 0), `failed` (exit 2), `nothing_to_do`. Reasons
+  include `truncated_tail`, `format_drift`, `snapshot_read_failed`,
+  `mixed_domain` (quarantined thread), `over_limit`. Reruns are incremental
+  and retry incomplete units. Exit 4 = `SESSIONS_BUSY`.
+- Import does not embed: `gno --config … --index sessions embed`.
+- Search with the normal commands on the pair: `--author human|assistant`,
+  `--category harness/<h>`, `--tags-all role/<r>,project/<name>`,
+  `-c <collection>`. `--since`/`--until` use import time.
+
 ## Search Commands
 
 ### gno search

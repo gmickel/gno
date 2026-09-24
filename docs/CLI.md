@@ -60,6 +60,7 @@ never raw roots.
 | `gno skill`      | Install GNO skill for AI agents      |
 | `gno agents`     | Manage GNO block in harness files    |
 | `gno tags`       | Manage document tags                 |
+| `gno sessions`   | Import agent sessions (manual)       |
 | `gno completion` | Shell tab completion                 |
 | `gno vec`        | Vector index maintenance             |
 | `gno peek`       | Cheap counts, backlog, recent, serve |
@@ -652,6 +653,137 @@ gno recall "kindergarten" --scope family --max-facts 3 --max-tokens 256 --json
   downloads a model.
 - With nothing in scope it prints the self-teaching line
   (`No memories in scope yet. Store one with: gno remember ...`) and exits 0.
+
+## Session Commands
+
+`gno sessions` discovers local agent session stores and imports selected
+conversations into a dedicated session archive: one config file carrying a
+`sessions` block, paired with one named index. Nothing is imported, watched,
+or scheduled unless you run a command. The full guide, including the support
+matrix, redaction, receipts, and recovery, is [Agent Sessions](SESSIONS.md).
+
+Every subcommand except `discover` needs the archive pair on the command line:
+
+```bash
+gno --config ~/gno-sessions/archive.yml --index sessions sessions <subcommand>
+```
+
+The pair is enforced before every `gno` command, not only `sessions`: the
+archive config with another `--index`, or the archive index with another
+config, exits 1 with `SESSIONS_BINDING_MISMATCH`. Your curated `gno update`
+and `gno search` therefore never touch the archive.
+
+### gno sessions discover
+
+```bash
+gno sessions                 # same as discover
+gno sessions discover --json
+```
+
+Previews the supported local roots (`$CODEX_HOME/sessions` or
+`~/.codex/sessions`; `~/.claude/projects` and `$CLAUDE_CONFIG_DIR/projects`;
+`$OPENCLAW_STATE_DIR` or `~/.openclaw`; `$HERMES_HOME` or `~/.hermes`) with
+unit counts, sizes, and sampled format versions. Never imports and needs no
+archive.
+
+### gno sessions init
+
+```bash
+gno --config ~/gno-sessions/archive.yml --index sessions \
+  sessions init --archive ~/gno-sessions/archive --collection sessions-work
+```
+
+| Option                | Description                                          |
+| --------------------- | ---------------------------------------------------- |
+| `--archive <dir>`     | Absolute archive root, outside GNO's own directories |
+| `--collection <name>` | Archive collection to create                         |
+| `--json`              | JSON output                                          |
+
+Creates or extends the archive config (idempotent) and records the binding in
+the named index. Refuses the default config file, the `default` index, and an
+index that already holds other collections or belongs to another archive. A
+config already bound to another index or root is never retargeted.
+
+### gno sessions source add / remove
+
+```bash
+gno --config ~/gno-sessions/archive.yml --index sessions \
+  sessions source add codex --harness codex --path ~/.codex/sessions \
+  --collection sessions-work --project ~/work/api=sessions-api
+gno --config ~/gno-sessions/archive.yml --index sessions sessions source remove codex
+```
+
+| Option                          | Description                                                      |
+| ------------------------------- | ---------------------------------------------------------------- |
+| `<id>`                          | Source ID: lowercase letters, digits, `-`, `_` (1-64)            |
+| `--harness <harness>`           | `codex`, `claude-code`, `openclaw`, or `hermes`                  |
+| `--path <path>`                 | Absolute session root, file, or database (must exist)            |
+| `--collection <name>`           | Default archive collection (created under the root when missing) |
+| `--project <prefix=collection>` | Repeatable working-directory mapping to another collection       |
+
+Registration never imports. `source remove` unregisters the source and keeps
+its archive.
+
+### gno sessions import
+
+```bash
+gno --config ~/gno-sessions/archive.yml --index sessions sessions import --source codex --dry-run
+gno --config ~/gno-sessions/archive.yml --index sessions sessions import --source codex --limit 200 --json
+gno --config ~/gno-sessions/archive.yml --index sessions \
+  sessions import /absolute/path/to/session.jsonl --collection sessions-work --format codex
+```
+
+| Option                | Description                                                    |
+| --------------------- | -------------------------------------------------------------- |
+| `--source <id>`       | Registered source (uses its collection and project mappings)   |
+| `[paths...]`          | Absolute session files or directories (instead of `--source`)  |
+| `--collection <name>` | Destination for path imports (rejected with `--source`)        |
+| `--format <harness>`  | Override structural format detection for path imports          |
+| `--dry-run`           | Parse and report; write no archive files, checkpoint, or index |
+| `--limit <n>`         | Maximum changed units this run; the rest are `deferredUnits`   |
+| `--json`              | Print the `sessions-import-receipt` object                     |
+
+Parses, classifies speakers structurally, redacts, writes one sanitized JSONL
+file per thread, then syncs the changed files. Reruns skip unchanged units.
+A unit cut mid-write or showing format drift is `incomplete` and retried by
+the next run. Threads spanning differently mapped project directories are
+quarantined (`mixed_domain`). Receipt `status` is `complete`, `partial`,
+`failed`, or `nothing_to_do`; a `partial` import exits 0 and lists its units.
+Import does not embed: run `embed` on the same archive pair.
+
+### gno sessions status
+
+```bash
+gno --config ~/gno-sessions/archive.yml --index sessions sessions status --json
+```
+
+Archive collections with thread counts and, per source, availability, unit
+counts (complete, incomplete, failed, pending), `sourceUnavailable`,
+`staleParser`, and last import time.
+
+### gno sessions prune
+
+```bash
+gno --config ~/gno-sessions/archive.yml --index sessions sessions prune --source codex
+gno --config ~/gno-sessions/archive.yml --index sessions sessions prune --source codex --apply
+```
+
+Lists archive files whose source is gone (preview by default); `--apply`
+deletes exactly those files and syncs the index. Deleting a source file never
+removes its archive on its own.
+
+**Exit codes:** 1 for selection, destination, binding, unknown
+source/collection, unsafe path, and unsupported format errors; 2 for an
+unavailable source or an import whose status is `failed`; 4 when another
+import holds the archive lock (`SESSIONS_BUSY`). `--json` errors carry the
+code in `details.sessionsCode`.
+
+Search the archive with the normal commands on the same pair:
+
+```bash
+gno --config ~/gno-sessions/archive.yml --index sessions \
+  query "why did we pick sqlite" --author human --category harness/codex
+```
 
 ## Document Commands
 
@@ -1984,13 +2116,13 @@ gno search "test" --json | jq '.results[].uri'
 
 ## Exit Codes
 
-| Code | Meaning                                                                |
-| ---- | ---------------------------------------------------------------------- |
-| 0    | Success                                                                |
-| 1    | Validation error (bad input)                                           |
-| 2    | Runtime error (IO, DB, model)                                          |
-| 3    | `NOT_RUNNING` — `--status` / `--stop` found no live matching process   |
-| 4    | `BUSY` — write-lease contention, or a lost `remember --supersede` race |
+| Code | Meaning                                                                                                |
+| ---- | ------------------------------------------------------------------------------------------------------ |
+| 0    | Success                                                                                                |
+| 1    | Validation error (bad input)                                                                           |
+| 2    | Runtime error (IO, DB, model)                                                                          |
+| 3    | `NOT_RUNNING` — `--status` / `--stop` found no live matching process                                   |
+| 4    | `BUSY` — write-lease contention, a lost `remember --supersede` race, or a concurrent `sessions import` |
 
 Exit code `3` is reserved for `gno serve --status` / `--stop` and `gno daemon --status` / `--stop`. See [Long-Running Processes](#long-running-processes) below for the management contract. Exit code `4` on mutating index commands means another writer holds the lease — retry when it finishes, or raise `--lock-wait`. `gno audit` also uses `4` when the report contains findings.
 

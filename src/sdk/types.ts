@@ -94,6 +94,12 @@ import type {
   SearchOptions,
   SearchResults,
 } from "../pipeline/types";
+import type { SessionImportInput } from "../sessions/service";
+import type {
+  SessionImportReceipt,
+  SessionsDiscovery,
+  SessionsStatus,
+} from "../sessions/types";
 import type { IndexStatus } from "../store/types";
 
 export type {
@@ -268,6 +274,10 @@ export interface GnoCaptureOptions extends Omit<CaptureInput, "overwrite"> {}
 export type GnoCaptureResult = CaptureReceipt;
 
 /** Shared memory contract (identical on CLI, MCP, REST, and SDK). */
+export type GnoSessionsStatus = SessionsStatus;
+export type GnoSessionsDiscovery = SessionsDiscovery;
+export type GnoSessionsImportReceipt = SessionImportReceipt;
+export type GnoSessionsImportInput = SessionImportInput;
 export type GnoRememberInput = RememberInput;
 export type GnoRememberResult = RememberResult;
 export type GnoRecallInput = RecallInput;
@@ -425,6 +435,21 @@ export interface GnoClient {
    * The result carries a content-free fencing receipt.
    */
   recall(input: GnoRecallInput): Promise<GnoRecallResult>;
+  /**
+   * Session-archive status for a client opened on the dedicated archive
+   * config/index pair. Throws VALIDATION (`details.code`
+   * SESSIONS_NOT_CONFIGURED) on any other config.
+   */
+  sessionsStatus(): Promise<GnoSessionsStatus>;
+  /** Preview supported local session sources on this host. Never imports. */
+  discoverSessions(): Promise<GnoSessionsDiscovery>;
+  /**
+   * Manually import a registered source (`sourceId`) or explicit local paths
+   * (`paths` + `collection`) into the archive. Returns the shared receipt.
+   */
+  importSessions(
+    input: GnoSessionsImportInput
+  ): Promise<GnoSessionsImportReceipt>;
   createNote(options: GnoCreateNoteOptions): Promise<GnoCreateNoteResult>;
   createFolder(options: GnoCreateFolderOptions): Promise<GnoCreateFolderResult>;
   previewRenameNote(

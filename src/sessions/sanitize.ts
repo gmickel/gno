@@ -17,6 +17,17 @@
 /** Bumped whenever a rule changes; stale archives are rescanned on import. */
 export const SESSION_REDACTION_VERSION = 1;
 
+/**
+ * Identity of the effective redaction policy: the rule version plus the
+ * owner's configured literals. Any change re-renders or rescans archives.
+ */
+export function redactionStamp(policy: RedactionPolicy = {}): string {
+  const literals = [...new Set(policy.literals ?? [])].sort();
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(JSON.stringify(literals));
+  return `${SESSION_REDACTION_VERSION}:${hasher.digest("hex").slice(0, 16)}`;
+}
+
 const MAX_PROPAGATED_VALUES = 256;
 const MIN_PROPAGATED_LENGTH = 8;
 const PRIVATE_KEY_WINDOW = 16 * 1024;

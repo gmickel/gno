@@ -108,6 +108,14 @@ import {
   sectionInputSchema,
   sectionOutputSchema,
 } from "./sections";
+import {
+  handleSessionsImport,
+  handleSessionsStatus,
+  SESSIONS_IMPORT_MCP_ANNOTATIONS,
+  SESSIONS_STATUS_MCP_ANNOTATIONS,
+  sessionsImportInputSchema,
+  sessionsStatusInputSchema,
+} from "./sessions";
 import { handleStatus } from "./status";
 import { handleSync } from "./sync";
 import {
@@ -1142,6 +1150,17 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
   );
 
   registerTool(
+    "gno_sessions_status",
+    {
+      description:
+        "Status of this session-archive instance: archive collections, owner-registered session sources (by ID, no host paths), pending/incomplete/failed units and last import. Only available when the server runs on a dedicated session-archive config/index pair; nothing is imported automatically.",
+      inputSchema: sessionsStatusInputSchema,
+      annotations: SESSIONS_STATUS_MCP_ANNOTATIONS,
+    },
+    () => handleSessionsStatus(ctx)
+  );
+
+  registerTool(
     "gno_search",
     {
       description: describe("gno_search", MCP_TOOL_DESCRIPTIONS.search),
@@ -1499,6 +1518,17 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
           sessionId: request.sessionId,
           requestIdentity: ctx.getRequestIdentity?.(),
         })
+    );
+
+    registerTool(
+      "gno_sessions_import",
+      {
+        description:
+          "Manually import one owner-registered session source into the session archive and sync it for search. Takes a source ID only (never a host path); dryRun=true reports without writing. Returns a receipt with imported/updated/unchanged/skipped/incomplete/failed counts, lexical readiness and embedding backlog; partial imports stay visible and are retried by the next call.",
+        inputSchema: sessionsImportInputSchema,
+        annotations: SESSIONS_IMPORT_MCP_ANNOTATIONS,
+      },
+      (args) => handleSessionsImport(args, ctx)
     );
 
     registerTool(

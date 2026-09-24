@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/sessions-status@1.0",
+  "title": "GNO Session Archive Status",
+  "description": "Shared status of a session archive on every surface (CLI `gno sessions status --json`, MCP gno_sessions_status, REST GET /api/sessions/status, SDK client.sessionsStatus()). Derived from SessionsStatus in src/sessions/types.ts. Contains no host paths.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "configured",
+    "index",
+    "collections",
+    "sources",
+    "warnings"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "configured": { "const": true },
+    "index": { "type": "string", "minLength": 1 },
+    "collections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "threads"],
+        "properties": {
+          "name": { "type": "string" },
+          "threads": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "harness",
+          "collection",
+          "available",
+          "units",
+          "archivedThreads",
+          "staleParser",
+          "sourceUnavailable",
+          "lastImportAt"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "harness": { "enum": ["codex", "claude-code", "openclaw", "hermes"] },
+          "collection": { "type": "string" },
+          "available": { "type": "boolean" },
+          "units": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "total",
+              "complete",
+              "incomplete",
+              "failed",
+              "pending"
+            ],
+            "properties": {
+              "total": { "type": "integer", "minimum": 0 },
+              "complete": { "type": "integer", "minimum": 0 },
+              "incomplete": { "type": "integer", "minimum": 0 },
+              "failed": { "type": "integer", "minimum": 0 },
+              "pending": { "type": "integer", "minimum": 0 }
+            }
+          },
+          "archivedThreads": { "type": "integer", "minimum": 0 },
+          "staleParser": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Archived units produced by an older parser whose source is no longer available to reparse."
+          },
+          "sourceUnavailable": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Archived units whose source no longer exists; their archive is retained until an explicit prune."
+          },
+          "lastImportAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  }
+}

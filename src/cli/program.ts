@@ -2343,6 +2343,7 @@ function wireRetrievalCommands(program: Command): void {
         const { ls, formatLs } = await import("./commands/ls");
         const result = await ls(scope, {
           configPath: globals.config,
+          indexName: globals.index,
           limit: cmdOpts.limit as number | undefined,
           offset: cmdOpts.offset as number | undefined,
           json: format === "json",

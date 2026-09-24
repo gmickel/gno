@@ -41,6 +41,7 @@ project-aware ranking is desired.
 | **Ask**           | AI-powered Q&A or closed-Capsule verified synthesis             |
 | **Graph**         | Interactive knowledge graph visualization                       |
 | **Trace History** | Inspect, label, export, delete, and purge private receipts      |
+| **Sessions**      | Manual agent-session import and search (archive servers only)   |
 
 ### Export for gno.sh
 
@@ -842,6 +843,49 @@ From any document view:
 Tag changes are saved to the document's frontmatter (for markdown files).
 
 ---
+
+## Agent Sessions
+
+The **Sessions** page (`/sessions`) manages a dedicated
+[session archive](SESSIONS.md): imported Codex, Claude Code, OpenClaw, and
+Hermes conversations kept in their own config file and named index. It is
+useful only on a server started with that archive pair:
+
+```bash
+gno --config ~/gno-sessions/archive.yml --index sessions serve --port 3001
+```
+
+Pick a free `--port` when your curated server already runs on 3000. A curated
+server never attaches an archive, and its broad search does not include
+archived sessions.
+
+What the page does:
+
+- **Archive setup.** When the server is not an archive yet, the page shows
+  the `sessions init` and `serve` commands. A same-host browser also gets a
+  form that initializes this server's own config/index pair (the default
+  config and the `default` index are refused).
+- **Sources.** Lists registered sources with availability, unit counts
+  (complete, incomplete, failed, pending), sources that disappeared, stale
+  parser counts, and the last import time. A same-host browser also sees the
+  stores discovered on this machine and can register one (source ID,
+  destination collection, optional `prefix=collection` project mappings) or
+  remove a source; removal keeps its archive.
+- **Preview and import.** **Preview (dry run)** parses a source and reports
+  counts, redactions, skipped injected context, destination collections, and
+  per-unit outcomes without writing anything. **Import** runs the manual
+  import. A `partial` receipt stays on screen with each incomplete, failed,
+  deferred, or quarantined unit and its reason; importing again retries them.
+- **Session search.** Searches the archive with harness, project, role
+  (human only, assistant only, or both), and archive-collection filters. Each
+  result carries an explicit **Human** or **Assistant** badge and opens the
+  turn in the document view with its provenance block.
+
+Nothing on the page imports automatically; there is no watcher or schedule
+for session sources. Discovery, registration, removal, and archive init are
+refused (403) for anything other than a same-host browser; status, import by
+source ID, and search follow the normal API rules. See
+[Agent Sessions](SESSIONS.md) and the [REST endpoints](API.md#agent-sessions).
 
 ## Configuration
 

@@ -49,6 +49,7 @@ const Ask = lazy(() => import("./pages/Ask"));
 const GraphView = lazy(() => import("./pages/GraphView"));
 const CompiledContext = lazy(() => import("./pages/CompiledContext"));
 const TraceHistory = lazy(() => import("./pages/TraceHistory"));
+const Sessions = lazy(() => import("./pages/Sessions"));
 
 type Route =
   | "/"
@@ -61,7 +62,8 @@ type Route =
   | "/graph"
   | "/connectors"
   | "/context/compiled"
-  | "/traces";
+  | "/traces"
+  | "/sessions";
 type Navigate = (to: string | number) => void;
 
 interface RoutePageProps {
@@ -80,6 +82,7 @@ const routes: Record<Route, React.ComponentType<RoutePageProps>> = {
   "/ask": Ask,
   "/graph": GraphView,
   "/traces": TraceHistory,
+  "/sessions": Sessions,
   "/context/compiled": CompiledContext,
 };
 

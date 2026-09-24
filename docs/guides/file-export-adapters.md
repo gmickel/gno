@@ -120,6 +120,37 @@ download remote attachments; execute embedded content; or unpack archives.
 HTML is reduced to inert text and Markdown metacharacters from exported content
 are escaped before indexing.
 
+## Agent session archives
+
+[`gno sessions`](../SESSIONS.md) does not index harness session stores
+directly. It writes a sanitized JSONL archive (one file per thread, one line
+per turn) and indexes that archive through this JSONL adapter. Each archive
+collection carries this mapping, which `gno sessions init` writes for you:
+
+```yaml
+recordAdapters:
+  jsonl:
+    fieldMapping:
+      id: /id
+      title: /title
+      body: /body
+      author: /author
+      categories: /categories
+      sessionId: /sessionId
+      threadId: /threadId
+      dateFields:
+        recorded: /recordedAt
+```
+
+The mapping gives every turn a stable record identity, the `human` or
+`assistant` author, harness/project/role tags, session and thread identity,
+and the recorded time. Copy the same block when you register an archive
+folder in another config for mixed retrieval.
+
+Downloaded conversation exports from consumer chat apps are not agent session
+stores. Index them with the generic JSONL mapping above or an explicit
+transcript adapter; `gno sessions` does not parse them.
+
 ## Custom typed fields
 
 Record adapters can supply `RecordMetadata.custom` through the same bounded

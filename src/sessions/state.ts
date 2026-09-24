@@ -33,7 +33,8 @@ export interface UnitState {
   fingerprint: string;
   status: UnitStatus;
   parser: string | null;
-  redaction: number;
+  /** Redaction policy stamp the archive was produced with. */
+  redaction: string;
   format: number;
   threads: Array<{ collection: string; relPath: string }>;
   updatedAt: string;

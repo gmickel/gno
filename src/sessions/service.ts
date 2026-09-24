@@ -15,16 +15,16 @@ import { mkdir, readdir, unlink } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 
 import type { Collection, Config } from "../config/types";
-import type { SqliteAdapter } from "../store/sqlite/adapter";
 import type { SessionSourceConfig, SessionsConfig } from "./config";
 
-import { resolveDirs } from "../app/constants";
+import { getIndexDbPath, resolveDirs } from "../app/constants";
 import { canonicalizeIndexName, isValidIndexName } from "../app/index-name";
-import { createDefaultConfig, getConfigPaths } from "../config";
+import { createDefaultConfig, getConfigPaths, loadConfig } from "../config";
 import { applyConfigFileChange } from "../core/config-mutation";
 import { acquireWriteLock } from "../core/file-lock";
 import { atomicWrite } from "../core/file-ops";
 import { defaultSyncService, withContentTypeRules } from "../ingestion";
+import { SqliteAdapter } from "../store/sqlite/adapter";
 import {
   archiveFilePath,
   renderThread,
@@ -32,13 +32,18 @@ import {
   SESSION_ARCHIVE_FIELD_MAPPING,
   SESSION_STATE_DIRNAME,
 } from "./archive";
-import { canonicalConfigPath, writeIndexBinding } from "./binding";
-import { SESSION_REDACTION_VERSION } from "./sanitize";
+import {
+  canonicalConfigPath,
+  readIndexBinding,
+  writeIndexBinding,
+} from "./binding";
+import { redactionStamp } from "./sanitize";
 import {
   assertSafeSourceRoot,
   canonicalPath,
   defaultDiscoveryRoots,
   detectHarness,
+  detectRootHarness,
   enumerateUnits,
   isWithin,
   parseUnit,
@@ -513,9 +518,11 @@ export class SessionsService {
       );
     }
 
-    await mkdir(join(sessions.archiveRoot, SESSION_STATE_DIRNAME), {
-      recursive: true,
-    });
+    if (!dryRun) {
+      await mkdir(join(sessions.archiveRoot, SESSION_STATE_DIRNAME), {
+        recursive: true,
+      });
+    }
     const lock = dryRun
       ? null
       : await acquireWriteLock(
@@ -548,6 +555,7 @@ export class SessionsService {
     const changed = new Map<string, Set<string>>();
     const excluded = protectedRoots(sessions);
     const redaction = { literals: sessions.redaction?.literals ?? [] };
+    const stamp = redactionStamp(redaction);
     let processed = 0;
     let deferred = 0;
     let unitsTruncated = false;
@@ -569,11 +577,25 @@ export class SessionsService {
       };
       let enumerated: { units: SessionUnit[]; truncated: boolean };
       try {
-        enumerated = await enumerateUnits({
-          harness: source.harness ?? "codex",
-          root: source.root,
-          excluded,
-        });
+        const harness =
+          source.harness ?? (await detectRootHarness(source.root, excluded));
+        enumerated = harness
+          ? await enumerateUnits({ harness, root: source.root, excluded })
+          : { units: [], truncated: false };
+        if (!harness) {
+          counts.unsupported += 1;
+          recordUnit({
+            sourceId: source.id,
+            harness: null,
+            locator: ".",
+            outcome: "unsupported",
+            reason: "format_not_recognised",
+            threads: 0,
+            turns: 0,
+            collections: [],
+          });
+          continue;
+        }
       } catch (error) {
         counts.failed += 1;
         recordUnit({
@@ -620,7 +642,7 @@ export class SessionsService {
           previous.fingerprint === fingerprint &&
           previous.parser ===
             SESSION_PARSERS[previous.harness ?? unit.harness] &&
-          previous.redaction === SESSION_REDACTION_VERSION &&
+          previous.redaction === stamp &&
           previous.format === SESSION_ARCHIVE_FORMAT_VERSION;
         if (current) continue;
         if (options.limit !== undefined && processed >= options.limit) {
@@ -662,10 +684,7 @@ export class SessionsService {
       // rescanned in place from the durable sanitized archive.
       for (const [key, unitState] of Object.entries(sourceState.units)) {
         if (present.has(key)) continue;
-        if (
-          unitState.redaction !== SESSION_REDACTION_VERSION &&
-          !options.dryRun
-        ) {
+        if (unitState.redaction !== stamp && !options.dryRun) {
           await this.rescanUnavailable(
             sessions,
             unitState,
@@ -762,7 +781,7 @@ export class SessionsService {
         fingerprint: options.fingerprint,
         status: "failed",
         parser: null,
-        redaction: SESSION_REDACTION_VERSION,
+        redaction: redactionStamp(options.redaction),
         format: SESSION_ARCHIVE_FORMAT_VERSION,
         threads: options.previous?.threads ?? [],
         updatedAt: this.now.toISOString(),
@@ -879,6 +898,12 @@ export class SessionsService {
       const existing = await readText(path);
       if (existing === rendered.content) {
         counts.unchanged += 1;
+        // Re-sync anyway: a run interrupted after writing but before syncing
+        // leaves an archive file the index has not seen. Syncing an unchanged
+        // file is a cheap hash comparison.
+        if (!options.dryRun) {
+          options.markChanged(destination, rendered.relPath);
+        }
         continue;
       }
       if (existing === null) {
@@ -980,7 +1005,7 @@ export class SessionsService {
         markChanged(thread.collection, thread.relPath);
       }
     }
-    unitState.redaction = SESSION_REDACTION_VERSION;
+    unitState.redaction = redactionStamp(redaction);
   }
 
   private async syncChanged(
@@ -1179,6 +1204,54 @@ async function sampleVersions(
 // Configuration mutations (owner-local surfaces only)
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Record the archive binding in the index at init time, so the index refuses
+ * other configs before the first import has written anything.
+ */
+async function bindArchiveIndex(
+  configPath: string,
+  indexName: string,
+  archiveRoot: string
+): Promise<void> {
+  const existing = (await Bun.file(configPath).exists())
+    ? await loadConfig(configPath)
+    : null;
+  if (existing && !existing.ok) {
+    throw new SessionsError("SESSIONS_INVALID_INPUT", existing.error.message);
+  }
+  const config = existing?.ok ? existing.value : createDefaultConfig();
+  const dbPath = getIndexDbPath(indexName);
+  await mkdir(dirname(dbPath), { recursive: true });
+  const store = new SqliteAdapter();
+  store.setConfigPath(configPath);
+  const opened = await store.open(
+    dbPath,
+    config.ftsTokenizer,
+    config.busyTimeoutMs
+  );
+  if (!opened.ok) {
+    throw new SessionsError("SESSIONS_INVALID_INPUT", opened.error.message);
+  }
+  try {
+    const db = store.getRawDb();
+    const foreign = db
+      .query<{ path: string }, []>("SELECT path FROM collections")
+      .all()
+      .filter((row) => !isWithin(archiveRoot, resolve(row.path)));
+    const canonical = await canonicalConfigPath(configPath);
+    const marker = readIndexBinding(dbPath);
+    if (foreign.length > 0 || (marker !== null && marker !== canonical)) {
+      throw new SessionsError(
+        "SESSIONS_BINDING_MISMATCH",
+        `Index "${indexName}" already holds other collections or belongs to another archive; choose a new index name for the session archive.`
+      );
+    }
+    writeIndexBinding(db, canonical);
+  } finally {
+    await store.close();
+  }
+}
+
 export interface InitArchiveInput {
   configPath: string;
   indexName: string;
@@ -1239,17 +1312,22 @@ export async function initSessionArchive(input: InitArchiveInput): Promise<{
       "Collection names are lowercase alphanumeric with hyphens/underscores, 1-64 chars."
     );
   }
-  await mkdir(input.archiveRoot, { recursive: true });
+  const insideGnoDirs = (path: string): boolean =>
+    protectedRoots(undefined).some((root) => isWithin(resolve(root), path));
+  if (!insideGnoDirs(resolve(input.archiveRoot))) {
+    await mkdir(input.archiveRoot, { recursive: true });
+  }
   const archiveRoot =
-    (await canonicalPath(input.archiveRoot)) ?? input.archiveRoot;
-  for (const root of protectedRoots(undefined)) {
-    if (isWithin(root, archiveRoot)) {
+    (await canonicalPath(input.archiveRoot)) ?? resolve(input.archiveRoot);
+  for (const root of [archiveRoot]) {
+    if (insideGnoDirs(root)) {
       throw new SessionsError(
         "SESSIONS_UNSAFE_PATH",
         "The archive must live outside GNO's config/data/cache directories, which reset and cleanup may remove."
       );
     }
   }
+  await bindArchiveIndex(input.configPath, input.indexName, archiveRoot);
   let created = false;
   const result = await applyConfigFileChange(
     {

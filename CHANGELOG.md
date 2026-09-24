@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Native agent-session ingestion: `gno sessions` discovers local Codex, Claude Code, OpenClaw, and Hermes session stores and manually imports selected conversations into a dedicated archive (its own config file and named index), with structural human/assistant attribution, a provenance block per turn, best-effort credential redaction, incremental and idempotent reruns, partial-outcome receipts, status, and prune. Available through the CLI, MCP (`gno_sessions_status`, `gno_sessions_import`), REST (`/api/sessions/*`), the SDK (`sessionsStatus`, `discoverSessions`, `importSessions`), and a `/sessions` Web UI page. Nothing is imported, watched, or scheduled by default, and archived turns are never promoted to remembered facts. See [Agent Sessions](docs/SESSIONS.md).
+
 ## [2.5.1] - 2026-09-24
 
 ### Added

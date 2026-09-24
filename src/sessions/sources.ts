@@ -288,6 +288,36 @@ export async function detectHarness(
   return null;
 }
 
+/**
+ * Harness of an explicit path: a file is detected by structure; a directory
+ * by the first unit each harness layout finds there, confirmed structurally.
+ */
+export async function detectRootHarness(
+  root: string,
+  excluded: readonly string[]
+): Promise<SessionHarness | null> {
+  const info = await stat(root);
+  if (info.isFile()) return detectHarness(root);
+  for (const harness of SESSION_HARNESS_ORDER) {
+    const { units } = await enumerateUnits({
+      harness,
+      root,
+      excluded,
+      limit: 1,
+    });
+    const first = units[0];
+    if (first && (await detectHarness(first.path)) === harness) return harness;
+  }
+  return null;
+}
+
+const SESSION_HARNESS_ORDER: readonly SessionHarness[] = [
+  "codex",
+  "claude-code",
+  "openclaw",
+  "hermes",
+];
+
 /** Current parser identity per harness; a change forces a reparse. */
 export const SESSION_PARSERS: Record<SessionHarness, string> = {
   codex: CODEX_PARSER,

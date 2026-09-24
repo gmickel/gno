@@ -64,6 +64,7 @@ const SKIPPED_EVENTS = new Set([
   "agent_reasoning_raw_content",
   "agent_reasoning_section_break",
   "thread_settings_applied",
+  "thread_goal_updated",
   "exec_command_begin",
   "exec_command_end",
   "exec_command_output_delta",
