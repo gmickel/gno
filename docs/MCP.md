@@ -1492,10 +1492,8 @@ writing. Capture does not auto-embed; run `gno_embed` or `gno_index` when
 vector search should include the new note.
 
 Add `requestId` (for example a UUID) to make a retry after a lost response
-safe: the same call with the same ID replays the recorded receipt
-(`request.replayed: true`) or finishes an interrupted capture instead of
-writing a second note. Check it first with
-[`gno_request_status`](#gno_request_status). See
+safe; the result then carries `request`. Check the ID with
+[`gno_request_status`](#gno_request_status) before retrying. See
 [Retries and Request IDs](guides/retries-and-request-ids.md).
 
 ### gno_recall
@@ -1556,11 +1554,9 @@ The core memory service holds the shared `.mcp-write.lock` lease for the write
 and lexical sync; the MCP adapter takes no lock of its own, so an MCP remember
 and a CLI writer serialise on one lease.
 
-`requestId` requires a `decision`. Retrying the same call with the same ID
-replays the recorded outcome or finishes an interrupted write (for example
-after `MEMORY_SYNC_FAILED`); a reconnect with a new MCP session still matches.
-A `requestId` is not the recall `receipt`: the receipt fences recalled text,
-the request ID identifies a write for retries.
+`requestId` requires a `decision` and makes a retry safe (see
+[Retries and Request IDs](guides/retries-and-request-ids.md)). It is not the
+recall `receipt`.
 
 ### gno_request_status
 
@@ -1572,24 +1568,12 @@ retrying. Read-only, but registered only with `--enable-write` and only on the
 requestId: "7d2e4b90-1f7a-4c2e-8f55-0b9c1d3e6a42"
 ```
 
-Returns `status` (`committed`: do not resend; `pending`: resend the same call
-with the same ID; `expired`: already ran, will not run again; `not_found`:
-nothing accepted under this ID), `operation`, timestamps, and for a committed
-request a `result` pointer (`uri`, `docid`, `contentHash`). It never returns
-note or fact text.
-
-On the resident HTTP endpoint, requests belong to the authorized identity
-(loopback, or the configured bearer token), not to the MCP session: a retry
-after a reconnect or a server restart still finds its request, while another
-token's requests read as `not_found`. Rotating the token starts a new
-namespace. Over stdio the namespace is the same local-owner namespace the CLI,
-SDK, and REST use.
-
-Request ID errors (`REQUEST_ID_INVALID`, `REQUEST_ID_CONFLICT`,
-`REQUEST_EXPIRED`, `REQUEST_PENDING`, `REQUEST_RECOVERY_CONFLICT`,
-`REQUEST_CAPACITY_EXHAUSTED`, `REQUEST_LEDGER_UNAVAILABLE`) arrive as tool
-errors `CODE: message`. See
-[Retries and Request IDs](guides/retries-and-request-ids.md#errors).
+Returns the content-free `request-status` result: `status` (`committed`,
+`pending`, `expired`, or `not_found`), `operation`, timestamps, and for a
+committed request a `result` pointer. Request ID errors arrive as tool errors
+`CODE: message`. What each status and code means, and which namespace an HTTP
+MCP caller sees, is in
+[Retries and Request IDs](guides/retries-and-request-ids.md).
 
 ### gno_rename_note / gno_move_note
 

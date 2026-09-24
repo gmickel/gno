@@ -329,16 +329,15 @@ This can improve indexing speed by 2-4x on Windows.
 
 ### "Capture written to ... but lexical sync failed"
 
-`gno capture` (exit 2), `client.capture()` (`RUNTIME` with
-`details.code: "CAPTURE_SYNC_FAILED"`), MCP `gno_capture`, and
-`POST /api/capture` report this when the note file was written but could not be
-indexed. Capture no longer returns a success with `sync.status: "failed"`.
+MCP `gno_capture` and `POST /api/capture` return `CAPTURE_SYNC_FAILED`, and
+`gno capture` / `client.capture()` return it when a request ID was sent, when
+the note file was written but could not be indexed. Without a request ID, CLI
+and SDK capture instead succeed with `sync.status: "failed"`.
 
-- The file is on disk at the path in the message. Do not capture it again
-  without a request ID; that can create a second note.
+- The file is on disk at the reported path. Do not capture it again without a
+  request ID; that can create a second note.
 - Run `gno update` to index it, or, if you sent a request ID, rerun the exact
-  same capture with the same ID: it finishes indexing the written note instead
-  of writing a new one.
+  same capture with the same ID to finish indexing the written note.
 
 ### Document save returns `LOCKED`
 
@@ -353,61 +352,20 @@ force-overwrites the newer version.
 
 ### Request ID errors
 
-These codes appear only on writes that carry a request ID (`--request-id`,
-`requestId`) and on request lookups. See
-[Retries and Request IDs](guides/retries-and-request-ids.md) for the full
-contract.
+These codes appear only on writes that carry a request ID and on request
+lookups. What each code means is in
+[Retries and Request IDs](guides/retries-and-request-ids.md#errors); this
+section lists what to do.
 
-#### `REQUEST_ID_INVALID`
-
-The ID is empty, longer than 128 characters, uses characters other than
-letters, digits, `.`, `_`, `:` and `-`, or does not start with a letter or
-digit. It is also returned when a request ID is sent on a call that does not
-write, such as `gno remember` without `--add` / `--supersede`. Nothing was
-recorded; fix the ID or add the decision.
-
-#### `REQUEST_ID_CONFLICT`
-
-The ID was already used for a different payload, destination, revision,
-predecessor, or operation. Nothing was written. If you meant to retry, resend
-the original call unchanged. If the content changed on purpose, it is a new
-intent: use a new ID.
-
-#### `REQUEST_EXPIRED`
-
-The ID was committed more than 30 days ago; only a tombstone remains and the
-request will not run again. Check the current state (`gno get`, `gno recall`)
-before deciding whether a new write with a new ID is needed.
-
-#### `REQUEST_PENDING`
-
-The request was accepted and another attempt is still running (CLI exit 4,
-HTTP 409). Wait, then check `gno request-status <id>` and retry the same call
-with the same ID.
-
-#### `REQUEST_RECOVERY_CONFLICT`
-
-An earlier attempt was interrupted after its file was written, and the file
-has since been edited, deleted, or recreated. GNO left it untouched. Inspect
-the file, decide what it should contain, and use a new ID if you still want to
-write.
-
-#### `REQUEST_CAPACITY_EXHAUSTED`
-
-The request ledger reached its fixed 100,000-row cap. The write was rejected
-before anything was written. Existing request IDs still replay, and the same
-write without a request ID still works. Committed records older than 30 days
-are compacted to tombstones but still count toward the cap; there is no
-cleanup command. `gno reset --confirm` removes the ledger together with the
-rest of the data directory.
-
-#### `REQUEST_LEDGER_UNAVAILABLE`
-
-GNO could not open the ledger at
-`<dataDir>/write-receipts/<index db filename>` (permissions, disk full, a
-corrupt file). The write was rejected before anything was written. Check that
-the data directory is writable and has free space, then retry with the same
-ID. Writes without a request ID do not use the ledger.
+| Code                         | What to do                                                                                                                                                                                                                                          |
+| :--------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `REQUEST_ID_INVALID`         | Use 1-128 letters, digits, `.`, `_`, `:` or `-`, starting with a letter or digit (a UUID works). On `remember`, add `--add` / `--supersede` (or `decision`).                                                                                        |
+| `REQUEST_ID_CONFLICT`        | To retry, resend the original call unchanged. If the content changed on purpose, send it with a new ID.                                                                                                                                             |
+| `REQUEST_EXPIRED`            | Check the current state (`gno get`, `gno recall`) before deciding whether a new write with a new ID is needed.                                                                                                                                      |
+| `REQUEST_PENDING`            | Wait, check `gno request-status <id>`, then retry the same call with the same ID.                                                                                                                                                                   |
+| `REQUEST_RECOVERY_CONFLICT`  | Inspect the target (it was edited, reverted, or deleted after the write). GNO will not recreate or overwrite it. If the write is still wanted, send it with a new ID.                                                                               |
+| `REQUEST_CAPACITY_EXHAUSTED` | Send the write without a request ID, which still works. `gno reset` keeps the ledger; the only way to free it is to move the `write-receipts` directory aside, which lets every recorded ID run again.                                              |
+| `REQUEST_LEDGER_UNAVAILABLE` | Check that the data directory (`<dataDir>/write-receipts/`, see [Write Request Ledger](CONFIGURATION.md#write-request-ledger)) is writable, has free space, and holds an intact file, then retry with the same ID. Writes without an ID still work. |
 
 ## Browser Clipper Issues
 

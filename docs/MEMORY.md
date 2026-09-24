@@ -203,10 +203,8 @@ inside the query. Nothing is ever deleted by the memory contract (see
 ### Retrying a remember
 
 If a `remember` write loses its response (timeout, dropped connection,
-crash), resending it blindly may not do what you meant: a retried `add`
-returns `existing` (or adds the fact again if it was superseded in between),
-and a retried supersede fails `MEMORY_SUPERSEDE_CONFLICT`. Send an opt-in
-request ID with the write instead:
+crash), resending it blindly may not do what you meant. Send an opt-in request
+ID with the write instead, and look it up before retrying:
 
 ```bash
 gno remember "Prod deploys from main only" --scope project:gno --add \
@@ -215,30 +213,12 @@ gno request-status 7d2e4b90-1f7a-4c2e-8f55-0b9c1d3e6a42
 ```
 
 The same field is `requestId` on MCP `gno_remember`,
-`POST /api/memory/remember`, and `client.remember()`.
-
-- A request ID applies to writes only: it requires `add` or `supersede`. A
-  candidates-only call with one is rejected `REQUEST_ID_INVALID`.
-- The request counts as committed at the same boundary as a successful
-  write: the fact file is written and lexically synced, and for a supersede
-  the `supersedes` edge is projected. An exact duplicate `add` is recorded as
-  its `existing` outcome.
-- Retrying with the same ID replays the recorded outcome (the result gains
-  `request.replayed: true`) or, after `MEMORY_SYNC_FAILED` or
-  `MEMORY_SUPERSEDE_PROJECTION_FAILED`, finishes the sync or projection of the
-  fact already written, without writing a second file.
-- `caller` and `session` are provenance, not part of the request, so a retry
-  from a new session or MCP connection still matches. Changing the text,
-  scopes, collection, decision, predecessor, or `source` under the same ID is
-  rejected `REQUEST_ID_CONFLICT`.
-- A write rejected before anything was written (`MEMORY_PREDECESSOR_HASH_MISMATCH`,
-  `MEMORY_SUPERSEDE_CONFLICT`, validation errors, a busy lease) records
-  nothing; recall and decide again.
-
-A request ID is not a recall receipt. The recall `receipt` fences recalled
-text so it cannot be stored again; a request ID identifies one write so it can
-be retried. See [Retries and Request IDs](guides/retries-and-request-ids.md)
-for statuses, error codes, and retention.
+`POST /api/memory/remember`, and `client.remember()`. It requires `add` or
+`supersede`; `caller` and `session` may differ on the retry. A request ID is
+not a recall receipt: the receipt fences recalled text, the request ID
+identifies one write. Statuses, recovery after `MEMORY_SYNC_FAILED`, error
+codes, and retention are in
+[Retries and Request IDs](guides/retries-and-request-ids.md).
 
 ## Recall
 

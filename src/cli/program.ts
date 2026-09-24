@@ -1925,14 +1925,14 @@ function wireCaptureCommand(program: Command): void {
     .action(async (requestId: string, cmdOpts: Record<string, unknown>) => {
       const format = getFormat(cmdOpts);
       const globals = getGlobals();
-      const { formatRequestStatus, requestStatus } =
+      const { formatRequestStatusOutput, requestStatus } =
         await import("./commands/request-status");
       const result = await requestStatus({
         requestId,
         indexName: globals.index,
       });
       await writeOutput(
-        formatRequestStatus(result, { json: format === "json" }),
+        formatRequestStatusOutput(result, { json: format === "json" }),
         format
       );
     });

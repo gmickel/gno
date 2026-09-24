@@ -7,8 +7,8 @@
  */
 
 import { afterEach, describe, expect, test } from "bun:test";
-// node:fs/promises mkdtemp: temp fixture root, no Bun equivalent
-import { mkdtemp } from "node:fs/promises";
+// node:fs/promises mkdtemp/unlink: fixture structure ops, no Bun equivalent
+import { mkdtemp, unlink } from "node:fs/promises";
 // node:os tmpdir: no Bun equivalent
 import { tmpdir } from "node:os";
 // node:path has no Bun path utilities
@@ -119,29 +119,49 @@ describe("request receipts under injected crashes", () => {
   }
 });
 
-describe("recovery never overwrites a changed target", () => {
-  for (const op of SCOPED_OPS) {
-    test(`${op}: a file edited after an interrupted publication is left alone`, async () => {
-      const h = await harness();
-      const seed = await seedOp(h, op);
-      await runOp(h, op, {
-        requestId: "req-1",
-        seed,
-        checkpoint: (at) => {
-          if (at === "published") throw new Error("simulated crash");
-        },
-      });
-      const path = await publishedFile(h, op, seed);
-      await Bun.write(path, "local edit made after the crash\n");
+const TAMPERS = {
+  edited: (path: string) =>
+    Bun.write(path, "local edit made after the crash\n"),
+  deleted: (path: string) => unlink(path),
+  // A document reverted to its pre-save content must not be re-saved either.
+  reverted: (path: string) => Bun.write(path, "# Doc\n\nv0\n"),
+} as const;
 
-      const retried = await runOp(h, op, { requestId: "req-1", seed });
-      expect(retried).toMatchObject({
-        ok: false,
-        code: "REQUEST_RECOVERY_CONFLICT",
+describe("recovery never overwrites or recreates a changed target", () => {
+  for (const op of SCOPED_OPS) {
+    const tampers = (
+      op === "document-update"
+        ? ["edited", "deleted", "reverted"]
+        : ["edited", "deleted"]
+    ) as (keyof typeof TAMPERS)[];
+    for (const tamper of tampers) {
+      test(`${op}: a published file ${tamper} after the crash is left alone`, async () => {
+        const h = await harness();
+        const seed = await seedOp(h, op);
+        await runOp(h, op, {
+          requestId: "req-1",
+          seed,
+          checkpoint: (at) => {
+            if (at === "published") throw new Error("simulated crash");
+          },
+        });
+        const path = await publishedFile(h, op, seed);
+        await TAMPERS[tamper](path);
+        const before = await Bun.file(path)
+          .text()
+          .catch(() => null);
+
+        const retried = await runOp(h, op, { requestId: "req-1", seed });
+        expect(retried).toMatchObject({
+          ok: false,
+          code: "REQUEST_RECOVERY_CONFLICT",
+        });
+        expect(
+          await Bun.file(path)
+            .text()
+            .catch(() => null)
+        ).toBe(before);
       });
-      expect(await Bun.file(path).text()).toBe(
-        "local edit made after the crash\n"
-      );
-    });
+    }
   }
 });

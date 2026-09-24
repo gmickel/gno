@@ -14,6 +14,7 @@ import type { ToolContext } from "../server";
 
 import { type RememberResult } from "../../core/memory";
 import { MEMORY_MAX_FACT_BYTES } from "../../core/memory-record";
+import { formatRequestReceiptLine } from "../../core/request-receipts";
 import { runTool, type ToolResult } from "./index";
 import {
   createMcpMemoryService,
@@ -135,9 +136,7 @@ export function formatRememberResult(result: RememberResult): string {
   }
   lines.push(matching);
   if ("request" in result && result.request) {
-    lines.push(
-      `Request: ${result.request.requestId} committed${result.request.replayed ? " (replayed)" : ""}`
-    );
+    lines.push(formatRequestReceiptLine(result.request));
   }
   return lines.join("\n");
 }

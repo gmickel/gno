@@ -112,14 +112,14 @@ import {
 } from "../../core/project-affinity-surface";
 import { projectRecordEvidenceMetadata } from "../../core/record-metadata";
 import {
-  LOCAL_OWNER_NAMESPACE,
+  isLeaseBusy,
+  localRequestLedger,
   readRequestStatus,
   REQUEST_RECEIPT_HTTP_STATUS,
   type RequestCheckpoint,
   RequestReceiptError,
   type RequestReceiptInfo,
   requestDigest,
-  requestLedgerPath,
   runRequestedWrite,
   validateRequestId,
 } from "../../core/request-receipts";
@@ -3338,8 +3338,7 @@ export async function handleRequestStatus(
   try {
     return jsonResponse(
       await readRequestStatus({
-        ledgerPath: requestLedgerPath(store.getDbPath()),
-        namespace: LOCAL_OWNER_NAMESPACE,
+        ...localRequestLedger(store.getDbPath()),
         requestId,
       })
     );
@@ -3383,16 +3382,17 @@ interface DocUpdatePlan {
 
 /** Retained outcome: the response body plus what deferred sync needs. */
 interface DocUpdateOutcome {
-  success: true;
-  docId: string;
-  uri: string;
-  path: string;
-  jobId: string | null;
-  writeBack?: "applied" | "skipped_unsupported";
-  version: { sourceHash: string; modifiedAt: string };
-  gnoUri: string;
-  collection: string;
-  relPath: string;
+  body: {
+    success: true;
+    docId: string;
+    uri: string;
+    path: string;
+    jobId: string | null;
+    writeBack?: "applied" | "skipped_unsupported";
+    version: { sourceHash: string; modifiedAt: string };
+  };
+  target: { gnoUri: string; collection: string; relPath: string };
+  /** The file changed, so lexical sync is deferred work. */
   contentWritten: boolean;
 }
 
@@ -3612,25 +3612,29 @@ export async function handleUpdateDoc(
     }
     const { pathToFileURL } = await import("node:url");
     return {
-      success: true,
-      docId: plan.docid,
-      uri: pathToFileURL(plan.fullPath).href,
-      path: plan.fullPath,
-      jobId: null,
-      writeBack: plan.writeBack,
-      version:
-        plan.newHash === null
-          ? {
-              sourceHash: plan.indexedSourceHash,
-              modifiedAt: plan.indexedModifiedAt,
-            }
-          : {
-              sourceHash: plan.newHash,
-              modifiedAt: await readModifiedAt(plan.fullPath),
-            },
-      gnoUri: plan.gnoUri,
-      collection: plan.collection,
-      relPath: plan.relPath,
+      body: {
+        success: true,
+        docId: plan.docid,
+        uri: pathToFileURL(plan.fullPath).href,
+        path: plan.fullPath,
+        jobId: null,
+        writeBack: plan.writeBack,
+        version:
+          plan.newHash === null
+            ? {
+                sourceHash: plan.indexedSourceHash,
+                modifiedAt: plan.indexedModifiedAt,
+              }
+            : {
+                sourceHash: plan.newHash,
+                modifiedAt: await readModifiedAt(plan.fullPath),
+              },
+      },
+      target: {
+        gnoUri: plan.gnoUri,
+        collection: plan.collection,
+        relPath: plan.relPath,
+      },
       contentWritten: plan.newHash !== null,
     };
   };
@@ -3657,8 +3661,7 @@ export async function handleUpdateDoc(
         DocUpdatePlan,
         DocUpdateOutcome
       >({
-        ledgerPath: requestLedgerPath(store.getDbPath()),
-        namespace: LOCAL_OWNER_NAMESPACE,
+        ...localRequestLedger(store.getDbPath()),
         requestId,
         operation: "document.update",
         digest: requestDigest("document.update", {
@@ -3673,7 +3676,8 @@ export async function handleUpdateDoc(
         checkpoint: deps?.requestCheckpoint,
         prepare,
         inspect: async (plan) => {
-          if (plan.newHash === null) return "absent";
+          // Tags only: nothing on disk to publish; finish re-applies tags.
+          if (plan.newHash === null) return "published";
           const file = Bun.file(plan.fullPath);
           if (!(await file.exists())) return "unexpected";
           const onDisk = hashContent(await file.text());
@@ -3681,31 +3685,22 @@ export async function handleUpdateDoc(
           return onDisk === plan.baseHash ? "absent" : "unexpected";
         },
         finish,
-        resultRef: (result) => ({
-          uri: result.gnoUri,
-          docid: result.docId,
-          sourceHash: result.version.sourceHash,
+        resultRef: ({ body, target }) => ({
+          uri: target.gnoUri,
+          docid: body.docId,
+          sourceHash: body.version.sourceHash,
         }),
       });
       outcome = requested.result;
       request = requested.request;
-      if (request.replayed) {
-        const {
-          gnoUri: _u,
-          collection: _c,
-          relPath: _r,
-          contentWritten: _w,
-          ...replayed
-        } = outcome;
-        return jsonResponse({ ...replayed, request });
-      }
+      if (request.replayed) return jsonResponse({ ...outcome.body, request });
     }
   } catch (error) {
     if (error instanceof DocUpdateRejected) return error.response;
     const receiptError = requestErrorResponse(error);
     if (receiptError) return receiptError;
     const message = error instanceof Error ? error.message : String(error);
-    if (message.startsWith(`${MCP_ERRORS.LOCKED.code}:`)) {
+    if (isLeaseBusy(error)) {
       return errorResponse(MCP_ERRORS.LOCKED.code, message, 409);
     }
     return errorResponse(
@@ -3718,8 +3713,9 @@ export async function handleUpdateDoc(
   // Deferred work: lexical sync via the job system, embedding via the
   // scheduler. Its failure never undoes the committed save.
   let jobId: string | null = null;
+  const { target } = outcome;
   const collection = ctxHolder.config.collections.find(
-    (candidate) => candidate.name === outcome.collection
+    (candidate) => candidate.name === target.collection
   );
   if (outcome.contentWritten && collection) {
     const jobResult = await startJob(
@@ -3733,12 +3729,12 @@ export async function handleUpdateDoc(
           deps?.syncCollection
         );
         // Notify scheduler after sync completes
-        ctxHolder.scheduler?.notifySyncComplete([outcome.docId]);
+        ctxHolder.scheduler?.notifySyncComplete([outcome.body.docId]);
         ctxHolder.eventBus?.emit({
           type: "document-changed",
-          uri: outcome.gnoUri,
-          collection: outcome.collection,
-          relPath: outcome.relPath,
+          uri: target.gnoUri,
+          collection: target.collection,
+          relPath: target.relPath,
           origin: "save",
           changedAt: new Date().toISOString(),
         });
@@ -3757,15 +3753,8 @@ export async function handleUpdateDoc(
     jobId = jobResult.ok ? jobResult.jobId : null;
   }
 
-  const {
-    gnoUri: _uri,
-    collection: _col,
-    relPath: _rel,
-    contentWritten: _written,
-    ...response
-  } = outcome;
   return jsonResponse({
-    ...response,
+    ...outcome.body,
     jobId,
     ...(request ? { request } : {}),
   });
@@ -4091,10 +4080,7 @@ function createMemoryService(
     collections: ctx.config.collections,
     lockPath: deps.lockPath ?? writeLeasePath(getIndexDbPath(ctx.indexName)),
     lockWaitMs: deps.lockWaitMs,
-    requests: {
-      ledgerPath: requestLedgerPath(store.getDbPath()),
-      namespace: LOCAL_OWNER_NAMESPACE,
-    },
+    requests: localRequestLedger(store.getDbPath()),
     embedPort: ctx.embedPort,
     vectorIndex: ctx.vectorIndex,
   });

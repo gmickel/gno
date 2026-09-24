@@ -18,6 +18,7 @@ import { basename, dirname, join } from "node:path";
 
 import { MCP_ERRORS } from "./errors";
 import { withWriteLock } from "./file-lock";
+import { writeLeasePath } from "./write-lease";
 
 /** Committed receipts keep their full outcome this long, then become tombstones. */
 export const REQUEST_RECEIPT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -28,7 +29,8 @@ export const REQUEST_ID_MAX_LENGTH = 128;
 export const LOCAL_OWNER_NAMESPACE = "local";
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/u;
-const LEDGER_DIR = "write-receipts";
+/** Ledger directory beside the index databases; survives `gno reset`. */
+export const REQUEST_LEDGER_DIR = "write-receipts";
 const LEDGER_BUSY_TIMEOUT_MS = 5_000;
 
 export type RequestOperation = "capture" | "remember" | "document.update";
@@ -91,7 +93,48 @@ export interface RequestStatusResult {
 
 /** Where a request ledger lives for one index database. */
 export function requestLedgerPath(dbPath: string): string {
-  return join(dirname(dbPath), LEDGER_DIR, basename(dbPath));
+  return join(dirname(dbPath), REQUEST_LEDGER_DIR, basename(dbPath));
+}
+
+/**
+ * Ledger, lease and namespace for the local owner of one index database:
+ * the ledger and the write lease derive from the same path.
+ */
+export function localRequestLedger(dbPath: string): {
+  ledgerPath: string;
+  lockPath: string;
+  namespace: string;
+} {
+  return {
+    ledgerPath: requestLedgerPath(dbPath),
+    lockPath: writeLeasePath(dbPath),
+    namespace: LOCAL_OWNER_NAMESPACE,
+  };
+}
+
+/** One text line for a write result carrying a request receipt. */
+export function formatRequestReceiptLine(request: RequestReceiptInfo): string {
+  return `Request: ${request.requestId} committed${request.replayed ? " (replayed, nothing written again)" : ""}`;
+}
+
+const REQUEST_STATUS_NEXT_STEP: Record<RequestStatusResult["status"], string> =
+  {
+    committed: "Committed: do not resend; the retained outcome replays.",
+    pending:
+      "Pending: retry the same write with the same request ID to finish it.",
+    expired:
+      "Expired: this ID already ran and will not run again; check current state before using a new ID.",
+    not_found: "Not found: nothing was accepted under this ID.",
+  };
+
+/** Human-readable request status (CLI and MCP text output). */
+export function formatRequestStatus(result: RequestStatusResult): string {
+  const lines = [`Request: ${result.requestId}`, `Status: ${result.status}`];
+  if (result.operation) lines.push(`Operation: ${result.operation}`);
+  if (result.updatedAt) lines.push(`Updated: ${result.updatedAt}`);
+  if (result.result?.uri) lines.push(`URI: ${result.result.uri}`);
+  lines.push(REQUEST_STATUS_NEXT_STEP[result.status]);
+  return lines.join("\n");
 }
 
 /** Validate an opaque caller request ID before anything is admitted. */
@@ -153,6 +196,7 @@ interface LedgerRow {
   created_at_ms: number;
   updated_at_ms: number;
   plan_json: string | null;
+  published: number;
   result_json: string | null;
   ref_json: string | null;
 }
@@ -167,6 +211,7 @@ CREATE TABLE IF NOT EXISTS request_receipts (
   created_at_ms INTEGER NOT NULL,
   updated_at_ms INTEGER NOT NULL,
   plan_json TEXT,
+  published INTEGER NOT NULL DEFAULT 0,
   result_json TEXT,
   ref_json TEXT,
   PRIMARY KEY (namespace, request_id)
@@ -203,7 +248,7 @@ function getRow(
   return db
     .query<LedgerRow, [string, string]>(
       `SELECT operation, digest, status, created_at_ms, updated_at_ms,
-              plan_json, result_json, ref_json
+              plan_json, published, result_json, ref_json
          FROM request_receipts WHERE namespace = ? AND request_id = ?`
     )
     .get(namespace, requestId);
@@ -268,9 +313,20 @@ function updatePlan(
   nowMs: number
 ): void {
   db.query(
-    `UPDATE request_receipts SET plan_json = ?, updated_at_ms = ?
+    `UPDATE request_receipts SET plan_json = ?, published = 0, updated_at_ms = ?
       WHERE namespace = ? AND request_id = ? AND status = 'pending'`
   ).run(planJson, nowMs, namespace, requestId);
+}
+
+function setPublished(
+  db: Database,
+  namespace: string,
+  requestId: string
+): void {
+  db.query(
+    `UPDATE request_receipts SET published = 1
+      WHERE namespace = ? AND request_id = ?`
+  ).run(namespace, requestId);
 }
 
 function deleteRow(db: Database, namespace: string, requestId: string): void {
@@ -397,7 +453,8 @@ function replayTerminal<TResult>(
   };
 }
 
-const isLeaseBusy = (error: unknown): boolean =>
+/** The shared write lease stayed busy past its wait (`LOCKED: ...`). */
+export const isLeaseBusy = (error: unknown): boolean =>
   error instanceof Error &&
   error.message.startsWith(`${MCP_ERRORS.LOCKED.code}:`);
 
@@ -415,7 +472,10 @@ async function runUnderLease<TPlan, TResult>(
     let published: TPlan | null = null;
     if (row?.plan_json) {
       const recorded = JSON.parse(row.plan_json) as TPlan;
-      const state = await write.inspect(recorded);
+      let state = await write.inspect(recorded);
+      // Our write landed and has since vanished or been reverted: never
+      // recreate it behind the user's back.
+      if (state === "absent" && row.published === 1) state = "unexpected";
       if (state === "unexpected") {
         throw new RequestReceiptError(
           "REQUEST_RECOVERY_CONFLICT",
@@ -494,6 +554,7 @@ async function runUnderLease<TPlan, TResult>(
           throw error;
         }
       }
+      setPublished(db, write.namespace, write.requestId);
       await write.checkpoint?.("published");
       published = prepared.plan;
     }

@@ -1593,13 +1593,9 @@ Create a new document in a collection (write-enabled).
   writing
 - Writes run under the MCP write lock and are only registered when the server
   starts with `--enable-write` or `GNO_MCP_ENABLE_WRITE=1`
-- `requestId` (optional) makes a retry after a lost response safe: the same
-  call with the same ID replays the recorded receipt (`request.replayed:
-true`) or finishes an interrupted capture (for example after
-  `CAPTURE_SYNC_FAILED`) instead of capturing again. The same ID with a
-  different payload or destination returns `REQUEST_ID_CONFLICT`. The ID is
-  validated before anything is admitted (`REQUEST_ID_INVALID`). Look it up with
-  [`gno_request_status`](#gno_request_status)
+- `requestId` (optional) makes a retry of the same call safe; look it up with
+  [`gno_request_status`](#gno_request_status). Semantics:
+  `docs/guides/retries-and-request-ids.md`
 - With a `requestId`, the result adds
   `request: { requestId, status: "committed", replayed, committedAt }` and the
   text output adds `Request: <id> committed` (`(replayed)` on a replay). The
@@ -1709,13 +1705,9 @@ committedAt }`
   sync; the MCP adapter takes no lock of its own
 - Identity mapping is the same as `gno_recall`
 - `requestId` requires `decision` (`add` or `supersede`); a candidates-only
-  call with a `requestId` returns `REQUEST_ID_INVALID`. The same call with the
-  same ID replays the recorded outcome (an exact duplicate `add` replays as
-  `existing`) or finishes an interrupted write (`MEMORY_SYNC_FAILED`,
-  `MEMORY_SUPERSEDE_PROJECTION_FAILED`) without writing a second file.
-  `caller`, `session`, and the MCP session are not part of the request
-  identity; changed text, scopes, collection, decision, predecessor, or
-  `source` under the same ID returns `REQUEST_ID_CONFLICT`
+  call with a `requestId` returns `REQUEST_ID_INVALID`. `caller`, `session`,
+  and the MCP session are not part of the request identity. Semantics:
+  `docs/guides/retries-and-request-ids.md`
 - Annotations: `readOnlyHint: false`, `destructiveHint: false`,
   `idempotentHint: false`
 
@@ -1773,9 +1765,7 @@ profile; `core` does not advertise it.
 }
 ```
 
-- `status`: `pending` (accepted, not finished: resend the same call with the
-  same ID), `committed` (do not resend), `expired` (ran more than 30 days ago;
-  will not run again), `not_found` (nothing accepted under this ID).
+- `status`: `pending` | `committed` | `expired` | `not_found`.
 - `operation`: `capture` | `remember` | `document.update`. `result` appears
   only for `committed` and carries `uri`, `docid`, and `contentHash` (or
   `sourceHash` for a document update). Never note or fact content. A
@@ -1783,32 +1773,20 @@ profile; `core` does not advertise it.
 - Text output: `Request:`, `Status:`, and, when present, `Operation:`,
   `Updated:`, `URI:` lines.
 
-**Namespaces:**
-
-- stdio: the local-owner namespace, shared with the CLI, SDK, and
-  `gno serve` REST for the same index.
-- Resident Streamable HTTP: the authorized identity (loopback, or the digest
-  of the configured bearer token). It is stable across server restarts and is
-  not tied to the MCP session or client name. Another identity's request reads
-  `not_found`; the same ID under another identity is that caller's own
-  request. Rotating the token starts a new namespace: earlier requests can no
-  longer be looked up or resumed under the new token.
+**Namespaces:** stdio uses the local-owner namespace shared with the CLI, SDK,
+and `gno serve` REST; resident Streamable HTTP uses the authorized identity
+(loopback, or the configured bearer token), not the MCP session. Visibility
+and token-rotation rules: `docs/guides/retries-and-request-ids.md`.
 
 **Annotations:** `readOnlyHint: true`, `destructiveHint: false`,
 `idempotentHint: true`, `openWorldHint: false`.
 
 **Request error codes** (on `gno_capture`, `gno_remember`, and this tool; tool
 error text `CODE: message`, `structuredContent.error` = `CODE`):
-
-| Code                         | Meaning                                                            |
-| ---------------------------- | ------------------------------------------------------------------ |
-| `REQUEST_ID_INVALID`         | Malformed or oversized ID, or an ID on a call that does not write  |
-| `REQUEST_ID_CONFLICT`        | ID already used for a different payload, destination, or operation |
-| `REQUEST_EXPIRED`            | ID already ran; its outcome expired; it will not run again         |
-| `REQUEST_PENDING`            | Accepted and still in progress elsewhere; retry the same ID later  |
-| `REQUEST_RECOVERY_CONFLICT`  | Interrupted request's target changed on disk; nothing overwritten  |
-| `REQUEST_CAPACITY_EXHAUSTED` | Request ledger full (100,000 rows); rejected before any write      |
-| `REQUEST_LEDGER_UNAVAILABLE` | Request ledger cannot be opened; rejected before any write         |
+`REQUEST_ID_INVALID`, `REQUEST_ID_CONFLICT`, `REQUEST_EXPIRED`,
+`REQUEST_PENDING`, `REQUEST_RECOVERY_CONFLICT`, `REQUEST_CAPACITY_EXHAUSTED`,
+`REQUEST_LEDGER_UNAVAILABLE`. Meanings:
+`docs/guides/retries-and-request-ids.md#errors`.
 
 ---
 

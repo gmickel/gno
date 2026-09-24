@@ -594,17 +594,16 @@ capture inputs are unchanged. A browser clip using `open_existing` opens only a
 note with the same stored `clipIdentity`; missing or different provenance is an
 explicit conflict. `create_with_suffix` creates a distinct note.
 
-Capture plans, writes, and lexically syncs the note under the shared write
-lease, like MCP and REST capture. If the file is written but sync fails, the
-command exits 2 with `Capture written to <path> but lexical sync failed ... Run
-gno update to retry indexing.` instead of reporting success. `open_existing` on
-a file that is on disk but not yet indexed indexes it.
+Capture plans and writes the note under the shared write lease, like MCP and
+REST capture; a lease held by another writer past the wait window returns the
+busy error and writes nothing. If the note is written but lexical sync fails,
+the command still succeeds with `sync.status: "failed"` and `sync.error`; run
+`gno update` to index it. `open_existing` on a file that is not indexed yet
+returns `sync.status: "skipped"`.
 
-Retry-safe capture: pass `--request-id <id>` (for example a UUID). If the
-command's output is lost, check the ID with `gno request-status`, then rerun
-the exact same command with the same ID; GNO replays the recorded receipt or
-finishes an interrupted capture instead of writing a second note. The same ID
-with different content or options fails with `REQUEST_ID_CONFLICT`. See
+`--request-id <id>` makes a retry after lost output safe: rerun the exact same
+command with the same ID. With an ID, a sync failure is an error and the
+request stays pending until a retry finishes it. See
 [Retries and Request IDs](guides/retries-and-request-ids.md).
 
 ```bash
@@ -624,18 +623,11 @@ gno request-status 0f8e5c1a-3c1e-4d0b-9a57-2f4f3b8f2c11
 gno request-status 0f8e5c1a-3c1e-4d0b-9a57-2f4f3b8f2c11 --json
 ```
 
-The output is a content-free pointer (operation, timestamps, and for a
-committed request the result `uri`, `docid`, and hash) followed by a next step:
-
-- `committed`: do not resend; rerunning replays the recorded outcome.
-- `pending`: rerun the same command with the same `--request-id` to finish it.
-- `expired`: the ID already ran and will not run again; check current state.
-- `not_found`: nothing was accepted under this ID; rerun with the same ID.
-
-Request ID errors exit 1 (`REQUEST_ID_INVALID`, `REQUEST_ID_CONFLICT`,
-`REQUEST_EXPIRED`), 4 (`REQUEST_PENDING`), or 2 (`REQUEST_RECOVERY_CONFLICT`,
-`REQUEST_CAPACITY_EXHAUSTED`, `REQUEST_LEDGER_UNAVAILABLE`); the JSON error
-envelope carries the code in `details.requestCode`. Honors `--index`.
+The output is a content-free pointer followed by the next step to take. Honors
+`--index`. Request ID errors carry their `REQUEST_*` code in the JSON error
+envelope's `details.requestCode`. Statuses, codes with their exit codes, and
+what to do for each are in
+[Retries and Request IDs](guides/retries-and-request-ids.md).
 
 ## Memory Commands
 
@@ -678,11 +670,9 @@ gno remember "..." --scope family --scope shared --collection memory --add
 - Success means the file exists and lexical sync completed: the fact is
   retrievable before the command returns. `--json` prints the shared result
   (`outcome`, `record`, `absPath`, `sync`, `matching`).
-- `--request-id <id>` makes an `--add` or `--supersede` retry safe: rerunning
-  the same command with the same ID replays the recorded outcome or finishes
-  an interrupted write instead of writing again. It requires a decision, and
-  `--caller` / `--session` may differ on the retry. Check an ID with
-  [`gno request-status`](#gno-request-status).
+- `--request-id <id>` (with `--add` or `--supersede`) makes a retry safe; see
+  [`gno request-status`](#gno-request-status) and
+  [Retries and Request IDs](guides/retries-and-request-ids.md).
 
 ### gno recall
 
@@ -1989,8 +1979,9 @@ gno cleanup
 
 ### gno reset
 
-Reset to fresh state. This deletes the whole data directory, including the
-private request ledger used by `--request-id`.
+Reset to fresh state. The data directory is cleared except for the private
+request ledger (`write-receipts/`), which is kept so recorded request IDs
+cannot run again.
 
 ```bash
 gno reset --confirm

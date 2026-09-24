@@ -589,22 +589,10 @@ For the default index that is
 on macOS, and `%LOCALAPPDATA%\gno\data\write-receipts\index-default.sqlite`
 on Windows. On POSIX the directory is created `0700` and the file `0600`.
 
-- The ledger is separate from the index database. `gno update`, re-embedding,
-  and deleting or rebuilding `index-*.sqlite` leave it alone. `gno reset`
-  deletes the whole data directory, ledger included.
-- Committed requests keep their full outcome for 30 days, then shrink to a
-  permanent minimal tombstone, so the same ID is refused (`REQUEST_EXPIRED`)
-  rather than run again.
-- The ledger holds at most 100,000 rows (requests plus tombstones). When it is
-  full, new writes with a request ID are rejected
-  `REQUEST_CAPACITY_EXHAUSTED` before anything is written; writes without a
-  request ID are unaffected.
-- There are no settings for retention or the cap, and no cleanup command.
-- It contains private recovery data (destination paths, hashes, recorded
-  outcomes, including fact text for remember). Include it when you back up
-  private GNO state, and treat it like the index database.
-
-See [Retries and Request IDs](guides/retries-and-request-ids.md).
+GNO never removes the ledger: index maintenance and `gno reset` keep it.
+Include it when you back up private GNO state. Retention, the row cap, and what
+deleting it by hand means are in
+[Retries and Request IDs](guides/retries-and-request-ids.md#storage-and-retention).
 
 ## Collections
 

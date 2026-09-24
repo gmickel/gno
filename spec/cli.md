@@ -1692,30 +1692,25 @@ gno capture "Release moves to Friday" --collection notes --request-id 0f8e5c1a-3
 
 - Planning, the write, and lexical sync run under the shared write lease
   (`.mcp-write.lock`), the same leased publication MCP `gno_capture` and REST
-  `POST /api/capture` use. Success means the note is retrievable:
-  `sync.status` is `completed`.
-- `open_existing` on a file that is on disk but not indexed yet syncs it and
-  returns `sync.status: "completed"`.
-- A written file whose lexical sync fails exits `RUNTIME` (2) with
-  `Capture written to <path> but lexical sync failed: <cause>. Run gno update to retry indexing.`
-  It is never reported as a success with `sync.status: "failed"`.
+  `POST /api/capture` use. A lease held past the wait window fails with the
+  busy error; nothing is written.
+- Without `--request-id`, a written file whose lexical sync fails still exits 0
+  with `sync.status: "failed"` and `sync.error` in the receipt; `gno update`
+  indexes it. `open_existing` on a file that is on disk but not indexed yet
+  returns `sync.status: "skipped"` (`Existing file is not indexed yet.`).
 
 **Request IDs:**
 
 - `--request-id <id>` (1-128 of `A-Z a-z 0-9 . _ : -`, starting with a letter
-  or digit) makes a retry safe: rerunning the same command with the same ID
-  after a lost response replays the recorded outcome instead of capturing
-  again, or finishes an interrupted capture (for example after a sync
-  failure).
-- The same ID with different content, destination, or options fails
-  `VALIDATION` (`REQUEST_ID_CONFLICT`).
+  or digit) makes a retry of the same command safe.
+- With an ID, a written file whose lexical sync fails exits `RUNTIME` (2) and
+  the request stays pending; rerunning with the same ID finishes it.
 - With an ID, `--json` adds
   `request: { requestId, status: "committed", replayed, committedAt }` to the
   capture receipt; terminal output adds `Request: <id> committed`, plus
   `(replayed, nothing written again)` on a replay.
-- Request error codes are carried in `details.requestCode` of the JSON error
-  envelope; see [gno request-status](#gno-request-status) for the exit-code
-  mapping and `docs/guides/retries-and-request-ids.md` for the full contract.
+- Request error codes and exits: see [gno request-status](#gno-request-status).
+  Semantics: `docs/guides/retries-and-request-ids.md`.
 
 ---
 
@@ -1766,18 +1761,11 @@ gno remember <text> --scope <scope> [--scope <scope>...] [--collection <name>] [
 
 - `--request-id <id>` applies to writes only (`--add`, `--supersede`, or
   `--decision`); without a decision it fails `VALIDATION`
-  (`REQUEST_ID_INVALID`).
-- Rerunning the same write with the same ID replays the recorded outcome
-  (`added`, `superseded`, or `existing` for an exact duplicate) instead of
-  writing again, or finishes an interrupted write (after
-  `MEMORY_SYNC_FAILED` or `MEMORY_SUPERSEDE_PROJECTION_FAILED`) without
-  writing a second file.
-- `--caller` and `--session` are not part of the request identity. Changing
-  the text, scopes, collection, decision, predecessor, predecessor hash, or
-  `--source` under the same ID fails `VALIDATION` (`REQUEST_ID_CONFLICT`).
+  (`REQUEST_ID_INVALID`). Rerunning the same write with the same ID is safe.
 - With an ID, `--json` adds
   `request: { requestId, status: "committed", replayed, committedAt }`;
   terminal output adds `Request: <id> committed`.
+- Semantics (replay, recovery, conflicts): `docs/guides/retries-and-request-ids.md`.
 
 **Context fencing:**
 
@@ -1837,13 +1825,10 @@ gno request-status <request-id> [--json]
 
 **Behavior:**
 
-- Reads the index's private request ledger
-  (`<dataDir>/write-receipts/<index db filename>`) in the local-owner
-  namespace shared by the CLI, SDK, stdio MCP, and `gno serve` REST. Honors the
-  global `--index` flag.
-- Returns a content-free pointer, never note or fact text.
-- An ID that was never accepted, or whose request was rejected before any
-  write, is `not_found`.
+- Reads the index's private request ledger in the local-owner namespace.
+  Honors the global `--index` flag.
+- Returns a content-free pointer, never note or fact text. Status meanings and
+  namespaces: `docs/guides/retries-and-request-ids.md`.
 
 **Output:**
 

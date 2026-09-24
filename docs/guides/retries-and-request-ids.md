@@ -13,8 +13,13 @@ edit. A **request ID** lets you retry safely: GNO records the write under the
 ID and a retry with the same ID returns the recorded outcome instead of running
 again.
 
-Request IDs are opt-in. Calls without one keep their existing behaviour and
-response shapes.
+Request IDs are opt-in. Calls without one keep their response shapes; see
+[Writes without a request ID](#writes-without-a-request-id) for what changed
+for them.
+
+This guide is the reference for request-ID semantics, the error codes,
+namespaces, and the ledger's storage and retention. The CLI, REST, MCP, and SDK
+references document only their own flag, field, or call and link here.
 
 ## Where request IDs are accepted
 
@@ -105,6 +110,9 @@ When a request ID was sent, a successful result gains one field:
 - CLI text output adds `Request: <id> committed`, plus
   `(replayed, nothing written again)` on a replay.
 
+Every write result references one shared definition of this object:
+`$defs/requestReceipt` in `spec/output-schemas/request-status.schema.json`.
+
 ## What counts as the same request
 
 The same ID with the same payload, destination, and expected revision (or
@@ -147,14 +155,16 @@ retrying the same ID evaluates the request again against the current state.
 A request that was **accepted and written but interrupted** (crash, killed
 process, or a sync failure such as `CAPTURE_SYNC_FAILED`,
 `MEMORY_SYNC_FAILED`, or `MEMORY_SUPERSEDE_PROJECTION_FAILED`) stays
-`pending`. Retrying with the same ID finishes the recorded write (sync,
+`pending`. With a request ID, a sync failure is returned as an error on every
+surface, including CLI and SDK capture. Retrying with the same ID finishes the recorded write (sync,
 projection) instead of writing it again. Retrying with a new ID would be a
 second write.
 
-If the recorded target changed on disk after the interruption (edited, or
-deleted and recreated), the retry fails with `REQUEST_RECOVERY_CONFLICT` and
-leaves the file untouched. Inspect the target and decide; a new ID is a new
-intent.
+If the recorded target changed after GNO wrote it (the file was deleted,
+edited, reverted, or deleted and recreated), the retry fails with
+`REQUEST_RECOVERY_CONFLICT` and leaves the file as it is. GNO never recreates
+a note you deleted and never overwrites a change made after its write. Inspect
+the target and decide; if the write is still wanted, send it with a new ID.
 
 The guarantee covers one durable local write per admitted request. It makes no
 claim about external systems, and deferred work (a document save's background
@@ -202,11 +212,21 @@ multi-user authentication layer.
 ## Storage and retention
 
 Request records live in one private SQLite ledger per index, next to the index
-database (`write-receipts/` in the data directory; see
-[File Locations](../CONFIGURATION.md#file-locations)). It is separate from the
-index database: `gno update`, re-embedding, and deleting or rebuilding
-`index-*.sqlite` leave it alone. `gno reset` deletes the whole data directory,
-ledger included. Include it when you back up private GNO state.
+database:
+
+```text
+<dataDir>/write-receipts/<index db filename>
+```
+
+Per-platform paths and permissions are in
+[Write Request Ledger](../CONFIGURATION.md#write-request-ledger).
+
+- GNO never removes the ledger. `gno update`, re-embedding, rebuilding or
+  deleting `index-*.sqlite`, and `gno reset` leave it alone; `gno reset`
+  removes everything else in the data directory and keeps `write-receipts/`.
+- Deleting `write-receipts/` by hand discards replay protection: a request ID
+  recorded there could run again as a new write. Include it when you back up
+  private GNO state.
 
 - A committed record keeps its full outcome for **30 days**, then is compacted
   to a permanent minimal tombstone. A tombstoned ID returns `REQUEST_EXPIRED`
@@ -220,9 +240,24 @@ ledger included. Include it when you back up private GNO state.
   outcomes; a remember outcome includes the fact text). Status lookups, logs,
   and diagnostics never expose it.
 
-## Retrying without a request ID
+## Writes without a request ID
 
-Without an ID, a retried write is evaluated again as a new call:
+Calls without an ID keep their response shapes, with two points to know:
+
+- **Shared write lease.** Capture on every surface (now including
+  `gno capture` and `client.capture()`) and REST document saves plan and write
+  under the shared write lease. If another writer holds it past the wait
+  window, the call returns the typed busy error and writes nothing. Two saves
+  from the same revision can no longer both win: one gets `409 CONFLICT`.
+- **CLI and SDK capture keep their sync outcome.** Without an ID,
+  `gno capture` and `client.capture()` still succeed (exit 0, a resolved
+  receipt) with `sync.status: "failed"` and `sync.error` when the note was
+  written but lexical sync failed; run `gno update` to index it. With
+  `open_existing` on a file that is not indexed yet, they still return
+  `sync.status: "skipped"` ("Existing file is not indexed yet."). MCP and REST
+  capture report `CAPTURE_SYNC_FAILED` as before.
+
+A retried write without an ID is evaluated again as a new call:
 
 - **Capture** may create a suffixed duplicate (`create_with_suffix`) or fail
   because the note already exists (`error`).

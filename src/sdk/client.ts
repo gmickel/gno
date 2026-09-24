@@ -141,11 +141,10 @@ import {
   resolveRemoteProjectAffinity,
 } from "../core/project-affinity-surface";
 import {
-  LOCAL_OWNER_NAMESPACE,
+  localRequestLedger,
   readRequestStatus,
   RequestReceiptError,
   type RequestReceiptErrorCode,
-  requestLedgerPath,
 } from "../core/request-receipts";
 import { RetrievalTraceManagementService } from "../core/retrieval-trace-management";
 import {
@@ -176,7 +175,6 @@ import {
   normalizeMetadataPredicate,
   type MetadataPredicate,
 } from "../core/typed-metadata";
-import { writeLeasePath } from "../core/write-lease";
 import {
   defaultSyncService,
   type SyncResult,
@@ -370,7 +368,6 @@ const MEMORY_ERROR_TO_SDK: Readonly<Record<MemoryErrorCode, GnoSdkErrorCode>> =
     MEMORY_QUERY_FAILED: "RUNTIME",
   };
 
-/** Map a core MemoryError onto the SDK error family; the memory code survives in `details.code`. */
 const REQUEST_ERROR_TO_SDK: Record<RequestReceiptErrorCode, GnoSdkErrorCode> = {
   REQUEST_ID_INVALID: "VALIDATION",
   REQUEST_ID_CONFLICT: "VALIDATION",
@@ -390,6 +387,7 @@ function toRequestSdkError(cause: unknown): unknown {
   });
 }
 
+/** Map a core MemoryError onto the SDK error family; the memory code survives in `details.code`. */
 function toMemorySdkError(cause: unknown): unknown {
   if (!(cause instanceof MemoryError)) return toRequestSdkError(cause);
   return sdkError(MEMORY_ERROR_TO_SDK[cause.code], cause.message, {
@@ -1816,11 +1814,8 @@ class GnoClientImpl implements GnoClient {
           store: this.store,
           config: this.config,
           collections: this.config.collections,
-          lockPath: writeLeasePath(this.dbPath),
-          requests: {
-            ledgerPath: requestLedgerPath(this.dbPath),
-            namespace: LOCAL_OWNER_NAMESPACE,
-          },
+          lockPath: this.requestLedger().lockPath,
+          requests: this.requestLedger(),
           embedPort: ports.embedPort,
           vectorIndex: ports.vectorIndex,
         })
@@ -1870,7 +1865,8 @@ class GnoClientImpl implements GnoClient {
       const published = await publishCapture({
         collection,
         store: this.store,
-        lockPath: writeLeasePath(this.dbPath),
+        lockPath: this.requestLedger().lockPath,
+        reportSyncFailure: true,
         config: this.config,
         plan: async () => {
           const existingList = await this.store.listDocuments(collection.name);
@@ -1895,12 +1891,7 @@ class GnoClientImpl implements GnoClient {
         request:
           requestId === undefined
             ? undefined
-            : {
-                ledgerPath: requestLedgerPath(this.dbPath),
-                namespace: LOCAL_OWNER_NAMESPACE,
-                requestId,
-                input,
-              },
+            : { ...this.requestLedger(), requestId, input },
       });
       return published.request
         ? { ...published.receipt, request: published.request }
@@ -1916,14 +1907,14 @@ class GnoClientImpl implements GnoClient {
     }
   }
 
+  private requestLedger() {
+    return localRequestLedger(this.dbPath);
+  }
+
   async requestStatus(requestId: string): Promise<GnoRequestStatusResult> {
     this.assertOpen();
     try {
-      return await readRequestStatus({
-        ledgerPath: requestLedgerPath(this.dbPath),
-        namespace: LOCAL_OWNER_NAMESPACE,
-        requestId,
-      });
+      return await readRequestStatus({ ...this.requestLedger(), requestId });
     } catch (cause) {
       throw toRequestSdkError(cause);
     }

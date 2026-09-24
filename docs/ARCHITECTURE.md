@@ -403,19 +403,19 @@ CLI/MCP/Web UI/SDK → new Adapter() → adapter.createPort() → Port interface
 Opt-in request IDs on capture, remember, and REST document saves are recorded
 in a separate private SQLite file per index,
 `<dataDir>/write-receipts/<index db filename>`, not in the index database.
-Index rebuilds, `gno update`, and re-embedding never touch it, and it does not
-depend on documents being indexed.
+Index rebuilds, `gno update`, re-embedding, and `gno reset` never remove it,
+and it does not depend on documents being indexed.
 
 Admission runs inside the existing shared write lease (`.mcp-write.lock`);
 there is no second lock. Under the lease a write looks up the ID in its
-namespace, replays a committed outcome, finishes an interrupted one whose file
-is already on disk, or plans against current state, records the plan as
+namespace, replays a committed outcome, finishes an interrupted one (refusing
+if its target changed or disappeared after the write), or plans against current state, records the plan as
 `pending`, publishes the file, completes sync (and the supersede projection),
 and marks the request `committed` with its outcome. Rejections before the
 write record nothing. The CLI, SDK, stdio MCP, and REST share one local-owner
-namespace; resident HTTP MCP uses the authorized identity. Committed outcomes
-are kept for 30 days and then compacted to tombstones, under a fixed
-100,000-row cap. See [Retries and Request IDs](guides/retries-and-request-ids.md).
+namespace; resident HTTP MCP uses the authorized identity. Retention, the row
+cap, and the error codes are in
+[Retries and Request IDs](guides/retries-and-request-ids.md).
 
 ### Content Addressing
 

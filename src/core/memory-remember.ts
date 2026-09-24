@@ -57,6 +57,7 @@ import {
   MemoryError,
 } from "./memory-types";
 import {
+  isLeaseBusy,
   RequestReceiptError,
   requestDigest,
   runRequestedWrite,
@@ -511,8 +512,7 @@ export async function rememberFact(
     if (error instanceof MemoryError || error instanceof RequestReceiptError) {
       throw error;
     }
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.startsWith("LOCKED")) {
+    if (isLeaseBusy(error)) {
       throw new MemoryError(
         "MEMORY_WRITE_LEASE_BUSY",
         `Could not acquire the shared write lease at ${deps.lockPath} within ${lockWaitMs}ms: another write holds it. The memory service takes the lease itself; callers must not pre-hold it.`

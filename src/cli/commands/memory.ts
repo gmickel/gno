@@ -25,10 +25,9 @@ import {
   type RememberResult,
 } from "../../core/memory";
 import {
-  LOCAL_OWNER_NAMESPACE,
-  requestLedgerPath,
+  formatRequestReceiptLine,
+  localRequestLedger,
 } from "../../core/request-receipts";
-import { writeLeasePath } from "../../core/write-lease";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveModelUri } from "../../llm/registry";
 import { createVectorIndexPort } from "../../store/vector";
@@ -328,15 +327,13 @@ async function openMemoryRuntime(
         await embedResult.value.dispose();
       }
     }
+    const ledger = localRequestLedger(getIndexDbPath(options.indexName));
     const service = new MemoryService({
       store,
       config,
       collections,
-      lockPath: writeLeasePath(getIndexDbPath(options.indexName)),
-      requests: {
-        ledgerPath: requestLedgerPath(getIndexDbPath(options.indexName)),
-        namespace: LOCAL_OWNER_NAMESPACE,
-      },
+      lockPath: ledger.lockPath,
+      requests: ledger,
       embedPort,
       vectorIndex,
     });
@@ -468,11 +465,7 @@ export function formatRememberResult(
     lines.push(`Sync: ${result.sync.status}`);
   }
   lines.push(`Matching: ${formatMatching(result.matching)}`);
-  if (result.request) {
-    lines.push(
-      `Request: ${result.request.requestId} committed${result.request.replayed ? " (replayed, nothing written again)" : ""}`
-    );
-  }
+  if (result.request) lines.push(formatRequestReceiptLine(result.request));
   return lines.join("\n");
 }
 

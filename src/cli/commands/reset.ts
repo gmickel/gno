@@ -1,17 +1,20 @@
 /**
  * gno reset - Reset GNO to fresh state
  *
- * Deletes all config, data, and cache directories.
+ * Deletes all config, data, and cache directories. The request ledger
+ * (`<dataDir>/write-receipts/`) is kept so request IDs that already ran
+ * can never run again.
  */
 
 // node:fs/promises: rm and stat for recursive directory deletion (no Bun equivalent)
-import { rm, stat } from "node:fs/promises";
+import { readdir, rm, stat } from "node:fs/promises";
 // node:os: homedir for platform-agnostic home directory (no Bun equivalent)
 import { homedir } from "node:os";
 // node:path: path manipulation utilities (no Bun equivalent)
-import { isAbsolute, normalize, sep } from "node:path";
+import { isAbsolute, join, normalize, sep } from "node:path";
 
 import { resolveDirs } from "../../app/constants";
+import { REQUEST_LEDGER_DIR } from "../../core/request-receipts";
 import { CliError } from "../errors";
 
 interface ResetOptions {
@@ -103,8 +106,8 @@ export async function reset(options: ResetOptions): Promise<ResetResult> {
     assertSafePath(dirs.cache, "Cache");
   }
 
-  // Delete data directory (always, contains index DB)
-  results.push(await rmDir(dirs.data));
+  // Empty the data directory (index DBs, caches) but keep the request ledger.
+  results.push(...(await clearDataDir(dirs.data)));
 
   // Delete config unless --keep-config
   if (options.keepConfig) {
@@ -132,6 +135,37 @@ export async function reset(options: ResetOptions): Promise<ResetResult> {
   }
 
   return { results, errors };
+}
+
+/** Empty the data directory except the request ledger (what reset runs). */
+export async function clearDataDir(path: string): Promise<DirResult[]> {
+  let entries: string[];
+  try {
+    entries = await readdir(path);
+  } catch (e) {
+    const err = e as NodeJS.ErrnoException;
+    return [
+      err.code === "ENOENT"
+        ? { path, status: "missing" }
+        : { path, status: "missing", error: err.message },
+    ];
+  }
+  if (!entries.includes(REQUEST_LEDGER_DIR)) return [await rmDir(path)];
+  const failures: string[] = [];
+  for (const entry of entries) {
+    if (entry === REQUEST_LEDGER_DIR) continue;
+    try {
+      await rm(join(path, entry), { recursive: true, force: true });
+    } catch (e) {
+      failures.push(`${entry}: ${(e as Error).message}`);
+    }
+  }
+  return [
+    failures.length > 0
+      ? { path, status: "missing", error: failures.join("; ") }
+      : { path, status: "deleted" },
+    { path: join(path, REQUEST_LEDGER_DIR), status: "kept" },
+  ];
 }
 
 async function rmDir(path: string): Promise<DirResult> {

@@ -42,10 +42,7 @@ import { writeCapturePlanFile } from "../core/capture-write";
 import { MCP_ERRORS } from "../core/errors";
 import { withWriteLock } from "../core/file-lock";
 import { recordContentMutation } from "../core/mutation-generations";
-import {
-  LOCAL_OWNER_NAMESPACE,
-  requestLedgerPath,
-} from "../core/request-receipts";
+import { localRequestLedger } from "../core/request-receipts";
 import { DEFAULT_LOCK_WAIT_MS, writeLeasePath } from "../core/write-lease";
 import {
   type CollectionSyncResult,
@@ -434,8 +431,7 @@ export const executeRequestedResidentCapture = async (
       return planned.plan;
     },
     request: {
-      ledgerPath: requestLedgerPath(store.getDbPath()),
-      namespace: LOCAL_OWNER_NAMESPACE,
+      ...localRequestLedger(store.getDbPath()),
       requestId,
       input: normalized,
     },

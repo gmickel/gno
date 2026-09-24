@@ -26,6 +26,7 @@ import {
 import { MCP_ERRORS } from "../../core/errors";
 import { recordContentMutation } from "../../core/mutation-generations";
 import {
+  formatRequestReceiptLine,
   type RequestReceiptInfo,
   requestLedgerPath,
 } from "../../core/request-receipts";
@@ -90,11 +91,7 @@ function formatCaptureResult(result: McpCaptureResult): string {
   if (result.tags.length > 0) {
     lines.push(`Tags: ${result.tags.join(", ")}`);
   }
-  if (result.request) {
-    lines.push(
-      `Request: ${result.request.requestId} committed${result.request.replayed ? " (replayed)" : ""}`
-    );
-  }
+  if (result.request) lines.push(formatRequestReceiptLine(result.request));
   return lines.join("\n");
 }
 

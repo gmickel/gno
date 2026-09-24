@@ -131,27 +131,10 @@
       ]
     },
     "request": {
-      "$ref": "#/definitions/requestReceipt"
+      "$ref": "gno://schemas/request-status@1.0#/$defs/requestReceipt"
     }
   },
   "definitions": {
-    "requestReceipt": {
-      "type": "object",
-      "description": "Present only when the caller sent a requestId. replayed is true when an identical retry returned the recorded outcome without executing again.",
-      "additionalProperties": false,
-      "required": ["requestId", "status", "replayed", "committedAt"],
-      "properties": {
-        "requestId": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128,
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
-        },
-        "status": { "const": "committed" },
-        "replayed": { "type": "boolean" },
-        "committedAt": { "type": "string", "format": "date-time" }
-      }
-    },
     "indexStatus": {
       "type": "object",
       "additionalProperties": false,

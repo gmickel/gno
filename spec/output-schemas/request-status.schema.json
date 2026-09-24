@@ -64,6 +64,18 @@
     }
   ],
   "$defs": {
+    "requestReceipt": {
+      "type": "object",
+      "description": "The `request` field a write result carries when the caller sent a requestId (capture, remember, document update). replayed is true when an identical retry returned the recorded outcome without executing again. Shared by capture-receipt, mcp-capture-result, and memory-remember.",
+      "additionalProperties": false,
+      "required": ["requestId", "status", "replayed", "committedAt"],
+      "properties": {
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "status": { "const": "committed" },
+        "replayed": { "type": "boolean" },
+        "committedAt": { "type": "string", "format": "date-time" }
+      }
+    },
     "requestId": {
       "type": "string",
       "minLength": 1,

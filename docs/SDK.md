@@ -512,12 +512,14 @@ console.log(receipt.uri, receipt.sync.status, receipt.embed.status);
 
 `client.capture()` takes the shared write lease (`.mcp-write.lock`, the same
 lease the CLI, MCP, and REST writers use), plans the path, writes the note, and
-syncs it lexically before resolving, so a returned receipt always has
-`sync.status: "completed"`. If the file was written but sync failed, it throws
-`GnoSdkError` with code `RUNTIME` and `details.code: "CAPTURE_SYNC_FAILED"`
-(plus `details.absPath`); run `client.update()` or `gno update` to index it.
-`open_existing` on a file that is on disk but not yet indexed indexes it.
-Embedding is separate; `embed.status` remains `not_requested` until you run
+syncs it lexically before resolving. A lease held by another writer past the
+wait window rejects with the busy error and writes nothing. It returns
+`sync.status: "completed"` when ingestion succeeds; if the note was written but
+sync failed, the receipt still resolves with `sync.status: "failed"` and
+`sync.error` (run `client.update()` or `gno update` to index it).
+`open_existing` on a file that is not indexed yet returns
+`sync.status: "skipped"`. With a `requestId`, a sync failure throws instead
+(see [Request IDs](#request-ids)). Embedding is separate; `embed.status` remains `not_requested` until you run
 `client.embed()` or `client.index()` without `noEmbed`. Capture content must be
 text, `presetId` accepts `blank`, `project-note`, `research-note`,
 `decision-note`, `prompt-pattern`, `source-summary`, `idea-original`, `person`,
@@ -541,11 +543,9 @@ capture semantics.
 ### Request IDs
 
 `client.capture()` and `client.remember()` accept an optional `requestId`
-(1-128 characters of letters, digits, `.`, `_`, `:` and `-`, starting with a
-letter or digit; a UUID works). Retrying the same call with the same ID after
-a lost result returns the recorded outcome instead of writing again, or
-finishes a write that was interrupted after the file landed. Look an ID up
-with `client.requestStatus()` before retrying:
+(a UUID works). Retrying the same call with the same ID returns the recorded
+outcome instead of writing again. Look an ID up with `client.requestStatus()`
+before retrying:
 
 ```ts
 const requestId = crypto.randomUUID();
@@ -563,26 +563,14 @@ if (status.status === "pending" || status.status === "not_found") {
 }
 ```
 
-- Results carry `request` only when a `requestId` was sent; a replay has
-  `request.replayed: true`.
-- `requestStatus()` returns `GnoRequestStatusResult`: `requestId`, `status`,
-  and, except for `not_found`, `operation` (`capture`, `remember`, or
-  `document.update`), `createdAt`, `updatedAt`, and for `committed` a
-  `result` pointer (`uri`, `docid`, `contentHash` or `sourceHash`). It never
-  contains note or fact text.
-- The SDK shares the local-owner namespace with the CLI, stdio MCP, and
-  `gno serve` REST for the same index, so an ID sent from any of them can be
-  looked up here.
-- Request errors are `GnoSdkError` with the request code in `details.code`:
-  `VALIDATION` for `REQUEST_ID_INVALID`, `REQUEST_ID_CONFLICT`, and
-  `REQUEST_EXPIRED`; `RUNTIME` for `REQUEST_PENDING`,
-  `REQUEST_RECOVERY_CONFLICT`, `REQUEST_CAPACITY_EXHAUSTED`, and
-  `REQUEST_LEDGER_UNAVAILABLE`.
-- The SDK has no document update method; document saves with a request ID
-  go through `PUT /api/docs/:id`.
+- Results carry `request` only when a `requestId` was sent.
+- `requestStatus()` returns `GnoRequestStatusResult`, the content-free
+  `request-status` lookup.
+- Request errors are `GnoSdkError` with the `REQUEST_*` code in
+  `details.code`.
 
-See [Retries and Request IDs](guides/retries-and-request-ids.md) for
-statuses, recovery, and retention.
+Statuses, error codes, namespaces, and retention are in
+[Retries and Request IDs](guides/retries-and-request-ids.md).
 
 ### Remember / Recall (memory)
 
@@ -648,9 +636,7 @@ embedding model is available locally, otherwise `matching.mode` /
 core `MemoryError` as `cause`.
 
 Pass `requestId` with `decision: "add"` or `"supersede"` to make a retry safe
-(see [Request IDs](#request-ids)); `caller` and `session` may differ on the
-retry. A `requestId` without a decision throws `VALIDATION` with
-`details.code: "REQUEST_ID_INVALID"`.
+(see [Request IDs](#request-ids)).
 
 ### Status
 

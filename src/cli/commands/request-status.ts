@@ -7,11 +7,11 @@
 
 import { getIndexDbPath } from "../../app/constants";
 import {
-  LOCAL_OWNER_NAMESPACE,
+  formatRequestStatus,
+  localRequestLedger,
   readRequestStatus,
   RequestReceiptError,
   type RequestReceiptErrorCode,
-  requestLedgerPath,
   type RequestStatusResult,
 } from "../../core/request-receipts";
 import { CliError, type CliErrorCode } from "../errors";
@@ -41,8 +41,7 @@ export async function requestStatus(options: {
 }): Promise<RequestStatusResult> {
   try {
     return await readRequestStatus({
-      ledgerPath: requestLedgerPath(getIndexDbPath(options.indexName)),
-      namespace: LOCAL_OWNER_NAMESPACE,
+      ...localRequestLedger(getIndexDbPath(options.indexName)),
       requestId: options.requestId,
     });
   } catch (error) {
@@ -50,23 +49,11 @@ export async function requestStatus(options: {
   }
 }
 
-export function formatRequestStatus(
+export function formatRequestStatusOutput(
   result: RequestStatusResult,
   options: { json?: boolean } = {}
 ): string {
-  if (options.json) return JSON.stringify(result, null, 2);
-  const lines = [`Request: ${result.requestId}`, `Status: ${result.status}`];
-  if (result.operation) lines.push(`Operation: ${result.operation}`);
-  if (result.updatedAt) lines.push(`Updated: ${result.updatedAt}`);
-  if (result.result?.uri) lines.push(`URI: ${result.result.uri}`);
-  const next: Record<RequestStatusResult["status"], string> = {
-    committed: "Committed: do not resend; the retained outcome replays.",
-    pending:
-      "Pending: retry the same command with the same --request-id to finish it.",
-    expired:
-      "Expired: this ID already ran and will not run again; check current state before using a new ID.",
-    not_found: "Not found: nothing was accepted under this ID.",
-  };
-  lines.push(next[result.status]);
-  return lines.join("\n");
+  return options.json
+    ? JSON.stringify(result, null, 2)
+    : formatRequestStatus(result);
 }

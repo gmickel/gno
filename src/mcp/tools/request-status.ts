@@ -10,11 +10,11 @@ import { z } from "zod";
 import type { ToolContext } from "../server";
 
 import {
+  formatRequestStatus,
   LOCAL_OWNER_NAMESPACE,
   readRequestStatus,
   RequestReceiptError,
   requestLedgerPath,
-  type RequestStatusResult,
 } from "../../core/request-receipts";
 import { runTool, type ToolResult } from "./index";
 
@@ -48,14 +48,6 @@ export function rethrowRequestError(error: unknown): never {
     throw new Error(`${error.code}: ${error.message}`);
   }
   throw error;
-}
-
-function formatRequestStatus(result: RequestStatusResult): string {
-  const lines = [`Request: ${result.requestId}`, `Status: ${result.status}`];
-  if (result.operation) lines.push(`Operation: ${result.operation}`);
-  if (result.updatedAt) lines.push(`Updated: ${result.updatedAt}`);
-  if (result.result?.uri) lines.push(`URI: ${result.result.uri}`);
-  return lines.join("\n");
 }
 
 export function handleRequestStatus(

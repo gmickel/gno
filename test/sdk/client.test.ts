@@ -7,12 +7,13 @@ import {
   type GnoSearchOptions,
   type SearchResults,
 } from "@gmickel/gno";
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { cp, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { runCli } from "../../src/cli/run";
+import { defaultSyncService } from "../../src/ingestion";
 import { safeRm } from "../helpers/cleanup";
 
 let testDir: string;
@@ -559,6 +560,53 @@ describe("SDK client", () => {
     const created = await client.get(result.uri);
     expect(created.content).toContain("Captured from SDK");
     expect(created.content).toContain("source:");
+  });
+
+  test("without a request ID sync failures and unindexed opens stay receipts", async () => {
+    const syncPaths = spyOn(defaultSyncService, "syncPaths").mockResolvedValue({
+      collection: "fixtures",
+      filesProcessed: 1,
+      filesAdded: 0,
+      filesUpdated: 0,
+      filesUnchanged: 0,
+      filesErrored: 1,
+      filesSkipped: 0,
+      filesMarkedInactive: 0,
+      durationMs: 1,
+      files: [
+        {
+          relPath: "sdk-unsynced.md",
+          status: "error",
+          errorCode: "PARSE_ERROR",
+          errorMessage: "bad markdown",
+        },
+      ],
+      errors: [],
+    });
+    try {
+      const failed = await client.capture({
+        collection: "fixtures",
+        title: "SDK unsynced",
+        content: "Written but not indexed",
+      });
+      expect(failed.sync).toEqual({
+        status: "failed",
+        error: "PARSE_ERROR - bad markdown",
+      });
+      const opened = await client.capture({
+        collection: "fixtures",
+        title: "SDK unsynced",
+        content: "Written but not indexed",
+        collisionPolicy: "open_existing",
+      });
+      expect(opened.openedExisting).toBe(true);
+      expect(opened.sync).toEqual({
+        status: "skipped",
+        reason: "Existing file is not indexed yet.",
+      });
+    } finally {
+      syncPaths.mockRestore();
+    }
   });
 
   test("replays a retried capture request ID and reports its status", async () => {

@@ -20,6 +20,7 @@ import type { StorePort } from "../store/types";
 import {
   buildCaptureReceipt,
   type CaptureInput,
+  CaptureSyncError,
   type CapturePlan,
   type CaptureReceipt,
   type CaptureSyncPaths,
@@ -57,6 +58,12 @@ export interface PublishCaptureInput {
   /** Plan against current state. Runs under the lease; must not write. */
   plan: () => Promise<CapturePlan>;
   beforeWrite?: (absPath: string) => void;
+  /**
+   * CLI/SDK receipt contract without a request ID: a failed lexical sync is
+   * reported in `sync` (not thrown) and an unindexed `open_existing` file is
+   * returned as `skipped` rather than synced.
+   */
+  reportSyncFailure?: boolean;
   /** Runs under the lease once the capture is retrievable. */
   afterSync?: (
     synced: SyncCapturedFileResult,
@@ -146,10 +153,38 @@ export async function publishCapture(
           return toReceipt(plan, absPathFor(plan.relPath));
         }
         if (!plan.openedExisting) await write(plan);
-        return finish(
-          toReceipt(plan, absPathFor(plan.relPath)),
-          plan.openedExisting
-        );
+        const draft = toReceipt(plan, absPathFor(plan.relPath));
+        if (!options.reportSyncFailure) {
+          return finish(draft, plan.openedExisting);
+        }
+        if (plan.openedExisting) {
+          const existing = await options.store.getDocument(
+            plan.collection,
+            plan.relPath
+          );
+          if (!existing.ok) throw new Error(existing.error.message);
+          const opened: CaptureReceipt = {
+            ...draft,
+            docid: existing.value?.docid,
+            sync: existing.value
+              ? { status: "completed" }
+              : {
+                  status: "skipped",
+                  reason: "Existing file is not indexed yet.",
+                },
+          };
+          return opened;
+        }
+        try {
+          return await finish(draft, false);
+        } catch (error) {
+          if (!(error instanceof CaptureSyncError)) throw error;
+          const failed: CaptureReceipt = {
+            ...draft,
+            sync: { status: "failed", error: error.syncError },
+          };
+          return failed;
+        }
       },
       lockWaitMs
     );

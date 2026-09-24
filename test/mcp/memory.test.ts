@@ -510,6 +510,69 @@ describe("2026-07-28 sessionless leg: memory identity is per caller", () => {
     }
   });
 
+  test("capture request IDs are private to each HTTP identity; token rotation starts over", async () => {
+    // The gateway authorizes a bearer token as its sha256 digest.
+    const digest = (token: string) =>
+      new Bun.CryptoHasher("sha256").update(token).digest("hex");
+    const tokenA = digest("token-a");
+    const tokenB = digest("token-b");
+    const rotatedA = digest("token-a-rotated");
+    const capture = {
+      collection: "notes",
+      title: "HTTP identity capture",
+      content: "Only token A wrote this.",
+      collisionPolicy: "create_with_suffix",
+      requestId: "http-capture-1",
+    };
+    const status = { requestId: "http-capture-1" };
+    const transport = sessionlessTransport();
+    try {
+      const written = await call<{
+        uri: string;
+        request: { replayed: boolean };
+      }>(transport, tokenA, 1, "gno_capture", capture);
+      expect(written.request.replayed).toBe(false);
+      expect(
+        await call<RequestStatusResult>(
+          transport,
+          tokenA,
+          2,
+          "gno_request_status",
+          status
+        )
+      ).toMatchObject({ status: "committed", result: { uri: written.uri } });
+
+      for (const [id, identity] of [
+        [3, tokenB],
+        [4, "loopback"],
+        [5, rotatedA],
+      ] as const) {
+        expect(
+          await call<RequestStatusResult>(
+            transport,
+            identity,
+            id,
+            "gno_request_status",
+            status
+          )
+        ).toEqual({ requestId: "http-capture-1", status: "not_found" });
+      }
+
+      // The same ID under another identity is that caller's own new request.
+      const other = await call<{ uri: string; request: { replayed: boolean } }>(
+        transport,
+        tokenB,
+        6,
+        "gno_capture",
+        { ...capture, content: "Token B wrote this." }
+      );
+      expect(other.request.replayed).toBe(false);
+      expect(other.uri).not.toBe(written.uri);
+    } finally {
+      await transport.close();
+    }
+  });
+
   test("request IDs belong to the authorized identity and survive a server restart", async () => {
     const remember = {
       text: "Finn's desk is by the window.",

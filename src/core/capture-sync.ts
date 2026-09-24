@@ -27,6 +27,8 @@ export class CaptureSyncError extends Error {
   readonly code = CAPTURE_SYNC_FAILED_CODE;
   readonly absPath: string;
   readonly relPath: string;
+  /** The sync failure itself, without the write half of the message. */
+  readonly syncError: string;
 
   constructor(input: { absPath: string; relPath: string; cause: string }) {
     super(
@@ -35,6 +37,7 @@ export class CaptureSyncError extends Error {
     this.name = "CaptureSyncError";
     this.absPath = input.absPath;
     this.relPath = input.relPath;
+    this.syncError = input.cause;
   }
 }
 

@@ -21,10 +21,9 @@ import {
 } from "../../core/capture";
 import { publishCapture } from "../../core/capture-publish";
 import {
-  LOCAL_OWNER_NAMESPACE,
-  requestLedgerPath,
+  formatRequestReceiptLine,
+  localRequestLedger,
 } from "../../core/request-receipts";
-import { writeLeasePath } from "../../core/write-lease";
 import { CliError } from "../errors";
 import { requestErrorToCli } from "./request-status";
 import { initStore } from "./shared";
@@ -171,12 +170,13 @@ export async function capture(
       tags: parseTags(options.tags),
       source: buildSource(options),
     };
-    const dbPath = getIndexDbPath(options.indexName);
+    const ledger = localRequestLedger(getIndexDbPath(options.indexName));
     try {
       const published = await publishCapture({
         collection,
         store,
-        lockPath: writeLeasePath(dbPath),
+        lockPath: ledger.lockPath,
+        reportSyncFailure: true,
         config,
         plan: async () => {
           const existingDocs = await store.listDocuments(collection.name);
@@ -199,12 +199,7 @@ export async function capture(
         request:
           options.requestId === undefined
             ? undefined
-            : {
-                ledgerPath: requestLedgerPath(dbPath),
-                namespace: LOCAL_OWNER_NAMESPACE,
-                requestId: options.requestId,
-                input,
-              },
+            : { ...ledger, requestId: options.requestId, input },
       });
       return published.request
         ? { ...published.receipt, request: published.request }
@@ -241,10 +236,6 @@ export function formatCaptureReceipt(
   if (receipt.source.url) {
     lines.push(`Source: ${receipt.source.url}`);
   }
-  if (receipt.request) {
-    lines.push(
-      `Request: ${receipt.request.requestId} committed${receipt.request.replayed ? " (replayed, nothing written again)" : ""}`
-    );
-  }
+  if (receipt.request) lines.push(formatRequestReceiptLine(receipt.request));
   return lines.join("\n");
 }

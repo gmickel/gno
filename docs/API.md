@@ -2197,26 +2197,12 @@ with CLI, MCP, and SDK:
 ### Request IDs
 
 `POST /api/capture`, `POST /api/memory/remember`, and `PUT /api/docs/:id`
-accept an optional `requestId` in the JSON body. Reusing the same ID to retry
-the same write after a lost response returns the recorded outcome instead of
-writing again, or finishes a write that was interrupted after the file landed.
-Requests without `requestId` behave as before. The full contract (statuses,
-recovery, retention) is in
-[Retries and Request IDs](guides/retries-and-request-ids.md).
-
-- Format: 1-128 characters of letters, digits, `.`, `_`, `:` and `-`,
-  starting with a letter or digit (a UUID works).
-- A successful response gains
-  `"request": { "requestId", "status": "committed", "replayed", "committedAt" }`.
-  A replay has `replayed: true` and keeps the original HTTP status (for
-  example `201` for a created capture or a written fact).
-- The same ID with a different payload, target, or expected revision returns
-  `409 REQUEST_ID_CONFLICT`. Use a new ID for a new intent.
-- A request rejected before any write (validation, `CONFLICT`, `LOCKED`,
-  missing document, stale predecessor) records nothing; the same ID can be
-  retried against the current state.
-- `/api/capture/clip` does not accept `requestId`
-  (`400 CLIPPER_INVALID_REQUEST`); it keeps its `Idempotency-Key` header.
+accept an optional `requestId` string in the JSON body. Retrying the same write
+with the same ID returns the recorded outcome instead of writing again. With an
+ID, a successful response gains a `request` object
+(`{ requestId, status: "committed", replayed, committedAt }`), and a replay
+keeps the original HTTP status. `/api/capture/clip` does not accept
+`requestId`; it keeps its `Idempotency-Key` header.
 
 Look an ID up before retrying:
 
@@ -2228,38 +2214,12 @@ GET /api/requests/:requestId
 curl http://localhost:3000/api/requests/0f8e5c1a-3c1e-4d0b-9a57-2f4f3b8f2c11
 ```
 
-```json
-{
-  "requestId": "0f8e5c1a-3c1e-4d0b-9a57-2f4f3b8f2c11",
-  "status": "committed",
-  "operation": "document.update",
-  "createdAt": "2026-09-24T08:00:00.000Z",
-  "updatedAt": "2026-09-24T08:00:00.120Z",
-  "result": {
-    "uri": "gno://notes/projects/readme.md",
-    "docid": "#abc123",
-    "sourceHash": "<sha256>"
-  }
-}
-```
-
-`status` is `pending` (accepted, not finished: resend the same request with the
-same ID), `committed` (do not resend), `expired` (committed more than 30 days
-ago; will not run again), or `not_found` (only `requestId` and `status`).
-`operation` is `capture`, `remember`, or `document.update`. `result` appears
-only when committed and never contains note or fact text. REST uses the
-local-owner namespace shared with the CLI, SDK, and stdio MCP for the same
-index. A malformed ID returns `400 REQUEST_ID_INVALID`.
-
-| Status | Code                         | Meaning                                                               |
-| :----- | :--------------------------- | :-------------------------------------------------------------------- |
-| `400`  | `REQUEST_ID_INVALID`         | Malformed ID, or an ID on a call that does not write                  |
-| `409`  | `REQUEST_ID_CONFLICT`        | ID already used for a different intent                                |
-| `410`  | `REQUEST_EXPIRED`            | ID already ran; its outcome expired; it will not run again            |
-| `409`  | `REQUEST_PENDING`            | Accepted and still in progress; retry the same ID later               |
-| `409`  | `REQUEST_RECOVERY_CONFLICT`  | Interrupted request's target changed on disk; nothing was overwritten |
-| `507`  | `REQUEST_CAPACITY_EXHAUSTED` | Request ledger full; rejected before any write                        |
-| `503`  | `REQUEST_LEDGER_UNAVAILABLE` | Request ledger cannot be opened; rejected before any write            |
+The response follows
+[`request-status.schema.json`](../spec/output-schemas/request-status.schema.json)
+(`pending`, `committed`, `expired`, or `not_found`, with a content-free result
+pointer). Errors use the stable `REQUEST_*` codes in the standard error body.
+ID format, retry semantics, the codes and their HTTP statuses, namespaces, and
+retention are in [Retries and Request IDs](guides/retries-and-request-ids.md).
 
 ---
 
@@ -2300,11 +2260,8 @@ indexed documents and disk-only files. Capture content must be text, and capture
 writes use exclusive create semantics so a late-arriving file fails instead of
 being replaced.
 
-Add `"requestId": "<id>"` to make a retry safe (see
-[Request IDs](#request-ids)). Without it, a retried capture after a lost
-response may create a suffixed duplicate (`create_with_suffix`) or fail because
-the note exists (`error`). With it, a retry after `CAPTURE_SYNC_FAILED`
-finishes indexing the written note instead of capturing again.
+Add `"requestId": "<id>"` to make a retry after a lost response safe; see
+[Request IDs](#request-ids).
 
 **Response** (`201 Created`, or `200 OK` for `opened_existing`):
 
@@ -2419,11 +2376,8 @@ Remember is fact-granular with supersession, not a second capture: use
 complete under the shared write lease before the response, so a written fact
 is immediately recallable; `sync.status` is therefore `completed`.
 
-`requestId` requires a `decision`; without one the request fails
-`400 REQUEST_ID_INVALID`. With an ID, the response gains `request`, and a retry
-replays the recorded outcome (an exact-duplicate `add` replays as `existing`).
-`caller` and `session` are not part of the request identity, so a retry from a
-new session still matches. Request IDs are unrelated to the recall `receipt`.
+`requestId` requires a `decision`. With an ID, the response gains `request`;
+see [Request IDs](#request-ids). It is unrelated to the recall `receipt`.
 
 ```json
 {
@@ -2683,15 +2637,9 @@ When `tags` is provided, the tags are written to the document's YAML frontmatter
 }
 ```
 
-With a `requestId`, the response also carries `request`. A save counts as
-committed once the file is written and its new source hash recorded (tags are
-stored too); the background sync and embedding run afterwards and their
-failure never undoes the save (recover with `gno update` / `gno embed`). A
-replayed save returns the original result with `jobId: null`, because the
-original save already started the sync. Retrying a lost save with the same ID
-therefore returns the committed result instead of a false `CONFLICT`; without
-an ID the retry fails `CONFLICT` (with `expectedSourceHash`) or overwrites a
-newer edit (without it).
+With a `requestId`, the response also carries `request`, and a replayed save
+returns the original result with `jobId: null` (the original save already
+started the sync). See [Request IDs](#request-ids).
 
 **Errors**:
 
