@@ -135,6 +135,27 @@ export interface SessionAutomationChange {
 
 const nowOf = (ctx: AutomationContext): Date => ctx.now?.() ?? new Date();
 
+/**
+ * SQLite writer contention (in this process or reported by an import child)
+ * is a busy archive, retried with backoff, not a runtime error.
+ */
+function isIndexLockContention(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const { code, message, cause } = error as {
+    code?: unknown;
+    message?: unknown;
+    cause?: unknown;
+  };
+  if (code === "SQLITE_BUSY" || code === "SQLITE_LOCKED") return true;
+  if (
+    typeof message === "string" &&
+    /database is locked|SQLITE_BUSY/i.test(message)
+  ) {
+    return true;
+  }
+  return cause !== undefined && cause !== error && isIndexLockContention(cause);
+}
+
 async function loadArchive(
   ctx: AutomationContext
 ): Promise<{ config: Config; sessions: SessionsConfig }> {
@@ -955,12 +976,25 @@ export async function runAutomationProfile(
   } else {
     try {
       // Archive collections added since the store opened must exist in it.
-      const synced = await deps.store.syncCollections(config.collections);
-      if (!synced.ok) {
-        throw new SessionsError(
-          "SESSIONS_RUNTIME_FAILURE",
-          "Archive collections could not be synced into the index."
+      // Write only when one is missing: an import child or another writer
+      // may hold the index.
+      const known = await deps.store.getCollections();
+      const missing =
+        !known.ok ||
+        config.collections.some(
+          (collection) =>
+            !known.value.some((row) => row.name === collection.name)
         );
+      if (missing) {
+        const synced = await deps.store.syncCollections(config.collections);
+        if (!synced.ok) {
+          throw isIndexLockContention(synced.error)
+            ? new SessionsError("SESSIONS_BUSY", "The archive index is busy.")
+            : new SessionsError(
+                "SESSIONS_RUNTIME_FAILURE",
+                "Archive collections could not be synced into the index."
+              );
+        }
       }
       const service = new SessionsService({
         config,
@@ -997,7 +1031,11 @@ export async function runAutomationProfile(
       }
     } catch (error) {
       failure = classifyRunError(
-        error instanceof SessionsError ? error.code : null
+        error instanceof SessionsError
+          ? error.code
+          : isIndexLockContention(error)
+            ? "SESSIONS_BUSY"
+            : null
       );
     } finally {
       if (lease?.ok) await lease.release().catch(() => undefined);

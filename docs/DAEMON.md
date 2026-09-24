@@ -271,6 +271,10 @@ does nothing here; `gno serve` never drains or schedules.
 
 - Each import runs in a child process, like REST and MCP imports, so the
   daemon keeps answering MCP and status requests during a long import.
+  Status requests never wait for the import's index writes: the activation
+  receipt they cache is skipped while another writer holds the index.
+- A tick that finds the automation state busy (a run or state change in
+  progress) is retried on the next tick; it is logged only with `--verbose`.
 - Imports take the shared `.mcp-write.lock` lease with no wait; a busy lease
   or import lock is recorded as a failed run with reason `busy` and retried
   with backoff.

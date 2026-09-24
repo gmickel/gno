@@ -14,6 +14,7 @@ import type {
   SessionSourceStatus,
 } from "./api";
 
+import { retryWording } from "../../../../sessions/format";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -75,12 +76,15 @@ function scheduleLine(
 function runOutcomeTail(
   run: SessionAutomationRunResult,
   profile: SessionProfileStatus,
+  daemonRunning: boolean,
   at: (iso: string | null) => string
 ): string {
   if (run.outcome === "failed") {
-    if (profile.state === "retrying" && profile.retryAt) {
-      return `; retried automatically at ${at(profile.retryAt)}`;
-    }
+    const retry =
+      profile.state === "retrying"
+        ? retryWording(profile.retryAt, daemonRunning, new Date(), at)
+        : null;
+    if (retry) return `; ${retry}`;
     return profile.recovery ? "; see the recovery action above" : "";
   }
   return run.pending ? "; work is still pending" : "";
@@ -443,6 +447,12 @@ function ProfileCard({
     await onChanged();
   };
 
+  const retryLine = retryWording(
+    profile.retryAt,
+    daemonRunning,
+    new Date(),
+    at
+  );
   const hookOn = profile.hook?.enabled === true;
   const scheduleOn = profile.schedule?.enabled === true;
   const run = profile.lastRun;
@@ -599,7 +609,7 @@ function ProfileCard({
             <dd>
               since {at(profile.pending.since)} (
               {profile.pending.triggers.join(", ") || "continuation"})
-              {profile.retryAt && `; retry at ${at(profile.retryAt)}`}
+              {retryLine ? `; ${retryLine}` : ""}
             </dd>
           </>
         )}
@@ -638,7 +648,7 @@ function ProfileCard({
           {lastRun.ran
             ? `${lastRun.outcome}${lastRun.reason ? ` (${lastRun.reason})` : ""}`
             : `not started (${lastRun.reason ?? "unknown"})`}
-          {runOutcomeTail(lastRun, profile, at)}
+          {runOutcomeTail(lastRun, profile, daemonRunning, at)}
         </p>
       )}
       {error && (

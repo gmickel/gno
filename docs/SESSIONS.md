@@ -695,15 +695,15 @@ only: no session content and no host paths.
 
 ### Failures, retries, and recovery
 
-| Reason code             | Cause                                                      | What happens                                                    |
-| :---------------------- | :--------------------------------------------------------- | :-------------------------------------------------------------- |
-| `busy`                  | Another import or index writer holds the archive           | Retried with backoff (1m, 2m, 4m, … up to 30m), `retries` times |
-| `runtime_error`         | Filesystem or index failure                                | Retried with backoff                                            |
-| `interrupted`           | The process running it died                                | Pending work kept; the next daemon tick reruns it               |
-| `source_revoked`        | A profile source is no longer registered                   | No automatic retry; fix the profile or re-register the source   |
-| `source_unavailable`    | A source or the archive directory is missing or unreadable | No automatic retry; fix it, then `automation run`               |
-| `invalid_configuration` | Collections, binding, or source settings no longer match   | No automatic retry; correct the config                          |
-| `import_failed`         | Every processed unit failed                                | No automatic retry; check the receipt of `automation run`       |
+| Reason code             | Cause                                                                                       | What happens                                                                                                                                                             |
+| :---------------------- | :------------------------------------------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `busy`                  | Another import or index writer holds the archive or index (including a locked SQLite index) | A running daemon retries it with backoff (1m, 2m, 4m, … up to 30m), `retries` times; without a daemon, run it again yourself. `automation run` exits 4 (`SESSIONS_BUSY`) |
+| `runtime_error`         | Filesystem or index failure                                                                 | Retried with backoff                                                                                                                                                     |
+| `interrupted`           | The process running it died                                                                 | Pending work kept; the next daemon tick reruns it                                                                                                                        |
+| `source_revoked`        | A profile source is no longer registered                                                    | No automatic retry; fix the profile or re-register the source                                                                                                            |
+| `source_unavailable`    | A source or the archive directory is missing or unreadable                                  | No automatic retry; fix it, then `automation run`                                                                                                                        |
+| `invalid_configuration` | Collections, binding, or source settings no longer match                                    | No automatic retry; correct the config                                                                                                                                   |
+| `import_failed`         | Every processed unit failed                                                                 | No automatic retry; check the receipt of `automation run`                                                                                                                |
 
 Schedule ticks and hook events never reset a pending backoff, and never
 clear a failure marked "no automatic retry". Once the automatic retries of a

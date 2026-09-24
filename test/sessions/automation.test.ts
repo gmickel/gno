@@ -1124,13 +1124,100 @@ describe("re-drive QA regressions", () => {
     const line = formatAutomationRunText(failed);
     expect(line).not.toContain("pending");
     expect(line).toContain("recovery action");
-    expect(formatAutomationRunText({ ...failed, reason: "busy" })).toContain(
-      "retried automatically"
-    );
+    const busyLine = formatAutomationRunText({ ...failed, reason: "busy" });
+    expect(busyLine).toContain("a running daemon retries it");
+    expect(busyLine).not.toContain("recovery action");
     const text = formatStatusText(await status());
     expect(text).not.toContain("pending since");
     expect(text).toContain(
       "action: A selected source or the archive destination is missing"
     );
+  });
+});
+
+describe("retry wording", () => {
+  test("no daemon promises no time; a passed time is not shown as upcoming", async () => {
+    const { retryWording } = await import("../../src/sessions/format");
+    const now = new Date("2026-09-24T12:00:00.000Z");
+    const at = (iso: string | null) => iso ?? "never";
+    expect(retryWording("2026-09-24T12:05:00.000Z", false, now, at)).toBe(
+      "retried when the daemon runs, or run the profile again yourself"
+    );
+    expect(retryWording("2026-09-24T12:05:00.000Z", true, now, at)).toBe(
+      "retried automatically at 2026-09-24T12:05:00.000Z"
+    );
+    expect(retryWording("2026-09-24T11:55:00.000Z", true, now, at)).toBe(
+      "retry due on the daemon's next tick"
+    );
+    expect(retryWording(null, true, now, at)).toBeNull();
+  });
+});
+
+describe("index contention is a busy run", () => {
+  test("a locked index while syncing a new archive collection records busy, not runtime_error", async () => {
+    const result = await withStore((store) => {
+      const locked = Object.create(store) as typeof store;
+      locked.getCollections = async () => ({ ok: true, value: [] });
+      locked.syncCollections = async () => ({
+        ok: false,
+        error: {
+          code: "QUERY_FAILED",
+          message: "database is locked",
+        },
+      });
+      return runAutomationProfile(
+        { ...ctx(), store: locked, alive: dead },
+        "main",
+        { trigger: "manual" }
+      );
+    });
+    expect(result).toMatchObject({ outcome: "failed", reason: "busy" });
+    expect((await profileRun())?.lastRun?.reason).toBe("busy");
+  });
+
+  test("a contended CLI run exits 4 with SESSIONS_BUSY and records the busy run", async () => {
+    const { acquireCliWriteLease } = await import("../../src/core/write-lease");
+    const { getIndexDbPath } = await import("../../src/app/constants");
+    const { runCli } = await import("../../src/cli/run");
+    const lease = await acquireCliWriteLease({
+      dbPath: getIndexDbPath(INDEX),
+      waitMs: 0,
+      noWait: true,
+      command: "test holder",
+    });
+    expect(lease.ok).toBe(true);
+    let output = "";
+    const out = process.stdout.write.bind(process.stdout);
+    const err = process.stderr.write.bind(process.stderr);
+    const capture = (chunk: string | Uint8Array): boolean => {
+      output += typeof chunk === "string" ? chunk : chunk.toString();
+      return true;
+    };
+    process.stdout.write = capture;
+    process.stderr.write = capture;
+    let code: number;
+    try {
+      code = await runCli([
+        "node",
+        "gno",
+        "--config",
+        configPath,
+        "--index",
+        INDEX,
+        "sessions",
+        "automation",
+        "run",
+        "main",
+        "--json",
+      ]);
+    } finally {
+      process.stdout.write = out;
+      process.stderr.write = err;
+      if (lease.ok) await lease.release();
+    }
+    expect(code).toBe(4);
+    expect(output).toContain("SESSIONS_BUSY");
+    expect(output).not.toContain("database is locked");
+    expect((await profileRun())?.lastRun?.reason).toBe("busy");
   });
 });

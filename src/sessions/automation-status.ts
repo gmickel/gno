@@ -116,7 +116,10 @@ function recoveryFor(
   // A live run needs no action; suggesting "run now" would only hit busy.
   if (state === "running") return null;
   const scheduled = scheduleRunnable(profile);
-  if (daemon !== "running" && (scheduled || state === "pending")) {
+  if (
+    daemon !== "running" &&
+    (scheduled || state === "pending" || state === "retrying")
+  ) {
     return `not running: no daemon. Schedules and admitted hook work run only while \`gno daemon\` runs on this archive's config and index; or run \`gno sessions automation run ${id}\` now.`;
   }
   if (state === "partial") {

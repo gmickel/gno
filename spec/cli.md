@@ -1978,7 +1978,9 @@ restart):
   profile and its run state. Archives are never deleted.
 - `run` admits a manual trigger and runs the profile through the importer
   (`sessions import --source` per source, bounded by `limit`). Output:
-  `sessions-automation-run` schema; exit `RUNTIME` (2) when the outcome is
+  `sessions-automation-run` schema; exit `BUSY` (4, `SESSIONS_BUSY`) when the
+  run failed with reason `busy` (another import, lease holder or a locked
+  index; the busy run is recorded), exit `RUNTIME` (2) when the outcome is
   `failed`.
 
 **hook**: `sessions hook claude-code --profile <id>` is the command an

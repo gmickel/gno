@@ -204,10 +204,18 @@ export async function daemon(
       }),
     onSessionAutomationResult: (result) =>
       logSessionAutomationResult(result, logger, { quiet: options.quiet }),
-    onSessionAutomationError: (error) =>
+    onSessionAutomationError: (error) => {
+      // Busy state (a run or state change in progress) is retried next tick.
+      if (error instanceof SessionsError && error.code === "SESSIONS_BUSY") {
+        if (options.verbose) {
+          logger.log("session automation: run in progress; next tick retries");
+        }
+        return;
+      }
       logger.error(
         `session automation tick failed: ${error instanceof SessionsError ? error.code : "runtime error"}`
-      ),
+      );
+    },
     watchCallbacks: {
       onSyncStart: ({ collection, relPaths }) => {
         if (!options.quiet) {

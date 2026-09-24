@@ -10,7 +10,9 @@
 
 import type { Config } from "../../config/types";
 
+import { getIndexDbPath } from "../../app/constants";
 import { getConfigPaths, isInitialized, loadConfig } from "../../config";
+import { acquireCliWriteLease } from "../../core/write-lease";
 import {
   type AutomationContext,
   admitHookTrigger,
@@ -49,6 +51,7 @@ import {
   type SessionsStatus,
   SESSIONS_VALIDATION_CODES,
 } from "../../sessions/types";
+import { SqliteAdapter } from "../../store/sqlite/adapter";
 import { CliError } from "../errors";
 import { initStore } from "./shared";
 
@@ -455,18 +458,41 @@ export function runAutomation(
 ): Promise<SessionAutomationRunResult> {
   return withCliErrors(async () => {
     const ctx = automationContext(context);
-    const opened = await initStore({
-      configPath: ctx.configPath,
-      indexName: context.indexName,
-      allowEmptyCollections: true,
-    });
-    if (!opened.ok) throw new CliError("RUNTIME", opened.error);
+    const { config } = await loadArchiveConfig(context);
+    const dbPath = getIndexDbPath(context.indexName);
+    // Open without projecting the config: the run syncs only what it needs,
+    // so a busy index becomes a recorded `busy` run, not a raw lock error.
+    const store = new SqliteAdapter();
+    store.setConfigPath(ctx.configPath);
+    const opened = await store.open(
+      dbPath,
+      config.ftsTokenizer,
+      config.busyTimeoutMs
+    );
+    if (!opened.ok) throw new CliError("RUNTIME", opened.error.message);
     try {
-      return await runAutomationProfile({ ...ctx, store: opened.store }, id, {
-        trigger: "manual",
-      });
+      return await runAutomationProfile(
+        {
+          ...ctx,
+          store,
+          // Like the daemon: a concurrent writer is a recorded busy run.
+          acquireLease: async () => {
+            const lease = await acquireCliWriteLease({
+              dbPath,
+              waitMs: 0,
+              noWait: true,
+              command: "gno sessions automation run",
+            });
+            return lease.ok
+              ? { ok: true, release: lease.release }
+              : { ok: false };
+          },
+        },
+        id,
+        { trigger: "manual" }
+      );
     } finally {
-      await opened.store.close();
+      await store.close();
     }
   });
 }

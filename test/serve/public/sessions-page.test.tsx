@@ -385,7 +385,9 @@ describe("sessions page", () => {
       await screen.findByRole("button", { name: "Run nightly now" })
     );
     const line = await screen.findByText(/Run now: failed \(busy\)/);
-    expect(line.textContent).toContain("retried automatically at");
+    // No daemon runs in this fixture: no retry time is promised.
+    expect(line.textContent).toContain("retried when the daemon runs");
+    expect(line.textContent).not.toContain("retried automatically");
     expect(line.textContent).not.toContain("recovery action");
   });
 

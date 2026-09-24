@@ -786,14 +786,14 @@ $A sessions automation disable claude [--hook] [--schedule]
 $A sessions automation remove claude
 ```
 
-| Subcommand          | Description                                                                                                               |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `set <profile>`     | Create or reconfigure a profile: `--source <id>` (repeatable), `--cadence`, `--limit`, `--retries`. Enables nothing.      |
-| `preview <profile>` | Sources with paths, destinations, the exact hook command and settings file, schedule, budget, daemon prerequisite.        |
-| `enable <profile>`  | `--hook claude-code` installs the owned SessionEnd entry; `--schedule --cadence <n>s\|m\|h\|d` (min `1m`) turns on ticks. |
-| `run <profile>`     | Run the profile now through the importer (exit 2 when the run failed).                                                    |
-| `disable <profile>` | Pause: switch triggers off (all, or `--hook` / `--schedule`), remove the owned entry, clear pending work.                 |
-| `remove <profile>`  | Uninstall owned integrations and delete the profile; archives are kept.                                                   |
+| Subcommand          | Description                                                                                                                       |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `set <profile>`     | Create or reconfigure a profile: `--source <id>` (repeatable), `--cadence`, `--limit`, `--retries`. Enables nothing.              |
+| `preview <profile>` | Sources with paths, destinations, the exact hook command and settings file, schedule, budget, daemon prerequisite.                |
+| `enable <profile>`  | `--hook claude-code` installs the owned SessionEnd entry; `--schedule --cadence <n>s\|m\|h\|d` (min `1m`) turns on ticks.         |
+| `run <profile>`     | Run the profile now through the importer (exit 4 `SESSIONS_BUSY` when the archive is busy, exit 2 when the run failed otherwise). |
+| `disable <profile>` | Pause: switch triggers off (all, or `--hook` / `--schedule`), remove the owned entry, clear pending work.                         |
+| `remove <profile>`  | Uninstall owned integrations and delete the profile; archives are kept.                                                           |
 
 All subcommands accept `--json`. `run --json` prints the
 `sessions-automation-run` object.

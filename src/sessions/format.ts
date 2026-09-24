@@ -60,6 +60,25 @@ export function formatStatusText(status: SessionsStatus): string {
   return lines.join("\n");
 }
 
+/**
+ * When a failed run is retried. Only a running daemon retries, so without one
+ * no time is promised, and a due time already passed is not shown as upcoming.
+ */
+export function retryWording(
+  retryAt: string | null,
+  daemonRunning: boolean,
+  now: Date,
+  at: (iso: string | null) => string
+): string | null {
+  if (!retryAt) return null;
+  if (!daemonRunning) {
+    return "retried when the daemon runs, or run the profile again yourself";
+  }
+  return Date.parse(retryAt) <= now.getTime()
+    ? "retry due on the daemon's next tick"
+    : `retried automatically at ${at(retryAt)}`;
+}
+
 /** UTC instant shown in the reader's timezone, e.g. `2026-09-24 15:04:05`. */
 export function formatLocalTime(iso: string | null, timezone: string): string {
   if (!iso) return "never";
@@ -113,7 +132,13 @@ function formatAutomationLines(automation: SessionAutomationStatus): string[] {
     // A failure awaiting correction is shown by state and action, not as
     // queued work.
     if (profile.pending && profile.state !== "failed") {
-      const retry = profile.retryAt ? `, retry at ${at(profile.retryAt)}` : "";
+      const wording = retryWording(
+        profile.retryAt,
+        automation.daemon.state === "running",
+        new Date(),
+        at
+      );
+      const retry = wording ? `; ${wording}` : "";
       lines.push(
         `  pending since ${at(profile.pending.since)} (${profile.pending.triggers.join(", ") || "continuation"})${retry}`
       );
@@ -139,7 +164,7 @@ const RETRYABLE_REASONS = new Set(["busy", "runtime_error", "interrupted"]);
 export function runTail(result: SessionAutomationRunResult): string {
   if (result.outcome === "failed") {
     return RETRYABLE_REASONS.has(result.reason ?? "")
-      ? "; it is retried automatically (see gno sessions status for when)"
+      ? "; a running daemon retries it, or run it again once the archive is free (see gno sessions status)"
       : "; see gno sessions status for the recovery action";
   }
   return result.pending ? "; more work is pending" : "";

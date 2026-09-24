@@ -2362,6 +2362,13 @@ function wireSessionsAutomationCommands(
         formatAutomationRun(result, asJson(cmdOpts)),
         getFormat(cmdOpts)
       );
+      if (result.outcome === "failed" && result.reason === "busy") {
+        throw new CliError(
+          "BUSY",
+          "The archive is busy (another import or index writer); the run is recorded and retried.",
+          { details: { sessionsCode: "SESSIONS_BUSY" } }
+        );
+      }
       if (result.outcome === "failed") {
         throw new CliError(
           "RUNTIME",
