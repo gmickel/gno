@@ -45,3 +45,33 @@ export async function buildSqliteFixtures(root: string): Promise<{
   hermes.close();
   return { openclawRoot, openclawDb, hermesRoot, hermesDb };
 }
+
+/** Environment keys the session tests redirect to temp directories. */
+const SESSION_TEST_ENV_KEYS = [
+  "GNO_CONFIG_DIR",
+  "GNO_DATA_DIR",
+  "GNO_CACHE_DIR",
+  "HOME",
+  "CODEX_HOME",
+  "CLAUDE_CONFIG_DIR",
+  "OPENCLAW_STATE_DIR",
+  "OPENCLAW_HOME",
+  "HERMES_HOME",
+] as const;
+
+/**
+ * Snapshot the session-related environment. `restore()` deletes keys that
+ * were unset (assigning `undefined` would store the string "undefined" and
+ * leak into later test files in the same process).
+ */
+export function snapshotSessionEnv(): () => void {
+  const saved = new Map(
+    SESSION_TEST_ENV_KEYS.map((key) => [key, process.env[key]] as const)
+  );
+  return () => {
+    for (const [key, value] of saved) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  };
+}

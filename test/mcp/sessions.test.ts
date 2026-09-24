@@ -21,17 +21,13 @@ import { createMcpServerSurface } from "../../src/mcp/context";
 import { handleSessionsImport } from "../../src/mcp/tools/sessions";
 import { addSessionSource, initSessionArchive } from "../../src/sessions/setup";
 import { safeRm } from "../helpers/cleanup";
-import { FIXTURES, tempDir } from "../sessions/helpers";
+import { FIXTURES, snapshotSessionEnv, tempDir } from "../sessions/helpers";
 
 let root: string;
 let configPath: string;
 let store: SqliteAdapter;
 let ctxBase: Omit<ToolContext, "enableWrite">;
-const env = {
-  config: process.env.GNO_CONFIG_DIR,
-  data: process.env.GNO_DATA_DIR,
-  cache: process.env.GNO_CACHE_DIR,
-};
+const restoreEnv = snapshotSessionEnv();
 
 async function surface(enableWrite: boolean) {
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
@@ -91,10 +87,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await store.close();
-  process.env.GNO_CONFIG_DIR = env.config;
-  process.env.GNO_DATA_DIR = env.data;
-  process.env.GNO_CACHE_DIR = env.cache;
+  restoreEnv();
+  await store?.close();
   await safeRm(root);
 });
 

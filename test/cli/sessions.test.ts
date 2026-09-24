@@ -6,11 +6,11 @@ import { join } from "node:path";
 
 import { runCli } from "../../src/cli/run";
 import { safeRm } from "../helpers/cleanup";
-import { FIXTURES, tempDir } from "../sessions/helpers";
+import { FIXTURES, snapshotSessionEnv, tempDir } from "../sessions/helpers";
 
 let root: string;
 let archiveConfig: string;
-const saved = { ...process.env };
+const restoreEnv = snapshotSessionEnv();
 
 async function cli(
   ...args: string[]
@@ -97,7 +97,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  process.env = saved;
+  restoreEnv();
   await safeRm(root);
 });
 

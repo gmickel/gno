@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 // node:fs/promises for temp fixtures (no Bun equivalent for cp/mkdir/readdir)
-import { appendFile, cp, mkdir, readdir, rename } from "node:fs/promises";
+import {
+  appendFile,
+  cp,
+  mkdir,
+  readdir,
+  realpath,
+  rename,
+  symlink,
+} from "node:fs/promises";
 // node:path has no Bun path utilities
 import { join } from "node:path";
 
@@ -23,9 +31,10 @@ import { type SessionHarness, SessionsError } from "../../src/sessions/types";
 import { openScopedIndexStore } from "../../src/store/sqlite/scoped-index";
 import { safeRm } from "../helpers/cleanup";
 import {
-  buildSqliteFixtures,
-  FIXTURE_SECRETS,
   FIXTURES,
+  FIXTURE_SECRETS,
+  buildSqliteFixtures,
+  snapshotSessionEnv,
   tempDir,
 } from "./helpers";
 
@@ -39,11 +48,7 @@ let root: string;
 let configPath: string;
 let archiveRoot: string;
 let codexRoot: string;
-const env = {
-  config: process.env.GNO_CONFIG_DIR,
-  data: process.env.GNO_DATA_DIR,
-  cache: process.env.GNO_CACHE_DIR,
-};
+const restoreEnv = snapshotSessionEnv();
 
 async function listFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, {
@@ -184,9 +189,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  process.env.GNO_CONFIG_DIR = env.config;
-  process.env.GNO_DATA_DIR = env.data;
-  process.env.GNO_CACHE_DIR = env.cache;
+  restoreEnv();
   await safeRm(root);
 });
 
@@ -848,11 +851,37 @@ describe("archive isolation (R8)", () => {
     );
   });
 
+  test("a config reached through a symlinked directory binds consistently", async () => {
+    // macOS temp dirs live behind /var -> /private/var; model that here.
+    const real = join(root, "real-dir");
+    const alias = join(root, "alias-dir");
+    await mkdir(real, { recursive: true });
+    await symlink(real, alias, "dir");
+    const aliasConfig = join(alias, "archive.yml");
+    await initSessionArchive({
+      configPath: aliasConfig,
+      indexName: "aliased",
+      archiveRoot: join(root, "aliased-archive"),
+      collection: "work",
+    });
+    for (const path of [aliasConfig, join(real, "archive.yml")]) {
+      const opened = await initStore({
+        configPath: path,
+        indexName: "aliased",
+        allowEmptyCollections: true,
+      });
+      if (!opened.ok) throw new Error(opened.error);
+      await opened.store.close();
+    }
+  });
+
   test("archive collections are not memory-managed and live under the archive root", async () => {
     const config = await loadArchiveConfig();
+    // The archive root is stored canonically (temp dirs may be symlinked).
+    const canonicalRoot = await realpath(archiveRoot);
     for (const collection of config.collections) {
       expect(collection.memoryManaged).toBeUndefined();
-      expect(collection.path.startsWith(archiveRoot)).toBe(true);
+      expect(collection.path.startsWith(canonicalRoot)).toBe(true);
       expect(collection.recordAdapters?.jsonl?.fieldMapping?.author).toBe(
         "/author"
       );

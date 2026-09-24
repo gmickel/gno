@@ -461,6 +461,8 @@ export class SessionsService {
         "Path imports need an explicit destination: --collection <archive collection>."
       );
     }
+    // Validate the destination before touching the filesystem.
+    archiveCollection(this.deps.config, sessions, input.collection);
     const resolved: ResolvedSource[] = [];
     for (const path of paths) {
       if (!isAbsolute(path)) {

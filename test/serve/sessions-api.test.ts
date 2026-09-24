@@ -33,7 +33,7 @@ import { startServer } from "../../src/serve/server";
 import { addSessionSource, initSessionArchive } from "../../src/sessions/setup";
 import { importLockPath } from "../../src/sessions/state";
 import { safeRm } from "../helpers/cleanup";
-import { FIXTURES, tempDir } from "../sessions/helpers";
+import { FIXTURES, snapshotSessionEnv, tempDir } from "../sessions/helpers";
 
 const INDEX = "sessions";
 const ORIGIN = "http://127.0.0.1:3000";
@@ -56,11 +56,7 @@ let codexRoot: string;
 let store: SqliteAdapter;
 let ctxHolder: ContextHolder;
 let markContent: ReturnType<typeof mock>;
-const env = {
-  config: process.env.GNO_CONFIG_DIR,
-  data: process.env.GNO_DATA_DIR,
-  cache: process.env.GNO_CACHE_DIR,
-};
+const restoreEnv = snapshotSessionEnv();
 
 async function listFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, {
@@ -146,10 +142,8 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  restoreEnv();
   await store?.close();
-  process.env.GNO_CONFIG_DIR = env.config;
-  process.env.GNO_DATA_DIR = env.data;
-  process.env.GNO_CACHE_DIR = env.cache;
   await safeRm(root);
 });
 

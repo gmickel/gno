@@ -106,6 +106,8 @@ async function bindArchiveIndex(
     throw new SessionsError("SESSIONS_INVALID_INPUT", existing.error.message);
   }
   const config = existing?.ok ? existing.value : createDefaultConfig();
+  // The config's directory must exist so its canonical path is final.
+  await mkdir(dirname(resolve(configPath)), { recursive: true });
   const dbPath = getIndexDbPath(indexName);
   await mkdir(dirname(dbPath), { recursive: true });
   const store = new SqliteAdapter();
