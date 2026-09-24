@@ -10,8 +10,8 @@ Live QA of retry-safe writes found three small Web UI problems that predate that
 
 - **R1:** [inferred] After a tag save commits, the document view's tag list shows the saved tags without a reload. Errors: a failed or conflicting tag save keeps the previous tags and shows the error.
 - **R2:** [inferred] While a save outcome is unknown (lost response), the editor says the save may have completed and offers retry, rather than claiming an outside change; a genuine outside change still shows the reload banner.
-- **R4:** [inferred] Search result snippets on the main Search page render highlights as elements and strip Markdown escapes (for example `\#`, `\_`), reusing the session-search snippet renderer rather than a second implementation. Errors: untrusted snippet text is never injected as HTML.
 - **R3:** [inferred] The home dashboard has no content wider than the viewport at 390px; verify with a screenshot at 390x844 and 1440x900.
+- **R4:** [inferred] Search result snippets on the main Search page render highlights as elements and strip Markdown escapes (for example `\#`, `\_`), reusing the session-search snippet renderer rather than a second implementation. Errors: untrusted snippet text is never injected as HTML.
 
 ## Boundaries
 <!-- scope: business -->
