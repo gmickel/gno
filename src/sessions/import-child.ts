@@ -23,6 +23,7 @@ import type { Config } from "../config/types";
 import type { SessionImportReceipt } from "./types";
 
 import { getIndexDbPath } from "../app/constants";
+import { isStandaloneExecutable } from "../serve/spa-production-build";
 import { SqliteAdapter } from "../store/sqlite/adapter";
 import { assertSessionBinding } from "./binding";
 import { IMPORT_CHILD_ENV } from "./import-child-env";
@@ -94,7 +95,8 @@ export async function importInChildProcess(
   request: ImportChildRequest
 ): Promise<SessionImportReceipt> {
   // A compiled executable cannot run an external TS entry: it re-runs itself.
-  const compiled = import.meta.dir.includes("$bunfs");
+  // Shared check: covers the POSIX `/$bunfs/` and Windows `B:/~BUN/` roots.
+  const compiled = isStandaloneExecutable();
   const child = Bun.spawn({
     cmd: compiled ? [process.execPath] : [process.execPath, import.meta.path],
     env: compiled ? { ...process.env, [IMPORT_CHILD_ENV]: "1" } : process.env,
