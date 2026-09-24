@@ -1051,8 +1051,15 @@ describe("live QA regressions", () => {
   });
 });
 
+// chmod cannot make a directory unreadable on Windows or for root.
+const canRevokeRead = process.platform !== "win32" && process.getuid?.() !== 0;
+
 describe("fn-171 unreadable source through automation", () => {
-  test.each(["missing", "unreadable"] as const)(
+  test.each(
+    canRevokeRead
+      ? (["missing", "unreadable"] as const)
+      : (["missing"] as const)
+  )(
     "a %s source root fails the run as source_unavailable and keeps lastSuccessAt",
     async (kind) => {
       expect(await runNow()).toMatchObject({ outcome: "complete" });
