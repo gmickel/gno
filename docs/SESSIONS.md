@@ -826,6 +826,11 @@ allowed client; discovery, source registration and removal, archive init,
 and every automation profile change (create, preview, enable, disable,
 remove) answer only a same-host client (a local process; cross-origin
 browser pages are refused).
+`gno serve` and `gno mcp` run each import (including automation Run now)
+in a separate process, so the server keeps answering (health, status, the
+Web UI) while a large import runs; the receipt and error codes are the same
+as from the CLI. The resident file watcher does not follow archive
+collections: the import syncs the files it writes.
 
 **SDK** ([SDK.md](SDK.md#agent-sessions)). Open a client on the archive pair:
 

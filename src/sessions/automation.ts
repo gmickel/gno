@@ -72,6 +72,7 @@ import {
   SessionAutomationProfileSchema,
   type SessionHookHarness,
 } from "./config";
+import { importInChildProcess } from "./import-child";
 import { SessionsService } from "./service";
 import { canonicalPath } from "./sources";
 import {
@@ -812,6 +813,12 @@ export interface AutomationRunDeps extends AutomationContext {
   acquireLease?: () => Promise<
     { ok: true; release: () => Promise<void> } | { ok: false }
   >;
+  /**
+   * Servers (`serve`, the daemon's HTTP/MCP listener, stdio MCP) import in a
+   * child process so a long import never blocks their event loop; the CLI
+   * and SDK import in their own process.
+   */
+  inChildProcess?: boolean;
 }
 
 function summarizeRun(
@@ -963,6 +970,20 @@ export async function runAutomationProfile(
         syncService: deps.syncService,
         now: deps.now,
       });
+      const importSource = (sourceId: string) =>
+        deps.inChildProcess
+          ? importInChildProcess({
+              config,
+              configPath: deps.configPath,
+              indexName: deps.indexName,
+              sourceId,
+              dryRun: false,
+              limit: profileLimit(profile),
+            })
+          : service.import(
+              { sourceId, limit: profileLimit(profile) },
+              { allowPaths: false }
+            );
       for (const sourceId of profile.sources) {
         if (
           !config.sessions?.sources.some((source) => source.id === sourceId)
@@ -972,12 +993,7 @@ export async function runAutomationProfile(
             "A profile source is no longer registered."
           );
         }
-        receipts.push(
-          await service.import(
-            { sourceId, limit: profileLimit(profile) },
-            { allowPaths: false }
-          )
-        );
+        receipts.push(await importSource(sourceId));
       }
     } catch (error) {
       failure = classifyRunError(

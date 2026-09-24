@@ -17,7 +17,7 @@ import type { RequestPeerServer } from "../request-locality";
 import type { ContextHolder } from "./api";
 
 import { getIndexDbPath } from "../../app/constants";
-import { loadConfig } from "../../config";
+import { getConfigPaths, loadConfig } from "../../config";
 import { withContentTypeRules } from "../../ingestion";
 import {
   type AutomationContext,
@@ -29,7 +29,8 @@ import {
   setAutomationProfile,
 } from "../../sessions/automation";
 import { assertSessionBinding } from "../../sessions/binding";
-import { SessionSourceSchema } from "../../sessions/config";
+import { SessionSourceSchema, watchedCollections } from "../../sessions/config";
+import { importInChildProcess } from "../../sessions/import-child";
 import { SessionsService } from "../../sessions/service";
 import {
   addSessionSource,
@@ -236,7 +237,7 @@ async function adoptConfig(
   ctxHolder.config = config;
   ctxHolder.current = { ...ctxHolder.current, config };
   ctxHolder.watchService?.updateCollections(
-    config.collections,
+    watchedCollections(config),
     withContentTypeRules({}, config)
   );
   await ctxHolder.invalidateEgressPolicy?.();
@@ -266,7 +267,6 @@ export async function handleSessionsStatus(
  */
 export async function handleSessionsImport(
   ctxHolder: ContextHolder,
-  store: SqliteAdapter,
   req: Request
 ): Promise<Response> {
   const parsed = await readObjectBody(req);
@@ -312,15 +312,17 @@ export async function handleSessionsImport(
 
   let receipt: SessionImportReceipt;
   try {
-    const service = await archiveService(ctxHolder, store);
-    receipt = await service.import(
-      {
-        sourceId: body.sourceId.trim(),
-        dryRun: body.dryRun === true,
-        limit: body.limit as number | undefined,
-      },
-      { allowPaths: false }
-    );
+    await assertInstanceBinding(ctxHolder);
+    const { configPath, indexName } = instanceIdentity(ctxHolder);
+    // A child process keeps this server answering during a long import.
+    receipt = await importInChildProcess({
+      config: ctxHolder.config,
+      configPath: configPath || getConfigPaths().configFile,
+      indexName,
+      sourceId: body.sourceId.trim(),
+      dryRun: body.dryRun === true,
+      limit: body.limit as number | undefined,
+    });
   } catch (error) {
     return sessionsErrorResponse(error);
   }
@@ -550,7 +552,12 @@ export async function handleSessionsAutomationRun(
   }
   try {
     const result = await runAutomationProfile(
-      { ...(await automationContext(ctxHolder)), store },
+      {
+        ...(await automationContext(ctxHolder)),
+        store,
+        // A child process keeps this server answering during the run.
+        inChildProcess: true,
+      },
       body.profileId.trim(),
       { trigger: "manual" }
     );

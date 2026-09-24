@@ -129,7 +129,7 @@ import {
 } from "./routes/traces";
 import {
   forbiddenResponse,
-  isOriginAllowed,
+  isOriginOrTokenAllowed,
   isRequestAllowed,
 } from "./security";
 import {
@@ -866,13 +866,18 @@ export async function startServer(
             ),
         },
         "/api/sessions/discover": {
-          GET: async (req: Request, server: RequestPeerServer) =>
-            withSecurityHeaders(
+          GET: async (req: Request, server: RequestPeerServer) => {
+            // Returns host paths: a cross-origin page is refused like a write.
+            if (!isOriginOrTokenAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
               await handleResidentRead(runtime as ResidentRuntime, req, () =>
                 handleSessionsDiscover(ctxHolder, req, { server })
               ),
               isDev
-            ),
+            );
+          },
         },
         "/api/sessions/import": {
           POST: async (req: Request) => {
@@ -880,7 +885,7 @@ export async function startServer(
               return withSecurityHeaders(forbiddenResponse(), isDev);
             }
             return withSecurityHeaders(
-              await handleSessionsImport(ctxHolder, store, req),
+              await handleSessionsImport(ctxHolder, req),
               isDev
             );
           },
@@ -957,7 +962,7 @@ export async function startServer(
         },
         "/api/sessions/automation/:id/preview": {
           GET: async (req: Request, server: RequestPeerServer) =>
-            !isOriginAllowed(req, port)
+            !isOriginOrTokenAllowed(req, port)
               ? withSecurityHeaders(forbiddenResponse(), isDev)
               : withSecurityHeaders(
                   await handleResidentRead(

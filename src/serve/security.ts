@@ -69,14 +69,15 @@ export function isRequestAllowed(req: Request, port: number): boolean {
   }
 
   // Unsafe methods - require valid Origin or token
-  return isOriginAllowed(req, port);
+  return isOriginOrTokenAllowed(req, port);
 }
 
 /**
- * Origin/token check for any method. Owner-only reads that return host
- * paths use it so a cross-origin page is refused like a mutation.
+ * Origin/token check without the safe-method exemption. Owner-only reads
+ * that return host paths use it so a cross-origin page is refused on GET
+ * the same way as on POST.
  */
-export function isOriginAllowed(req: Request, port: number): boolean {
+export function isOriginOrTokenAllowed(req: Request, port: number): boolean {
   return validateToken(req) || validateOrigin(req, port);
 }
 

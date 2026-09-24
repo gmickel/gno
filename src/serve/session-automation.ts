@@ -100,6 +100,8 @@ export class SessionAutomationScheduler {
       store: options.store,
       now: options.now,
       daemonStartedAt: this.#startedAt,
+      // The daemon serves MCP and status over HTTP: keep its loop free.
+      inChildProcess: true,
       acquireLease: async () => {
         const lease = await acquireCliWriteLease({
           dbPath: options.dbPath,

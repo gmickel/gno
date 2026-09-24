@@ -17,7 +17,7 @@ import type { ContextHolder } from "../../src/serve/routes/api";
 import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
 
 import { initStore } from "../../src/cli/commands/shared";
-import { getConfigPaths, loadConfig } from "../../src/config";
+import { getConfigPaths, loadConfig, saveConfigToPath } from "../../src/config";
 import { acquireWriteLock } from "../../src/core/file-lock";
 import { searchBm25 } from "../../src/pipeline/search";
 import {
@@ -40,7 +40,12 @@ import { setAutomationProfile } from "../../src/sessions/automation";
 import { addSessionSource, initSessionArchive } from "../../src/sessions/setup";
 import { importLockPath } from "../../src/sessions/state";
 import { safeRm } from "../helpers/cleanup";
-import { FIXTURES, snapshotSessionEnv, tempDir } from "../sessions/helpers";
+import {
+  FIXTURES,
+  snapshotSessionEnv,
+  tempDir,
+  writeSyntheticCodexRollouts,
+} from "../sessions/helpers";
 import { assertValid, loadSchema } from "../spec/schemas/validator";
 
 const INDEX = "sessions";
@@ -184,10 +189,108 @@ describe("GET /api/sessions/status", () => {
 });
 
 describe("POST /api/sessions/import", () => {
+  test("the import child uses the server's config and never syncs the file's into the index", async () => {
+    const loaded = await loadConfig(configPath);
+    if (!loaded.ok) throw new Error(loaded.error.message);
+    await saveConfigToPath(
+      {
+        ...loaded.value,
+        collections: [
+          ...loaded.value.collections,
+          {
+            ...loaded.value.collections[0]!,
+            name: "ghost",
+            path: join(root, "ghost"),
+          },
+        ],
+      },
+      configPath
+    );
+    const response = await handleSessionsImport(
+      ctxHolder,
+      post("/api/sessions/import", { sourceId: "codex-main" })
+    );
+    expect(response.status).toBe(200);
+    const collections = await store.getCollections();
+    if (!collections.ok) throw new Error(collections.error.message);
+    expect(collections.value.map((row) => row.name)).not.toContain("ghost");
+  });
+
+  // Imported in-process, each of these archive files syncs in one multi-second
+  // transaction and the server stops answering; the child process keeps the
+  // event loop free. The bound is generous for slow CI runners.
+  test(
+    "a large import leaves the server's event loop responsive",
+    async () => {
+      const MAX_TIMER_DRIFT_MS = 1000;
+      await writeSyntheticCodexRollouts(codexRoot, 3, 300);
+      let maxDrift = 0;
+      let expected = performance.now() + 20;
+      const probe = setInterval(() => {
+        const now = performance.now();
+        maxDrift = Math.max(maxDrift, now - expected);
+        expected = now + 20;
+      }, 20);
+      let response: Response;
+      try {
+        response = await handleSessionsImport(
+          ctxHolder,
+          post("/api/sessions/import", { sourceId: "codex-main" })
+        );
+      } finally {
+        clearInterval(probe);
+      }
+      expect(response.status).toBe(200);
+      const receipt = (await response.json()) as {
+        counts: { imported: number };
+      };
+      expect(receipt.counts.imported).toBeGreaterThanOrEqual(3);
+      expect(maxDrift).toBeLessThan(MAX_TIMER_DRIFT_MS);
+    },
+    { timeout: 180_000 }
+  );
+
+  test(
+    "an automation Run now leaves the server's event loop responsive",
+    async () => {
+      const MAX_TIMER_DRIFT_MS = 1000;
+      await writeSyntheticCodexRollouts(codexRoot, 3, 300);
+      await setAutomationProfile(
+        { configPath, indexName: INDEX },
+        { id: "main", sources: ["codex-main"] }
+      );
+      let maxDrift = 0;
+      let expected = performance.now() + 20;
+      const probe = setInterval(() => {
+        const now = performance.now();
+        maxDrift = Math.max(maxDrift, now - expected);
+        expected = now + 20;
+      }, 20);
+      let response: Response;
+      try {
+        response = await handleSessionsAutomationRun(
+          ctxHolder,
+          store,
+          post("/api/sessions/automation/run", { profileId: "main" })
+        );
+      } finally {
+        clearInterval(probe);
+      }
+      expect(response.status).toBe(200);
+      const result = (await response.json()) as {
+        ran: boolean;
+        receipts: Array<{ counts: { imported: number } }>;
+      };
+      expect(result.ran).toBe(true);
+      expect(result.receipts[0]?.counts.imported).toBeGreaterThanOrEqual(3);
+      expect(maxDrift).toBeLessThan(MAX_TIMER_DRIFT_MS);
+    },
+    { timeout: 180_000 }
+  );
+
   test("dry run writes nothing and reports redaction/destination policy", async () => {
     const response = await handleSessionsImport(
       ctxHolder,
-      store,
       post("/api/sessions/import", { sourceId: "codex-main", dryRun: true })
     );
     expect(response.status).toBe(200);
@@ -210,7 +313,6 @@ describe("POST /api/sessions/import", () => {
   test("imports a registered source by ID and makes it searchable", async () => {
     const response = await handleSessionsImport(
       ctxHolder,
-      store,
       post("/api/sessions/import", { sourceId: "codex-main" })
     );
     expect(response.status).toBe(200);
@@ -244,7 +346,6 @@ describe("POST /api/sessions/import", () => {
     await expectError(
       await handleSessionsImport(
         ctxHolder,
-        store,
         post("/api/sessions/import", { paths: [codexRoot] })
       ),
       400,
@@ -254,7 +355,6 @@ describe("POST /api/sessions/import", () => {
       await expectError(
         await handleSessionsImport(
           ctxHolder,
-          store,
           post("/api/sessions/import", { sourceId: "codex-main", ...extra })
         ),
         400,
@@ -262,11 +362,7 @@ describe("POST /api/sessions/import", () => {
       );
     }
     await expectError(
-      await handleSessionsImport(
-        ctxHolder,
-        store,
-        post("/api/sessions/import", {})
-      ),
+      await handleSessionsImport(ctxHolder, post("/api/sessions/import", {})),
       400,
       "SESSIONS_SELECTION_REQUIRED"
     );
@@ -277,7 +373,6 @@ describe("POST /api/sessions/import", () => {
     await expectError(
       await handleSessionsImport(
         ctxHolder,
-        store,
         post("/api/sessions/import", { sourceId: "nope" })
       ),
       400,
@@ -293,7 +388,6 @@ describe("POST /api/sessions/import", () => {
       const body = await expectError(
         await handleSessionsImport(
           ctxHolder,
-          store,
           post("/api/sessions/import", { sourceId: "codex-main" })
         ),
         409,
@@ -529,6 +623,16 @@ describe("server wiring", () => {
             localServer
           );
           expect(csrf?.status).toBe(403);
+          // Discovery returns host paths: a cross-origin GET is refused too.
+          const crossOriginDiscover = await routes[
+            "/api/sessions/discover"
+          ]?.GET?.(
+            new Request(`${ORIGIN}/api/sessions/discover`, {
+              headers: { origin: "http://evil.example" },
+            }),
+            localServer
+          );
+          expect(crossOriginDiscover?.status).toBe(403);
           expect(
             ((await csrf?.json()) as ErrorBody | undefined)?.error.code
           ).toBe("CSRF_VIOLATION");

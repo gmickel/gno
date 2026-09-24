@@ -9,8 +9,10 @@
  */
 
 // node:path isAbsolute: no Bun path utilities.
-import { isAbsolute } from "node:path";
+import { isAbsolute, relative, resolve } from "node:path";
 import { z } from "zod";
+
+import type { Collection, Config } from "../config/types";
 
 import { MAX_IMPORT_LIMIT, SESSION_HARNESSES } from "./types";
 
@@ -156,3 +158,19 @@ export const SessionsConfigSchema = z
 
 export type SessionsConfig = z.infer<typeof SessionsConfigSchema>;
 export type SessionSourceConfig = z.infer<typeof SessionSourceSchema>;
+
+/**
+ * Collections a filesystem watcher follows. Session archive collections are
+ * written and synced only by the importer; a watcher re-syncing them would
+ * duplicate that work on the server's event loop and contend for the index
+ * write lock with the import.
+ */
+export function watchedCollections(config: Config): Collection[] {
+  const archiveRoot = config.sessions?.archiveRoot;
+  if (!archiveRoot) return config.collections;
+  const root = resolve(archiveRoot);
+  return config.collections.filter((collection) => {
+    const rel = relative(root, resolve(collection.path));
+    return rel.startsWith("..") || isAbsolute(rel);
+  });
+}

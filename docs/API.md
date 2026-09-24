@@ -2507,14 +2507,14 @@ redaction, and recovery.
 | :------------------------------------- | :----- | :--------------------------- | :-------------------------------------------------------------------- |
 | `/api/sessions/status`                 | GET    | any allowed client           | Archive collections and per-source status                             |
 | `/api/sessions/import`                 | POST   | any allowed client (CSRF)    | Manual import of one registered source by ID                          |
-| `/api/sessions/discover`               | GET    | same-host client only        | Preview supported local session stores (host paths)                   |
+| `/api/sessions/discover`               | GET    | same-host client only (CSRF) | Preview supported local session stores (host paths)                   |
 | `/api/sessions/sources`                | POST   | same-host client only (CSRF) | Register a source                                                     |
 | `/api/sessions/sources/:id`            | DELETE | same-host client only (CSRF) | Unregister a source; its archive is retained                          |
 | `/api/sessions/init`                   | POST   | same-host client only (CSRF) | Create or extend the archive for this instance                        |
 | `/api/sessions/automation/run`         | POST   | any allowed client (CSRF)    | Run a configured automation profile now                               |
 | `/api/sessions/automation/:id`         | PUT    | same-host client only (CSRF) | Create or reconfigure a profile (enables nothing)                     |
 | `/api/sessions/automation/:id`         | DELETE | same-host client only (CSRF) | Uninstall owned integrations, delete the profile                      |
-| `/api/sessions/automation/:id/preview` | GET    | same-host client only        | Sources, destinations, hook command, daemon prerequisite (host paths) |
+| `/api/sessions/automation/:id/preview` | GET    | same-host client only (CSRF) | Sources, destinations, hook command, daemon prerequisite (host paths) |
 | `/api/sessions/automation/:id/enable`  | POST   | same-host client only (CSRF) | Switch on the Claude Code hook and/or the schedule                    |
 | `/api/sessions/automation/:id/disable` | POST   | same-host client only (CSRF) | Pause triggers, remove the owned hook entry, clear pending work       |
 
@@ -2717,7 +2717,10 @@ status and the stable service code in `details.sessionsCode`:
 
 The code-to-status mapping is in
 [Agent Sessions error codes](SESSIONS.md#error-codes). A same-host refusal is
-`403` with `code: "FORBIDDEN"` and no `details.sessionsCode`.
+`403` with `code: "FORBIDDEN"` and no `details.sessionsCode`. Routes marked
+CSRF also refuse a cross-origin browser `Origin` with `403`
+`CSRF_VIOLATION`, including `GET /api/sessions/discover`, because it returns
+host paths.
 
 ---
 

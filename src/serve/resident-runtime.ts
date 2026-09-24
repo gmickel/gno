@@ -52,6 +52,7 @@ import { defaultSyncService, withContentTypeRules } from "../ingestion";
 import { withOwnedInferenceScope } from "../llm/inference-scope";
 import { getActivePreset } from "../llm/registry";
 import { createToolContext, Mutex } from "../mcp/context";
+import { watchedCollections } from "../sessions/config";
 import { SqliteAdapter } from "../store/sqlite/adapter";
 import {
   createServerContext,
@@ -332,7 +333,7 @@ export async function startResidentRuntime(
     deps.watchServiceFactory ??
     ((watchOptions) => new DefaultCollectionWatchService(watchOptions))
   )({
-    collections: initialConfig.collections,
+    collections: watchedCollections(initialConfig),
     store,
     scheduler,
     eventBus: options.eventBus ?? null,
@@ -447,7 +448,7 @@ export async function startResidentRuntime(
       ctxHolder.config = config;
       ctxHolder.current = { ...ctxHolder.current, config };
       ctxHolder.watchService?.updateCollections(
-        config.collections,
+        watchedCollections(config),
         withContentTypeRules({}, config)
       );
     },

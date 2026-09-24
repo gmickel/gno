@@ -269,6 +269,8 @@ archive config each tick, so `sessions automation enable` / `disable` take
 effect without a restart. A daemon on a config without automation profiles
 does nothing here; `gno serve` never drains or schedules.
 
+- Each import runs in a child process, like REST and MCP imports, so the
+  daemon keeps answering MCP and status requests during a long import.
 - Imports take the shared `.mcp-write.lock` lease with no wait; a busy lease
   or import lock is recorded as a failed run with reason `busy` and retried
   with backoff.
