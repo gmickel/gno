@@ -139,7 +139,7 @@ interface DocsAutocompleteResponse {
 type SaveStatus = "saved" | "saving" | "unsaved" | "error";
 
 function useDebouncedCallback<T extends unknown[]>(
-  callback: (...args: T) => void | Promise<void>,
+  callback: (...args: T) => unknown,
   delay: number
 ) {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -316,39 +316,44 @@ export default function DocumentEditor({ navigate }: PageProps) {
     }
   }, [syncScroll]);
 
+  // Autosave timers and Cmd+S run later than the render that scheduled them:
+  // read the current revision and last committed content from refs.
+  const docRef = useRef(doc);
+  const committedContentRef = useRef(originalContent);
+  useEffect(() => {
+    docRef.current = doc;
+  }, [doc]);
   // One request ID per (document revision, content) save intent: retrying a
   // save whose response was lost replays it instead of reporting a conflict.
   const saveIntentRef = useRef<RequestIntent | null>(null);
-  const saveRequestId = useCallback(
-    (contentToSave: string) =>
-      doc
-        ? requestIdForIntent(
-            saveIntentRef,
-            `${doc.uri}\u0000${doc.source.sourceHash}\u0000${contentToSave}`,
-            SAVE_INTENT_KEY
-          )
-        : undefined,
-    [doc]
-  );
 
-  // Save function
-  const saveDocument = useCallback(
-    async (contentToSave: string) => {
-      if (!doc) return;
+  /** Save `contentToSave`; resolves true once it is committed on disk. */
+  const persistContent = useCallback(
+    async (contentToSave: string): Promise<boolean> => {
+      const current = docRef.current;
+      if (!current) return false;
+      if (contentToSave === committedContentRef.current) {
+        setSaveStatus("saved");
+        return true;
+      }
 
       setSaveStatus("saving");
       setSaveError(null);
 
       const { data, error: err } = await apiFetch<UpdateDocResponse>(
-        `/api/docs/${encodeURIComponent(doc.docid)}`,
+        `/api/docs/${encodeURIComponent(current.docid)}`,
         {
           method: "PUT",
           body: JSON.stringify({
             content: contentToSave,
-            expectedSourceHash: doc.source.sourceHash,
-            expectedModifiedAt: doc.source.modifiedAt,
-            uri: doc.uri,
-            requestId: saveRequestId(contentToSave),
+            expectedSourceHash: current.source.sourceHash,
+            expectedModifiedAt: current.source.modifiedAt,
+            uri: current.uri,
+            requestId: requestIdForIntent(
+              saveIntentRef,
+              `${current.uri}\u0000${current.source.sourceHash}\u0000${contentToSave}`,
+              SAVE_INTENT_KEY
+            ),
           }),
         }
       );
@@ -356,33 +361,38 @@ export default function DocumentEditor({ navigate }: PageProps) {
       if (err) {
         setSaveStatus("error");
         setSaveError(err);
-      } else {
-        ignoreDocEventsUntilRef.current = Date.now() + 5_000;
-        if (originalContent !== contentToSave) {
-          appendLocalHistory(doc.docid, originalContent);
-          refreshHistoryEntries(doc.docid);
-        }
-        clearRequestIntent(saveIntentRef, SAVE_INTENT_KEY);
-        setSaveStatus("saved");
-        setOriginalContent(contentToSave);
-        setLastSaved(new Date());
-        if (data) {
-          setDoc((currentDoc) =>
-            currentDoc
-              ? {
-                  ...currentDoc,
-                  source: {
-                    ...currentDoc.source,
-                    sourceHash: data.version.sourceHash,
-                    modifiedAt: data.version.modifiedAt,
-                  },
-                }
-              : currentDoc
-          );
-        }
+        return false;
       }
+
+      // The save was checked against the loaded revision, so disk now holds
+      // exactly this content: any earlier change notice is stale.
+      ignoreDocEventsUntilRef.current = Date.now() + 5_000;
+      setExternalChangeNotice(null);
+      const previous = committedContentRef.current;
+      if (previous !== contentToSave) {
+        appendLocalHistory(current.docid, previous);
+        refreshHistoryEntries(current.docid);
+      }
+      clearRequestIntent(saveIntentRef, SAVE_INTENT_KEY);
+      committedContentRef.current = contentToSave;
+      setSaveStatus("saved");
+      setOriginalContent(contentToSave);
+      setLastSaved(new Date());
+      if (data) {
+        const next = {
+          ...current,
+          source: {
+            ...current.source,
+            sourceHash: data.version.sourceHash,
+            modifiedAt: data.version.modifiedAt,
+          },
+        };
+        docRef.current = next;
+        setDoc(next);
+      }
+      return true;
     },
-    [doc, saveRequestId]
+    []
   );
 
   const handleCreateEditableCopy = useCallback(async () => {
@@ -500,16 +510,18 @@ export default function DocumentEditor({ navigate }: PageProps) {
   );
 
   // Debounced auto-save
-  const { debouncedFn: debouncedSave } = useDebouncedCallback(
-    saveDocument,
-    2000
-  );
+  const { debouncedFn: debouncedSave, cancel: cancelAutosave } =
+    useDebouncedCallback(persistContent, 2000);
 
   // Handle content changes
   const handleContentChange = useCallback(
     (newContent: string) => {
       setContent(newContent);
-      if (newContent !== originalContent) {
+      if (newContent === originalContent) {
+        // Back to the committed text: drop a pending autosave of a draft.
+        cancelAutosave();
+        setSaveStatus("saved");
+      } else {
         setSaveStatus("unsaved");
         debouncedSave(newContent);
       }
@@ -533,7 +545,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
       setWikiLinkOpen(true);
       setWikiLinkActiveIndex(0);
     },
-    [originalContent, debouncedSave]
+    [cancelAutosave, originalContent, debouncedSave]
   );
 
   useEffect(() => {
@@ -554,57 +566,15 @@ export default function DocumentEditor({ navigate }: PageProps) {
     });
   }, [doc?.collection, wikiLinkOpen, wikiLinkQuery]);
 
-  // Force save (Cmd+S) - saves and triggers embedding
+  // Force save (Cmd+S) - supersedes a pending autosave, then triggers embedding
   const handleForceSave = useCallback(async () => {
-    if (!hasUnsavedChanges || !doc) return;
-
-    setSaveStatus("saving");
-    setSaveError(null);
-
-    // Save document
-    const { data, error: err } = await apiFetch<UpdateDocResponse>(
-      `/api/docs/${encodeURIComponent(doc.docid)}`,
-      {
-        method: "PUT",
-        body: JSON.stringify({
-          content,
-          expectedSourceHash: doc.source.sourceHash,
-          expectedModifiedAt: doc.source.modifiedAt,
-          uri: doc.uri,
-          requestId: saveRequestId(content),
-        }),
-      }
-    );
-
-    if (err) {
-      setSaveStatus("error");
-      setSaveError(err);
-      return;
+    cancelAutosave();
+    if (!hasUnsavedChanges) return;
+    if (await persistContent(content)) {
+      // Fire and forget - don't block on result
+      void apiFetch("/api/embed", { method: "POST" });
     }
-
-    ignoreDocEventsUntilRef.current = Date.now() + 5_000;
-    if (originalContent !== content) {
-      appendLocalHistory(doc.docid, originalContent);
-      refreshHistoryEntries(doc.docid);
-    }
-    clearRequestIntent(saveIntentRef, SAVE_INTENT_KEY);
-    setSaveStatus("saved");
-    setOriginalContent(content);
-    setLastSaved(new Date());
-    if (data) {
-      setDoc({
-        ...doc,
-        source: {
-          ...doc.source,
-          sourceHash: data.version.sourceHash,
-          modifiedAt: data.version.modifiedAt,
-        },
-      });
-    }
-
-    // Trigger embedding (fire and forget - don't block on result)
-    void apiFetch("/api/embed", { method: "POST" });
-  }, [hasUnsavedChanges, doc, content, saveRequestId]);
+  }, [cancelAutosave, content, hasUnsavedChanges, persistContent]);
 
   const loadDocument = useCallback(() => {
     const uri = currentTarget.uri;
@@ -625,6 +595,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
           const docContent = data.content ?? "";
           setContent(docContent);
           setOriginalContent(docContent);
+          committedContentRef.current = docContent;
           refreshHistoryEntries(data.docid);
           // Ensure CodeMirror reflects content after async load
           requestAnimationFrame(() => {
@@ -778,7 +749,8 @@ export default function DocumentEditor({ navigate }: PageProps) {
 
   // Save and navigate
   const handleSaveAndNavigate = async () => {
-    await saveDocument(content);
+    cancelAutosave();
+    await persistContent(content);
     // Trigger embedding (fire and forget)
     void apiFetch("/api/embed", { method: "POST" });
     setShowUnsavedDialog(false);
@@ -819,9 +791,13 @@ export default function DocumentEditor({ navigate }: PageProps) {
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex items-center gap-1.5 text-sm">
-              <Icon className={`size-4 ${className}`} />
-              <span className="hidden text-muted-foreground sm:inline">
+            <div
+              aria-label={text}
+              className="flex min-w-0 max-w-[16rem] shrink items-center gap-1.5 text-sm"
+              role="status"
+            >
+              <Icon className={`size-4 shrink-0 ${className}`} />
+              <span className="hidden truncate text-muted-foreground sm:inline">
                 {saveStatus === "saved" && lastSaved
                   ? formatTime(lastSaved)
                   : text}
@@ -933,7 +909,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
     <div className="flex h-screen flex-col overflow-hidden">
       {/* Toolbar */}
       <header className="glass shrink-0 border-border/50 border-b">
-        <div className="flex items-center gap-3 px-4 py-2">
+        <div className="flex items-center gap-2 px-2 py-2 sm:gap-3 sm:px-4">
           {/* Home button - Scholarly Dusk brass accent */}
           <Button
             aria-label="Go to dashboard"
@@ -980,7 +956,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
           <Separator className="h-5" orientation="vertical" />
 
           {/* Document info */}
-          <div className="flex min-w-0 flex-1 items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
             <PenIcon className="size-4 shrink-0 text-muted-foreground" />
             <h1 className="truncate font-medium">{doc.title || doc.relPath}</h1>
             {currentTarget.lineStart && (
@@ -994,7 +970,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
             )}
             {hasUnsavedChanges && (
               <Badge
-                className="shrink-0 bg-yellow-500/20 text-yellow-500"
+                className="hidden shrink-0 bg-yellow-500/20 text-yellow-500 sm:inline-flex"
                 variant="outline"
               >
                 Unsaved
@@ -1008,6 +984,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
           <Separator className="h-5" orientation="vertical" />
 
           <Button
+            className="hidden sm:inline-flex"
             onClick={() => {
               void navigator.clipboard.writeText(
                 `${window.location.origin}${buildEditDeepLink({
@@ -1025,7 +1002,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
 
           {/* Preview toggle */}
           <Select onValueChange={setInsertPresetId} value={insertPresetId}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="hidden w-[180px] md:flex">
               <SelectValue placeholder="Preset" />
             </SelectTrigger>
             <SelectContent>
@@ -1038,7 +1015,12 @@ export default function DocumentEditor({ navigate }: PageProps) {
               )}
             </SelectContent>
           </Select>
-          <Button onClick={handleInsertPreset} size="sm" variant="outline">
+          <Button
+            className="hidden md:inline-flex"
+            onClick={handleInsertPreset}
+            size="sm"
+            variant="outline"
+          >
             Insert preset
           </Button>
 
@@ -1073,7 +1055,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
                     aria-label={
                       syncScroll ? "Disable scroll sync" : "Enable scroll sync"
                     }
-                    className="transition-all duration-200"
+                    className="hidden transition-all duration-200 sm:inline-flex"
                     onClick={() => setSyncScroll(!syncScroll)}
                     size="sm"
                     variant={syncScroll ? "secondary" : "ghost"}
@@ -1096,15 +1078,18 @@ export default function DocumentEditor({ navigate }: PageProps) {
 
           {/* Save button */}
           <Button
+            aria-label="History"
+            className="shrink-0"
             disabled={!hasLocalSnapshot}
             onClick={() => setHistoryDialogOpen(true)}
             size="sm"
             variant="outline"
           >
-            <HistoryIcon className="mr-1.5 size-4" />
-            History
+            <HistoryIcon className="size-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">History</span>
           </Button>
           <Button
+            className="shrink-0"
             disabled={!hasUnsavedChanges || saveStatus === "saving"}
             onClick={handleForceSave}
             size="sm"
@@ -1118,6 +1103,15 @@ export default function DocumentEditor({ navigate }: PageProps) {
           </Button>
         </div>
       </header>
+
+      {saveStatus === "error" && saveError && (
+        <p
+          className="border-destructive/30 border-b bg-destructive/10 px-4 py-2 text-destructive text-sm sm:hidden"
+          role="alert"
+        >
+          {saveError}
+        </p>
+      )}
 
       {externalChangeNotice && (
         <div className="border-amber-500/30 border-b bg-amber-500/10 px-4 py-3">
