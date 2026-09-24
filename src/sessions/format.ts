@@ -134,9 +134,13 @@ function formatAutomationLines(automation: SessionAutomationStatus): string[] {
 }
 
 /** What follows a run: remaining work, or the next step after a failure. */
+const RETRYABLE_REASONS = new Set(["busy", "runtime_error", "interrupted"]);
+
 export function runTail(result: SessionAutomationRunResult): string {
   if (result.outcome === "failed") {
-    return "; see gno sessions status for the recovery action";
+    return RETRYABLE_REASONS.has(result.reason ?? "")
+      ? "; it is retried automatically (see gno sessions status for when)"
+      : "; see gno sessions status for the recovery action";
   }
   return result.pending ? "; more work is pending" : "";
 }

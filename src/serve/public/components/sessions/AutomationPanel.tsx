@@ -71,6 +71,21 @@ function scheduleLine(
   return nextDueAt ? `next ${at(nextDueAt)}` : "due time set on the next tick";
 }
 
+/** After Run now: the retry time, the recovery action, or remaining work. */
+function runOutcomeTail(
+  run: SessionAutomationRunResult,
+  profile: SessionProfileStatus,
+  at: (iso: string | null) => string
+): string {
+  if (run.outcome === "failed") {
+    if (profile.state === "retrying" && profile.retryAt) {
+      return `; retried automatically at ${at(profile.retryAt)}`;
+    }
+    return profile.recovery ? "; see the recovery action above" : "";
+  }
+  return run.pending ? "; work is still pending" : "";
+}
+
 function clockFor(timezone: string): (iso: string | null) => string {
   return (iso) => {
     if (!iso) return "never";
@@ -623,11 +638,7 @@ function ProfileCard({
           {lastRun.ran
             ? `${lastRun.outcome}${lastRun.reason ? ` (${lastRun.reason})` : ""}`
             : `not started (${lastRun.reason ?? "unknown"})`}
-          {lastRun.outcome === "failed"
-            ? "; see the recovery action above"
-            : lastRun.pending
-              ? "; work is still pending"
-              : ""}
+          {runOutcomeTail(lastRun, profile, at)}
         </p>
       )}
       {error && (

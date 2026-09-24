@@ -1124,6 +1124,9 @@ describe("re-drive QA regressions", () => {
     const line = formatAutomationRunText(failed);
     expect(line).not.toContain("pending");
     expect(line).toContain("recovery action");
+    expect(formatAutomationRunText({ ...failed, reason: "busy" })).toContain(
+      "retried automatically"
+    );
     const text = formatStatusText(await status());
     expect(text).not.toContain("pending since");
     expect(text).toContain(

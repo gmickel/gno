@@ -357,6 +357,38 @@ describe("sessions page", () => {
     );
   });
 
+  test("a retryable Run now failure shows its retry time, not a missing recovery action", async () => {
+    const retrying = structuredClone(status);
+    Object.assign(retrying.automation.profiles[0]!, {
+      state: "retrying",
+      retryAt: "2026-09-24T10:05:00.000Z",
+      recovery: null,
+    });
+    statusResult = () => ok(retrying);
+    sessionsApi.mockImplementation(async (...args: unknown[]) => {
+      if (args[0] === "/api/sessions/status") return statusResult();
+      if (args[0] === "/api/sessions/automation/run") {
+        return ok({
+          schemaVersion: "1",
+          profileId: "nightly",
+          ran: true,
+          outcome: "failed",
+          reason: "busy",
+          pending: true,
+          receipts: [],
+        });
+      }
+      return ok({});
+    });
+    const { user } = await renderPage();
+    await user.click(
+      await screen.findByRole("button", { name: "Run nightly now" })
+    );
+    const line = await screen.findByText(/Run now: failed \(busy\)/);
+    expect(line.textContent).toContain("retried automatically at");
+    expect(line.textContent).not.toContain("recovery action");
+  });
+
   test("status is polled while a profile is running", async () => {
     const running = structuredClone(status);
     running.automation.profiles[0]!.state = "running";
