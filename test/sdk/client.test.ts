@@ -561,6 +561,35 @@ describe("SDK client", () => {
     expect(created.content).toContain("source:");
   });
 
+  test("replays a retried capture request ID and reports its status", async () => {
+    const input = {
+      collection: "fixtures",
+      title: "SDK retry",
+      content: "Captured once from SDK",
+      collisionPolicy: "create_with_suffix" as const,
+      requestId: "sdk-retry-1",
+    };
+    const first = await client.capture(input);
+    const again = await client.capture(input);
+    expect(first.request?.replayed).toBe(false);
+    expect(again).toEqual({
+      ...first,
+      request: { ...first.request!, replayed: true },
+    });
+    expect(await client.requestStatus("sdk-retry-1")).toMatchObject({
+      status: "committed",
+      operation: "capture",
+      result: { uri: first.uri },
+    });
+    const conflict = await client
+      .capture({ ...input, content: "Changed intent" })
+      .catch((error: unknown) => error);
+    expect(conflict).toMatchObject({
+      code: "VALIDATION",
+      details: { code: "REQUEST_ID_CONFLICT" },
+    });
+  });
+
   test("rejects invalid capture collision policies at runtime", async () => {
     try {
       await client.capture({

@@ -4,30 +4,29 @@
  * @module src/cli/commands/capture
  */
 
-// node:fs/promises for mkdir (no Bun equivalent for recursive dir creation)
-import { mkdir } from "node:fs/promises";
-// node:path has no Bun path utilities
-import { dirname, join } from "node:path";
-
 import type {
-  CapturePlan,
+  CaptureInput,
   CaptureReceipt,
   CaptureSourceKind,
 } from "../../core/capture";
 import type { NoteCollisionPolicy } from "../../core/note-creation";
 import type { NotePresetId } from "../../core/note-presets";
+import type { RequestReceiptInfo } from "../../core/request-receipts";
 
 import { getIndexDbPath } from "../../app/constants";
 import {
-  buildCaptureReceipt,
   listCaptureDiskRelPaths,
   planCapture,
   serializeCaptureReceipt,
 } from "../../core/capture";
-import { writeCapturePlanFile } from "../../core/capture-write";
-import { withWriteLock } from "../../core/file-lock";
-import { defaultSyncService, withContentTypeRules } from "../../ingestion";
+import { publishCapture } from "../../core/capture-publish";
+import {
+  LOCAL_OWNER_NAMESPACE,
+  requestLedgerPath,
+} from "../../core/request-receipts";
+import { writeLeasePath } from "../../core/write-lease";
 import { CliError } from "../errors";
+import { requestErrorToCli } from "./request-status";
 import { initStore } from "./shared";
 
 export interface CaptureCliOptions {
@@ -49,6 +48,7 @@ export interface CaptureCliOptions {
   sourceAuthor?: string;
   sourceDate?: string;
   sourceId?: string;
+  requestId?: string;
 }
 
 const SOURCE_KINDS = new Set<CaptureSourceKind>([
@@ -130,7 +130,7 @@ function validateCollisionPolicy(
 
 export async function capture(
   options: CaptureCliOptions
-): Promise<CaptureReceipt> {
+): Promise<CaptureReceipt & { request?: RequestReceiptInfo }> {
   const storeInit = await initStore({
     configPath: options.configPath,
     indexName: options.indexName,
@@ -160,102 +160,65 @@ export async function capture(
 
     validateCollisionPolicy(options.collisionPolicy);
     const content = await readContent(options);
-    const existingDocs = await store.listDocuments(collection.name);
-    if (!existingDocs.ok) {
-      throw new Error(existingDocs.error.message);
-    }
-    const diskRelPaths = await listCaptureDiskRelPaths(collection.path);
-    let plan: CapturePlan;
+    const input: CaptureInput = {
+      collection: collection.name,
+      content,
+      title: options.title,
+      relPath: options.path,
+      folderPath: options.folder,
+      collisionPolicy: options.collisionPolicy,
+      presetId: options.preset,
+      tags: parseTags(options.tags),
+      source: buildSource(options),
+    };
+    const dbPath = getIndexDbPath(options.indexName);
     try {
-      plan = planCapture({
-        input: {
-          collection: collection.name,
-          content,
-          title: options.title,
-          relPath: options.path,
-          folderPath: options.folder,
-          collisionPolicy: options.collisionPolicy,
-          presetId: options.preset,
-          tags: parseTags(options.tags),
-          source: buildSource(options),
-        },
-        existingRelPaths: existingDocs.value.map((doc) => doc.relPath),
-        diskRelPaths,
-      });
-    } catch (error) {
-      throw new CliError(
-        "VALIDATION",
-        error instanceof Error ? error.message : String(error)
-      );
-    }
-    const absPath = join(collection.path, plan.relPath);
-
-    const lockPath = join(
-      dirname(getIndexDbPath(options.indexName)),
-      ".mcp-write.lock"
-    );
-    return await withWriteLock(lockPath, async () => {
-      if (plan.openedExisting) {
-        const existingDoc = await store.getDocument(
-          collection.name,
-          plan.relPath
-        );
-        if (!existingDoc.ok) {
-          throw new Error(existingDoc.error.message);
-        }
-        return buildCaptureReceipt({
-          plan,
-          absPath,
-          docid: existingDoc.value?.docid,
-          sync: existingDoc.value
-            ? { status: "completed" }
-            : {
-                status: "skipped",
-                reason: "Existing file is not indexed yet.",
-              },
-        });
-      }
-
-      await mkdir(dirname(absPath), { recursive: true });
-      await writeCapturePlanFile(plan, absPath);
-      const syncResults = await defaultSyncService.syncFiles(
+      const published = await publishCapture({
         collection,
         store,
-        [plan.relPath],
-        withContentTypeRules(
-          {
-            runUpdateCmd: false,
-            gitPull: false,
-          },
-          config
-        )
-      );
-      const syncResult = syncResults[0];
-      const docResult = await store.getDocument(collection.name, plan.relPath);
-      const docid = docResult.ok ? docResult.value?.docid : undefined;
-      return buildCaptureReceipt({
-        plan,
-        absPath,
-        docid: syncResult?.docid ?? docid,
-        sync:
-          syncResult?.status === "error"
-            ? {
-                status: "failed",
-                error:
-                  syncResult.errorMessage ??
-                  syncResult.errorCode ??
-                  "Unknown sync error",
-              }
-            : { status: "completed" },
+        lockPath: writeLeasePath(dbPath),
+        config,
+        plan: async () => {
+          const existingDocs = await store.listDocuments(collection.name);
+          if (!existingDocs.ok) {
+            throw new Error(existingDocs.error.message);
+          }
+          try {
+            return planCapture({
+              input,
+              existingRelPaths: existingDocs.value.map((doc) => doc.relPath),
+              diskRelPaths: await listCaptureDiskRelPaths(collection.path),
+            });
+          } catch (error) {
+            throw new CliError(
+              "VALIDATION",
+              error instanceof Error ? error.message : String(error)
+            );
+          }
+        },
+        request:
+          options.requestId === undefined
+            ? undefined
+            : {
+                ledgerPath: requestLedgerPath(dbPath),
+                namespace: LOCAL_OWNER_NAMESPACE,
+                requestId: options.requestId,
+                input,
+              },
       });
-    });
+      return published.request
+        ? { ...published.receipt, request: published.request }
+        : published.receipt;
+    } catch (error) {
+      throw requestErrorToCli(error);
+    }
   } finally {
     await store.close();
   }
 }
 
 export function formatCaptureReceipt(
-  receipt: CaptureReceipt,
+  receipt: CaptureReceipt & { request?: RequestReceiptInfo },
   options: { json?: boolean; quiet?: boolean } = {}
 ): string {
   if (options.json) {
@@ -277,6 +240,11 @@ export function formatCaptureReceipt(
   }
   if (receipt.source.url) {
     lines.push(`Source: ${receipt.source.url}`);
+  }
+  if (receipt.request) {
+    lines.push(
+      `Request: ${receipt.request.requestId} committed${receipt.request.replayed ? " (replayed, nothing written again)" : ""}`
+    );
   }
   return lines.join("\n");
 }

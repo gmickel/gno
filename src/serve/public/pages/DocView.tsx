@@ -83,6 +83,7 @@ import {
   isPdfDocument,
 } from "../lib/doc-asset-url";
 import { waitForDocumentAvailability } from "../lib/document-availability";
+import { type RequestIntent, requestIdForIntent } from "../lib/request-intent";
 import {
   buildReadableSectionUrl,
   createCitationSectionUrl,
@@ -1201,7 +1202,8 @@ export default function DocView({ navigate }: PageProps) {
     setTagSaveError(null);
   }, []);
 
-  // Save tags
+  // Save tags (one request ID per tag-set intent, reused on retry)
+  const tagIntentRef = useRef<RequestIntent | null>(null);
   const handleSaveTags = useCallback(async () => {
     if (!doc) return;
 
@@ -1218,6 +1220,10 @@ export default function DocView({ navigate }: PageProps) {
           expectedSourceHash: doc.source.sourceHash,
           expectedModifiedAt: doc.source.modifiedAt,
           uri: doc.uri,
+          requestId: requestIdForIntent(
+            tagIntentRef,
+            `${doc.uri}\u0000${doc.source.sourceHash}\u0000${editedTags.join(",")}`
+          ),
         }),
       }
     );

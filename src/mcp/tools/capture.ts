@@ -4,33 +4,35 @@
  * @module src/mcp/tools/capture
  */
 
-// node:fs/promises for mkdir (no Bun equivalent for structure ops)
-import { mkdir } from "node:fs/promises";
 // node:path for path utils (no Bun path utils)
-import { dirname, extname, join } from "node:path";
+import { extname } from "node:path";
 
 import type { NoteCollisionPolicy } from "../../core/note-creation";
 import type { NotePresetId } from "../../core/note-presets";
 import type { ToolContext } from "../server";
 
 import {
-  buildCaptureReceipt,
   CaptureSyncError,
-  ensureCapturedFileIndexed,
   listCaptureDiskRelPaths,
   planCapture,
-  syncCapturedFile,
   type CaptureInput as SharedCaptureInput,
+  type CapturePlan,
   type CaptureReceipt,
-  type SyncCapturedFileResult,
 } from "../../core/capture";
-import { writeCapturePlanFile } from "../../core/capture-write";
+import {
+  publishCapture,
+  type PublishedCapture,
+} from "../../core/capture-publish";
 import { MCP_ERRORS } from "../../core/errors";
-import { withWriteLock } from "../../core/file-lock";
 import { recordContentMutation } from "../../core/mutation-generations";
+import {
+  type RequestReceiptInfo,
+  requestLedgerPath,
+} from "../../core/request-receipts";
 import { normalizeCollectionName } from "../../core/validation";
 import { DEFAULT_LOCK_WAIT_MS } from "../../core/write-lease";
 import { runTool, type ToolResult } from "./index";
+import { mcpRequestNamespace, rethrowRequestError } from "./request-status";
 
 interface CaptureInput extends Omit<
   SharedCaptureInput,
@@ -39,6 +41,7 @@ interface CaptureInput extends Omit<
   path?: string;
   collisionPolicy?: NoteCollisionPolicy;
   presetId?: NotePresetId;
+  requestId?: string;
 }
 
 type McpCaptureResult = CaptureReceipt & {
@@ -46,6 +49,7 @@ type McpCaptureResult = CaptureReceipt & {
   absPath: string;
   overwritten: boolean;
   serverInstanceId: string;
+  request?: RequestReceiptInfo;
 };
 
 const SENSITIVE_SUBPATHS = new Set([
@@ -86,6 +90,11 @@ function formatCaptureResult(result: McpCaptureResult): string {
   if (result.tags.length > 0) {
     lines.push(`Tags: ${result.tags.join(", ")}`);
   }
+  if (result.request) {
+    lines.push(
+      `Request: ${result.request.requestId} committed${result.request.replayed ? " (replayed)" : ""}`
+    );
+  }
   return lines.join("\n");
 }
 
@@ -112,7 +121,7 @@ function rethrowCaptureError(error: unknown): never {
   if (error instanceof CaptureSyncError) {
     throw new Error(`${error.code}: ${error.message}`);
   }
-  throw error;
+  return rethrowRequestError(error);
 }
 
 export function handleCapture(
@@ -140,83 +149,81 @@ export function handleCapture(
       // Write + lexical sync complete under the shared write lease: the tool
       // succeeds only once the capture is retrievable (v1.38 contention
       // contract: wait for the lease, LOCKED when it stays busy).
-      return await withWriteLock(
-        ctx.writeLockPath,
-        async () => {
-          const existingDocs = await ctx.store.listDocuments(collectionName);
-          if (!existingDocs.ok) {
-            throw new Error(existingDocs.error.message);
-          }
-
-          let plan;
-          try {
-            plan = planCapture({
-              input: buildSharedInput(args, collection.name),
-              existingRelPaths: existingDocs.value.map((doc) => doc.relPath),
-              diskRelPaths: await listCaptureDiskRelPaths(collection.path),
-            });
-          } catch (error) {
-            const message =
-              error instanceof Error ? error.message : String(error);
-            throw new Error(`${MCP_ERRORS.INVALID_INPUT.code}: ${message}`);
-          }
-
-          assertNotSensitive(plan.relPath);
-
-          const absPath = join(collection.path, plan.relPath);
-          const syncInput = {
-            collection,
-            store: ctx.store,
-            relPath: plan.relPath,
-            absPath,
-            config: ctx.config,
-          };
-
-          let synced: SyncCapturedFileResult;
-          let overwritten = false;
-          try {
-            if (plan.openedExisting) {
-              synced = await ensureCapturedFileIndexed(syncInput);
-            } else {
-              overwritten =
-                (await Bun.file(absPath).exists()) && args.overwrite === true;
-              await mkdir(dirname(absPath), { recursive: true });
-              await writeCapturePlanFile(plan, absPath);
-              synced = await syncCapturedFile(syncInput);
+      const input = buildSharedInput(args, collection.name);
+      let published: PublishedCapture;
+      try {
+        published = await publishCapture({
+          collection,
+          store: ctx.store,
+          lockPath: ctx.writeLockPath,
+          lockWaitMs: DEFAULT_LOCK_WAIT_MS,
+          config: ctx.config,
+          plan: async () => {
+            const existingDocs = await ctx.store.listDocuments(collectionName);
+            if (!existingDocs.ok) {
+              throw new Error(existingDocs.error.message);
             }
-          } catch (error) {
-            rethrowCaptureError(error);
-          }
-          if (synced.result) {
-            recordContentMutation(synced.result, ctx.markContentMutation);
-          }
-
-          const isMarkdown =
-            plan.relPath.endsWith(".md") || plan.relPath.endsWith(".markdown");
-          if (!isMarkdown && !plan.openedExisting && plan.tags.length > 0) {
-            const tagResult = await ctx.store.setDocTags(
-              synced.documentId,
-              plan.tags,
-              "user"
-            );
-            if (!tagResult.ok) {
-              console.error(
-                `[MCP] Warning: Document created but tags not stored: ${tagResult.error.message}`
+            let plan: CapturePlan;
+            try {
+              plan = planCapture({
+                input,
+                existingRelPaths: existingDocs.value.map((doc) => doc.relPath),
+                diskRelPaths: await listCaptureDiskRelPaths(collection.path),
+              });
+            } catch (error) {
+              const message =
+                error instanceof Error ? error.message : String(error);
+              throw new Error(`${MCP_ERRORS.INVALID_INPUT.code}: ${message}`);
+            }
+            assertNotSensitive(plan.relPath);
+            return plan;
+          },
+          afterSync: async (synced, receipt) => {
+            if (synced.result) {
+              recordContentMutation(synced.result, ctx.markContentMutation);
+            }
+            const isMarkdown =
+              receipt.relPath.endsWith(".md") ||
+              receipt.relPath.endsWith(".markdown");
+            if (
+              !isMarkdown &&
+              !receipt.openedExisting &&
+              receipt.tags.length > 0
+            ) {
+              const tagResult = await ctx.store.setDocTags(
+                synced.documentId,
+                receipt.tags,
+                "user"
               );
+              if (!tagResult.ok) {
+                console.error(
+                  `[MCP] Warning: Document created but tags not stored: ${tagResult.error.message}`
+                );
+              }
             }
-          }
+          },
+          request:
+            args.requestId === undefined
+              ? undefined
+              : {
+                  ledgerPath: requestLedgerPath(ctx.store.getDbPath()),
+                  namespace: mcpRequestNamespace(ctx),
+                  requestId: args.requestId,
+                  input,
+                },
+        });
+      } catch (error) {
+        rethrowCaptureError(error);
+      }
 
-          return buildCaptureReceipt({
-            plan,
-            absPath,
-            docid: synced.docid,
-            sync: synced.sync,
-            overwritten,
-            serverInstanceId: ctx.serverInstanceId,
-          }) as McpCaptureResult;
-        },
-        DEFAULT_LOCK_WAIT_MS
-      );
+      return {
+        ...published.receipt,
+        docid: published.receipt.docid ?? "",
+        absPath: published.receipt.absPath ?? "",
+        overwritten: published.receipt.overwritten ?? false,
+        serverInstanceId: ctx.serverInstanceId,
+        ...(published.request ? { request: published.request } : {}),
+      } as McpCaptureResult;
     },
     formatCaptureResult
   );

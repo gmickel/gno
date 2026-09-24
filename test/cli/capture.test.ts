@@ -105,6 +105,47 @@ describe("gno capture", () => {
     expect(content).toContain("source:");
   });
 
+  test("a retried request ID replays, reports status, and refuses a changed payload", async () => {
+    const args = [
+      "capture",
+      "Retry me",
+      "--collection",
+      "notes",
+      "--title",
+      "Retry",
+      "--collision-policy",
+      "create_with_suffix",
+      "--request-id",
+      "cli-retry-1",
+      "--json",
+    ];
+    const first = await cli(...args);
+    const again = await cli(...args);
+    expect([first.code, again.code]).toEqual([0, 0]);
+    const [a, b] = [JSON.parse(first.stdout), JSON.parse(again.stdout)];
+    expect(a.request).toMatchObject({
+      requestId: "cli-retry-1",
+      replayed: false,
+    });
+    expect(b).toEqual({ ...a, request: { ...a.request, replayed: true } });
+
+    const status = await cli("request-status", "cli-retry-1", "--json");
+    expect(status.code).toBe(0);
+    expect(JSON.parse(status.stdout)).toMatchObject({
+      status: "committed",
+      operation: "capture",
+      result: { uri: a.uri },
+    });
+
+    const changed = await cli(
+      ...args.map((arg) => (arg === "Retry me" ? "Different body" : arg))
+    );
+    expect(changed.code).toBe(1);
+    expect(changed.stderr).toContain("REQUEST_ID_CONFLICT");
+    const files = [...new Bun.Glob("**/*.md").scanSync(notesDir)];
+    expect(files).toEqual([a.relPath]);
+  });
+
   test("quiet output prints only the URI", async () => {
     const result = await cli(
       "--quiet",

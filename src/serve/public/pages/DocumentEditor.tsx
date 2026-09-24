@@ -73,6 +73,7 @@ import {
   loadLatestLocalHistory,
   type LocalHistoryEntry,
 } from "../lib/local-history";
+import { type RequestIntent, requestIdForIntent } from "../lib/request-intent";
 import { getActiveWikiLinkQuery } from "../lib/wiki-link";
 
 interface PageProps {
@@ -309,6 +310,20 @@ export default function DocumentEditor({ navigate }: PageProps) {
     }
   }, [syncScroll]);
 
+  // One request ID per (document revision, content) save intent: retrying a
+  // save whose response was lost replays it instead of reporting a conflict.
+  const saveIntentRef = useRef<RequestIntent | null>(null);
+  const saveRequestId = useCallback(
+    (contentToSave: string) =>
+      doc
+        ? requestIdForIntent(
+            saveIntentRef,
+            `${doc.uri}\u0000${doc.source.sourceHash}\u0000${contentToSave}`
+          )
+        : undefined,
+    [doc]
+  );
+
   // Save function
   const saveDocument = useCallback(
     async (contentToSave: string) => {
@@ -326,6 +341,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
             expectedSourceHash: doc.source.sourceHash,
             expectedModifiedAt: doc.source.modifiedAt,
             uri: doc.uri,
+            requestId: saveRequestId(contentToSave),
           }),
         }
       );
@@ -358,7 +374,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
         }
       }
     },
-    [doc]
+    [doc, saveRequestId]
   );
 
   const handleCreateEditableCopy = useCallback(async () => {
@@ -547,6 +563,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
           expectedSourceHash: doc.source.sourceHash,
           expectedModifiedAt: doc.source.modifiedAt,
           uri: doc.uri,
+          requestId: saveRequestId(content),
         }),
       }
     );
@@ -578,7 +595,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
 
     // Trigger embedding (fire and forget - don't block on result)
     void apiFetch("/api/embed", { method: "POST" });
-  }, [hasUnsavedChanges, doc, content]);
+  }, [hasUnsavedChanges, doc, content, saveRequestId]);
 
   const loadDocument = useCallback(() => {
     const uri = currentTarget.uri;

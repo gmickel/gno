@@ -12,7 +12,13 @@ import { basename, dirname, join as pathJoin } from "node:path";
 
 import type { Collection, Config } from "../config/types";
 import type { PreparedBrowserClip } from "../core/browser-clip";
-import type { CaptureInput, CapturePlan, CaptureSource } from "../core/capture";
+import type {
+  CaptureInput,
+  CapturePlan,
+  CaptureReceipt,
+  CaptureSource,
+  SyncCapturedFileResult,
+} from "../core/capture";
 import type { JobManager } from "../core/job-manager";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 import type { ClipperIdempotencyPlan } from "../store/sqlite/clipper-store-types";
@@ -30,12 +36,16 @@ import {
   hashCaptureContent,
   listCaptureDiskRelPaths,
   planCapture,
-  syncCapturedFile,
 } from "../core/capture";
+import { publishCapture } from "../core/capture-publish";
 import { writeCapturePlanFile } from "../core/capture-write";
 import { MCP_ERRORS } from "../core/errors";
 import { withWriteLock } from "../core/file-lock";
 import { recordContentMutation } from "../core/mutation-generations";
+import {
+  LOCAL_OWNER_NAMESPACE,
+  requestLedgerPath,
+} from "../core/request-receipts";
 import { DEFAULT_LOCK_WAIT_MS, writeLeasePath } from "../core/write-lease";
 import {
   type CollectionSyncResult,
@@ -331,6 +341,37 @@ const executeCaptureAsJob = async (
   };
 };
 
+/** Shared leased publication wired to the resident watch/event hooks. */
+const residentPublication = (
+  context: ResidentCaptureContext,
+  store: SqliteAdapter,
+  collection: Collection,
+  dependencies: ResidentCaptureDependencies
+) => ({
+  collection,
+  store,
+  lockPath: resolveCaptureLockPath(context, dependencies),
+  lockWaitMs: dependencies.lockWaitMs ?? DEFAULT_LOCK_WAIT_MS,
+  config: context.config,
+  syncPaths: dependencies.syncPaths,
+  beforeWrite: (absPath: string) => context.watchService?.suppress(absPath),
+  afterSync: (synced: SyncCapturedFileResult, receipt: CaptureReceipt) => {
+    if (synced.result) {
+      recordContentMutation(synced.result, context.markContentMutation);
+    }
+    if (!receipt.openedExisting) {
+      emitCaptureCreated(context, collection, receipt.relPath);
+    }
+  },
+});
+
+const residentCaptureStatus = (receipt: CaptureReceipt): number =>
+  receipt.collisionPolicyResult === "conflict"
+    ? HTTP_CONFLICT
+    : receipt.openedExisting
+      ? HTTP_OK
+      : HTTP_CREATED;
+
 /**
  * Write + lexical sync under the shared write lease; the response is sent
  * only once the capture is retrievable. Throws `CaptureSyncError` when the
@@ -343,37 +384,66 @@ const executeCaptureAwaitingSync = async (
   planned: Extract<ResidentCapturePlanResult, { ok: true }>,
   dependencies: ResidentCaptureDependencies
 ): Promise<{ body: unknown; status: number }> => {
-  const { collection, fullPath, plan } = planned;
-  return withWriteLock(
-    resolveCaptureLockPath(context, dependencies),
-    async () => {
-      await mkdir(dirname(fullPath), { recursive: true });
-      context.watchService?.suppress(fullPath);
-      await writeCapturePlanFile(plan, fullPath);
-      const synced = await syncCapturedFile({
-        collection,
-        store,
-        relPath: plan.relPath,
-        absPath: fullPath,
-        config: context.config,
-        syncPaths: dependencies.syncPaths,
-      });
-      if (synced.result) {
-        recordContentMutation(synced.result, context.markContentMutation);
-      }
-      emitCaptureCreated(context, collection, plan.relPath);
-      return {
-        body: buildCaptureReceipt({
-          plan,
-          absPath: fullPath,
-          docid: synced.docid,
-          sync: synced.sync,
-        }),
-        status: HTTP_CREATED,
-      };
-    },
-    dependencies.lockWaitMs ?? DEFAULT_LOCK_WAIT_MS
+  const { receipt } = await publishCapture({
+    ...residentPublication(context, store, planned.collection, dependencies),
+    plan: async () => planned.plan,
+  });
+  return { body: receipt, status: HTTP_CREATED };
+};
+
+/** A resident plan rejection, carried through the leased planner. */
+export class ResidentCapturePlanError extends Error {
+  readonly shape: Extract<ResidentCapturePlanResult, { ok: false }>;
+
+  constructor(shape: Extract<ResidentCapturePlanResult, { ok: false }>) {
+    super(shape.message);
+    this.name = "ResidentCapturePlanError";
+    this.shape = shape;
+  }
+}
+
+/**
+ * `/api/capture` with a request ID: planning moves under the lease and the
+ * request-receipt service replays, finishes, or admits the capture.
+ */
+export const executeRequestedResidentCapture = async (
+  context: ResidentCaptureContext,
+  store: SqliteAdapter,
+  input: CaptureInput,
+  requestId: string,
+  dependencies: ResidentCaptureDependencies = {}
+): Promise<{ body: unknown; status: number }> => {
+  const collection = context.config.collections.find(
+    (candidate) =>
+      candidate.name.toLowerCase() === input.collection.toLowerCase()
   );
+  if (!collection) {
+    throw new ResidentCapturePlanError({
+      ok: false,
+      code: "NOT_FOUND",
+      message: `Collection not found: ${input.collection}`,
+      status: 404,
+    });
+  }
+  const normalized = { ...input, collection: collection.name };
+  const published = await publishCapture({
+    ...residentPublication(context, store, collection, dependencies),
+    plan: async () => {
+      const planned = await planResidentCapture(context, store, normalized);
+      if (!planned.ok) throw new ResidentCapturePlanError(planned);
+      return planned.plan;
+    },
+    request: {
+      ledgerPath: requestLedgerPath(store.getDbPath()),
+      namespace: LOCAL_OWNER_NAMESPACE,
+      requestId,
+      input: normalized,
+    },
+  });
+  return {
+    body: { ...published.receipt, request: published.request },
+    status: residentCaptureStatus(published.receipt),
+  };
 };
 
 /**

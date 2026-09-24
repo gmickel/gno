@@ -15,6 +15,7 @@ import type {
 
 import { MCP_SERVER_NAME, VERSION } from "../app/constants";
 import { EgressDeniedError } from "../core/egress-enforcement";
+import { httpMcpRequestNamespace } from "../core/request-receipts";
 import { withInferenceScope } from "../llm/inference-scope";
 import { createMcpServerSurface, type ToolContext } from "./context";
 import {
@@ -445,6 +446,7 @@ export class HttpMcpTransport {
                 this.#runtime.mcpContext.serverInstanceId,
                 context.identity
               ),
+              requestNamespace: httpMcpRequestNamespace(context.identity),
             }
           )
         : await handle();

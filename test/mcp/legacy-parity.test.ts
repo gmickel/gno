@@ -29,7 +29,10 @@
  *    Their complete schemas remain pinned by the current byte-exact golden;
  *    the historical SDK capture is immutable. fn-169 additionally adds exactly
  *    two read-only compiled-context tools, pinned by the current golden and
- *    removed only for the historical comparison.
+ *    removed only for the historical comparison. fn-170 additionally permits
+ *    the optional `requestId` property on exactly `gno_capture` and
+ *    `gno_remember` and adds one read-only write-gated `gno_request_status`
+ *    tool, removed only for the historical comparison.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -264,6 +267,8 @@ const COMPILED_CONTEXT_TOOLS = new Set([
   "gno_context_compiled_preview",
   "gno_context_compiled_check",
 ]);
+const REQUEST_STATUS_TOOLS = new Set(["gno_request_status"]);
+const REQUEST_ID_TOOLS = new Set(["gno_capture", "gno_remember"]);
 
 const TYPED_FILTER_TOOLS = new Set([
   "gno_context",
@@ -279,6 +284,17 @@ const TYPED_FILTER_DEFINITIONS = new Set(
     (_, index) => `gnoMetadataPredicateDepth${index + 1}`
   )
 );
+
+/** Remove only the additive fn-170 `requestId` input. */
+function withoutRequestIdExtension(tool: WireTool): WireTool {
+  if (!REQUEST_ID_TOOLS.has(tool.name)) return tool;
+  const { properties, ...rest } = tool.inputSchema;
+  const { requestId: _requestId, ...oldProperties } = properties as Record<
+    string,
+    unknown
+  >;
+  return { ...tool, inputSchema: { ...rest, properties: oldProperties } };
+}
 
 /** Remove only the additive fn-168 inputs when comparing the frozen SDK capture. */
 function withoutTypedFilterExtension(tool: WireTool): Record<string, unknown> {
@@ -304,7 +320,11 @@ function withoutTypedFilterExtension(tool: WireTool): Record<string, unknown> {
 function normalizeToolsList(line: string): string {
   const envelope = parseJsonRpc<ToolsListEnvelope>(line);
   const tools = envelope.result.tools
-    .filter((tool) => !COMPILED_CONTEXT_TOOLS.has(tool.name))
+    .filter(
+      (tool) =>
+        !COMPILED_CONTEXT_TOOLS.has(tool.name) &&
+        !REQUEST_STATUS_TOOLS.has(tool.name)
+    )
     .map((tool) => {
       const {
         execution: _execution,
@@ -316,7 +336,9 @@ function normalizeToolsList(line: string): string {
         ...rest,
         inputSchema: SDK_V1_UNION_PLACEHOLDER_TOOLS.has(tool.name)
           ? "<sdk-v1 union placeholder>"
-          : withoutSdkDeltas(withoutTypedFilterExtension(tool)),
+          : withoutSdkDeltas(
+              withoutTypedFilterExtension(withoutRequestIdExtension(tool))
+            ),
         ...(outputSchema
           ? { outputSchema: withoutSdkDeltas(outputSchema) }
           : {}),
@@ -436,7 +458,35 @@ describe("MCP legacy 2025-11-25 wire parity", () => {
           .filter((tool) => !historicalNames.has(tool.name))
           .map((tool) => tool.name)
       )
-    ).toEqual(COMPILED_CONTEXT_TOOLS);
+    ).toEqual(new Set([...COMPILED_CONTEXT_TOOLS, ...REQUEST_STATUS_TOOLS]));
+    for (const tool of actualTools.filter((entry) =>
+      REQUEST_STATUS_TOOLS.has(entry.name)
+    )) {
+      expect(tool.annotations).toMatchObject({
+        readOnlyHint: true,
+        destructiveHint: false,
+      });
+      expect(tool.inputSchema.required).toEqual(["requestId"]);
+    }
+    expect(
+      new Set(
+        actualTools
+          .filter((tool) =>
+            Object.hasOwn(
+              (tool.inputSchema.properties ?? {}) as object,
+              "requestId"
+            )
+          )
+          .map((tool) => tool.name)
+      )
+    ).toEqual(new Set([...REQUEST_ID_TOOLS, ...REQUEST_STATUS_TOOLS]));
+    for (const tool of actualTools.filter((entry) =>
+      REQUEST_ID_TOOLS.has(entry.name)
+    )) {
+      expect((tool.inputSchema.required ?? []) as string[]).not.toContain(
+        "requestId"
+      );
+    }
     for (const tool of actualTools.filter((entry) =>
       COMPILED_CONTEXT_TOOLS.has(entry.name)
     )) {

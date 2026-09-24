@@ -22,6 +22,7 @@ import {
   resolveMcpMemoryIdentity,
   rethrowMemoryError,
 } from "./memory-shared";
+import { requestIdInputSchema } from "./request-status";
 
 export const REMEMBER_MCP_ANNOTATIONS = {
   readOnlyHint: false,
@@ -92,6 +93,7 @@ export const rememberInputSchema = z.object({
     .min(1)
     .optional()
     .describe("Free-text evidence for the fact (where it came from)"),
+  requestId: requestIdInputSchema.optional(),
 });
 
 export type RememberToolInput = z.infer<typeof rememberInputSchema>;
@@ -132,6 +134,11 @@ export function formatRememberResult(result: RememberResult): string {
       break;
   }
   lines.push(matching);
+  if ("request" in result && result.request) {
+    lines.push(
+      `Request: ${result.request.requestId} committed${result.request.replayed ? " (replayed)" : ""}`
+    );
+  }
   return lines.join("\n");
 }
 
@@ -163,6 +170,7 @@ export function handleRemember(
           receipt: args.receipt,
           derivedFrom: args.derivedFrom,
           source: args.source,
+          requestId: args.requestId,
         });
       } catch (error) {
         return rethrowMemoryError(error);

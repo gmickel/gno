@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import { apiOk, renderWithUser } from "../../../helpers/dom";
+import { apiError, apiOk, renderWithUser } from "../../../helpers/dom";
 
 const apiFetch = mock(async (..._args: unknown[]) => apiOk<unknown>({}));
 
@@ -130,6 +130,54 @@ describe("CaptureModal DOM interactions", () => {
       source: { kind: "direct" },
       tags: ["work"],
     });
+  });
+
+  test("retrying the same capture reuses its request ID; an edit starts a new one", async () => {
+    apiFetch.mockImplementation(async (...args: unknown[]) => {
+      const endpoint = typeof args[0] === "string" ? args[0] : "";
+      if (endpoint === "/api/status") {
+        return apiOk({
+          collections: [{ name: "notes", path: "/tmp/notes" }],
+        });
+      }
+      if (endpoint === "/api/capture") {
+        return apiError("Network error") as unknown as ReturnType<
+          typeof apiOk<unknown>
+        >;
+      }
+      return apiOk({});
+    });
+
+    const { CaptureModal } =
+      await import("../../../../src/serve/public/components/CaptureModal");
+    const { user } = renderWithUser(
+      <CaptureModal onOpenChange={() => undefined} open={true} />
+    );
+    await screen.findByRole("dialog", { name: "New note" });
+    await user.type(screen.getByLabelText("Title"), "Lost response");
+    await user.type(screen.getByLabelText("Content"), "Body");
+
+    const submitAndFail = async () => {
+      await user.click(screen.getByRole("button", { name: "Create note" }));
+      await user.click(
+        await screen.findByRole("button", { name: "Try again" })
+      );
+    };
+    await submitAndFail();
+    await submitAndFail();
+    await user.type(screen.getByLabelText("Content"), " edited");
+    await submitAndFail();
+
+    const requestIds = apiFetch.mock.calls
+      .filter((call) => call[0] === "/api/capture")
+      .map(
+        (call) =>
+          JSON.parse((call[1] as { body: string }).body).requestId as string
+      );
+    expect(requestIds).toHaveLength(3);
+    expect(requestIds[0]).toMatch(/^[0-9a-f-]{36}$/u);
+    expect(requestIds[1]).toBe(requestIds[0]);
+    expect(requestIds[2]).not.toBe(requestIds[0]);
   });
 
   test("shows missing collection state", async () => {

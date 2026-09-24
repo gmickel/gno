@@ -68,6 +68,8 @@ import {
   getDocumentCapabilities,
 } from "../../core/document-capabilities";
 import { EgressAuditService } from "../../core/egress-audit";
+import { MCP_ERRORS } from "../../core/errors";
+import { withWriteLock } from "../../core/file-lock";
 import {
   atomicWrite,
   copyFilePath,
@@ -110,6 +112,18 @@ import {
 } from "../../core/project-affinity-surface";
 import { projectRecordEvidenceMetadata } from "../../core/record-metadata";
 import {
+  LOCAL_OWNER_NAMESPACE,
+  readRequestStatus,
+  REQUEST_RECEIPT_HTTP_STATUS,
+  type RequestCheckpoint,
+  RequestReceiptError,
+  type RequestReceiptInfo,
+  requestDigest,
+  requestLedgerPath,
+  runRequestedWrite,
+  validateRequestId,
+} from "../../core/request-receipts";
+import {
   retrievalTraceFilters,
   startRetrievalTraceRequest,
 } from "../../core/retrieval-trace-request";
@@ -130,7 +144,7 @@ import {
   type MetadataPredicate,
 } from "../../core/typed-metadata";
 import { validateRelPath } from "../../core/validation";
-import { writeLeasePath } from "../../core/write-lease";
+import { DEFAULT_LOCK_WAIT_MS, writeLeasePath } from "../../core/write-lease";
 import {
   defaultSyncService,
   type SyncResult,
@@ -163,8 +177,10 @@ import { exportPublishArtifact } from "../../publish/export-service";
 import { buildBrowseTree, normalizeBrowsePath } from "../browse-tree";
 import {
   classifyResidentCaptureError,
+  executeRequestedResidentCapture,
   executeResidentCapturePlan,
   planResidentCapture,
+  ResidentCapturePlanError,
   type ResidentCaptureDependencies,
 } from "../capture-service";
 import { parseClosedJson } from "../closed-json";
@@ -493,7 +509,10 @@ export interface CreateDocRequestBody {
   tags?: string[];
 }
 
-export interface CreateCaptureRequestBody extends PublicCaptureInput {}
+export interface CreateCaptureRequestBody extends PublicCaptureInput {
+  /** Opt-in retry identity (see docs/API.md "Request IDs"). */
+  requestId?: string;
+}
 
 export interface RenameDocRequestBody {
   name: string;
@@ -546,6 +565,8 @@ export interface UpdateDocRequestBody {
   expectedModifiedAt?: string;
   /** Exact document URI when docid is not unique across duplicate content */
   uri?: string;
+  /** Opt-in retry identity (see docs/API.md "Request IDs"). */
+  requestId?: string;
 }
 
 export interface CreateEditableCopyRequestBody {
@@ -592,6 +613,16 @@ function errorResponse(
       },
     },
     status
+  );
+}
+
+/** Request receipt errors keep their stable code; null for anything else. */
+function requestErrorResponse(error: unknown): Response | null {
+  if (!(error instanceof RequestReceiptError)) return null;
+  return errorResponse(
+    error.code,
+    error.message,
+    REQUEST_RECEIPT_HTTP_STATUS[error.code]
   );
 }
 
@@ -3296,8 +3327,81 @@ export async function handleRevealDoc(
 }
 
 /**
+ * GET /api/requests/:requestId
+ * Local-owner lookup of a capture/remember/document-update request ID.
+ * Returns a content-free pointer, never the stored outcome.
+ */
+export async function handleRequestStatus(
+  store: SqliteAdapter,
+  requestId: string
+): Promise<Response> {
+  try {
+    return jsonResponse(
+      await readRequestStatus({
+        ledgerPath: requestLedgerPath(store.getDbPath()),
+        namespace: LOCAL_OWNER_NAMESPACE,
+        requestId,
+      })
+    );
+  } catch (error) {
+    return (
+      requestErrorResponse(error) ??
+      errorResponse(
+        "RUNTIME",
+        error instanceof Error ? error.message : String(error),
+        500
+      )
+    );
+  }
+}
+
+/** A document update refused before anything was written. */
+class DocUpdateRejected extends Error {
+  readonly response: Response;
+
+  constructor(response: Response) {
+    super("document update rejected");
+    this.response = response;
+  }
+}
+
+/** Private recovery record for one admitted document update. */
+interface DocUpdatePlan {
+  fullPath: string;
+  collection: string;
+  relPath: string;
+  documentId: number;
+  docid: string;
+  gnoUri: string;
+  baseHash: string;
+  /** Null when only store tags change (no file write). */
+  newHash: string | null;
+  indexedSourceHash: string;
+  indexedModifiedAt: string;
+  writeBack?: "applied" | "skipped_unsupported";
+}
+
+/** Retained outcome: the response body plus what deferred sync needs. */
+interface DocUpdateOutcome {
+  success: true;
+  docId: string;
+  uri: string;
+  path: string;
+  jobId: string | null;
+  writeBack?: "applied" | "skipped_unsupported";
+  version: { sourceHash: string; modifiedAt: string };
+  gnoUri: string;
+  collection: string;
+  relPath: string;
+  contentWritten: boolean;
+}
+
+/**
  * PUT /api/docs/:id
  * Update an existing document's content and/or tags.
+ *
+ * The revision check and file publication run under the shared write lease
+ * (with or without a request ID). Lexical sync and embedding stay deferred.
  */
 export async function handleUpdateDoc(
   ctxHolder: ContextHolder,
@@ -3306,6 +3410,10 @@ export async function handleUpdateDoc(
   req: Request,
   deps?: {
     syncCollection?: typeof defaultSyncService.syncCollection;
+    /** Shared `.mcp-write.lock` path; defaults to the resident index's lease. */
+    lockPath?: string;
+    lockWaitMs?: number;
+    requestCheckpoint?: (stage: RequestCheckpoint) => Promise<void> | void;
   }
 ): Promise<Response> {
   let body: UpdateDocRequestBody;
@@ -3342,6 +3450,15 @@ export async function handleUpdateDoc(
   if (body.uri !== undefined && typeof body.uri !== "string") {
     return errorResponse("VALIDATION", "uri must be a string");
   }
+  let requestId: string | undefined;
+  try {
+    requestId =
+      body.requestId === undefined
+        ? undefined
+        : validateRequestId(body.requestId);
+  } catch (error) {
+    return requestErrorResponse(error) as Response;
+  }
 
   // Validate tags if provided
   let normalizedTags: string[] | undefined;
@@ -3365,176 +3482,293 @@ export async function handleUpdateDoc(
     }
   }
 
-  // Get document to verify it exists
-  const docResult = await resolveDocumentReference(store, docId, body.uri);
-  if (!docResult.ok) {
-    return errorResponse("RUNTIME", docResult.error.message, 500);
-  }
-  if (!docResult.value) {
-    return errorResponse("NOT_FOUND", "Document not found", 404);
-  }
-
-  const doc = docResult.value;
-  const capabilities = capabilitiesForDocument(doc);
-  if (hasContent && !capabilities.editable) {
-    return errorResponse(
-      "READ_ONLY",
-      capabilities.reason ??
-        "This document cannot be edited in place. Create an editable markdown copy instead.",
-      409
-    );
-  }
-
-  const resolvedDocPath = await resolveAbsoluteDocPath(
-    ctxHolder.config.collections,
-    doc
-  );
-  if (!resolvedDocPath) {
-    return errorResponse(
-      "NOT_FOUND",
-      `Collection not found: ${doc.collection}`,
-      404
-    );
-  }
-  const { collection, fullPath } = resolvedDocPath;
-
-  // Verify file exists
-  const file = Bun.file(fullPath);
-  if (!(await file.exists())) {
-    return errorResponse("FILE_NOT_FOUND", "Source file no longer exists", 404);
-  }
-
-  if (body.expectedSourceHash || body.expectedModifiedAt) {
-    const currentBytes = await file.bytes();
-    const currentSourceHash = hashContent(
-      new TextDecoder().decode(currentBytes)
-    );
+  const readModifiedAt = async (path: string): Promise<string> => {
     const { stat } = await import("node:fs/promises"); // no Bun structure stat parity
-    const currentModifiedAt = (await stat(fullPath)).mtime.toISOString();
+    return (await stat(path)).mtime.toISOString();
+  };
 
-    if (
-      (body.expectedSourceHash &&
-        body.expectedSourceHash !== currentSourceHash) ||
-      (body.expectedModifiedAt && body.expectedModifiedAt !== currentModifiedAt)
-    ) {
-      return jsonResponse(
-        {
-          error: {
-            code: "CONFLICT",
-            message: "Document changed on disk. Reload before saving.",
-          },
-          currentVersion: {
-            sourceHash: currentSourceHash,
-            modifiedAt: currentModifiedAt,
-          },
-        },
-        409
+  /** Under the lease: resolve, revision-check, plan. Never writes. */
+  const prepare = async (): Promise<{
+    plan: DocUpdatePlan;
+    publish: () => Promise<void>;
+  }> => {
+    const docResult = await resolveDocumentReference(store, docId, body.uri);
+    if (!docResult.ok) {
+      throw new DocUpdateRejected(
+        errorResponse("RUNTIME", docResult.error.message, 500)
       );
     }
-  }
-
-  let writeBack: "applied" | "skipped_unsupported" | undefined;
-
-  try {
-    // Determine final content to write
-    let contentToWrite: string | undefined;
-
-    if (hasContent) {
-      contentToWrite = body.content;
+    if (!docResult.value) {
+      throw new DocUpdateRejected(
+        errorResponse("NOT_FOUND", "Document not found", 404)
+      );
+    }
+    const doc = docResult.value;
+    const capabilities = capabilitiesForDocument(doc);
+    if (hasContent && !capabilities.editable) {
+      throw new DocUpdateRejected(
+        errorResponse(
+          "READ_ONLY",
+          capabilities.reason ??
+            "This document cannot be edited in place. Create an editable markdown copy instead.",
+          409
+        )
+      );
+    }
+    const resolvedDocPath = await resolveAbsoluteDocPath(
+      ctxHolder.config.collections,
+      doc
+    );
+    if (!resolvedDocPath) {
+      throw new DocUpdateRejected(
+        errorResponse(
+          "NOT_FOUND",
+          `Collection not found: ${doc.collection}`,
+          404
+        )
+      );
+    }
+    const { fullPath } = resolvedDocPath;
+    const file = Bun.file(fullPath);
+    if (!(await file.exists())) {
+      throw new DocUpdateRejected(
+        errorResponse("FILE_NOT_FOUND", "Source file no longer exists", 404)
+      );
+    }
+    const currentText = await file.text();
+    const currentSourceHash = hashContent(currentText);
+    if (body.expectedSourceHash || body.expectedModifiedAt) {
+      const currentModifiedAt = await readModifiedAt(fullPath);
+      if (
+        (body.expectedSourceHash &&
+          body.expectedSourceHash !== currentSourceHash) ||
+        (body.expectedModifiedAt &&
+          body.expectedModifiedAt !== currentModifiedAt)
+      ) {
+        throw new DocUpdateRejected(
+          jsonResponse(
+            {
+              error: {
+                code: "CONFLICT",
+                message: "Document changed on disk. Reload before saving.",
+              },
+              currentVersion: {
+                sourceHash: currentSourceHash,
+                modifiedAt: currentModifiedAt,
+              },
+            },
+            409
+          )
+        );
+      }
     }
 
-    // Handle tag writeback for Markdown files
-    if (hasTags && normalizedTags) {
+    let contentToWrite = hasContent ? body.content : undefined;
+    let writeBack: DocUpdatePlan["writeBack"];
+    if (normalizedTags) {
       if (capabilities.tagsWriteback) {
-        // Read current content if we're only updating tags
-        const source = contentToWrite ?? (await file.text());
-        contentToWrite = updateFrontmatterTags(source, normalizedTags);
+        contentToWrite = updateFrontmatterTags(
+          contentToWrite ?? currentText,
+          normalizedTags
+        );
         writeBack = "applied";
       } else {
         writeBack = "skipped_unsupported";
       }
+    }
+    return {
+      plan: {
+        fullPath,
+        collection: doc.collection,
+        relPath: doc.relPath,
+        documentId: doc.id,
+        docid: doc.docid,
+        gnoUri: doc.uri,
+        baseHash: currentSourceHash,
+        newHash:
+          contentToWrite === undefined ? null : hashContent(contentToWrite),
+        indexedSourceHash: doc.sourceHash,
+        indexedModifiedAt: doc.sourceMtime,
+        writeBack,
+      },
+      publish: async () => {
+        if (contentToWrite === undefined) return;
+        ctxHolder.watchService?.suppress(fullPath);
+        await atomicWrite(fullPath, contentToWrite);
+      },
+    };
+  };
 
-      // Update tags in DB (user source since this is a user action)
-      const tagResult = await store.setDocTags(doc.id, normalizedTags, "user");
-      if (!tagResult.ok) {
-        return errorResponse("RUNTIME", tagResult.error.message, 500);
+  /** Committed boundary: file published, tags stored, new hash recorded. */
+  const finish = async (plan: DocUpdatePlan): Promise<DocUpdateOutcome> => {
+    if (normalizedTags) {
+      // User source since this is a user action.
+      const tagResult = await store.setDocTags(
+        plan.documentId,
+        normalizedTags,
+        "user"
+      );
+      if (!tagResult.ok) throw new Error(tagResult.error.message);
+    }
+    const { pathToFileURL } = await import("node:url");
+    return {
+      success: true,
+      docId: plan.docid,
+      uri: pathToFileURL(plan.fullPath).href,
+      path: plan.fullPath,
+      jobId: null,
+      writeBack: plan.writeBack,
+      version:
+        plan.newHash === null
+          ? {
+              sourceHash: plan.indexedSourceHash,
+              modifiedAt: plan.indexedModifiedAt,
+            }
+          : {
+              sourceHash: plan.newHash,
+              modifiedAt: await readModifiedAt(plan.fullPath),
+            },
+      gnoUri: plan.gnoUri,
+      collection: plan.collection,
+      relPath: plan.relPath,
+      contentWritten: plan.newHash !== null,
+    };
+  };
+
+  const lockPath =
+    deps?.lockPath ??
+    writeLeasePath(getIndexDbPath(ctxHolder.current?.indexName));
+  const lockWaitMs = deps?.lockWaitMs ?? DEFAULT_LOCK_WAIT_MS;
+  let outcome: DocUpdateOutcome;
+  let request: RequestReceiptInfo | undefined;
+  try {
+    if (requestId === undefined) {
+      outcome = await withWriteLock(
+        lockPath,
+        async () => {
+          const prepared = await prepare();
+          await prepared.publish();
+          return finish(prepared.plan);
+        },
+        lockWaitMs
+      );
+    } else {
+      const requested = await runRequestedWrite<
+        DocUpdatePlan,
+        DocUpdateOutcome
+      >({
+        ledgerPath: requestLedgerPath(store.getDbPath()),
+        namespace: LOCAL_OWNER_NAMESPACE,
+        requestId,
+        operation: "document.update",
+        digest: requestDigest("document.update", {
+          target: body.uri ?? docId,
+          content: body.content,
+          tags: normalizedTags,
+          expectedSourceHash: body.expectedSourceHash,
+          expectedModifiedAt: body.expectedModifiedAt,
+        }),
+        lockPath,
+        lockWaitMs,
+        checkpoint: deps?.requestCheckpoint,
+        prepare,
+        inspect: async (plan) => {
+          if (plan.newHash === null) return "absent";
+          const file = Bun.file(plan.fullPath);
+          if (!(await file.exists())) return "unexpected";
+          const onDisk = hashContent(await file.text());
+          if (onDisk === plan.newHash) return "published";
+          return onDisk === plan.baseHash ? "absent" : "unexpected";
+        },
+        finish,
+        resultRef: (result) => ({
+          uri: result.gnoUri,
+          docid: result.docId,
+          sourceHash: result.version.sourceHash,
+        }),
+      });
+      outcome = requested.result;
+      request = requested.request;
+      if (request.replayed) {
+        const {
+          gnoUri: _u,
+          collection: _c,
+          relPath: _r,
+          contentWritten: _w,
+          ...replayed
+        } = outcome;
+        return jsonResponse({ ...replayed, request });
       }
     }
-
-    let currentSourceHash = doc.sourceHash;
-    let currentModifiedAt = doc.sourceMtime;
-
-    // Write file if we have content to write
-    if (contentToWrite !== undefined) {
-      ctxHolder.watchService?.suppress(fullPath);
-      await atomicWrite(fullPath, contentToWrite);
-      currentSourceHash = hashContent(contentToWrite);
-      const { stat } = await import("node:fs/promises"); // no Bun structure stat parity
-      currentModifiedAt = (await stat(fullPath)).mtime.toISOString();
+  } catch (error) {
+    if (error instanceof DocUpdateRejected) return error.response;
+    const receiptError = requestErrorResponse(error);
+    if (receiptError) return receiptError;
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.startsWith(`${MCP_ERRORS.LOCKED.code}:`)) {
+      return errorResponse(MCP_ERRORS.LOCKED.code, message, 409);
     }
-
-    // Build proper file:// URI using node:url
-    const { pathToFileURL } = await import("node:url");
-    const fileUri = pathToFileURL(fullPath).href;
-
-    // Run sync via job system (non-blocking) only if content changed
-    // Note: embedding handled separately by embed-scheduler (not inline)
-    let jobId: string | null = null;
-    if (contentToWrite !== undefined) {
-      const jobResult = await startJob(
-        "sync",
-        async (): Promise<SyncResult> => {
-          const result = await syncResidentCollection(
-            ctxHolder,
-            collection,
-            store,
-            withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config),
-            deps?.syncCollection
-          );
-          // Notify scheduler after sync completes
-          ctxHolder.scheduler?.notifySyncComplete([doc.docid]);
-          ctxHolder.eventBus?.emit({
-            type: "document-changed",
-            uri: doc.uri,
-            collection: doc.collection,
-            relPath: doc.relPath,
-            origin: "save",
-            changedAt: new Date().toISOString(),
-          });
-          return {
-            collections: [result],
-            totalDurationMs: result.durationMs,
-            totalFilesProcessed: result.filesProcessed,
-            totalFilesAdded: result.filesAdded,
-            totalFilesUpdated: result.filesUpdated,
-            totalFilesErrored: result.filesErrored,
-            totalFilesSkipped: result.filesSkipped,
-          };
-        },
-        ctxHolder.jobManager
-      );
-      jobId = jobResult.ok ? jobResult.jobId : null;
-    }
-
-    return jsonResponse({
-      success: true,
-      docId: doc.docid,
-      uri: fileUri,
-      path: fullPath,
-      jobId,
-      writeBack,
-      version: {
-        sourceHash: currentSourceHash,
-        modifiedAt: currentModifiedAt,
-      },
-    });
-  } catch (e) {
     return errorResponse(
       "RUNTIME",
-      `Failed to update document: ${e instanceof Error ? e.message : String(e)}`,
+      `Failed to update document: ${message}`,
       500
     );
   }
+
+  // Deferred work: lexical sync via the job system, embedding via the
+  // scheduler. Its failure never undoes the committed save.
+  let jobId: string | null = null;
+  const collection = ctxHolder.config.collections.find(
+    (candidate) => candidate.name === outcome.collection
+  );
+  if (outcome.contentWritten && collection) {
+    const jobResult = await startJob(
+      "sync",
+      async (): Promise<SyncResult> => {
+        const result = await syncResidentCollection(
+          ctxHolder,
+          collection,
+          store,
+          withContentTypeRules({ runUpdateCmd: false }, ctxHolder.config),
+          deps?.syncCollection
+        );
+        // Notify scheduler after sync completes
+        ctxHolder.scheduler?.notifySyncComplete([outcome.docId]);
+        ctxHolder.eventBus?.emit({
+          type: "document-changed",
+          uri: outcome.gnoUri,
+          collection: outcome.collection,
+          relPath: outcome.relPath,
+          origin: "save",
+          changedAt: new Date().toISOString(),
+        });
+        return {
+          collections: [result],
+          totalDurationMs: result.durationMs,
+          totalFilesProcessed: result.filesProcessed,
+          totalFilesAdded: result.filesAdded,
+          totalFilesUpdated: result.filesUpdated,
+          totalFilesErrored: result.filesErrored,
+          totalFilesSkipped: result.filesSkipped,
+        };
+      },
+      ctxHolder.jobManager
+    );
+    jobId = jobResult.ok ? jobResult.jobId : null;
+  }
+
+  const {
+    gnoUri: _uri,
+    collection: _col,
+    relPath: _rel,
+    contentWritten: _written,
+    ...response
+  } = outcome;
+  return jsonResponse({
+    ...response,
+    jobId,
+    ...(request ? { request } : {}),
+  });
 }
 
 /**
@@ -3698,8 +3932,39 @@ export async function handleCreateCapture(
     );
   }
 
+  const { requestId, ...captureInput } = body;
+  if (requestId !== undefined) {
+    try {
+      const result = await executeRequestedResidentCapture(
+        ctxHolder,
+        store,
+        { ...captureInput, collection: body.collection },
+        validateRequestId(requestId),
+        deps
+      );
+      return jsonResponse(result.body, result.status);
+    } catch (error) {
+      if (error instanceof ResidentCapturePlanError) {
+        return errorResponse(
+          error.shape.code,
+          error.shape.message,
+          error.shape.status
+        );
+      }
+      const receiptError = requestErrorResponse(error);
+      if (receiptError) return receiptError;
+      const shape = classifyResidentCaptureError(error);
+      return errorResponse(
+        shape.code,
+        shape.message,
+        shape.status,
+        shape.details
+      );
+    }
+  }
+
   const planned = await planResidentCapture(ctxHolder, store, {
-    ...body,
+    ...captureInput,
     collection: body.collection,
   });
   if (!planned.ok) {
@@ -3765,6 +4030,8 @@ export interface MemoryRouteDeps {
 }
 
 function memoryErrorResponse(error: unknown, fallback: string): Response {
+  const receiptError = requestErrorResponse(error);
+  if (receiptError) return receiptError;
   if (error instanceof MemoryError) {
     return errorResponse(
       error.code,
@@ -3824,6 +4091,10 @@ function createMemoryService(
     collections: ctx.config.collections,
     lockPath: deps.lockPath ?? writeLeasePath(getIndexDbPath(ctx.indexName)),
     lockWaitMs: deps.lockWaitMs,
+    requests: {
+      ledgerPath: requestLedgerPath(store.getDbPath()),
+      namespace: LOCAL_OWNER_NAMESPACE,
+    },
     embedPort: ctx.embedPort,
     vectorIndex: ctx.vectorIndex,
   });

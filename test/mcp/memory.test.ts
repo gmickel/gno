@@ -18,6 +18,7 @@ import { join } from "node:path";
 
 import type { Collection, Config } from "../../src/config/types";
 import type { RecallResult, RememberResult } from "../../src/core/memory";
+import type { RequestStatusResult } from "../../src/core/request-receipts";
 import type { ToolContext } from "../../src/mcp/server";
 
 import { createDefaultConfig } from "../../src/config/defaults";
@@ -389,7 +390,9 @@ describe("2026-07-28 sessionless leg: memory identity is per caller", () => {
     hostname: "127.0.0.1",
   });
 
-  function sessionlessTransport(): HttpMcpTransport {
+  function sessionlessTransport(
+    serverInstanceId = SERVER_INSTANCE_ID
+  ): HttpMcpTransport {
     const context = createToolContext({
       store,
       getConfig: () => config,
@@ -397,7 +400,7 @@ describe("2026-07-28 sessionless leg: memory identity is per caller", () => {
       indexName: "default",
       toolMutex: { acquire: async () => () => {} },
       jobManager: {} as ToolContext["jobManager"],
-      serverInstanceId: SERVER_INSTANCE_ID,
+      serverInstanceId,
       writeLockPath: lockPath,
       enableWrite: true,
       isShuttingDown: () => false,
@@ -504,6 +507,66 @@ describe("2026-07-28 sessionless leg: memory identity is per caller", () => {
       }
     } finally {
       await transport.close();
+    }
+  });
+
+  test("request IDs belong to the authorized identity and survive a server restart", async () => {
+    const remember = {
+      text: "Finn's desk is by the window.",
+      collection: "memory",
+      scopes: ["project:sessionless"],
+      decision: "add",
+      requestId: "desk-fact-1",
+    };
+    type Written = Extract<RememberResult, { absPath: string }>;
+    const first = sessionlessTransport("server-before-restart");
+    let committed: Written;
+    try {
+      committed = await call<Written>(
+        first,
+        "principal-a",
+        1,
+        "gno_remember",
+        remember
+      );
+      expect(committed.outcome).toBe("added");
+      const hidden = await call<RequestStatusResult>(
+        first,
+        "principal-b",
+        2,
+        "gno_request_status",
+        { requestId: "desk-fact-1" }
+      );
+      expect(hidden).toEqual({ requestId: "desk-fact-1", status: "not_found" });
+    } finally {
+      await first.close();
+    }
+
+    const restarted = sessionlessTransport("server-after-restart");
+    try {
+      const replayed = await call<Written>(
+        restarted,
+        "principal-a",
+        3,
+        "gno_remember",
+        remember
+      );
+      expect(replayed).toEqual({
+        ...committed,
+        request: { ...committed.request!, replayed: true },
+      });
+      // The same ID under another identity is that caller's own request.
+      const own = await call<Written>(
+        restarted,
+        "principal-b",
+        4,
+        "gno_remember",
+        { ...remember, text: "Finn's desk faces the door." }
+      );
+      expect(own.outcome).toBe("added");
+      expect(own.request?.replayed).toBe(false);
+    } finally {
+      await restarted.close();
     }
   });
 });
