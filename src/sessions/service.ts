@@ -120,6 +120,12 @@ export interface SessionPrunePreview {
   error?: string;
 }
 
+interface PendingWithdrawal {
+  units: Record<string, UnitState>;
+  key: string;
+  thread: { collection: string; relPath: string };
+}
+
 interface ResolvedSource {
   id: string;
   harness: SessionHarness | null;
@@ -552,6 +558,7 @@ export class SessionsService {
     const touched: Array<{ units: Record<string, UnitState>; key: string }> =
       [];
     const revertStamp = new Map<UnitState, string>();
+    const pendingWithdrawals: PendingWithdrawal[] = [];
     let processed = 0;
     let deferred = 0;
     let unitsTruncated = false;
@@ -713,6 +720,7 @@ export class SessionsService {
           counts,
           turns,
           markChanged,
+          pendingWithdrawals,
         });
         recordUnit(outcome);
       }
@@ -721,6 +729,9 @@ export class SessionsService {
       // rescanned in place from the durable sanitized archive.
       for (const [key, unitState] of Object.entries(sourceState.units)) {
         if (present.has(key)) continue;
+        // Retained locators follow the current redaction policy too.
+        const locator = sanitizeValue(unitState.locator, redaction);
+        if (!options.dryRun) unitState.locator = locator;
         if (unitState.redaction !== stamp && !options.dryRun) {
           const previousStamp = unitState.redaction;
           const withheld = await this.rescanUnavailable(
@@ -731,7 +742,7 @@ export class SessionsService {
           );
           if (withheld > 0) {
             warnings.push(
-              `${source.id}: ${withheld} archived threads of ${unitState.locator} could not be rescanned with the current redaction rules and were withheld from retrieval`
+              `${source.id}: ${withheld} archived threads of ${locator} could not be rescanned with the current redaction rules and were withheld from retrieval`
             );
           } else {
             unitState.redaction = stamp;
@@ -746,7 +757,7 @@ export class SessionsService {
               SESSION_PARSERS[unitState.harness ?? source.harness ?? "codex"])
         ) {
           warnings.push(
-            `${source.id}: ${unitState.locator} was archived by an older parser and its source is unavailable; the archive is retained without reparsing`
+            `${source.id}: ${locator} was archived by an older parser and its source is unavailable; the archive is retained without reparsing`
           );
         }
       }
@@ -763,6 +774,17 @@ export class SessionsService {
     let backlog: number | null = null;
     if (!options.dryRun) {
       lexical = await this.syncChanged(sessions, changed);
+      if (lexical.status === "ready") {
+        for (const { units: stateUnits, key, thread } of pendingWithdrawals) {
+          const unitState = stateUnits[key];
+          if (!unitState) continue;
+          unitState.threads = unitState.threads.filter(
+            (item) =>
+              item.collection !== thread.collection ||
+              item.relPath !== thread.relPath
+          );
+        }
+      }
       if (lexical.status === "failed") {
         for (const { units: stateUnits, key } of touched) {
           const unitState = stateUnits[key];
@@ -819,6 +841,7 @@ export class SessionsService {
     counts: SessionImportCounts;
     turns: SessionTurnCounts;
     markChanged: (collection: string, relPath: string) => void;
+    pendingWithdrawals: PendingWithdrawal[];
   }): Promise<SessionUnitReceipt> {
     const { source, counts, turns } = options;
     const sessions = this.deps.config.sessions as SessionsConfig;
@@ -1009,8 +1032,16 @@ export class SessionsService {
     );
     for (const old of options.previous?.threads ?? []) {
       if (withdrawn.has(old.relPath)) {
+        // Stays tracked until the index sync confirms the removal, so a
+        // failed sync is retried by the next run.
+        retained.push(old);
         if (!options.dryRun) {
           await this.withdraw(sessions, old, options.markChanged);
+          options.pendingWithdrawals.push({
+            units: options.sourceState.units,
+            key: options.key,
+            thread: old,
+          });
         }
         continue;
       }
@@ -1134,6 +1165,7 @@ export class SessionsService {
       thread.collection,
       thread.relPath
     );
+    markChanged(thread.collection, thread.relPath);
     if (!(await Bun.file(path).exists())) return;
     const aside = withheldPath(
       sessions.archiveRoot,
@@ -1142,7 +1174,6 @@ export class SessionsService {
     );
     await mkdir(dirname(aside), { recursive: true });
     await rename(path, aside);
-    markChanged(thread.collection, thread.relPath);
   }
 
   private async syncChanged(
@@ -1301,7 +1332,9 @@ export class SessionsService {
       sourceId,
       applied: false,
       units: removable.map(([, unit]) => ({
-        locator: unit.locator,
+        locator: sanitizeValue(unit.locator, {
+          literals: sessions.redaction?.literals ?? [],
+        }),
         threads: unit.threads.length,
       })),
       archiveFiles: removable.reduce(

@@ -1006,4 +1006,48 @@ describe("review round 1 regressions", () => {
     expect(receipt.counts.skippedPolicy).toBe(1);
     expect(await searchArchive("SQLite")).toEqual([]);
   });
+
+  test("retained locators of a deleted unit follow a later redaction literal", async () => {
+    await importMain();
+    await rename(join(codexRoot, CODEX_MAIN), join(root, "gone.jsonl"));
+    await setLiterals(["0000c0de-0000-7000-8000-000000000001"]);
+    const receipt = await importMain();
+    const state = await Bun.file(
+      join(archiveRoot, ".gno-sessions", "state.json")
+    ).text();
+    const preview = await withService((service) =>
+      service.prune({ sourceId: "codex-main", apply: false })
+    );
+    for (const surface of [
+      JSON.stringify(receipt),
+      state,
+      JSON.stringify(preview),
+    ]) {
+      expect(surface).not.toContain("0000c0de-0000-7000-8000-000000000001");
+    }
+  });
+
+  test("a quarantine removal whose index sync failed is retried", async () => {
+    await importMain();
+    await appendFile(
+      join(codexRoot, CODEX_MAIN),
+      `${JSON.stringify({ timestamp: "2026-09-20T10:20:00.000Z", ordinal: 20, type: "turn_context", payload: { cwd: "/work/other" } })}\n${JSON.stringify({ timestamp: "2026-09-20T10:21:00.000Z", ordinal: 21, type: "event_msg", payload: { type: "item_completed", item: { type: "UserMessage", id: "item-x", content: [{ type: "text", text: "cross-project note" }] } } })}\n`
+    );
+    await removeSessionSource({ configPath, id: "codex-main" });
+    await addSessionSource({
+      configPath,
+      id: "codex-main",
+      harness: "codex",
+      path: codexRoot,
+      collection: "work",
+      projects: [{ prefix: "/work/other", collection: "private" }],
+    });
+    const failed = await withFailingSync((service) =>
+      service.import({ sourceId: "codex-main" }, { allowPaths: false })
+    );
+    expect(failed.lexical.status).toBe("failed");
+    expect(await searchArchive("SQLite")).toHaveLength(1);
+    await importMain();
+    expect(await searchArchive("SQLite")).toEqual([]);
+  });
 });
