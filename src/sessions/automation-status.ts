@@ -24,6 +24,7 @@ import {
   isRunLive,
   loadAutomationState,
   MIN_AUTOMATION_CADENCE_MS,
+  ownProfile,
   type ProfileRunState,
 } from "./automation-state";
 import { inspectClaudeHook } from "./claude-hook";
@@ -152,7 +153,7 @@ export async function readAutomationStatus(input: {
   const daemon = daemonState(state.daemon, now, alive);
   const result: SessionProfileStatus[] = [];
   for (const profile of profiles) {
-    const run = state.profiles[profile.id];
+    const run = ownProfile(state, profile.id);
     const installed = profile.hook
       ? await inspectClaudeHook(profile.hook.settings, {
           configPath: input.configPath,

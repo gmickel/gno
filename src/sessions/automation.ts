@@ -39,11 +39,15 @@ import {
   isRunLive,
   loadAutomationState,
   mutateAutomationState,
+  ownProfile,
+  ownsRun,
   profileState,
   recoverInterrupted,
   type RunFailureClass,
   scheduleTick,
+  type StartedRun,
   type StateWriter,
+  unblock,
 } from "./automation-state";
 import {
   automationCadenceMs,
@@ -301,6 +305,8 @@ export async function setAutomationProfile(
   input: SetProfileInput
 ): Promise<SessionAutomationPreview> {
   if (input.cadence !== undefined) validCadence(input.cadence);
+  // Binding first: a mismatched pair must not change the archive config.
+  const { sessions: current } = await loadArchive(ctx);
   await editProfile(ctx, input.id, (existing, sessions) => {
     for (const sourceId of input.sources) {
       if (!sessions.sources.some((source) => source.id === sourceId)) {
@@ -334,6 +340,7 @@ export async function setAutomationProfile(
     }
     return parsed.data;
   });
+  await settleState(ctx, current, input.id, unblock);
   return previewAutomationProfile(ctx, input.id);
 }
 
@@ -473,9 +480,16 @@ export async function enableAutomation(
   }
   await ensureStateDir(sessions.archiveRoot);
   if (settings) {
-    // Install first: a settings file that cannot be edited leaves the
-    // profile unchanged.
-    await installClaudeHook(settings, await hookIdentity(ctx, id));
+    const identity = await hookIdentity(ctx, id);
+    const previous = profile.hook?.settings;
+    if (previous && resolve(previous) !== settings) {
+      // Moving to another settings file: remove the old owned entry first
+      // (fails closed), so no untracked integration keeps firing.
+      await removeClaudeHook(previous, identity);
+    }
+    // Install before recording: a settings file that cannot be edited
+    // leaves the profile unchanged.
+    await installClaudeHook(settings, identity);
   }
   await editProfile(ctx, id, (existing) => {
     if (!existing) throw unknownProfile(id);
@@ -493,15 +507,17 @@ export async function enableAutomation(
       ...(cadence ? { schedule: { enabled: true, cadence } } : {}),
     };
   });
-  if (cadence) {
-    const cadenceMs = automationCadenceMs(cadence) as number;
-    await mutateAutomationState(sessions.archiveRoot, (state) => {
-      // Like the findings pass: the first scheduled run is one cadence away.
-      profileState(state, id).nextDueAt = new Date(
-        nowOf(ctx).getTime() + cadenceMs
-      ).toISOString();
-    });
-  }
+  const cadenceMs = cadence ? automationCadenceMs(cadence) : null;
+  await mutateAutomationState(sessions.archiveRoot, (state) => {
+    // Enabling is an owner action: it clears a block awaiting correction.
+    const existing = ownProfile(state, id);
+    if (existing) unblock(existing);
+    // Like the findings pass: the first scheduled run is one cadence away.
+    if (cadenceMs !== null) {
+      const run = profileState(state, id);
+      run.nextDueAt = new Date(nowOf(ctx).getTime() + cadenceMs).toISOString();
+    }
+  });
   return previewAutomationProfile(ctx, id);
 }
 
@@ -593,7 +609,7 @@ async function settleState<T>(
     return { value: null, running: null };
   }
   return mutateAutomationState(sessions.archiveRoot, (state) => {
-    const run = state.profiles[id];
+    const run = ownProfile(state, id);
     if (!run) return { value: null, running: null };
     const value = change(run);
     return {
@@ -627,7 +643,7 @@ export async function removeAutomationProfile(
   } = { pendingCleared: false, running: null };
   if (await stateDirExists(sessions.archiveRoot)) {
     settled = await mutateAutomationState(sessions.archiveRoot, (state) => {
-      const run = state.profiles[id];
+      const run = ownProfile(state, id);
       delete state.profiles[id];
       return {
         pendingCleared: run ? isPending(run) : false,
@@ -728,7 +744,12 @@ export async function admitHookTrigger(
         };
       }
       const now = nowOf(ctx);
-      admit(profileState(state, profile.id), "hook", now);
+      admit(
+        profileState(state, profile.id),
+        "hook",
+        now,
+        profileRetries(profile)
+      );
       return {
         outcome: "accepted",
         profileId: profile.id,
@@ -803,7 +824,7 @@ function summarizeRun(
 
 type Begun =
   | {
-      started: { generation: number; triggers: SessionTriggerKind[] };
+      started: StartedRun;
       profile: SessionAutomationProfile;
       config: Config;
     }
@@ -839,7 +860,9 @@ export async function runAutomationProfile(
       const now = nowOf(deps);
       const run = profileState(state, profileId);
       recoverInterrupted(run, now, alive);
-      if (options.trigger) admit(run, options.trigger, now);
+      if (options.trigger) {
+        admit(run, options.trigger, now, profileRetries(profile));
+      }
       const allowed = run.pendingTriggers.filter(
         (kind) =>
           kind === "manual" ||
@@ -938,9 +961,10 @@ export async function runAutomationProfile(
   const failureClass: RunFailureClass | undefined =
     record.outcome === "failed" ? (failure?.failure ?? "permanent") : undefined;
   const pending = await mutateAutomationState(sessions.archiveRoot, (state) => {
-    const run = state.profiles[profileId];
-    // Removed mid-run: nothing to settle, nothing to resurrect.
-    if (!run) return false;
+    const run = ownProfile(state, profileId);
+    // Removed (or removed and recreated) mid-run: this run no longer owns
+    // the record, so it settles nothing and consumes nothing.
+    if (!run || !ownsRun(run, started)) return false;
     finishRun(run, started, record, {
       retries: profileRetries(profile),
       failure: failureClass,
@@ -989,10 +1013,10 @@ export async function tickAutomation(
         const cadenceMs = profile.schedule?.enabled
           ? automationCadenceMs(profile.schedule.cadence)
           : null;
-        let run = state.profiles[profile.id];
+        let run = ownProfile(state, profile.id);
         if (cadenceMs !== null) {
           run = profileState(state, profile.id);
-          scheduleTick(run, cadenceMs, now);
+          scheduleTick(run, cadenceMs, now, profileRetries(profile));
         } else if (run) run.nextDueAt = null;
         if (!run) continue;
         // A record from this daemon's own pid that predates it is a leftover

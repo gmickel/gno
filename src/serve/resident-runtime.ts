@@ -68,7 +68,10 @@ import {
   createStandaloneResidentStatus,
   buildResidentStatusSnapshot,
 } from "./resident-status";
-import { SessionAutomationScheduler } from "./session-automation";
+import {
+  notifyAutomationImport,
+  SessionAutomationScheduler,
+} from "./session-automation";
 import { CollectionWatchService as DefaultCollectionWatchService } from "./watch-service";
 
 const OWNER_LOCK_TIMEOUT_MS = 0;
@@ -410,7 +413,17 @@ export async function startResidentRuntime(
       indexName: canonicalizeIndexName(options.index ?? DEFAULT_INDEX_NAME),
       dbPath,
       startBackgroundWork: (operation) => backgroundWork.start(operation),
-      onResult: options.onSessionAutomationResult,
+      onResult: (result) => {
+        notifyAutomationImport(result, {
+          markMutation: () => {
+            generations.content += 1;
+            generations.index += 1;
+          },
+          notifySyncComplete: (collections) =>
+            scheduler.notifySyncComplete(collections),
+        });
+        options.onSessionAutomationResult?.(result);
+      },
       onError: options.onSessionAutomationError,
     });
     sessionAutomation.start();

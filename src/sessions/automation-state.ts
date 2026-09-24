@@ -66,8 +66,10 @@ export interface ProfileRunState {
   } | null;
   lastRun: SessionRunRecord | null;
   lastSuccessAt: string | null;
-  /** Consecutive failed attempts since the last admission or success. */
+  /** Consecutive failed attempts since the last success or owner action. */
   attempts: number;
+  /** A failure that needs owner correction; automatic triggers cannot clear it. */
+  blocked?: boolean;
   retryAt: string | null;
   nextDueAt: string | null;
 }
@@ -199,11 +201,19 @@ export async function mutateAutomationState<T>(
 // Pure transitions
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Own-property lookup: profile IDs such as `constructor` are valid. */
+export function ownProfile(
+  state: AutomationState,
+  id: string
+): ProfileRunState | undefined {
+  return Object.hasOwn(state.profiles, id) ? state.profiles[id] : undefined;
+}
+
 export function profileState(
   state: AutomationState,
   id: string
 ): ProfileRunState {
-  const existing = state.profiles[id];
+  const existing = ownProfile(state, id);
   if (existing) return existing;
   const created = emptyProfileRunState();
   state.profiles[id] = created;
@@ -213,11 +223,24 @@ export function profileState(
 export const isPending = (profile: ProfileRunState): boolean =>
   profile.generation > profile.consumed;
 
-/** Record one trigger. Duplicate triggers coalesce into the same pending run. */
+/** Owner action (run now, reconfigure, enable): a fresh attempt budget. */
+export function unblock(profile: ProfileRunState): void {
+  profile.attempts = 0;
+  profile.retryAt = null;
+  profile.blocked = false;
+}
+
+/**
+ * Record one trigger. Duplicate triggers coalesce into the same pending run.
+ * An explicit `manual` trigger resets the retry budget; automatic triggers
+ * keep a pending backoff and a permanent block, and only re-arm a transient
+ * failure whose retries are used up.
+ */
 export function admit(
   profile: ProfileRunState,
   kind: SessionTriggerKind,
-  now: Date
+  now: Date,
+  retries: number
 ): number {
   profile.generation += 1;
   profile.pendingSince ??= now.toISOString();
@@ -225,9 +248,11 @@ export function admit(
     profile.pendingTriggers.push(kind);
   }
   profile.lastTrigger = { kind, at: now.toISOString() };
-  // A fresh trigger is a fresh attempt budget.
-  profile.attempts = 0;
-  profile.retryAt = null;
+  if (kind === "manual") unblock(profile);
+  else if (!profile.blocked && profile.attempts > retries) {
+    profile.attempts = 0;
+    profile.retryAt = null;
+  }
   return profile.generation;
 }
 
@@ -299,18 +324,31 @@ export function canStart(
   );
 }
 
+export type StartedRun = NonNullable<ProfileRunState["running"]>;
+
 export function beginRun(
   profile: ProfileRunState,
   now: Date,
   pid: number
-): { generation: number; triggers: SessionTriggerKind[] } {
-  const started = {
+): StartedRun {
+  const started: StartedRun = {
     generation: profile.generation,
     triggers: [...profile.pendingTriggers],
+    startedAt: now.toISOString(),
+    pid,
   };
-  profile.running = { ...started, startedAt: now.toISOString(), pid };
+  profile.running = { ...started, triggers: [...started.triggers] };
   return started;
 }
+
+/** Whether `profile` still records exactly this run (not a removed/replaced one). */
+export const ownsRun = (
+  profile: ProfileRunState,
+  started: StartedRun
+): boolean =>
+  profile.running?.pid === started.pid &&
+  profile.running.startedAt === started.startedAt &&
+  profile.running.generation === started.generation;
 
 /** Failure classes: contention and transient errors back off; the rest wait for a fix. */
 export type RunFailureClass = "contention" | "transient" | "permanent";
@@ -334,6 +372,7 @@ export function finishRun(
   profile.running = null;
   profile.lastRun = run;
   if (run.outcome === "failed") {
+    if (options.failure === "permanent") profile.blocked = true;
     profile.attempts =
       options.failure === "permanent"
         ? options.retries + 1
@@ -348,8 +387,7 @@ export function finishRun(
   }
   // A partial run settles its generation but is not a successful completion.
   if (run.outcome !== "partial") profile.lastSuccessAt = run.finishedAt;
-  profile.attempts = 0;
-  profile.retryAt = null;
+  unblock(profile);
   if (run.units.deferred > 0) return;
   profile.consumed = Math.max(profile.consumed, started.generation);
   if (!isPending(profile)) {
@@ -366,7 +404,8 @@ export function finishRun(
 export function scheduleTick(
   profile: ProfileRunState,
   cadenceMs: number,
-  now: Date
+  now: Date,
+  retries: number
 ): boolean {
   const nowMs = now.getTime();
   const due = profile.nextDueAt ? Date.parse(profile.nextDueAt) : Number.NaN;
@@ -375,7 +414,7 @@ export function scheduleTick(
     return false;
   }
   if (due > nowMs) return false;
-  admit(profile, "schedule", now);
+  admit(profile, "schedule", now, retries);
   profile.nextDueAt = new Date(nowMs + cadenceMs).toISOString();
   return true;
 }

@@ -17,6 +17,28 @@ import { AUTOMATION_TICK_MS } from "../sessions/automation-state";
 
 const LEASE_HOLDER_COMMAND = "gno daemon (session automation)";
 
+/**
+ * The importer syncs the lexical index itself, so the resident watcher later
+ * sees unchanged files and never queues embedding: do it here for the
+ * collections a run synced, and mark the mutation (as the REST import does).
+ */
+export function notifyAutomationImport(
+  result: SessionAutomationRunResult,
+  sink: {
+    markMutation: () => void;
+    notifySyncComplete: (collections: string[]) => void;
+  }
+): void {
+  const collections = [
+    ...new Set(
+      result.receipts.flatMap((receipt) => receipt.lexical.collections)
+    ),
+  ];
+  if (collections.length === 0) return;
+  sink.markMutation();
+  sink.notifySyncComplete(collections);
+}
+
 export interface SessionAutomationSchedulerOptions {
   store: SqliteAdapter;
   configPath: string;

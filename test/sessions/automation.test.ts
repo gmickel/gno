@@ -21,7 +21,9 @@ import {
   acquireSqliteWriteLock,
   acquireWriteLock,
 } from "../../src/core/file-lock";
+import { defaultSyncService } from "../../src/ingestion";
 import { searchBm25 } from "../../src/pipeline/search";
+import { notifyAutomationImport } from "../../src/serve/session-automation";
 import {
   admitHookTrigger,
   type AutomationContext,
@@ -37,9 +39,12 @@ import {
   AUTOMATION_RUN_STALE_MS,
   beginRun,
   canStart,
+  emptyAutomationState,
   emptyProfileRunState,
   finishRun,
   isPending,
+  ownsRun,
+  profileState,
   loadAutomationState,
   recoverInterrupted,
   scheduleTick,
@@ -454,9 +459,9 @@ describe("generation safety, retries and recovery (R4, fake clock)", () => {
 
   test("a trigger arriving during a run stays pending after it settles", () => {
     const state = emptyProfileRunState();
-    admit(state, "hook", at(0));
+    admit(state, "hook", at(0), 3);
     const started = beginRun(state, at(0), 1);
-    admit(state, "hook", at(1000));
+    admit(state, "hook", at(1000), 3);
     finishRun(state, started, run("complete"), { retries: 3, now: at(2000) });
     expect(isPending(state)).toBe(true);
     const second = beginRun(state, at(3000), 1);
@@ -466,7 +471,7 @@ describe("generation safety, retries and recovery (R4, fake clock)", () => {
 
   test("contention backs off and retries; exhaustion waits for the next trigger", () => {
     const state = emptyProfileRunState();
-    admit(state, "schedule", at(0));
+    admit(state, "schedule", at(0), 3);
     for (let attempt = 1; attempt <= 4; attempt += 1) {
       const started = beginRun(state, at(0), 1);
       finishRun(state, started, run("failed"), {
@@ -478,13 +483,13 @@ describe("generation safety, retries and recovery (R4, fake clock)", () => {
     expect(isPending(state)).toBe(true);
     expect(state.retryAt).toBeNull();
     expect(canStart(state, 3, at(10 * 60 * MINUTE), dead)).toBe(false);
-    admit(state, "hook", at(11 * 60 * MINUTE));
+    admit(state, "hook", at(11 * 60 * MINUTE), 3);
     expect(canStart(state, 3, at(11 * 60 * MINUTE), dead)).toBe(true);
   });
 
   test("a permanent failure does not retry automatically", () => {
     const state = emptyProfileRunState();
-    admit(state, "hook", at(0));
+    admit(state, "hook", at(0), 3);
     const started = beginRun(state, at(0), 1);
     finishRun(state, started, run("failed"), {
       retries: 3,
@@ -497,7 +502,7 @@ describe("generation safety, retries and recovery (R4, fake clock)", () => {
 
   test("deferred work stays pending; interrupted and implausibly old runs are recovered", () => {
     const state = emptyProfileRunState();
-    admit(state, "hook", at(0));
+    admit(state, "hook", at(0), 3);
     const started = beginRun(state, at(0), 1);
     finishRun(state, started, run("complete", 5), {
       retries: 3,
@@ -519,19 +524,19 @@ describe("daemon schedule (R3, fake clock)", () => {
   test("elapsed cadence, one coalesced run after sleep, and a clock moved backwards", () => {
     const state = emptyProfileRunState();
     const cadence = 60 * MINUTE;
-    expect(scheduleTick(state, cadence, new Date(T0))).toBe(false);
+    expect(scheduleTick(state, cadence, new Date(T0), 3)).toBe(false);
     expect(state.nextDueAt).toBe(new Date(T0 + cadence).toISOString());
     // Laptop asleep across a DST change for 10 cadences: one admission.
-    expect(scheduleTick(state, cadence, new Date(T0 + 10 * cadence))).toBe(
+    expect(scheduleTick(state, cadence, new Date(T0 + 10 * cadence), 3)).toBe(
       true
     );
     expect(state.generation).toBe(1);
-    expect(scheduleTick(state, cadence, new Date(T0 + 10 * cadence + 1))).toBe(
-      false
-    );
+    expect(
+      scheduleTick(state, cadence, new Date(T0 + 10 * cadence + 1), 3)
+    ).toBe(false);
     // Clock set back by a day: next run is at most one cadence away.
     const back = T0 - 24 * cadence;
-    scheduleTick(state, cadence, new Date(back));
+    scheduleTick(state, cadence, new Date(back), 3);
     expect(Date.parse(state.nextDueAt!)).toBe(back + cadence);
   });
 
@@ -762,5 +767,179 @@ describe("manual, hook and scheduled imports are identical (R6)", () => {
     expect(outcomes[0]!.hits.length).toBeGreaterThan(0);
     expect(outcomes[1]).toEqual(outcomes[0]!);
     expect(outcomes[2]).toEqual(outcomes[0]!);
+  });
+});
+
+describe("review round 1 regressions", () => {
+  const at = (ms: number) => new Date(T0 + ms);
+  const failed = {
+    triggers: ["hook"] as SessionTriggerKind[],
+    startedAt: at(0).toISOString(),
+    finishedAt: at(0).toISOString(),
+    outcome: "failed" as const,
+    reason: "source_revoked",
+    threads: { imported: 0, updated: 0, unchanged: 0 },
+    units: { incomplete: 0, failed: 0, deferred: 0 },
+  };
+
+  test("schedule ticks keep a pending backoff and a permanent block; only an owner action clears it", () => {
+    const backoff = emptyProfileRunState();
+    admit(backoff, "schedule", at(0), 3);
+    finishRun(backoff, beginRun(backoff, at(0), 1), failed, {
+      retries: 3,
+      failure: "transient",
+      now: at(0),
+    });
+    const retryAt = backoff.retryAt;
+    expect(scheduleTick(backoff, MINUTE, at(30_000), 3)).toBe(false);
+    backoff.nextDueAt = at(0).toISOString();
+    expect(scheduleTick(backoff, MINUTE, at(30_000), 3)).toBe(true);
+    expect(backoff.retryAt).toBe(retryAt);
+    expect(canStart(backoff, 3, at(30_000), dead)).toBe(false);
+
+    const blocked = emptyProfileRunState();
+    admit(blocked, "hook", at(0), 3);
+    finishRun(blocked, beginRun(blocked, at(0), 1), failed, {
+      retries: 3,
+      failure: "permanent",
+      now: at(0),
+    });
+    blocked.nextDueAt = at(0).toISOString();
+    expect(scheduleTick(blocked, MINUTE, at(60 * MINUTE), 3)).toBe(true);
+    admit(blocked, "hook", at(60 * MINUTE), 3);
+    expect(canStart(blocked, 3, at(60 * MINUTE), dead)).toBe(false);
+    admit(blocked, "manual", at(61 * MINUTE), 3);
+    expect(canStart(blocked, 3, at(61 * MINUTE), dead)).toBe(true);
+  });
+
+  test("a run whose profile was removed and recreated settles nothing", async () => {
+    await enableAutomation(ctx(), "main", {
+      hook: { harness: "claude-code", settings: settingsPath },
+    });
+    await hook();
+    let replaced = false;
+    const result = await withStore((store) =>
+      runAutomationProfile(
+        {
+          ...ctx(),
+          store,
+          alive: dead,
+          syncService: {
+            syncCollection:
+              defaultSyncService.syncCollection.bind(defaultSyncService),
+            syncPaths: async (...args) => {
+              if (!replaced) {
+                replaced = true;
+                await removeAutomationProfile(ctx(), "main");
+                await setAutomationProfile(ctx(), {
+                  id: "main",
+                  sources: ["claude"],
+                });
+                await enableAutomation(ctx(), "main", {
+                  hook: { harness: "claude-code", settings: settingsPath },
+                });
+                await hook();
+              }
+              return defaultSyncService.syncPaths(...args);
+            },
+          },
+        },
+        "main",
+        { trigger: null }
+      )
+    );
+    expect(result).toMatchObject({ ran: true, outcome: "complete" });
+    const run = await profileRun();
+    expect(isPending(run!)).toBe(true);
+    expect(run?.running).toBeNull();
+    expect(run?.lastRun).toBeNull();
+
+    const state = emptyAutomationState();
+    const started = beginRun(profileState(state, "p"), at(0), 1);
+    delete state.profiles.p;
+    expect(ownsRun(profileState(state, "p"), started)).toBe(false);
+  });
+
+  test("moving the hook to another settings file uninstalls the old entry", async () => {
+    const other = join(root, "claude", "other.json");
+    await Bun.write(other, "{}\n");
+    await enableAutomation(ctx(), "main", {
+      hook: { harness: "claude-code", settings: settingsPath },
+    });
+    await enableAutomation(ctx(), "main", {
+      hook: { harness: "claude-code", settings: other },
+    });
+    const commands = async (path: string) => {
+      const json = (await Bun.file(path).json()) as {
+        hooks?: { SessionEnd?: Array<{ hooks: Array<{ command: string }> }> };
+      };
+      return (json.hooks?.SessionEnd ?? []).flatMap((group) =>
+        group.hooks.map((item) => item.command)
+      );
+    };
+    expect(await commands(settingsPath)).toEqual([FOREIGN_HOOK.command]);
+    expect(await commands(other)).toHaveLength(1);
+    await removeAutomationProfile(ctx(), "main");
+    expect(await commands(other)).toEqual([]);
+    expect(await commands(settingsPath)).toEqual([FOREIGN_HOOK.command]);
+  });
+
+  test("a mismatched index cannot change a profile", async () => {
+    const before = await Bun.file(configPath).text();
+    await expectCode(
+      setAutomationProfile(
+        { ...ctx(), indexName: "other" },
+        { id: "main", sources: ["claude"], limit: 5 }
+      ),
+      "SESSIONS_BINDING_MISMATCH"
+    );
+    expect(await Bun.file(configPath).text()).toBe(before);
+  });
+
+  test("the profile ID constructor admits and drains like any other", async () => {
+    await setAutomationProfile(ctx(), {
+      id: "constructor",
+      sources: ["claude"],
+    });
+    await enableAutomation(ctx(), "constructor", {
+      hook: { harness: "claude-code", settings: settingsPath },
+    });
+    expect(
+      await admitHookTrigger(ctx(), {
+        harness: "claude-code",
+        profileId: "constructor",
+        payload: null,
+      })
+    ).toMatchObject({ outcome: "accepted" });
+    expect((await tick()).map((result) => result.outcome)).toEqual([
+      "complete",
+    ]);
+    const current = await status();
+    expect(
+      current.automation.profiles.find((p) => p.id === "constructor")?.state
+    ).toBe("idle");
+  });
+
+  test("daemon imports queue embedding for the synced collections", async () => {
+    const result = await runNow();
+    const calls: string[][] = [];
+    let marked = 0;
+    notifyAutomationImport(result, {
+      markMutation: () => {
+        marked += 1;
+      },
+      notifySyncComplete: (collections) => calls.push(collections),
+    });
+    expect(calls).toEqual([["work"]]);
+    expect(marked).toBe(1);
+    notifyAutomationImport(await runNow(), {
+      markMutation: () => {
+        marked += 1;
+      },
+      notifySyncComplete: (collections) => calls.push(collections),
+    });
+    // An up-to-date rerun synced nothing, so nothing is queued.
+    expect(marked).toBe(1);
+    expect(calls).toHaveLength(1);
   });
 });

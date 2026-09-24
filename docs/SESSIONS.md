@@ -573,6 +573,8 @@ by default `$CLAUDE_CONFIG_DIR/settings.json`, else
   cache directories, and the archive config/index pair, so neither `PATH` nor
   the session's working directory can redirect it. Re-run `enable` after
   moving GNO or changing `GNO_DATA_DIR`; it repairs the entry in place.
+  Enabling with a different `--settings` file first removes the entry from
+  the previous file.
 - **Tiny foreground.** The hook reads the event, rechecks that the profile's
   hook is still enabled, writes the pending marker durably (fsync), and
   exits. It does not parse sessions, import, embed, or use the network. It
@@ -678,6 +680,13 @@ only: no session content and no host paths.
 | `source_unavailable`    | A source or the archive directory is missing or unreadable | No automatic retry; fix it, then `automation run`               |
 | `invalid_configuration` | Collections, binding, or source settings no longer match   | No automatic retry; correct the config                          |
 | `import_failed`         | Every processed unit failed                                | No automatic retry; check the receipt of `automation run`       |
+
+Schedule ticks and hook events never reset a pending backoff, and never
+clear a failure marked "no automatic retry". Once the automatic retries of a
+`busy` or `runtime_error` failure are used up, the next scheduled tick or hook
+event starts a fresh retry budget. A failure that needs correction stays
+blocked until you act: `sessions automation run`, `set`, or `enable` clear
+it.
 
 A trigger that could not be admitted (lock not acquired in time, disk full,
 archive directory removed) is reported as not accepted and leaves no pending
