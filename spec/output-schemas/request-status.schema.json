@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/request-status@1.0",
+  "title": "GNO Request Status",
+  "description": "Content-free lookup of a write request ID (CLI `gno request-status --json`, MCP gno_request_status, REST GET /api/requests/:requestId, SDK client.requestStatus()). Lookups are confined to the caller's namespace; another namespace's request reads as not_found.",
+  "type": "object",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestId",
+        "status",
+        "operation",
+        "createdAt",
+        "updatedAt",
+        "result"
+      ],
+      "properties": {
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "status": { "const": "committed" },
+        "operation": { "$ref": "#/$defs/operation" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the request committed."
+        },
+        "result": { "$ref": "#/$defs/result" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestId",
+        "status",
+        "operation",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "status": {
+          "enum": ["pending", "expired"],
+          "description": "pending: accepted but not finished; retry the same call with the same ID. expired: already ran; its outcome was compacted; it will not run again."
+        },
+        "operation": { "$ref": "#/$defs/operation" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requestId", "status"],
+      "properties": {
+        "requestId": { "$ref": "#/$defs/requestId" },
+        "status": {
+          "const": "not_found",
+          "description": "Nothing was accepted under this ID in the caller's namespace (or it was rejected before any write)."
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "requestId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "operation": {
+      "enum": ["capture", "remember", "document.update"]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Pointer to what the committed request produced. Never note or fact content.",
+      "properties": {
+        "uri": {
+          "type": "string",
+          "pattern": "^gno://[^/]+/.+"
+        },
+        "docid": { "type": "string" },
+        "contentHash": {
+          "$ref": "#/$defs/sha256",
+          "description": "Capture and remember: content hash of the note or fact."
+        },
+        "sourceHash": {
+          "$ref": "#/$defs/sha256",
+          "description": "Document update: source hash after the save."
+        }
+      }
+    }
+  }
+}

@@ -34,36 +34,37 @@ never raw roots.
 
 ## Quick Reference
 
-| Command          | Description                          |
-| ---------------- | ------------------------------------ |
-| `gno init`       | Initialize config and database       |
-| `gno setup`      | Add a folder and prove retrieval     |
-| `gno index`      | Full index (sync + embed)            |
-| `gno update`     | Sync files from disk (no embed)      |
-| `gno embed`      | Generate embeddings only             |
-| `gno search`     | BM25 full-text search                |
-| `gno vsearch`    | Vector similarity search             |
-| `gno query`      | Hybrid search (BM25 + vector)        |
-| `gno bench`      | Benchmark retrieval fixtures         |
-| `gno ask`        | Search with AI answer                |
-| `gno get`        | Retrieve document content            |
-| `gno ls`         | List indexed documents               |
-| `gno daemon`     | Headless continuous indexing         |
-| `gno links`      | List outgoing links from document    |
-| `gno backlinks`  | List documents linking to target     |
-| `gno similar`    | Find semantically similar docs       |
-| `gno graph`      | Export knowledge graph               |
-| `gno audit`      | Read-only workspace integrity audit  |
-| `gno serve`      | Start web UI server                  |
-| `gno mcp`        | Start MCP server for AI clients      |
-| `gno models`     | Manage models (list, pull, use)      |
-| `gno skill`      | Install GNO skill for AI agents      |
-| `gno agents`     | Manage GNO block in harness files    |
-| `gno tags`       | Manage document tags                 |
-| `gno completion` | Shell tab completion                 |
-| `gno vec`        | Vector index maintenance             |
-| `gno peek`       | Cheap counts, backlog, recent, serve |
-| `gno doctor`     | Check system health                  |
+| Command              | Description                              |
+| -------------------- | ---------------------------------------- |
+| `gno init`           | Initialize config and database           |
+| `gno setup`          | Add a folder and prove retrieval         |
+| `gno index`          | Full index (sync + embed)                |
+| `gno update`         | Sync files from disk (no embed)          |
+| `gno embed`          | Generate embeddings only                 |
+| `gno search`         | BM25 full-text search                    |
+| `gno vsearch`        | Vector similarity search                 |
+| `gno query`          | Hybrid search (BM25 + vector)            |
+| `gno bench`          | Benchmark retrieval fixtures             |
+| `gno ask`            | Search with AI answer                    |
+| `gno get`            | Retrieve document content                |
+| `gno request-status` | Check a write request ID before retrying |
+| `gno ls`             | List indexed documents                   |
+| `gno daemon`         | Headless continuous indexing             |
+| `gno links`          | List outgoing links from document        |
+| `gno backlinks`      | List documents linking to target         |
+| `gno similar`        | Find semantically similar docs           |
+| `gno graph`          | Export knowledge graph                   |
+| `gno audit`          | Read-only workspace integrity audit      |
+| `gno serve`          | Start web UI server                      |
+| `gno mcp`            | Start MCP server for AI clients          |
+| `gno models`         | Manage models (list, pull, use)          |
+| `gno skill`          | Install GNO skill for AI agents          |
+| `gno agents`         | Manage GNO block in harness files        |
+| `gno tags`           | Manage document tags                     |
+| `gno completion`     | Shell tab completion                     |
+| `gno vec`            | Vector index maintenance                 |
+| `gno peek`           | Cheap counts, backlog, recent, serve     |
+| `gno doctor`         | Check system health                      |
 
 ## Global Flags
 
@@ -593,6 +594,49 @@ capture inputs are unchanged. A browser clip using `open_existing` opens only a
 note with the same stored `clipIdentity`; missing or different provenance is an
 explicit conflict. `create_with_suffix` creates a distinct note.
 
+Capture plans, writes, and lexically syncs the note under the shared write
+lease, like MCP and REST capture. If the file is written but sync fails, the
+command exits 2 with `Capture written to <path> but lexical sync failed ... Run
+gno update to retry indexing.` instead of reporting success. `open_existing` on
+a file that is on disk but not yet indexed indexes it.
+
+Retry-safe capture: pass `--request-id <id>` (for example a UUID). If the
+command's output is lost, check the ID with `gno request-status`, then rerun
+the exact same command with the same ID; GNO replays the recorded receipt or
+finishes an interrupted capture instead of writing a second note. The same ID
+with different content or options fails with `REQUEST_ID_CONFLICT`. See
+[Retries and Request IDs](guides/retries-and-request-ids.md).
+
+```bash
+id=$(uuidgen)
+gno capture "Release moves to Friday" --collection notes --request-id "$id" --json
+gno request-status "$id"
+```
+
+### gno request-status
+
+Check whether a request ID sent with `gno capture`, `gno remember`, or a Web
+UI/REST document save is `committed`, `pending`, `expired`, or `not_found`
+before retrying it.
+
+```bash
+gno request-status 0f8e5c1a-3c1e-4d0b-9a57-2f4f3b8f2c11
+gno request-status 0f8e5c1a-3c1e-4d0b-9a57-2f4f3b8f2c11 --json
+```
+
+The output is a content-free pointer (operation, timestamps, and for a
+committed request the result `uri`, `docid`, and hash) followed by a next step:
+
+- `committed`: do not resend; rerunning replays the recorded outcome.
+- `pending`: rerun the same command with the same `--request-id` to finish it.
+- `expired`: the ID already ran and will not run again; check current state.
+- `not_found`: nothing was accepted under this ID; rerun with the same ID.
+
+Request ID errors exit 1 (`REQUEST_ID_INVALID`, `REQUEST_ID_CONFLICT`,
+`REQUEST_EXPIRED`), 4 (`REQUEST_PENDING`), or 2 (`REQUEST_RECOVERY_CONFLICT`,
+`REQUEST_CAPACITY_EXHAUSTED`, `REQUEST_LEDGER_UNAVAILABLE`); the JSON error
+envelope carries the code in `details.requestCode`. Honors `--index`.
+
 ## Memory Commands
 
 `gno remember` and `gno recall` store and retrieve single facts in a
@@ -634,6 +678,11 @@ gno remember "..." --scope family --scope shared --collection memory --add
 - Success means the file exists and lexical sync completed: the fact is
   retrievable before the command returns. `--json` prints the shared result
   (`outcome`, `record`, `absPath`, `sync`, `matching`).
+- `--request-id <id>` makes an `--add` or `--supersede` retry safe: rerunning
+  the same command with the same ID replays the recorded outcome or finishes
+  an interrupted write instead of writing again. It requires a decision, and
+  `--caller` / `--session` may differ on the retry. Check an ID with
+  [`gno request-status`](#gno-request-status).
 
 ### gno recall
 
@@ -1940,7 +1989,8 @@ gno cleanup
 
 ### gno reset
 
-Reset to fresh state.
+Reset to fresh state. This deletes the whole data directory, including the
+private request ledger used by `--request-id`.
 
 ```bash
 gno reset --confirm

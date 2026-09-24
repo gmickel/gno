@@ -200,6 +200,46 @@ Superseded facts stay on disk and in ordinary search; `recall` excludes them
 inside the query. Nothing is ever deleted by the memory contract (see
 [What memory does not do](#what-memory-does-not-do)).
 
+### Retrying a remember
+
+If a `remember` write loses its response (timeout, dropped connection,
+crash), resending it blindly may not do what you meant: a retried `add`
+returns `existing` (or adds the fact again if it was superseded in between),
+and a retried supersede fails `MEMORY_SUPERSEDE_CONFLICT`. Send an opt-in
+request ID with the write instead:
+
+```bash
+gno remember "Prod deploys from main only" --scope project:gno --add \
+  --request-id 7d2e4b90-1f7a-4c2e-8f55-0b9c1d3e6a42 --json
+gno request-status 7d2e4b90-1f7a-4c2e-8f55-0b9c1d3e6a42
+```
+
+The same field is `requestId` on MCP `gno_remember`,
+`POST /api/memory/remember`, and `client.remember()`.
+
+- A request ID applies to writes only: it requires `add` or `supersede`. A
+  candidates-only call with one is rejected `REQUEST_ID_INVALID`.
+- The request counts as committed at the same boundary as a successful
+  write: the fact file is written and lexically synced, and for a supersede
+  the `supersedes` edge is projected. An exact duplicate `add` is recorded as
+  its `existing` outcome.
+- Retrying with the same ID replays the recorded outcome (the result gains
+  `request.replayed: true`) or, after `MEMORY_SYNC_FAILED` or
+  `MEMORY_SUPERSEDE_PROJECTION_FAILED`, finishes the sync or projection of the
+  fact already written, without writing a second file.
+- `caller` and `session` are provenance, not part of the request, so a retry
+  from a new session or MCP connection still matches. Changing the text,
+  scopes, collection, decision, predecessor, or `source` under the same ID is
+  rejected `REQUEST_ID_CONFLICT`.
+- A write rejected before anything was written (`MEMORY_PREDECESSOR_HASH_MISMATCH`,
+  `MEMORY_SUPERSEDE_CONFLICT`, validation errors, a busy lease) records
+  nothing; recall and decide again.
+
+A request ID is not a recall receipt. The recall `receipt` fences recalled
+text so it cannot be stored again; a request ID identifies one write so it can
+be retried. See [Retries and Request IDs](guides/retries-and-request-ids.md)
+for statuses, error codes, and retention.
+
 ## Recall
 
 ```bash
@@ -309,6 +349,9 @@ security boundary.
 MCP returns the code in `structuredContent.error` (plus `WRITE_DISABLED`
 when the server runs without `--enable-write`); the SDK throws `GnoSdkError`
 with the code in `details.code` and the `MemoryError` as `cause`.
+
+A write that carries a request ID can also fail with a `REQUEST_*` code; see
+[Retries and Request IDs](guides/retries-and-request-ids.md#errors).
 
 ## What memory does not do
 

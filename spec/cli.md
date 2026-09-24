@@ -9,13 +9,13 @@ This document specifies the command-line interface for GNO, a local knowledge in
 
 ### Exit Codes
 
-| Code | Name        | Description                                                                                |
-| ---- | ----------- | ------------------------------------------------------------------------------------------ |
-| 0    | SUCCESS     | Command completed successfully                                                             |
-| 1    | VALIDATION  | Validation or usage error (bad args, missing required params)                              |
-| 2    | RUNTIME     | Runtime failure (IO, DB, conversion, model, network)                                       |
-| 3    | NOT_RUNNING | `--status`/`--stop` found no live matching process                                         |
-| 4    | BUSY        | Write-lease contention on `index` / `update` / `embed`; a lost `remember --supersede` race |
+| Code | Name        | Description                                                                                                                                    |
+| ---- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | SUCCESS     | Command completed successfully                                                                                                                 |
+| 1    | VALIDATION  | Validation or usage error (bad args, missing required params)                                                                                  |
+| 2    | RUNTIME     | Runtime failure (IO, DB, conversion, model, network)                                                                                           |
+| 3    | NOT_RUNNING | `--status`/`--stop` found no live matching process                                                                                             |
+| 4    | BUSY        | Write-lease contention on `index` / `update` / `embed`; a lost `remember --supersede` race; a request ID still in progress (`REQUEST_PENDING`) |
 
 ### Global Flags
 
@@ -85,6 +85,7 @@ equivalent files fail closed as ambiguous.
 | ask                | yes    | no      | no    | yes  | no    | terminal |
 | capture            | yes    | no      | no    | no   | no    | terminal |
 | remember           | yes    | no      | no    | no   | no    | terminal |
+| request-status     | yes    | no      | no    | no   | no    | terminal |
 | recall             | yes    | no      | no    | no   | no    | terminal |
 | get                | yes    | no      | no    | yes  | no    | terminal |
 | multi-get          | yes    | yes     | no    | yes  | no    | terminal |
@@ -1628,7 +1629,7 @@ Capture a note into an editable collection with structured provenance.
 **Synopsis:**
 
 ```bash
-gno capture [content...] [--stdin|--file <path>] [--collection <name>] [--title <title>] [--path <relPath>] [--folder <relPath>] [--preset <id>] [--tags <tags>] [--collision-policy <policy>] [--source-kind <kind>] [--source-url <url>] [--source-title <title>] [--source-author <author>] [--source-date <date>] [--source-id <id>] [--json]
+gno capture [content...] [--stdin|--file <path>] [--collection <name>] [--title <title>] [--path <relPath>] [--folder <relPath>] [--preset <id>] [--tags <tags>] [--collision-policy <policy>] [--source-kind <kind>] [--source-url <url>] [--source-title <title>] [--source-author <author>] [--source-date <date>] [--source-id <id>] [--request-id <id>] [--json]
 ```
 
 **Content Sources:**
@@ -1684,7 +1685,37 @@ gno capture "thought to remember"
 gno capture --stdin --collection notes --preset source-summary --tags inbox,gno
 gno capture --file ./clip.md --source-url https://example.com --source-kind web --json
 gno capture "meeting note" --quiet
+gno capture "Release moves to Friday" --collection notes --request-id 0f8e5c1a-3c1e-4d0b-9a57-2f4f3b8f2c11 --json
 ```
+
+**Write and sync:**
+
+- Planning, the write, and lexical sync run under the shared write lease
+  (`.mcp-write.lock`), the same leased publication MCP `gno_capture` and REST
+  `POST /api/capture` use. Success means the note is retrievable:
+  `sync.status` is `completed`.
+- `open_existing` on a file that is on disk but not indexed yet syncs it and
+  returns `sync.status: "completed"`.
+- A written file whose lexical sync fails exits `RUNTIME` (2) with
+  `Capture written to <path> but lexical sync failed: <cause>. Run gno update to retry indexing.`
+  It is never reported as a success with `sync.status: "failed"`.
+
+**Request IDs:**
+
+- `--request-id <id>` (1-128 of `A-Z a-z 0-9 . _ : -`, starting with a letter
+  or digit) makes a retry safe: rerunning the same command with the same ID
+  after a lost response replays the recorded outcome instead of capturing
+  again, or finishes an interrupted capture (for example after a sync
+  failure).
+- The same ID with different content, destination, or options fails
+  `VALIDATION` (`REQUEST_ID_CONFLICT`).
+- With an ID, `--json` adds
+  `request: { requestId, status: "committed", replayed, committedAt }` to the
+  capture receipt; terminal output adds `Request: <id> committed`, plus
+  `(replayed, nothing written again)` on a replay.
+- Request error codes are carried in `details.requestCode` of the JSON error
+  envelope; see [gno request-status](#gno-request-status) for the exit-code
+  mapping and `docs/guides/retries-and-request-ids.md` for the full contract.
 
 ---
 
@@ -1697,7 +1728,7 @@ write lease directly.
 **Synopsis:**
 
 ```bash
-gno remember <text> --scope <scope> [--scope <scope>...] [--collection <name>] [--decision add|supersede | --add | --supersede <uri>] [--predecessor <uri>] [--predecessor-hash <hash>] [--receipt <path>] [--derived-from <uri>...] [--source <text>] [--caller <id>] [--session <id>] [--json]
+gno remember <text> --scope <scope> [--scope <scope>...] [--collection <name>] [--decision add|supersede | --add | --supersede <uri>] [--predecessor <uri>] [--predecessor-hash <hash>] [--receipt <path>] [--derived-from <uri>...] [--source <text>] [--caller <id>] [--session <id>] [--request-id <id>] [--json]
 ```
 
 **Scope and collection (fail-closed):**
@@ -1731,6 +1762,23 @@ gno remember <text> --scope <scope> [--scope <scope>...] [--collection <name>] [
 - A write returns success only after the file exists and lexical sync
   completed; the fact is retrievable before the command exits.
 
+**Request IDs:**
+
+- `--request-id <id>` applies to writes only (`--add`, `--supersede`, or
+  `--decision`); without a decision it fails `VALIDATION`
+  (`REQUEST_ID_INVALID`).
+- Rerunning the same write with the same ID replays the recorded outcome
+  (`added`, `superseded`, or `existing` for an exact duplicate) instead of
+  writing again, or finishes an interrupted write (after
+  `MEMORY_SYNC_FAILED` or `MEMORY_SUPERSEDE_PROJECTION_FAILED`) without
+  writing a second file.
+- `--caller` and `--session` are not part of the request identity. Changing
+  the text, scopes, collection, decision, predecessor, predecessor hash, or
+  `--source` under the same ID fails `VALIDATION` (`REQUEST_ID_CONFLICT`).
+- With an ID, `--json` adds
+  `request: { requestId, status: "committed", replayed, committedAt }`;
+  terminal output adds `Request: <id> committed`.
+
 **Context fencing:**
 
 - `--receipt <path>` presents a recall receipt (the `recall --json` output or
@@ -1762,7 +1810,8 @@ predecessor, and fence errors; `BUSY` (4) when another writer holds the lease
 (`MEMORY_SUPERSEDE_CONFLICT`); `RUNTIME` (2) when the file was written but
 lexical sync failed (`MEMORY_SYNC_FAILED`) or the successor's `supersedes`
 edge did not project (`MEMORY_SUPERSEDE_PROJECTION_FAILED`). The JSON envelope carries the core code in
-`details.memoryCode`.
+`details.memoryCode`. Request ID errors map as listed under
+[gno request-status](#gno-request-status) and carry `details.requestCode`.
 
 **Examples:**
 
@@ -1770,6 +1819,89 @@ edge did not project (`MEMORY_SUPERSEDE_PROJECTION_FAILED`). The JSON envelope c
 gno remember "Finn's kindergarten starts at 08:30" --scope family --add
 gno remember "Prod deploys from main only" --scope project:gno --scope ops
 gno remember "Prod deploys from release/*" --scope project:gno --supersede gno://memory/facts/2026/... --predecessor-hash <hash> --json
+gno remember "Prod deploys from main only" --scope project:gno --add --request-id 7d2e4b90-1f7a-4c2e-8f55-0b9c1d3e6a42 --json
+```
+
+---
+
+### gno request-status
+
+Look up a request ID sent with `gno capture`, `gno remember`, or a REST/Web UI
+document save before retrying the write. Read-only; takes no write lease.
+
+**Synopsis:**
+
+```bash
+gno request-status <request-id> [--json]
+```
+
+**Behavior:**
+
+- Reads the index's private request ledger
+  (`<dataDir>/write-receipts/<index db filename>`) in the local-owner
+  namespace shared by the CLI, SDK, stdio MCP, and `gno serve` REST. Honors the
+  global `--index` flag.
+- Returns a content-free pointer, never note or fact text.
+- An ID that was never accepted, or whose request was rejected before any
+  write, is `not_found`.
+
+**Output:**
+
+`--json` prints the [`request-status`](./output-schemas/request-status.schema.json)
+result:
+
+```json
+{
+  "requestId": "0f8e5c1a-3c1e-4d0b-9a57-2f4f3b8f2c11",
+  "status": "committed",
+  "operation": "capture",
+  "createdAt": "2026-09-24T08:00:00.000Z",
+  "updatedAt": "2026-09-24T08:00:00.120Z",
+  "result": {
+    "uri": "gno://notes/inbox/2026-09-24/capture-3f9c.md",
+    "docid": "#a1b2c3",
+    "contentHash": "<sha256>"
+  }
+}
+```
+
+- `status`: `pending` | `committed` | `expired` | `not_found`.
+- `operation`: `capture` | `remember` | `document.update`; `createdAt`,
+  `updatedAt`, and `operation` are absent for `not_found`.
+- `result` only for `committed`: `uri`, `docid`, and `contentHash` (capture,
+  remember) or `sourceHash` (document update).
+
+Terminal output prints `Request:`, `Status:`, and, when present,
+`Operation:`, `Updated:`, and `URI:` lines, then one next-step line:
+
+| Status      | Next-step line                                                                                    |
+| ----------- | ------------------------------------------------------------------------------------------------- |
+| `committed` | `Committed: do not resend; the retained outcome replays.`                                         |
+| `pending`   | `Pending: retry the same command with the same --request-id to finish it.`                        |
+| `expired`   | `Expired: this ID already ran and will not run again; check current state before using a new ID.` |
+| `not_found` | `Not found: nothing was accepted under this ID.`                                                  |
+
+**Request error codes** (every CLI surface that takes a request ID; the JSON
+error envelope carries the request code in `details.requestCode`):
+
+| Request code                 | CLI code     | Exit |
+| ---------------------------- | ------------ | ---- |
+| `REQUEST_ID_INVALID`         | `VALIDATION` | 1    |
+| `REQUEST_ID_CONFLICT`        | `VALIDATION` | 1    |
+| `REQUEST_EXPIRED`            | `VALIDATION` | 1    |
+| `REQUEST_PENDING`            | `BUSY`       | 4    |
+| `REQUEST_RECOVERY_CONFLICT`  | `RUNTIME`    | 2    |
+| `REQUEST_CAPACITY_EXHAUSTED` | `RUNTIME`    | 2    |
+| `REQUEST_LEDGER_UNAVAILABLE` | `RUNTIME`    | 2    |
+
+`gno request-status` itself exits `VALIDATION` (1) for a malformed ID and
+`RUNTIME` (2) when the ledger exists but cannot be opened.
+
+**Examples:**
+
+```bash
+gno request-status 0f8e5c1a-3c1e-4d0b-9a57-2f4f3b8f2c11
+gno request-status 0f8e5c1a-3c1e-4d0b-9a57-2f4f3b8f2c11 --json
 ```
 
 ---
@@ -4119,6 +4251,8 @@ Errors are written to stderr. With `--json` flag, errors are also returned as:
 ```
 
 Error codes match exit codes: `VALIDATION` (exit 1), `RUNTIME` (exit 2), `NOT_RUNNING` (exit 3), `BUSY` (exit 4).
+Request ID errors keep their stable request code in `details.requestCode`
+(see [gno request-status](#gno-request-status)).
 
 Write-lease contention on `index` / `update` / `embed` does not use the generic envelope. Text mode writes the dedicated "index is busy" message to stderr; `--json` writes `{ success: false, error, contention }` to stdout. Both exit 4. `gno audit` also uses exit 4 for findings.
 

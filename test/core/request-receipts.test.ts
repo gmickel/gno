@@ -60,6 +60,7 @@ function writeFile(
     now?: number;
     lockWaitMs?: number;
     reject?: boolean;
+    failPublish?: boolean;
     checkpoint?: (stage: RequestCheckpoint) => void;
   }
 ) {
@@ -78,7 +79,10 @@ function writeFile(
       if (input.reject) throw new Error("stale predecessor");
       return {
         plan: { path },
-        publish: () => atomicCreate(path, input.payload),
+        publish: async () => {
+          if (input.failPublish) throw new Error("disk full");
+          await atomicCreate(path, input.payload);
+        },
       };
     },
     inspect: async (plan) => {
@@ -247,6 +251,46 @@ describe("interrupted requests", () => {
       (await writeFile(f, { requestId: "r1", payload: "a" })).request.replayed
     ).toBe(false);
     expect(await files(f)).toEqual(["a.txt"]);
+  });
+
+  test.each([
+    [
+      "an interrupted request later rejected",
+      async (f: Fixture) => {
+        await codeOf(
+          writeFile(f, {
+            requestId: "r1",
+            payload: "a",
+            checkpoint: crashAt("admitted"),
+          })
+        );
+        return codeOf(
+          writeFile(f, { requestId: "r1", payload: "a", reject: true })
+        );
+      },
+      "Error: stale predecessor",
+    ],
+    [
+      "a publication that wrote nothing",
+      (f: Fixture) =>
+        codeOf(
+          writeFile(f, { requestId: "r1", payload: "a", failPublish: true })
+        ),
+      "Error: disk full",
+    ],
+  ])("%s leaves no receipt behind", async (_label, attempt, error) => {
+    const f = await fixture();
+    expect(await attempt(f)).toBe(error);
+    expect(
+      (
+        await readRequestStatus({
+          ledgerPath: f.ledgerPath,
+          namespace: "local",
+          requestId: "r1",
+        })
+      ).status
+    ).toBe("not_found");
+    expect(await files(f)).toEqual([]);
   });
 
   test("a target changed after publication is a recovery conflict, never overwritten", async () => {

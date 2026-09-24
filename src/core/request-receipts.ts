@@ -177,6 +177,8 @@ async function openLedger(path: string): Promise<Database> {
     await mkdir(dirname(path), { recursive: true, mode: 0o700 });
     const db = new Database(path, { create: true, strict: true });
     try {
+      // Private before any journal file exists (they inherit this mode).
+      await chmod(path, 0o600);
       db.run(`PRAGMA busy_timeout = ${LEDGER_BUSY_TIMEOUT_MS}`);
       db.run("PRAGMA journal_mode = WAL");
       db.run(SCHEMA);
@@ -184,7 +186,6 @@ async function openLedger(path: string): Promise<Database> {
       db.close();
       throw error;
     }
-    await chmod(path, 0o600);
     return db;
   } catch (error) {
     throw new RequestReceiptError(
@@ -270,6 +271,13 @@ function updatePlan(
     `UPDATE request_receipts SET plan_json = ?, updated_at_ms = ?
       WHERE namespace = ? AND request_id = ? AND status = 'pending'`
   ).run(planJson, nowMs, namespace, requestId);
+}
+
+function deleteRow(db: Database, namespace: string, requestId: string): void {
+  db.query(
+    `DELETE FROM request_receipts
+      WHERE namespace = ? AND request_id = ? AND status = 'pending'`
+  ).run(namespace, requestId);
 }
 
 function commitRow(
@@ -418,7 +426,15 @@ async function runUnderLease<TPlan, TResult>(
     }
 
     if (published === null) {
-      const prepared = await write.prepare();
+      let prepared: PreparedRequest<TPlan, TResult>;
+      try {
+        prepared = await write.prepare();
+      } catch (error) {
+        // Nothing of this request was written: an interrupted receipt that
+        // is now rejected is dropped, like any rejection before admission.
+        if (row) deleteRow(db, write.namespace, write.requestId);
+        throw error;
+      }
       await write.checkpoint?.("prepared");
       if ("result" in prepared) {
         if (row) {
@@ -470,7 +486,14 @@ async function runUnderLease<TPlan, TResult>(
         });
       }
       await write.checkpoint?.("admitted");
-      await prepared.publish();
+      try {
+        await prepared.publish();
+      } catch (error) {
+        if ((await write.inspect(prepared.plan)) !== "published") {
+          deleteRow(db, write.namespace, write.requestId);
+          throw error;
+        }
+      }
       await write.checkpoint?.("published");
       published = prepared.plan;
     }

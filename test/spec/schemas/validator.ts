@@ -102,6 +102,7 @@ async function loadAllSchemas(): Promise<void> {
     "agents-verify",
     "memory-remember",
     "memory-recall",
+    "request-status",
     "index-receipt",
   ];
 

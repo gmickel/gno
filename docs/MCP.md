@@ -56,7 +56,7 @@ diagnose can emit the closed, redacted `query-diagnose@1.1` affinity metadata.
 ## Overview
 
 MCP (Model Context Protocol) allows AI assistants to access external tools and
-resources. GNO registers 36 tools in default read-only mode and 55 when writes
+resources. GNO registers 36 tools in default read-only mode and 56 when writes
 are explicitly enabled (the default `full` profile; the opt-in `core` profile
 advertises 7 read tools plus 2 write tools, see [Tool Profiles](#tool-profiles)):
 
@@ -291,8 +291,8 @@ GNO_MCP_ENABLE_WRITE=1 gno mcp
 
 Without this flag, the 36 read-only retrieval, verified-synthesis, memory
 recall, trace, graph, egress, status, and job-inspection tools are available.
-Enabling writes adds 19 mutation tools (including `gno_remember`), for 55
-total. Those counts describe the default `full` profile; see
+Enabling writes adds 19 mutation tools (including `gno_remember`) and the
+read-only `gno_request_status` lookup, for 56 total. Those counts describe the default `full` profile; see
 [Tool Profiles](#tool-profiles) for the slim `core` surface.
 
 ### Tool Profiles
@@ -304,7 +304,7 @@ today's whole surface, byte-for-byte.
 
 | Profile          | Read tools                                                                                            | With `--enable-write` adds    |
 | ---------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------- |
-| `full` (default) | all 36                                                                                                | all 19 write tools            |
+| `full` (default) | all 36                                                                                                | all 20 write-gated tools      |
 | `core`           | `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`, `gno_changes`, `gno_recall` (7) | `gno_capture`, `gno_remember` |
 
 Write tools stay behind `--enable-write` in both profiles; a profile never
@@ -1491,6 +1491,13 @@ v1.38 contention window (120s), after which the tool returns `LOCKED` without
 writing. Capture does not auto-embed; run `gno_embed` or `gno_index` when
 vector search should include the new note.
 
+Add `requestId` (for example a UUID) to make a retry after a lost response
+safe: the same call with the same ID replays the recorded receipt
+(`request.replayed: true`) or finishes an interrupted capture instead of
+writing a second note. Check it first with
+[`gno_request_status`](#gno_request_status). See
+[Retries and Request IDs](guides/retries-and-request-ids.md).
+
 ### gno_recall
 
 Budgeted, cited recall of current facts from a memory-managed collection
@@ -1531,6 +1538,7 @@ predecessorHash: "sha256:..." # supersede only, from gno_recall
 receipt: {} # Optional: the gno_recall receipt the fact derives from
 derivedFrom: ["https://example.com/source"] # Optional origins
 source: "Said in standup 2026-09-03" # Optional evidence
+requestId: "7d2e4b90-1f7a-4c2e-8f55-0b9c1d3e6a42" # Optional retry identity (add/supersede only)
 ```
 
 Outcomes: `existing` (exact duplicate, nothing written), `candidates` (likely
@@ -1547,6 +1555,41 @@ returns `MEMORY_FENCED_REPLAY`, and a `gno://` entry in `derivedFrom` returns
 The core memory service holds the shared `.mcp-write.lock` lease for the write
 and lexical sync; the MCP adapter takes no lock of its own, so an MCP remember
 and a CLI writer serialise on one lease.
+
+`requestId` requires a `decision`. Retrying the same call with the same ID
+replays the recorded outcome or finishes an interrupted write (for example
+after `MEMORY_SYNC_FAILED`); a reconnect with a new MCP session still matches.
+A `requestId` is not the recall `receipt`: the receipt fences recalled text,
+the request ID identifies a write for retries.
+
+### gno_request_status
+
+Look up a `requestId` sent with `gno_capture` or `gno_remember` before
+retrying. Read-only, but registered only with `--enable-write` and only on the
+`full` profile.
+
+```yaml
+requestId: "7d2e4b90-1f7a-4c2e-8f55-0b9c1d3e6a42"
+```
+
+Returns `status` (`committed`: do not resend; `pending`: resend the same call
+with the same ID; `expired`: already ran, will not run again; `not_found`:
+nothing accepted under this ID), `operation`, timestamps, and for a committed
+request a `result` pointer (`uri`, `docid`, `contentHash`). It never returns
+note or fact text.
+
+On the resident HTTP endpoint, requests belong to the authorized identity
+(loopback, or the configured bearer token), not to the MCP session: a retry
+after a reconnect or a server restart still finds its request, while another
+token's requests read as `not_found`. Rotating the token starts a new
+namespace. Over stdio the namespace is the same local-owner namespace the CLI,
+SDK, and REST use.
+
+Request ID errors (`REQUEST_ID_INVALID`, `REQUEST_ID_CONFLICT`,
+`REQUEST_EXPIRED`, `REQUEST_PENDING`, `REQUEST_RECOVERY_CONFLICT`,
+`REQUEST_CAPACITY_EXHAUSTED`, `REQUEST_LEDGER_UNAVAILABLE`) arrive as tool
+errors `CODE: message`. See
+[Retries and Request IDs](guides/retries-and-request-ids.md#errors).
 
 ### gno_rename_note / gno_move_note
 

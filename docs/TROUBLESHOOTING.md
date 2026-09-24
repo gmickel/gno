@@ -36,6 +36,7 @@ Semantic pending and connector-only warnings do not block lexical use.
 | 1    | Validation error | Bad arguments, missing options                                                                     |
 | 2    | Runtime error    | IO, database, model failures                                                                       |
 | 3    | `NOT_RUNNING`    | `gno serve --status` / `--stop` or `gno daemon --status` / `--stop` found no live matching process |
+| 4    | `BUSY`           | Another writer held the shared write lease; a request ID still in progress (`REQUEST_PENDING`)     |
 
 ## Installation Issues
 
@@ -323,6 +324,90 @@ Windows can be significantly slower due to NTFS overhead and real-time antivirus
 4. Add folder: `%LOCALAPPDATA%\gno\data`
 
 This can improve indexing speed by 2-4x on Windows.
+
+## Write and Retry Issues
+
+### "Capture written to ... but lexical sync failed"
+
+`gno capture` (exit 2), `client.capture()` (`RUNTIME` with
+`details.code: "CAPTURE_SYNC_FAILED"`), MCP `gno_capture`, and
+`POST /api/capture` report this when the note file was written but could not be
+indexed. Capture no longer returns a success with `sync.status: "failed"`.
+
+- The file is on disk at the path in the message. Do not capture it again
+  without a request ID; that can create a second note.
+- Run `gno update` to index it, or, if you sent a request ID, rerun the exact
+  same capture with the same ID: it finishes indexing the written note instead
+  of writing a new one.
+
+### Document save returns `LOCKED`
+
+`PUT /api/docs/:id` (Web UI editor, auto-save, tag edits) runs its revision
+check and write under the shared write lease. `409 LOCKED` means another
+writer (`gno index`, `gno update`, a CLI or MCP write) held the lease for the
+whole wait window. Nothing was written. Save again once that writer finishes.
+
+A save refused with `409 CONFLICT` ("Document changed on disk") means the file
+changed since the editor loaded it; reload and reapply your change. GNO never
+force-overwrites the newer version.
+
+### Request ID errors
+
+These codes appear only on writes that carry a request ID (`--request-id`,
+`requestId`) and on request lookups. See
+[Retries and Request IDs](guides/retries-and-request-ids.md) for the full
+contract.
+
+#### `REQUEST_ID_INVALID`
+
+The ID is empty, longer than 128 characters, uses characters other than
+letters, digits, `.`, `_`, `:` and `-`, or does not start with a letter or
+digit. It is also returned when a request ID is sent on a call that does not
+write, such as `gno remember` without `--add` / `--supersede`. Nothing was
+recorded; fix the ID or add the decision.
+
+#### `REQUEST_ID_CONFLICT`
+
+The ID was already used for a different payload, destination, revision,
+predecessor, or operation. Nothing was written. If you meant to retry, resend
+the original call unchanged. If the content changed on purpose, it is a new
+intent: use a new ID.
+
+#### `REQUEST_EXPIRED`
+
+The ID was committed more than 30 days ago; only a tombstone remains and the
+request will not run again. Check the current state (`gno get`, `gno recall`)
+before deciding whether a new write with a new ID is needed.
+
+#### `REQUEST_PENDING`
+
+The request was accepted and another attempt is still running (CLI exit 4,
+HTTP 409). Wait, then check `gno request-status <id>` and retry the same call
+with the same ID.
+
+#### `REQUEST_RECOVERY_CONFLICT`
+
+An earlier attempt was interrupted after its file was written, and the file
+has since been edited, deleted, or recreated. GNO left it untouched. Inspect
+the file, decide what it should contain, and use a new ID if you still want to
+write.
+
+#### `REQUEST_CAPACITY_EXHAUSTED`
+
+The request ledger reached its fixed 100,000-row cap. The write was rejected
+before anything was written. Existing request IDs still replay, and the same
+write without a request ID still works. Committed records older than 30 days
+are compacted to tombstones but still count toward the cap; there is no
+cleanup command. `gno reset --confirm` removes the ledger together with the
+rest of the data directory.
+
+#### `REQUEST_LEDGER_UNAVAILABLE`
+
+GNO could not open the ledger at
+`<dataDir>/write-receipts/<index db filename>` (permissions, disk full, a
+corrupt file). The write was rejected before anything was written. Check that
+the data directory is writable and has free space, then retry with the same
+ID. Writes without a request ID do not use the ledger.
 
 ## Browser Clipper Issues
 

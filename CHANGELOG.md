@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Opt-in request IDs for retry-safe writes: `--request-id` on `gno capture` and `gno remember`, `requestId` on MCP `gno_capture` / `gno_remember`, REST `POST /api/capture`, `POST /api/memory/remember`, and `PUT /api/docs/:id`, and SDK `client.capture()` / `client.remember()`. Retrying the same write with the same ID replays the recorded outcome or finishes an interrupted write instead of writing twice; results gain a `request` object. Requests are recorded in a private per-index ledger outside the index database (30-day outcome retention, 100,000-row cap).
+- Request lookup before retrying: `gno request-status <id>`, MCP `gno_request_status` (write-enabled `full` profile), `GET /api/requests/:requestId`, and `client.requestStatus()`, returning `pending`, `committed`, `expired`, or `not_found` with a content-free result pointer.
+- The Web UI capture dialog, editor saves, and tag saves reuse one request ID while retrying the same change, so a save whose response was lost returns the committed result instead of a false conflict.
+
+### Changed
+
+- REST document saves (`PUT /api/docs/:id`, used by the editor and tag editing) run their revision check and write under the shared write lease: two saves from the same revision can no longer both succeed (one gets `409 CONFLICT`), and a lease that stays busy returns `409 LOCKED` without writing.
+- `gno capture` and `client.capture()` use the same leased publication as MCP and REST capture: a written note whose lexical sync fails is now an error (CLI exit 2; SDK `RUNTIME` with `details.code: "CAPTURE_SYNC_FAILED"`) instead of a success with `sync.status: "failed"`, and opening an existing unindexed capture indexes it.
+- `client.capture()` now takes the shared write lease.
+- MCP with `--enable-write` on the `full` profile now advertises 56 tools (adds `gno_request_status`).
+
 ## [2.5.1] - 2026-09-24
 
 ### Added
