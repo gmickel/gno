@@ -5,8 +5,8 @@
  */
 
 import { afterEach, describe, expect, test } from "bun:test";
-// node:fs/promises mkdtemp: temp fixture root, no Bun equivalent
-import { mkdtemp } from "node:fs/promises";
+// node:fs/promises mkdtemp/unlink: fixture structure ops, no Bun equivalent
+import { mkdtemp, unlink } from "node:fs/promises";
 // node:os tmpdir: no Bun equivalent
 import { tmpdir } from "node:os";
 // node:path has no Bun path utilities
@@ -14,6 +14,7 @@ import { join } from "node:path";
 
 import { safeRm } from "../helpers/cleanup";
 import {
+  KILL_MARKER,
   type OpOutcome,
   openReceiptHarness,
   readSideEffects,
@@ -29,7 +30,6 @@ const CHILD = join(
   "request-receipts",
   "run-op.ts"
 );
-const SIGKILL_EXIT = 137;
 const CONCURRENT_CALLERS = 3;
 
 const roots: string[] = [];
@@ -51,7 +51,7 @@ async function child(
   op: ScopedOp,
   crashStage = "-",
   variant = ""
-): Promise<{ exitCode: number; outcome: OpOutcome | null }> {
+): Promise<{ killed: boolean; outcome: OpOutcome | null }> {
   const proc = Bun.spawn(
     [process.execPath, CHILD, root, op, "req-proc", crashStage, variant],
     { stdout: "pipe", stderr: "pipe" }
@@ -61,12 +61,17 @@ async function child(
     new Response(proc.stderr).text(),
     proc.exited,
   ]);
-  if (exitCode !== 0 && exitCode !== SIGKILL_EXIT) {
+  // Kill exit codes differ by platform (137 on Unix, 1 on Windows); only the
+  // fixture's marker distinguishes the deliberate kill from a real failure.
+  const marker = join(root, KILL_MARKER);
+  const killed = await Bun.file(marker).exists();
+  if (killed) await unlink(marker);
+  if (exitCode !== 0 && !killed) {
     throw new Error(`child failed (${exitCode}): ${stderr}`);
   }
   const line = stdout.trim().split("\n").pop();
   return {
-    exitCode,
+    killed: killed && exitCode !== 0,
     outcome: line ? (JSON.parse(line) as OpOutcome) : null,
   };
 }
@@ -85,7 +90,7 @@ describe("request receipts across processes", () => {
     test(`${op}: a writer killed after publication is finished by the next process`, async () => {
       const root = await seededRoot(op);
       const killed = await child(root, op, "published");
-      expect(killed).toEqual({ exitCode: SIGKILL_EXIT, outcome: null });
+      expect(killed).toEqual({ killed: true, outcome: null });
       const afterKill = await effects(root, op);
       expect(afterKill.writes).toBe(1);
 

@@ -60,6 +60,9 @@ export interface OpOutcome {
   code?: string;
 }
 
+/** Written by the crash fixture just before its deliberate self-kill. */
+export const KILL_MARKER = "killed.marker";
+
 const DOC_REL_PATH = "doc.md";
 const CAPTURE_FOLDER = "inbox";
 
@@ -310,8 +313,9 @@ export async function publishedFile(
   const dir =
     op === "capture" ? join(h.notes.path, CAPTURE_FOLDER) : h.memory.path;
   const predecessor = seed.predecessorUri?.replace("gno://memory/", "");
+  // Compare POSIX-style: listFiles returns native separators on Windows.
   const written = (await listFiles(dir)).filter(
-    (path) => !predecessor || !path.endsWith(predecessor)
+    (path) => !predecessor || !path.replaceAll("\\", "/").endsWith(predecessor)
   );
   if (written.length !== 1) throw new Error(`expected one published file`);
   return written[0] as string;

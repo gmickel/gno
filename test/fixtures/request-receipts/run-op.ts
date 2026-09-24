@@ -6,12 +6,15 @@
  * argv: <root> <op> <requestId> <crashStage|-> [variant]
  */
 
+// node:fs writeFileSync: synchronous marker write right before the kill
+import { writeFileSync } from "node:fs";
 // node:path has no Bun path utilities
 import { join } from "node:path";
 
 import type { RequestCheckpoint } from "../../../src/core/request-receipts";
 
 import {
+  KILL_MARKER,
   type OpSeed,
   openReceiptHarness,
   runOp,
@@ -35,7 +38,11 @@ const outcome = await runOp(harness, op as ScopedOp, {
     crashStage === "-"
       ? undefined
       : (stage: RequestCheckpoint) => {
-          if (stage === crashStage) process.kill(process.pid, "SIGKILL");
+          if (stage !== crashStage) return;
+          // The kill exit code differs by platform (137 vs 1): the marker is
+          // how the parent tells this deliberate kill from a real failure.
+          writeFileSync(join(root, KILL_MARKER), stage);
+          process.kill(process.pid, "SIGKILL");
         },
 });
 await harness.store.close();
