@@ -103,12 +103,22 @@ import {
 } from "./routes/section-targets";
 import {
   handleSessionsAddSource,
+  handleSessionsAutomationDisable,
+  handleSessionsAutomationEnable,
+  handleSessionsAutomationPreview,
+  handleSessionsAutomationRemove,
+  handleSessionsAutomationRun,
+  handleSessionsAutomationSet,
   handleSessionsDiscover,
   handleSessionsImport,
   handleSessionsInit,
   handleSessionsRemoveSource,
   handleSessionsStatus,
 } from "./routes/sessions";
+
+/** `/api/sessions/automation/:id[/...]` path parameter. */
+const automationProfileId = (req: Request): string =>
+  decodeURIComponent(new URL(req.url).pathname.split("/")[4] ?? "");
 import {
   handleTraceDelete,
   handleTraceExport,
@@ -894,6 +904,97 @@ export async function startServer(
               await handleSessionsRemoveSource(ctxHolder, store, id, req, {
                 server,
               }),
+              isDev
+            );
+          },
+        },
+        "/api/sessions/automation/run": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleSessionsAutomationRun(ctxHolder, store, req),
+              isDev
+            );
+          },
+        },
+        "/api/sessions/automation/:id": {
+          PUT: async (req: Request, server: RequestPeerServer) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleSessionsAutomationSet(
+                ctxHolder,
+                store,
+                automationProfileId(req),
+                req,
+                { server }
+              ),
+              isDev
+            );
+          },
+          DELETE: async (req: Request, server: RequestPeerServer) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleSessionsAutomationRemove(
+                ctxHolder,
+                store,
+                automationProfileId(req),
+                req,
+                { server }
+              ),
+              isDev
+            );
+          },
+        },
+        "/api/sessions/automation/:id/preview": {
+          GET: async (req: Request, server: RequestPeerServer) =>
+            withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleSessionsAutomationPreview(
+                  ctxHolder,
+                  automationProfileId(req),
+                  req,
+                  { server }
+                )
+              ),
+              isDev
+            ),
+        },
+        "/api/sessions/automation/:id/enable": {
+          POST: async (req: Request, server: RequestPeerServer) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleSessionsAutomationEnable(
+                ctxHolder,
+                store,
+                automationProfileId(req),
+                req,
+                { server }
+              ),
+              isDev
+            );
+          },
+        },
+        "/api/sessions/automation/:id/disable": {
+          POST: async (req: Request, server: RequestPeerServer) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleSessionsAutomationDisable(
+                ctxHolder,
+                store,
+                automationProfileId(req),
+                req,
+                { server }
+              ),
               isDev
             );
           },

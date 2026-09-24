@@ -38,6 +38,14 @@ ID, a default archive collection, and optional working-directory project
 mappings. Imports name it by ID, and remote surfaces (MCP, remote REST) never
 see its host path. See [Agent Sessions](SESSIONS.md#collections-per-privacy-boundary).
 
+### Automation Profile
+
+An owner-configured set of registered session sources with separately
+switched, off-by-default triggers (a Claude Code SessionEnd hook, a daemon
+schedule). A trigger only marks the profile pending; the import runs through
+the manual importer in `gno daemon` or `gno sessions automation run`. See
+[Automation](SESSIONS.md#automation-opt-in).
+
 ### Context
 
 Semantic hint attached to a scope to improve search relevance. Contexts provide additional meaning beyond the raw text.

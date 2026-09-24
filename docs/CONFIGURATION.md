@@ -315,24 +315,42 @@ sessions:
   redaction:
     literals:
       - internal.example.net
+  automation: # opt-in; written by `gno sessions automation`
+    - id: codex
+      sources: [codex]
+      schedule:
+        enabled: true
+        cadence: 30m
 ```
 
-| Field                  | Required | Rules                                                                                         |
-| ---------------------- | -------- | --------------------------------------------------------------------------------------------- |
-| `index`                | yes      | The index name this config is bound to (1-64 chars); never `default`                          |
-| `archiveRoot`          | yes      | Absolute path outside GNO's config/data/cache directories; collections live directly below it |
-| `sources`              | no       | Up to 64 owner-registered sources with unique IDs (default `[]`)                              |
-| `sources[].id`         | yes      | `^[a-z0-9][a-z0-9_-]{0,63}$`                                                                  |
-| `sources[].harness`    | yes      | `codex`, `claude-code`, `openclaw`, or `hermes`                                               |
-| `sources[].path`       | yes      | Absolute session root, file, or database                                                      |
-| `sources[].collection` | yes      | Default archive collection (`^[a-z0-9][a-z0-9_-]{0,63}$`)                                     |
-| `sources[].projects`   | no       | Up to 64 `{ prefix, collection }` working-directory mappings; `prefix` is absolute            |
-| `redaction.literals`   | no       | Up to 256 exact strings (4-512 chars each) always redacted                                    |
+| Field                   | Required | Rules                                                                                                                       |
+| ----------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `index`                 | yes      | The index name this config is bound to (1-64 chars); never `default`                                                        |
+| `archiveRoot`           | yes      | Absolute path outside GNO's config/data/cache directories; collections live directly below it                               |
+| `sources`               | no       | Up to 64 owner-registered sources with unique IDs (default `[]`)                                                            |
+| `sources[].id`          | yes      | `^[a-z0-9][a-z0-9_-]{0,63}$`                                                                                                |
+| `sources[].harness`     | yes      | `codex`, `claude-code`, `openclaw`, or `hermes`                                                                             |
+| `sources[].path`        | yes      | Absolute session root, file, or database                                                                                    |
+| `sources[].collection`  | yes      | Default archive collection (`^[a-z0-9][a-z0-9_-]{0,63}$`)                                                                   |
+| `sources[].projects`    | no       | Up to 64 `{ prefix, collection }` working-directory mappings; `prefix` is absolute                                          |
+| `redaction.literals`    | no       | Up to 256 exact strings (4-512 chars each) always redacted                                                                  |
+| `automation`            | no       | Up to 16 opt-in automation profiles with unique IDs (absent means manual only)                                              |
+| `automation[].id`       | yes      | `^[a-z0-9][a-z0-9_-]{0,63}$`                                                                                                |
+| `automation[].sources`  | yes      | 1-64 unique IDs of registered sources; destinations stay on the sources                                                     |
+| `automation[].hook`     | no       | `{ harness: claude-code, enabled, settings }`; `settings` is the absolute Claude Code settings file holding the owned entry |
+| `automation[].schedule` | no       | `{ enabled, cadence }`; cadence `<n>s\|m\|h\|d`, 1m..30d, elapsed time, runs only in `gno daemon`                           |
+| `automation[].limit`    | no       | Changed units per source per run (default 200)                                                                              |
+| `automation[].retries`  | no       | Automatic retries after a failed run, 0-10 (default 3)                                                                      |
 
 Unknown keys are rejected. Each archive collection is an ordinary collection
 entry at `<archiveRoot>/<collection>` with the JSONL field mapping shown
 above; keep that mapping intact, because author, tags, session identity, and
 record dates come from it. Collection egress policy applies as usual.
+
+Automation profiles start with every trigger off; `gno sessions automation
+enable` switches a hook or schedule on, and nothing else ever does. See
+[Automation](SESSIONS.md#automation-opt-in). Machine-written run state lives
+in `<archiveRoot>/.gno-sessions/automation.json`, never in this file.
 
 The config is bound to its named index; see
 [Archive binding](SESSIONS.md#archive-binding-one-config-one-index). A change to `redaction.literals` takes effect on the next

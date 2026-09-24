@@ -2,7 +2,8 @@
  * Daemon-mode findings wiring in the resident runtime: enabled-without-a
  * collection fails startup with the operator-facing message; serve mode
  * ignores the block; a valid daemon config arms the scheduler and persists
- * the pending state; a disabled daemon clears a stale state file.
+ * the pending state; a disabled daemon clears a stale state file. Session
+ * automation ticks only in daemon mode on a session-archive config.
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
@@ -227,5 +228,30 @@ describe("resident runtime findings wiring", () => {
     expect(result.runtime.findingsScheduler).toBeNull();
     expect(await readFindingsRunStatus(statePath)).toBeNull();
     await result.runtime.dispose();
+  });
+});
+
+describe("resident runtime session automation wiring", () => {
+  test("only a daemon on a session-archive config drains automation; serve never does", async () => {
+    const archive: Config = {
+      ...buildConfig(),
+      sessions: {
+        index: "default",
+        archiveRoot: join(dir, "archive"),
+        sources: [],
+      },
+    };
+    const cases = [
+      { mode: "serve" as const, config: archive, armed: false },
+      { mode: "daemon" as const, config: buildConfig(), armed: false },
+      { mode: "daemon" as const, config: archive, armed: true },
+    ];
+    for (const { mode, config, armed } of cases) {
+      const result = await startResidentRuntime({ mode }, createDeps(config));
+      expect(result.success).toBe(true);
+      if (!result.success) continue;
+      expect(result.runtime.sessionAutomation !== null).toBe(armed);
+      await result.runtime.dispose();
+    }
   });
 });

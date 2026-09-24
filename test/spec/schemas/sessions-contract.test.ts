@@ -2,7 +2,8 @@
  * Cross-surface session contract (fn-171): CLI --json, SDK and MCP import the
  * same registered source into identical fresh archives and return receipts
  * that validate against the shared schema and agree on every count. Status
- * and discovery validate against their schemas too. REST is covered by
+ * and discovery validate against their schemas too, and an automation run
+ * agrees across CLI, SDK and MCP (fn-172). REST is covered by
  * test/serve/sessions-api.test.ts against the same schemas.
  */
 
@@ -14,12 +15,16 @@ import { cp, mkdir, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { ToolContext } from "../../../src/mcp/server";
-import type { SessionImportReceipt } from "../../../src/sessions/types";
+import type {
+  SessionAutomationRunResult,
+  SessionImportReceipt,
+} from "../../../src/sessions/types";
 
 import { initStore } from "../../../src/cli/commands/shared";
 import { runCli } from "../../../src/cli/run";
 import { createMcpServerSurface } from "../../../src/mcp/context";
 import { createGnoClient } from "../../../src/sdk";
+import { setAutomationProfile } from "../../../src/sessions/automation";
 import {
   addSessionSource,
   initSessionArchive,
@@ -191,6 +196,93 @@ describe("session receipts agree across surfaces", () => {
     expect(comparable(mcpReceipt)).toEqual(comparable(cliReceipt));
     expect(cliReceipt.status).toBe("partial");
     expect(cliReceipt.counts.incomplete).toBe(1);
+  });
+
+  test("an automation run validates and agrees on CLI, SDK and MCP", async () => {
+    const runSchema = await loadSchema("sessions-automation-run");
+    const withProfile = async (name: string) => {
+      const archive = await freshArchive(name);
+      await setAutomationProfile(
+        { configPath: archive.configPath, indexName: name },
+        { id: "main", sources: ["codex-main"] }
+      );
+      return archive;
+    };
+    const cli = await withProfile("cli");
+    const cliRun = (await cliJson([
+      "--config",
+      cli.configPath,
+      "--index",
+      "cli",
+      "sessions",
+      "automation",
+      "run",
+      "main",
+      "--json",
+    ])) as SessionAutomationRunResult;
+
+    const sdk = await withProfile("sdk");
+    const client = await createGnoClient({
+      configPath: sdk.configPath,
+      indexName: "sdk",
+    });
+    let sdkRun: SessionAutomationRunResult;
+    try {
+      sdkRun = await client.runSessionsAutomation({ profileId: "main" });
+    } finally {
+      await client.close();
+    }
+
+    const mcp = await withProfile("mcp");
+    const opened = await initStore({
+      configPath: mcp.configPath,
+      indexName: "mcp",
+    });
+    if (!opened.ok) throw new Error(opened.error);
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    const server = createMcpServerSurface(
+      {
+        indexName: "mcp",
+        store: opened.store,
+        config: opened.config,
+        collections: opened.collections,
+        actualConfigPath: mcp.configPath,
+        toolMutex: { acquire: async () => () => {} },
+        jobManager: {} as ToolContext["jobManager"],
+        serverInstanceId: "sessions-contract",
+        writeLockPath: join(root, ".mcp-write.lock"),
+        enableWrite: true,
+        isShuttingDown: () => false,
+      },
+      { name: "contract", version: "1" }
+    );
+    await server.connect(serverSide);
+    const mcpClient = new Client({ name: "contract-client", version: "1" });
+    await mcpClient.connect(clientSide);
+    let mcpRun: SessionAutomationRunResult;
+    try {
+      const result = await mcpClient.callTool({
+        name: "gno_sessions_automation_run",
+        arguments: { profileId: "main" },
+      });
+      mcpRun =
+        result.structuredContent as unknown as SessionAutomationRunResult;
+    } finally {
+      await mcpClient.close();
+      await server.close();
+      await opened.store.close();
+    }
+
+    const shape = (run: SessionAutomationRunResult) => ({
+      outcome: run.outcome,
+      reason: run.reason,
+      pending: run.pending,
+      receipts: run.receipts.map(comparable),
+    });
+    for (const run of [cliRun, sdkRun, mcpRun]) assertValid(run, runSchema);
+    expect(shape(sdkRun)).toEqual(shape(cliRun));
+    expect(shape(mcpRun)).toEqual(shape(cliRun));
+    expect(cliRun).toMatchObject({ ran: true, outcome: "partial" });
   });
 
   test("dry-run and discovery validate and write nothing", async () => {

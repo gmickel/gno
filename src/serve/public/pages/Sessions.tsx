@@ -18,6 +18,7 @@ import type {
 } from "../components/sessions/api";
 
 import { sessionsApi } from "../components/sessions/api";
+import { AutomationPanel } from "../components/sessions/AutomationPanel";
 import { SessionSearch } from "../components/sessions/SessionSearch";
 import { SourcesPanel } from "../components/sessions/SourcesPanel";
 import { Badge } from "../components/ui/badge";
@@ -235,8 +236,8 @@ export default function Sessions({ navigate }: PageProps) {
               </p>
             )}
             <p className="text-muted-foreground text-sm">
-              Import is manual. Nothing here watches your agents or imports on
-              its own; each import runs only when you press a button.
+              Import is manual by default. Nothing watches your agents or
+              imports on its own unless you switch on a hook or schedule below.
             </p>
           </div>
           <Button onClick={() => navigate("/")} variant="outline">
@@ -327,6 +328,12 @@ export default function Sessions({ navigate }: PageProps) {
               onImport={(sourceId, dryRun) => void runImport(sourceId, dryRun)}
               onRemove={(sourceId) => void removeSource(sourceId)}
               receipts={receipts}
+              sources={status.sources}
+            />
+            <AutomationPanel
+              automation={status.automation}
+              localClient={localClient}
+              onChanged={loadStatus}
               sources={status.sources}
             />
             <SessionSearch

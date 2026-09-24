@@ -5,7 +5,12 @@
  * @module src/sessions/format
  */
 
-import type { SessionImportReceipt, SessionsStatus } from "./types";
+import type {
+  SessionAutomationRunResult,
+  SessionAutomationStatus,
+  SessionImportReceipt,
+  SessionsStatus,
+} from "./types";
 
 /** Plain-text import receipt shared by the CLI and MCP. */
 export function formatImportReceiptText(receipt: SessionImportReceipt): string {
@@ -50,6 +55,95 @@ export function formatStatusText(status: SessionsStatus): string {
       );
     }
   }
+  lines.push(...formatAutomationLines(status.automation));
   for (const warning of status.warnings) lines.push(`warning: ${warning}`);
+  return lines.join("\n");
+}
+
+/** UTC instant shown in the reader's timezone, e.g. `2026-09-24 15:04:05`. */
+export function formatLocalTime(iso: string | null, timezone: string): string {
+  if (!iso) return "never";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleString("sv-SE", { timeZone: timezone });
+}
+
+function daemonLine(
+  automation: SessionAutomationStatus,
+  at: (iso: string | null) => string
+): string {
+  if (automation.daemon.state === "running") {
+    return `daemon running (heartbeat ${at(automation.daemon.heartbeatAt)})`;
+  }
+  if (automation.daemon.state === "stale") {
+    return `daemon stale (last heartbeat ${at(automation.daemon.heartbeatAt)})`;
+  }
+  return "not running: no daemon";
+}
+
+function formatAutomationLines(automation: SessionAutomationStatus): string[] {
+  if (automation.profiles.length === 0) {
+    return ["Automation: off (manual imports only)"];
+  }
+  const at = (iso: string | null) => formatLocalTime(iso, automation.timezone);
+  const lines = [
+    `Automation (${daemonLine(automation, at)}; times in ${automation.timezone})`,
+  ];
+  for (const profile of automation.profiles) {
+    const hookMissing =
+      profile.hook?.enabled && profile.hook.installed === false
+        ? " (entry missing)"
+        : "";
+    const hook = profile.hook
+      ? `hook ${profile.hook.harness} ${profile.hook.enabled ? "on" : "off"}${hookMissing}`
+      : "hook off";
+    let schedule = "schedule off";
+    if (profile.schedule?.enabled) {
+      const next = profile.schedule.nextDueAt
+        ? `next ${at(profile.schedule.nextDueAt)}`
+        : "not running: no daemon";
+      schedule = `schedule every ${profile.schedule.cadence}, ${next}`;
+    }
+    lines.push(
+      `- profile ${profile.id}: ${profile.state}; sources ${profile.sources.join(", ")} -> ${profile.collections.join(", ") || "(none)"}; ${hook}; ${schedule}`
+    );
+    if (profile.pending) {
+      const retry = profile.retryAt ? `, retry at ${at(profile.retryAt)}` : "";
+      lines.push(
+        `  pending since ${at(profile.pending.since)} (${profile.pending.triggers.join(", ") || "continuation"})${retry}`
+      );
+    }
+    if (profile.running) {
+      lines.push(`  running since ${at(profile.running.startedAt)}`);
+    }
+    if (profile.lastRun) {
+      const run = profile.lastRun;
+      lines.push(
+        `  last run ${at(run.finishedAt)}: ${run.outcome}${run.reason ? ` (${run.reason})` : ""}; threads ${run.threads.imported} imported, ${run.threads.updated} updated; units ${run.units.incomplete} incomplete, ${run.units.failed} failed, ${run.units.deferred} deferred`
+      );
+    }
+    lines.push(`  last success ${at(profile.lastSuccessAt)}`);
+    if (profile.recovery) lines.push(`  action: ${profile.recovery}`);
+  }
+  return lines;
+}
+
+/** Plain-text automation run result shared by the CLI and MCP. */
+export function formatAutomationRunText(
+  result: SessionAutomationRunResult
+): string {
+  if (!result.ran) {
+    return `Automation profile ${result.profileId}: not started (${result.reason ?? "unknown"})${result.pending ? "; work stays pending" : ""}`;
+  }
+  const lines = [
+    `Automation profile ${result.profileId}: ${result.outcome}${result.reason ? ` (${result.reason})` : ""}${result.pending ? "; more work is pending" : ""}`,
+  ];
+  for (const receipt of result.receipts) {
+    const deferred =
+      receipt.deferredUnits > 0 ? `, ${receipt.deferredUnits} deferred` : "";
+    lines.push(
+      `- ${receipt.sourceIds.join(", ")}: ${receipt.status}; ${receipt.counts.imported} imported, ${receipt.counts.updated} updated, ${receipt.counts.unchanged} unchanged; ${receipt.counts.incomplete} incomplete, ${receipt.counts.failed} failed${deferred}`
+    );
+  }
   return lines.join("\n");
 }

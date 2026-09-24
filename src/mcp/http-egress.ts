@@ -59,6 +59,7 @@ export const MCP_HTTP_EGRESS_TOOLS = {
   gno_rename_note: "metadata",
   gno_search: "snippet",
   gno_section: "metadata",
+  gno_sessions_automation_run: "metadata",
   gno_sessions_import: "metadata",
   gno_sessions_status: "metadata",
   gno_similar: "snippet",

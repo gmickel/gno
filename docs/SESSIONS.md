@@ -1,7 +1,7 @@
 ---
 title: Agent Sessions
-description: Import selected local agent conversations (Codex, Claude Code, OpenClaw, Hermes) into a dedicated, searchable session archive with speaker labels, provenance, redaction, receipts, and explicit opt-in retrieval.
-keywords: gno sessions, agent session search, codex sessions, claude code sessions, openclaw, hermes, session archive, conversation search, agent transcripts
+description: Import selected local agent conversations (Codex, Claude Code, OpenClaw, Hermes) into a dedicated, searchable session archive with speaker labels, provenance, redaction, receipts, explicit opt-in retrieval, and opt-in automation (Claude Code SessionEnd hook, daemon schedules).
+keywords: gno sessions, agent session search, codex sessions, claude code sessions, openclaw, hermes, session archive, conversation search, agent transcripts, sessionend hook, session automation
 ---
 
 # Agent Sessions
@@ -16,7 +16,8 @@ Three rules shape the feature:
 
 - **Manual by default.** A fresh installation imports, watches, and schedules
   nothing, and registers no hooks. Every import is a command you run (or a
-  button you press in the Web UI).
+  button you press in the Web UI) until you explicitly switch on
+  [automation](#automation-opt-in) for a profile.
 - **Evidence, not truth.** An archived turn records what was said. An
   assistant suggestion stays labelled as assistant output and never reads as
   a decision the person made.
@@ -32,9 +33,16 @@ Three rules shape the feature:
 | SDK     | `client.sessionsStatus()`  | `client.importSessions()`                | `client.discoverSessions()`                |
 | Web UI  | `/sessions` page           | Dry-run preview, then import             | Sources and archive setup (same host only) |
 
-Receipts, status, and discovery results are the same objects on every
-surface and validate against `spec/output-schemas/sessions-import-receipt.schema.json`,
-`sessions-status.schema.json`, and `sessions-discovery.schema.json`.
+Opt-in [automation](#automation-opt-in) adds `gno sessions automation`
+(CLI), `gno_sessions_automation_run` (MCP), `/api/sessions/automation/*`
+(REST), `client.runSessionsAutomation()` (SDK), and an Automation panel on
+`/sessions`; its state is part of every status response.
+
+Receipts, status, discovery, and automation run results are the same
+objects on every surface and validate against
+`spec/output-schemas/sessions-import-receipt.schema.json`,
+`sessions-status.schema.json`, `sessions-discovery.schema.json`, and
+`sessions-automation-run.schema.json`.
 
 ## How it works
 
@@ -432,6 +440,274 @@ gno --config ~/gno-sessions/archive.yml --index sessions sessions source remove 
   harness moved or renamed keeps its archive.
 - `source remove` unregisters a source and keeps its archive.
 
+## Automation (opt-in)
+
+Automation imports new session turns without you running `sessions import`
+each time. It is off until you switch it on, and it only ever calls the same
+importer as a manual import: the same sources, destinations, redaction,
+checkpoints, and receipts. Installing, upgrading, repairing, or restarting GNO
+never enables it, and a paused trigger stays paused.
+
+Two triggers exist, each switched on separately for one **profile**:
+
+| Trigger                     | What fires it                               | What it does in the foreground                  |
+| :-------------------------- | :------------------------------------------ | :---------------------------------------------- |
+| Claude Code SessionEnd hook | Claude Code ending a session                | Marks the profile pending on disk, then returns |
+| Daemon schedule             | `gno daemon` on this archive, every cadence | Marks the profile pending when due              |
+
+Neither trigger imports anything by itself. The import runs later, in one of
+two places:
+
+- `gno daemon` on the archive's config and index drains pending profiles at
+  startup and every 30 seconds.
+- `gno sessions automation run <profile>` runs a profile now, in the
+  foreground.
+
+```
+Claude Code SessionEnd ──► gno sessions hook ──┐
+                                               ├─► pending marker (per profile,
+daemon schedule tick (due) ────────────────────┘    durable, coalesced)
+                                                         │
+                        gno daemon tick / automation run ▼
+                                          manual importer (sessions import)
+```
+
+With no daemon running, hook events stay pending (reported as `pending, not
+yet archived`) until a daemon starts or you run the profile. `gno serve` never
+drains pending work or runs schedules.
+
+### Quick start
+
+```bash
+A="gno --config ~/gno-sessions/archive.yml --index sessions"
+
+# 1. A profile names registered sources. It enables nothing.
+$A sessions automation set claude --source claude-code
+
+# 2. Review what would run: sources, destinations, the exact hook command,
+#    the settings file it edits, and the daemon prerequisite.
+$A sessions automation preview claude
+
+# 3. Switch on the Claude Code SessionEnd hook, the schedule, or both.
+$A sessions automation enable claude --hook claude-code
+$A sessions automation enable claude --schedule --cadence 30m
+
+# 4. Start the daemon that performs the imports (GNO never starts it for you).
+$A daemon --detach
+
+# 5. Watch it work.
+$A sessions status
+```
+
+### Profiles
+
+A profile lives in the archive config under `sessions.automation`:
+
+```yaml
+sessions:
+  index: sessions
+  archiveRoot: /Users/you/gno-sessions/archive
+  sources:
+    - id: claude-code
+      harness: claude-code
+      path: /Users/you/.claude/projects
+      collection: sessions-work
+  automation:
+    - id: claude
+      sources: [claude-code]
+      hook:
+        harness: claude-code
+        enabled: true
+        settings: /Users/you/.claude/settings.json
+      schedule:
+        enabled: true
+        cadence: 30m
+      limit: 200 # optional: changed units per source per run
+      retries: 3 # optional: automatic retries after a failed run
+```
+
+- `sources` must be registered sources. Destinations, project mappings, and
+  privacy boundaries stay on those sources; a profile cannot add a source or
+  change where turns land. Reconfigure with `sessions automation set`.
+- `hook` and `schedule` appear only after `enable`, and `enabled` changes only
+  through `enable` and `disable` (or your own edit of the file).
+- `limit` bounds each run. When more changed units wait, the rest stay
+  pending and the next daemon tick continues.
+- At most 16 profiles per archive.
+
+Run state (pending markers, last run, next due time, daemon heartbeat) is
+machine-written to `<archiveRoot>/.gno-sessions/automation.json` with mode
+`0600`. It is not configuration; deleting it only forgets pending work and
+history.
+
+### Claude Code SessionEnd hook
+
+`enable --hook claude-code` adds one entry to a Claude Code settings file,
+by default `$CLAUDE_CONFIG_DIR/settings.json`, else
+`~/.claude/settings.json` (choose another with `--settings <absolute path>`):
+
+```json
+{
+  "hooks": {
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "GNO_DATA_DIR='…' GNO_CACHE_DIR='…' '/path/to/bun' run '/path/to/gno/src/index.ts' --config '/Users/you/gno-sessions/archive.yml' --index 'sessions' sessions hook claude-code --profile 'claude'",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+- **Ownership.** GNO recognises its entry by that command (this archive
+  config and profile). It never edits or removes other hooks, other settings,
+  or entries of other profiles. The previous file is kept as
+  `settings.json.bak`, and a settings file that is not valid JSON is left
+  untouched with an error.
+- **Absolute and bound.** The command pins this GNO runtime, its data and
+  cache directories, and the archive config/index pair, so neither `PATH` nor
+  the session's working directory can redirect it. Re-run `enable` after
+  moving GNO or changing `GNO_DATA_DIR`; it repairs the entry in place.
+- **Tiny foreground.** The hook reads the event, rechecks that the profile's
+  hook is still enabled, writes the pending marker durably (fsync), and
+  exits. It does not parse sessions, import, embed, or use the network. It
+  waits at most 1 second for the marker lock; measured end to end it takes
+  about 70 ms. Claude Code's `timeout` of 5 seconds is a backstop.
+- **Honest outcome.** The hook prints one content-free line:
+  `accepted (profile claude pending, not yet archived; …)`, `skipped (…)`, or
+  `not accepted (…); nothing was archived` with a non-zero exit. It never
+  reports archival.
+- **Kill switch.** `GNO_SESSIONS_HOOKS=off` (or `0`) in Claude Code's
+  environment makes every installed hook return immediately.
+- **The payload is only a trigger.** The session ID, transcript path, and
+  working directory Claude Code sends are not used to choose sources,
+  collections, or privacy routing; the import covers the profile's
+  registered sources.
+
+Verified against Claude Code 2.1.280: SessionEnd fires for non-interactive
+`claude -p` runs with the fields `session_id`, `transcript_path`, `cwd`,
+`hook_event_name`, `reason`, and `prompt_id`, and the hook finishes inside
+Claude Code's default 1.5-second SessionEnd budget. Whether SessionEnd fires
+when an interactive session ends with `/exit` was not verified; the schedule
+catches up either way.
+
+Other harnesses (Codex, OpenClaw, Hermes) and pre-compaction triggers have no
+verified hook in GNO. `enable --hook codex` fails with
+`SESSIONS_UNSUPPORTED_INTEGRATION`; import those harnesses manually or on a
+daemon schedule.
+
+### Daemon schedule
+
+- **Daemon only.** Schedules tick only inside `gno daemon` running on the
+  archive's config and index. Enabling a schedule does not install or start
+  a service; start the daemon yourself (for example `daemon --detach`, or
+  under your own login item or service manager).
+- **Elapsed cadence.** `--cadence` uses the daemon cadence grammar
+  `<n>s|m|h|d`, from `1m` to `30d`. It is elapsed time, not a wall-clock time
+  of day, so daylight-saving changes do not move it. There is no cron syntax.
+- **First run** one cadence after `enable`, like the daemon findings pass.
+- **Missed runs coalesce.** After sleep, a stopped daemon, or a restart, all
+  missed intervals become one run. A clock moved backwards never pushes the
+  next run more than one cadence away.
+- **Times.** Run state stores UTC instants; `sessions status` shows them in
+  your local timezone and names it.
+
+Only one resident process (`gno serve` or `gno daemon`) may use a GNO data
+directory. If your curated `gno serve` or `gno daemon` already runs, the
+archive daemon cannot start on the same data directory
+(`Resident runtime already active`). Give the archive its own data
+directory and use it for every archive command, including `enable`:
+
+```bash
+export GNO_DATA_DIR=~/gno-sessions/data
+gno --config ~/gno-sessions/archive.yml --index sessions update   # rebuilds the disposable index there
+gno --config ~/gno-sessions/archive.yml --index sessions sessions automation enable claude --hook claude-code
+gno --config ~/gno-sessions/archive.yml --index sessions daemon --detach
+```
+
+### Run now
+
+`gno sessions automation run <profile>` runs one profile through the
+importer immediately and records the outcome in automation status, whether
+or not any trigger is enabled. An explicit run resets any backoff and retry
+budget. It returns `not_started` (`busy`) only while another automation run
+of the same profile is in progress; a manual import holding the archive
+shows as a failed run with reason `busy`, retried with backoff.
+
+### Status
+
+`gno sessions status` (and every status surface) reports, per profile:
+
+| Field           | Meaning                                                                       |
+| :-------------- | :---------------------------------------------------------------------------- |
+| `state`         | `off`, `idle`, `pending`, `running`, `retrying`, `partial`, or `failed`       |
+| `hook`          | Harness, enabled, and whether the owned entry is present in its settings file |
+| `schedule`      | Enabled, cadence, and `nextDueAt` (null unless a daemon is running)           |
+| `pending`       | Since when, and which triggers admitted it                                    |
+| `running`       | A live run and when it started                                                |
+| `lastRun`       | Triggers, times, outcome, reason code, thread and unit counts                 |
+| `lastSuccessAt` | Last run that completed fully (`complete` or `up_to_date`)                    |
+| `retryAt`       | When a failed run is retried                                                  |
+| `recovery`      | The next action to take, when one is needed                                   |
+
+The `daemon` block reports `running` only with a fresh heartbeat from a live
+daemon on this archive, `stale` for a live process that stopped ticking, and
+`not_running` otherwise; then the schedule shows `not running: no daemon`
+instead of a due time.
+
+A run's outcome is `complete`, `up_to_date` (a verified no-op: every source
+was already current), `partial` (incomplete or deferred units, or a failed
+index sync; the next run retries them), or `failed`. Missing or unreadable
+sources, stale heartbeats, and failed runs never appear as a successful
+completion. Status, logs, and receipts carry counts, IDs, and reason codes
+only: no session content and no host paths.
+
+### Failures, retries, and recovery
+
+| Reason code             | Cause                                                      | What happens                                                    |
+| :---------------------- | :--------------------------------------------------------- | :-------------------------------------------------------------- |
+| `busy`                  | Another import or index writer holds the archive           | Retried with backoff (1m, 2m, 4m, … up to 30m), `retries` times |
+| `runtime_error`         | Filesystem or index failure                                | Retried with backoff                                            |
+| `interrupted`           | The process running it died                                | Pending work kept; the next daemon tick reruns it               |
+| `source_revoked`        | A profile source is no longer registered                   | No automatic retry; fix the profile or re-register the source   |
+| `source_unavailable`    | A source or the archive directory is missing or unreadable | No automatic retry; fix it, then `automation run`               |
+| `invalid_configuration` | Collections, binding, or source settings no longer match   | No automatic retry; correct the config                          |
+| `import_failed`         | Every processed unit failed                                | No automatic retry; check the receipt of `automation run`       |
+
+A trigger that could not be admitted (lock not acquired in time, disk full,
+archive directory removed) is reported as not accepted and leaves no pending
+marker. An accepted trigger is never dropped silently: it stays pending until
+a run consumes it, and a trigger that arrives while a run is in progress
+starts another run afterwards. Imports are idempotent, so a rerun after a
+crash creates no duplicate turns and never changes provenance.
+
+### Pause, disable, and remove
+
+```bash
+$A sessions automation disable claude            # pause everything
+$A sessions automation disable claude --hook     # only the hook
+$A sessions automation disable claude --schedule # only the schedule
+$A sessions automation remove claude             # uninstall and delete the profile
+```
+
+- `disable` switches the trigger off first, then removes the owned hook
+  entry and clears pending work admitted by that trigger. A run already in
+  progress finishes its bounded batch; nothing new starts.
+- `remove` uninstalls the owned hook entry and deletes the profile and its
+  run state. It fails, and keeps the profile, if the Claude Code settings
+  file cannot be read, so the entry never outlives the profile that can
+  remove it.
+- Archived conversations are always kept. Remove them with
+  [`prune`](#status-prune-and-retention) or by deleting archive files.
+
+Automation creates no tasks, reminders, notifications, or OS services,
+promotes nothing to remembered facts, and makes no network calls.
+
 ## Privacy and redaction
 
 Redaction runs before anything is persisted: archive text, titles, labels,
@@ -502,14 +778,18 @@ uninstall do not touch the archive root.
 
 **MCP** ([MCP.md](MCP.md#gno_sessions_status)). Start the server on the
 archive pair: `gno --config ~/gno-sessions/archive.yml --index sessions mcp`.
-`gno_sessions_status` is a read tool and `gno_sessions_import` a write tool
-(needs `--enable-write`); both are in the `full` profile only. Import takes
+`gno_sessions_status` is a read tool (it includes automation status);
+`gno_sessions_import` and `gno_sessions_automation_run` are write tools
+(need `--enable-write`); all are in the `full` profile only. Import takes
 `sourceId`, optional `dryRun` and `limit`; unknown keys such as `paths` are
-rejected. There is no MCP discovery.
+rejected. The run tool takes a configured `profileId` only. There is no MCP
+discovery, and hooks and schedules cannot be enabled over MCP.
 
-**REST** ([API.md](API.md#agent-sessions)). Serve the archive pair. Status and
-import by source ID work for any allowed client; discovery, source
-registration and removal, and archive init answer only a same-host browser.
+**REST** ([API.md](API.md#agent-sessions)). Serve the archive pair. Status,
+import by source ID, and `POST /api/sessions/automation/run` work for any
+allowed client; discovery, source registration and removal, archive init,
+and every automation profile change (create, preview, enable, disable,
+remove) answer only a same-host browser.
 
 **SDK** ([SDK.md](SDK.md#agent-sessions)). Open a client on the archive pair:
 
@@ -522,15 +802,23 @@ const receipt = await client.importSessions({
   sourceId: "codex",
   dryRun: true,
 });
+// Run a configured automation profile now (hooks and schedules are enabled
+// from the CLI or a same-host browser only).
+const run = await client.runSessionsAutomation({ profileId: "claude" });
 ```
 
 **Web UI** ([WEB-UI.md](WEB-UI.md#agent-sessions)). Run
 `gno --config ~/gno-sessions/archive.yml --index sessions serve --port 3001`
-(pick a free port when your curated server already runs on 3000) and open
+(while your curated server runs, give the archive its own `GNO_DATA_DIR`;
+only one server or daemon may own a data directory) and open
 `/sessions`: manage sources and the archive destination, preview a dry run
 (redaction counts, destination collections), import manually with
 partial-outcome details, and search sessions with harness, project, and role
-filters and explicit Human/Assistant badges. A curated server does not attach
+filters and explicit Human/Assistant badges. The Automation panel shows each
+profile off by default, separate hook and schedule switches (each confirmed
+after a preview of sources, destinations, the settings file and the daemon
+prerequisite), daemon availability, pending/running/partial/failed state,
+last success, Run now, Pause, and Remove. A curated server does not attach
 the archive.
 
 ## Supported harnesses
@@ -621,6 +909,23 @@ readable (CLI exit 2). The archive is retained; check the path or remove the
 source. Remote REST and MCP callers get this code without the host path;
 check the source on the host with `sessions status`.
 
+**Hook says `accepted` but nothing was archived.** Expected until a run:
+the hook only marks the profile pending. Start `gno daemon` on the archive's
+config and index, or run `gno sessions automation run <profile>`.
+
+**Status says `not running: no daemon`.** No daemon on this archive has
+written a heartbeat recently. Start one; if it fails with
+`Resident runtime already active`, another `gno serve` or `gno daemon` owns
+the data directory: give the archive its own
+[data directory](#daemon-schedule).
+
+**Hook entry missing or `installed: false`.** Someone edited the Claude Code
+settings file. Run `gno sessions automation enable <profile> --hook
+claude-code` again; it repairs only its own entry.
+
+**`SESSIONS_UNSUPPORTED_INTEGRATION`.** Only the Claude Code SessionEnd hook
+is supported. Use a daemon schedule for other harnesses.
+
 **No semantic results.** Import does not embed. Run `embed` on the archive
 pair before `query` or `vsearch`; the receipt's `embedding.backlog` shows
 what is waiting.
@@ -653,6 +958,8 @@ so the fact points back to its evidence.
 | `SESSIONS_BINDING_MISMATCH`                                                     | Archive config and index used apart                                | 1        | 400  | `VALIDATION` | `VALIDATION` |
 | `SESSIONS_SELECTION_REQUIRED`, `SESSIONS_DESTINATION_REQUIRED`                  | No source or paths selected; path import without a collection      | 1        | 400  | `VALIDATION` | `VALIDATION` |
 | `SESSIONS_UNKNOWN_SOURCE`, `SESSIONS_UNKNOWN_COLLECTION`                        | Unregistered source ID or archive collection                       | 1        | 400  | `VALIDATION` | `VALIDATION` |
+| `SESSIONS_UNKNOWN_PROFILE`                                                      | Unknown automation profile ID                                      | 1        | 400  | `VALIDATION` | `VALIDATION` |
+| `SESSIONS_UNSUPPORTED_INTEGRATION`                                              | Hook for a harness without a verified integration                  | 1        | 400  | `VALIDATION` | `VALIDATION` |
 | `SESSIONS_UNSAFE_PATH`, `SESSIONS_UNSUPPORTED_FORMAT`, `SESSIONS_INVALID_INPUT` | Unsafe path, unknown harness, or malformed input                   | 1        | 400  | `VALIDATION` | `VALIDATION` |
 | `SESSIONS_SOURCE_UNAVAILABLE`                                                   | Source path missing or unreadable (no host path when remote)       | 2        | 500  | `RUNTIME`    | `RUNTIME`    |
 | `SESSIONS_BUSY`                                                                 | Another import holds the archive lock                              | 4        | 409  | `BUSY`       | `RUNTIME`    |

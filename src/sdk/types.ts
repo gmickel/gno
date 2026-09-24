@@ -96,6 +96,7 @@ import type {
 } from "../pipeline/types";
 import type { SessionImportInput } from "../sessions/service";
 import type {
+  SessionAutomationRunResult,
   SessionImportReceipt,
   SessionsDiscovery,
   SessionsStatus,
@@ -278,6 +279,7 @@ export type GnoSessionsStatus = SessionsStatus;
 export type GnoSessionsDiscovery = SessionsDiscovery;
 export type GnoSessionsImportReceipt = SessionImportReceipt;
 export type GnoSessionsImportInput = SessionImportInput;
+export type GnoSessionsAutomationRunResult = SessionAutomationRunResult;
 export type GnoRememberInput = RememberInput;
 export type GnoRememberResult = RememberResult;
 export type GnoRecallInput = RecallInput;
@@ -450,6 +452,13 @@ export interface GnoClient {
   importSessions(
     input: GnoSessionsImportInput
   ): Promise<GnoSessionsImportReceipt>;
+  /**
+   * Run one configured automation profile now through the manual importer.
+   * Hooks and schedules are enabled only from the CLI or a same-host browser.
+   */
+  runSessionsAutomation(input: {
+    profileId: string;
+  }): Promise<GnoSessionsAutomationRunResult>;
   createNote(options: GnoCreateNoteOptions): Promise<GnoCreateNoteResult>;
   createFolder(options: GnoCreateFolderOptions): Promise<GnoCreateFolderResult>;
   previewRenameNote(

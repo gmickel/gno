@@ -49,6 +49,7 @@ import type {
   GnoRenameNoteApplyOptions,
   GnoRenameNoteOptions,
   GnoSearchOptions,
+  GnoSessionsAutomationRunResult,
   GnoSessionsDiscovery,
   GnoSessionsImportInput,
   GnoSessionsImportReceipt,
@@ -198,6 +199,7 @@ import { searchHybrid } from "../pipeline/hybrid";
 import { RequestHydration } from "../pipeline/hydration";
 import { searchBm25 } from "../pipeline/search";
 import { searchVectorWithEmbedding } from "../pipeline/vsearch";
+import { runAutomationProfile } from "../sessions/automation";
 import { assertSessionBinding } from "../sessions/binding";
 import { SessionsService } from "../sessions/service";
 import { SESSIONS_VALIDATION_CODES, SessionsError } from "../sessions/types";
@@ -1869,6 +1871,25 @@ class GnoClientImpl implements GnoClient {
     try {
       // The SDK runs in the owner's process, so explicit paths are allowed.
       return await this.sessionsService().import(input, { allowPaths: true });
+    } catch (cause) {
+      throw toSessionsSdkError(cause);
+    }
+  }
+
+  async runSessionsAutomation(input: {
+    profileId: string;
+  }): Promise<GnoSessionsAutomationRunResult> {
+    this.assertOpen();
+    try {
+      return await runAutomationProfile(
+        {
+          configPath: this.configPath ?? getConfigPaths().configFile,
+          indexName: this.indexName,
+          store: this.store,
+        },
+        input.profileId,
+        { trigger: "manual" }
+      );
     } catch (cause) {
       throw toSessionsSdkError(cause);
     }

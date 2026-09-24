@@ -94,7 +94,7 @@ Recipe rules:
 | **Serve**    | `serve`, `daemon`                                                                                          | One resident Web/headless gateway and watcher                            |
 | **Publish**  | `publish export`                                                                                           | Export gno.sh publish artifacts                                          |
 | **Memory**   | `remember`, `recall`                                                                                       | Fact-granular agent memory with explicit scopes and supersession         |
-| **Sessions** | `sessions discover/init/source add/source remove/import/status/prune`                                      | Manual import of agent sessions into a separate archive                  |
+| **Sessions** | `sessions discover/init/source add/source remove/import/status/prune/automation`                           | Agent-session archive: manual import, opt-in hook/schedule automation    |
 | **MCP**      | `mcp`, `mcp install/uninstall/status`                                                                      | AI assistant integration                                                 |
 | **Skill**    | `skill install/uninstall/show/paths`                                                                       | Install skill for AI agents                                              |
 | **Admin**    | `peek`, `status`, `doctor`, `cleanup`, `reset`, `vec`, `completion`                                        | Snapshot, maintenance, and diagnostics                                   |
@@ -602,8 +602,8 @@ gno --config ~/gno-sessions/archive.yml --index sessions search "postgres" --aut
 gno --config ~/gno-sessions/archive.yml --index sessions query "why sqlite" --category harness/codex
 ```
 
-- Manual only: discover, then import only when the user asks. Setup (on the
-  pair) is `sessions init --archive <dir> --collection <name>`, then
+- Manual by default: discover, then import only when the user asks. Setup
+  (on the pair) is `sessions init --archive <dir> --collection <name>`, then
   `sessions source add <id> --harness <h> --path <root> --collection <name>`
   with optional repeatable `--project <prefix>=<collection>`. Keep the
   archive outside the curated vault, one collection per privacy boundary.
@@ -619,6 +619,22 @@ gno --config ~/gno-sessions/archive.yml --index sessions query "why sqlite" --ca
   `gno://` URI (keep `?index=sessions`). Nothing is promoted to
   `remember`/`recall` automatically; store a fact only when asked, with the
   turn's URI as `--source`. Workflow: `recipes/session-evidence-lookup.md`.
+- Automation is opt-in and only on the user's explicit request; installing
+  this skill, GNO, or MCP never enables it.
+  `sessions automation set <p> --source <id>` creates a profile (nothing
+  enabled), `preview <p>` shows the exact hook command, settings file, and
+  daemon prerequisite, and `enable <p> --hook claude-code` or
+  `enable <p> --schedule --cadence 30m` switches one trigger on.
+  Only the Claude Code SessionEnd hook exists; other harnesses use a
+  schedule. Triggers only mark work pending: imports run in `gno daemon` on
+  the archive pair (never `gno serve`) or with `sessions automation run <p>`.
+- Check automation with `sessions status` (`automation` block: `state`,
+  `pending`, `lastRun`, `lastSuccessAt`, `recovery`). A hook that says
+  `accepted` has not archived anything yet; `not running: no daemon` means
+  start the daemon or run the profile. Repair a missing hook entry by
+  re-running `enable --hook claude-code`; pause with `disable <p>`,
+  uninstall with `remove <p>` (only GNO's own entry is touched; archives
+  stay). `GNO_SESSIONS_HOOKS=off` silences installed hooks.
 
 ## Reference-Safe Rename and Move
 

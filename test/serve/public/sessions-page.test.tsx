@@ -43,6 +43,29 @@ const status = {
       lastImportAt: null,
     },
   ],
+  automation: {
+    daemon: { state: "not_running", heartbeatAt: null },
+    timezone: "UTC",
+    profiles: [
+      {
+        id: "nightly",
+        sources: ["codex-main"],
+        collections: ["work"],
+        state: "idle",
+        hook: null,
+        schedule: { enabled: true, cadence: "30m", nextDueAt: null },
+        limit: 200,
+        retries: 3,
+        pending: null,
+        running: null,
+        lastTrigger: null,
+        lastRun: null,
+        lastSuccessAt: null,
+        retryAt: null,
+        recovery: null,
+      },
+    ],
+  },
   warnings: [],
 };
 
@@ -198,6 +221,19 @@ describe("sessions page", () => {
     expect(
       await screen.findByRole("button", { name: "Discover local sources" })
     ).toBeTruthy();
+  });
+
+  test("automation switches reflect status and a schedule without a daemon is not shown as due", async () => {
+    await renderPage();
+    const schedule = await screen.findByRole("switch", {
+      name: /Daemon schedule/,
+    });
+    const hook = screen.getByRole("switch", {
+      name: /Claude Code SessionEnd hook/,
+    });
+    expect((schedule as HTMLInputElement).checked).toBe(true);
+    expect((hook as HTMLInputElement).checked).toBe(false);
+    expect(screen.getByText("every 30m; not running: no daemon")).toBeTruthy();
   });
 
   test("preview shows a partial receipt with redaction and destination policy", async () => {

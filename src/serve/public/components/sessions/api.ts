@@ -7,7 +7,10 @@
 import { apiFetch } from "../../hooks/use-api";
 
 export type {
+  SessionAutomationRunResult,
+  SessionAutomationStatus,
   SessionDiscoveryCandidate,
+  SessionProfileStatus,
   SessionHarness,
   SessionImportReceipt,
   SessionsDiscovery,

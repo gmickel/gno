@@ -22,6 +22,12 @@ import { acquireWriteLock } from "../../src/core/file-lock";
 import { searchBm25 } from "../../src/pipeline/search";
 import {
   handleSessionsAddSource,
+  handleSessionsAutomationDisable,
+  handleSessionsAutomationEnable,
+  handleSessionsAutomationPreview,
+  handleSessionsAutomationRemove,
+  handleSessionsAutomationRun,
+  handleSessionsAutomationSet,
   handleSessionsDiscover,
   handleSessionsImport,
   handleSessionsInit,
@@ -30,10 +36,12 @@ import {
   sessionsErrorResponse,
 } from "../../src/serve/routes/sessions";
 import { startServer } from "../../src/serve/server";
+import { setAutomationProfile } from "../../src/sessions/automation";
 import { addSessionSource, initSessionArchive } from "../../src/sessions/setup";
 import { importLockPath } from "../../src/sessions/state";
 import { safeRm } from "../helpers/cleanup";
 import { FIXTURES, tempDir } from "../sessions/helpers";
+import { assertValid, loadSchema } from "../spec/schemas/validator";
 
 const INDEX = "sessions";
 const ORIGIN = "http://127.0.0.1:3000";
@@ -568,4 +576,117 @@ test("non-session failures map to a typed, path-free REST error", async () => {
   };
   expect(body.error.details.sessionsCode).toBe("SESSIONS_RUNTIME_FAILURE");
   expect(body.error.message).not.toContain("/home/owner");
+});
+
+describe("automation routes", () => {
+  test("managing profiles and triggers is same-host only; nothing changes remotely", async () => {
+    await setAutomationProfile(
+      { configPath, indexName: INDEX },
+      { id: "main", sources: ["codex-main"] }
+    );
+    const path = "/api/sessions/automation/main";
+    for (const server of [undefined, remoteServer]) {
+      const deps = server ? { server } : {};
+      const refusals = [
+        handleSessionsAutomationSet(
+          ctxHolder,
+          store,
+          "main",
+          post(path, { sources: ["codex-main"], cadence: "1m" }, "PUT"),
+          deps
+        ),
+        handleSessionsAutomationEnable(
+          ctxHolder,
+          store,
+          "main",
+          post(`${path}/enable`, { schedule: { cadence: "1h" } }),
+          deps
+        ),
+        handleSessionsAutomationDisable(
+          ctxHolder,
+          store,
+          "main",
+          post(`${path}/disable`, {}),
+          deps
+        ),
+        handleSessionsAutomationRemove(
+          ctxHolder,
+          store,
+          "main",
+          post(path, undefined, "DELETE"),
+          deps
+        ),
+        handleSessionsAutomationPreview(
+          ctxHolder,
+          "main",
+          new Request(`${ORIGIN}${path}/preview`, {
+            headers: { host: "127.0.0.1:3000" },
+          }),
+          deps
+        ),
+      ];
+      for (const response of await Promise.all(refusals)) {
+        await expectError(response, 403);
+      }
+    }
+    const loaded = await loadConfig(configPath);
+    expect(loaded.ok && loaded.value.sessions?.automation).toEqual([
+      { id: "main", sources: ["codex-main"] },
+    ]);
+  });
+
+  test("a local owner enables a schedule; any allowed client runs the profile", async () => {
+    const deps = { server: localServer };
+    const path = "/api/sessions/automation/main";
+    const set = await handleSessionsAutomationSet(
+      ctxHolder,
+      store,
+      "main",
+      post(path, { sources: ["codex-main"] }, "PUT"),
+      deps
+    );
+    expect(set.status).toBe(200);
+    const enabled = await handleSessionsAutomationEnable(
+      ctxHolder,
+      store,
+      "main",
+      post(`${path}/enable`, { schedule: { cadence: "1h" } }),
+      deps
+    );
+    expect(await enabled.json()).toMatchObject({
+      schedule: { enabled: true, cadence: "1h" },
+      daemon: { state: "not_running" },
+    });
+
+    const run = await handleSessionsAutomationRun(
+      ctxHolder,
+      store,
+      post("/api/sessions/automation/run", { profileId: "main" })
+    );
+    const body = await run.json();
+    assertValid(body, await loadSchema("sessions-automation-run"));
+    expect(body).toMatchObject({ ran: true, outcome: "partial" });
+    expect(JSON.stringify(body)).not.toContain(root);
+    expect(markContent).toHaveBeenCalled();
+
+    await expectError(
+      await handleSessionsAutomationRun(
+        ctxHolder,
+        store,
+        post("/api/sessions/automation/run", {
+          profileId: "main",
+          sources: ["other"],
+        })
+      ),
+      400,
+      "SESSIONS_INVALID_INPUT"
+    );
+    const status = await handleSessionsStatus(ctxHolder);
+    const current = await status.json();
+    assertValid(current, await loadSchema("sessions-status"));
+    expect(current.automation.profiles[0]).toMatchObject({
+      id: "main",
+      schedule: { enabled: true, cadence: "1h", nextDueAt: null },
+    });
+  });
 });

@@ -61,7 +61,7 @@ are explicitly enabled (the default `full` profile; the opt-in `core` profile
 advertises 7 read tools plus 2 write tools, see [Tool Profiles](#tool-profiles)):
 
 - **Tools (read)**: gno_context, gno_context_verify, gno_ask, gno_recall, gno_search, gno_vsearch, gno_query, gno_query_diagnose, gno_get, gno_section, gno_multi_get, gno_peek, gno_status, gno_audit, gno_egress_policy_get, gno_egress_check, gno_egress_audit_list, gno_egress_audit_show, gno_egress_audit_status, gno_changes, gno_diff, gno_impact, gno_trace_list, gno_trace_show, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph, gno_graph_query, gno_graph_neighbors, gno_graph_path, gno_sessions_status
-- **Tools (write, opt-in)**: gno_egress_policy_set, gno_egress_audit_delete, gno_egress_audit_purge, gno_trace_label, gno_trace_export, gno_trace_delete, gno_trace_purge, gno_remember, gno_capture, gno_add_collection, gno_sync, gno_embed, gno_index, gno_remove_collection, gno_clear_collection_embeddings, gno_create_folder, gno_rename_note, gno_move_note, gno_duplicate_note, gno_sessions_import
+- **Tools (write, opt-in)**: gno_egress_policy_set, gno_egress_audit_delete, gno_egress_audit_purge, gno_trace_label, gno_trace_export, gno_trace_delete, gno_trace_purge, gno_remember, gno_capture, gno_add_collection, gno_sync, gno_embed, gno_index, gno_remove_collection, gno_clear_collection_embeddings, gno_create_folder, gno_rename_note, gno_move_note, gno_duplicate_note, gno_sessions_import, gno_sessions_automation_run
 - **Tools (jobs, read)**: gno_job_status, gno_list_jobs
 - **Resources**: Access documents via `gno://collection/path`
 
@@ -291,8 +291,8 @@ GNO_MCP_ENABLE_WRITE=1 gno mcp
 
 Without this flag, the 37 read-only retrieval, verified-synthesis, memory
 recall, trace, graph, egress, status, and job-inspection tools are available.
-Enabling writes adds 20 mutation tools (including `gno_remember` and
-`gno_sessions_import`), for 57
+Enabling writes adds 21 mutation tools (including `gno_remember`,
+`gno_sessions_import`, and `gno_sessions_automation_run`), for 58
 total. Those counts describe the default `full` profile; see
 [Tool Profiles](#tool-profiles) for the slim `core` surface.
 
@@ -305,7 +305,7 @@ today's whole surface, byte-for-byte.
 
 | Profile          | Read tools                                                                                            | With `--enable-write` adds    |
 | ---------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------- |
-| `full` (default) | all 37                                                                                                | all 20 write tools            |
+| `full` (default) | all 37                                                                                                | all 21 write tools            |
 | `core`           | `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`, `gno_changes`, `gno_recall` (7) | `gno_capture`, `gno_remember` |
 
 Write tools stay behind `--enable-write` in both profiles; a profile never
@@ -1562,9 +1562,12 @@ gno --config ~/gno-sessions/archive.yml --index sessions mcp --enable-write
 No arguments. Returns the shared `sessions-status` object: archive
 collections with thread counts and, per owner-registered source, its ID,
 harness, destination collection, availability, unit counts (complete,
-incomplete, failed, pending), `sourceUnavailable`, `staleParser`, and last
-import time. It contains no host paths. A server whose config has no
-`sessions` block returns `SESSIONS_NOT_CONFIGURED`.
+incomplete, failed, pending), `sourceUnavailable`, `staleParser`, last
+import time, and the `automation` block (daemon availability; per profile its
+state, hook and schedule switches, pending and running work, last run, last
+success, next due time, and recovery action). It contains no host paths. A
+server whose config has no `sessions` block returns
+`SESSIONS_NOT_CONFIGURED`.
 
 ### gno_sessions_import
 
@@ -1591,6 +1594,23 @@ registered only with `--enable-write`; without it clients do not see it.
 Errors are a sessions code in `structuredContent.error` (for example
 `SESSIONS_UNKNOWN_SOURCE`, `SESSIONS_BUSY`); see
 [error codes](SESSIONS.md#error-codes).
+
+### gno_sessions_automation_run
+
+Run one owner-configured [automation profile](SESSIONS.md#automation-opt-in)
+now (requires `--enable-write`; full profile only):
+
+```yaml
+profileId: "claude" # Required: a profile listed by gno_sessions_status
+```
+
+It imports the profile's registered sources through the same importer as
+`gno_sessions_import` and records the run in automation status. Returns the
+shared `sessions-automation-run` object: `ran`, `outcome` (`complete`,
+`up_to_date`, `partial`, `failed`, or `not_started` with a reason such as
+`busy`), `pending`, and one import receipt per source. It cannot switch on
+hooks or schedules, add sources, or change destinations: those are local
+owner actions (`gno sessions automation`, or the same-host Web UI).
 
 Imported turns are evidence, not facts: search them with `gno_search` /
 `gno_query` on the same server, cite them by `gno://` URI (with

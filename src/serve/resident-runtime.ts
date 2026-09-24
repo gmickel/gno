@@ -9,6 +9,7 @@ import type { SyncResult } from "../ingestion";
 import type { ModelManager } from "../llm/nodeLlamaCpp/lifecycle";
 import type { ToolContext } from "../mcp/context";
 import type { HttpMcpTransportStatus } from "../mcp/http-transport";
+import type { SessionAutomationRunResult } from "../sessions/types";
 import type { DocumentEventBus } from "./doc-events";
 import type { EmbedResult, EmbedScheduler } from "./embed-scheduler";
 import type { ContextHolder } from "./routes/api";
@@ -67,6 +68,7 @@ import {
   createStandaloneResidentStatus,
   buildResidentStatusSnapshot,
 } from "./resident-status";
+import { SessionAutomationScheduler } from "./session-automation";
 import { CollectionWatchService as DefaultCollectionWatchService } from "./watch-service";
 
 const OWNER_LOCK_TIMEOUT_MS = 0;
@@ -83,6 +85,9 @@ export interface ResidentRuntimeOptions {
   watchCallbacks?: CollectionWatchCallbacks;
   /** Daemon mode only: observes every scheduled findings-pass attempt. */
   onFindingsResult?: (result: FindingsPassResult) => void;
+  /** Daemon mode on a session archive: observes every automation run. */
+  onSessionAutomationResult?: (result: SessionAutomationRunResult) => void;
+  onSessionAutomationError?: (error: unknown) => void;
   readerLimit?: number;
   readerQueueLimit?: number;
   shutdownDeadlineMs?: number;
@@ -117,6 +122,8 @@ export interface ResidentRuntime {
   readonly capsuleReverificationScheduler: SavedCapsuleReverificationScheduler;
   /** Present only when daemon mode runs with `findings.enabled`. */
   readonly findingsScheduler: FindingsScheduler | null;
+  /** Present only when daemon mode runs on a session-archive config. */
+  readonly sessionAutomation: SessionAutomationScheduler | null;
   readonly modelManager: Pick<
     ModelManager,
     "acquireLease" | "getLifecycleStats" | "disposeAll"
@@ -393,6 +400,21 @@ export async function startResidentRuntime(
     // otherwise keep reporting a schedule that no longer exists.
     await deleteFindingsRunState(findingsStatePath);
   }
+  // Session automation drains only in daemon mode on an archive config;
+  // `serve` never runs admitted hook work or schedules.
+  let sessionAutomation: SessionAutomationScheduler | null = null;
+  if (mode === "daemon" && initialConfig.sessions) {
+    sessionAutomation = new SessionAutomationScheduler({
+      store,
+      configPath: actualConfigPath,
+      indexName: canonicalizeIndexName(options.index ?? DEFAULT_INDEX_NAME),
+      dbPath,
+      startBackgroundWork: (operation) => backgroundWork.start(operation),
+      onResult: options.onSessionAutomationResult,
+      onError: options.onSessionAutomationError,
+    });
+    sessionAutomation.start();
+  }
   capsuleReverificationScheduler = new SavedCapsuleReverificationScheduler({
     deps: {
       store,
@@ -475,6 +497,7 @@ export async function startResidentRuntime(
     jobManager,
     capsuleReverificationScheduler,
     findingsScheduler,
+    sessionAutomation,
     modelManager,
     mcpContext,
     generations,
@@ -621,7 +644,10 @@ export async function startResidentRuntime(
         mcpContext,
         modelManager,
         ownerLock,
-        stopFindings: () => findingsScheduler?.dispose(),
+        stopFindings: () => {
+          findingsScheduler?.dispose();
+          sessionAutomation?.dispose();
+        },
         stopCapsules: () => capsuleReverificationScheduler.dispose(),
         closeEvents: () => options.eventBus?.close(),
         disposeContext: deps.disposeServerContext ?? disposeServerContext,

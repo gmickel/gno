@@ -3,7 +3,8 @@
  *
  * CLI, MCP, REST, SDK and Web UI are thin adapters over this module. The
  * service never runs on its own: nothing here watches, schedules or hooks
- * into a harness. Imports are explicit, serialized per archive, idempotent,
+ * into a harness (opt-in automation in ./automation calls `import` like any
+ * other surface). Imports are explicit, serialized per archive, idempotent,
  * and only advance a unit's checkpoint after a clean, complete read.
  *
  * @module src/sessions/service
@@ -18,6 +19,7 @@ import type { Config } from "../config/types";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 import type { SessionsConfig } from "./config";
 
+import { loadConfig } from "../config";
 import { hashRecordValue } from "../converters/adapters/shared/record-utils";
 import { acquireWriteLock } from "../core/file-lock";
 import { atomicWrite } from "../core/file-ops";
@@ -29,6 +31,7 @@ import {
   rescanArchiveContent,
   SESSION_STATE_DIRNAME,
 } from "./archive";
+import { readAutomationStatus } from "./automation-status";
 import { canonicalConfigPath, writeIndexBinding } from "./binding";
 import { redactionStamp, sanitizeValue } from "./sanitize";
 import {
@@ -374,13 +377,27 @@ export class SessionsService {
         lastImportAt: sourceState?.lastImportAt ?? null,
       });
     }
+    // Profiles are read from the config on disk, so a long-running server
+    // shows triggers enabled or paused by another process.
+    const onDisk = await loadConfig(this.deps.configPath).catch(() => null);
+    const automation = await readAutomationStatus({
+      sessions:
+        onDisk?.ok &&
+        onDisk.value.sessions?.archiveRoot === sessions.archiveRoot
+          ? onDisk.value.sessions
+          : sessions,
+      configPath: await canonicalConfigPath(this.deps.configPath),
+      indexName: this.deps.indexName,
+      now: this.now,
+    });
     return {
       schemaVersion: "1",
       configured: true,
       index: this.deps.indexName,
       collections,
       sources,
-      warnings,
+      automation: automation.status,
+      warnings: [...warnings, ...automation.warnings],
     };
   }
 

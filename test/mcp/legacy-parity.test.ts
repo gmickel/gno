@@ -31,7 +31,8 @@
  *    two read-only compiled-context tools, pinned by the current golden and
  *    removed only for the historical comparison. fn-171 likewise adds
  *    exactly two session-archive tools (`gno_sessions_status` read,
- *    `gno_sessions_import` write), pinned and removed the same way.
+ *    `gno_sessions_import` write), pinned and removed the same way; fn-172
+ *    adds the `gno_sessions_automation_run` write tool the same way.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -270,6 +271,7 @@ const COMPILED_CONTEXT_TOOLS = new Set([
 const SESSION_ARCHIVE_TOOLS = new Set([
   "gno_sessions_status",
   "gno_sessions_import",
+  "gno_sessions_automation_run",
 ]);
 
 /** Tools added after the historical capture; pinned by the current golden. */

@@ -634,6 +634,10 @@ await client.importSessions({
 });
 
 const status = await client.sessionsStatus();
+// status.automation: daemon state and per-profile hook/schedule status
+
+// Run a configured automation profile now (opt-in automation)
+const run = await client.runSessionsAutomation({ profileId: "claude" });
 
 // Session turns are ordinary records on this index
 const hits = await client.search("why sqlite", {
@@ -642,12 +646,14 @@ const hits = await client.search("why sqlite", {
 });
 ```
 
-Results are the shared `GnoSessionsStatus`, `GnoSessionsDiscovery`, and
-`GnoSessionsImportReceipt` objects; the input is `GnoSessionsImportInput`
+Results are the shared `GnoSessionsStatus`, `GnoSessionsDiscovery`,
+`GnoSessionsImportReceipt`, and `GnoSessionsAutomationRunResult` objects; the input is `GnoSessionsImportInput`
 (`sourceId` or `paths` plus `collection`, optional `format`, `dryRun`,
 `limit`). The SDK runs in your own process, so it may import explicit paths
 and discover host roots; register sources and create the archive with the
-CLI (`gno sessions source add`, `gno sessions init`) or the same-host Web UI.
+CLI (`gno sessions source add`, `gno sessions init`) or the same-host Web UI,
+and switch automation hooks and schedules on the same way
+(`gno sessions automation enable`); the SDK can only run a configured profile.
 Import does not embed; call `client.embed()` afterwards for semantic search.
 
 Errors are `GnoSdkError` (`VALIDATION` or `RUNTIME`) with the sessions code

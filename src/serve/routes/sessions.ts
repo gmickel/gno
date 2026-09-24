@@ -17,7 +17,17 @@ import type { RequestPeerServer } from "../request-locality";
 import type { ContextHolder } from "./api";
 
 import { getIndexDbPath } from "../../app/constants";
+import { loadConfig } from "../../config";
 import { withContentTypeRules } from "../../ingestion";
+import {
+  type AutomationContext,
+  disableAutomation,
+  enableAutomation,
+  previewAutomationProfile,
+  removeAutomationProfile,
+  runAutomationProfile,
+  setAutomationProfile,
+} from "../../sessions/automation";
 import { assertSessionBinding } from "../../sessions/binding";
 import { SessionSourceSchema } from "../../sessions/config";
 import { SessionsService } from "../../sessions/service";
@@ -480,6 +490,272 @@ export async function handleSessionsInit(
       created: result.created,
     };
     return Response.json(response);
+  } catch (error) {
+    return sessionsErrorResponse(error);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Automation
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PROFILE_KEYS = new Set(["sources", "cadence", "limit", "retries"]);
+const ENABLE_KEYS = new Set(["hook", "schedule"]);
+const DISABLE_KEYS = new Set(["hook", "schedule"]);
+
+async function automationContext(
+  ctxHolder: ContextHolder
+): Promise<AutomationContext> {
+  await assertInstanceBinding(ctxHolder);
+  const { configPath, indexName } = instanceIdentity(ctxHolder);
+  return { configPath, indexName };
+}
+
+/** Keep the served config current after an automation change. */
+async function adoptSavedConfig(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter
+): Promise<void> {
+  const loaded = await loadConfig(instanceIdentity(ctxHolder).configPath);
+  if (loaded.ok) await adoptConfig(ctxHolder, store, loaded.value);
+}
+
+function unknownKeys(
+  body: Record<string, unknown>,
+  allowed: ReadonlySet<string>
+): Response | null {
+  const unknown = Object.keys(body).filter((key) => !allowed.has(key));
+  return unknown.length > 0
+    ? invalid(`Unknown field(s): ${unknown.join(", ")}`)
+    : null;
+}
+
+/**
+ * POST /api/sessions/automation/run
+ * Body: { profileId }. Any allowed client may request a run of a configured
+ * profile; it cannot enable triggers or widen sources.
+ */
+export async function handleSessionsAutomationRun(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  req: Request
+): Promise<Response> {
+  const parsed = await readObjectBody(req);
+  if (!parsed.ok) return parsed.res;
+  const { body } = parsed;
+  const extra = unknownKeys(body, new Set(["profileId"]));
+  if (extra) return extra;
+  if (typeof body.profileId !== "string" || !body.profileId.trim()) {
+    return invalid("profileId must be a non-empty string");
+  }
+  try {
+    const result = await runAutomationProfile(
+      { ...(await automationContext(ctxHolder)), store },
+      body.profileId.trim(),
+      { trigger: "manual" }
+    );
+    const collections = [
+      ...new Set(
+        result.receipts.flatMap((receipt) => receipt.lexical.collections)
+      ),
+    ];
+    if (collections.length > 0) {
+      ctxHolder.markContentMutation?.();
+      ctxHolder.markIndexMutation?.();
+      ctxHolder.scheduler?.notifySyncComplete(collections);
+    }
+    return Response.json(result);
+  } catch (error) {
+    return sessionsErrorResponse(error);
+  }
+}
+
+/** GET /api/sessions/automation/:id/preview (same-host only: host paths). */
+export async function handleSessionsAutomationPreview(
+  ctxHolder: ContextHolder,
+  id: string,
+  req: Request,
+  deps: SessionsRouteDeps = {}
+): Promise<Response> {
+  const refused = localOnly(req, deps, "Automation preview");
+  if (refused) return refused;
+  try {
+    return Response.json(
+      await previewAutomationProfile(await automationContext(ctxHolder), id)
+    );
+  } catch (error) {
+    return sessionsErrorResponse(error);
+  }
+}
+
+/** PUT /api/sessions/automation/:id (same-host only). Enables nothing. */
+export async function handleSessionsAutomationSet(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  id: string,
+  req: Request,
+  deps: SessionsRouteDeps = {}
+): Promise<Response> {
+  const refused = localOnly(req, deps, "Changing an automation profile");
+  if (refused) return refused;
+  const parsed = await readObjectBody(req);
+  if (!parsed.ok) return parsed.res;
+  const { body } = parsed;
+  const extra = unknownKeys(body, PROFILE_KEYS);
+  if (extra) return extra;
+  if (
+    !Array.isArray(body.sources) ||
+    !body.sources.every((source) => typeof source === "string")
+  ) {
+    return invalid("sources must be an array of registered source IDs");
+  }
+  const optionalInt = (value: unknown): boolean =>
+    value === undefined ||
+    (typeof value === "number" && Number.isSafeInteger(value));
+  if (
+    (body.cadence !== undefined && typeof body.cadence !== "string") ||
+    !optionalInt(body.limit) ||
+    !optionalInt(body.retries)
+  ) {
+    return invalid("cadence must be a string; limit and retries integers");
+  }
+  try {
+    const preview = await setAutomationProfile(
+      await automationContext(ctxHolder),
+      {
+        id,
+        sources: body.sources as string[],
+        cadence: body.cadence as string | undefined,
+        limit: body.limit as number | undefined,
+        retries: body.retries as number | undefined,
+      }
+    );
+    await adoptSavedConfig(ctxHolder, store);
+    return Response.json(preview);
+  } catch (error) {
+    return sessionsErrorResponse(error);
+  }
+}
+
+/**
+ * POST /api/sessions/automation/:id/enable (same-host only)
+ * Body: { hook?: { harness, settings? }, schedule?: { cadence? } }.
+ */
+export async function handleSessionsAutomationEnable(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  id: string,
+  req: Request,
+  deps: SessionsRouteDeps = {}
+): Promise<Response> {
+  const refused = localOnly(req, deps, "Enabling automation");
+  if (refused) return refused;
+  const parsed = await readObjectBody(req);
+  if (!parsed.ok) return parsed.res;
+  const { body } = parsed;
+  const extra = unknownKeys(body, ENABLE_KEYS);
+  if (extra) return extra;
+  const hook = body.hook as
+    | { harness?: unknown; settings?: unknown }
+    | undefined;
+  const schedule = body.schedule as { cadence?: unknown } | undefined;
+  if (
+    (hook !== undefined &&
+      (typeof hook !== "object" ||
+        hook === null ||
+        typeof hook.harness !== "string" ||
+        (hook.settings !== undefined && typeof hook.settings !== "string"))) ||
+    (schedule !== undefined &&
+      (typeof schedule !== "object" ||
+        schedule === null ||
+        (schedule.cadence !== undefined &&
+          typeof schedule.cadence !== "string")))
+  ) {
+    return invalid(
+      "Body must be { hook?: { harness, settings? }, schedule?: { cadence? } }"
+    );
+  }
+  try {
+    const preview = await enableAutomation(
+      await automationContext(ctxHolder),
+      id,
+      {
+        ...(hook
+          ? {
+              hook: {
+                harness: hook.harness as string,
+                settings: hook.settings as string | undefined,
+              },
+            }
+          : {}),
+        ...(schedule
+          ? { schedule: { cadence: schedule.cadence as string | undefined } }
+          : {}),
+      }
+    );
+    await adoptSavedConfig(ctxHolder, store);
+    return Response.json(preview);
+  } catch (error) {
+    return sessionsErrorResponse(error);
+  }
+}
+
+/**
+ * POST /api/sessions/automation/:id/disable (same-host only)
+ * Body: { hook?: boolean, schedule?: boolean }; empty pauses both.
+ */
+export async function handleSessionsAutomationDisable(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  id: string,
+  req: Request,
+  deps: SessionsRouteDeps = {}
+): Promise<Response> {
+  const refused = localOnly(req, deps, "Disabling automation");
+  if (refused) return refused;
+  const parsed = await readObjectBody(req);
+  if (!parsed.ok) return parsed.res;
+  const { body } = parsed;
+  const extra = unknownKeys(body, DISABLE_KEYS);
+  if (extra) return extra;
+  for (const key of DISABLE_KEYS) {
+    if (body[key] !== undefined && typeof body[key] !== "boolean") {
+      return invalid(`${key} must be a boolean`);
+    }
+  }
+  try {
+    const change = await disableAutomation(
+      await automationContext(ctxHolder),
+      id,
+      {
+        ...(body.hook === true ? { hook: true } : {}),
+        ...(body.schedule === true ? { schedule: true } : {}),
+      }
+    );
+    await adoptSavedConfig(ctxHolder, store);
+    return Response.json(change);
+  } catch (error) {
+    return sessionsErrorResponse(error);
+  }
+}
+
+/** DELETE /api/sessions/automation/:id (same-host only; archive retained). */
+export async function handleSessionsAutomationRemove(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter,
+  id: string,
+  req: Request,
+  deps: SessionsRouteDeps = {}
+): Promise<Response> {
+  const refused = localOnly(req, deps, "Removing an automation profile");
+  if (refused) return refused;
+  try {
+    const change = await removeAutomationProfile(
+      await automationContext(ctxHolder),
+      id
+    );
+    await adoptSavedConfig(ctxHolder, store);
+    return Response.json(change);
   } catch (error) {
     return sessionsErrorResponse(error);
   }

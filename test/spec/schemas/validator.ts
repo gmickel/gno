@@ -40,6 +40,7 @@ async function loadAllSchemas(): Promise<void> {
     "mcp-remove-result",
     "sessions-import-receipt",
     "sessions-status",
+    "sessions-automation-run",
     "sessions-discovery",
     "mcp-job-status",
     "mcp-job-list",

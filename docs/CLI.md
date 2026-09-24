@@ -34,37 +34,37 @@ never raw roots.
 
 ## Quick Reference
 
-| Command          | Description                          |
-| ---------------- | ------------------------------------ |
-| `gno init`       | Initialize config and database       |
-| `gno setup`      | Add a folder and prove retrieval     |
-| `gno index`      | Full index (sync + embed)            |
-| `gno update`     | Sync files from disk (no embed)      |
-| `gno embed`      | Generate embeddings only             |
-| `gno search`     | BM25 full-text search                |
-| `gno vsearch`    | Vector similarity search             |
-| `gno query`      | Hybrid search (BM25 + vector)        |
-| `gno bench`      | Benchmark retrieval fixtures         |
-| `gno ask`        | Search with AI answer                |
-| `gno get`        | Retrieve document content            |
-| `gno ls`         | List indexed documents               |
-| `gno daemon`     | Headless continuous indexing         |
-| `gno links`      | List outgoing links from document    |
-| `gno backlinks`  | List documents linking to target     |
-| `gno similar`    | Find semantically similar docs       |
-| `gno graph`      | Export knowledge graph               |
-| `gno audit`      | Read-only workspace integrity audit  |
-| `gno serve`      | Start web UI server                  |
-| `gno mcp`        | Start MCP server for AI clients      |
-| `gno models`     | Manage models (list, pull, use)      |
-| `gno skill`      | Install GNO skill for AI agents      |
-| `gno agents`     | Manage GNO block in harness files    |
-| `gno tags`       | Manage document tags                 |
-| `gno sessions`   | Import agent sessions (manual)       |
-| `gno completion` | Shell tab completion                 |
-| `gno vec`        | Vector index maintenance             |
-| `gno peek`       | Cheap counts, backlog, recent, serve |
-| `gno doctor`     | Check system health                  |
+| Command          | Description                                       |
+| ---------------- | ------------------------------------------------- |
+| `gno init`       | Initialize config and database                    |
+| `gno setup`      | Add a folder and prove retrieval                  |
+| `gno index`      | Full index (sync + embed)                         |
+| `gno update`     | Sync files from disk (no embed)                   |
+| `gno embed`      | Generate embeddings only                          |
+| `gno search`     | BM25 full-text search                             |
+| `gno vsearch`    | Vector similarity search                          |
+| `gno query`      | Hybrid search (BM25 + vector)                     |
+| `gno bench`      | Benchmark retrieval fixtures                      |
+| `gno ask`        | Search with AI answer                             |
+| `gno get`        | Retrieve document content                         |
+| `gno ls`         | List indexed documents                            |
+| `gno daemon`     | Headless continuous indexing                      |
+| `gno links`      | List outgoing links from document                 |
+| `gno backlinks`  | List documents linking to target                  |
+| `gno similar`    | Find semantically similar docs                    |
+| `gno graph`      | Export knowledge graph                            |
+| `gno audit`      | Read-only workspace integrity audit               |
+| `gno serve`      | Start web UI server                               |
+| `gno mcp`        | Start MCP server for AI clients                   |
+| `gno models`     | Manage models (list, pull, use)                   |
+| `gno skill`      | Install GNO skill for AI agents                   |
+| `gno agents`     | Manage GNO block in harness files                 |
+| `gno tags`       | Manage document tags                              |
+| `gno sessions`   | Import agent sessions (manual; opt-in automation) |
+| `gno completion` | Shell tab completion                              |
+| `gno vec`        | Vector index maintenance                          |
+| `gno peek`       | Cheap counts, backlog, recent, serve              |
+| `gno doctor`     | Check system health                               |
 
 ## Global Flags
 
@@ -659,7 +659,8 @@ gno recall "kindergarten" --scope family --max-facts 3 --max-tokens 256 --json
 `gno sessions` discovers local agent session stores and imports selected
 conversations into a dedicated session archive: one config file carrying a
 `sessions` block, paired with one named index. Nothing is imported, watched,
-or scheduled unless you run a command. The full guide, including the support
+or scheduled unless you run a command or explicitly enable
+[automation](SESSIONS.md#automation-opt-in) for a profile. The full guide, including the support
 matrix, redaction, receipts, and recovery, is [Agent Sessions](SESSIONS.md).
 
 Every subcommand except `discover` needs the archive pair on the command line:
@@ -761,7 +762,52 @@ gno --config ~/gno-sessions/archive.yml --index sessions sessions status --json
 
 Archive collections with thread counts and, per source, availability, unit
 counts (complete, incomplete, failed, pending), `sourceUnavailable`,
-`staleParser`, and last import time.
+`staleParser`, and last import time. The `automation` block reports daemon
+availability and, per profile, `state`, hook and schedule switches, pending
+and running work, last run, last success, next due time (only with a running
+daemon), and a recovery action; text output shows times in your local
+timezone.
+
+### gno sessions automation
+
+Opt-in hooks and daemon schedules for registered sources. Every trigger is
+off until you enable it; the imports always go through `sessions import`.
+Full behaviour: [Automation](SESSIONS.md#automation-opt-in).
+
+```bash
+A="gno --config ~/gno-sessions/archive.yml --index sessions"
+$A sessions automation set claude --source claude-code [--cadence 30m] [--limit 200] [--retries 3]
+$A sessions automation preview claude [--settings <file>]
+$A sessions automation enable claude --hook claude-code [--settings <file>]
+$A sessions automation enable claude --schedule --cadence 30m
+$A sessions automation run claude
+$A sessions automation disable claude [--hook] [--schedule]
+$A sessions automation remove claude
+```
+
+| Subcommand          | Description                                                                                                               |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `set <profile>`     | Create or reconfigure a profile: `--source <id>` (repeatable), `--cadence`, `--limit`, `--retries`. Enables nothing.      |
+| `preview <profile>` | Sources with paths, destinations, the exact hook command and settings file, schedule, budget, daemon prerequisite.        |
+| `enable <profile>`  | `--hook claude-code` installs the owned SessionEnd entry; `--schedule --cadence <n>s\|m\|h\|d` (min `1m`) turns on ticks. |
+| `run <profile>`     | Run the profile now through the importer (exit 2 when the run failed).                                                    |
+| `disable <profile>` | Pause: switch triggers off (all, or `--hook` / `--schedule`), remove the owned entry, clear pending work.                 |
+| `remove <profile>`  | Uninstall owned integrations and delete the profile; archives are kept.                                                   |
+
+All subcommands accept `--json`. `run --json` prints the
+`sessions-automation-run` object.
+
+### gno sessions hook
+
+```bash
+gno --config ~/gno-sessions/archive.yml --index sessions sessions hook claude-code --profile claude
+```
+
+The command a Claude Code SessionEnd hook runs; `automation enable --hook`
+installs it. It reads the event on stdin, durably marks the profile pending
+and prints one line: `accepted (… pending, not yet archived …)`, `skipped
+(…)`, or `not accepted (…)` with exit 2. It never imports. Set
+`GNO_SESSIONS_HOOKS=off` to make every installed hook return immediately.
 
 ### gno sessions prune
 
@@ -775,7 +821,8 @@ deletes exactly those files and syncs the index. Deleting a source file never
 removes its archive on its own.
 
 **Exit codes:** 1 for usage and validation errors, 2 for an unavailable
-source or an import whose status is `failed`, 4 for `SESSIONS_BUSY`. `--json`
+source, an import or automation run whose status is `failed`, or a hook that
+was not accepted, 4 for `SESSIONS_BUSY`. `--json`
 errors carry the code in `details.sessionsCode`; the full table is in
 [error codes](SESSIONS.md#error-codes).
 

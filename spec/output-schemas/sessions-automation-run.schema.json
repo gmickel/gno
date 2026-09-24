@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/sessions-automation-run@1.0",
+  "title": "GNO Session Automation Run Result",
+  "description": "Result of running one automation profile (CLI `gno sessions automation run --json`, MCP gno_sessions_automation_run, REST POST /api/sessions/automation/run, SDK client.runSessionsAutomation()). Derived from SessionAutomationRunResult in src/sessions/types.ts. Contains no host paths or session content.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "profileId",
+    "ran",
+    "outcome",
+    "reason",
+    "pending",
+    "receipts"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1"
+    },
+    "profileId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ran": {
+      "type": "boolean",
+      "description": "False when nothing could start (busy, backoff, nothing pending, trigger disabled)."
+    },
+    "outcome": {
+      "enum": ["complete", "up_to_date", "partial", "failed", "not_started"]
+    },
+    "reason": {
+      "type": ["string", "null"]
+    },
+    "pending": {
+      "type": "boolean",
+      "description": "Admitted work is still waiting (deferred units, failure, busy)."
+    },
+    "receipts": {
+      "type": "array",
+      "items": {
+        "$ref": "gno://schemas/sessions-import-receipt@1.0"
+      }
+    }
+  }
+}

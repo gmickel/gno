@@ -252,6 +252,39 @@ Saved Context Capsule reverification is explicitly **not** part of this pass.
 Its scheduler is journal-driven (it runs after sync settles, see above); calling
 it on a cadence would be a no-op between changes, so it stays as-is.
 
+## Session Automation
+
+Opt-in, and only for a daemon started on a
+[session archive](SESSIONS.md) config and index:
+
+```bash
+gno --config ~/gno-sessions/archive.yml --index sessions daemon --detach
+```
+
+On startup and every 30 seconds the daemon writes a heartbeat, admits due
+[schedules](SESSIONS.md#daemon-schedule) of enabled profiles, and drains
+pending profiles (from schedules, the Claude Code SessionEnd hook, or an
+interrupted run) through the ordinary `sessions import` path. It rereads the
+archive config each tick, so `sessions automation enable` / `disable` take
+effect without a restart. A daemon on a config without automation profiles
+does nothing here; `gno serve` never drains or schedules.
+
+- Imports take the shared `.mcp-write.lock` lease with no wait; a busy lease
+  or import lock is recorded as a failed run with reason `busy` and retried
+  with backoff.
+- Missed intervals (sleep, restart) coalesce into one run; cadence is elapsed
+  time, unaffected by daylight saving.
+- Logs are content-free: one line per run with changes or a failure, nothing
+  for an up-to-date run.
+- Status is part of `gno sessions status` (`automation.daemon.state` is
+  `running` only with a fresh heartbeat), not of `gno daemon --status`.
+- Only one resident process may own a data directory. When a curated
+  `gno serve` or `gno daemon` already runs, give the archive its own
+  `GNO_DATA_DIR` (see [Daemon schedule](SESSIONS.md#daemon-schedule)).
+
+GNO never installs or starts the daemon for you; use `--detach`, a login
+item, or your service manager.
+
 ## When To Use `daemon` vs `serve`
 
 - `gno serve`: browser or desktop session, full local REST API, dashboard,
