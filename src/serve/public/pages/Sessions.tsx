@@ -150,12 +150,14 @@ export default function Sessions({ navigate }: PageProps) {
       setError(null);
       return;
     }
-    setStatus(null);
     if (result.sessionsCode && UNBOUND_CODES.has(result.sessionsCode)) {
+      setStatus(null);
       setUnbound(result.error);
       setError(null);
       return;
     }
+    // A transient failure (for example during background polling) keeps the
+    // last good status on screen, so run monitoring and controls survive.
     setError(result.error);
   }, []);
 

@@ -312,6 +312,25 @@ describe("sessions page", () => {
     );
   });
 
+  test("a failed status poll keeps the panel and polling alive", async () => {
+    const running = structuredClone(status);
+    running.automation.profiles[0]!.state = "running";
+    statusResult = () => ok(running);
+    await renderPage();
+    await screen.findByText("running");
+    statusResult = () =>
+      Promise.resolve({
+        data: null,
+        error: "Server unavailable",
+        sessionsCode: null,
+        status: 503,
+      });
+    await screen.findByText("Server unavailable", undefined, { timeout: 3500 });
+    expect(screen.getByText("running")).toBeTruthy();
+    statusResult = () => ok(status);
+    await screen.findByText("idle", undefined, { timeout: 3500 });
+  });
+
   test("status is polled while a profile is running", async () => {
     const running = structuredClone(status);
     running.automation.profiles[0]!.state = "running";
