@@ -601,9 +601,8 @@ core `MemoryError` as `cause`.
 `client.sessionsStatus()`, `client.discoverSessions()`, and
 `client.importSessions()` are the SDK bindings of `gno sessions` (MCP
 `gno_sessions_*`, `/api/sessions/*`). Open the client on the dedicated
-session-archive pair; the binding check refuses the archive config with
-another index and the archive index with another config
-(`SESSIONS_BINDING_MISMATCH`).
+session-archive pair
+([archive binding](./SESSIONS.md#archive-binding-one-config-one-index)).
 
 ```ts
 import { createGnoClient } from "@gmickel/gno";
@@ -651,12 +650,9 @@ and discover host roots; register sources and create the archive with the
 CLI (`gno sessions source add`, `gno sessions init`) or the same-host Web UI.
 Import does not embed; call `client.embed()` afterwards for semantic search.
 
-Errors are `GnoSdkError` with the sessions code in `details.code`:
-`VALIDATION` for binding, selection, destination, unknown source/collection,
-unsafe path, unsupported format, and invalid input; `RUNTIME` for
-`SESSIONS_SOURCE_UNAVAILABLE` and `SESSIONS_BUSY` (another import holds the
-archive lock). See [Agent Sessions](./SESSIONS.md) for receipts, recovery,
-and redaction.
+Errors are `GnoSdkError` (`VALIDATION` or `RUNTIME`) with the sessions code
+in `details.code`; see [error codes](./SESSIONS.md#error-codes). See
+[Agent Sessions](./SESSIONS.md) for receipts, recovery, and redaction.
 
 ### Status
 

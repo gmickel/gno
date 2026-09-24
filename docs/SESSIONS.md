@@ -60,11 +60,11 @@ them is disposable.
 
 ## Plan the archive
 
-### One archive config paired with one named index
+### Archive binding: one config, one index
 
 A session archive is a dedicated config file that carries a `sessions` block,
-paired with one named index. Every command that touches the archive passes
-both:
+paired with one named index. This pairing is the archive binding. Every
+command that touches the archive passes both:
 
 ```bash
 gno --config ~/gno-sessions/archive.yml --index sessions <command>
@@ -83,7 +83,12 @@ read or write the archive. `gno sessions init` refuses the default config file
 and the `default` index for the same reason. It records the binding in the
 named index immediately, before any import, and refuses an index that already
 holds other collections or belongs to another archive
-(`SESSIONS_BINDING_MISMATCH`): choose a new index name for each archive.
+(`SESSIONS_BINDING_MISMATCH`): choose a new index name for each archive. A
+config already bound to another index or archive root is never retargeted.
+
+The SDK checks the pair when it opens a client, the REST routes check the
+server's own pair, and a server started on a curated config never attaches an
+archive (its session calls answer `SESSIONS_NOT_CONFIGURED`).
 
 ### Where to put it
 
@@ -98,11 +103,18 @@ example:
     .gno-sessions/     # import checkpoint and lock
 ```
 
-Placement is your setting. The only hard rule is that the archive root must
-lie outside GNO's own config, data, and cache directories, so `gno reset`,
-index cleanup, or an uninstall cannot delete it. An archive inside a vault
-folder is allowed; avoid a folder that your curated config already indexes
-unless you want [mixed retrieval](#mixed-retrieval-opt-in).
+Placement is your setting, within two hard rules checked by `sessions init`:
+
+- The archive root must lie outside GNO's own config, data, and cache
+  directories, so `gno reset`, index cleanup, or an uninstall cannot delete
+  it.
+- The archive root must not lie inside a folder that your default (curated)
+  config already indexes; otherwise the curated index would pick up the
+  archive files behind your back. A vault folder that no curated collection
+  covers is fine.
+
+To bring session turns into curated retrieval on purpose, use
+[mixed retrieval](#mixed-retrieval-opt-in) after `init`.
 
 ### Collections per privacy boundary
 
@@ -117,11 +129,21 @@ optionally one per project:
 Harness and project identity are kept as tags, so one project stays
 searchable across agents whichever collection it lands in.
 
+Routing is part of each thread's import state. When you change a source's
+default collection or its `--project` mappings (remove and re-add the source,
+or edit the archive config), the next import re-imports the affected threads
+into their new destination, even when the session files themselves did not
+change.
+
+### Quarantined threads
+
 A thread whose recorded working directories map to different collections is
 **quarantined**: it is not written anywhere and the receipt reports it as
 `skipped_policy` with reason `mixed_domain`. GNO never writes such a thread to
-the less restricted collection. Add or adjust a `--project` mapping, or import
-the file explicitly into the collection you choose.
+the less restricted collection. To release it, add or adjust a `--project`
+mapping so all its directories resolve to one collection; the next import
+then archives the thread. Alternatively, import the file explicitly into the
+collection you choose.
 
 Archive collections are ordinary collections: collection
 [egress policy](CONFIGURATION.md#collection-egress-policy) applies to them
@@ -203,24 +225,32 @@ parser does not recognise produce bounded, content-free diagnostics
 
 Each archived turn becomes one logical record:
 
-- **Title**: speaker, harness, project, and time, for example
-  `Human turn · Codex · api · 2026-09-20 10:00`.
-- **Body**: starts with `Human:` or `Assistant:` and ends with a
-  `Session provenance` block.
+- **Title**: speaker, harness, and project, for example
+  `Human · Codex · api`.
+- **Body**: starts with `Human:` or `Assistant:` and ends with one
+  `Provenance:` line.
 - **Author**: `human` or `assistant`.
 - **Tags** (categories): `session`, `harness/<codex|claude-code|openclaw|hermes>`,
   `role/<human|assistant>`, `session-kind/<main|subagent|fork|continuation>`,
   `project/<basename>`, and `project-id/<hash>` (tells apart two projects with
   the same folder name).
-- **Session identity**: `sessionId` and `threadId` record fields, and the
-  recorded time as the record date.
+- **Session identity**: `threadId` and, for threads that belong to another
+  session (subagents, forks, continuations), `sessionId` record fields; the
+  recorded time is the record date (`dateFields.recorded`).
 
-The provenance block lists the speaker (assistant turns are marked
-"assistant output, not a user decision"), the recorded time (or `unknown`),
-harness and thread kind, source profile ID, native locator (file name plus
-line, or database row; never a host path), logical turn ID, thread and
-session IDs, and the project label and ID. A missing timestamp stays unknown;
-GNO does not invent one.
+The provenance line lists, separated by `·`: for assistant turns the marker
+"Assistant (assistant output, not a user decision)"; `recorded unknown` when
+the source has no timestamp (a known time travels as the record date); the
+source profile ID; the native locator (file name plus line, or database row;
+never a host path); and the logical turn ID. For example:
+
+```text
+Provenance: source codex · locator rollout-….jsonl#line:5 · turn item-u1
+```
+
+A missing timestamp stays unknown; GNO does not invent one. The line is kept
+to one row so bounded context delivery (Capsules, `--budget`) spends its budget
+on dialogue rather than metadata.
 
 Cite session evidence by the record's `gno://` URI. URIs from the archive
 index carry `?index=sessions`; keep that query string when you pass the URI
@@ -322,17 +352,18 @@ deferred, or when the lexical sync failed. A partial import is never reported
 as complete. Receipts carry counts, locators, and reason codes only: no
 session content and no host paths.
 
-| Reason                  | Meaning and recovery                                                                                    |
-| :---------------------- | :------------------------------------------------------------------------------------------------------ |
-| `truncated_tail`        | The final line was cut mid-write (a session still running). Readable threads are archived; rerun later. |
-| `format_drift`          | Structure GNO does not recognise, for example assistant turns without any recognised human turn.        |
-| `snapshot_read_failed`  | A SQLite store could not be read in one read-only snapshot. Rerun; check the harness is not migrating.  |
-| `permission_denied`     | The file or database is not readable by your user.                                                      |
-| `source_missing`        | The unit disappeared between listing and reading.                                                       |
-| `read_failed`           | Another read error.                                                                                     |
-| `format_not_recognised` | The unit is not a supported session format (`unsupported`).                                             |
-| `over_limit`            | The unit or thread exceeds a [limit](#limits) (`skipped_policy` for threads).                           |
-| `mixed_domain`          | The thread spans collections; it was quarantined (see above).                                           |
+| Reason                  | Meaning and recovery                                                                                                                                                                                    |
+| :---------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `truncated_tail`        | The final line was cut mid-write (a session still running). Readable threads are archived; rerun later.                                                                                                 |
+| `format_drift`          | Structure GNO does not recognise, for example assistant turns without any recognised human turn, or a Codex fork without its history boundary (archived as nothing rather than duplicating the parent). |
+| `unit_conflict`         | Two units of one source share a locator (for example the same rollout file name in two folders); the second is not imported.                                                                            |
+| `snapshot_read_failed`  | A SQLite store could not be read in one read-only snapshot. Rerun; check the harness is not migrating.                                                                                                  |
+| `permission_denied`     | The file or database is not readable by your user.                                                                                                                                                      |
+| `source_missing`        | The unit disappeared between listing and reading.                                                                                                                                                       |
+| `read_failed`           | Another read error.                                                                                                                                                                                     |
+| `format_not_recognised` | The unit is not a supported session format (`unsupported`).                                                                                                                                             |
+| `over_limit`            | The unit or thread exceeds a [limit](#limits) (`skipped_policy` for threads).                                                                                                                           |
+| `mixed_domain`          | The thread spans collections; it was [quarantined](#quarantined-threads).                                                                                                                               |
 
 Recovery behaviour:
 
@@ -346,6 +377,10 @@ Recovery behaviour:
   again.
 - **Interrupted runs heal.** Archive files are written atomically; rerunning
   after a crash produces no duplicates.
+- **Completion follows the index sync.** An import records units as complete
+  only after the index sync of the changed archive files succeeds. When the
+  sync fails or the run is interrupted, the receipt reports `lexical: failed`
+  (or nothing is recorded), and the next import retries those units.
 - **`--limit <n>`** bounds the changed units processed in one run. Unchanged
   units do not count. The rest are reported in `deferredUnits` and picked up
   by the next run.
@@ -357,8 +392,15 @@ Recovery behaviour:
   and `status` counts it as `staleParser`. A redaction-rule upgrade or a change
   to `sessions.redaction.literals` takes effect on the next import: units
   whose source still exists are re-rendered, and archives whose source is gone
-  are rescanned in place. A new parser cannot recover content from sources
-  that were rotated or deleted.
+  are rescanned in place. Every stored field is rescanned, not only the text.
+  An archive file that no longer parses is moved to
+  `<archiveRoot>/.gno-sessions/withheld/` (out of retrieval), reported as
+  withheld in the receipt warnings, and its unit keeps the old redaction
+  stamp. A new parser cannot recover content from sources that were rotated
+  or deleted.
+- **Database stores.** A thread with assistant turns but no recognised human
+  turn in an OpenClaw or Hermes store is reported in the unit warnings; it does
+  not hold the whole store incomplete.
 
 ## Status, prune, and retention
 
@@ -375,7 +417,9 @@ gno --config ~/gno-sessions/archive.yml --index sessions sessions source remove 
 - Deleting or rotating a source file never deletes its archive. `status`
   counts such units under `sourceUnavailable`.
 - `prune` previews the archive files whose source is gone; `--apply` deletes
-  exactly those files and syncs the index.
+  exactly those files and syncs the index. An archive file that a
+  still-present unit references is never pruned, so a session file that the
+  harness moved or renamed keeps its archive.
 - `source remove` unregisters a source and keeps its archive.
 
 ## Privacy and redaction
@@ -417,8 +461,10 @@ Other boundaries:
 - Source files and databases are opened read-only and never modified. SQLite
   stores are read through a read-only connection in one read transaction; no
   raw copy is made.
-- Receipts, status, and diagnostics carry no session content and no host
-  paths.
+- Receipts, status, diagnostics, and remote errors carry no session content
+  and no host paths. A filesystem or index failure reached through REST or
+  MCP returns `SESSIONS_RUNTIME_FAILURE` with a fixed message, never the
+  underlying error text.
 - Discovery returns host paths, so it is available only to the CLI, the SDK,
   and a same-host browser. MCP clients and remote HTTP callers can only import
   sources the owner registered, by ID.
@@ -519,10 +565,22 @@ connectors that pull conversations from a service are out of scope too.
 
 ## Troubleshooting
 
-**`SESSIONS_BINDING_MISMATCH`.** The config and index do not belong together.
-Pass the archive's `--config` together with its `--index`; use your normal
-config (no `--config`) for curated work. A curated config cannot open the
-archive index.
+**`SESSIONS_BINDING_MISMATCH`.** The config and index do not belong together
+(see [Archive binding](#archive-binding-one-config-one-index)). Pass the
+archive's `--config` together with its `--index`, for example
+`gno --config ~/gno-sessions/archive.yml --index sessions ...`, and use your
+normal config (no `--config`) for curated work. The archive index cannot be
+opened with another config, and the archive config cannot be used with
+another index. From `sessions init`, it means the index already holds other
+collections or belongs to another archive: pick a new index name.
+
+**`SESSIONS_NOT_CONFIGURED`.** The config has no `sessions` block, usually
+because a curated config or server was used. Run the command, or start the
+server, on the archive pair.
+
+**`sessions init` refuses the archive root.** The root lies inside GNO's own
+directories or inside a folder your default config already indexes (see
+[Where to put it](#where-to-put-it)). Choose a folder outside both.
 
 **`SESSIONS_BUSY` (exit 4).** Another import holds
 `<archiveRoot>/.gno-sessions/import.lock`. Wait for it to finish and rerun.
@@ -530,6 +588,14 @@ archive index.
 **Receipt says `partial` with `truncated_tail`.** The session was still being
 written. Nothing is lost: the readable part is archived and the next import
 retries the unit.
+
+**`mixed_domain` in the receipt.** The thread was
+[quarantined](#quarantined-threads) because its working directories map to
+different collections. Add a `--project` mapping; the next import archives it.
+
+**Receipt says `lexical: failed`.** The archive files were written but the
+index sync did not finish. The units are not recorded as complete, so rerun
+the import; it retries them.
 
 **`format_drift` or `unknownKinds`.** The harness wrote records this parser
 does not know. Readable threads are archived and the unit is retried on every
@@ -542,14 +608,16 @@ exclusive lock. Rerun when the harness is idle.
 
 **`SESSIONS_SOURCE_UNAVAILABLE`.** The registered path is missing or not
 readable (CLI exit 2). The archive is retained; check the path or remove the
-source.
+source. Remote REST and MCP callers get this code without the host path;
+check the source on the host with `sessions status`.
 
 **No semantic results.** Import does not embed. Run `embed` on the archive
-pair; the receipt's `embedding.backlog` shows what is waiting.
+pair before `query` or `vsearch`; the receipt's `embedding.backlog` shows
+what is waiting.
 
-**A session is missing from curated search.** Expected: the archive is
-separate by default. Search the archive pair, or set up
-[mixed retrieval](#mixed-retrieval-opt-in).
+**Sessions do not appear in search.** Expected on your curated index: the
+archive is separate by default. Search with the archive's `--config` and
+`--index`, or set up [mixed retrieval](#mixed-retrieval-opt-in).
 
 ## Sessions and memory
 
@@ -569,17 +637,21 @@ so the fact points back to its evidence.
 
 ## Error codes
 
-| Code                                                                            | Meaning                                                       | CLI exit | HTTP |
-| :------------------------------------------------------------------------------ | :------------------------------------------------------------ | :------- | :--- |
-| `SESSIONS_NOT_CONFIGURED`                                                       | The config has no `sessions` block                            | 1        | 400  |
-| `SESSIONS_BINDING_MISMATCH`                                                     | Archive config and index used apart                           | 1        | 400  |
-| `SESSIONS_SELECTION_REQUIRED`, `SESSIONS_DESTINATION_REQUIRED`                  | No source or paths selected; path import without a collection | 1        | 400  |
-| `SESSIONS_UNKNOWN_SOURCE`, `SESSIONS_UNKNOWN_COLLECTION`                        | Unregistered source ID or archive collection                  | 1        | 400  |
-| `SESSIONS_UNSAFE_PATH`, `SESSIONS_UNSUPPORTED_FORMAT`, `SESSIONS_INVALID_INPUT` | Unsafe path, unknown harness, or malformed input              | 1        | 400  |
-| `SESSIONS_SOURCE_UNAVAILABLE`                                                   | Source path missing or unreadable                             | 2        | 500  |
-| `SESSIONS_BUSY`                                                                 | Another import holds the archive lock                         | 4        | 409  |
+| Code                                                                            | Meaning                                                            | CLI exit | HTTP | REST `code`  | SDK          |
+| :------------------------------------------------------------------------------ | :----------------------------------------------------------------- | :------- | :--- | :----------- | :----------- |
+| `SESSIONS_NOT_CONFIGURED`                                                       | The config has no `sessions` block                                 | 1        | 400  | `VALIDATION` | `VALIDATION` |
+| `SESSIONS_BINDING_MISMATCH`                                                     | Archive config and index used apart                                | 1        | 400  | `VALIDATION` | `VALIDATION` |
+| `SESSIONS_SELECTION_REQUIRED`, `SESSIONS_DESTINATION_REQUIRED`                  | No source or paths selected; path import without a collection      | 1        | 400  | `VALIDATION` | `VALIDATION` |
+| `SESSIONS_UNKNOWN_SOURCE`, `SESSIONS_UNKNOWN_COLLECTION`                        | Unregistered source ID or archive collection                       | 1        | 400  | `VALIDATION` | `VALIDATION` |
+| `SESSIONS_UNSAFE_PATH`, `SESSIONS_UNSUPPORTED_FORMAT`, `SESSIONS_INVALID_INPUT` | Unsafe path, unknown harness, or malformed input                   | 1        | 400  | `VALIDATION` | `VALIDATION` |
+| `SESSIONS_SOURCE_UNAVAILABLE`                                                   | Source path missing or unreadable (no host path when remote)       | 2        | 500  | `RUNTIME`    | `RUNTIME`    |
+| `SESSIONS_BUSY`                                                                 | Another import holds the archive lock                              | 4        | 409  | `BUSY`       | `RUNTIME`    |
+| `SESSIONS_RUNTIME_FAILURE`                                                      | Filesystem or index failure on REST/MCP (fixed, path-free message) | —        | 500  | `RUNTIME`    | —            |
 
 An import whose `status` is `failed` exits 2. The CLI JSON error envelope and
-REST errors carry the code in `details.sessionsCode`; MCP returns it in
-`structuredContent.error`; the SDK throws `GnoSdkError` (`VALIDATION` or
-`RUNTIME`) with the code in `details.code`.
+REST errors carry the code in `details.sessionsCode`, with the generic
+envelope `code` shown above; MCP returns it in `structuredContent.error`
+(plus `WRITE_DISABLED` when import runs without `--enable-write`); the SDK
+throws `GnoSdkError` with the kind shown above and the code in
+`details.code`. A same-host refusal on REST is `403 FORBIDDEN` with no
+`details.sessionsCode`.

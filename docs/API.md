@@ -2656,8 +2656,8 @@ POST /api/sessions/init
 Registration and init persist the archive config and apply it to the running
 server (collections, watcher, egress policy) without a restart.
 
-**Session errors** use the standard envelope with a generic `code` per status
-and the stable service code in `details.sessionsCode`:
+**Session errors** use the standard envelope with a generic `code` per HTTP
+status and the stable service code in `details.sessionsCode`:
 
 ```json
 {
@@ -2669,14 +2669,9 @@ and the stable service code in `details.sessionsCode`:
 }
 ```
 
-| `details.sessionsCode`                                                                                                                                                                                                                                            | HTTP | `code`       |
-| :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--- | :----------- |
-| `SESSIONS_NOT_CONFIGURED`, `SESSIONS_BINDING_MISMATCH`, `SESSIONS_SELECTION_REQUIRED`, `SESSIONS_DESTINATION_REQUIRED`, `SESSIONS_UNKNOWN_SOURCE`, `SESSIONS_UNKNOWN_COLLECTION`, `SESSIONS_UNSAFE_PATH`, `SESSIONS_UNSUPPORTED_FORMAT`, `SESSIONS_INVALID_INPUT` | 400  | `VALIDATION` |
-| `SESSIONS_BUSY`                                                                                                                                                                                                                                                   | 409  | `BUSY`       |
-| `SESSIONS_SOURCE_UNAVAILABLE`                                                                                                                                                                                                                                     | 500  | `RUNTIME`    |
-
-A same-host refusal is `403` with `code: "FORBIDDEN"` and no
-`details.sessionsCode`.
+The code-to-status mapping is in
+[Agent Sessions error codes](SESSIONS.md#error-codes). A same-host refusal is
+`403` with `code: "FORBIDDEN"` and no `details.sessionsCode`.
 
 ---
 

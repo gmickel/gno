@@ -39,7 +39,7 @@ import {
   type UnitDiagnostics,
 } from "../types";
 import {
-  flagMissingHumanTurns,
+  missingHumanTurns,
   hasTables,
   isRecord,
   joinTextBlocks,
@@ -190,7 +190,7 @@ export async function parseOpenClawJsonl(
     };
   }
   const parent = stringField(header.parentSession);
-  flagMissingHumanTurns(context.turns, diagnostics);
+  diagnostics.humanTurnsMissing = missingHumanTurns(context.turns);
   return {
     threads: [
       {
@@ -350,7 +350,9 @@ export function parseOpenClawDatabase(path: string): ParseUnitResult {
       let kind: SessionThreadKind = "main";
       if (spawned) kind = "subagent";
       else if (forkSource) kind = "fork";
-      if (kind === "main") flagMissingHumanTurns(context.turns, diagnostics);
+      if (kind === "main" && missingHumanTurns(context.turns)) {
+        diagnostics.threadsWithoutHuman += 1;
+      }
       result.push({
         harness: "openclaw",
         threadId: key,
@@ -367,7 +369,7 @@ export function parseOpenClawDatabase(path: string): ParseUnitResult {
   return {
     threads,
     diagnostics,
-    complete: !diagnostics.humanTurnsMissing,
+    complete: true,
     parser: OPENCLAW_PARSER,
   };
 }

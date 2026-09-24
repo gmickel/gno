@@ -19,10 +19,7 @@ import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { initStore } from "../../src/cli/commands/shared";
 import { createMcpServerSurface } from "../../src/mcp/context";
 import { handleSessionsImport } from "../../src/mcp/tools/sessions";
-import {
-  addSessionSource,
-  initSessionArchive,
-} from "../../src/sessions/service";
+import { addSessionSource, initSessionArchive } from "../../src/sessions/setup";
 import { safeRm } from "../helpers/cleanup";
 import { FIXTURES, tempDir } from "../sessions/helpers";
 
@@ -174,5 +171,28 @@ describe("MCP session tools", () => {
     } finally {
       await live.close();
     }
+  });
+
+  test("filesystem failures reach MCP callers as a typed, path-free error", async () => {
+    const blocker = join(root, "not-a-directory");
+    await Bun.write(blocker, "file");
+    const sessions = ctxBase.config.sessions!;
+    const config = {
+      ...ctxBase.config,
+      sessions: { ...sessions, archiveRoot: blocker },
+      collections: ctxBase.config.collections.map((collection) => ({
+        ...collection,
+        path: join(blocker, collection.name),
+      })),
+    };
+    const result = await handleSessionsImport(
+      { sourceId: "codex-main" },
+      { ...ctxBase, config, enableWrite: true }
+    );
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent).toMatchObject({
+      error: "SESSIONS_RUNTIME_FAILURE",
+    });
+    expect(JSON.stringify(result)).not.toContain(root);
   });
 });

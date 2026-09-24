@@ -334,9 +334,8 @@ entry at `<archiveRoot>/<collection>` with the JSONL field mapping shown
 above; keep that mapping intact, because author, tags, session identity, and
 record dates come from it. Collection egress policy applies as usual.
 
-Binding rules: the archive config with another `--index`, or the archive
-index with another config, fails with `SESSIONS_BINDING_MISMATCH` before any
-command runs. A change to `redaction.literals` takes effect on the next
+The config is bound to its named index; see
+[Archive binding](SESSIONS.md#archive-binding-one-config-one-index). A change to `redaction.literals` takes effect on the next
 import (sources that still exist are re-rendered; archive files whose source
 is gone are rescanned in place).
 

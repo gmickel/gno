@@ -39,6 +39,7 @@ describe("archive rendering", () => {
     const rendered = renderThread({
       thread: thread(),
       sourceId: "codex-main",
+      unitKey: "unit-1",
       unitLocator: "rollout-x.jsonl",
       parser: "codex/1",
       redaction: {},
@@ -50,15 +51,14 @@ describe("archive rendering", () => {
     });
     expect(assistant!.author).toBe("assistant");
     expect(assistant).not.toHaveProperty("recordedAt");
-    expect(String(assistant!.title)).toContain("time unknown");
     expect(String(assistant!.body)).toStartWith("Assistant: Proposal");
     expect(String(assistant!.body)).toContain(
-      "Speaker: Assistant (assistant output, not a user decision)"
+      "Provenance: Assistant (assistant output, not a user decision) · recorded unknown"
     );
-    expect(String(assistant!.body)).toContain("Recorded: unknown");
-    expect(String(human!.body)).toContain(
-      "Native locator: rollout-x.jsonl#line:3"
-    );
+    expect(String(human!.body)).toContain("locator rollout-x.jsonl#line:3");
+    expect(String(human!.body)).toContain("turn t1");
+    expect(String(human!.body)).not.toContain("recorded");
+    expect(human!.sessionId).toBe("codex/codex-main/session-1");
     expect(human!.categories).toEqual(
       expect.arrayContaining([
         "harness/codex",
@@ -75,6 +75,7 @@ describe("archive rendering", () => {
       renderThread({
         thread: thread({ turns }),
         sourceId,
+        unitKey: "unit-1",
         unitLocator: "u",
         parser: "codex/1",
         redaction: {},
@@ -87,12 +88,12 @@ describe("archive rendering", () => {
       ]).content
     ).map((line) => line.id);
     expect(appended.slice(0, 2)).toEqual(first);
-    expect(threadRelPath("a", "codex", "thread-1")).not.toBe(
-      threadRelPath("b", "codex", "thread-1")
-    );
-    expect(threadRelPath("a", "codex", "thread-1")).not.toBe(
-      threadRelPath("a", "hermes", "thread-1")
-    );
+    const path = (source: string, harness: "codex" | "hermes", unit: string) =>
+      threadRelPath(source, harness, unit, "thread-1");
+    expect(path("a", "codex", "u1")).not.toBe(path("b", "codex", "u1"));
+    expect(path("a", "codex", "u1")).not.toBe(path("a", "hermes", "u1"));
+    // Two units reporting the same thread ID never share an archive file.
+    expect(path("a", "codex", "u1")).not.toBe(path("a", "codex", "u2"));
   });
 
   test("same-named projects stay distinguishable by project id", () => {
@@ -101,6 +102,7 @@ describe("archive rendering", () => {
         renderThread({
           thread: thread({ cwd }),
           sourceId: "s",
+          unitKey: "unit-1",
           unitLocator: "u",
           parser: "codex/1",
           redaction: {},

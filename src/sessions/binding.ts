@@ -21,7 +21,7 @@ import { canonicalizeIndexName, isValidIndexName } from "../app/index-name";
 import { SessionsError } from "./types";
 
 /** `schema_meta` key naming the archive config an index is bound to. */
-export const SESSION_BINDING_META_KEY = "session_archive_config";
+const SESSION_BINDING_META_KEY = "session_archive_config";
 
 export async function canonicalConfigPath(configPath: string): Promise<string> {
   try {

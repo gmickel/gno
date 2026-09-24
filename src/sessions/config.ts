@@ -22,7 +22,7 @@ const AbsolutePathSchema = z
   .min(1)
   .refine((value) => isAbsolute(value), { message: "Path must be absolute" });
 
-export const SessionProjectMappingSchema = z
+const SessionProjectMappingSchema = z
   .object({
     /** Working-directory prefix (absolute) this mapping applies to. */
     prefix: AbsolutePathSchema,

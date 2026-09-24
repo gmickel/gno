@@ -49,16 +49,18 @@ Import does not embed: run `embed` on the same pair before relying on
 gno --config ~/gno-sessions/archive.yml --index sessions get "<uri from the result, including ?index=sessions>"
 ```
 
-The body starts with `Human:` or `Assistant:` and ends with a
-`Session provenance` block (speaker, recorded time or `unknown`, harness,
-thread, project). Keep the `?index=` query string on every URI.
+The body starts with `Human:` or `Assistant:` and ends with one `Provenance:`
+line (assistant marker, `recorded unknown` when the time is missing, source,
+native locator, turn). The recorded time is the result's document date. Keep
+the `?index=` query string on every URI.
 
 4. Answer with attribution.
    - A human turn is what the person said or decided.
    - An assistant turn is a proposal ("the agent suggested ..."), never the
      user's decision.
    - Cite each turn by its `gno://` URI. State the recorded time from the
-     provenance block; say "time unknown" when it says so.
+     document date; say "time unknown" when the provenance line says
+     `recorded unknown`.
 
 5. Setup or refresh, only when the user asks.
 

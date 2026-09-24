@@ -7,10 +7,7 @@ import { join } from "node:path";
 import { createDefaultConfig } from "../../src/config/defaults";
 import { createGnoClient } from "../../src/sdk";
 import { GnoSdkError } from "../../src/sdk/errors";
-import {
-  addSessionSource,
-  initSessionArchive,
-} from "../../src/sessions/service";
+import { addSessionSource, initSessionArchive } from "../../src/sessions/setup";
 import { safeRm } from "../helpers/cleanup";
 import { FIXTURES, tempDir } from "../sessions/helpers";
 

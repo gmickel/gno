@@ -23,7 +23,7 @@ import { createGnoClient } from "../../../src/sdk";
 import {
   addSessionSource,
   initSessionArchive,
-} from "../../../src/sessions/service";
+} from "../../../src/sessions/setup";
 import { safeRm } from "../../helpers/cleanup";
 import { FIXTURES, tempDir } from "../../sessions/helpers";
 import { assertValid, loadSchema } from "./validator";

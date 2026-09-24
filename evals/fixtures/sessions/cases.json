@@ -1,6 +1,6 @@
 {
   "suite": "sessions",
-  "description": "Cross-session retrieval eval for native agent-session ingestion. Synthetic placeholder dialogue across four harnesses and seven native formats, with fake credentials, a project basename collision (/work/a/api vs /work/b/api), assistant suggestions that contradict human decisions, and injected-context / subagent-task noise. Every turn key is `<archive threadId>#<native logical turn id>`.",
+  "description": "Cross-session retrieval eval for native agent-session ingestion. Synthetic placeholder dialogue across four harnesses and seven native formats, with fake credentials, a project basename collision (/work/a/api vs /work/b/api), assistant suggestions that contradict human decisions, and injected-context / subagent-task noise. Every turn key is `<harness>/<source id>/<native thread id>#<native logical turn id>`, built from a gold record in gold/turns.json. `projectIds` is the expected pipeline project-id label for each native working directory; questions name a project by directory and each arm maps it to its own filter.",
   "sources": [
     {
       "id": "codex-eval",
@@ -40,6 +40,11 @@
     "openclaw-sqlite",
     "hermes"
   ],
+  "projectIds": {
+    "/work/a/api": "4a517db8c692",
+    "/work/b/api": "ea7c5ad1327e",
+    "/work/c/billing": "dcdbe432ecb9"
+  },
   "units": [
     {
       "sourceId": "codex-eval",
@@ -344,9 +349,18 @@
       "id": "Q1-orchid-human-decisions",
       "goal": "What did the human decide about orchid gateway rate limits and their enforcement?",
       "queryModes": [
-        { "mode": "term", "text": "orchid gateway limit" },
-        { "mode": "term", "text": "orchid gateway 429" },
-        { "mode": "term", "text": "orchid gateway tenant" }
+        {
+          "mode": "term",
+          "text": "orchid gateway limit"
+        },
+        {
+          "mode": "term",
+          "text": "orchid gateway 429"
+        },
+        {
+          "mode": "term",
+          "text": "orchid gateway tenant"
+        }
       ],
       "author": "human",
       "gold": [
@@ -360,9 +374,18 @@
       "id": "Q2-heron-human-decisions",
       "goal": "What did the human decide about heron ledger pagination, page size and cursor expiry?",
       "queryModes": [
-        { "mode": "term", "text": "heron ledger" },
-        { "mode": "term", "text": "heron ledger cursor" },
-        { "mode": "term", "text": "heron ledger page" }
+        {
+          "mode": "term",
+          "text": "heron ledger"
+        },
+        {
+          "mode": "term",
+          "text": "heron ledger cursor"
+        },
+        {
+          "mode": "term",
+          "text": "heron ledger page"
+        }
       ],
       "author": "human",
       "gold": [
@@ -377,10 +400,22 @@
       "id": "Q3-invoice-decisions-unfiltered",
       "goal": "Invoice archive retention, purge schedule and export encryption decisions",
       "queryModes": [
-        { "mode": "term", "text": "invoice archive" },
-        { "mode": "term", "text": "invoice archives retained" },
-        { "mode": "term", "text": "invoice archive purge" },
-        { "mode": "term", "text": "invoice archive exports encrypted" }
+        {
+          "mode": "term",
+          "text": "invoice archive"
+        },
+        {
+          "mode": "term",
+          "text": "invoice archives retained"
+        },
+        {
+          "mode": "term",
+          "text": "invoice archive purge"
+        },
+        {
+          "mode": "term",
+          "text": "invoice archive exports encrypted"
+        }
       ],
       "gold": [
         "openclaw/openclaw-eval/e7a10c1a-0000-4000-8000-00000000c001#e2",
@@ -392,8 +427,14 @@
       "id": "Q4-orchid-rejected-suggestions",
       "goal": "Which assistant suggestions about the orchid gateway contradicted the human decisions?",
       "queryModes": [
-        { "mode": "term", "text": "orchid gateway suggestion" },
-        { "mode": "term", "text": "orchid gateway proposal" }
+        {
+          "mode": "term",
+          "text": "orchid gateway suggestion"
+        },
+        {
+          "mode": "term",
+          "text": "orchid gateway proposal"
+        }
       ],
       "author": "assistant",
       "gold": [
@@ -405,9 +446,14 @@
     {
       "id": "Q5-project-a-decisions-collision",
       "goal": "Decisions recorded for the api project in the a workspace",
-      "queryModes": [{ "mode": "term", "text": "Decision" }],
+      "queryModes": [
+        {
+          "mode": "term",
+          "text": "Decision"
+        }
+      ],
       "author": "human",
-      "categories": ["project-id/4a517db8c692"],
+      "project": "/work/a/api",
       "gold": [
         "codex/codex-eval/0000e7a1-0000-7000-8000-00000000a001#item-u1",
         "claude-code/claude-eval/e7a1c1a0-0000-4000-8000-00000000a001#a1000000-0000-4000-8000-000000000002",
@@ -417,9 +463,14 @@
     {
       "id": "Q6-project-b-decisions-collision",
       "goal": "Decisions recorded for the api project in the b workspace",
-      "queryModes": [{ "mode": "term", "text": "Decision" }],
+      "queryModes": [
+        {
+          "mode": "term",
+          "text": "Decision"
+        }
+      ],
       "author": "human",
-      "categories": ["project-id/ea7c5ad1327e"],
+      "project": "/work/b/api",
       "gold": [
         "codex/codex-eval/0000e7a1-0000-7000-8000-00000000b001#ordinal:2",
         "claude-code/claude-eval/e7a1c1a0-0000-4000-8000-00000000b001#b1000000-0000-4000-8000-000000000001",

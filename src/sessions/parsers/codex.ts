@@ -34,7 +34,7 @@ import {
   type SessionThreadKind,
 } from "../types";
 import {
-  flagMissingHumanTurns,
+  missingHumanTurns,
   isRecord,
   joinTextBlocks,
   pushTurn,
@@ -140,6 +140,7 @@ export async function parseCodexRollout(
   let cwd: string | undefined;
   let agentInstructionThread = false;
   let programmaticEntry = false;
+  let copiedParentMeta = false;
 
   for await (const { lineNumber, record } of readJsonlRecords(
     path,
@@ -171,6 +172,7 @@ export async function parseCodexRollout(
         programmaticEntry = payload.source === "exec";
       } else {
         diagnostics.copiedHistorySkipped += 1;
+        copiedParentMeta = true;
       }
       continue;
     }
@@ -237,11 +239,20 @@ export async function parseCodexRollout(
     }
   }
 
-  if (!meta) {
+  // A fork carries copied parent history. Without the recorded start
+  // ordinal its boundary is unknown: archive nothing rather than duplicate
+  // the parent, and keep the unit incomplete as format drift.
+  const forkBoundaryUnknown =
+    meta !== undefined &&
+    historyStart === undefined &&
+    (copiedParentMeta || stringField(meta.forked_from_id) !== undefined);
+  if (forkBoundaryUnknown)
+    noteUnknownKind(diagnostics, "fork_without_history_start");
+  if (!meta || forkBoundaryUnknown) {
     return {
       threads: [],
       diagnostics,
-      complete: !diagnostics.truncatedTail,
+      complete: !diagnostics.truncatedTail && !forkBoundaryUnknown,
       parser: CODEX_PARSER,
     };
   }
@@ -270,7 +281,7 @@ export async function parseCodexRollout(
   if (agentInstructionThread) kind = "subagent";
   else if (stringField(meta.forked_from_id)) kind = "fork";
   if (kind === "main" && !programmaticEntry) {
-    flagMissingHumanTurns(turns, diagnostics);
+    diagnostics.humanTurnsMissing = missingHumanTurns(turns);
   }
   diagnostics.formatVersion = stringField(meta.cli_version);
 

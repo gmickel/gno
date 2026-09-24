@@ -108,13 +108,21 @@ fixture format and the golden refresh (`bun run eval:memory:fixtures
 **Sessions gate contract** (`bun run eval:sessions`, spec fn-171): imports
 synthetic native fixtures for all four harnesses (`evals/fixtures/sessions/`,
 sha256-pinned in `manifest.json`) through the real session service and
-compares the result with a hand-normalized gold archive indexed with identical
-settings, offline and lexical-only. Thresholds live in `SESSIONS_GATE` at the
-top of `evals/sessions.eval.ts`: exact lookups and provenance/role fidelity at
-1.0, zero secret leaks, zero noise archived as human speech, zero role-safety
-violations, and no capsule coverage regression versus gold at the same budget
-and byte cap. Absolute coverage below 100% in both arms is a retained negative
-result about the budget, not a pipeline failure. Re-pin fixtures with
+compares the result with a manually normalized gold archive
+(`gold/turns.json`: hand-written per-turn records with native identity, role,
+time and redacted text, in its own structure). The gold arm is indexed as a
+plain JSONL file with an eval-defined field mapping; both arms use the same
+lexical retrieval and Context Capsule budget/byte cap, offline, and both are
+judged against the gold records (exact turn text fully present in the
+delivered text with verified identity and role). Thresholds live in
+`SESSIONS_GATE` at the top of `evals/sessions.eval.ts`: exact lookups and
+provenance/role fidelity at 1.0, zero secret leaks, zero noise archived as
+human speech, zero role-safety violations, and no capsule coverage regression
+versus gold. Coverage below 100% in both arms is a retained negative result
+about the budget; a turn the gold arm delivers and the pipeline arm does not
+is a failing gate, reported with its capsule omission reason. Helpers follow
+the memory eval layout (`evals/helpers/sessions-*.ts`); `buildSessionsManifest`
+is the single fixture walk. Re-pin fixtures with
 `bun scripts/sessions-eval-fixtures.ts` after reviewing the diff; never lower a
 threshold or edit a fixture to make a run pass.
 

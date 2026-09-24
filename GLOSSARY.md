@@ -133,3 +133,11 @@ _Avoid_: hosted collection, sync
 ## GNO Recall
 
 Working name for the GNO Omarchy shell plugin: a quiet bar widget plus a summonable, keyboard-first overlay for recall and quick browse of the local GNO index.
+
+## Session Source (Source Profile)
+
+An owner-registered session root, file, or database for one harness (Codex, Claude Code, OpenClaw, or Hermes) in a session archive config, with a stable ID, a default archive collection, and optional working-directory project mappings. Imports name it by ID, and remote surfaces (MCP, remote REST) never see its host path.
+
+_Avoid_: session collection, harness collection, watched session folder
+
+_Relates to_: [Source](#source), [Collection](#collection)

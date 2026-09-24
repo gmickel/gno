@@ -10,34 +10,31 @@
  */
 
 // node:fs/promises: directory creation/removal and listing have no Bun equivalents.
-import { mkdir, readdir, unlink } from "node:fs/promises";
+import { mkdir, readdir, rename, unlink } from "node:fs/promises";
 // node:path: no Bun path utilities.
 import { dirname, isAbsolute, join, resolve } from "node:path";
 
-import type { Collection, Config } from "../config/types";
-import type { SessionSourceConfig, SessionsConfig } from "./config";
+import type { Config } from "../config/types";
+import type { SqliteAdapter } from "../store/sqlite/adapter";
+import type { SessionsConfig } from "./config";
 
-import { getIndexDbPath, resolveDirs } from "../app/constants";
-import { canonicalizeIndexName, isValidIndexName } from "../app/index-name";
-import { createDefaultConfig, getConfigPaths, loadConfig } from "../config";
-import { applyConfigFileChange } from "../core/config-mutation";
+import { hashRecordValue } from "../converters/adapters/shared/record-utils";
 import { acquireWriteLock } from "../core/file-lock";
 import { atomicWrite } from "../core/file-ops";
 import { defaultSyncService, withContentTypeRules } from "../ingestion";
-import { SqliteAdapter } from "../store/sqlite/adapter";
 import {
   archiveFilePath,
   renderThread,
   rescanArchiveContent,
-  SESSION_ARCHIVE_FIELD_MAPPING,
   SESSION_STATE_DIRNAME,
 } from "./archive";
-import {
-  canonicalConfigPath,
-  readIndexBinding,
-  writeIndexBinding,
-} from "./binding";
+import { canonicalConfigPath, writeIndexBinding } from "./binding";
 import { redactionStamp } from "./sanitize";
+import {
+  archiveCollection,
+  protectedRoots,
+  requireSessionsConfig,
+} from "./setup";
 import {
   assertSafeSourceRoot,
   canonicalPath,
@@ -45,7 +42,6 @@ import {
   detectHarness,
   detectRootHarness,
   enumerateUnits,
-  isWithin,
   parseUnit,
   SESSION_PARSERS,
   type SessionUnit,
@@ -58,8 +54,10 @@ import {
   unitFingerprint,
   unitKey,
   type UnitState,
+  withheldPath,
 } from "./state";
 import {
+  MAX_IMPORT_LIMIT,
   type ParsedThread,
   SESSION_ARCHIVE_FORMAT_VERSION,
   SESSION_HARNESSES,
@@ -78,7 +76,6 @@ import {
 
 const IMPORT_LOCK_WAIT_MS = 2_000;
 const DISCOVERY_UNIT_LIMIT = 20_000;
-const MAX_IMPORT_LIMIT = 100_000;
 const PATH_SOURCE_PREFIX = "path-";
 
 export interface SessionsServiceDeps {
@@ -151,40 +148,15 @@ const emptyTurns = (): SessionTurnCounts => ({
   overLimit: 0,
 });
 
-/** GNO-owned directories plus the archive: never readable as a source. */
-export function protectedRoots(sessions: SessionsConfig | undefined): string[] {
-  const dirs = resolveDirs();
-  const roots = [dirs.config, dirs.data, dirs.cache];
-  if (sessions) roots.push(sessions.archiveRoot);
-  return roots;
-}
-
-export function requireSessionsConfig(config: Config): SessionsConfig {
-  if (!config.sessions) {
-    throw new SessionsError(
-      "SESSIONS_NOT_CONFIGURED",
-      "No session archive is configured for this config. Create one with: gno --config <archive.yml> --index <name> sessions init --archive <dir> --collection <name>"
-    );
-  }
-  return config.sessions;
-}
-
-function archiveCollection(
-  config: Config,
-  sessions: SessionsConfig,
-  name: string
-): Collection {
-  const collection = config.collections.find((item) => item.name === name);
-  if (
-    !collection ||
-    resolve(collection.path) !== resolve(join(sessions.archiveRoot, name))
-  ) {
-    throw new SessionsError(
-      "SESSIONS_UNKNOWN_COLLECTION",
-      `Collection "${name}" is not an archive collection of this session archive. Add it with: gno sessions init --archive <dir> --collection ${name}`
-    );
-  }
-  return collection;
+/** Identity of the routing settings; a change re-imports the source's units. */
+function destinationsStamp(source: ResolvedSource): string {
+  const projects = [...source.projects]
+    .map((mapping) => `${mapping.prefix}\0${mapping.collection}`)
+    .sort();
+  return hashRecordValue(
+    "gno-session-destinations-v1",
+    JSON.stringify([source.collection, projects])
+  ).slice(0, 16);
 }
 
 function projectDestination(
@@ -333,13 +305,21 @@ export class SessionsService {
       }
       const present = new Set<string>();
       let pending = 0;
+      const destinations = destinationsStamp({
+        id: source.id,
+        harness: source.harness,
+        root: canonical ?? source.path,
+        collection: source.collection,
+        projects: source.projects ?? [],
+      });
       for (const unit of units) {
-        const key = unitKey(unit.path);
+        const key = unitKey(source.id, unit.locator);
         present.add(key);
         const previous = known[key];
         if (
           !previous ||
           previous.status !== "complete" ||
+          previous.destinations !== destinations ||
           previous.fingerprint !== (await unitFingerprint(unit).catch(() => ""))
         ) {
           pending += 1;
@@ -477,7 +457,7 @@ export class SessionsService {
       }
       assertSafeSourceRoot(canonical, protectedRoots(sessions));
       resolved.push({
-        id: `${PATH_SOURCE_PREFIX}${unitKey(canonical).slice(0, 12)}`,
+        id: `${PATH_SOURCE_PREFIX}${hashRecordValue("gno-session-path-source-v1", canonical).slice(0, 12)}`,
         harness: input.format ?? null,
         root: canonical,
         collection: input.collection,
@@ -556,6 +536,11 @@ export class SessionsService {
     const excluded = protectedRoots(sessions);
     const redaction = { literals: sessions.redaction?.literals ?? [] };
     const stamp = redactionStamp(redaction);
+    // Units whose state changed this run; reverted if the index sync fails so
+    // completion is only recorded once the archive is searchable.
+    const touched: Array<{ units: Record<string, UnitState>; key: string }> =
+      [];
+    const revertStamp = new Map<UnitState, string>();
     let processed = 0;
     let deferred = 0;
     let unitsTruncated = false;
@@ -616,8 +601,24 @@ export class SessionsService {
         );
       }
       const present = new Set<string>();
+      const destinations = destinationsStamp(source);
       for (const unit of enumerated.units) {
-        const key = unitKey(unit.path);
+        const key = unitKey(source.id, unit.locator);
+        if (present.has(key)) {
+          // Two units with the same locator would share archive files.
+          counts.failed += 1;
+          recordUnit({
+            sourceId: source.id,
+            harness: unit.harness,
+            locator: unit.locator,
+            outcome: "failed",
+            reason: "unit_conflict",
+            threads: 0,
+            turns: 0,
+            collections: [],
+          });
+          continue;
+        }
         present.add(key);
         let fingerprint: string;
         try {
@@ -643,6 +644,7 @@ export class SessionsService {
           previous.parser ===
             SESSION_PARSERS[previous.harness ?? unit.harness] &&
           previous.redaction === stamp &&
+          previous.destinations === destinations &&
           previous.format === SESSION_ARCHIVE_FORMAT_VERSION;
         if (current) continue;
         if (options.limit !== undefined && processed >= options.limit) {
@@ -664,10 +666,12 @@ export class SessionsService {
           });
           continue;
         }
+        touched.push({ units: sourceState.units, key });
         const outcome = await this.importUnit({
           source,
           unit,
           key,
+          destinations,
           fingerprint,
           previous,
           sourceState,
@@ -685,12 +689,22 @@ export class SessionsService {
       for (const [key, unitState] of Object.entries(sourceState.units)) {
         if (present.has(key)) continue;
         if (unitState.redaction !== stamp && !options.dryRun) {
-          await this.rescanUnavailable(
+          const previousStamp = unitState.redaction;
+          const withheld = await this.rescanUnavailable(
             sessions,
             unitState,
             redaction,
             markChanged
           );
+          if (withheld > 0) {
+            warnings.push(
+              `${source.id}: ${withheld} archived threads of ${unitState.locator} could not be rescanned with the current redaction rules and were withheld from retrieval`
+            );
+          } else {
+            unitState.redaction = stamp;
+            touched.push({ units: sourceState.units, key });
+            revertStamp.set(unitState, previousStamp);
+          }
         }
         if (
           unitState.parser !== null &&
@@ -715,8 +729,18 @@ export class SessionsService {
     };
     let backlog: number | null = null;
     if (!options.dryRun) {
-      await saveState(sessions.archiveRoot, state);
       lexical = await this.syncChanged(sessions, changed);
+      if (lexical.status === "failed") {
+        for (const { units: stateUnits, key } of touched) {
+          const unitState = stateUnits[key];
+          if (!unitState) continue;
+          const previousStamp = revertStamp.get(unitState);
+          if (previousStamp !== undefined) unitState.redaction = previousStamp;
+          else if (unitState.status === "complete")
+            unitState.status = "incomplete";
+        }
+      }
+      await saveState(sessions.archiveRoot, state);
       backlog = await this.embeddingBacklog();
     }
 
@@ -753,6 +777,7 @@ export class SessionsService {
     source: ResolvedSource;
     unit: SessionUnit;
     key: string;
+    destinations: string;
     fingerprint: string;
     previous: UnitState | undefined;
     sourceState: SourceState;
@@ -782,6 +807,7 @@ export class SessionsService {
         status: "failed",
         parser: null,
         redaction: redactionStamp(options.redaction),
+        destinations: options.destinations,
         format: SESSION_ARCHIVE_FORMAT_VERSION,
         threads: options.previous?.threads ?? [],
         updatedAt: this.now.toISOString(),
@@ -832,6 +858,11 @@ export class SessionsService {
         "final record is incomplete (file still being written)"
       );
     }
+    if (diagnostics.threadsWithoutHuman > 0) {
+      receiptWarnings.push(
+        `${diagnostics.threadsWithoutHuman} main threads have assistant turns but no recognised human turn`
+      );
+    }
     if (diagnostics.humanTurnsMissing) {
       receiptWarnings.push(
         "assistant turns without any recognised human turn: possible format drift"
@@ -871,6 +902,7 @@ export class SessionsService {
       const rendered = renderThread({
         thread,
         sourceId: source.id,
+        unitKey: options.key,
         unitLocator: unit.locator,
         parser: parsed.parser,
         redaction: options.redaction,
@@ -984,28 +1016,48 @@ export class SessionsService {
     };
   }
 
+  /**
+   * Rescan the archive of a unit whose source is gone. Files that no longer
+   * parse are moved out of their collection (withheld from retrieval) and
+   * counted; the caller only records the new redaction stamp when none were.
+   */
   private async rescanUnavailable(
     sessions: SessionsConfig,
     unitState: UnitState,
     redaction: { literals: readonly string[] },
     markChanged: (collection: string, relPath: string) => void
-  ): Promise<void> {
+  ): Promise<number> {
+    let withheld = 0;
     for (const thread of unitState.threads) {
       const path = archiveFilePath(
         sessions.archiveRoot,
         thread.collection,
         thread.relPath
       );
+      const aside = withheldPath(
+        sessions.archiveRoot,
+        thread.collection,
+        thread.relPath
+      );
       const content = await readText(path);
-      if (content === null) continue;
+      if (content === null) {
+        if (await Bun.file(aside).exists()) withheld += 1;
+        continue;
+      }
       const rescanned = rescanArchiveContent(content, redaction);
-      if (!rescanned) continue;
+      if (!rescanned) {
+        await mkdir(dirname(aside), { recursive: true });
+        await rename(path, aside);
+        markChanged(thread.collection, thread.relPath);
+        withheld += 1;
+        continue;
+      }
       if (rescanned.content !== content) {
         await atomicWrite(path, rescanned.content);
         markChanged(thread.collection, thread.relPath);
       }
     }
-    unitState.redaction = redactionStamp(redaction);
+    return withheld;
   }
 
   private async syncChanged(
@@ -1043,14 +1095,15 @@ export class SessionsService {
           return {
             status: "failed",
             collections: names,
-            error: `${name}: ${failed.errorCode ?? "sync error"}. Run gno update with the archive config to retry.`,
+            error: `${name}: ${failed.errorCode ?? "sync_error"}; the next import retries the sync.`,
           };
         }
-      } catch (error) {
+      } catch {
+        // The message can carry host paths; receipts stay path-free.
         return {
           status: "failed",
           collections: names,
-          error: `${name}: ${error instanceof Error ? error.message : String(error)}`,
+          error: `${name}: sync_failed; the next import retries the sync.`,
         };
       }
     }
@@ -1090,10 +1143,19 @@ export class SessionsService {
         root: canonical,
         excluded: protectedRoots(sessions),
       });
-      for (const unit of units) present.add(unitKey(unit.path));
+      for (const unit of units) present.add(unitKey(source.id, unit.locator));
     }
-    const removable = Object.entries(sourceState?.units ?? {}).filter(
-      ([key]) => !present.has(key)
+    const entries = Object.entries(sourceState?.units ?? {});
+    const removable = entries.filter(([key]) => !present.has(key));
+    // A file a present unit still references is never removed.
+    const referenced = new Set(
+      entries
+        .filter(([key]) => present.has(key))
+        .flatMap(([, unit]) =>
+          unit.threads.map(
+            (thread) => `${thread.collection}\0${thread.relPath}`
+          )
+        )
     );
     const preview: SessionPrunePreview = {
       schemaVersion: "1",
@@ -1130,6 +1192,9 @@ export class SessionsService {
       const changed = new Map<string, Set<string>>();
       for (const [key, unit] of removable) {
         for (const thread of unit.threads) {
+          if (referenced.has(`${thread.collection}\0${thread.relPath}`)) {
+            continue;
+          }
           await unlink(
             archiveFilePath(
               sessions.archiveRoot,
@@ -1198,369 +1263,4 @@ async function sampleVersions(
     }
   }
   return [...versions].sort();
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Configuration mutations (owner-local surfaces only)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Record the archive binding in the index at init time, so the index refuses
- * other configs before the first import has written anything.
- */
-async function bindArchiveIndex(
-  configPath: string,
-  indexName: string,
-  archiveRoot: string
-): Promise<void> {
-  const existing = (await Bun.file(configPath).exists())
-    ? await loadConfig(configPath)
-    : null;
-  if (existing && !existing.ok) {
-    throw new SessionsError("SESSIONS_INVALID_INPUT", existing.error.message);
-  }
-  const config = existing?.ok ? existing.value : createDefaultConfig();
-  const dbPath = getIndexDbPath(indexName);
-  await mkdir(dirname(dbPath), { recursive: true });
-  const store = new SqliteAdapter();
-  store.setConfigPath(configPath);
-  const opened = await store.open(
-    dbPath,
-    config.ftsTokenizer,
-    config.busyTimeoutMs
-  );
-  if (!opened.ok) {
-    throw new SessionsError("SESSIONS_INVALID_INPUT", opened.error.message);
-  }
-  try {
-    const db = store.getRawDb();
-    const foreign = db
-      .query<{ path: string }, []>("SELECT path FROM collections")
-      .all()
-      .filter((row) => !isWithin(archiveRoot, resolve(row.path)));
-    const canonical = await canonicalConfigPath(configPath);
-    const marker = readIndexBinding(dbPath);
-    if (foreign.length > 0 || (marker !== null && marker !== canonical)) {
-      throw new SessionsError(
-        "SESSIONS_BINDING_MISMATCH",
-        `Index "${indexName}" already holds other collections or belongs to another archive; choose a new index name for the session archive.`
-      );
-    }
-    writeIndexBinding(db, canonical);
-  } finally {
-    await store.close();
-  }
-}
-
-export interface InitArchiveInput {
-  configPath: string;
-  indexName: string;
-  archiveRoot: string;
-  collection: string;
-}
-
-function assertDedicatedPair(configPath: string, indexName: string): void {
-  if (resolve(configPath) === resolve(getConfigPaths().configFile)) {
-    throw new SessionsError(
-      "SESSIONS_INVALID_INPUT",
-      "Session archives use a dedicated config file; pass --config <archive.yml> instead of the default config."
-    );
-  }
-  if (
-    !isValidIndexName(indexName) ||
-    canonicalizeIndexName(indexName) === "default"
-  ) {
-    throw new SessionsError(
-      "SESSIONS_INVALID_INPUT",
-      "Session archives use a dedicated named index; pass --index <name> (not default)."
-    );
-  }
-}
-
-export function archiveCollectionDefinition(
-  archiveRoot: string,
-  name: string
-): Collection {
-  return {
-    name,
-    path: join(archiveRoot, name),
-    pattern: "**/*.jsonl",
-    include: [],
-    exclude: [SESSION_STATE_DIRNAME],
-    recordAdapters: {
-      jsonl: { fieldMapping: SESSION_ARCHIVE_FIELD_MAPPING },
-    },
-  } as Collection;
-}
-
-/** Create or extend the dedicated archive config. Idempotent. */
-export async function initSessionArchive(input: InitArchiveInput): Promise<{
-  config: Config;
-  archiveRoot: string;
-  created: boolean;
-}> {
-  assertDedicatedPair(input.configPath, input.indexName);
-  if (!isAbsolute(input.archiveRoot)) {
-    throw new SessionsError(
-      "SESSIONS_INVALID_INPUT",
-      "--archive must be an absolute directory path."
-    );
-  }
-  if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(input.collection)) {
-    throw new SessionsError(
-      "SESSIONS_INVALID_INPUT",
-      "Collection names are lowercase alphanumeric with hyphens/underscores, 1-64 chars."
-    );
-  }
-  const insideGnoDirs = (path: string): boolean =>
-    protectedRoots(undefined).some((root) => isWithin(resolve(root), path));
-  if (!insideGnoDirs(resolve(input.archiveRoot))) {
-    await mkdir(input.archiveRoot, { recursive: true });
-  }
-  const archiveRoot =
-    (await canonicalPath(input.archiveRoot)) ?? resolve(input.archiveRoot);
-  for (const root of [archiveRoot]) {
-    if (insideGnoDirs(root)) {
-      throw new SessionsError(
-        "SESSIONS_UNSAFE_PATH",
-        "The archive must live outside GNO's config/data/cache directories, which reset and cleanup may remove."
-      );
-    }
-  }
-  await bindArchiveIndex(input.configPath, input.indexName, archiveRoot);
-  let created = false;
-  const result = await applyConfigFileChange(
-    {
-      configPath: input.configPath,
-      createConfigIfMissing: () => {
-        created = true;
-        return createDefaultConfig();
-      },
-    },
-    (config) => {
-      const existing = config.sessions;
-      if (
-        existing &&
-        (existing.index !== input.indexName ||
-          resolve(existing.archiveRoot) !== archiveRoot)
-      ) {
-        return {
-          ok: false,
-          code: "SESSIONS_BINDING_MISMATCH",
-          error:
-            "This config is already bound to a different archive index or root; it is never retargeted silently.",
-        };
-      }
-      if (!existing) {
-        const unrelated = config.collections.filter(
-          (collection) => !isWithin(archiveRoot, resolve(collection.path))
-        );
-        if (unrelated.length > 0) {
-          return {
-            ok: false,
-            code: "SESSIONS_INVALID_INPUT",
-            error:
-              "This config already holds collections outside the archive; use a new dedicated config file for the session archive.",
-          };
-        }
-      }
-      const sessions: SessionsConfig = existing ?? {
-        index: input.indexName,
-        archiveRoot,
-        sources: [],
-      };
-      const collections = [...config.collections];
-      const current = collections.find(
-        (item) => item.name === input.collection
-      );
-      if (current) {
-        if (
-          resolve(current.path) !== resolve(join(archiveRoot, input.collection))
-        ) {
-          return {
-            ok: false,
-            code: "SESSIONS_INVALID_INPUT",
-            error: `Collection "${input.collection}" already exists with a different path.`,
-          };
-        }
-      } else {
-        collections.push(
-          archiveCollectionDefinition(archiveRoot, input.collection)
-        );
-      }
-      return { ok: true, config: { ...config, sessions, collections } };
-    }
-  );
-  if (!result.ok) {
-    throw new SessionsError(
-      result.code === "SESSIONS_BINDING_MISMATCH"
-        ? "SESSIONS_BINDING_MISMATCH"
-        : "SESSIONS_INVALID_INPUT",
-      result.error
-    );
-  }
-  await mkdir(join(archiveRoot, input.collection), { recursive: true });
-  return { config: result.config, archiveRoot, created };
-}
-
-export interface AddSourceInput {
-  configPath: string;
-  id: string;
-  harness: SessionHarness;
-  path: string;
-  collection: string;
-  projects?: Array<{ prefix: string; collection: string }>;
-}
-
-/** Register (or confirm) an owner source. Creates missing archive collections. */
-export async function addSessionSource(input: AddSourceInput): Promise<Config> {
-  if (!SESSION_HARNESSES.includes(input.harness)) {
-    throw new SessionsError(
-      "SESSIONS_UNSUPPORTED_FORMAT",
-      `Unsupported harness "${String(input.harness)}". Supported: ${SESSION_HARNESSES.join(", ")}.`
-    );
-  }
-  if (!isAbsolute(input.path)) {
-    throw new SessionsError(
-      "SESSIONS_INVALID_INPUT",
-      "Source path must be absolute."
-    );
-  }
-  const canonical = await canonicalPath(input.path);
-  if (!canonical) {
-    throw new SessionsError(
-      "SESSIONS_SOURCE_UNAVAILABLE",
-      "The source path does not exist or is not readable."
-    );
-  }
-  const result = await applyConfigFileChange(
-    { configPath: input.configPath },
-    (config) => {
-      const sessions = config.sessions;
-      if (!sessions) {
-        return {
-          ok: false,
-          code: "SESSIONS_NOT_CONFIGURED",
-          error: "Run gno sessions init before registering sources.",
-        };
-      }
-      try {
-        assertSafeSourceRoot(canonical, protectedRoots(sessions));
-      } catch (error) {
-        return {
-          ok: false,
-          code: "SESSIONS_UNSAFE_PATH",
-          error: (error as Error).message,
-        };
-      }
-      const source: SessionSourceConfig = {
-        id: input.id,
-        harness: input.harness,
-        path: canonical,
-        collection: input.collection,
-        ...(input.projects && input.projects.length > 0
-          ? { projects: input.projects }
-          : {}),
-      };
-      const existing = sessions.sources.find((item) => item.id === input.id);
-      if (existing && JSON.stringify(existing) !== JSON.stringify(source)) {
-        return {
-          ok: false,
-          code: "SESSIONS_INVALID_INPUT",
-          error: `Source "${input.id}" is already registered with different settings; remove it first.`,
-        };
-      }
-      const collections = [...config.collections];
-      const needed = new Set([
-        input.collection,
-        ...(input.projects ?? []).map((mapping) => mapping.collection),
-      ]);
-      for (const name of needed) {
-        const current = collections.find((item) => item.name === name);
-        if (!current) {
-          collections.push(
-            archiveCollectionDefinition(sessions.archiveRoot, name)
-          );
-        } else if (
-          resolve(current.path) !== resolve(join(sessions.archiveRoot, name))
-        ) {
-          return {
-            ok: false,
-            code: "SESSIONS_UNKNOWN_COLLECTION",
-            error: `Collection "${name}" is not an archive collection of this archive.`,
-          };
-        }
-      }
-      return {
-        ok: true,
-        config: {
-          ...config,
-          collections,
-          sessions: {
-            ...sessions,
-            sources: existing
-              ? sessions.sources
-              : [...sessions.sources, source],
-          },
-        },
-      };
-    }
-  );
-  if (!result.ok) {
-    const code = [
-      "SESSIONS_NOT_CONFIGURED",
-      "SESSIONS_UNSAFE_PATH",
-      "SESSIONS_UNKNOWN_COLLECTION",
-    ].includes(result.code)
-      ? (result.code as "SESSIONS_NOT_CONFIGURED")
-      : "SESSIONS_INVALID_INPUT";
-    throw new SessionsError(code, result.error);
-  }
-  for (const collection of result.config.collections) {
-    if (
-      isWithin(result.config.sessions!.archiveRoot, resolve(collection.path))
-    ) {
-      await mkdir(collection.path, { recursive: true });
-    }
-  }
-  return result.config;
-}
-
-/** Unregister a source. Its archive files are retained. */
-export async function removeSessionSource(input: {
-  configPath: string;
-  id: string;
-}): Promise<Config> {
-  const result = await applyConfigFileChange(
-    { configPath: input.configPath },
-    (config) => {
-      const sessions = config.sessions;
-      if (!sessions?.sources.some((item) => item.id === input.id)) {
-        return {
-          ok: false,
-          code: "SESSIONS_UNKNOWN_SOURCE",
-          error: `Unknown session source "${input.id}".`,
-        };
-      }
-      return {
-        ok: true,
-        config: {
-          ...config,
-          sessions: {
-            ...sessions,
-            sources: sessions.sources.filter((item) => item.id !== input.id),
-          },
-        },
-      };
-    }
-  );
-  if (!result.ok) {
-    throw new SessionsError(
-      result.code === "SESSIONS_UNKNOWN_SOURCE"
-        ? "SESSIONS_UNKNOWN_SOURCE"
-        : "SESSIONS_INVALID_INPUT",
-      result.error
-    );
-  }
-  return result.config;
 }

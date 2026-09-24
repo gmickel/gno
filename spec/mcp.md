@@ -1758,7 +1758,8 @@ receipt carries no host paths or session content.
 `SESSIONS_UNKNOWN_SOURCE`, `SESSIONS_SOURCE_UNAVAILABLE`,
 `SESSIONS_UNKNOWN_COLLECTION`, `SESSIONS_INVALID_INPUT`,
 `SESSIONS_NOT_CONFIGURED`; `SESSIONS_BUSY` when another import holds the
-archive lock.
+archive lock; `SESSIONS_RUNTIME_FAILURE` (fixed, path-free message) for filesystem or
+index failures.
 
 ### gno_list_tags
 

@@ -25,7 +25,11 @@ import {
   parseClaudeCodeSession,
 } from "./parsers/claude-code";
 import { CODEX_PARSER, parseCodexRollout } from "./parsers/codex";
-import { HERMES_PARSER, parseHermesDatabase } from "./parsers/hermes";
+import {
+  HERMES_PARSER,
+  isHermesDatabase,
+  parseHermesDatabase,
+} from "./parsers/hermes";
 import {
   isOpenClawDatabase,
   OPENCLAW_PARSER,
@@ -246,15 +250,7 @@ export async function detectHarness(
       const db = new Database(path, { readonly: true });
       try {
         if (isOpenClawDatabase(db)) return "openclaw";
-        const tables = db
-          .query<{ name: string }, []>(
-            "SELECT name FROM sqlite_master WHERE type = 'table'"
-          )
-          .all()
-          .map((row) => row.name);
-        if (tables.includes("sessions") && tables.includes("messages")) {
-          return "hermes";
-        }
+        if (isHermesDatabase(db)) return "hermes";
       } finally {
         db.close();
       }

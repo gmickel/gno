@@ -12,7 +12,7 @@ store.
 | `native/openclaw/`       | Legacy session JSONL                                                                                             |
 | `sql/openclaw-agent.sql` | Agent store (two transcript windows with a copied entry, spawned subagent); materialized into a temp SQLite file |
 | `sql/hermes-state.sql`   | `state.db` (in-place compaction, rewound row, delegated subagent); materialized into a temp SQLite file          |
-| `gold/work/`             | Manually normalized archive: the ideal archive lines for every speech turn, in the archive line layout           |
+| `gold/turns.json`        | Manually normalized gold: hand-written per-turn records (native identity, role, time, project, redacted text)    |
 | `cases.json`             | Sources, expected unit outcomes, secrets, never-human noise strings, exact lookups, held-out questions           |
 | `manifest.json`          | sha256 pins for every file above                                                                                 |
 
@@ -22,9 +22,21 @@ separates); `/work/c/billing` is the third. Human decisions are contradicted by
 assistant suggestions in every harness, and each native file carries injected
 context or task prompts that must never be archived as human speech.
 
-Turn keys in `cases.json` are `<archive threadId>#<native logical turn id>`.
-The gold archive stores the same identity in `threadId` and
-`provenance.turnId`, plus `provenance.format` for per-format reporting.
+The gold archive is written by hand from the native fixtures, not from
+pipeline output. Its structure is its own: threads with native identity
+(harness, source profile, native thread id, root `parent`, kind, working
+directory) holding per-turn records (native logical turn id, role, UTC time,
+text). The `normalization` list in the file states the rules. Credential values
+appear as the literal `[REDACTED]`; the eval accepts any `[REDACTED...]` marker
+in that position and nothing else. The eval indexes the gold as a plain JSONL
+file with its own minimal field mapping (see `evals/helpers/sessions-harness.ts`)
+under the same retrieval and capsule budget as the pipeline arm, and judges both
+arms against these records.
+
+Turn keys in `cases.json` are `<harness>/<source id>/<native thread id>#<native
+logical turn id>`. `projectIds` holds the expected pipeline `project-id/*`
+value per working directory; questions filter by directory and each arm maps it
+to its own label.
 
 After any fixture edit, review the diff and re-pin:
 

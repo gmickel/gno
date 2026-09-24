@@ -13,11 +13,15 @@ import { z } from "zod";
 
 import type { ToolContext } from "../server";
 
+import {
+  formatImportReceiptText,
+  formatStatusText,
+} from "../../sessions/format";
 import { SessionsService } from "../../sessions/service";
 import {
+  MAX_IMPORT_LIMIT,
   type SessionImportReceipt,
-  SessionsError,
-  type SessionsStatus,
+  remoteSafeSessionsError,
 } from "../../sessions/types";
 import { runTool, type ToolResult } from "./index";
 
@@ -41,7 +45,7 @@ export const sessionsImportInputSchema = z
       .number()
       .int()
       .min(1)
-      .max(100_000)
+      .max(MAX_IMPORT_LIMIT)
       .optional()
       .describe(
         "Maximum changed units processed this call; the rest are deferred"
@@ -74,36 +78,10 @@ function service(ctx: ToolContext): SessionsService {
   });
 }
 
+/** Re-throw as `CODE: message` (the shape runTool parses), never with host paths. */
 function rethrowSessionsError(error: unknown): never {
-  if (error instanceof SessionsError) {
-    throw new Error(`${error.code}: ${error.message}`);
-  }
-  throw error;
-}
-
-export function formatSessionsStatus(status: SessionsStatus): string {
-  const lines = [`Session archive index: ${status.index}`];
-  for (const collection of status.collections) {
-    lines.push(
-      `- collection ${collection.name}: ${collection.threads} threads`
-    );
-  }
-  for (const source of status.sources) {
-    lines.push(
-      `- source ${source.id} (${source.harness} -> ${source.collection}): ${source.available ? "available" : "unavailable"}; ${source.units.pending} pending, ${source.units.incomplete} incomplete, ${source.units.failed} failed`
-    );
-  }
-  return lines.join("\n");
-}
-
-export function formatSessionsReceipt(receipt: SessionImportReceipt): string {
-  const c = receipt.counts;
-  return [
-    `Session import ${receipt.dryRun ? "(dry run) " : ""}${receipt.status}`,
-    `threads: ${c.imported} imported, ${c.updated} updated, ${c.unchanged} unchanged, ${c.skippedPolicy} skipped by policy`,
-    `units: ${c.incomplete} incomplete, ${c.failed} failed, ${c.unsupported} unsupported, ${receipt.deferredUnits} deferred`,
-    `lexical: ${receipt.lexical.status}; embedding backlog: ${receipt.embedding.backlog ?? "n/a"}`,
-  ].join("\n");
+  const typed = remoteSafeSessionsError(error);
+  throw new Error(`${typed.code}: ${typed.message}`);
 }
 
 export function handleSessionsStatus(ctx: ToolContext): Promise<ToolResult> {
@@ -117,7 +95,7 @@ export function handleSessionsStatus(ctx: ToolContext): Promise<ToolResult> {
         return rethrowSessionsError(error);
       }
     },
-    formatSessionsStatus
+    formatStatusText
   );
 }
 
@@ -153,6 +131,6 @@ export function handleSessionsImport(
       }
       return receipt;
     },
-    formatSessionsReceipt
+    formatImportReceiptText
   );
 }

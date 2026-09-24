@@ -27,8 +27,11 @@ export const SESSION_HARNESS_LABELS: Record<SessionHarness, string> = {
 /** Speaker classes that reach the archive. Everything else is skipped. */
 export type SessionRole = "human" | "assistant";
 
+/** Largest `limit` accepted by one import call. */
+export const MAX_IMPORT_LIMIT = 100_000;
+
 /** Version of the archive line layout; bumps force a rewrite on import. */
-export const SESSION_ARCHIVE_FORMAT_VERSION = 1;
+export const SESSION_ARCHIVE_FORMAT_VERSION = 2;
 
 /** Bounds applied while reading sources. */
 export const SESSION_LIMITS = {
@@ -95,8 +98,16 @@ export interface UnitDiagnostics {
   copiedHistorySkipped: number;
   /** Final line was cut mid-write (a growing file). */
   truncatedTail: boolean;
-  /** Assistant turns exist but no human turn was recognised. */
+  /**
+   * Single-thread file units: assistant turns exist but no human turn was
+   * recognised (possible format drift); the unit stays incomplete.
+   */
   humanTurnsMissing: boolean;
+  /**
+   * Database units: main threads with assistant turns but no human turn.
+   * Reported per thread, so one such thread cannot hold the unit back.
+   */
+  threadsWithoutHuman: number;
   /** Format revision reported by the source, when recorded. */
   formatVersion?: string;
 }
@@ -110,6 +121,7 @@ export const emptyDiagnostics = (): UnitDiagnostics => ({
   copiedHistorySkipped: 0,
   truncatedTail: false,
   humanTurnsMissing: false,
+  threadsWithoutHuman: 0,
 });
 
 const SAFE_KIND = /[^A-Za-z0-9_.:/-]/g;
@@ -295,7 +307,8 @@ export type SessionsErrorCode =
   | "SESSIONS_SOURCE_UNAVAILABLE"
   | "SESSIONS_UNSUPPORTED_FORMAT"
   | "SESSIONS_INVALID_INPUT"
-  | "SESSIONS_BUSY";
+  | "SESSIONS_BUSY"
+  | "SESSIONS_RUNTIME_FAILURE";
 
 /** Typed error shared by every sessions surface. */
 export class SessionsError extends Error {
@@ -321,3 +334,16 @@ export const SESSIONS_VALIDATION_CODES: ReadonlySet<SessionsErrorCode> =
     "SESSIONS_UNSUPPORTED_FORMAT",
     "SESSIONS_INVALID_INPUT",
   ]);
+
+/**
+ * Typed, path-free error for remote surfaces (REST, MCP). Filesystem and
+ * store failures carry host paths in their messages; those stay in the
+ * server log.
+ */
+export function remoteSafeSessionsError(error: unknown): SessionsError {
+  if (error instanceof SessionsError) return error;
+  return new SessionsError(
+    "SESSIONS_RUNTIME_FAILURE",
+    "The session operation failed on the server (filesystem or index error); retry, or run the command locally for details."
+  );
+}

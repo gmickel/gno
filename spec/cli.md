@@ -1845,7 +1845,8 @@ invocation.
   `get`). Plain `gno update` on the default config therefore never reads the
   archive.
 - The archive root must lie outside GNO's config/data/cache directories so
-  `gno reset`, index cleanup or uninstall cannot remove it.
+  `gno reset`, index cleanup or uninstall cannot remove it, and outside every
+  folder the default config indexes (`SESSIONS_UNSAFE_PATH`).
 
 **Synopsis:**
 
@@ -1899,6 +1900,16 @@ adapter.
 - A thread whose recorded working directories map to different collections
   is quarantined (`skipped_policy`, reason `mixed_domain`) instead of being
   written to the less restricted one.
+- A unit is identified by source ID plus its safe locator, so moving a file
+  within the source root or re-registering the source at a new path keeps
+  its archive files; two units with the same locator fail the second one
+  (`unit_conflict`). Archive files are namespaced per unit, so two units
+  reporting the same thread ID never overwrite each other.
+- A unit is re-imported when its routing settings (collection or project
+  mappings) change, so a quarantined thread is imported once it is mapped.
+- Units are recorded complete only after the lexical sync of the changed
+  archive files succeeds; a failed or interrupted sync is retried by the next
+  run.
 - Imports on one archive serialize on `<archive>/.gno-sessions/import.lock`;
   a concurrent run exits `BUSY` (`SESSIONS_BUSY`).
 - A source file that disappears keeps its archive; `status` reports it as
@@ -1919,8 +1930,9 @@ availability, unit counts (complete, incomplete, failed, pending),
 `sessions-status` schema.
 
 **prune**: lists archived units whose source is gone (preview by default);
-`--apply` deletes exactly those archive files and syncs the index. Source
-deletion alone never removes archive files.
+`--apply` deletes exactly those archive files and syncs the index, never a
+file a still-present unit references. Source deletion alone never removes
+archive files.
 
 **Exit codes:** `VALIDATION` (1) for selection, destination, binding,
 unknown source/collection, unsafe path and unsupported format errors;

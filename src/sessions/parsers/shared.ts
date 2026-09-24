@@ -150,11 +150,33 @@ export function hasTables(db: Database, tables: readonly string[]): boolean {
 }
 
 /** Human turns absent while assistant turns exist signals format drift. */
-export function flagMissingHumanTurns(
-  turns: readonly ParsedTurn[],
-  diagnostics: UnitDiagnostics
-): void {
-  const assistant = turns.some((turn) => turn.role === "assistant");
-  const human = turns.some((turn) => turn.role === "human");
-  if (assistant && !human) diagnostics.humanTurnsMissing = true;
+export function missingHumanTurns(turns: readonly ParsedTurn[]): boolean {
+  return (
+    turns.some((turn) => turn.role === "assistant") &&
+    !turns.some((turn) => turn.role === "human")
+  );
+}
+
+/**
+ * Length of the longest prefix of `candidates` that equals a suffix of
+ * `source`: the contiguous block a harness copies from earlier history
+ * (a compaction tail or a continuation's inherited tail).
+ */
+export function copiedPrefixLength(
+  candidates: readonly string[],
+  source: readonly string[]
+): number {
+  const max = Math.min(candidates.length, source.length);
+  for (let length = max; length > 0; length -= 1) {
+    const offset = source.length - length;
+    let equal = true;
+    for (let index = 0; index < length; index += 1) {
+      if (candidates[index] !== source[offset + index]) {
+        equal = false;
+        break;
+      }
+    }
+    if (equal) return length;
+  }
+  return 0;
 }

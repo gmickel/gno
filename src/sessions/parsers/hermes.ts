@@ -34,7 +34,8 @@ import {
   type SessionThreadKind,
 } from "../types";
 import {
-  flagMissingHumanTurns,
+  copiedPrefixLength,
+  missingHumanTurns,
   hasTables,
   pushTurn,
   tableColumns,
@@ -103,6 +104,50 @@ function classifyChild(row: SessionRow): SessionThreadKind {
 const contentKey = (role: string, content: string): string =>
   `${role}\0${content}`;
 
+const isSummary = (content: string): boolean => {
+  const trimmed = content.trimStart();
+  return SUMMARY_PREFIXES.some((prefix) => trimmed.startsWith(prefix));
+};
+
+/**
+ * Rows a harness copied from earlier history: the contiguous block right
+ * after each in-place compaction point that repeats the tail of the
+ * compacted originals, and the block at a continuation's start that repeats
+ * the tail of its parent. A later genuine repeat ("yes") is kept.
+ */
+function copiedRowIds(
+  rows: readonly MessageRow[],
+  parentSpeech: readonly string[]
+): Set<number> {
+  const copied = new Set<number>();
+  const skipBlock = (startIndex: number, source: readonly string[]): void => {
+    // Rewound rows and summaries are dropped anyway; they do not break a block.
+    const candidates: MessageRow[] = [];
+    for (let cursor = startIndex; cursor < rows.length; cursor += 1) {
+      const row = rows[cursor]!;
+      if (row.compacted === 1) break;
+      if (row.active === 0 || isSummary(row.content ?? "")) continue;
+      candidates.push(row);
+    }
+    const length = copiedPrefixLength(
+      candidates.map((row) => contentKey(row.role, row.content ?? "")),
+      source
+    );
+    for (const row of candidates.slice(0, length)) copied.add(row.id);
+  };
+  if (parentSpeech.length > 0) skipBlock(0, parentSpeech);
+  const originals: string[] = [];
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index]!;
+    if (row.compacted === 1) {
+      originals.push(contentKey(row.role, row.content ?? ""));
+      const next = rows[index + 1];
+      if (next && next.compacted !== 1) skipBlock(index + 1, originals);
+    }
+  }
+  return copied;
+}
+
 export function parseHermesDatabase(path: string): ParseUnitResult {
   const diagnostics = emptyDiagnostics();
   const threads = withReadOnlySnapshot(path, (db) => {
@@ -123,48 +168,39 @@ export function parseHermesDatabase(path: string): ParseUnitResult {
       .all();
     const pickMessage = (name: string) =>
       messageColumns.has(name) ? name : `NULL AS ${name}`;
+    // Insertion order (id) keeps a copied block contiguous with its origin.
     const messageQuery = db.query<MessageRow, [string]>(
-      `SELECT id, role, content, ${pickMessage("timestamp")}, ${pickMessage("active")}, ${pickMessage("compacted")} FROM messages WHERE session_id = ? ORDER BY ${messageColumns.has("timestamp") ? "timestamp," : ""} id`
+      `SELECT id, role, content, ${pickMessage("timestamp")}, ${pickMessage("active")}, ${pickMessage("compacted")} FROM messages WHERE session_id = ? ORDER BY id`
     );
-    const contentBySession = new Map<string, Set<string>>();
+    const speechBySession = new Map<string, string[]>();
     const result: ParsedThread[] = [];
     for (const session of sessions.slice(0, SESSION_LIMITS.maxThreadsPerUnit)) {
       const kind = classifyChild(session);
-      const rows = messageQuery.all(session.id);
-      const archivedCopies = new Set<string>();
-      for (const row of rows) {
-        if (row.compacted === 1 && row.content) {
-          archivedCopies.add(contentKey(row.role, row.content));
-        }
-      }
-      const parentContent =
+      const rows = messageQuery
+        .all(session.id)
+        .filter(
+          (row) =>
+            (row.role === "user" || row.role === "assistant") &&
+            (row.content ?? "").trim() !== ""
+        );
+      const copied = copiedRowIds(
+        rows,
         kind === "continuation" && session.parent_session_id
-          ? contentBySession.get(session.parent_session_id)
-          : undefined;
-      const own = new Set<string>();
+          ? (speechBySession.get(session.parent_session_id) ?? [])
+          : []
+      );
+      diagnostics.copiedHistorySkipped += copied.size;
+      const speech: string[] = [];
       const turns: ParsedTurn[] = [];
       for (const row of rows) {
-        if (row.role !== "user" && row.role !== "assistant") continue;
         const content = row.content ?? "";
-        if (!content.trim()) continue;
-        const key = contentKey(row.role, content);
-        own.add(key);
-        const archivedOriginal = row.compacted === 1;
         const rewound = row.active === 0 && row.compacted !== 1;
-        if (rewound) continue;
-        if (!archivedOriginal && archivedCopies.has(key)) {
-          diagnostics.copiedHistorySkipped += 1;
-          continue;
-        }
-        if (parentContent?.has(key)) {
-          diagnostics.copiedHistorySkipped += 1;
-          continue;
-        }
-        const trimmed = content.trimStart();
-        if (SUMMARY_PREFIXES.some((prefix) => trimmed.startsWith(prefix))) {
+        if (rewound || copied.has(row.id)) continue;
+        if (isSummary(content)) {
           diagnostics.injectedSkipped += 1;
           continue;
         }
+        speech.push(contentKey(row.role, content));
         if (row.role === "user" && kind === "subagent") {
           diagnostics.injectedSkipped += 1;
           continue;
@@ -183,8 +219,10 @@ export function parseHermesDatabase(path: string): ParseUnitResult {
         );
         if (!pushed) break;
       }
-      contentBySession.set(session.id, own);
-      if (kind === "main") flagMissingHumanTurns(turns, diagnostics);
+      speechBySession.set(session.id, speech);
+      if (kind === "main" && missingHumanTurns(turns)) {
+        diagnostics.threadsWithoutHuman += 1;
+      }
       result.push({
         harness: "hermes",
         threadId: session.id,
@@ -200,7 +238,7 @@ export function parseHermesDatabase(path: string): ParseUnitResult {
   return {
     threads,
     diagnostics,
-    complete: !diagnostics.humanTurnsMissing,
+    complete: true,
     parser: HERMES_PARSER,
   };
 }

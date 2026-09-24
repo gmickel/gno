@@ -1586,11 +1586,10 @@ Returns the shared `sessions-import-receipt` object (status
 `complete`/`partial`/`failed`/`nothing_to_do`, thread and unit counts, turn
 counts, per-unit outcomes with safe locators, `deferredUnits`, lexical
 readiness, and the embedding backlog). A `partial` import stays visible and
-the next call retries it. Import does not embed. Errors:
-`WRITE_DISABLED`, `SESSIONS_UNKNOWN_SOURCE`, `SESSIONS_SOURCE_UNAVAILABLE`,
-`SESSIONS_UNKNOWN_COLLECTION`, `SESSIONS_INVALID_INPUT`,
-`SESSIONS_NOT_CONFIGURED`, and `SESSIONS_BUSY` when another import holds the
-archive lock.
+the next call retries it. Import does not embed. Errors are `WRITE_DISABLED`
+or a sessions code in `structuredContent.error` (for example
+`SESSIONS_UNKNOWN_SOURCE`, `SESSIONS_BUSY`); see
+[error codes](SESSIONS.md#error-codes).
 
 Imported turns are evidence, not facts: search them with `gno_search` /
 `gno_query` on the same server, cite them by `gno://` URI (with

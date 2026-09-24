@@ -252,11 +252,8 @@ that share its receipt and status types (`src/sessions/types.ts`).
 **Isolation by config/index pair.** An archive is one config file with a
 `sessions` block bound to one named index. `src/sessions/binding.ts` checks
 the pair before every CLI command, when the SDK opens a client, on the REST
-routes, and for cross-index `get`: the archive config opened with another
-index, or the archive index opened with another config, fails with
-`SESSIONS_BINDING_MISMATCH`. The curated index therefore never ingests or
-serves archive records unless the user registers an archive folder in the
-curated config explicitly. The archive root must lie outside GNO's
+routes, and for cross-index `get`; the rules are in
+[Archive binding](SESSIONS.md#archive-binding-one-config-one-index). The archive root must lie outside GNO's
 config/data/cache directories, so reset, cleanup, and uninstall cannot remove
 it; the SQLite index remains disposable and can be rebuilt from the archive
 with `gno update`.

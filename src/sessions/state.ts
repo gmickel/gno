@@ -3,7 +3,7 @@
  *
  * State lives in `<archiveRoot>/.gno-sessions/state.json`, outside every
  * archive collection root, and never records host paths: units are keyed by
- * a hash of their canonical path and described by their safe locator. A unit
+ * a hash of source ID and safe locator. A unit
  * advances to `complete` only after a clean, fully read run; partial reads
  * stay `incomplete` and are retried. The archive files themselves are the
  * source of truth for idempotency: a changed unit is re-rendered and
@@ -35,6 +35,8 @@ export interface UnitState {
   parser: string | null;
   /** Redaction policy stamp the archive was produced with. */
   redaction: string;
+  /** Destination settings (collection + project mappings) it was routed with. */
+  destinations: string;
   format: number;
   threads: Array<{ collection: string; relPath: string }>;
   updatedAt: string;
@@ -50,8 +52,15 @@ export interface SessionsState {
   sources: Record<string, SourceState>;
 }
 
-export const stateDir = (archiveRoot: string): string =>
+const stateDir = (archiveRoot: string): string =>
   join(archiveRoot, SESSION_STATE_DIRNAME);
+
+/** Archive files that could not be rescanned; outside every collection. */
+export const withheldPath = (
+  archiveRoot: string,
+  collection: string,
+  relPath: string
+): string => join(stateDir(archiveRoot), "withheld", collection, relPath);
 
 const statePath = (archiveRoot: string): string =>
   join(stateDir(archiveRoot), "state.json");
@@ -59,8 +68,16 @@ const statePath = (archiveRoot: string): string =>
 export const importLockPath = (archiveRoot: string): string =>
   join(stateDir(archiveRoot), "import.lock");
 
-export const unitKey = (path: string): string =>
-  hashRecordValue("gno-session-unit-v1", path).slice(0, 32);
+/**
+ * Unit identity inside a source: the safe locator, not the host path, so a
+ * source re-registered at a new path or a file moved within its root keeps
+ * its archive files.
+ */
+export const unitKey = (sourceId: string, locator: string): string =>
+  hashRecordValue("gno-session-unit-v2", `${sourceId}\0${locator}`).slice(
+    0,
+    32
+  );
 
 export async function loadState(archiveRoot: string): Promise<SessionsState> {
   const file = Bun.file(statePath(archiveRoot));

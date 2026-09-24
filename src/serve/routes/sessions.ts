@@ -20,17 +20,17 @@ import { getIndexDbPath } from "../../app/constants";
 import { withContentTypeRules } from "../../ingestion";
 import { assertSessionBinding } from "../../sessions/binding";
 import { SessionSourceSchema } from "../../sessions/config";
+import { SessionsService } from "../../sessions/service";
 import {
   addSessionSource,
   initSessionArchive,
   removeSessionSource,
-  SessionsService,
-} from "../../sessions/service";
+} from "../../sessions/setup";
 import {
   SESSION_HARNESSES,
   type SessionHarness,
   type SessionImportReceipt,
-  SessionsError,
+  remoteSafeSessionsError,
   type SessionsErrorCode,
   SESSIONS_VALIDATION_CODES,
 } from "../../sessions/types";
@@ -109,28 +109,19 @@ function sessionsError(
   );
 }
 
-/** Map a thrown error onto the REST envelope; `details.sessionsCode` is stable. */
+/**
+ * Map a thrown error onto the REST envelope; `details.sessionsCode` is
+ * stable and messages never carry host paths.
+ */
 export function sessionsErrorResponse(error: unknown): Response {
-  if (error instanceof SessionsError) {
-    if (error.code === "SESSIONS_BUSY") {
-      return sessionsError(error.code, error.message, HTTP_CONFLICT);
-    }
-    return sessionsError(
-      error.code,
-      error.message,
-      SESSIONS_VALIDATION_CODES.has(error.code)
-        ? HTTP_BAD_REQUEST
-        : HTTP_INTERNAL
-    );
+  const typed = remoteSafeSessionsError(error);
+  if (typed.code === "SESSIONS_BUSY") {
+    return sessionsError(typed.code, typed.message, HTTP_CONFLICT);
   }
-  return Response.json(
-    {
-      error: {
-        code: "RUNTIME",
-        message: error instanceof Error ? error.message : String(error),
-      },
-    },
-    { status: HTTP_INTERNAL }
+  return sessionsError(
+    typed.code,
+    typed.message,
+    SESSIONS_VALIDATION_CODES.has(typed.code) ? HTTP_BAD_REQUEST : HTTP_INTERNAL
   );
 }
 

@@ -327,6 +327,25 @@ describe("session parsers on pinned fixtures", () => {
   }
 });
 
+test("a codex fork without a history start ordinal archives nothing and reports drift", async () => {
+  const source = await Bun.file(
+    codex(
+      "rollout-2026-09-21T11-00-00-0000c0de-0000-7000-8000-000000000003.jsonl"
+    )
+  ).text();
+  const path = join(tmp, "fork-without-ordinal.jsonl");
+  await Bun.write(
+    path,
+    source.replace('"subagent_history_start_ordinal":4', '"unrelated":4')
+  );
+  const result = await parseCodexRollout(path);
+  expect(result.threads).toEqual([]);
+  expect(result.complete).toBe(false);
+  expect(result.diagnostics.unknownKinds).toEqual({
+    fork_without_history_start: 1,
+  });
+});
+
 describe("structural detection", () => {
   const detections: Array<[string, () => string, SessionHarness | null]> = [
     [
@@ -424,6 +443,51 @@ describe("SQLite snapshot reads", () => {
     } finally {
       writer.close();
     }
+  });
+
+  test("hermes keeps genuine repeats; only the contiguous copied block is skipped", async () => {
+    const path = join(tmp, "hermes-repeats.db");
+    const db = new Database(path, { create: true });
+    db.exec(
+      await Bun.file(join(FIXTURES, "sql/hermes-state-v0.19.sql")).text()
+    );
+    db.run(
+      "INSERT INTO messages (session_id, role, content, timestamp) VALUES ('h-cont', 'user', 'Theta question: which placeholder region hosts the cache?', 1789785010.0), ('h-root', 'user', 'Eta decision: the placeholder backup runs at 02:00 UTC.', 1789790070.0)"
+    );
+    db.close();
+    const result = parseHermesDatabase(path);
+    const texts = (id: string) =>
+      result.threads
+        .find((thread) => thread.threadId === id)!
+        .turns.map((turn) => turn.text);
+    // A continuation repeating a parent question later is a new human turn.
+    expect(texts("h-cont")).toEqual([
+      "Theta decision: move the placeholder cache to region two.",
+      "Theta question: which placeholder region hosts the cache?",
+    ]);
+    // A human repeating a compacted decision after compaction is kept.
+    expect(texts("h-root").at(-1)).toBe(
+      "Eta decision: the placeholder backup runs at 02:00 UTC."
+    );
+    expect(result.diagnostics.copiedHistorySkipped).toBe(2);
+  });
+
+  test("an assistant-only main thread does not hold a database unit incomplete", async () => {
+    const path = join(tmp, "hermes-assistant-only.db");
+    const db = new Database(path, { create: true });
+    db.exec(
+      await Bun.file(join(FIXTURES, "sql/hermes-state-v0.19.sql")).text()
+    );
+    db.run(
+      "INSERT INTO sessions VALUES ('h-cron', 'cron', '{}', NULL, 1789795000.0, NULL, NULL, '/work/eta', 'Placeholder cron')"
+    );
+    db.run(
+      "INSERT INTO messages (session_id, role, content, timestamp) VALUES ('h-cron', 'assistant', 'Scheduled placeholder report.', 1789795001.0)"
+    );
+    db.close();
+    const result = parseHermesDatabase(path);
+    expect(result.complete).toBe(true);
+    expect(result.diagnostics.threadsWithoutHuman).toBe(1);
   });
 
   test("an unreadable database fails explicitly instead of returning empty", () => {

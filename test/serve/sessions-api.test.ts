@@ -27,12 +27,10 @@ import {
   handleSessionsInit,
   handleSessionsRemoveSource,
   handleSessionsStatus,
+  sessionsErrorResponse,
 } from "../../src/serve/routes/sessions";
 import { startServer } from "../../src/serve/server";
-import {
-  addSessionSource,
-  initSessionArchive,
-} from "../../src/sessions/service";
+import { addSessionSource, initSessionArchive } from "../../src/sessions/setup";
 import { importLockPath } from "../../src/sessions/state";
 import { safeRm } from "../helpers/cleanup";
 import { FIXTURES, tempDir } from "../sessions/helpers";
@@ -556,4 +554,18 @@ describe("server wiring", () => {
     );
     expect(result).toEqual({ success: true });
   });
+});
+
+test("non-session failures map to a typed, path-free REST error", async () => {
+  const response = sessionsErrorResponse(
+    new Error(
+      "ENOENT: no such file or directory, open '/home/owner/archive/state.json'"
+    )
+  );
+  expect(response.status).toBe(500);
+  const body = (await response.json()) as {
+    error: { message: string; details: { sessionsCode: string } };
+  };
+  expect(body.error.details.sessionsCode).toBe("SESSIONS_RUNTIME_FAILURE");
+  expect(body.error.message).not.toContain("/home/owner");
 });

@@ -30,7 +30,7 @@ import {
   type ParseUnitResult,
 } from "../types";
 import {
-  flagMissingHumanTurns,
+  missingHumanTurns,
   isRecord,
   joinTextBlocks,
   pushTurn,
@@ -230,7 +230,7 @@ export async function parseClaudeCodeSession(
     };
   }
   if (!(isSubagentFile || programmaticEntry)) {
-    flagMissingHumanTurns(turns, diagnostics);
+    diagnostics.humanTurnsMissing = missingHumanTurns(turns);
   }
   const thread: ParsedThread = isSubagentFile
     ? {

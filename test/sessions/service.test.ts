@@ -12,11 +12,12 @@ import { loadConfig, saveConfigToPath } from "../../src/config";
 import { acquireWriteLock } from "../../src/core/file-lock";
 import { searchBm25 } from "../../src/pipeline/search";
 import { assertSessionBinding } from "../../src/sessions/binding";
+import { SessionsService } from "../../src/sessions/service";
 import {
   addSessionSource,
   initSessionArchive,
-  SessionsService,
-} from "../../src/sessions/service";
+  removeSessionSource,
+} from "../../src/sessions/setup";
 import { importLockPath } from "../../src/sessions/state";
 import { type SessionHarness, SessionsError } from "../../src/sessions/types";
 import { openScopedIndexStore } from "../../src/store/sqlite/scoped-index";
@@ -459,15 +460,21 @@ describe("import, idempotency and reconciliation (R3, R4)", () => {
     await rename(join(codexRoot, CODEX_MAIN), join(root, "gone.jsonl"));
     const config = await loadArchiveConfig();
     config.sessions!.redaction = {
-      literals: ["alpha queue", "beta checklist"],
+      literals: [
+        "alpha queue",
+        "beta checklist",
+        "0000c0de-0000-7000-8000-000000000001",
+      ],
     };
     await saveConfigToPath(config, configPath);
     await withService((service) =>
       service.import({ sourceId: "codex-main" }, { allowPaths: false })
     );
     const archived = await readAll(join(archiveRoot, "work"));
-    // The source of the "alpha queue" thread is gone: rescanned in place.
+    // The source of the "alpha queue" thread is gone: rescanned in place,
+    // including titles, categories and provenance fields.
     expect(archived).not.toContain("alpha queue");
+    expect(archived).not.toContain("0000c0de-0000-7000-8000-000000000001");
     // The "beta checklist" source still exists: re-rendered.
     expect(archived).not.toContain("beta checklist");
     expect(await searchArchive("alpha queue SQLite")).toEqual([]);
@@ -507,6 +514,185 @@ describe("import, idempotency and reconciliation (R3, R4)", () => {
     const unit = receipt.units.find((item) => item.locator === CODEX_MAIN);
     expect(unit?.outcome).toBe("skipped_policy");
     expect(unit?.warnings?.join(" ")).toContain("mixed_domain");
+  });
+
+  test("a failed index sync records no completion and the next run heals it", async () => {
+    const failing = await withService(async (_service, config) => {
+      const opened = await initStore({
+        configPath,
+        indexName: INDEX,
+        allowEmptyCollections: true,
+      });
+      if (!opened.ok) throw new Error(opened.error);
+      try {
+        return await new SessionsService({
+          config,
+          configPath,
+          indexName: INDEX,
+          store: opened.store,
+          syncService: {
+            syncPaths: () => Promise.reject(new Error(`EIO ${archiveRoot}`)),
+            syncCollection: () => Promise.reject(new Error("unused")),
+          },
+        }).import({ sourceId: "codex-main" }, { allowPaths: false });
+      } finally {
+        await opened.store.close();
+      }
+    });
+    expect(failing.lexical.status).toBe("failed");
+    expect(failing.status).toBe("partial");
+    expect(JSON.stringify(failing)).not.toContain(archiveRoot);
+    const healed = await withService((service) =>
+      service.import({ sourceId: "codex-main" }, { allowPaths: false })
+    );
+    expect(healed.status).not.toBe("nothing_to_do");
+    expect(healed.lexical.status).toBe("ready");
+    expect(await searchArchive("SQLite")).toHaveLength(1);
+  });
+
+  test("moving a unit within its root or re-registering the source keeps its archive", async () => {
+    await withService((service) =>
+      service.import({ sourceId: "codex-main" }, { allowPaths: false })
+    );
+    await mkdir(join(codexRoot, "moved"), { recursive: true });
+    await rename(
+      join(codexRoot, CODEX_MAIN),
+      join(codexRoot, "moved", CODEX_MAIN)
+    );
+    const afterMove = await withService((service) =>
+      service.import({ sourceId: "codex-main" }, { allowPaths: false })
+    );
+    expect(afterMove.counts.imported).toBe(0);
+    const relocated = join(root, "relocated");
+    await cp(codexRoot, relocated, { recursive: true });
+    await removeSessionSource({ configPath, id: "codex-main" });
+    await addSessionSource({
+      configPath,
+      id: "codex-main",
+      harness: "codex",
+      path: relocated,
+      collection: "work",
+    });
+    const afterRelocation = await withService((service) =>
+      service.import({ sourceId: "codex-main" }, { allowPaths: false })
+    );
+    expect(afterRelocation.counts.imported).toBe(0);
+    const preview = await withService((service) =>
+      service.prune({ sourceId: "codex-main", apply: true })
+    );
+    expect(preview.archiveFiles).toBe(0);
+    expect(await searchArchive("SQLite")).toHaveLength(1);
+  });
+
+  test("prune never unlinks a file that a present unit still references", async () => {
+    await withService((service) =>
+      service.import({ sourceId: "codex-main" }, { allowPaths: false })
+    );
+    const statePath = join(archiveRoot, ".gno-sessions", "state.json");
+    const state = await Bun.file(statePath).json();
+    const units = state.sources["codex-main"].units as Record<
+      string,
+      {
+        locator: string;
+        threads: Array<{ collection: string; relPath: string }>;
+      }
+    >;
+    const live = Object.values(units).find(
+      (unit) => unit.locator === CODEX_MAIN
+    )!;
+    units.stale = { ...live, locator: "gone.jsonl" };
+    await Bun.write(statePath, JSON.stringify(state));
+    const applied = await withService((service) =>
+      service.prune({ sourceId: "codex-main", apply: true })
+    );
+    expect(applied.units.map((unit) => unit.locator)).toEqual(["gone.jsonl"]);
+    expect(await searchArchive("SQLite")).toHaveLength(1);
+  });
+
+  test("two units with the same locator fail instead of sharing archive files", async () => {
+    await mkdir(join(codexRoot, "copy"), { recursive: true });
+    await cp(join(codexRoot, CODEX_MAIN), join(codexRoot, "copy", CODEX_MAIN));
+    const receipt = await withService((service) =>
+      service.import(
+        { sourceId: "codex-main", dryRun: true },
+        { allowPaths: false }
+      )
+    );
+    expect(
+      receipt.units.filter((unit) => unit.reason === "unit_conflict")
+    ).toHaveLength(1);
+  });
+
+  test("a mapping added to resolve a quarantine imports the thread on the next run", async () => {
+    await appendFile(
+      join(codexRoot, CODEX_MAIN),
+      `${JSON.stringify({ timestamp: "2026-09-20T10:20:00.000Z", ordinal: 20, type: "turn_context", payload: { cwd: "/work/other" } })}\n${JSON.stringify({ timestamp: "2026-09-20T10:21:00.000Z", ordinal: 21, type: "event_msg", payload: { type: "item_completed", item: { type: "UserMessage", id: "item-x", content: [{ type: "text", text: "cross-project note" }] } } })}\n`
+    );
+    await removeSessionSource({ configPath, id: "codex-main" });
+    await addSessionSource({
+      configPath,
+      id: "codex-main",
+      harness: "codex",
+      path: codexRoot,
+      collection: "work",
+      projects: [{ prefix: "/work/alpha", collection: "private" }],
+    });
+    const quarantined = await withService((service) =>
+      service.import({ sourceId: "codex-main" }, { allowPaths: false })
+    );
+    expect(quarantined.counts.skippedPolicy).toBe(1);
+    await removeSessionSource({ configPath, id: "codex-main" });
+    await addSessionSource({
+      configPath,
+      id: "codex-main",
+      harness: "codex",
+      path: codexRoot,
+      collection: "work",
+      projects: [
+        { prefix: "/work/alpha", collection: "private" },
+        { prefix: "/work/other", collection: "private" },
+      ],
+    });
+    const resolved = await withService((service) =>
+      service.import({ sourceId: "codex-main" }, { allowPaths: false })
+    );
+    expect(resolved.counts.skippedPolicy).toBe(0);
+    expect(resolved.counts.imported).toBe(1);
+    expect(await searchArchive("cross-project")).toHaveLength(1);
+  });
+
+  test("an unparseable archive without a source is withheld, not stamped as rescanned", async () => {
+    await withService((service) =>
+      service.import({ sourceId: "codex-main" }, { allowPaths: false })
+    );
+    await rename(join(codexRoot, CODEX_MAIN), join(root, "gone.jsonl"));
+    const statePath = join(archiveRoot, ".gno-sessions", "state.json");
+    const state = await Bun.file(statePath).json();
+    const unit = (
+      Object.values(state.sources["codex-main"].units) as Array<{
+        locator: string;
+        redaction: string;
+        threads: Array<{ collection: string; relPath: string }>;
+      }>
+    ).find((item) => item.locator === CODEX_MAIN)!;
+    const archived = join(archiveRoot, "work", unit.threads[0]!.relPath);
+    await Bun.write(archived, "{not an archive line\n");
+    const config = await loadArchiveConfig();
+    config.sessions!.redaction = { literals: ["alpha queue"] };
+    await saveConfigToPath(config, configPath);
+    const receipt = await withService((service) =>
+      service.import({ sourceId: "codex-main" }, { allowPaths: false })
+    );
+    expect(receipt.warnings.join(" ")).toContain("withheld");
+    expect(await Bun.file(archived).exists()).toBe(false);
+    const after = await Bun.file(statePath).json();
+    const stamped = (
+      Object.values(after.sources["codex-main"].units) as Array<{
+        locator: string;
+        redaction: string;
+      }>
+    ).find((item) => item.locator === CODEX_MAIN)!;
+    expect(stamped.redaction).toBe(unit.redaction);
   });
 });
 
@@ -601,6 +787,24 @@ describe("archive isolation (R8)", () => {
       "SESSIONS_BINDING_MISMATCH"
     );
     expect(await Bun.file(join(root, "second.yml")).exists()).toBe(false);
+  });
+
+  test("init refuses an archive inside a folder the default config indexes", async () => {
+    const notes = join(root, "notes-vault");
+    await mkdir(notes, { recursive: true });
+    await Bun.write(
+      join(process.env.GNO_CONFIG_DIR!, "index.yml"),
+      `version: "1.0"\ncollections:\n  - name: notes\n    path: ${notes}\n`
+    );
+    await expectSessionsError(
+      initSessionArchive({
+        configPath: join(root, "inside.yml"),
+        indexName: "inside",
+        archiveRoot: join(notes, "sessions"),
+        collection: "work",
+      }),
+      "SESSIONS_UNSAFE_PATH"
+    );
   });
 
   test("archive collections are not memory-managed and live under the archive root", async () => {

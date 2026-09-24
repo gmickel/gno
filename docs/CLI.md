@@ -668,10 +668,10 @@ Every subcommand except `discover` needs the archive pair on the command line:
 gno --config ~/gno-sessions/archive.yml --index sessions sessions <subcommand>
 ```
 
-The pair is enforced before every `gno` command, not only `sessions`: the
-archive config with another `--index`, or the archive index with another
-config, exits 1 with `SESSIONS_BINDING_MISMATCH`. Your curated `gno update`
-and `gno search` therefore never touch the archive.
+The pair is enforced before every `gno` command, not only `sessions` (exit 1,
+`SESSIONS_BINDING_MISMATCH`; see
+[archive binding](SESSIONS.md#archive-binding-one-config-one-index)), so your
+curated `gno update` and `gno search` never touch the archive.
 
 ### gno sessions discover
 
@@ -700,9 +700,10 @@ gno --config ~/gno-sessions/archive.yml --index sessions \
 | `--json`              | JSON output                                          |
 
 Creates or extends the archive config (idempotent) and records the binding in
-the named index. Refuses the default config file, the `default` index, and an
-index that already holds other collections or belongs to another archive. A
-config already bound to another index or root is never retargeted.
+the named index. The refusal rules (default config, `default` index, reused
+index, archive root placement) are in
+[archive binding](SESSIONS.md#archive-binding-one-config-one-index) and
+[where to put it](SESSIONS.md#where-to-put-it).
 
 ### gno sessions source add / remove
 
@@ -747,8 +748,9 @@ Parses, classifies speakers structurally, redacts, writes one sanitized JSONL
 file per thread, then syncs the changed files. Reruns skip unchanged units.
 A unit cut mid-write or showing format drift is `incomplete` and retried by
 the next run. Threads spanning differently mapped project directories are
-quarantined (`mixed_domain`). Receipt `status` is `complete`, `partial`,
-`failed`, or `nothing_to_do`; a `partial` import exits 0 and lists its units.
+[quarantined](SESSIONS.md#quarantined-threads) (`mixed_domain`). Receipt
+`status` is `complete`, `partial`, `failed`, or `nothing_to_do`; a `partial`
+import exits 0 and lists its units.
 Import does not embed: run `embed` on the same archive pair.
 
 ### gno sessions status
@@ -772,11 +774,10 @@ Lists archive files whose source is gone (preview by default); `--apply`
 deletes exactly those files and syncs the index. Deleting a source file never
 removes its archive on its own.
 
-**Exit codes:** 1 for selection, destination, binding, unknown
-source/collection, unsafe path, and unsupported format errors; 2 for an
-unavailable source or an import whose status is `failed`; 4 when another
-import holds the archive lock (`SESSIONS_BUSY`). `--json` errors carry the
-code in `details.sessionsCode`.
+**Exit codes:** 1 for usage and validation errors, 2 for an unavailable
+source or an import whose status is `failed`, 4 for `SESSIONS_BUSY`. `--json`
+errors carry the code in `details.sessionsCode`; the full table is in
+[error codes](SESSIONS.md#error-codes).
 
 Search the archive with the normal commands on the same pair:
 

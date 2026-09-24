@@ -10,16 +10,20 @@
 
 import type { Config } from "../../config/types";
 
-import { getIndexDbPath } from "../../app/constants";
 import { getConfigPaths, isInitialized, loadConfig } from "../../config";
-import { assertSessionBinding } from "../../sessions/binding";
+import {
+  formatImportReceiptText,
+  formatStatusText,
+} from "../../sessions/format";
+import {
+  type SessionPrunePreview,
+  SessionsService,
+} from "../../sessions/service";
 import {
   addSessionSource,
   initSessionArchive,
   removeSessionSource,
-  type SessionPrunePreview,
-  SessionsService,
-} from "../../sessions/service";
+} from "../../sessions/setup";
 import {
   SESSION_HARNESSES,
   type SessionHarness,
@@ -81,12 +85,6 @@ async function loadArchiveConfig(
       details: { sessionsCode: "SESSIONS_NOT_CONFIGURED" },
     });
   }
-  await assertSessionBinding({
-    config: loaded.value,
-    configPath,
-    indexName: context.indexName,
-    dbPath: getIndexDbPath(context.indexName),
-  });
   return { config: loaded.value, configPath };
 }
 
@@ -147,7 +145,7 @@ export function initSessions(
   });
 }
 
-export function parseProjectMappings(
+function parseProjectMappings(
   values: readonly string[]
 ): Array<{ prefix: string; collection: string }> {
   return values.map((value) => {
@@ -368,50 +366,11 @@ export function formatImportReceipt(
   receipt: SessionImportReceipt,
   asJson: boolean
 ): string {
-  if (asJson) return json(receipt);
-  const c = receipt.counts;
-  const lines = [
-    `Session import ${receipt.dryRun ? "(dry run, nothing written) " : ""}${receipt.status}`,
-    `threads: ${c.imported} imported, ${c.updated} updated, ${c.unchanged} unchanged, ${c.skippedPolicy} skipped by policy`,
-    `units: ${c.incomplete} incomplete, ${c.failed} failed, ${c.unsupported} unsupported${receipt.deferredUnits > 0 ? `, ${receipt.deferredUnits} deferred by --limit` : ""}`,
-    `turns: ${receipt.turns.human} human, ${receipt.turns.assistant} assistant, ${receipt.turns.redactions} redactions, ${receipt.turns.injectedSkipped} injected skipped`,
-    `lexical: ${receipt.lexical.status}${receipt.lexical.error ? ` (${receipt.lexical.error})` : ""}; embedding backlog: ${receipt.embedding.backlog ?? "n/a"}`,
-  ];
-  const notable = receipt.units.filter(
-    (unit) =>
-      unit.outcome !== "unchanged" &&
-      unit.outcome !== "imported" &&
-      unit.outcome !== "updated"
-  );
-  for (const unit of notable.slice(0, 20)) {
-    lines.push(
-      `- ${unit.sourceId} ${unit.locator}: ${unit.outcome}${unit.reason ? ` (${unit.reason})` : ""}`
-    );
-  }
-  for (const warning of receipt.warnings) lines.push(`warning: ${warning}`);
-  return lines.join("\n");
+  return asJson ? json(receipt) : formatImportReceiptText(receipt);
 }
 
 export function formatStatus(status: SessionsStatus, asJson: boolean): string {
-  if (asJson) return json(status);
-  const lines = [`Session archive (index ${status.index})`];
-  for (const collection of status.collections) {
-    lines.push(
-      `- collection ${collection.name}: ${collection.threads} threads`
-    );
-  }
-  for (const source of status.sources) {
-    lines.push(
-      `- source ${source.id} (${source.harness} -> ${source.collection}): ${source.available ? "available" : "UNAVAILABLE"}; units ${source.units.complete} complete, ${source.units.incomplete} incomplete, ${source.units.failed} failed, ${source.units.pending} pending; last import ${source.lastImportAt ?? "never"}`
-    );
-    if (source.sourceUnavailable > 0) {
-      lines.push(
-        `  ${source.sourceUnavailable} archived units no longer have a source (archive retained${source.staleParser > 0 ? `, ${source.staleParser} from an older parser` : ""})`
-      );
-    }
-  }
-  for (const warning of status.warnings) lines.push(`warning: ${warning}`);
-  return lines.join("\n");
+  return asJson ? json(status) : formatStatusText(status);
 }
 
 export function formatPrune(

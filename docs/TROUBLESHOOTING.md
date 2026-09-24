@@ -923,31 +923,10 @@ models:
 
 ## Session Archive Issues
 
-### "SESSIONS_BINDING_MISMATCH"
-
-A session archive is one config file bound to one named index. Pass both
-together (`gno --config ~/gno-sessions/archive.yml --index sessions ...`) and
-use your normal config, without `--config`, for curated work. The archive
-index cannot be opened with another config, and the archive config cannot
-be used with another index.
-
-### Session import reports `partial`
-
-Look at the listed units. `truncated_tail` means a session was still being
-written; `format_drift` means records this parser does not recognise. Both
-keep the readable threads, and the next import retries the unit.
-`snapshot_read_failed` means a SQLite store could not be read in one
-read-only snapshot; rerun while the agent is idle. `mixed_domain` threads were
-quarantined because their working directories map to different collections;
-add a `--project` mapping. Exit 4 (`SESSIONS_BUSY`) means another import is
-running.
-
-### Sessions do not appear in search
-
-The archive is separate from your curated index by default: search with the
-archive's `--config` and `--index`. Import does not embed, so run `embed` on
-the archive pair before `query` or `vsearch`. See
-[Agent Sessions](SESSIONS.md#troubleshooting).
+Session archive problems (`SESSIONS_BINDING_MISMATCH`, `partial` receipts,
+quarantined `mixed_domain` threads, `SESSIONS_BUSY`, sessions missing from
+search) are covered in [Agent Sessions troubleshooting](SESSIONS.md#troubleshooting),
+with every code in [error codes](SESSIONS.md#error-codes).
 
 ## Database Issues
 

@@ -202,16 +202,6 @@ export const NETWORK_BOUNDARY_INVENTORY = [
     serverBoundary: "src/serve/server.ts",
   },
   {
-    // Same-origin /api/sessions/* client that keeps details.sessionsCode.
-    id: "browser-sessions-api",
-    key: "src/serve/public/components/sessions/api.ts::fetch#1",
-    path: "src/serve/public/components/sessions/api.ts",
-    primitive: "fetch",
-    action: "serve",
-    enforcement: "client_transport",
-    serverBoundary: "src/serve/routes/sessions.ts",
-  },
-  {
     id: "browser-document-events",
     key: "src/serve/public/hooks/use-doc-events.ts::event_source#1",
     path: "src/serve/public/hooks/use-doc-events.ts",

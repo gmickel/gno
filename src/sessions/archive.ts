@@ -49,7 +49,7 @@ export interface ArchiveLine {
   body: string;
   author: "human" | "assistant";
   categories: string[];
-  sessionId: string;
+  sessionId?: string;
   threadId: string;
   recordedAt?: string;
   provenance: {
@@ -83,7 +83,7 @@ const bound = (value: string): string =>
     : value;
 
 /** Lowercase tag segment accepted by GNO's tag grammar. */
-export function tagSegment(value: string): string {
+function tagSegment(value: string): string {
   const slug = value
     .normalize("NFC")
     .toLowerCase()
@@ -95,7 +95,7 @@ export function tagSegment(value: string): string {
 }
 
 /** Opaque identity of a working directory; the raw path is never stored. */
-export function projectIdentity(cwd: string | undefined): {
+function projectIdentity(cwd: string | undefined): {
   label: string;
   id: string;
 } | null {
@@ -107,24 +107,22 @@ export function projectIdentity(cwd: string | undefined): {
   };
 }
 
-/** Stable, path-free file key for one thread in one source. */
-export function threadFileKey(
-  sourceId: string,
-  harness: SessionHarness,
-  threadId: string
-): string {
-  return hashRecordValue(
-    "gno-session-thread-v1",
-    `${harness}\0${sourceId}\0${threadId}`
-  ).slice(0, 32);
-}
-
+/**
+ * Stable, path-free archive file for one thread of one unit. The unit key
+ * namespaces the file, so two units that report the same thread ID never
+ * overwrite each other.
+ */
 export function threadRelPath(
   sourceId: string,
   harness: SessionHarness,
+  unitKey: string,
   threadId: string
 ): string {
-  return `${harness}/${sourceId}/${threadFileKey(sourceId, harness, threadId)}.jsonl`;
+  const fileKey = hashRecordValue(
+    "gno-session-thread-v2",
+    `${harness}\0${sourceId}\0${unitKey}\0${threadId}`
+  ).slice(0, 32);
+  return `${harness}/${sourceId}/${fileKey}.jsonl`;
 }
 
 export function archiveFilePath(
@@ -147,6 +145,7 @@ const roleLabel = (role: "human" | "assistant"): string =>
 export function renderThread(options: {
   thread: ParsedThread;
   sourceId: string;
+  unitKey: string;
   unitLocator: string;
   parser: string;
   redaction: RedactionPolicy;
@@ -185,41 +184,30 @@ export function renderThread(options: {
   for (const draft of drafts) {
     const { turn } = draft;
     const text = sanitizer.propagate(draft.text);
-    const time = turn.timestamp ?? "unknown";
     const speaker = roleLabel(turn.role);
-    const titleParts = [
-      `${speaker} turn`,
-      harnessLabel,
-      projectLabel ?? "no project",
-      turn.timestamp
-        ? turn.timestamp.slice(0, 16).replace("T", " ")
-        : "time unknown",
-    ];
-    const provenanceLines = [
-      "---",
-      "Session provenance",
-      `- Speaker: ${speaker}${turn.role === "assistant" ? " (assistant output, not a user decision)" : ""}`,
-      `- Recorded: ${time}`,
-      `- Harness: ${harnessLabel} (${thread.kind} thread)`,
-      `- Source profile: ${bound(sourceId)}`,
-      `- Native locator: ${bound(`${unit}#${draft.locator}`)}`,
-      `- Logical turn: ${bound(draft.turnId)}`,
-      `- Thread: ${bound(threadId)}`,
-      `- Session: ${bound(sessionId)}`,
-      ...(projectLabel && project
-        ? [`- Project: ${bound(projectLabel)} (${project.id})`]
-        : []),
-    ];
+    const titleParts = [speaker, harnessLabel, projectLabel ?? "no project"];
+    // One bounded line keeps each record small in bounded context delivery.
+    const provenance = [
+      turn.role === "assistant"
+        ? "Assistant (assistant output, not a user decision)"
+        : "Human",
+      // A known time travels as record metadata (dateFields.recorded).
+      ...(turn.timestamp ? [] : ["recorded unknown"]),
+      `source ${bound(sourceId)}`,
+      `locator ${bound(`${unit}#${draft.locator}`)}`,
+      `turn ${bound(draft.turnId)}`,
+    ].join(" · ");
     const line: ArchiveLine = {
       id: hashRecordValue(
         "gno-session-turn-v1",
         `${threadId}\0${draft.turnId}`
       ).slice(0, 32),
       title: titleParts.join(" · "),
-      body: `${speaker}: ${text}\n\n${provenanceLines.join("\n")}`,
+      body: `${speaker}: ${text}\n\nProvenance: ${provenance}`,
       author: turn.role,
       categories: [...categories, `role/${turn.role}`],
-      sessionId,
+      // A main thread is its own session; the duplicate ID is omitted.
+      ...(sessionId === threadId ? {} : { sessionId }),
       threadId,
       ...(turn.timestamp ? { recordedAt: turn.timestamp } : {}),
       provenance: {
@@ -251,7 +239,12 @@ export function renderThread(options: {
   }
 
   return {
-    relPath: threadRelPath(sourceId, thread.harness, thread.threadId),
+    relPath: threadRelPath(
+      sourceId,
+      thread.harness,
+      options.unitKey,
+      thread.threadId
+    ),
     content: lines.length > 0 ? `${lines.join("\n")}\n` : "",
     lines: lines.length,
     humanTurns: human,
@@ -261,43 +254,76 @@ export function renderThread(options: {
   };
 }
 
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+/** Apply `fn` to every string leaf of a parsed archive line. */
+function mapStrings(value: JsonValue, fn: (text: string) => string): JsonValue {
+  if (typeof value === "string") return fn(value);
+  if (Array.isArray(value)) return value.map((item) => mapStrings(item, fn));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, mapStrings(item, fn)])
+    );
+  }
+  return value;
+}
+
 /**
  * Re-sanitize an existing archive file with the current redaction rules
- * (used when the original source is no longer available). Returns null when
- * the file does not parse as an archive.
+ * (used when the original source is no longer available). Every persisted
+ * string field is rescanned, not only the text. Returns null when the file
+ * does not parse as an archive; the caller must then withhold it.
  */
 export function rescanArchiveContent(
   content: string,
   redaction: RedactionPolicy
-): { content: string; redactions: number; parser: string | null } | null {
+): { content: string; redactions: number } | null {
   const sanitizer = new ThreadSanitizer(redaction);
-  const parsed: ArchiveLine[] = [];
+  const parsed: JsonValue[] = [];
   for (const raw of content.split("\n")) {
     if (!raw.trim()) continue;
-    let line: ArchiveLine;
+    let line: unknown;
     try {
-      line = JSON.parse(raw) as ArchiveLine;
+      line = JSON.parse(raw);
     } catch {
       return null;
     }
-    if (!line || typeof line.body !== "string" || !line.provenance) return null;
-    parsed.push({
-      ...line,
-      title: sanitizer.sanitize(line.title),
-      body: sanitizer.sanitize(line.body),
-    });
+    const record = line as Partial<ArchiveLine> | null;
+    if (
+      !record ||
+      typeof record !== "object" ||
+      typeof record.body !== "string" ||
+      !record.provenance ||
+      typeof record.provenance !== "object"
+    ) {
+      return null;
+    }
+    parsed.push(
+      mapStrings(line as JsonValue, (text) => sanitizer.sanitize(text))
+    );
   }
-  const output = parsed.map((line) =>
-    JSON.stringify({
-      ...line,
-      title: sanitizer.propagate(line.title),
-      body: sanitizer.propagate(line.body),
-      provenance: { ...line.provenance, redaction: SESSION_REDACTION_VERSION },
-    })
-  );
+  const output = parsed.map((line) => {
+    const propagated = mapStrings(line, (text) =>
+      sanitizer.propagate(text)
+    ) as {
+      provenance: Record<string, JsonValue>;
+    };
+    return JSON.stringify({
+      ...propagated,
+      provenance: {
+        ...propagated.provenance,
+        redaction: SESSION_REDACTION_VERSION,
+      },
+    });
+  });
   return {
     content: output.length > 0 ? `${output.join("\n")}\n` : "",
     redactions: sanitizer.redactions,
-    parser: parsed[0]?.provenance.parser ?? null,
   };
 }
