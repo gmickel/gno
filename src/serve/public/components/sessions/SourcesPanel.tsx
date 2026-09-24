@@ -5,7 +5,7 @@ import {
   RadarIcon,
   Trash2Icon,
 } from "lucide-react";
-import { type FormEvent, useId, useState } from "react";
+import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 
 import type {
   SessionDiscoveryCandidate,
@@ -22,6 +22,28 @@ import { sessionsApi } from "./api";
 import { ImportReceipt } from "./ImportReceipt";
 
 const SOURCE_ID_PATTERN = "[a-z0-9][a-z0-9_-]{0,63}";
+/** Select value for "type a collection name that does not exist yet". */
+const NEW_COLLECTION = "__new__";
+const SELECT_CLASS =
+  "h-9 w-full min-w-0 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
+const FOCUS_RING =
+  "outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
+
+/**
+ * Focus `ref` whenever `trigger` changes to a new truthy value after mount.
+ * Buttons disable while their request runs, which drops keyboard focus to
+ * <body>; this hands it to the region that reports the outcome instead.
+ */
+function useFocusOnChange<T>(
+  trigger: T,
+  ref: { current: HTMLElement | null }
+): void {
+  const previous = useRef(trigger);
+  useEffect(() => {
+    if (trigger && trigger !== previous.current) ref.current?.focus();
+    previous.current = trigger;
+  }, [trigger, ref]);
+}
 
 function formatWhen(iso: string | null): string {
   if (!iso) return "never";
@@ -72,6 +94,8 @@ function SourceRow({
   onRemove,
 }: SourceRowProps) {
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const receiptRef = useRef<HTMLElement>(null);
+  useFocusOnChange(receipt, receiptRef);
   const running = busy?.startsWith(`${source.id}:`) ?? false;
   const { units } = source;
   return (
@@ -180,34 +204,49 @@ function SourceRow({
           archive and index.
         </p>
       )}
-      {receipt && <ImportReceipt receipt={receipt} />}
+      {receipt && <ImportReceipt receipt={receipt} ref={receiptRef} />}
     </li>
   );
 }
 
 interface RegisterFormProps {
   candidate: SessionDiscoveryCandidate;
-  defaultCollection: string;
-  onRegistered: () => Promise<void>;
+  archiveCollections: string[];
+  onRegistered: (sourceId: string, collection: string) => Promise<void>;
 }
 
 function RegisterForm({
   candidate,
-  defaultCollection,
+  archiveCollections,
   onRegistered,
 }: RegisterFormProps) {
   const formId = useId();
   const [id, setId] = useState(`${candidate.harness}-main`);
-  const [collection, setCollection] = useState(defaultCollection);
+  // No default: the destination collection is a privacy boundary, so the
+  // user must pick it explicitly.
+  const [collectionChoice, setCollectionChoice] = useState("");
+  const [newCollection, setNewCollection] = useState("");
   const [projects, setProjects] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ text: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  useFocusOnChange(error, errorRef);
+
+  const creatingCollection = collectionChoice === NEW_COLLECTION;
+  const collection = creatingCollection
+    ? newCollection.trim()
+    : collectionChoice;
+  const hintId = `${formId}-collection-hint`;
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!collection) {
+      setError({ text: "Choose a destination archive collection." });
+      return;
+    }
     const mappings = parseProjectLines(projects);
     if (typeof mappings === "string") {
-      setError(mappings);
+      setError({ text: mappings });
       return;
     }
     setSaving(true);
@@ -217,17 +256,17 @@ function RegisterForm({
         id: id.trim(),
         harness: candidate.harness,
         path: candidate.path,
-        collection: collection.trim(),
+        collection,
         ...(mappings.length > 0 ? { projects: mappings } : {}),
       }),
     });
     setSaving(false);
     if (result.error) {
-      setError(result.error);
+      setError({ text: result.error });
       return;
     }
     setError(null);
-    await onRegistered();
+    await onRegistered(id.trim(), collection);
   };
 
   return (
@@ -248,14 +287,40 @@ function RegisterForm({
       </label>
       <label className="grid gap-1 text-sm" htmlFor={`${formId}-collection`}>
         Destination archive collection
-        <Input
+        <select
+          aria-describedby={collection ? undefined : hintId}
+          className={SELECT_CLASS}
           id={`${formId}-collection`}
-          onChange={(event) => setCollection(event.currentTarget.value)}
-          pattern={SOURCE_ID_PATTERN}
+          onChange={(event) => setCollectionChoice(event.currentTarget.value)}
           required
-          value={collection}
-        />
+          value={collectionChoice}
+        >
+          <option disabled value="">
+            Choose a collection…
+          </option>
+          {archiveCollections.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+          <option value={NEW_COLLECTION}>New collection…</option>
+        </select>
       </label>
+      {creatingCollection && (
+        <label
+          className="grid gap-1 text-sm sm:col-start-2"
+          htmlFor={`${formId}-new-collection`}
+        >
+          New collection name
+          <Input
+            id={`${formId}-new-collection`}
+            onChange={(event) => setNewCollection(event.currentTarget.value)}
+            pattern={SOURCE_ID_PATTERN}
+            required
+            value={newCollection}
+          />
+        </label>
+      )}
       <label
         className="grid gap-1 text-sm sm:col-span-2"
         htmlFor={`${formId}-projects`}
@@ -270,20 +335,33 @@ function RegisterForm({
       </label>
       {error && (
         <p
-          className="break-words text-destructive text-sm sm:col-span-2"
+          className={`break-words text-destructive text-sm sm:col-span-2 ${FOCUS_RING}`}
+          ref={errorRef}
           role="alert"
+          tabIndex={-1}
         >
-          {error}
+          {error.text}
         </p>
       )}
       <div className="sm:col-span-2">
-        <Button disabled={saving} size="sm" type="submit">
+        <Button
+          aria-describedby={collection ? undefined : hintId}
+          disabled={saving || !collection}
+          size="sm"
+          type="submit"
+        >
           {saving && <Loader2Icon className="animate-spin" />}
           Register source
         </Button>
         <span className="ml-2 text-muted-foreground text-xs">
           Registering imports nothing.
         </span>
+        {!collection && (
+          <p className="mt-1 text-muted-foreground text-xs" id={hintId}>
+            Choose a destination collection to register this source. Its
+            sessions become searchable only in that collection.
+          </p>
+        )}
       </div>
     </form>
   );
@@ -313,6 +391,9 @@ export function SourcesPanel({
   const [discovery, setDiscovery] = useState<SessionsDiscovery | null>(null);
   const [discovering, setDiscovering] = useState(false);
   const [discoverError, setDiscoverError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ text: string } | null>(null);
+  const noticeRef = useRef<HTMLParagraphElement>(null);
+  useFocusOnChange(notice, noticeRef);
 
   const discover = async () => {
     setDiscovering(true);
@@ -324,7 +405,10 @@ export function SourcesPanel({
     setDiscovery(result.data);
   };
 
-  const registered = async () => {
+  const registered = async (sourceId: string, collection: string) => {
+    setNotice({
+      text: `Registered source ${sourceId} → collection ${collection}. Nothing was imported yet.`,
+    });
     await onChanged();
     await discover();
   };
@@ -378,6 +462,17 @@ export function SourcesPanel({
         </ul>
       )}
 
+      {notice && (
+        <p
+          className={`break-words rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-emerald-700 text-sm dark:text-emerald-300 ${FOCUS_RING}`}
+          ref={noticeRef}
+          role="status"
+          tabIndex={-1}
+        >
+          {notice.text}
+        </p>
+      )}
+
       {discoverError && (
         <p className="break-words text-destructive text-sm" role="alert">
           {discoverError}
@@ -424,7 +519,7 @@ export function SourcesPanel({
                 ) : (
                   <RegisterForm
                     candidate={candidate}
-                    defaultCollection={archiveCollections[0] ?? ""}
+                    archiveCollections={archiveCollections}
                     onRegistered={registered}
                   />
                 )}

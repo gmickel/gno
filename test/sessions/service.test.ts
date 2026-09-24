@@ -1050,4 +1050,21 @@ describe("review round 1 regressions", () => {
     await importMain();
     expect(await searchArchive("SQLite")).toEqual([]);
   });
+
+  test("status counts only present units; a rerun reports unchanged threads", async () => {
+    await importMain();
+    const rerun = await importMain();
+    // The truncated-tail fixture unit is retried, so the run stays partial.
+    expect(rerun.status).toBe("partial");
+    expect(rerun.counts.imported + rerun.counts.updated).toBe(0);
+    expect(rerun.counts.unchanged).toBe(4);
+    await rename(join(codexRoot, CODEX_MAIN), join(root, "gone.jsonl"));
+    const status = await withService((service) => service.status());
+    const units = status.sources[0]!.units;
+    expect(units.total).toBe(3);
+    expect(
+      units.complete + units.incomplete + units.failed
+    ).toBeLessThanOrEqual(units.total);
+    expect(status.sources[0]!.sourceUnavailable).toBe(1);
+  });
 });

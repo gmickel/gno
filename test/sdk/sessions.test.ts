@@ -106,4 +106,31 @@ describe("SDK sessions", () => {
       await client.close();
     }
   });
+
+  test("a curated client's get of an archive URI throws a typed SDK error", async () => {
+    const archive = await createGnoClient({
+      configPath,
+      indexName: "sessions",
+    });
+    let uri: string;
+    try {
+      await archive.importSessions({ sourceId: "codex-main" });
+      uri = (await archive.search("SQLite")).results[0]!.uri;
+    } finally {
+      await archive.close();
+    }
+    const curated = await createGnoClient({ config: createDefaultConfig() });
+    let error: unknown;
+    try {
+      await curated.get(uri);
+    } catch (cause) {
+      error = cause;
+    } finally {
+      await curated.close();
+    }
+    expect(error).toBeInstanceOf(GnoSdkError);
+    expect((error as GnoSdkError).details?.code).toBe(
+      "SESSIONS_BINDING_MISMATCH"
+    );
+  });
 });

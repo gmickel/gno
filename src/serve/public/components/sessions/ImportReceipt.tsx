@@ -1,3 +1,5 @@
+import type { Ref } from "react";
+
 import {
   AlertTriangleIcon,
   CheckCircle2Icon,
@@ -63,7 +65,13 @@ function Stat({ label, value }: { label: string; value: number | string }) {
   );
 }
 
-export function ImportReceipt({ receipt }: { receipt: SessionImportReceipt }) {
+interface ImportReceiptProps {
+  receipt: SessionImportReceipt;
+  /** Focus target after a preview/import completes (region is tabIndex -1). */
+  ref?: Ref<HTMLElement>;
+}
+
+export function ImportReceipt({ receipt, ref }: ImportReceiptProps) {
   const status = STATUS_COPY[receipt.status];
   const { counts, turns } = receipt;
   const notable = receipt.units.filter((unit) =>
@@ -76,7 +84,9 @@ export function ImportReceipt({ receipt }: { receipt: SessionImportReceipt }) {
   return (
     <section
       aria-label={receipt.dryRun ? "Import preview" : "Import receipt"}
-      className="min-w-0 space-y-4 rounded-lg border border-border/60 bg-card/60 p-4"
+      className="min-w-0 space-y-4 rounded-lg border border-border/60 bg-card/60 p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      ref={ref}
+      tabIndex={-1}
     >
       <div className="flex flex-wrap items-center gap-2">
         {receipt.dryRun && (

@@ -10,9 +10,9 @@
  */
 
 // node:fs/promises: directory creation/removal and listing have no Bun equivalents.
-import { mkdir, readdir, rename, unlink } from "node:fs/promises";
+import { mkdir, readdir, rename, stat, unlink } from "node:fs/promises";
 // node:path: no Bun path utilities.
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 
 import type { Config } from "../config/types";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
@@ -336,6 +336,7 @@ export class SessionsService {
         }
       }
       const stateUnits = Object.entries(known);
+      const presentUnits = stateUnits.filter(([key]) => present.has(key));
       sources.push({
         id: source.id,
         harness: source.harness,
@@ -343,12 +344,15 @@ export class SessionsService {
         available: canonical !== null,
         units: {
           total: units.length,
-          complete: stateUnits.filter(([, unit]) => unit.status === "complete")
-            .length,
-          incomplete: stateUnits.filter(
+          // Counted over present units only; units whose source is gone
+          // are reported as sourceUnavailable.
+          complete: presentUnits.filter(
+            ([, unit]) => unit.status === "complete"
+          ).length,
+          incomplete: presentUnits.filter(
             ([, unit]) => unit.status === "incomplete"
           ).length,
-          failed: stateUnits.filter(
+          failed: presentUnits.filter(
             ([, unit]) =>
               unit.status === "failed" || unit.status === "unsupported"
           ).length,
@@ -602,10 +606,14 @@ export class SessionsService {
             : { units: [], truncated: false };
           if (!harness) {
             counts.unsupported += 1;
+            // A selected file is named by its safe (redacted) file name.
+            const selectedFile = (await stat(root)).isFile();
             recordUnit({
               sourceId: source.id,
               harness: null,
-              locator: ".",
+              locator: selectedFile
+                ? sanitizeValue(basename(root), redaction)
+                : ".",
               outcome: "unsupported",
               reason: "format_not_recognised",
               threads: 0,
@@ -686,7 +694,11 @@ export class SessionsService {
           previous.redaction === stamp &&
           previous.destinations === destinations &&
           previous.format === SESSION_ARCHIVE_FORMAT_VERSION;
-        if (current) continue;
+        if (current) {
+          // Already archived and up to date: reported, not re-read.
+          counts.unchanged += previous.threads.length;
+          continue;
+        }
         if (options.limit !== undefined && processed >= options.limit) {
           deferred += 1;
           continue;
@@ -806,7 +818,8 @@ export class SessionsService {
       counts.unchanged +
       counts.skippedPolicy;
     let status: SessionImportReceipt["status"] = "complete";
-    if (failures > 0 && work === 0 && counts.failed > 0) status = "failed";
+    if (failures > 0 && work === 0 && counts.incomplete === 0)
+      status = "failed";
     else if (failures > 0 || deferred > 0 || lexical.status === "failed") {
       status = "partial";
     } else if (processed === 0) status = "nothing_to_do";

@@ -1376,6 +1376,8 @@ class GnoClientImpl implements GnoClient {
       requestedIndexName: resolution.value.indexName,
       config: this.config,
       configPath: this.configPath,
+    }).catch((cause: unknown) => {
+      throw toSessionsSdkError(cause);
     });
     try {
       const result = await getDocumentByRef(
@@ -1415,6 +1417,8 @@ class GnoClientImpl implements GnoClient {
       requestedIndexName: resolution.value.indexName,
       config: this.config,
       configPath: this.configPath,
+    }).catch((cause: unknown) => {
+      throw toSessionsSdkError(cause);
     });
     try {
       const result = await multiGetDocuments(

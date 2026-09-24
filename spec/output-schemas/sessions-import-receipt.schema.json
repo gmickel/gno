@@ -33,7 +33,7 @@
     },
     "status": {
       "enum": ["complete", "partial", "failed", "nothing_to_do"],
-      "description": "partial whenever any unit is incomplete, failed, unsupported or deferred, or lexical sync failed; a partial import is never reported complete."
+      "description": "partial whenever any unit is incomplete, failed, unsupported or deferred, or lexical sync failed; failed when nothing was archived or unchanged and nothing is incomplete; a partial import is never reported complete."
     },
     "counts": {
       "type": "object",

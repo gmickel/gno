@@ -1586,8 +1586,9 @@ Returns the shared `sessions-import-receipt` object (status
 `complete`/`partial`/`failed`/`nothing_to_do`, thread and unit counts, turn
 counts, per-unit outcomes with safe locators, `deferredUnits`, lexical
 readiness, and the embedding backlog). A `partial` import stays visible and
-the next call retries it. Import does not embed. Errors are `WRITE_DISABLED`
-or a sessions code in `structuredContent.error` (for example
+the next call retries it. Import does not embed. Like `gno_capture` and `gno_remember`, the tool is
+registered only with `--enable-write`; without it clients do not see it.
+Errors are a sessions code in `structuredContent.error` (for example
 `SESSIONS_UNKNOWN_SOURCE`, `SESSIONS_BUSY`); see
 [error codes](SESSIONS.md#error-codes).
 

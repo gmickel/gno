@@ -11,6 +11,7 @@ import { buildDocDeepLink } from "../../lib/deep-links";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { renderSessionSnippet } from "./snippet";
 
 interface SessionSearchResult {
   docid: string;
@@ -273,7 +274,7 @@ export function SessionSearch({ collections, navigate }: SessionSearchProps) {
                   {result.title || result.uri}
                 </a>
                 <p className="line-clamp-3 break-words text-muted-foreground text-sm">
-                  {result.snippet}
+                  {renderSessionSnippet(result.snippet)}
                 </p>
               </li>
             );

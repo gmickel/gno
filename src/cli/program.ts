@@ -2170,9 +2170,19 @@ function wireSessionsCommands(program: Command): void {
         getFormat(cmdOpts)
       );
       if (receipt.status === "failed") {
-        throw new CliError("RUNTIME", "Session import failed; see receipt.", {
-          details: { sessionsCode: "SESSIONS_IMPORT_FAILED" },
-        });
+        const unsupportedOnly =
+          receipt.counts.unsupported > 0 &&
+          receipt.counts.failed === 0 &&
+          receipt.counts.incomplete === 0;
+        throw unsupportedOnly
+          ? new CliError(
+              "VALIDATION",
+              "No selected unit is a supported session format; see receipt.",
+              { details: { sessionsCode: "SESSIONS_UNSUPPORTED_FORMAT" } }
+            )
+          : new CliError("RUNTIME", "Session import failed; see receipt.", {
+              details: { sessionsCode: "SESSIONS_IMPORT_FAILED" },
+            });
       }
     });
 

@@ -199,4 +199,53 @@ describe("gno sessions CLI", () => {
     );
     expect(JSON.parse(listed.stdout).documents.length).toBeGreaterThan(0);
   });
+
+  test("ask --json result URIs on the archive carry ?index=", async () => {
+    const result = await cli(
+      "--config",
+      archiveConfig,
+      "--index",
+      "sessions",
+      "ask",
+      "SQLite",
+      "--no-answer",
+      "--offline",
+      "--json"
+    );
+    const parsed = JSON.parse(result.stdout) as {
+      results: Array<{ uri: string }>;
+    };
+    expect(parsed.results.length).toBeGreaterThan(0);
+    for (const item of parsed.results) {
+      expect(item.uri).toContain("?index=sessions");
+    }
+  });
+
+  test("an unsupported-only selection names the file and exits 1", async () => {
+    const odd = join(root, "odd-notes.jsonl");
+    await Bun.write(odd, `${JSON.stringify({ hello: "world" })}\n`);
+    const result = await cli(
+      "--json",
+      "--config",
+      archiveConfig,
+      "--index",
+      "sessions",
+      "sessions",
+      "import",
+      odd,
+      "--collection",
+      "work"
+    );
+    expect(result.code).toBe(1);
+    expect(sessionsCode(result.stderr)).toBe("SESSIONS_UNSUPPORTED_FORMAT");
+    const receipt = JSON.parse(result.stdout) as {
+      status: string;
+      units: Array<{ locator: string; outcome: string }>;
+    };
+    expect(receipt.status).toBe("failed");
+    expect(receipt.units[0]).toMatchObject({
+      locator: "odd-notes.jsonl",
+      outcome: "unsupported",
+    });
+  });
 });

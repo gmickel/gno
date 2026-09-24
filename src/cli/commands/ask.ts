@@ -15,6 +15,7 @@ import type {
 } from "../../llm/types";
 import type { AskOptions, AskResult, Citation } from "../../pipeline/types";
 
+import { decorateUriForIndex } from "../../app/constants";
 import { buildVerifiedAsk } from "../../app/verified-ask";
 import { resolveCliProjectAffinity } from "../../core/project-affinity-surface";
 import {
@@ -96,7 +97,7 @@ export async function ask(
   const globals = getGlobals();
 
   const initResult = await initStore({
-    configPath: options.configPath,
+    configPath: options.configPath ?? globals.config,
     indexName: globals.index,
     collection: options.collection,
     syncConfig: false,
@@ -434,9 +435,20 @@ export async function ask(
         return { success: false, error: finalized.error.message };
       }
     }
+    // URIs carry `?index=` like search and Capsule results on a named index.
     return {
       success: true,
-      data: askResult,
+      data: {
+        ...askResult,
+        results: askResult.results.map((result) => ({
+          ...result,
+          uri: decorateUriForIndex(result.uri, globals.index),
+        })),
+        citations: askResult.citations?.map((citation) => ({
+          ...citation,
+          uri: decorateUriForIndex(citation.uri, globals.index),
+        })),
+      },
       metadata: traceSession?.metadata(),
     };
   } catch (cause) {

@@ -4,7 +4,13 @@ import {
   Loader2Icon,
   MessagesSquareIcon,
 } from "lucide-react";
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import type {
   SessionImportReceipt,
@@ -125,6 +131,14 @@ export default function Sessions({ navigate }: PageProps) {
   const [receipts, setReceipts] = useState<
     Record<string, SessionImportReceipt>
   >({});
+  // Bumped when an action (import/remove) fails so focus moves to the alert
+  // instead of dropping to <body> from the disabled button.
+  const [actionErrorCount, setActionErrorCount] = useState(0);
+  const errorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (actionErrorCount > 0) errorRef.current?.focus();
+  }, [actionErrorCount]);
 
   const loadStatus = useCallback(async () => {
     const result = await sessionsApi<SessionsStatus>("/api/sessions/status");
@@ -163,6 +177,7 @@ export default function Sessions({ navigate }: PageProps) {
     setBusy(null);
     if (!result.data) {
       setError(result.error);
+      setActionErrorCount((count) => count + 1);
       return;
     }
     const receipt = result.data;
@@ -180,6 +195,7 @@ export default function Sessions({ navigate }: PageProps) {
     setBusy(null);
     if (result.error) {
       setError(result.error);
+      setActionErrorCount((count) => count + 1);
       return;
     }
     setReceipts((current) => {
@@ -245,8 +261,10 @@ export default function Sessions({ navigate }: PageProps) {
         {error && (
           <Card className="border-destructive bg-destructive/10">
             <CardContent
-              className="break-words py-4 text-destructive"
+              className="break-words py-4 text-destructive outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              ref={errorRef}
               role="alert"
+              tabIndex={-1}
             >
               {error}
             </CardContent>

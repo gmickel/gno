@@ -1754,8 +1754,11 @@ registered source ID only.
 (`status: "partial"`) stay visible and are retried by the next call; the
 receipt carries no host paths or session content.
 
-**Errors:** `WRITE_DISABLED` without `--enable-write`;
-`SESSIONS_UNKNOWN_SOURCE`, `SESSIONS_SOURCE_UNAVAILABLE`,
+Registered only with `--enable-write` (like `gno_capture` and
+`gno_remember`); without it the tool is not advertised. A dispatch while
+writes are disabled returns `WRITE_DISABLED`.
+
+**Errors:** `SESSIONS_UNKNOWN_SOURCE`, `SESSIONS_SOURCE_UNAVAILABLE`,
 `SESSIONS_UNKNOWN_COLLECTION`, `SESSIONS_INVALID_INPUT`,
 `SESSIONS_NOT_CONFIGURED`; `SESSIONS_BUSY` when another import holds the
 archive lock; `SESSIONS_RUNTIME_FAILURE` (fixed, path-free message) for filesystem or

@@ -311,7 +311,7 @@ identity, and dates keep working:
 ```yaml
 collections:
   - name: sessions-work
-    path: /Users/you/gno-sessions/archive/sessions-work
+    path: /absolute/path/to/gno-sessions/archive/sessions-work
     pattern: "**/*.jsonl"
     recordAdapters:
       jsonl:
@@ -348,8 +348,10 @@ Every import returns a receipt (`--json` prints it in full):
 | `embedding`     | `backlog`: chunks waiting for `gno embed`                                                                     |
 
 A receipt is `partial` when any unit is incomplete, failed, unsupported, or
-deferred, or when the lexical sync failed. A partial import is never reported
-as complete. Receipts carry counts, locators, and reason codes only: no
+deferred, or when the lexical sync failed, and `failed` when nothing was
+archived or unchanged and nothing is incomplete. A partial import is never
+reported as complete. A rerun over unchanged sources is `nothing_to_do` and
+counts the already archived threads as `unchanged`. Receipts carry counts, locators, and reason codes only: no
 session content and no host paths.
 
 | Reason                  | Meaning and recovery                                                                                                                                                                                    |
@@ -656,10 +658,12 @@ so the fact points back to its evidence.
 | `SESSIONS_BUSY`                                                                 | Another import holds the archive lock                              | 4        | 409  | `BUSY`       | `RUNTIME`    |
 | `SESSIONS_RUNTIME_FAILURE`                                                      | Filesystem or index failure on REST/MCP (fixed, path-free message) | —        | 500  | `RUNTIME`    | —            |
 
-An import whose `status` is `failed` exits 2. The CLI JSON error envelope and
+An import whose `status` is `failed` exits 2, except a selection in which no
+unit is a supported format, which exits 1 with `SESSIONS_UNSUPPORTED_FORMAT`. The CLI JSON error envelope and
 REST errors carry the code in `details.sessionsCode`, with the generic
 envelope `code` shown above; MCP returns it in `structuredContent.error`
-(plus `WRITE_DISABLED` when import runs without `--enable-write`); the SDK
+(`gno_sessions_import` is registered only with `--enable-write`, like the
+other MCP write tools, so read-only clients do not see it); the SDK
 throws `GnoSdkError` with the kind shown above and the code in
 `details.code`. A same-host refusal on REST is `403 FORBIDDEN` with no
 `details.sessionsCode`.

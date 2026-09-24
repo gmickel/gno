@@ -88,6 +88,22 @@ const partialPreview = {
   warnings: [],
 };
 
+const discovery = {
+  schemaVersion: "1",
+  candidates: [
+    {
+      harness: "claude-code",
+      path: "/tmp/synthetic-home/.claude/projects",
+      units: 2,
+      bytes: 2048,
+      truncated: false,
+      formatVersions: [],
+      registeredAs: null,
+    },
+  ],
+  warnings: [],
+};
+
 function requestBody(call: unknown[] | undefined): unknown {
   const init = call?.[1] as RequestInit | undefined;
   return typeof init?.body === "string" ? JSON.parse(init.body) : null;
@@ -112,6 +128,10 @@ describe("sessions page", () => {
       const endpoint = args[0];
       if (endpoint === "/api/sessions/status") return statusResult();
       if (endpoint === "/api/sessions/import") return ok(partialPreview);
+      if (endpoint === "/api/sessions/discover") return ok(discovery);
+      if (endpoint === "/api/sessions/sources") {
+        return ok({ id: "claude-code-main", registered: true });
+      }
       return ok({});
     });
     apiFetch.mockReset();
@@ -309,5 +329,133 @@ describe("sessions page", () => {
     );
     await user.click(link);
     expect(navigate).toHaveBeenCalledWith(link.getAttribute("href"));
+  });
+
+  test("search snippets render <mark> highlights and drop Markdown escapes", async () => {
+    apiFetch.mockImplementation(async (...args: unknown[]) => {
+      if (args[0] === "/api/search") {
+        return apiOk({
+          results: [
+            {
+              docid: "#m1",
+              uri: "gno://work/hermes/hermes-main/t1.md",
+              title: "Human · Hermes · theta",
+              snippet:
+                "Theta <mark>decision</mark>: locator state.db\\#messages/15 · main/agent.sqlite\\#transcript\\_events <b>x</b>",
+              categories: ["session", "harness/hermes", "role/human"],
+              record: { author: "human" },
+            },
+          ],
+        });
+      }
+      return apiOk({});
+    });
+    const { user } = await renderPage();
+    await screen.findByText("codex-main");
+    await user.type(screen.getByLabelText("Session search query"), "decision");
+    await user.click(screen.getByRole("button", { name: "Search" }));
+    const results = await screen.findByRole("list", {
+      name: "Session search results",
+    });
+    const mark = results.querySelector("mark");
+    expect(mark?.textContent).toBe("decision");
+    const text = results.textContent ?? "";
+    expect(text).not.toContain("<mark>");
+    expect(text).not.toContain("\\#");
+    expect(text).not.toContain("\\_");
+    expect(text).toContain("state.db#messages/15");
+    expect(text).toContain("transcript_events");
+    // Other markup stays inert text, never parsed as HTML.
+    expect(results.querySelector("b")).toBeNull();
+    expect(text).toContain("<b>x</b>");
+  });
+
+  test("registration requires an explicit destination and focuses the outcome", async () => {
+    const { user } = await renderPage();
+    await user.click(
+      await screen.findByRole("button", { name: "Discover local sources" })
+    );
+    const form = await screen.findByRole("form", {
+      name: "Register Claude Code source",
+    });
+    const destination = within(form).getByLabelText(
+      "Destination archive collection"
+    ) as HTMLSelectElement;
+    expect(destination.value).toBe("");
+    const register = within(form).getByRole("button", {
+      name: "Register source",
+    }) as HTMLButtonElement;
+    expect(register.disabled).toBe(true);
+    expect(
+      within(form).getByText(/Choose a destination collection to register/)
+    ).toBeTruthy();
+
+    await user.selectOptions(destination, "work");
+    expect(register.disabled).toBe(false);
+    await user.click(register);
+
+    const call = sessionsApi.mock.calls.find(
+      (args) => args[0] === "/api/sessions/sources"
+    );
+    expect(requestBody(call)).toEqual({
+      id: "claude-code-main",
+      harness: "claude-code",
+      path: "/tmp/synthetic-home/.claude/projects",
+      collection: "work",
+    });
+    const notice = await screen.findByText(
+      "Registered source claude-code-main → collection work. Nothing was imported yet."
+    );
+    expect(notice.getAttribute("role")).toBe("status");
+    expect(notice.getAttribute("tabindex")).toBe("-1");
+    await waitFor(() => expect(document.activeElement).toBe(notice));
+  });
+
+  test("a failed registration moves focus to the error message", async () => {
+    sessionsApi.mockImplementation(async (...args: unknown[]) => {
+      const endpoint = args[0];
+      if (endpoint === "/api/sessions/status") return statusResult();
+      if (endpoint === "/api/sessions/discover") return ok(discovery);
+      if (endpoint === "/api/sessions/sources") {
+        return {
+          data: null,
+          error: "Source ID already registered.",
+          sessionsCode: "SESSIONS_INVALID_INPUT",
+          status: 400,
+        };
+      }
+      return ok({});
+    });
+    const { user } = await renderPage();
+    await user.click(
+      await screen.findByRole("button", { name: "Discover local sources" })
+    );
+    const form = await screen.findByRole("form", {
+      name: "Register Claude Code source",
+    });
+    await user.selectOptions(
+      within(form).getByLabelText("Destination archive collection"),
+      "work"
+    );
+    await user.click(
+      within(form).getByRole("button", { name: "Register source" })
+    );
+    const alert = await within(form).findByRole("alert");
+    expect(alert.textContent).toBe("Source ID already registered.");
+    await waitFor(() => expect(document.activeElement).toBe(alert));
+  });
+
+  test("preview moves focus to the receipt region", async () => {
+    const { user } = await renderPage();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Preview import of codex-main (dry run)",
+      })
+    );
+    const receipt = await screen.findByRole("region", {
+      name: "Import preview",
+    });
+    expect(receipt.getAttribute("tabindex")).toBe("-1");
+    await waitFor(() => expect(document.activeElement).toBe(receipt));
   });
 });

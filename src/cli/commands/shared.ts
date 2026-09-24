@@ -9,7 +9,11 @@ import type { Collection, Config } from "../../config/types";
 import type { SyncResult } from "../../ingestion";
 import type { SearchResults } from "../../pipeline/types";
 
-import { decorateUriForIndex, getIndexDbPath } from "../../app/constants";
+import {
+  DEFAULT_INDEX_NAME,
+  decorateUriForIndex,
+  getIndexDbPath,
+} from "../../app/constants";
 import {
   getConfigPaths,
   isInitialized,
@@ -17,6 +21,7 @@ import {
   writeConfigWarningsToStderr,
 } from "../../config";
 import { SqliteAdapter } from "../../store/sqlite/adapter";
+import { assertCliSessionBinding } from "../session-binding";
 
 /**
  * Result of CLI store initialization.
@@ -89,6 +94,14 @@ export async function initStore(
       error: "No collections configured. Run: gno collection add <path>",
     };
   }
+
+  // Every index a command opens (including one named by a `?index=` URI)
+  // honours the session-archive config/index binding.
+  await assertCliSessionBinding(
+    options.configPath,
+    options.indexName ?? DEFAULT_INDEX_NAME,
+    config
+  );
 
   // Ensure data directory exists (may have been deleted by reset)
   const { ensureDirectories } = await import("../../config");
