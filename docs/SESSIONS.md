@@ -520,6 +520,11 @@ rejected. There is no MCP discovery.
 **REST** ([API.md](API.md#agent-sessions)). Serve the archive pair. Status and
 import by source ID work for any allowed client; discovery, source
 registration and removal, and archive init answer only a same-host browser.
+`gno serve` and `gno mcp` run each import in a separate process, so the server
+keeps answering (health, status, the Web UI) while a large import runs; the
+receipt and error codes are the same as from the CLI. The resident file
+watcher does not follow archive collections: the import syncs the files it
+writes.
 
 **SDK** ([SDK.md](SDK.md#agent-sessions)). Open a client on the archive pair:
 

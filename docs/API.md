@@ -2507,7 +2507,7 @@ redaction, and recovery.
 | :-------------------------- | :----- | :---------------------------- | :-------------------------------------------------- |
 | `/api/sessions/status`      | GET    | any allowed client            | Archive collections and per-source status           |
 | `/api/sessions/import`      | POST   | any allowed client (CSRF)     | Manual import of one registered source by ID        |
-| `/api/sessions/discover`    | GET    | same-host browser only        | Preview supported local session stores (host paths) |
+| `/api/sessions/discover`    | GET    | same-host browser only (CSRF) | Preview supported local session stores (host paths) |
 | `/api/sessions/sources`     | POST   | same-host browser only (CSRF) | Register a source                                   |
 | `/api/sessions/sources/:id` | DELETE | same-host browser only (CSRF) | Unregister a source; its archive is retained        |
 | `/api/sessions/init`        | POST   | same-host browser only (CSRF) | Create or extend the archive for this instance      |
@@ -2671,7 +2671,10 @@ status and the stable service code in `details.sessionsCode`:
 
 The code-to-status mapping is in
 [Agent Sessions error codes](SESSIONS.md#error-codes). A same-host refusal is
-`403` with `code: "FORBIDDEN"` and no `details.sessionsCode`.
+`403` with `code: "FORBIDDEN"` and no `details.sessionsCode`. Routes marked
+CSRF also refuse a cross-origin browser `Origin` with `403`
+`CSRF_VIOLATION`, including `GET /api/sessions/discover`, because it returns
+host paths.
 
 ---
 

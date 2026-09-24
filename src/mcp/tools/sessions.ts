@@ -17,6 +17,7 @@ import {
   formatImportReceiptText,
   formatStatusText,
 } from "../../sessions/format";
+import { importInChildProcess } from "../../sessions/import-child";
 import { SessionsService } from "../../sessions/service";
 import {
   MAX_IMPORT_LIMIT,
@@ -114,14 +115,15 @@ export function handleSessionsImport(
       }
       let receipt: SessionImportReceipt;
       try {
-        receipt = await service(ctx).import(
-          {
-            sourceId: args.sourceId,
-            dryRun: args.dryRun,
-            limit: args.limit,
-          },
-          { allowPaths: false }
-        );
+        // A child process keeps this server answering during a long import.
+        receipt = await importInChildProcess({
+          config: ctx.config,
+          configPath: ctx.actualConfigPath,
+          indexName: ctx.indexName,
+          sourceId: args.sourceId,
+          dryRun: args.dryRun === true,
+          limit: args.limit,
+        });
       } catch (error) {
         return rethrowSessionsError(error);
       }

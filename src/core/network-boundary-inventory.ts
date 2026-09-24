@@ -298,6 +298,14 @@ export const NETWORK_BOUNDARY_INVENTORY = [
     enforcement: "local_process_only",
   },
   {
+    id: "session-import-process",
+    key: "src/sessions/import-child.ts::child_process#1",
+    path: "src/sessions/import-child.ts",
+    primitive: "child_process",
+    action: null,
+    enforcement: "local_process_only",
+  },
+  {
     id: "http-mcp-tools",
     key: "logical::http-mcp-tools",
     path: "src/mcp/http-egress.ts",
