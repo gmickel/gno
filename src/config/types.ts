@@ -12,6 +12,7 @@ import { z } from "zod";
 import { URI_PREFIX } from "../app/constants";
 import { JsonlFieldMappingSchema } from "../converters/adapters/jsonl/config";
 import { MCP_TOOL_PROFILES } from "../mcp/tool-profile";
+import { SessionsConfigSchema } from "../sessions/config";
 import { ChunkingConfigSchema, type ChunkingParams } from "./chunking";
 import { RetrievalTraceConfigSchema } from "./retrieval-traces";
 
@@ -613,6 +614,13 @@ export const ConfigSchema = z.object({
 
   /** Bounded project-aware retrieval affinity. */
   projectAffinity: ProjectAffinityConfigSchema.optional(),
+
+  /**
+   * Session-archive binding. Present only in a dedicated archive config; it
+   * binds the file to one index name and archive root and lists
+   * owner-registered session sources.
+   */
+  sessions: SessionsConfigSchema.optional(),
 
   /** Machine-local, timestamp-free project profile provenance. */
   projectProfileBindings: z

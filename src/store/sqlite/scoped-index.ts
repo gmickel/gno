@@ -2,6 +2,7 @@ import type { Config } from "../../config/types";
 
 import { getIndexDbPath } from "../../app/constants";
 import { indexesMatch } from "../../core/indexed-reference";
+import { assertSessionBinding } from "../../sessions/binding";
 import { SqliteAdapter } from "./adapter";
 
 export interface ScopedIndexStore {
@@ -35,6 +36,14 @@ export async function openScopedIndexStore(options: {
       `Index "${requestedIndexName}" does not exist at ${dbPath}`
     );
   }
+
+  // A session archive index only opens with its own archive config.
+  await assertSessionBinding({
+    config: options.config,
+    configPath: options.configPath ?? "<inline-config>",
+    indexName: requestedIndexName ?? "default",
+    dbPath,
+  });
 
   const store = new SqliteAdapter();
   store.setConfigPath(options.configPath ?? "<inline-config>");

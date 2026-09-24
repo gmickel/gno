@@ -1,0 +1,7 @@
+{"timestamp":"2025-11-14T09:00:00.000Z","type":"session_meta","payload":{"id":"0000c0de-0000-7000-8000-000000000002","timestamp":"2025-11-14T09:00:00.000Z","cwd":"/work/beta","originator":"codex_cli_rs","cli_version":"0.58.0","source":"cli"}}
+{"timestamp":"2025-11-14T09:00:01.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"<environment_context>placeholder</environment_context>"}]}}
+{"timestamp":"2025-11-14T09:00:02.000Z","type":"event_msg","payload":{"type":"user_message","message":"Legacy prompt: please summarise the beta release checklist.","images":[]}}
+{"timestamp":"2025-11-14T09:00:03.000Z","type":"response_item","payload":{"type":"reasoning","summary":[],"encrypted_content":"placeholder"}}
+{"timestamp":"2025-11-14T09:00:04.000Z","type":"event_msg","payload":{"type":"agent_reasoning","text":"placeholder reasoning"}}
+{"timestamp":"2025-11-14T09:00:05.000Z","type":"event_msg","payload":{"type":"agent_message","message":"Legacy answer: the beta checklist has three placeholder steps."}}
+{"timestamp":"2025-11-14T09:00:05.100Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Legacy answer: the beta checklist has three placeholder steps."}]}}
