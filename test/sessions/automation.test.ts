@@ -830,15 +830,19 @@ describe("review round 1 regressions", () => {
             syncPaths: async (...args) => {
               if (!replaced) {
                 replaced = true;
-                await removeAutomationProfile(ctx(), "main");
-                await setAutomationProfile(ctx(), {
-                  id: "main",
-                  sources: ["claude"],
+                // A removal that raced the run's start, then a recreated
+                // profile with fresh admitted work.
+                const { mutateAutomationState } =
+                  await import("../../src/sessions/automation-state");
+                await mutateAutomationState(archiveRoot, (state) => {
+                  delete state.profiles.main;
+                  admit(
+                    profileState(state, "main"),
+                    "hook",
+                    new Date(clock),
+                    3
+                  );
                 });
-                await enableAutomation(ctx(), "main", {
-                  hook: { harness: "claude-code", settings: settingsPath },
-                });
-                await hook();
               }
               return defaultSyncService.syncPaths(...args);
             },
@@ -858,6 +862,19 @@ describe("review round 1 regressions", () => {
     const started = beginRun(profileState(state, "p"), at(0), 1);
     delete state.profiles.p;
     expect(ownsRun(profileState(state, "p"), started)).toBe(false);
+  });
+
+  test("a running profile is not removed, so its run stays visible", async () => {
+    await enableAutomation(ctx(), "main", { schedule: { cadence: "1h" } });
+    const { mutateAutomationState } =
+      await import("../../src/sessions/automation-state");
+    await mutateAutomationState(archiveRoot, (state) => {
+      beginRun(profileState(state, "main"), new Date(clock), process.pid);
+    });
+    const before = await Bun.file(configPath).text();
+    await expectCode(removeAutomationProfile(ctx(), "main"), "SESSIONS_BUSY");
+    expect(await Bun.file(configPath).text()).toBe(before);
+    expect((await status()).automation.profiles[0]?.state).toBe("running");
   });
 
   test("moving the hook to another settings file uninstalls the old entry", async () => {

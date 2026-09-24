@@ -628,6 +628,15 @@ export async function removeAutomationProfile(
 ): Promise<SessionAutomationChange> {
   const { sessions } = await loadArchive(ctx);
   const profile = findProfile(sessions, id);
+  // A running import must stay visible in status until it settles, so a
+  // profile with a live run is not removed (nothing changes).
+  const { state } = await loadAutomationState(sessions.archiveRoot);
+  if (isRunLive(ownProfile(state, id)?.running ?? null, nowOf(ctx))) {
+    throw new SessionsError(
+      "SESSIONS_BUSY",
+      `Automation profile "${id}" is running. Pause it with disable (nothing new starts), then remove it once status shows the run finished.`
+    );
+  }
   let entriesRemoved = 0;
   if (profile.hook) {
     // Fails closed: an unreadable settings file keeps the profile, so the

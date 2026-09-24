@@ -708,7 +708,9 @@ $A sessions automation remove claude             # uninstall and delete the prof
   entry and clears pending work admitted by that trigger. A run already in
   progress finishes its bounded batch; nothing new starts.
 - `remove` uninstalls the owned hook entry and deletes the profile and its
-  run state. It fails, and keeps the profile, if the Claude Code settings
+  run state. While a run is in progress it refuses with `SESSIONS_BUSY` and
+  changes nothing, so the run stays visible: pause first, then remove once
+  status shows the run finished. It fails, and keeps the profile, if the Claude Code settings
   file cannot be read, so the entry never outlives the profile that can
   remove it.
 - Archived conversations are always kept. Remove them with
