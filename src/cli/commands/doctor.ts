@@ -12,7 +12,10 @@ import { arch, platform } from "node:os";
 
 import type { Config } from "../../config/types";
 import type { ActivationStatus } from "../../core/activation-status";
-import type { VectorPartitionStatus } from "../../store/vector/status";
+import type {
+  VectorPartitionStatus,
+  VectorRuntimeStatus,
+} from "../../store/vector/status";
 
 import { getIndexDbPath, getModelsCachePath } from "../../app/constants";
 import {
@@ -61,6 +64,7 @@ export interface DoctorCheck {
   embeddingFingerprint?: EmbeddingFingerprintHealth;
   /** Vector partitions; `retrieval` marks the one status and search use */
   vectorPartitions?: VectorPartitionStatus[];
+  vectorRuntime?: VectorRuntimeStatus;
 }
 
 export interface EmbeddingFingerprintGroup {
@@ -408,7 +412,8 @@ async function checkEmbeddingFingerprints(
     };
     const partitions = statusResult.value.vectorPartitions;
     if (!partitions) return [fingerprintCheck];
-    const partitionLines = formatVectorPartitionLines(partitions);
+    const runtime = statusResult.value.vectorRuntime;
+    const partitionLines = formatVectorPartitionLines(partitions, runtime);
     const retrieval = partitions.find((p) => p.retrieval);
     return [
       fingerprintCheck,
@@ -416,10 +421,13 @@ async function checkEmbeddingFingerprints(
         name: "vector-partitions",
         status: partitionLines.length ? "warn" : "ok",
         message: retrieval
-          ? `retrieval uses ${retrieval.id.slice(0, 12)} (${retrieval.state}, ${retrieval.owners} chunks, ${retrieval.provenance}); ${partitions.length - 1} other partition(s)`
-          : `no partition is used by retrieval yet; ${partitions.length} partition(s)`,
+          ? `this runtime's retrieval uses ${retrieval.id.slice(0, 12)} (${retrieval.state}, ${retrieval.owners} chunks, ${retrieval.provenance}); ${partitions.length - 1} other partition(s)`
+          : runtime?.state === "unavailable"
+            ? `this runtime uses lexical retrieval only: ${runtime.reason}`
+            : `this runtime has not resolved a partition yet; ${partitions.length} partition(s)`,
         details: partitionLines.length ? partitionLines.slice(1) : undefined,
         vectorPartitions: partitions,
+        vectorRuntime: runtime,
       },
     ];
   } finally {

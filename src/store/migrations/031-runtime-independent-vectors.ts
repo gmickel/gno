@@ -23,6 +23,13 @@ export const migration: Migration = {
         sample_ms REAL NOT NULL,
         PRIMARY KEY (partition_id, runtime)
       );
+      -- Identity each caller (process runtime + env) last resolved, for status.
+      CREATE TABLE vector_runtime_callers (
+        caller TEXT PRIMARY KEY,
+        runtime TEXT NOT NULL,
+        label TEXT NOT NULL,
+        identity TEXT NOT NULL
+      );
     `);
   },
 };

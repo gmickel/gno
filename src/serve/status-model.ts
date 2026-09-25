@@ -1,7 +1,10 @@
 import type { ContentTypeBoostStatus } from "../config/content-types";
 import type { ActivationStatus } from "../core/activation-status";
 import type { ChunkingStatus } from "../store/chunking";
-import type { VectorPartitionStatus } from "../store/vector/status";
+import type {
+  VectorPartitionStatus,
+  VectorRuntimeStatus,
+} from "../store/vector/status";
 
 export type HealthCheckStatus = "ok" | "warn" | "error";
 
@@ -188,6 +191,7 @@ export interface AppStatusResponse {
   totalChunks: number;
   embeddingBacklog: number;
   vectorPartitions?: VectorPartitionStatus[];
+  vectorRuntime?: VectorRuntimeStatus;
   lastUpdated: string | null;
   recentErrors: number;
   healthy: boolean;

@@ -2122,15 +2122,17 @@ configured collection passed. Status exits 0 even when those fields are false
 so automation can inspect remediation. It does not start connector children,
 initialize/download models, or invoke remote inference.
 
-Embedding backlog uses the partition retrieval uses for the selected model:
-an activated partition first, so an incomplete shadow partition never reads as
-lost embeddings. When more than one partition exists (or one is legacy, or a
-runtime was measured incompatible), status lists every partition under
-`Vector partitions:` with its state, chunk count and provenance (for example
-`CUDA, Bun 1.4.2`) and the runtimes that read it, marks the activated
-runtime-independent partition the counts use, and names each other
-partition's `gno vec drop` command. JSON output carries the same list as
-`vectorPartitions`.
+Embedding backlog uses the partition this runtime's retrieval reads, so an
+incomplete shadow partition never reads as lost embeddings. Status cannot load a model, so every query and embed records the identity it resolved under a key of its runtime (Bun and binding version, platform, the model URI and the `GNO_LLAMA_GPU`, `NODE_LLAMA_CPP_GPU`, `GNO_EMBED_*` settings). Status looks that record up for its own process and applies the same selection rule retrieval uses, so the partition it marks is the one this runtime's queries read.
+When more than one partition exists (or one is legacy, or a runtime was
+measured incompatible), status prints a `Vector partitions:` block: first
+what this runtime reads (a partition, lexical retrieval only with the reason,
+or not resolved yet: run a query or `gno embed`), then every partition with its
+state, chunk count, provenance (for example `CUDA, Bun 1.4.2`) and the runtimes
+that read it, and a `gno vec drop` hint for each partition this runtime does
+not use. JSON output carries `vectorRuntime` and `vectorPartitions`. Until this
+runtime has resolved, counts fall back to the activated runtime-independent
+partition and activated partitions are protected from `gno vec drop`.
 
 Once exact-input storage is in use, the backlog counts pending document/chunk
 owners, so documents sharing text can need separate embeddings when their
@@ -2179,7 +2181,7 @@ Checks include:
 - local model cache readiness
 - embedding fingerprint freshness: current fingerprint, pending/stale chunks,
   legacy empty-fingerprint vectors, and mixed stored fingerprint groups
-- vector partitions: the partition retrieval uses, every other partition with
+- vector partitions: the partition this runtime's retrieval uses, every other partition with
   state, chunk count and provenance, and runtimes measured incompatible
   (`vector-partitions`, warns when anything beyond one healthy partition exists)
 - per-collection corpus-derived lexical retrieval proof
@@ -2214,14 +2216,17 @@ Vector index maintenance. Use when vector search returns empty despite embedding
 ```bash
 gno vec sync      # Sync vec0 index with content_vectors
 gno vec rebuild   # Full rebuild of vec0 index
-gno vec drop 9a8b7c6d5e4f   # Drop an abandoned shadow or legacy partition
+gno vec drop 9a8b7c6d5e4f   # Drop a partition this runtime does not use
 ```
 
 - `sync` - Fast incremental sync, fixes drift after failed inserts
 - `rebuild` - Full rebuild, use when sync isn't enough
-- `drop <partition>` - Remove a shadow or legacy vector partition (id prefix of
-  at least 8 characters from `gno status`) with its vectors. The partition
-  retrieval uses and any activated partition are refused.
+- `drop <partition>` - Remove a vector partition this runtime's retrieval does
+  not use (id prefix of at least 8 characters from `gno status`) with its
+  vectors. Status prints the hint for exactly the partitions drop accepts. The
+  partition this runtime reads is refused; so is any activated partition while
+  this runtime has not resolved one. Another runtime that reads a dropped
+  partition needs `gno embed --new-partition` again.
 - `--json` - JSON output format
 
 **When to use**: If `gno similar` returns empty results but embeddings exist, run `gno vec sync`.

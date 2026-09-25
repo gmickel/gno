@@ -65,7 +65,7 @@ test("opening a pre-feature schema preserves schema identity, chunks and legacy 
   const beforeVectors = old.query("SELECT * FROM content_vectors").all();
   const beforeSchema = old
     .query(
-      "SELECT name, sql FROM sqlite_master WHERE name != 'documents' AND name NOT LIKE '%vector_partitions%' AND name NOT LIKE '%vector_runtime_verdicts%' ORDER BY name"
+      "SELECT name, sql FROM sqlite_master WHERE name != 'documents' AND name NOT LIKE '%vector_partitions%' AND name NOT LIKE '%vector_runtime_%' ORDER BY name"
     )
     .all();
   old.close();
@@ -87,7 +87,7 @@ test("opening a pre-feature schema preserves schema identity, chunks and legacy 
     expect(
       db
         .query(
-          "SELECT name, sql FROM sqlite_master WHERE name != 'documents' AND name NOT LIKE '%vector_partitions%' AND name NOT LIKE '%vector_runtime_verdicts%' ORDER BY name"
+          "SELECT name, sql FROM sqlite_master WHERE name != 'documents' AND name NOT LIKE '%vector_partitions%' AND name NOT LIKE '%vector_runtime_%' ORDER BY name"
         )
         .all()
     ).toEqual(beforeSchema);

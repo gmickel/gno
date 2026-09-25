@@ -13,8 +13,8 @@ import { buildEligibleDocumentQuery } from "../sqlite/eligibility";
 import {
   embeddingPartitionIdentity,
   identityPartitionId,
-  isPartitionActivated,
   resolveRuntimePartition,
+  retrievalUse,
 } from "./runtime-compat";
 import { encodeEmbedding, getVectorIndexDatabase } from "./sqlite-vec";
 import { embeddingInputHash } from "./variants";
@@ -23,13 +23,17 @@ import { embeddingInputHash } from "./variants";
 export const VECTOR_RUNTIME_INCOMPATIBLE = "vector_runtime_incompatible";
 
 export type SearchPartition =
-  | { identity?: VectorVariantIdentity; notice?: undefined }
-  | { identity?: undefined; notice: string };
+  | { identity?: VectorVariantIdentity; unavailable?: undefined }
+  | {
+      identity?: undefined;
+      /** Why this runtime cannot read vectors; callers phrase the fallback. */
+      unavailable: { reason: string; building: boolean };
+    };
 
 /**
  * Call after query embedding initialized the port. A runtime that cannot use
- * an activated partition gets a notice and must fall back to lexical retrieval;
- * vector spaces are never mixed.
+ * an activated partition gets a reason instead of an identity; vector spaces
+ * are never mixed.
  */
 export async function resolveVectorSearchIdentity(
   port: EmbeddingPort,
@@ -43,27 +47,39 @@ export async function resolveVectorSearchIdentity(
     resolved = await resolveRuntimePartition(db, port, primary);
   } catch (cause) {
     return {
-      notice: `Semantic search unavailable: the runtime compatibility check failed (${cause instanceof Error ? cause.message : String(cause)}). Using lexical retrieval only.`,
+      unavailable: {
+        reason: `the runtime compatibility check failed (${cause instanceof Error ? cause.message : String(cause)})`,
+        building: false,
+      },
     };
   }
-  if (resolved.blocked)
-    return {
-      notice: `Semantic search unavailable for this runtime: ${resolved.blocked.reason}. Using lexical retrieval only; see \`gno status\`.`,
-    };
-  const activatedElsewhere = db
-    .query(
-      "SELECT 1 FROM vector_partitions WHERE model = ? AND state = 'active' AND activated_epoch IS NOT NULL LIMIT 1"
-    )
-    .get(primary.model);
-  if (
-    activatedElsewhere &&
-    !isPartitionActivated(db, identityPartitionId(resolved.identity))
-  )
-    return {
-      notice:
-        "Semantic search unavailable for this runtime: its vector partition is still being built. Using lexical retrieval only; run `gno embed`.",
-    };
+  const use = retrievalUse(
+    db,
+    resolved.blocked
+      ? { kind: "blocked", ...resolved.blocked }
+      : { kind: "use", identity: resolved.identity, verdict: resolved.verdict }
+  );
+  if (use.kind === "unavailable")
+    return { unavailable: { reason: use.reason, building: use.building } };
   return { identity: resolved.identity };
+}
+
+/** Result notice for hybrid retrieval, which falls back to lexical. */
+export function lexicalFallbackNotice(
+  unavailable: NonNullable<SearchPartition["unavailable"]>
+): string {
+  return `Semantic search unavailable for this runtime: ${unavailable.reason}. Using lexical retrieval only; ${unavailable.building ? "finish it with `gno embed`" : "see `gno status`"}.`;
+}
+
+/** vsearch cannot fall back; it says what the caller can do instead. */
+export function vectorSearchUnavailableMessage(
+  unavailable: NonNullable<SearchPartition["unavailable"]>
+): string {
+  return `Vector search unavailable for this runtime: ${unavailable.reason}. ${
+    unavailable.building
+      ? "Finish the partition with `gno embed`, or use `gno query` / `gno search`."
+      : "Use `gno query` or `gno search`, or build a separate partition with `gno embed --new-partition`."
+  }`;
 }
 
 /** Null means legacy authority. Once promoted, unavailable provenance fails closed. */

@@ -60,7 +60,9 @@ function formatStatus(status: IndexStatus): string {
   if (status.embeddingBacklog > 0) {
     lines.push(`Embedding backlog: ${status.embeddingBacklog} chunks`);
   }
-  lines.push(...formatVectorPartitionLines(status.vectorPartitions));
+  lines.push(
+    ...formatVectorPartitionLines(status.vectorPartitions, status.vectorRuntime)
+  );
 
   const chunking = formatChunkingStatus(status.chunking);
   if (chunking) lines.push(chunking);

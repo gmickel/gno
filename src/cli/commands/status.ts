@@ -118,7 +118,12 @@ function formatTerminal(
   if (indexStatus.embeddingBacklog > 0) {
     lines.push(`Embedding backlog: ${indexStatus.embeddingBacklog} chunks`);
   }
-  lines.push(...formatVectorPartitionLines(indexStatus.vectorPartitions));
+  lines.push(
+    ...formatVectorPartitionLines(
+      indexStatus.vectorPartitions,
+      indexStatus.vectorRuntime
+    )
+  );
 
   const chunking = formatChunkingStatus(indexStatus.chunking);
   if (chunking) lines.push(chunking);
@@ -207,7 +212,10 @@ function formatMarkdown(
   lines.push(`- **Documents**: ${indexStatus.activeDocuments}`);
   lines.push(`- **Chunks**: ${indexStatus.totalChunks}`);
   lines.push(`- **Embedding backlog**: ${indexStatus.embeddingBacklog}`);
-  for (const line of formatVectorPartitionLines(indexStatus.vectorPartitions))
+  for (const line of formatVectorPartitionLines(
+    indexStatus.vectorPartitions,
+    indexStatus.vectorRuntime
+  ))
     lines.push(`- ${line.trim()}`);
   if (indexStatus.typedMetadata)
     lines.push(
@@ -361,6 +369,7 @@ export function formatStatus(
         totalChunks: s.totalChunks,
         embeddingBacklog: s.embeddingBacklog,
         vectorPartitions: s.vectorPartitions,
+        vectorRuntime: s.vectorRuntime,
         typedMetadata: s.typedMetadata,
         chunking: s.chunking,
         lastUpdated: s.lastUpdatedAt,

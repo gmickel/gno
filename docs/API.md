@@ -460,6 +460,7 @@ Returns index statistics plus first-run onboarding, health-center state, backgro
       "state": "active",
       "legacy": false,
       "retrieval": true,
+      "droppable": false,
       "owners": 1853,
       "provenance": "CUDA, Bun 1.4.2",
       "compatibleRuntimes": ["CUDA, Bun 1.4.2", "CPU, Bun 1.3.14"],
@@ -635,7 +636,9 @@ Returns index statistics plus first-run onboarding, health-center state, backgro
 
 `vectorPartitions` (omitted when none exist) is the same list `gno status
 --json` reports: `embeddingBacklog` and embedded counts use the partition with
-`retrieval: true`, and every other partition appears with its `state`,
+`retrieval: true`, the one this server's queries read under retrieval's own
+selection rule (`vectorRuntime`: `vectors`, `unavailable` with a reason, or
+`unresolved` before its first query or embed), and every other partition appears with its `state`,
 `owners` and `provenance`, so an incomplete shadow partition never reads as
 lost embeddings. Search results from a runtime that cannot reproduce the stored
 vectors fall back to lexical retrieval and carry a

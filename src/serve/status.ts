@@ -735,6 +735,7 @@ export async function buildAppStatus(
     totalChunks: status.totalChunks,
     embeddingBacklog: status.embeddingBacklog,
     vectorPartitions: status.vectorPartitions,
+    vectorRuntime: status.vectorRuntime,
     chunking: status.chunking,
     lastUpdated: status.lastUpdatedAt,
     recentErrors: status.recentErrors,

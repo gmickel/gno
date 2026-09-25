@@ -7,7 +7,10 @@ import { join } from "node:path";
 import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
 
 import { getEmbeddingFingerprint } from "../../src/embed/fingerprint";
-import { listVectorPartitions } from "../../src/store/vector/status";
+import {
+  listVectorPartitions,
+  vectorRuntimeStatus,
+} from "../../src/store/vector/status";
 import {
   createVectorVariantStore,
   SELECTED_VECTOR_PARTITION_PREFIX,
@@ -104,18 +107,23 @@ test("stale epochs retain valid owners but missing/title-changed owners remain p
   expect((await coverage(store)).collections[1]?.embedded).toBe(2);
 });
 
-test("an incomplete selected partition never replaces activated coverage; activation switches it", async () => {
+test("without a resolved runtime, counts use activated coverage and activated partitions stay protected", async () => {
   const { store, variants } = await fixture();
   const db = store.getRawDb();
   const replacement = await createVectorVariantStore(db, {
     ...statusIdentity,
     contextSize: 1024,
   });
-  const retrieval = () =>
+  const protectedIds = () =>
     listVectorPartitions(db, statusIdentity.model)
-      .filter((p) => p.retrieval)
-      .map((p) => p.id);
-  // fn-184 R4: status reports the activated partition, not the newer shadow.
+      .filter((p) => !p.droppable)
+      .map((p) => p.id)
+      .sort();
+  // fn-184 R4: no query or embed resolved this process, so no partition is
+  // claimed as this runtime's; counts use activated coverage, not the shadow.
+  expect(vectorRuntimeStatus(db, statusIdentity.model).state).toBe(
+    "unresolved"
+  );
   expect((await coverage(store)).backlog).toBe(0);
   replacement.selectForEmbedding();
   const owners = replacement.pending();
@@ -123,7 +131,7 @@ test("an incomplete selected partition never replaces activated coverage; activa
     { owner: owners[0]!, embedding: new Float32Array([0, 1]) },
   ]);
   expect((await coverage(store)).backlog).toBe(0);
-  expect(retrieval()).toEqual([variants.partitionId]);
+  expect(protectedIds()).toEqual([variants.partitionId]);
   replacement.write(
     replacement
       .pending()
@@ -131,12 +139,16 @@ test("an incomplete selected partition never replaces activated coverage; activa
   );
   replacement.activate(replacement.epoch());
   expect((await coverage(store)).backlog).toBe(0);
-  expect(retrieval()).toEqual([replacement.partitionId]);
+  expect(protectedIds()).toEqual(
+    [variants.partitionId, replacement.partitionId].sort()
+  );
   db.run("UPDATE schema_meta SET value = 'missing-partition' WHERE key = ?", [
     SELECTED_VECTOR_PARTITION_PREFIX + statusIdentity.model,
   ]);
   expect((await coverage(store)).backlog).toBe(0);
-  expect(retrieval()).toHaveLength(1);
+  expect(
+    listVectorPartitions(db, statusIdentity.model).some((p) => p.retrieval)
+  ).toBe(false);
 });
 
 test("model and explicit fingerprint scopes never fall back to unrelated legacy data after activation", async () => {

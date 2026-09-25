@@ -903,18 +903,24 @@ partition without re-embedding, and the others stay as `shadow`. If two
 partitions are equally complete, nothing is re-keyed; status and embed report
 the ambiguity. Drop all but one of them to continue.
 
-`gno status` reports against the partition retrieval uses and lists every other
-partition with its state, chunk count and provenance, so an incomplete shadow
-partition never looks like lost embeddings. Remove an abandoned shadow or
-legacy partition with its id prefix from status:
+`gno status` reports against the partition this runtime's queries read and
+lists every other partition with its state, chunk count, provenance and
+readers, so an incomplete shadow partition never looks like lost embeddings.
+Status cannot load a model, so every query and embed records the identity it resolved under a key of its runtime (Bun and binding version, platform, the model URI and the `GNO_LLAMA_GPU`, `NODE_LLAMA_CPP_GPU`, `GNO_EMBED_*` settings). Status looks that record up for its own process and applies the same selection rule retrieval uses, so the partition it marks is the one this runtime's queries read. Remove a partition this runtime does not use with its id
+prefix from status:
 
 ```bash
 gno status            # Vector partitions: ... (drop with: gno vec drop 9a8b7c6d5e4f)
 gno vec drop 9a8b7c6d5e4f
 ```
 
-`gno vec drop` refuses the partition retrieval uses and any activated
-partition.
+`gno vec drop` accepts exactly the partitions status offers a drop hint for: it
+refuses the partition this runtime reads, and any activated partition while
+this runtime has not resolved one yet.
+
+`gno vsearch` has no lexical fallback: from a runtime without a usable
+partition it fails with `Vector search unavailable for this runtime` and points
+to `gno query` / `gno search` or `gno embed --new-partition`.
 
 ## Model Issues
 

@@ -23,10 +23,12 @@ import { createVectorStatsPort } from "../../../src/store/vector/stats";
 import {
   dropVectorPartition,
   listVectorPartitions,
+  vectorRuntimeStatus,
 } from "../../../src/store/vector/status";
 import {
   resolveVectorSearchIdentity,
   VECTOR_RUNTIME_INCOMPATIBLE,
+  vectorSearchUnavailableMessage,
 } from "../../../src/store/vector/variant-search";
 import { createVectorVariantStore } from "../../../src/store/vector/variants";
 import { safeRm } from "../../helpers/cleanup";
@@ -207,7 +209,15 @@ test("an incompatible runtime is refused without explicit confirmation and queri
 
   const search = await resolveVectorSearchIdentity(c.embedPort, f.index);
   expect(search.identity).toBeUndefined();
-  expect(search.notice).toContain("lexical retrieval only");
+  expect(search.unavailable?.reason).toContain("does not reproduce");
+  // vsearch cannot fall back, so it points at what does work.
+  const vsearchMessage = vectorSearchUnavailableMessage(search.unavailable!);
+  expect(vsearchMessage).toStartWith(
+    "Vector search unavailable for this runtime"
+  );
+  expect(vsearchMessage).toContain("`gno query` or `gno search`");
+  expect(vsearchMessage).toContain("--new-partition");
+  expect(vsearchMessage).not.toContain("lexical retrieval only");
   expect(VECTOR_RUNTIME_INCOMPATIBLE).toBe("vector_runtime_incompatible");
 
   const forked = await f.embed(c.embedPort, true);
@@ -225,12 +235,11 @@ test("an incompatible runtime is refused without explicit confirmation and queri
     (await resolveVectorSearchIdentity(c.embedPort, f.index)).identity?.fork
   ).toBe("runtime-c");
 
-  // Status still counts the primary A reads; the fork names its reader.
-  const listed = listVectorPartitions(f.db, MODEL);
-  expect(listed.find((p) => p.retrieval)?.id).toBe(primary);
-  expect(listed.find((p) => !p.retrieval)?.compatibleRuntimes).toEqual([
-    "runtime-c label",
-  ]);
+  // The fork names its reader.
+  expect(
+    listVectorPartitions(f.db, MODEL).find((p) => p.id !== primary)
+      ?.compatibleRuntimes
+  ).toEqual(["runtime-c label"]);
 
   // A Bun-only upgrade of C measures and reuses its fork instead of forking again.
   const upgraded = await f.embed(port("runtime-c-next-bun", 1).embedPort);
@@ -246,9 +255,67 @@ test("a changed vector-defining identity needs confirmation before a new partiti
   expect(!refused.ok && refused.error.message).toContain(
     "embedding identity changed"
   );
+  // No compatibility sample ran, so the estimate is timed on current chunks.
+  expect(!refused.ok && refused.error.message).toMatch(
+    /estimated about \d+ s at the measured \d+ ms per chunk/
+  );
   expect(partitionIds(f.db)).toHaveLength(1);
   const built = await f.embed(wider.embedPort, true);
   expect(built.ok && built.value.embedded).toBe(12);
+});
+
+/** Status must name exactly the partition this runtime's queries read. */
+async function expectStatusMatchesRetrieval(
+  f: Awaited<ReturnType<typeof fixture>>,
+  embedPort: EmbeddingPort
+) {
+  const search = await resolveVectorSearchIdentity(embedPort, f.index);
+  const runtime = vectorRuntimeStatus(f.db, MODEL);
+  const partitions = listVectorPartitions(f.db, MODEL);
+  const retrieval = partitions.filter((p) => p.retrieval).map((p) => p.id);
+  if (search.identity) {
+    expect(runtime).toMatchObject({ state: "vectors" });
+    expect(retrieval).toEqual([identityPartitionId(search.identity)]);
+    expect(runtime.partition).toBe(retrieval[0]!);
+  } else {
+    expect(runtime).toMatchObject({
+      state: "unavailable",
+      reason: search.unavailable!.reason,
+    });
+    expect(retrieval).toEqual([]);
+  }
+  return partitions;
+}
+
+test("status and drop follow the calling runtime's retrieval selection", async () => {
+  const f = await fixture();
+  const a = port("runtime-a");
+  const c = port("runtime-c", 1);
+  const wider = port("runtime-a", 0, 1024);
+  expect((await f.embed(a.embedPort)).ok).toBe(true);
+  await expectStatusMatchesRetrieval(f, a.embedPort);
+  await expectStatusMatchesRetrieval(f, c.embedPort);
+  expect((await f.embed(c.embedPort, true)).ok).toBe(true);
+  expect((await f.embed(wider.embedPort, true)).ok).toBe(true);
+  for (const embedPort of [c.embedPort, wider.embedPort, a.embedPort])
+    await expectStatusMatchesRetrieval(f, embedPort);
+
+  // As runtime A: the drop hint and the drop rule agree for every partition.
+  const partitions = await expectStatusMatchesRetrieval(f, a.embedPort);
+  expect(partitions.map((p) => [p.state, p.retrieval, p.droppable])).toEqual(
+    expect.arrayContaining([
+      ["active", true, false],
+      ["active", false, true],
+      ["active", false, true],
+    ])
+  );
+  const inUse = partitions.find((p) => p.retrieval)!;
+  expect((await dropVectorPartition(f.db, inUse.id)).ok).toBe(false);
+  for (const partition of partitions.filter((p) => p.droppable))
+    expect((await dropVectorPartition(f.db, partition.id)).ok).toBe(true);
+  await expectStatusMatchesRetrieval(f, a.embedPort);
+  // C's fork is gone, so C is honestly back to lexical-only.
+  await expectStatusMatchesRetrieval(f, c.embedPort);
 });
 
 test("a new reference runtime never reuses stale vectors of another runtime", async () => {

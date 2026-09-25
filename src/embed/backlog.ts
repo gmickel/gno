@@ -19,6 +19,7 @@ import {
   assertInferenceActive,
   isBackgroundInference,
 } from "../llm/inference-scope";
+import { formatDocForEmbedding } from "../pipeline/contextual";
 import { err, ok } from "../store/types";
 import {
   embeddingPartitionIdentity,
@@ -255,28 +256,55 @@ export async function embedBacklog(
 }
 
 function formatEstimate(ms: number): string {
-  const minutes = Math.ceil(ms / 60_000);
-  return minutes < 60
+  const seconds = Math.max(1, Math.round(ms / 1000));
+  if (seconds < 90) return `about ${seconds} s`;
+  const minutes = Math.round(seconds / 60);
+  return minutes < 90
     ? `about ${minutes} min`
     : `about ${(minutes / 60).toFixed(1)} h`;
 }
 
-/** R3: a fork names itself, its full size and a measured estimate before it runs. */
-function separatePartitionMessage(
+/** Time this port on a few current chunks when no compatibility sample ran. */
+async function measureEmbedRate(
   db: Database,
+  port: EmbeddingPort
+): Promise<number | undefined> {
+  const inputs = db
+    .query<{ text: string; title: string | null }, []>(`
+      SELECT c.text, d.title FROM documents d
+      JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
+      WHERE d.active = 1 ORDER BY d.id, c.seq LIMIT 8
+    `)
+    .all()
+    .map((row) =>
+      formatDocForEmbedding(row.text, row.title ?? undefined, port.modelUri)
+    );
+  if (!inputs.length) return undefined;
+  const startedAt = performance.now();
+  const result = await port.embedBatch(inputs);
+  return result.ok
+    ? (performance.now() - startedAt) / inputs.length
+    : undefined;
+}
+
+/** R3: a fork names itself, its full size and a measured estimate before it runs. */
+async function separatePartitionMessage(
+  db: Database,
+  port: EmbeddingPort,
   reason: string,
-  resolved: { msPerChunk?: number }
-): string {
+  msPerChunk: number | undefined
+): Promise<string> {
   const chunks = db
     .query<{ count: number }, []>(`
       SELECT count(*) AS count FROM documents d
       JOIN content_chunks c ON c.mirror_hash = d.mirror_hash WHERE d.active = 1
     `)
     .get()!.count;
+  const rate = msPerChunk ?? (await measureEmbedRate(db, port));
   const estimate =
-    resolved.msPerChunk === undefined
-      ? "no estimate available"
-      : `estimated ${formatEstimate(resolved.msPerChunk * chunks)}`;
+    rate === undefined
+      ? "no estimate: embedding could not be timed"
+      : `estimated ${formatEstimate(rate * chunks)} at the measured ${Math.round(rate)} ms per chunk`;
   return `Embedding would build a separate vector partition (${reason}). It re-embeds all ${chunks} chunks (${estimate}). Confirm with \`gno embed --new-partition\`; --yes alone does not confirm.`;
 }
 
@@ -303,7 +331,12 @@ export async function prepareEmbeddingBacklog(
         if (resolved.blocked && !deps.allowNewPartition)
           return err(
             "VECTOR_PARTITION_FORK",
-            separatePartitionMessage(db, resolved.blocked.reason, resolved)
+            await separatePartitionMessage(
+              db,
+              deps.embedPort,
+              resolved.blocked.reason,
+              resolved.msPerChunk
+            )
           );
         const variantStore = await createVectorVariantStore(
           db,

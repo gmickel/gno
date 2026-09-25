@@ -163,6 +163,7 @@
           "state",
           "legacy",
           "retrieval",
+          "droppable",
           "owners",
           "provenance",
           "compatibleRuntimes",
@@ -194,6 +195,10 @@
             "type": "boolean",
             "description": "Status counts use this partition: the activated runtime-independent partition every compatible runtime reads"
           },
+          "droppable": {
+            "type": "boolean",
+            "description": "`gno vec drop` accepts it; never the partition this runtime's retrieval uses"
+          },
           "owners": {
             "type": "integer",
             "minimum": 0,
@@ -217,6 +222,29 @@
             },
             "description": "Runtimes measured incompatible; they read another partition or use lexical retrieval only"
           }
+        }
+      }
+    },
+    "vectorRuntime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "state", "partition"],
+      "description": "This process's runtime, resolved by the same selection rule its queries use",
+      "properties": {
+        "label": {
+          "type": ["string", "null"],
+          "description": "Runtime recorded by this caller's last query or embed"
+        },
+        "state": {
+          "type": "string",
+          "enum": ["vectors", "unavailable", "unresolved"],
+          "description": "vectors: queries read `partition`; unavailable: lexical retrieval only; unresolved: no query or embed has resolved this caller yet"
+        },
+        "partition": {
+          "type": ["string", "null"]
+        },
+        "reason": {
+          "type": "string"
         }
       }
     },

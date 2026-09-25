@@ -15,6 +15,7 @@ import type { EmbeddingPort } from "../../llm/types";
 import type { VectorVariantIdentity } from "./types";
 
 import { getVariantModelFingerprint } from "../../embed/fingerprint";
+import { runtimeCallerKey } from "../../llm/native-worker/embedding-identity";
 import { formatDocForEmbedding } from "../../pipeline/contextual";
 import { decodeEmbedding } from "./sqlite-vec";
 import {
@@ -42,7 +43,7 @@ interface VerdictRow {
   sample_ms: number;
 }
 
-interface Runtime {
+export interface Runtime {
   fingerprint: string;
   label: string;
 }
@@ -159,26 +160,39 @@ function cosine(a: ArrayLike<number>, b: ArrayLike<number>): number {
   return aa && bb ? dot / Math.sqrt(aa * bb) : 0;
 }
 
-/** Cached verdict, or a fresh measured one. Throws only on embedding failure. */
-async function verdictFor(
+interface Verdict {
+  verdict: RuntimeVerdict;
+  msPerChunk?: number;
+}
+
+function cachedVerdict(
+  db: Database,
+  partitionId: string,
+  runtime: string
+): Verdict | undefined {
+  const cached = db
+    .query<VerdictRow, [string, string]>(
+      "SELECT verdict, min_cosine, samples, sample_ms FROM vector_runtime_verdicts WHERE partition_id = ? AND runtime = ?"
+    )
+    .get(partitionId, runtime);
+  return cached
+    ? {
+        verdict: cached.verdict,
+        msPerChunk: cached.samples
+          ? cached.sample_ms / cached.samples
+          : undefined,
+      }
+    : undefined;
+}
+
+/** Re-embed the sample and cache the verdict. Throws only on embedding failure. */
+async function measureVerdict(
   db: Database,
   port: EmbeddingPort,
   partitionId: string,
   model: string,
   runtime: Runtime
-): Promise<{ verdict: RuntimeVerdict; msPerChunk?: number }> {
-  const cached = db
-    .query<VerdictRow, [string, string]>(
-      "SELECT verdict, min_cosine, samples, sample_ms FROM vector_runtime_verdicts WHERE partition_id = ? AND runtime = ?"
-    )
-    .get(partitionId, runtime.fingerprint);
-  if (cached)
-    return {
-      verdict: cached.verdict,
-      msPerChunk: cached.samples
-        ? cached.sample_ms / cached.samples
-        : undefined,
-    };
+): Promise<Verdict> {
   const sample = sampleStored(db, partitionId, model);
   if (!sample.length) return { verdict: "unverified" };
   const startedAt = performance.now();
@@ -216,6 +230,19 @@ async function verdictFor(
     // The measured verdict still applies to this run; the next run re-measures.
   }
   return { verdict, msPerChunk: sampleMs / sample.length };
+}
+
+async function verdictFor(
+  db: Database,
+  port: EmbeddingPort,
+  partitionId: string,
+  model: string,
+  runtime: Runtime
+): Promise<Verdict> {
+  return (
+    cachedVerdict(db, partitionId, runtime.fingerprint) ??
+    measureVerdict(db, port, partitionId, model, runtime)
+  );
 }
 
 interface LegacyPartition {
@@ -350,38 +377,38 @@ async function rekeyLegacy(
   return { kind: "rekeyed", msPerChunk };
 }
 
+/** What one runtime may do with the partitions stored for its vector space. */
+export type RuntimeSelection =
+  | { kind: "use"; identity: VectorVariantIdentity; verdict: RuntimeVerdict }
+  | { kind: "blocked"; reason: string; separate: VectorVariantIdentity }
+  /** A verdict is missing; only a runtime with a loaded model can measure it. */
+  | { kind: "measure"; partitionId: string }
+  /** Pre-fn-184 partitions await the one-time measured re-key. */
+  | { kind: "legacy" };
+
+const IDENTITY_CHANGED =
+  "the embedding identity changed (weights, formatter, dimensions, context size or truncation policy)";
+
 /**
- * Resolve the partition an initialized verified runtime may use. Runs the
- * one-time legacy migration, then measures every partition of this vector
- * space (the primary first, then confirmed forks, most complete first) and
- * reuses the first compatible one.
+ * The single partition-selection rule, shared by retrieval, embedding and
+ * status: the primary first, then confirmed forks (most complete first); the
+ * first compatible partition wins. Reads cached verdicts plus `measured`.
  */
-export async function resolveRuntimePartition(
+export function selectRuntimePartition(
   db: Database,
-  port: EmbeddingPort,
-  primary: VectorVariantIdentity
-): Promise<RuntimePartition> {
-  const identity = port.getIdentity?.();
-  if (!identity) throw new Error("Verified embedding identity required");
-  const runtime: Runtime = {
-    fingerprint: identity.runtimeFingerprint,
-    label: identity.runtimeLabel ?? "unknown runtime",
-  };
-  const blocked = (
-    reason: string,
-    separate: VectorVariantIdentity,
-    msPerChunk?: number
-  ): RuntimePartition => ({
-    identity: primary,
-    verdict: "incompatible",
-    blocked: { reason, separate },
-    msPerChunk,
-  });
-  if (!partitionExists(db, identityPartitionId(primary))) {
-    const legacy = await rekeyLegacy(db, port, primary, runtime);
-    if (legacy.kind === "blocked")
-      return blocked(legacy.reason, primary, legacy.msPerChunk);
-  }
+  primary: VectorVariantIdentity,
+  runtime: Runtime,
+  measured: ReadonlyMap<string, Verdict> = new Map()
+): RuntimeSelection {
+  if (
+    !partitionExists(db, identityPartitionId(primary)) &&
+    db
+      .query(
+        "SELECT 1 FROM vector_partitions WHERE legacy = 1 AND model = ? AND dimensions = ? LIMIT 1"
+      )
+      .get(primary.model, primary.dimensions)
+  )
+    return { kind: "legacy" };
   const candidates = db
     .query<
       { partition_id: string; fork: string | null },
@@ -395,42 +422,150 @@ export async function resolveRuntimePartition(
     `)
     .all(vectorVariantFingerprint(primary), primary.model, primary.dimensions);
   let unverified: VectorVariantIdentity | undefined;
-  let msPerChunk: number | undefined;
   for (const candidate of candidates) {
-    const partition = candidate.fork
+    const identity = candidate.fork
       ? { ...primary, fork: candidate.fork }
       : primary;
-    const measured = await verdictFor(
-      db,
-      port,
-      candidate.partition_id,
-      primary.model,
-      runtime
-    );
-    msPerChunk ??= measured.msPerChunk;
-    if (measured.verdict === "compatible")
-      return { identity: partition, verdict: "compatible" };
-    if (measured.verdict === "unverified") unverified ??= partition;
+    const known =
+      measured.get(candidate.partition_id) ??
+      cachedVerdict(db, candidate.partition_id, runtime.fingerprint) ??
+      (sampleStored(db, candidate.partition_id, primary.model).length
+        ? undefined
+        : { verdict: "unverified" as const });
+    if (!known) return { kind: "measure", partitionId: candidate.partition_id };
+    if (known.verdict === "compatible")
+      return { kind: "use", identity, verdict: "compatible" };
+    if (known.verdict === "unverified") unverified ??= identity;
   }
-  if (unverified) return { identity: unverified, verdict: "unverified" };
+  if (unverified)
+    return { kind: "use", identity: unverified, verdict: "unverified" };
   if (candidates.length)
-    return blocked(
-      `${runtime.label} does not reproduce the stored vectors (cosine below ${RUNTIME_MIN_COSINE})`,
-      { ...primary, fork: runtime.fingerprint },
-      msPerChunk
-    );
+    return {
+      kind: "blocked",
+      reason: `${runtime.label} does not reproduce the stored vectors (cosine below ${RUNTIME_MIN_COSINE})`,
+      separate: { ...primary, fork: runtime.fingerprint },
+    };
   // First partition of this vector space: only an index without vectors for
   // the model may start it silently (a changed context size or weights may not).
-  if (
-    db
-      .query("SELECT 1 FROM vector_partitions WHERE model = ? LIMIT 1")
-      .get(primary.model)
-  )
-    return blocked(
-      "the embedding identity changed (weights, formatter, dimensions, context size or truncation policy)",
-      primary
+  return db
+    .query("SELECT 1 FROM vector_partitions WHERE model = ? LIMIT 1")
+    .get(primary.model)
+    ? { kind: "blocked", reason: IDENTITY_CHANGED, separate: primary }
+    : { kind: "use", identity: primary, verdict: "unverified" };
+}
+
+/**
+ * Resolve the partition an initialized verified runtime may use: run the
+ * one-time legacy re-key and any missing measurement, then apply
+ * `selectRuntimePartition`. Records the caller so status can apply the same
+ * rule without loading a model.
+ */
+export async function resolveRuntimePartition(
+  db: Database,
+  port: EmbeddingPort,
+  primary: VectorVariantIdentity
+): Promise<RuntimePartition> {
+  const identity = port.getIdentity?.();
+  if (!identity) throw new Error("Verified embedding identity required");
+  const runtime: Runtime = {
+    fingerprint: identity.runtimeFingerprint,
+    label: identity.runtimeLabel ?? "unknown runtime",
+  };
+  recordRuntimeCaller(db, primary, runtime);
+  const measured = new Map<string, Verdict>();
+  let msPerChunk: number | undefined;
+  let rekeyed = false;
+  for (;;) {
+    const selection = selectRuntimePartition(db, primary, runtime, measured);
+    if (selection.kind === "use")
+      return { identity: selection.identity, verdict: selection.verdict };
+    if (selection.kind === "blocked")
+      return {
+        identity: primary,
+        verdict: "incompatible",
+        blocked: { reason: selection.reason, separate: selection.separate },
+        msPerChunk,
+      };
+    if (selection.kind === "measure") {
+      const verdict = await measureVerdict(
+        db,
+        port,
+        selection.partitionId,
+        primary.model,
+        runtime
+      );
+      msPerChunk ??= verdict.msPerChunk;
+      measured.set(selection.partitionId, verdict);
+      continue;
+    }
+    const legacy = rekeyed
+      ? {
+          kind: "blocked" as const,
+          reason: "the one-time partition migration did not complete; retry",
+          msPerChunk,
+        }
+      : await rekeyLegacy(db, port, primary, runtime);
+    rekeyed = true;
+    if (legacy.kind === "blocked")
+      return {
+        identity: primary,
+        verdict: "incompatible",
+        blocked: { reason: legacy.reason, separate: primary },
+        msPerChunk: legacy.msPerChunk,
+      };
+    // Re-keyed (or raced by another process): select again.
+  }
+}
+
+/**
+ * Status cannot load a model, so every resolving caller records its effective
+ * identity under a key status can compute from the process alone. Best effort.
+ */
+function recordRuntimeCaller(
+  db: Database,
+  primary: VectorVariantIdentity,
+  runtime: Runtime
+): void {
+  const caller = runtimeCallerKey(primary.model);
+  const identity = JSON.stringify(primary);
+  try {
+    if (
+      db
+        .query(
+          "SELECT 1 FROM vector_runtime_callers WHERE caller = ? AND runtime = ? AND identity = ?"
+        )
+        .get(caller, runtime.fingerprint, identity)
+    )
+      return;
+    db.run(
+      `INSERT OR REPLACE INTO vector_runtime_callers (caller, runtime, label, identity)
+      VALUES (?, ?, ?, ?)`,
+      [caller, runtime.fingerprint, runtime.label, identity]
     );
-  return { identity: primary, verdict: "unverified" };
+  } catch {
+    // Status then reports this runtime as unresolved.
+  }
+}
+
+/** The identity this process last resolved for `model`, if any. */
+export function recordedRuntimeCaller(
+  db: Database,
+  model: string
+):
+  | { runtime: string; label: string; identity: VectorVariantIdentity }
+  | undefined {
+  const row = db
+    .query<{ runtime: string; label: string; identity: string }, [string]>(
+      "SELECT runtime, label, identity FROM vector_runtime_callers WHERE caller = ?"
+    )
+    .get(runtimeCallerKey(model));
+  return row
+    ? {
+        runtime: row.runtime,
+        label: row.label,
+        identity: JSON.parse(row.identity) as VectorVariantIdentity,
+      }
+    : undefined;
 }
 
 /**
@@ -462,6 +597,45 @@ export function recordReferenceRuntime(
   } catch {
     // The next run measures instead.
   }
+}
+
+export type RetrievalUse =
+  /** Search this partition (an unactivated one only before any activation). */
+  | { kind: "vectors"; identity: VectorVariantIdentity; activated: boolean }
+  /** Vector spaces are never mixed: this runtime has no usable partition. */
+  | { kind: "unavailable"; reason: string; building: boolean }
+  /** Status only: a verdict or the legacy re-key is still pending. */
+  | { kind: "unresolved" };
+
+/**
+ * How retrieval uses a selection; shared by search and status so the
+ * partition status names is the one this caller's queries read.
+ */
+export function retrievalUse(
+  db: Database,
+  selection: RuntimeSelection
+): RetrievalUse {
+  if (selection.kind === "blocked")
+    return { kind: "unavailable", reason: selection.reason, building: false };
+  if (selection.kind !== "use") return { kind: "unresolved" };
+  const activated = isPartitionActivated(
+    db,
+    identityPartitionId(selection.identity)
+  );
+  if (
+    !activated &&
+    db
+      .query(
+        "SELECT 1 FROM vector_partitions WHERE model = ? AND state = 'active' AND activated_epoch IS NOT NULL LIMIT 1"
+      )
+      .get(selection.identity.model)
+  )
+    return {
+      kind: "unavailable",
+      reason: "its vector partition is still being built",
+      building: true,
+    };
+  return { kind: "vectors", identity: selection.identity, activated };
 }
 
 /** Partition authority is durable once activated (see VectorVariantStore.hasActivated). */

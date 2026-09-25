@@ -34,6 +34,7 @@ import {
 } from "../llm/inference-scope";
 import { err, ok } from "../store/types";
 import {
+  lexicalFallbackNotice,
   resolveVectorSearchIdentity,
   VECTOR_RUNTIME_INCOMPATIBLE,
 } from "../store/vector/variant-search";
@@ -305,11 +306,11 @@ async function searchVectorChunks(
   }
 
   const partition = await resolveVectorSearchIdentity(embedPort, vectorIndex);
-  if (partition.notice)
+  if (partition.unavailable)
     return {
       ok: false,
       reason: VECTOR_RUNTIME_INCOMPATIBLE,
-      notice: partition.notice,
+      notice: lexicalFallbackNotice(partition.unavailable),
     };
   const queryEmbedding = new Float32Array(embedResult.value);
   const searchResult = await vectorIndex.searchNearest(
@@ -712,9 +713,9 @@ async function searchHybridWithHydration(
         : undefined;
       if (!embedResult.ok) {
         counters.fallbackEvents.push("vector_embed_error");
-      } else if (partition?.notice) {
+      } else if (partition?.unavailable) {
         counters.fallbackEvents.push(VECTOR_RUNTIME_INCOMPATIBLE);
-        vectorNotice = partition.notice;
+        vectorNotice = lexicalFallbackNotice(partition.unavailable);
       } else {
         if (embedResult.value.batchFailed) {
           counters.fallbackEvents.push("vector_embed_batch_fallback");

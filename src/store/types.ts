@@ -26,7 +26,10 @@ import type {
   ChunkingStatus,
   PendingChunkingMirror,
 } from "./chunking";
-import type { VectorPartitionStatus } from "./vector/status";
+import type {
+  VectorPartitionStatus,
+  VectorRuntimeStatus,
+} from "./vector/status";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Error Types
@@ -825,6 +828,8 @@ export interface IndexStatus {
   embeddingBacklog: number;
   /** Vector partitions of the status model; counts use the `retrieval` one. */
   vectorPartitions?: VectorPartitionStatus[];
+  /** This process's runtime, resolved by retrieval's own selection rule. */
+  vectorRuntime?: VectorRuntimeStatus;
   /** Configuration and applied cached layouts; separate from source freshness. */
   chunking?: ChunkingStatus;
   /** Recent ingest errors (last 24h) */

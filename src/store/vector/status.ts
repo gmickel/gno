@@ -3,7 +3,13 @@ import type { Database } from "bun:sqlite";
 
 import { getEmbeddingFingerprint } from "../../embed/fingerprint";
 import { formatDocForEmbedding } from "../../pipeline/contextual";
-import { currentOwnerCount } from "./runtime-compat";
+import {
+  currentOwnerCount,
+  identityPartitionId,
+  recordedRuntimeCaller,
+  retrievalUse,
+  selectRuntimePartition,
+} from "./runtime-compat";
 import {
   embeddingInputHash,
   loadSqliteVec,
@@ -31,11 +37,12 @@ export interface VectorPartitionStatus {
   /** Pre-fn-184 runtime-keyed partition awaiting measured re-keying. */
   legacy: boolean;
   /**
-   * Status counts use this partition: the activated runtime-independent one
-   * every compatible runtime reads. Each runtime reads the partition that lists
-   * it in `compatibleRuntimes`.
+   * This caller's retrieval reads this partition, selected by the same rule
+   * queries use (see `vectorRuntime`); status counts use it.
    */
   retrieval: boolean;
+  /** `gno vec drop` accepts it: never the caller's retrieval partition. */
+  droppable: boolean;
   /** Current document chunks bound to this partition. */
   owners: number;
   /** Runtime that built the partition, e.g. "CUDA, Bun 1.4.2". */
@@ -46,14 +53,72 @@ export interface VectorPartitionStatus {
   incompatibleRuntimes: string[];
 }
 
+/** The calling process's runtime, resolved exactly as its queries resolve it. */
+export interface VectorRuntimeStatus {
+  /** Runtime label recorded by this caller's last query or embed. */
+  label: string | null;
+  /**
+   * vectors: queries read `partition`; unavailable: queries use lexical
+   * retrieval only; unresolved: no query or embed has resolved this caller
+   * yet (or a verdict is pending).
+   */
+  state: "vectors" | "unavailable" | "unresolved";
+  partition: string | null;
+  reason?: string;
+}
+
 const activated = (p: Partition): boolean =>
   p.state === "active" && p.activated_epoch !== null;
 
+/** Apply retrieval's selection to the caller recorded for this process. */
+export function vectorRuntimeStatus(
+  db: Database,
+  model: string
+): VectorRuntimeStatus {
+  const caller = recordedRuntimeCaller(db, model);
+  if (!caller) return { label: null, state: "unresolved", partition: null };
+  const use = retrievalUse(
+    db,
+    selectRuntimePartition(db, caller.identity, {
+      fingerprint: caller.runtime,
+      label: caller.label,
+    })
+  );
+  if (use.kind === "vectors")
+    return {
+      label: caller.label,
+      state: "vectors",
+      partition: identityPartitionId(use.identity),
+    };
+  return use.kind === "unavailable"
+    ? {
+        label: caller.label,
+        state: "unavailable",
+        partition: null,
+        reason: use.reason,
+      }
+    : { label: caller.label, state: "unresolved", partition: null };
+}
+
+/** The partition status counts: the caller's retrieval partition, else the fallback. */
+function countedPartition(
+  db: Database,
+  model: string,
+  candidates: Partition[],
+  selection: string | undefined
+): Partition | undefined {
+  const { partition } = vectorRuntimeStatus(db, model);
+  return (
+    candidates.find((p) => p.partition_id === partition) ??
+    retrievalPartition(db, candidates, selection)
+  );
+}
+
 /**
- * The partition status reports against: the activated primary (shared by all
- * compatible runtimes) first, then an activated confirmed fork, then an
- * activated legacy one, so an incomplete shadow never reads as lost embeddings.
- * The last embedding selection, then coverage, breaks ties within a tier.
+ * Fallback for a caller that has not resolved yet: the activated primary first,
+ * then an activated confirmed fork, then an activated legacy one, so an
+ * incomplete shadow never reads as lost embeddings. The last embedding
+ * selection, then coverage, breaks ties within a tier.
  */
 function retrievalPartition(
   db: Database,
@@ -124,15 +189,14 @@ export function listVectorPartitions(
   return db.transaction(() => {
     if (!hasPartitionTable(db)) return [];
     const partitions = readPartitions(db, model ?? null);
-    const selected = readSelections(db);
     const retrieval = new Set<string>();
+    const resolved = new Set<string>();
     for (const name of new Set(partitions.map((p) => p.model))) {
-      const chosen = retrievalPartition(
-        db,
-        partitions.filter((p) => p.model === name),
-        selected.get(name)
-      );
-      if (chosen) retrieval.add(chosen.partition_id);
+      const { partition } = vectorRuntimeStatus(db, name);
+      if (partition) {
+        retrieval.add(partition);
+        resolved.add(name);
+      }
     }
     const runtimes = db.prepare<{ label: string }, [string, string]>(
       "SELECT DISTINCT label FROM vector_runtime_verdicts WHERE partition_id = ? AND verdict = ? ORDER BY label"
@@ -145,6 +209,10 @@ export function listVectorPartitions(
         state: activated(p) ? "active" : "shadow",
         legacy: p.legacy === 1,
         retrieval: retrieval.has(p.partition_id),
+        // Without a resolved caller, activated current partitions stay protected.
+        droppable:
+          !retrieval.has(p.partition_id) &&
+          (resolved.has(p.model) || !activated(p) || p.legacy === 1),
         owners: currentOwnerCount(db, p.partition_id),
         provenance:
           p.provenance ??
@@ -195,7 +263,7 @@ export function getVariantStatus(
       // Resolve one persisted identity per model, never combine alternative
       // partitions of the same model. Unscoped status may accept any model.
       // Stale epochs do not revoke owners whose current inputs still match.
-      const partition = retrievalPartition(db, candidates, selection);
+      const partition = countedPartition(db, model, candidates, selection);
       if (
         partition &&
         partition.version === 1 &&
@@ -314,9 +382,8 @@ type DropResult =
   | { ok: false; error: string };
 
 /**
- * Remove an abandoned partition (shadow or legacy) with its vectors, owners and
- * verdicts. The partition status and retrieval use, and any activated
- * runtime-independent partition, are refused.
+ * Remove a partition this caller's retrieval does not use, with its vectors,
+ * owners and verdicts. Status prints the same `droppable` rule as its hint.
  */
 export async function dropVectorPartition(
   db: Database,
@@ -341,13 +408,12 @@ export async function dropVectorPartition(
             ? `Partition id prefix ${idPrefix} is ambiguous`
             : `No vector partition ${idPrefix}`,
         };
-      if (
-        partition.retrieval ||
-        (partition.state === "active" && !partition.legacy)
-      )
+      if (!partition.droppable)
         return {
           ok: false,
-          error: `Refusing to drop partition ${partition.id.slice(0, 12)}: it is active and used by retrieval`,
+          error: partition.retrieval
+            ? `Refusing to drop partition ${partition.id.slice(0, 12)}: this runtime's retrieval uses it`
+            : `Refusing to drop active partition ${partition.id.slice(0, 12)}: this runtime has not resolved its partition yet; run a query or \`gno embed\` first`,
         };
       const table = `vec_v1_${partition.id}`;
       if (

@@ -226,17 +226,19 @@ setup and emits `setup-profile-result@1.0`.
 
 Display index status and health information.
 
-Embedding backlog follows the partition retrieval uses for the selected model
-(an activated partition before any shadow or recorded selection) when
+Embedding backlog follows the partition this runtime's retrieval reads (the
+caller's recorded identity under the shared selection rule; before any query or
+embed has resolved it, the activated runtime-independent partition) when
 exact-input storage is authoritative, counting pending document/chunk owners.
+`vectorRuntime` reports `{label, state: vectors|unavailable|unresolved,
+partition, reason?}` for the calling process.
 `vectorPartitions` (omitted when no partition exists) lists every partition of
 the model with `id`, `model`, `dimensions`, `state` (`active`|`shadow`),
-`legacy` (pre-runtime-independent key), `retrieval`, `owners` (current chunks),
+`legacy` (pre-runtime-independent key), `retrieval` (this runtime reads it),
+`droppable` (`gno vec drop` accepts it), `owners` (current chunks),
 `provenance` (building runtime, e.g. `CUDA, Bun 1.4.2`),
 `compatibleRuntimes` (runtimes that read it) and `incompatibleRuntimes`.
-Counts use the activated runtime-independent partition; a runtime with a
-confirmed separate partition reads that one instead, as `compatibleRuntimes`
-shows. Terminal output prints a `Vector partitions:` block
+Terminal output prints a `Vector partitions:` block
 unless there is exactly one healthy partition. Per-collection chunk totals remain deduplicated by canonical chunk;
 embedded counts require matching current inputs for every active owner within
 that collection. Status reads persisted identity and coverage without loading
@@ -276,6 +278,7 @@ gno status [--json|--md]
       "state": "active",
       "legacy": false,
       "retrieval": true,
+      "droppable": false,
       "owners": 500,
       "provenance": "CUDA, Bun 1.4.2",
       "compatibleRuntimes": ["CUDA, Bun 1.4.2", "CPU, Bun 1.3.14"],
@@ -2742,8 +2745,8 @@ content, asset descriptors, source references, nor raster bytes.
 
 ### gno vec drop
 
-Drop an abandoned vector partition (shadow or legacy) with its vectors, owners
-and runtime verdicts.
+Drop a vector partition the calling runtime's retrieval does not use, with its
+vectors, owners and runtime verdicts.
 
 **Synopsis:**
 
@@ -2752,8 +2755,9 @@ gno vec drop <partition> [--json] [--lock-wait <duration>] [--no-wait]
 ```
 
 `<partition>` is an id prefix of at least 8 characters from `gno status`
-(`vectorPartitions[].id`). The partition retrieval uses and any activated
-runtime-independent partition are refused. JSON output is
+(`vectorPartitions[].id`). Only partitions with `droppable: true` are accepted:
+never the partition this runtime reads, and no activated partition while
+`vectorRuntime.state` is `unresolved`. JSON output is
 `{"dropped": <vectorPartitions item>}`.
 
 **Exit Codes:**

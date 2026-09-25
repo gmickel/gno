@@ -76,6 +76,7 @@ describe("status schema", () => {
         state: "active",
         legacy: false,
         retrieval: true,
+        droppable: false,
         owners: 12,
         provenance: "CUDA, Bun 1.4.2",
         compatibleRuntimes: ["CUDA, Bun 1.4.2"],
@@ -86,13 +87,22 @@ describe("status schema", () => {
         id: "b".repeat(64),
         state: "shadow",
         retrieval: false,
+        droppable: true,
         owners: 3,
         provenance: "CPU, Bun 1.4.2",
         incompatibleRuntimes: [],
       };
       expect(
         assertValid(
-          { ...fixture, vectorPartitions: [partition, shadow] },
+          {
+            ...fixture,
+            vectorPartitions: [partition, shadow],
+            vectorRuntime: {
+              label: "CUDA, Bun 1.4.2",
+              state: "vectors",
+              partition: partition.id,
+            },
+          },
           schema
         )
       ).toBe(true);
