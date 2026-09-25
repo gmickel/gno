@@ -24,6 +24,8 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     # No continue-on-error - releases must pass on all platforms
+    # Windows normally takes 12-14 minutes; a hung test must fail, not hold the runner.
+    timeout-minutes: 25
 
     steps:
       - uses: actions/checkout@v7
@@ -81,7 +83,7 @@ jobs:
       - name: Test (Windows)
         if: matrix.os == 'windows-latest'
         shell: cmd
-        run: bun test --max-concurrency=1
+        run: bun test --max-concurrency=1 --timeout 20000
         env:
           CI: "true"
 
@@ -96,6 +98,7 @@ jobs:
   package-windows-desktop:
     needs: test
     runs-on: windows-latest
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v7
@@ -151,6 +154,7 @@ jobs:
   package-macos-desktop:
     needs: test
     runs-on: macos-15
+    timeout-minutes: 60
     environment: release
 
     steps:
@@ -320,6 +324,7 @@ jobs:
   pack-test:
     needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v7
@@ -385,6 +390,7 @@ jobs:
   publish:
     needs: [pack-test, package-windows-desktop, package-macos-desktop]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     if: github.event_name == 'push' || inputs.publish == true
     permissions:
       contents: read
@@ -431,6 +437,7 @@ jobs:
       tag: v${{ steps.version.outputs.version }}
     needs: [publish, package-windows-desktop, package-macos-desktop]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
 

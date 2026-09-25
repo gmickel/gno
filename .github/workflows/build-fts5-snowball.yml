@@ -26,6 +26,7 @@ jobs:
             platform: windows-x64
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
 
     steps:
       - name: Checkout

@@ -1,11 +1,135 @@
 {
   "branch_name": "fn-187-windows-ci-capture-request-id-flake-and",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
   "created_at": "2026-09-25T09:30:23.015321Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-187-windows-ci-capture-request-id-flake-and",
+  "impl_review_rounds": {
+    "fn-187-windows-ci-capture-request-id-flake-and.1": 0
+  },
   "next_task": 1,
+  "no_plan": true,
+  "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "review_attempts": [
+    {
+      "artifact_sha256": "66baa9e135b4eb85d719001b55abdd224d71b943b2fba3d21b63a6c2faee0cc1",
+      "backend": "codex",
+      "base_sha": "692a29a2a0f5e0b2fde854b1a3715f8ab02ca479",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-a0d7addf0fd4edb362be60b7ed850aa4",
+            "classification": "introduced",
+            "findingId": "finding-a0d7addf0fd4edb362be60b7ed850aa4",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-e12599ca0e958d1b5d4acccc9fb505b3",
+            "classification": "introduced",
+            "findingId": "finding-e12599ca0e958d1b5d4acccc9fb505b3",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "c26a86ede5135fdeaad9191eb29d0e6605662d4d",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 1630,
+      "output_sha256": "0156bd999aa59e1d4b460a74e21a07ada21960fb1d2b2a8be7ecdc0d6a20347c",
+      "reservation_id": "5648eb1700804bd3888cc880e728e596",
+      "round_consumed": true,
+      "scope": "impl:fn-187-windows-ci-capture-request-id-flake-and.1",
+      "superseded_by": null,
+      "task": "fn-187-windows-ci-capture-request-id-flake-and.1",
+      "timestamp": "2026-09-25T20:03:53.673747Z",
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "84799fa4c3974948e2b9bf3c987067262d8732dc3ce4a8afc7cc76d2f2b82866",
+      "backend": "codex",
+      "base_sha": "692a29a2a0f5e0b2fde854b1a3715f8ab02ca479",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-a0d7addf0fd4edb362be60b7ed850aa4",
+            "classification": "introduced",
+            "findingId": "finding-a0d7addf0fd4edb362be60b7ed850aa4",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-e12599ca0e958d1b5d4acccc9fb505b3",
+            "classification": "introduced",
+            "findingId": "finding-e12599ca0e958d1b5d4acccc9fb505b3",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "1b34e11134c72ba94e6c0b3079e689fd7c6598de",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 934,
+      "output_sha256": "9d1a888cd2fc4c914a6216db2a8cb562b82fe09d607269cc58931b6147ffa878",
+      "reservation_id": "318bcde005f746c6ac51b9a19cbee39e",
+      "round_consumed": true,
+      "scope": "impl:fn-187-windows-ci-capture-request-id-flake-and.1",
+      "superseded_by": null,
+      "task": "fn-187-windows-ci-capture-request-id-flake-and.1",
+      "timestamp": "2026-09-25T20:05:14.383394Z",
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "impl:fn-187-windows-ci-capture-request-id-flake-and.1": 1
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-187-windows-ci-capture-request-id-flake-and.1": 0
+  },
   "spec_path": ".flow/specs/fn-187-windows-ci-capture-request-id-flake-and.md",
   "status": "open",
   "title": "Windows CI capture request-ID flake and job timeout",
@@ -20,5 +144,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T09:30:23.019285Z"
+  "updated_at": "2026-09-25T20:05:14.387128Z"
 }
