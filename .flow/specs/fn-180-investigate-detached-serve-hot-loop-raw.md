@@ -10,6 +10,8 @@ Operator incident report (paraphrased; host, user, and vault details removed):
 - `gno serve --stop` sent SIGTERM, which did not stop the process; it escalated to SIGKILL ("Stopped gno serve (pid ..., SIGKILL)").
 - Immediately after the kill, indexing worked; a full reindex embedded 1,840 chunks with 0 errors.
 - A long-running MCP server holding the same DB open on the same host did not block writes.
+- Recurrence on a second macOS host (GNO 2.4.0, Bun): a detached resident (`serve --__detached-child`, port 3000, started by a plain `gno serve --detach`) was at about 100% CPU after roughly 38 hours of uptime. A `gno status` from another process produced no output for more than 5 minutes and had to be killed. `gno serve --stop` again escalated to SIGKILL ("Stopped gno serve (pid ..., SIGKILL)"). The serve log's tail again showed "Shutting down..." followed by further "GNO server running" banners. The index had about 2,200 chunks pending or stale for the current embedding fingerprint; a foreground `gno embed` after the kill cleared all of them with 0 errors in about 4 minutes. The upgraded 2.6.0 resident then idled at 0.1% CPU, but with no backlog left, so this is not evidence that 2.6.0 fixes the loop.
+- The same host still had about 20 orphaned `lockf -k -t 0 <tmp>/gno-detach-int-*/data/.resident-owner.lock sh -c "printf READY; exec sleep 31536000"` helper processes, 42 days old, left behind by detach integration test runs.
 - Requested shape: small, exploratory, investigation first. State hypotheses grounded in source, define a reproduction attempt, set acceptance for the eventual behavior, keep scope small, and split fixes out after investigation if they are large.
 
 ## Goal & Context
@@ -60,8 +62,19 @@ No new command or endpoint. The existing resident status reported by `gno serve 
 - **R1:** While a resident server is running and doing background work (embedding, watcher sync), a concurrent `gno index <collection> --lock-wait <N>` either completes or fails with the writer-lease BUSY outcome after waiting; it never fails with a raw SQLite "database is locked" because resident work held a SQLite write lock outside the shared writer lease. Errors: a lease wait that times out reports the existing BUSY outcome and exit 4; no other error surface. [user]
 - **R2:** Background embedding of a chunk that truncates or fails cannot loop hot: a truncating chunk embeds once, a failing chunk is retried a bounded number of times with backoff across passes and then parked as pending, and with no pending work the resident process returns to idle CPU. Errors: a parked chunk stays visible as pending/failed for a later `gno embed`; provider or persistence errors are logged once per backoff step, not every pass. [user]
 - **R3:** SIGTERM to a resident server (including via `gno serve --stop`) ends the process within a bounded time without SIGKILL escalation, including while background embedding or a native model call is in flight. Errors: if graceful drain exceeds its budget, the process force-exits on its own before the stop grace expires; `--stop` reports SIGKILL only when the process was truly unresponsive. [user]
-- **R4:** `gno serve --status` and `gno status` surface a stuck or repeatedly failing background job (for example a re-embed that keeps failing or a background pass running far longer than expected), with enough detail to identify it. Errors: no background job in trouble reports nothing extra; a status read must not block on the stuck job. [user]
+- **R4:** `gno serve --status` and `gno status` surface a stuck or repeatedly failing background job (for example a re-embed that keeps failing or a background pass running far longer than expected), with enough detail to identify it. Errors: no background job in trouble reports nothing extra; a status read must not block on the stuck job, and `gno status` from another process returns within a bounded time even while a resident is hot-looping (the recurrence showed it silent for more than 5 minutes). [user]
+- **R7:** Detach and resident integration tests leave no helper processes behind: after the suite, pass or fail, no `lockf`/`sleep` owner-lock helper started under the tests' temporary roots is still running. Errors: a helper that cannot be reaped fails the test that started it. [user]
 - **R5:** The investigation records, for each hypothesis H1 to H5, whether it was confirmed, ruled out, or left unknown, with the reproduction evidence, and any confirmed root cause whose fix is too large for this spec is split into its own spec. No error surface beyond an honest unknown. [user]
+
+## Hang Inventory
+
+Unattended operation needs every long-lived or waiting GNO process to be bounded, observable and stoppable. [user] Known cases, so fixes can be checked against all of them:
+
+- Resident hot loop, raw SQLite lock, ignored SIGTERM: this spec, seen on two hosts (R1 to R4).
+- `gno status` blocked indefinitely behind a hot-looping resident: this spec (R4).
+- Orphaned owner-lock helpers from detach tests: this spec (R7).
+- Backend-switch vector fork and "Inference deadline exceeded" during CPU embedding: fn-184-runtime-independent-vector-identity.
+- One writer lease per data directory: `src/core/write-lease.ts` puts `.mcp-write.lock` in the DB directory, so a long `embed` on a separate session-archive index (about 13 minutes for 40,000 chunks) makes `gno index <collection> --lock-wait 300s` on the curated index fail with BUSY (exit 4). This is correct but coarse. Changing lease scope is outside this spec's boundaries and needs its own spec. [paraphrase]
 
 ## Boundaries
 <!-- scope: business -->
