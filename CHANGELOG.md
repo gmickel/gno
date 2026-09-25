@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-09-25
+
 ### Changed
 
 - Vector identity no longer depends on the runtime. Switching `GNO_LLAMA_GPU` / `NODE_LLAMA_CPP_GPU`, the Bun version, the `node-llama-cpp` version or the CPU thread count reuses the existing vector partition and resumes its backlog when re-embedding up to 8 stored chunks reproduces their vectors (cosine >= 0.99 each; measured: Bun versions and thread counts bit-identical, GPU vs CPU >= 0.9993). The verdict is cached per partition and runtime. Existing indexes are re-keyed once without re-embedding: the most complete compatible partition becomes the runtime-independent one and the rest stay as shadow; an ambiguous tie keeps every partition and is reported. See [Switching backend or Bun version](docs/TROUBLESHOOTING.md#switching-backend-or-bun-version).
@@ -24,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A resident `gno serve` / `gno daemon` no longer makes CLI writers fail with a raw `database is locked`: watcher syncs and background embedding now take the shared write lease (without waiting) and defer while a CLI writer holds it, so the CLI reports `BUSY` (exit 4) at worst.
 - `gno serve --stop` no longer escalates to SIGKILL when another process holds the database write lock; the resident caps its own SQLite busy wait at 500ms.
 - Background embedding no longer retries a failing pass every 30 seconds forever, and no longer drops a timed-out pass silently. Failed passes back off, park after 5 in a row, and are logged once per step.
+- Web UI: a tag save refreshes the document's tag list without a reload; a save whose response was lost says it may have completed and offers Retry save (the reload banner is kept for genuine outside changes); the home dashboard fits a 390px screen; and main Search snippets render highlights and drop Markdown escapes using the same renderer as session search.
 - Piped CLI output is no longer cut off at exit. When stdout or stderr was a pipe, output larger than the pipe buffer (for example `gno search --json | jq` or a subprocess reading through a pipe) was truncated to 8 KB or 16 KB, which left JSON consumers with invalid input. The CLI now flushes both streams before it exits, and a consumer that closes the pipe early (such as `| head`) still lets it exit promptly with the command's exit code.
 - `spec/output-schemas/error.schema.json` now lists every CLI error code, including `BUSY` (exit 4), so a schema-validating client no longer rejects a valid busy error. A contract test keeps the schema in step with the CLI's error codes.
 
@@ -2818,7 +2821,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.6.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.7.0...HEAD
+[2.7.0]: https://github.com/gmickel/gno/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/gmickel/gno/compare/v2.5.1...v2.6.0
 [2.5.1]: https://github.com/gmickel/gno/compare/v2.4.0...v2.5.1
 [2.4.0]: https://github.com/gmickel/gno/compare/v2.3.3...v2.4.0
