@@ -1,0 +1,35 @@
+{
+  "branch": "fn-183-error-schema-lists-the-cli-busy-code",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "4b10072456b2f0485c4076be5365e589c8ca9b62",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-fc5a77cb9e24c44d27141d722f45ec8d7333609b5db4a4bbaa0d493794e6eda6"
+  },
+  "head_sha": "4b10072456b2f0485c4076be5365e589c8ca9b62",
+  "id": "fn-183-error-schema-lists-the-cli-busy-code",
+  "mode": "interactive",
+  "na_reason": "CLI exit-code and JSON schema contract only; covered by real-process contract tests",
+  "open_p0p1": [],
+  "qa_outcome": "NA",
+  "rid_coverage": {
+    "covered": 2,
+    "rids": [
+      {
+        "coverage": "subtracted",
+        "id": "R1"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R2"
+      }
+    ],
+    "total": 2
+  },
+  "timestamp": "2026-09-25T14:25:08Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
