@@ -47,7 +47,6 @@ interface CaptureInput extends Omit<
 
 type McpCaptureResult = CaptureReceipt & {
   docid: string;
-  absPath: string;
   overwritten: boolean;
   serverInstanceId: string;
   request?: RequestReceiptInfo;
@@ -80,7 +79,7 @@ function formatCaptureResult(result: McpCaptureResult): string {
   const lines: string[] = [];
   lines.push(`Doc: ${result.docid}`);
   lines.push(`URI: ${result.uri}`);
-  lines.push(`Path: ${result.absPath}`);
+  if (result.absPath) lines.push(`Path: ${result.absPath}`);
   lines.push(`Created: ${result.created ? "yes" : "no"}`);
   lines.push(`Opened existing: ${result.openedExisting ? "yes" : "no"}`);
   lines.push(`Overwritten: ${result.overwritten ? "yes" : "no"}`);
@@ -216,7 +215,6 @@ export function handleCapture(
       return {
         ...published.receipt,
         docid: published.receipt.docid ?? "",
-        absPath: published.receipt.absPath ?? "",
         overwritten: published.receipt.overwritten ?? false,
         serverInstanceId: ctx.serverInstanceId,
         ...(published.request ? { request: published.request } : {}),

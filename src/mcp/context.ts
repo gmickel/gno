@@ -120,6 +120,15 @@ export interface ToolContext {
   runWithSnapshot?<T>(operation: () => Promise<T>): Promise<T>;
 }
 
+/**
+ * Host absolute paths reach only stdio callers, which run on the owner's
+ * machine. Every Streamable HTTP request runs inside an egress context,
+ * whatever its peer, so HTTP callers get URIs and relative paths only.
+ */
+export const exposesHostPaths = (
+  ctx: Pick<ToolContext, "getEgressContext">
+): boolean => ctx.getEgressContext?.() === undefined;
+
 export interface CreateToolContextOptions {
   store: SqliteAdapter;
   getConfig: () => Config;

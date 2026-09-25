@@ -365,6 +365,18 @@ and `gno mcp status` reports the profile each registration carries.
 - System directories (`/etc`, `/usr`, `/bin`, `/var`, `/System`, `/Library`)
 - Hidden config dirs (`~/.config`, `~/.local`, `~/.ssh`, `~/.gnupg`)
 
+### Host Paths over HTTP
+
+Host absolute paths reach stdio callers only. Every Streamable HTTP caller
+(`gno serve` or `gno daemon` `/mcp`, loopback or not) receives tool results
+without any `absPath` field (`source.absPath` on search, query, ask, get, and
+multi-get results; top-level `absPath` on `gno_capture` and `gno_remember`
+receipts; `similar[].absPath`; peek `recent[].absPath`), and a `gno://`
+resource header names the collection-relative path on its `source:` line.
+Identify and open a document by its `uri` and `relPath` instead: `gno_get`,
+`gno_multi_get`, and resource reads all take the URI. The full field inventory
+is in [REST API: Host Paths and Remote Callers](API.md#host-paths-and-remote-callers).
+
 ### Client Approval
 
 MCP clients prompt for tool approval. Review parameters before confirming write operations.
@@ -1217,7 +1229,8 @@ Limit: 5 (default)
 Structured search results include per-result `contentType` and `categories`
 fields, alongside `tags`, `docid`, `uri`, scores, and source metadata. Use those
 fields when an agent needs to distinguish canonical typed pages from broader
-category filters. File-backed hits include `source.absPath`. Default snippets
+category filters. File-backed hits include `source.absPath` for stdio callers
+([never over HTTP](#host-paths-over-http)). Default snippets
 skip leading YAML frontmatter and prefer document prose. A frontmatter-dominated
 FTS window falls back to stripped chunk prose. `line` follows that trimmed
 display range. This display cleaning applies to `gno_search`, `gno_vsearch`,
@@ -1353,7 +1366,7 @@ Retrieve document by ID.
 ref: "abc123def456"
 ```
 
-The response includes source metadata such as `absPath`, `sourceHash`, MIME/ext, and document capability metadata so clients can distinguish editable source files from read-only converted documents.
+The response includes source metadata such as `absPath` (stdio only), `sourceHash`, MIME/ext, and document capability metadata so clients can distinguish editable source files from read-only converted documents.
 
 An indexed URI such as `gno://notes/plan.md?index=research` opens and reads the
 named index, even when the MCP server itself is using another index. A missing
@@ -1408,7 +1421,8 @@ One snapshot, three surfaces: CLI `gno peek --json`, this tool, and the skill
 recipe. Do not compose `status` + `ls` + `changes` for this job.
 
 Returns initialized flag, document/collection counts, embedding backlog, up to
-10 recent files (with `docid` and `absPath`), and pid-file serve liveness.
+10 recent files (with `docid`, and `absPath` over stdio), and pid-file serve
+liveness.
 `serve.running` is true only for `gno serve --detach`. A foreground serve is
 not detected. There is no HTTP probe. Never initializes models or embeddings.
 Uninitialized is success (`initialized:false` plus pinned nulls), not an error.
@@ -1419,8 +1433,8 @@ heavy health and activation payload.
 Open without fetching content via `gno_get`: Web UI
 `{serveUrl}/doc?uri=<encodeURIComponent(uri)>` from `serve.url` + `uri`
 (optional `#anchor`); files via `recent[].absPath` or search
-`results[].source.absPath`. If `absPath` is absent, show the URI tail and do
-not offer file-open for that row.
+`results[].source.absPath`. If `absPath` is absent (always over HTTP), show the
+URI tail and do not offer file-open for that row.
 
 ### gno_status
 
@@ -1464,8 +1478,8 @@ tags: ["project/gno"]
 
 `gno_capture` writes the same structured `source:` frontmatter and returns the
 same provenance receipt contract as CLI, REST, and SDK capture. The MCP result
-also preserves legacy fields: `docid`, `absPath`, `overwritten`, and
-`serverInstanceId`.
+also preserves legacy fields: `docid`, `absPath` (stdio only), `overwritten`,
+and `serverInstanceId`.
 
 Browser-clip results may extend the shared receipt with normalized source fields
 and closed `source.browserClip` provenance: extraction mode, exact selection
