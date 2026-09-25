@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `spec/output-schemas/error.schema.json` now lists every CLI error code, including `BUSY` (exit 4), so a schema-validating client no longer rejects a valid busy error. A contract test keeps the schema in step with the CLI's error codes.
+
 ## [2.6.0] - 2026-09-25
 
 ### Added
