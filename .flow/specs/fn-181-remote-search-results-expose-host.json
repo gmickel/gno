@@ -139,7 +139,7 @@
     "impl:fn-181-remote-search-results-expose-host.1": 0
   },
   "spec_path": ".flow/specs/fn-181-remote-search-results-expose-host.md",
-  "status": "open",
+  "status": "done",
   "title": "Remote search results expose host absolute paths",
   "tracker": {
     "baseHashFlow": null,
@@ -152,5 +152,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T15:00:34.912406Z"
+  "updated_at": "2026-09-25T15:00:48.088579Z"
 }
