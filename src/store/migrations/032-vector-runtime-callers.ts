@@ -6,7 +6,7 @@ export const migration: Migration = {
   name: "vector_runtime_callers",
   up(db): void {
     db.exec(`
-      CREATE TABLE vector_runtime_callers (
+      CREATE TABLE IF NOT EXISTS vector_runtime_callers (
         caller TEXT PRIMARY KEY,
         runtime TEXT NOT NULL,
         label TEXT NOT NULL,
