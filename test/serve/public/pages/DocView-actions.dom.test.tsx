@@ -44,6 +44,8 @@ void mock.module(
 );
 
 void mock.module("../../../../src/serve/public/components/editor", () => ({
+  // Module mocks are process-wide: keep every export later suites import.
+  CodeMirrorEditor: () => null,
   MarkdownPreview: ({ content }: { content: string }) => <div>{content}</div>,
 }));
 

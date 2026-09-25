@@ -24,11 +24,15 @@ import {
   type RememberInput,
   type RememberResult,
 } from "../../core/memory";
-import { writeLeasePath } from "../../core/write-lease";
+import {
+  formatRequestReceiptLine,
+  localRequestLedger,
+} from "../../core/request-receipts";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveModelUri } from "../../llm/registry";
 import { createVectorIndexPort } from "../../store/vector";
 import { CliError, type CliErrorCode } from "../errors";
+import { requestErrorToCli } from "./request-status";
 import { initStore } from "./shared";
 
 /** Environment overrides for the identity defaults. */
@@ -62,6 +66,7 @@ export interface RememberCliOptions
   receipt?: string;
   derivedFrom?: string[];
   source?: string;
+  requestId?: string;
 }
 
 export interface RecallCliOptions
@@ -254,7 +259,7 @@ const MEMORY_ERROR_TO_CLI: Record<MemoryErrorCode, CliErrorCode> = {
 
 /** Map a core `MemoryError` onto the CLI error model (code carried in details). */
 export function toCliError(error: unknown): unknown {
-  if (!(error instanceof MemoryError)) return error;
+  if (!(error instanceof MemoryError)) return requestErrorToCli(error);
   return new CliError(MEMORY_ERROR_TO_CLI[error.code], error.message, {
     details: { memoryCode: error.code },
   });
@@ -322,11 +327,13 @@ async function openMemoryRuntime(
         await embedResult.value.dispose();
       }
     }
+    const ledger = localRequestLedger(getIndexDbPath(options.indexName));
     const service = new MemoryService({
       store,
       config,
       collections,
-      lockPath: writeLeasePath(getIndexDbPath(options.indexName)),
+      lockPath: ledger.lockPath,
+      requests: ledger,
       embedPort,
       vectorIndex,
     });
@@ -361,6 +368,7 @@ export async function remember(
         ? options.derivedFrom
         : undefined,
       source: options.source,
+      requestId: options.requestId,
     };
     return await runtime.service.remember(input);
   } catch (error) {
@@ -457,6 +465,7 @@ export function formatRememberResult(
     lines.push(`Sync: ${result.sync.status}`);
   }
   lines.push(`Matching: ${formatMatching(result.matching)}`);
+  if (result.request) lines.push(formatRequestReceiptLine(result.request));
   return lines.join("\n");
 }
 

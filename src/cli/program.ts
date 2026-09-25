@@ -1877,6 +1877,10 @@ function wireCaptureCommand(program: Command): void {
     .option("--source-author <author>", "source author")
     .option("--source-date <date>", "source observed date/time")
     .option("--source-id <id>", "source external id")
+    .option(
+      "--request-id <id>",
+      "retry identity: reuse it to retry this same capture after a lost response"
+    )
     .option("--json", "JSON output")
     .action(
       async (contentParts: string[], cmdOpts: Record<string, unknown>) => {
@@ -1905,6 +1909,7 @@ function wireCaptureCommand(program: Command): void {
           sourceAuthor: cmdOpts.sourceAuthor as string | undefined,
           sourceDate: cmdOpts.sourceDate as string | undefined,
           sourceId: cmdOpts.sourceId as string | undefined,
+          requestId: cmdOpts.requestId as string | undefined,
         });
         const output = formatCaptureReceipt(receipt, {
           json: format === "json",
@@ -1913,6 +1918,27 @@ function wireCaptureCommand(program: Command): void {
         await writeOutput(output, format);
       }
     );
+
+  program
+    .command("request-status <request-id>")
+    .description(
+      "Show whether a capture/remember request ID is pending, committed, or unknown"
+    )
+    .option("--json", "JSON output")
+    .action(async (requestId: string, cmdOpts: Record<string, unknown>) => {
+      const format = getFormat(cmdOpts);
+      const globals = getGlobals();
+      const { formatRequestStatusOutput, requestStatus } =
+        await import("./commands/request-status");
+      const result = await requestStatus({
+        requestId,
+        indexName: globals.index,
+      });
+      await writeOutput(
+        formatRequestStatusOutput(result, { json: format === "json" }),
+        format
+      );
+    });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1960,6 +1986,10 @@ function wireMemoryCommands(program: Command): void {
       "--session <id>",
       "session identity (default: $GNO_MEMORY_SESSION or ppid:<pid>)"
     )
+    .option(
+      "--request-id <id>",
+      "retry identity: reuse it to retry this same write after a lost response"
+    )
     .option("--json", "JSON output")
     .action(async (text: string, cmdOpts: Record<string, unknown>) => {
       const format = getFormat(cmdOpts);
@@ -1982,6 +2012,7 @@ function wireMemoryCommands(program: Command): void {
         source: cmdOpts.source as string | undefined,
         caller: cmdOpts.caller as string | undefined,
         session: cmdOpts.session as string | undefined,
+        requestId: cmdOpts.requestId as string | undefined,
       });
       await writeOutput(
         formatRememberResult(result, {

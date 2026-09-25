@@ -36,6 +36,7 @@ Semantic pending and connector-only warnings do not block lexical use.
 | 1    | Validation error | Bad arguments, missing options                                                                     |
 | 2    | Runtime error    | IO, database, model failures                                                                       |
 | 3    | `NOT_RUNNING`    | `gno serve --status` / `--stop` or `gno daemon --status` / `--stop` found no live matching process |
+| 4    | `BUSY`           | Another writer held the shared write lease; a request ID still in progress (`REQUEST_PENDING`)     |
 
 ## Installation Issues
 
@@ -323,6 +324,48 @@ Windows can be significantly slower due to NTFS overhead and real-time antivirus
 4. Add folder: `%LOCALAPPDATA%\gno\data`
 
 This can improve indexing speed by 2-4x on Windows.
+
+## Write and Retry Issues
+
+### "Capture written to ... but lexical sync failed"
+
+MCP `gno_capture` and `POST /api/capture` return `CAPTURE_SYNC_FAILED`, and
+`gno capture` / `client.capture()` return it when a request ID was sent, when
+the note file was written but could not be indexed. Without a request ID, CLI
+and SDK capture instead succeed with `sync.status: "failed"`.
+
+- The file is on disk at the reported path. Do not capture it again without a
+  request ID; that can create a second note.
+- Run `gno update` to index it, or, if you sent a request ID, rerun the exact
+  same capture with the same ID to finish indexing the written note.
+
+### Document save returns `LOCKED`
+
+`PUT /api/docs/:id` (Web UI editor, auto-save, tag edits) runs its revision
+check and write under the shared write lease. `409 LOCKED` means another
+writer (`gno index`, `gno update`, a CLI or MCP write) held the lease for the
+whole wait window. Nothing was written. Save again once that writer finishes.
+
+A save refused with `409 CONFLICT` ("Document changed on disk") means the file
+changed since the editor loaded it; reload and reapply your change. GNO never
+force-overwrites the newer version.
+
+### Request ID errors
+
+These codes appear only on writes that carry a request ID and on request
+lookups. What each code means is in
+[Retries and Request IDs](guides/retries-and-request-ids.md#errors); this
+section lists what to do.
+
+| Code                         | What to do                                                                                                                                                                                                                                          |
+| :--------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `REQUEST_ID_INVALID`         | Use 1-128 letters, digits, `.`, `_`, `:` or `-`, starting with a letter or digit (a UUID works). On `remember`, add `--add` / `--supersede` (or `decision`).                                                                                        |
+| `REQUEST_ID_CONFLICT`        | To retry, resend the original call unchanged. If the content changed on purpose, send it with a new ID.                                                                                                                                             |
+| `REQUEST_EXPIRED`            | Check the current state (`gno get`, `gno recall`) before deciding whether a new write with a new ID is needed.                                                                                                                                      |
+| `REQUEST_PENDING`            | Wait, check `gno request-status <id>`, then retry the same call with the same ID.                                                                                                                                                                   |
+| `REQUEST_RECOVERY_CONFLICT`  | Inspect the target (it was edited, reverted, or deleted after the write). GNO will not recreate or overwrite it. If the write is still wanted, send it with a new ID.                                                                               |
+| `REQUEST_CAPACITY_EXHAUSTED` | Send the write without a request ID, which still works. `gno reset` keeps the ledger; the only way to free it is to move the `write-receipts` directory aside, which lets every recorded ID run again.                                              |
+| `REQUEST_LEDGER_UNAVAILABLE` | Check that the data directory (`<dataDir>/write-receipts/`, see [Write Request Ledger](CONFIGURATION.md#write-request-ledger)) is writable, has free space, and holds an intact file, then retry with the same ID. Writes without an ID still work. |
 
 ## Browser Clipper Issues
 

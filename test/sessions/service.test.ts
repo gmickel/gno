@@ -11,7 +11,7 @@ import {
   symlink,
 } from "node:fs/promises";
 // node:path has no Bun path utilities
-import { join } from "node:path";
+import { join, win32 } from "node:path";
 
 import type { Config } from "../../src/config/types";
 
@@ -20,14 +20,21 @@ import { initStore } from "../../src/cli/commands/shared";
 import { loadConfig, saveConfigToPath } from "../../src/config";
 import { acquireWriteLock } from "../../src/core/file-lock";
 import { searchBm25 } from "../../src/pipeline/search";
-import { assertSessionBinding } from "../../src/sessions/binding";
+import {
+  assertSessionBinding,
+  readIndexBinding,
+} from "../../src/sessions/binding";
 import { SessionsService } from "../../src/sessions/service";
 import {
   addSessionSource,
   initSessionArchive,
   removeSessionSource,
 } from "../../src/sessions/setup";
-import { enumerateUnits, type ReadDirectory } from "../../src/sessions/sources";
+import {
+  enumerateUnits,
+  isFilesystemRoot,
+  type ReadDirectory,
+} from "../../src/sessions/sources";
 import { importLockPath } from "../../src/sessions/state";
 import { type SessionHarness, SessionsError } from "../../src/sessions/types";
 import { openScopedIndexStore } from "../../src/store/sqlite/scoped-index";
@@ -1257,4 +1264,99 @@ describe("unreadable sources never read as up to date", () => {
       expect(await searchArchive("SQLite")).toHaveLength(1);
     }
   );
+});
+
+describe("archive paths and binding order", () => {
+  const FILESYSTEM_ROOT = process.platform === "win32" ? "C:\\" : "/";
+
+  test("a Windows drive root is recognised in every resolver form", () => {
+    const cases: Array<[string, boolean]> = [
+      ["C:\\", true],
+      ["C:", true],
+      ["c:/", true],
+      ["\\\\?\\C:\\", true],
+      ["\\\\?\\C:", true],
+      ["C:\\Users", false],
+      ["\\\\?\\C:\\Users", false],
+    ];
+    for (const [path, expected] of cases) {
+      expect([path, isFilesystemRoot(path, win32)]).toEqual([path, expected]);
+    }
+  });
+
+  test("a filesystem root is refused as archive or source, even via a symlink", async () => {
+    const rootLink = join(root, "root-link");
+    await symlink(FILESYSTEM_ROOT, rootLink, "dir");
+    for (const archive of [FILESYSTEM_ROOT, rootLink]) {
+      await expectSessionsError(
+        initSessionArchive({
+          configPath: join(root, "rooted.yml"),
+          indexName: "rooted",
+          archiveRoot: archive,
+          collection: "work",
+        }),
+        "SESSIONS_UNSAFE_PATH"
+      );
+    }
+    expect(await Bun.file(join(root, "rooted.yml")).exists()).toBe(false);
+    for (const path of [FILESYSTEM_ROOT, rootLink]) {
+      await expectSessionsError(
+        addSessionSource({
+          configPath,
+          id: "whole-disk",
+          harness: "codex",
+          path,
+          collection: "work",
+        }),
+        "SESSIONS_UNSAFE_PATH"
+      );
+      await withService((service) =>
+        expectSessionsError(
+          service.import(
+            { paths: [path], collection: "work", dryRun: true },
+            { allowPaths: true }
+          ),
+          "SESSIONS_UNSAFE_PATH"
+        )
+      );
+    }
+  });
+
+  test("a failed init config change leaves the index unbound", async () => {
+    const shared = join(root, "shared.yml");
+    await Bun.write(
+      shared,
+      `version: "1.0"\ncollections:\n  - name: notes\n    path: ${join(root, "notes")}\n`
+    );
+    await expectSessionsError(
+      initSessionArchive({
+        configPath: shared,
+        indexName: "unbound",
+        archiveRoot: join(root, "unbound-archive"),
+        collection: "work",
+      }),
+      "SESSIONS_INVALID_INPUT"
+    );
+    expect(readIndexBinding(getIndexDbPath("unbound"))).toBeNull();
+  });
+
+  test("a config path that is a dangling symlink binds to the file the writer creates", async () => {
+    const link = join(root, "link.yml");
+    await symlink(join(root, "target.yml"), link, "file");
+    await initSessionArchive({
+      configPath: link,
+      indexName: "linked",
+      archiveRoot: join(root, "linked-archive"),
+      collection: "work",
+    });
+    for (const path of [link, join(root, "target.yml")]) {
+      const opened = await initStore({
+        configPath: path,
+        indexName: "linked",
+        allowEmptyCollections: true,
+      });
+      if (!opened.ok) throw new Error(opened.error);
+      await opened.store.close();
+    }
+  });
 });

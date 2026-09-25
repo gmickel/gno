@@ -362,19 +362,19 @@ reported as complete. A rerun over unchanged sources is `nothing_to_do` and
 counts the already archived threads as `unchanged`. Receipts carry counts, locators, and reason codes only: no
 session content and no host paths.
 
-| Reason                  | Meaning and recovery                                                                                                                                                                                    |
-| :---------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `truncated_tail`        | The final line was cut mid-write (a session still running). Readable threads are archived; rerun later.                                                                                                 |
-| `format_drift`          | Structure GNO does not recognise, for example assistant turns without any recognised human turn, or a Codex fork without its history boundary (archived as nothing rather than duplicating the parent). |
-| `malformed_records`     | Some records were not valid JSON and were dropped; the unit stays incomplete and is retried.                                                                                                            |
-| `unit_conflict`         | Two units of one source share a locator (for example the same rollout file name in two folders); the second is not imported.                                                                            |
-| `snapshot_read_failed`  | A SQLite store could not be read in one read-only snapshot. Rerun; check the harness is not migrating.                                                                                                  |
-| `permission_denied`     | The file, database, or a directory inside the source (locator `.`) is not readable by your user. Fix the permissions and rerun; its checkpoint does not advance until it is read.                       |
-| `source_missing`        | The unit or a directory inside the source disappeared between listing and reading.                                                                                                                      |
-| `read_failed`           | Another read error.                                                                                                                                                                                     |
-| `format_not_recognised` | The unit is not a supported session format (`unsupported`).                                                                                                                                             |
-| `over_limit`            | The unit or thread exceeds a [limit](#limits) (`skipped_policy` for threads). A thread at the turn limit is skipped whole, never archived truncated.                                                    |
-| `mixed_domain`          | The thread spans collections; it was [quarantined](#quarantined-threads).                                                                                                                               |
+| Reason                  | Meaning and recovery                                                                                                                                                                                                                                                                                                                                                                                          |
+| :---------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `truncated_tail`        | The final line was cut mid-write (a session still running). Readable threads are archived; rerun later.                                                                                                                                                                                                                                                                                                       |
+| `format_drift`          | Structure GNO does not recognise, for example assistant turns without any recognised human turn, a Codex fork without its history boundary or an OpenClaw child transcript whose parent is unreadable (both archived as nothing rather than duplicating the parent), or an OpenClaw child that `sessions.json` does not classify as fork or subagent (its first prompt is withheld, never archived as human). |
+| `malformed_records`     | Some records were not valid JSON and were dropped; the unit stays incomplete and is retried.                                                                                                                                                                                                                                                                                                                  |
+| `unit_conflict`         | Two units of one source share a locator (for example the same rollout file name in two folders); the second is not imported.                                                                                                                                                                                                                                                                                  |
+| `snapshot_read_failed`  | A SQLite store could not be read in one read-only snapshot. Rerun; check the harness is not migrating.                                                                                                                                                                                                                                                                                                        |
+| `permission_denied`     | The file, database, or a directory inside the source (locator `.`) is not readable by your user. Fix the permissions and rerun; its checkpoint does not advance until it is read.                                                                                                                                                                                                                             |
+| `source_missing`        | The unit or a directory inside the source disappeared between listing and reading.                                                                                                                                                                                                                                                                                                                            |
+| `read_failed`           | Another read error.                                                                                                                                                                                                                                                                                                                                                                                           |
+| `format_not_recognised` | The unit is not a supported session format (`unsupported`).                                                                                                                                                                                                                                                                                                                                                   |
+| `over_limit`            | The unit or thread exceeds a [limit](#limits) (`skipped_policy` for threads). A thread at the turn limit is skipped whole, never archived truncated. A database with more threads than the per-unit limit stays incomplete.                                                                                                                                                                                   |
+| `mixed_domain`          | The thread spans collections; it was [quarantined](#quarantined-threads).                                                                                                                                                                                                                                                                                                                                     |
 
 Recovery behaviour:
 
@@ -892,15 +892,16 @@ connectors that pull conversations from a service are out of scope too.
 
 ## Limits
 
-| Limit                          | Value             | When exceeded                             |
-| :----------------------------- | :---------------- | :---------------------------------------- |
-| Source unit (file or database) | 512 MiB           | unit skipped (`over_limit`)               |
-| JSONL line                     | 32 MiB            | line skipped and counted                  |
-| One turn                       | 256 Ki characters | turn skipped and counted (`overLimit`)    |
-| Turns per thread               | 20,000            | thread `skipped_policy` (`over_limit`)    |
-| Archive file per thread        | 64 MiB            | thread `skipped_policy` (`over_limit`)    |
-| Units per source per run       | 100,000           | rest left for a later run, with a warning |
-| Units listed in one receipt    | 200               | `unitsTruncated: true`; counts stay exact |
+| Limit                          | Value             | When exceeded                                 |
+| :----------------------------- | :---------------- | :-------------------------------------------- |
+| Source unit (file or database) | 512 MiB           | unit skipped (`over_limit`)                   |
+| JSONL line                     | 32 MiB            | line skipped and counted                      |
+| One turn                       | 256 Ki characters | turn skipped and counted (`overLimit`)        |
+| Turns per thread               | 20,000            | thread `skipped_policy` (`over_limit`)        |
+| Archive file per thread        | 64 MiB            | thread `skipped_policy` (`over_limit`)        |
+| Threads per database unit      | 50,000            | rest not read; unit incomplete (`over_limit`) |
+| Units per source per run       | 100,000           | rest left for a later run, with a warning     |
+| Units listed in one receipt    | 200               | `unitsTruncated: true`; counts stay exact     |
 
 ## Troubleshooting
 

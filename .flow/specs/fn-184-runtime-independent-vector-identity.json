@@ -1,0 +1,24 @@
+{
+  "branch_name": "fn-184-runtime-independent-vector-identity",
+  "created_at": "2026-09-24T13:29:19.316660Z",
+  "depends_on_epics": [],
+  "id": "fn-184-runtime-independent-vector-identity",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-184-runtime-independent-vector-identity.md",
+  "status": "open",
+  "title": "Runtime-independent vector identity",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-09-24T13:29:19.319549Z"
+}

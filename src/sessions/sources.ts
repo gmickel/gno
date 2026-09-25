@@ -17,11 +17,26 @@ import "../store/sqlite/setup";
 // node:fs: permission constants for access(); no Bun equivalent.
 import { constants } from "node:fs";
 // node:fs/promises: access/readdir/lstat/realpath/stat have no Bun equivalents.
-import { access, lstat, readdir, realpath, stat } from "node:fs/promises";
+import {
+  access,
+  lstat,
+  readdir,
+  readlink,
+  realpath,
+  stat,
+} from "node:fs/promises";
 // node:os homedir: no Bun equivalent.
 import { homedir } from "node:os";
 // node:path: no Bun path utilities.
-import { basename, isAbsolute, join, relative, sep } from "node:path";
+import nodePath, {
+  basename,
+  dirname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 
 import type { ParseUnitResult, SessionHarness } from "./types";
 
@@ -419,11 +434,79 @@ export async function parseUnit(unit: SessionUnit): Promise<ParseUnitResult> {
   }
 }
 
-/** Directories GNO itself owns, which a source may never include. */
+/**
+ * A filesystem or drive root (`/`, `C:\`, a UNC share root): never a session
+ * archive or source, since either would span the whole volume.
+ */
+/**
+ * True for a filesystem or drive root. A Windows drive root is recognised in
+ * every form a resolver may return: with or without its trailing separator,
+ * and with the `\\?\` device prefix.
+ * `api` defaults to the platform path module (tests pass `path.win32`).
+ */
+export function isFilesystemRoot(
+  path: string,
+  api: Pick<typeof nodePath, "dirname" | "resolve" | "sep"> = nodePath
+): boolean {
+  let candidate = path;
+  if (api.sep === "\\") {
+    candidate = candidate.replace(/^\\\\\?\\(?!UNC\\)/i, "");
+    if (/^[a-z]:$/i.test(candidate)) candidate += "\\";
+  }
+  const absolute = api.resolve(candidate);
+  return api.dirname(absolute) === absolute;
+}
+
+/** Follow a chain of symlinks (or junctions) at `path` to its final target. */
+async function linkTarget(path: string): Promise<string> {
+  const MAX_HOPS = 40;
+  let current = resolve(path);
+  for (let hop = 0; hop < MAX_HOPS; hop += 1) {
+    let info;
+    try {
+      info = await lstat(current);
+    } catch {
+      return current;
+    }
+    if (!info.isSymbolicLink()) return current;
+    current = resolve(dirname(current), await readlink(current));
+  }
+  return current;
+}
+
+/**
+ * Refuse a filesystem root named directly, through a link chain, or by its
+ * canonical path, before anything is created or read under it.
+ */
+export async function assertNotFilesystemRootAnyForm(
+  path: string,
+  what: string
+): Promise<void> {
+  assertNotFilesystemRoot(path, what);
+  assertNotFilesystemRoot(await linkTarget(path), what);
+  const canonical = await canonicalPath(path);
+  if (canonical) assertNotFilesystemRoot(canonical, what);
+}
+
+/** Refuse a filesystem root; `what` names the path in the message. */
+export function assertNotFilesystemRoot(path: string, what: string): void {
+  if (isFilesystemRoot(path)) {
+    throw new SessionsError(
+      "SESSIONS_UNSAFE_PATH",
+      `${what} cannot be a filesystem or drive root; choose a dedicated directory.`
+    );
+  }
+}
+
+/**
+ * Directories GNO itself owns, which a source may never include, and
+ * filesystem roots, which would walk the whole volume.
+ */
 export function assertSafeSourceRoot(
   root: string,
   protectedRoots: readonly string[]
 ): void {
+  assertNotFilesystemRoot(root, "A session source");
   for (const protectedRoot of protectedRoots) {
     if (isWithin(protectedRoot, root)) {
       throw new SessionsError(

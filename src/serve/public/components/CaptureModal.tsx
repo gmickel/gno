@@ -26,6 +26,13 @@ import {
   resolveNotePreset,
 } from "../../../core/note-presets";
 import { apiFetch } from "../hooks/use-api";
+import {
+  clearRequestIntent,
+  type RequestIntent,
+  requestIdForIntent,
+} from "../lib/request-intent";
+
+const CAPTURE_INTENT_KEY = "gno:capture-intent";
 import { getActiveWikiLinkQuery } from "../lib/wiki-link";
 import { IndexingProgress } from "./IndexingProgress";
 import { TagInput } from "./TagInput";
@@ -169,6 +176,7 @@ export function CaptureModal({
   const [wikiLinkPosition, setWikiLinkPosition] = useState({ x: 24, y: 24 });
   const [wikiLinkActiveIndex, setWikiLinkActiveIndex] = useState(-1);
   const contentRef = useRef<HTMLTextAreaElement | null>(null);
+  const captureIntentRef = useRef<RequestIntent | null>(null);
 
   // Submission state
   const [state, setState] = useState<ModalState>("form");
@@ -311,19 +319,28 @@ export function CaptureModal({
         ? selectedPresetId
         : undefined;
 
+    const payload = {
+      collection,
+      title,
+      folderPath: defaultFolderPath || undefined,
+      content: presetOnly ? undefined : content,
+      presetId: submitPresetId,
+      collisionPolicy: "create_with_suffix",
+      source,
+      ...(tags.length > 0 && { tags }),
+    };
     const { data, error: err } = await apiFetch<CaptureResponse>(
       "/api/capture",
       {
         method: "POST",
         body: JSON.stringify({
-          collection,
-          title,
-          folderPath: defaultFolderPath || undefined,
-          content: presetOnly ? undefined : content,
-          presetId: submitPresetId,
-          collisionPolicy: "create_with_suffix",
-          source,
-          ...(tags.length > 0 && { tags }),
+          ...payload,
+          // A retry of this exact capture replays instead of adding a suffix copy.
+          requestId: requestIdForIntent(
+            captureIntentRef,
+            JSON.stringify(payload),
+            CAPTURE_INTENT_KEY
+          ),
         }),
       }
     );
@@ -335,6 +352,7 @@ export function CaptureModal({
     }
 
     if (data) {
+      clearRequestIntent(captureIntentRef, CAPTURE_INTENT_KEY);
       // Save last used collection
       localStorage.setItem(STORAGE_KEY, collection);
 

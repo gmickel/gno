@@ -18,6 +18,7 @@ import { join } from "node:path";
 
 import type { Collection, Config } from "../../src/config/types";
 import type { RecallResult, RememberResult } from "../../src/core/memory";
+import type { RequestStatusResult } from "../../src/core/request-receipts";
 import type { ToolContext } from "../../src/mcp/server";
 
 import { createDefaultConfig } from "../../src/config/defaults";
@@ -389,7 +390,9 @@ describe("2026-07-28 sessionless leg: memory identity is per caller", () => {
     hostname: "127.0.0.1",
   });
 
-  function sessionlessTransport(): HttpMcpTransport {
+  function sessionlessTransport(
+    serverInstanceId = SERVER_INSTANCE_ID
+  ): HttpMcpTransport {
     const context = createToolContext({
       store,
       getConfig: () => config,
@@ -397,7 +400,7 @@ describe("2026-07-28 sessionless leg: memory identity is per caller", () => {
       indexName: "default",
       toolMutex: { acquire: async () => () => {} },
       jobManager: {} as ToolContext["jobManager"],
-      serverInstanceId: SERVER_INSTANCE_ID,
+      serverInstanceId,
       writeLockPath: lockPath,
       enableWrite: true,
       isShuttingDown: () => false,
@@ -504,6 +507,129 @@ describe("2026-07-28 sessionless leg: memory identity is per caller", () => {
       }
     } finally {
       await transport.close();
+    }
+  });
+
+  test("capture request IDs are private to each HTTP identity; token rotation starts over", async () => {
+    // The gateway authorizes a bearer token as its sha256 digest.
+    const digest = (token: string) =>
+      new Bun.CryptoHasher("sha256").update(token).digest("hex");
+    const tokenA = digest("token-a");
+    const tokenB = digest("token-b");
+    const rotatedA = digest("token-a-rotated");
+    const capture = {
+      collection: "notes",
+      title: "HTTP identity capture",
+      content: "Only token A wrote this.",
+      collisionPolicy: "create_with_suffix",
+      requestId: "http-capture-1",
+    };
+    const status = { requestId: "http-capture-1" };
+    const transport = sessionlessTransport();
+    try {
+      const written = await call<{
+        uri: string;
+        request: { replayed: boolean };
+      }>(transport, tokenA, 1, "gno_capture", capture);
+      expect(written.request.replayed).toBe(false);
+      expect(
+        await call<RequestStatusResult>(
+          transport,
+          tokenA,
+          2,
+          "gno_request_status",
+          status
+        )
+      ).toMatchObject({ status: "committed", result: { uri: written.uri } });
+
+      for (const [id, identity] of [
+        [3, tokenB],
+        [4, "loopback"],
+        [5, rotatedA],
+      ] as const) {
+        expect(
+          await call<RequestStatusResult>(
+            transport,
+            identity,
+            id,
+            "gno_request_status",
+            status
+          )
+        ).toEqual({ requestId: "http-capture-1", status: "not_found" });
+      }
+
+      // The same ID under another identity is that caller's own new request.
+      const other = await call<{ uri: string; request: { replayed: boolean } }>(
+        transport,
+        tokenB,
+        6,
+        "gno_capture",
+        { ...capture, content: "Token B wrote this." }
+      );
+      expect(other.request.replayed).toBe(false);
+      expect(other.uri).not.toBe(written.uri);
+    } finally {
+      await transport.close();
+    }
+  });
+
+  test("request IDs belong to the authorized identity and survive a server restart", async () => {
+    const remember = {
+      text: "Finn's desk is by the window.",
+      collection: "memory",
+      scopes: ["project:sessionless"],
+      decision: "add",
+      requestId: "desk-fact-1",
+    };
+    type Written = Extract<RememberResult, { absPath: string }>;
+    const first = sessionlessTransport("server-before-restart");
+    let committed: Written;
+    try {
+      committed = await call<Written>(
+        first,
+        "principal-a",
+        1,
+        "gno_remember",
+        remember
+      );
+      expect(committed.outcome).toBe("added");
+      const hidden = await call<RequestStatusResult>(
+        first,
+        "principal-b",
+        2,
+        "gno_request_status",
+        { requestId: "desk-fact-1" }
+      );
+      expect(hidden).toEqual({ requestId: "desk-fact-1", status: "not_found" });
+    } finally {
+      await first.close();
+    }
+
+    const restarted = sessionlessTransport("server-after-restart");
+    try {
+      const replayed = await call<Written>(
+        restarted,
+        "principal-a",
+        3,
+        "gno_remember",
+        remember
+      );
+      expect(replayed).toEqual({
+        ...committed,
+        request: { ...committed.request!, replayed: true },
+      });
+      // The same ID under another identity is that caller's own request.
+      const own = await call<Written>(
+        restarted,
+        "principal-b",
+        4,
+        "gno_remember",
+        { ...remember, text: "Finn's desk faces the door." }
+      );
+      expect(own.outcome).toBe("added");
+      expect(own.request?.replayed).toBe(false);
+    } finally {
+      await restarted.close();
     }
   });
 });

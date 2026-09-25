@@ -66,11 +66,14 @@ export interface ToolContextSnapshot {
    * session id, so this is what keeps two modern callers apart.
    */
   requestIdentity?: string;
+  /** Stable request-receipt namespace of the authorized HTTP identity. */
+  requestNamespace?: string;
 }
 
 export interface RequestScope {
   egress: NonNullable<ToolContextSnapshot["egress"]>;
   requestIdentity?: string;
+  requestNamespace?: string;
 }
 
 export interface ToolContext {
@@ -107,6 +110,8 @@ export interface ToolContext {
   getEgressContext?: () => ToolContextSnapshot["egress"];
   /** Per-caller identity of the current request; absent on stdio. */
   getRequestIdentity?: () => string | undefined;
+  /** Request-receipt namespace of the current HTTP caller; absent on stdio. */
+  getRequestNamespace?: () => string | undefined;
   runWithEgressContext?<T>(
     egress: NonNullable<ToolContextSnapshot["egress"]>,
     operation: () => Promise<T>,
@@ -216,6 +221,7 @@ export function createToolContext(
       requestSnapshot.getStore()?.egress?.authorizationEpoch?.value,
     getEgressContext: () => requestSnapshot.getStore()?.egress,
     getRequestIdentity: () => requestSnapshot.getStore()?.requestIdentity,
+    getRequestNamespace: () => requestSnapshot.getStore()?.requestNamespace,
     runWithEgressContext<T>(
       egress: NonNullable<ToolContextSnapshot["egress"]>,
       operation: () => Promise<T>,
@@ -228,6 +234,7 @@ export function createToolContext(
           collections: config.collections,
           egress,
           requestIdentity: scope?.requestIdentity,
+          requestNamespace: scope?.requestNamespace,
         },
         operation
       );
@@ -241,6 +248,7 @@ export function createToolContext(
           collections: config.collections,
           egress: current?.egress,
           requestIdentity: current?.requestIdentity,
+          requestNamespace: current?.requestNamespace,
         },
         operation
       );

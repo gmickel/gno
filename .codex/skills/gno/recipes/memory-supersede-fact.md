@@ -35,6 +35,11 @@ gno remember "<replacement text>" --scope <scope> \
 The scriptable spelling `--decision supersede --predecessor <uri>` means
 the same thing.
 
+Add `--request-id <uuid>` so a lost response can be retried without a double
+supersede: check `gno request-status <uuid>` first, and resend only the
+identical command with the same ID when it reports `pending` or `not_found`.
+The request ID is separate from `--receipt`.
+
 4. Read the result. `outcome: "superseded"` returns the successor record with
    `supersedes: [<uri>]`.
    - `MEMORY_PREDECESSOR_HASH_MISMATCH`: the fact changed since the recall.

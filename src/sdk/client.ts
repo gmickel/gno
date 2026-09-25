@@ -21,6 +21,7 @@ import type {
   GnoCaptureOptions,
   GnoCaptureResult,
   GnoClient,
+  GnoRequestStatusResult,
   GnoCreateFolderOptions,
   GnoCreateFolderResult,
   GnoCreateNoteOptions,
@@ -101,12 +102,11 @@ import {
   normalizeContentTypes,
 } from "../config";
 import {
-  buildCaptureReceipt,
-  type CapturePlan,
+  CaptureSyncError,
   listCaptureDiskRelPaths,
   planCapture,
 } from "../core/capture";
-import { writeCapturePlanFile } from "../core/capture-write";
+import { publishCapture } from "../core/capture-publish";
 import { projectCollectionEgressPolicy } from "../core/collection-egress-policy-projection";
 import { CollectionEgressPolicyService } from "../core/collection-egress-policy-service";
 import { applyConfigChange } from "../core/config-mutation";
@@ -146,6 +146,12 @@ import {
   ProjectAffinityInputError,
   resolveRemoteProjectAffinity,
 } from "../core/project-affinity-surface";
+import {
+  localRequestLedger,
+  readRequestStatus,
+  RequestReceiptError,
+  type RequestReceiptErrorCode,
+} from "../core/request-receipts";
 import { RetrievalTraceManagementService } from "../core/retrieval-trace-management";
 import {
   finishRetrievalTraceAfterError,
@@ -175,7 +181,6 @@ import {
   normalizeMetadataPredicate,
   type MetadataPredicate,
 } from "../core/typed-metadata";
-import { writeLeasePath } from "../core/write-lease";
 import {
   defaultSyncService,
   type SyncResult,
@@ -396,9 +401,28 @@ const MEMORY_ERROR_TO_SDK: Readonly<Record<MemoryErrorCode, GnoSdkErrorCode>> =
     MEMORY_QUERY_FAILED: "RUNTIME",
   };
 
+const REQUEST_ERROR_TO_SDK: Record<RequestReceiptErrorCode, GnoSdkErrorCode> = {
+  REQUEST_ID_INVALID: "VALIDATION",
+  REQUEST_ID_CONFLICT: "VALIDATION",
+  REQUEST_EXPIRED: "VALIDATION",
+  REQUEST_PENDING: "RUNTIME",
+  REQUEST_RECOVERY_CONFLICT: "RUNTIME",
+  REQUEST_CAPACITY_EXHAUSTED: "RUNTIME",
+  REQUEST_LEDGER_UNAVAILABLE: "RUNTIME",
+};
+
+/** Request receipt errors carry their stable code in `details.code`. */
+function toRequestSdkError(cause: unknown): unknown {
+  if (!(cause instanceof RequestReceiptError)) return cause;
+  return sdkError(REQUEST_ERROR_TO_SDK[cause.code], cause.message, {
+    cause,
+    details: { code: cause.code },
+  });
+}
+
 /** Map a core MemoryError onto the SDK error family; the memory code survives in `details.code`. */
 function toMemorySdkError(cause: unknown): unknown {
-  if (!(cause instanceof MemoryError)) return cause;
+  if (!(cause instanceof MemoryError)) return toRequestSdkError(cause);
   return sdkError(MEMORY_ERROR_TO_SDK[cause.code], cause.message, {
     cause,
     details: { code: cause.code },
@@ -1827,7 +1851,8 @@ class GnoClientImpl implements GnoClient {
           store: this.store,
           config: this.config,
           collections: this.config.collections,
-          lockPath: writeLeasePath(this.dbPath),
+          lockPath: this.requestLedger().lockPath,
+          requests: this.requestLedger(),
           embedPort: ports.embedPort,
           vectorIndex: ports.vectorIndex,
         })
@@ -1916,98 +1941,76 @@ class GnoClientImpl implements GnoClient {
         `Collection not found: ${options.collection}`
       );
     }
-
-    const existingList = await this.store.listDocuments(collection.name);
-    if (!existingList.ok) {
-      throw sdkError("STORE", existingList.error.message, {
-        cause: existingList.error.cause,
-      });
-    }
-    const { overwrite: _unsupportedOverwrite, ...captureOptions } =
-      options as GnoCaptureOptions & { overwrite?: unknown };
+    const {
+      overwrite: _unsupportedOverwrite,
+      requestId,
+      ...captureOptions
+    } = options as GnoCaptureOptions & { overwrite?: unknown };
     if (_unsupportedOverwrite !== undefined) {
       throw sdkError(
         "VALIDATION",
         "overwrite is not supported by client.capture(); use collisionPolicy instead"
       );
     }
+    const input = { ...captureOptions, collection: collection.name };
 
-    let plan: CapturePlan;
     try {
-      plan = planCapture({
-        input: {
-          ...captureOptions,
-          collection: collection.name,
+      const published = await publishCapture({
+        collection,
+        store: this.store,
+        lockPath: this.requestLedger().lockPath,
+        reportSyncFailure: true,
+        config: this.config,
+        plan: async () => {
+          const existingList = await this.store.listDocuments(collection.name);
+          if (!existingList.ok) {
+            throw sdkError("STORE", existingList.error.message, {
+              cause: existingList.error.cause,
+            });
+          }
+          try {
+            return planCapture({
+              input,
+              existingRelPaths: existingList.value.map((doc) => doc.relPath),
+              diskRelPaths: await listCaptureDiskRelPaths(collection.path),
+            });
+          } catch (error) {
+            throw sdkError(
+              "VALIDATION",
+              error instanceof Error ? error.message : String(error)
+            );
+          }
         },
-        existingRelPaths: existingList.value.map((doc) => doc.relPath),
-        diskRelPaths: await listCaptureDiskRelPaths(collection.path),
+        request:
+          requestId === undefined
+            ? undefined
+            : { ...this.requestLedger(), requestId, input },
       });
-    } catch (error) {
-      throw sdkError(
-        "VALIDATION",
-        error instanceof Error ? error.message : String(error)
-      );
-    }
-
-    const fullPath = `${collection.path}/${plan.relPath}`;
-    if (plan.openedExisting) {
-      const existingDoc = await this.store.getDocument(
-        collection.name,
-        plan.relPath
-      );
-      if (!existingDoc.ok) {
-        throw sdkError("STORE", existingDoc.error.message, {
-          cause: existingDoc.error.cause,
+      return published.request
+        ? { ...published.receipt, request: published.request }
+        : published.receipt;
+    } catch (cause) {
+      if (cause instanceof CaptureSyncError) {
+        throw sdkError("RUNTIME", cause.message, {
+          cause,
+          details: { code: cause.code, absPath: cause.absPath },
         });
       }
-      return buildCaptureReceipt({
-        plan,
-        absPath: fullPath,
-        docid: existingDoc.value?.docid,
-        sync: existingDoc.value
-          ? { status: "completed" }
-          : {
-              status: "skipped",
-              reason: "Existing file is not indexed yet.",
-            },
-      });
+      throw toRequestSdkError(cause);
     }
+  }
 
-    await mkdir(dirname(fullPath), { recursive: true });
-    await writeCapturePlanFile(plan, fullPath);
-    const syncResults = await defaultSyncService.syncFiles(
-      collection,
-      this.store,
-      [plan.relPath],
-      withContentTypeRules(
-        {
-          runUpdateCmd: false,
-          gitPull: false,
-        },
-        this.config
-      )
-    );
-    const syncResult = syncResults[0];
-    const docResult = await this.store.getDocument(
-      collection.name,
-      plan.relPath
-    );
-    const docid = docResult.ok ? docResult.value?.docid : undefined;
-    return buildCaptureReceipt({
-      plan,
-      absPath: fullPath,
-      docid: syncResult?.docid ?? docid,
-      sync:
-        syncResult?.status === "error"
-          ? {
-              status: "failed",
-              error:
-                syncResult.errorMessage ??
-                syncResult.errorCode ??
-                "Unknown sync error",
-            }
-          : { status: "completed" },
-    });
+  private requestLedger() {
+    return localRequestLedger(this.dbPath);
+  }
+
+  async requestStatus(requestId: string): Promise<GnoRequestStatusResult> {
+    this.assertOpen();
+    try {
+      return await readRequestStatus({ ...this.requestLedger(), requestId });
+    } catch (cause) {
+      throw toRequestSdkError(cause);
+    }
   }
 
   async createFolder(

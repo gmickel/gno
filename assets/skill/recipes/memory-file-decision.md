@@ -42,6 +42,12 @@ gno remember "<fact>" --scope <scope> --add \
   --source "<where this came from>" --receipt /tmp/recall.json --json
 ```
 
+To make a retry safe, add `--request-id <uuid>` (one fresh ID per fact,
+saved before sending). If the response is lost, run
+`gno request-status <uuid>` first: `committed` means do not resend;
+`pending` or `not_found` means resend the identical command with the same
+ID.
+
 4. Read the result. `outcome: "added"` plus `sync.status: "completed"` means
    the fact file exists and is retrievable now; a `failed` sync means the
    file exists and the index lags (`gno update <collection>`).

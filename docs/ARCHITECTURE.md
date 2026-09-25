@@ -463,6 +463,25 @@ CLI/MCP/Web UI/SDK → new Adapter() → adapter.createPort() → Port interface
 | doc_tags        | Document tags (frontmatter and user-added)                                         |
 | doc_links       | Wiki and markdown links between documents                                          |
 
+### Write request ledger
+
+Opt-in request IDs on capture, remember, and REST document saves are recorded
+in a separate private SQLite file per index,
+`<dataDir>/write-receipts/<index db filename>`, not in the index database.
+Index rebuilds, `gno update`, re-embedding, and `gno reset` never remove it,
+and it does not depend on documents being indexed.
+
+Admission runs inside the existing shared write lease (`.mcp-write.lock`);
+there is no second lock. Under the lease a write looks up the ID in its
+namespace, replays a committed outcome, finishes an interrupted one (refusing
+if its target changed or disappeared after the write), or plans against current state, records the plan as
+`pending`, publishes the file, completes sync (and the supersede projection),
+and marks the request `committed` with its outcome. Rejections before the
+write record nothing. The CLI, SDK, stdio MCP, and REST share one local-owner
+namespace; resident HTTP MCP uses the authorized identity. Retention, the row
+cap, and the error codes are in
+[Retries and Request IDs](guides/retries-and-request-ids.md).
+
 ### Content Addressing
 
 GNO uses content-addressed storage:
@@ -594,6 +613,7 @@ keeps pathological direct inputs from reaching native inference oversized.
 |----------|---------|
 | `~/.config/gno/index.yml` | Configuration |
 | `~/.local/share/gno/index-default.sqlite` | Database |
+| `~/.local/share/gno/write-receipts/` | Write request ledger |
 | `~/.cache/gno/models/` | Model cache |
 
 **macOS**:
@@ -601,6 +621,7 @@ keeps pathological direct inputs from reaching native inference oversized.
 |----------|---------|
 | `~/Library/Application Support/gno/config/index.yml` | Configuration |
 | `~/Library/Application Support/gno/data/index-default.sqlite` | Database |
+| `~/Library/Application Support/gno/data/write-receipts/` | Write request ledger |
 | `~/Library/Caches/gno/models/` | Model cache |
 
 Run `gno doctor` to see resolved paths.

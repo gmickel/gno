@@ -278,6 +278,25 @@ describe("browser clipper route gateway", () => {
     expect(replay?.headers.get("Idempotent-Replay")).toBe("true");
     expect(await replay?.json()).toEqual(receipt);
 
+    // The 202 clipper route keeps its Idempotency-Key contract: a request ID
+    // is refused, never silently ignored.
+    const withRequestId = await routes["/api/capture/clip"]?.POST?.(
+      new Request(`${LISTENER_ORIGIN}/api/capture/clip`, {
+        method: "POST",
+        headers: headers(EXTENSION_ORIGIN, {
+          ...authorization,
+          "Content-Type": "application/json",
+          "Idempotency-Key": "request-id-attempt",
+        }),
+        body: JSON.stringify({ ...JSON.parse(captureBody), requestId: "r1" }),
+      }),
+      server
+    );
+    expect(withRequestId?.status).toBe(400);
+    expect(await withRequestId?.json()).toMatchObject({
+      error: { code: "CLIPPER_INVALID_REQUEST" },
+    });
+
     const createdPayload = {
       ...clipPayload(),
       destination: {

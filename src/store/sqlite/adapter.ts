@@ -835,6 +835,11 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     this.configPath = configPath;
   }
 
+  /** Path this adapter opened; names the index's request ledger. */
+  getDbPath(): string {
+    return this.dbPath;
+  }
+
   /**
    * Get raw SQLite database handle for vector operations.
    * Part of SqliteDbProvider interface - use with isSqliteDbProvider() type guard.

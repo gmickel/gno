@@ -47,6 +47,7 @@ import {
   requireSessionsConfig,
 } from "./setup";
 import {
+  assertNotFilesystemRootAnyForm,
   assertSafeSourceRoot,
   canonicalPath,
   defaultDiscoveryRoots,
@@ -469,6 +470,7 @@ export class SessionsService {
           `Unknown session source "${input.sourceId}". Registered: ${sessions.sources.map((item) => item.id).join(", ") || "(none)"}.`
         );
       }
+      await assertNotFilesystemRootAnyForm(source.path, "A session source");
       const found = await canonicalPath(source.path);
       if (found) assertSafeSourceRoot(found, protectedRoots(sessions));
       const canonical = found && (await isReadableRoot(found)) ? found : null;
@@ -517,6 +519,7 @@ export class SessionsService {
           "Session paths must be absolute."
         );
       }
+      await assertNotFilesystemRootAnyForm(path, "A session source");
       const canonical = await canonicalPath(path);
       if (!(canonical && (await isReadableRoot(canonical)))) {
         throw new SessionsError(
@@ -1017,6 +1020,11 @@ export class SessionsService {
         `${diagnostics.threadsWithoutHuman} main threads have assistant turns but no recognised human turn`
       );
     }
+    if (diagnostics.threadsOverLimit > 0) {
+      receiptWarnings.push(
+        `${diagnostics.threadsOverLimit} threads beyond the per-unit thread limit were not read`
+      );
+    }
     if (diagnostics.humanTurnsMissing) {
       receiptWarnings.push(
         "assistant turns without any recognised human turn: possible format drift"
@@ -1190,9 +1198,11 @@ export class SessionsService {
         ? {
             reason: diagnostics.truncatedTail
               ? "truncated_tail"
-              : diagnostics.malformedRecords > 0
-                ? "malformed_records"
-                : "format_drift",
+              : diagnostics.threadsOverLimit > 0
+                ? "over_limit"
+                : diagnostics.malformedRecords > 0
+                  ? "malformed_records"
+                  : "format_drift",
           }
         : {}),
       threads: written.length,
