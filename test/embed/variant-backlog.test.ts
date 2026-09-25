@@ -103,6 +103,56 @@ test.each([
   }
 );
 
+test("variant pass takes write turns for preparation, pages, and activation and defers while held", async () => {
+  const { db, port, deps } = await variantFixture(["One", "Two", "Three"]);
+  // Production preparation: a confirmed new identity creates its own partition.
+  port.getIdentity = () => ({
+    contextSize: 256,
+    truncationPolicy: "gated-tail",
+    modelFingerprint: "actual-test-weights",
+    runtimeFingerprint: "gated-runtime",
+  });
+  const automatic = {
+    ...deps,
+    variantStore: undefined,
+    identityStillCurrent: undefined,
+    allowNewPartition: true,
+  };
+  const partitions = () =>
+    db.query("SELECT count(*) AS n FROM vector_partitions").get();
+  const before = partitions();
+
+  expect(
+    await embedBacklog({ ...automatic, acquireWriteTurn: async () => null })
+  ).toMatchObject({ ok: true, value: { embedded: 0, deferred: true } });
+  expect(partitions()).toEqual(before);
+
+  let turns = 0;
+  let held = false;
+  const inferredWhileHeld: boolean[] = [];
+  const embedBatch = port.embedBatch.bind(port);
+  port.embedBatch = (texts, options) => {
+    inferredWhileHeld.push(held);
+    return embedBatch(texts, options);
+  };
+  expect(
+    await embedBacklog({
+      ...automatic,
+      acquireWriteTurn: async () => {
+        turns += 1;
+        held = true;
+        return async () => {
+          held = false;
+        };
+      },
+    })
+  ).toMatchObject({ ok: true, value: { embedded: 3 } });
+  expect(inferredWhileHeld).toEqual([false]);
+  expect(partitions()).not.toEqual(before);
+  // One turn each for preparation, the single page, and activation.
+  expect(turns).toBe(3);
+});
+
 test.each(["title", "content", "delete", "model"])(
   "discards concurrent %s completion and preserves successful current owners",
   async (mutation) => {

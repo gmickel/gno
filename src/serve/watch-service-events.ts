@@ -219,7 +219,8 @@ export function requeueAfterFailure(
   collectionName: string,
   exact: string[],
   dirty: string[],
-  forceFlags?: PendingForceFlags
+  forceFlags?: PendingForceFlags,
+  delayMs = WATCHER_RETRY_BACKOFF_MS
 ): void {
   queueWithoutSchedule(host, collectionName, exact, dirty, forceFlags);
   if (host.disposed()) {
@@ -241,7 +242,7 @@ export function requeueAfterFailure(
       host.timers.delete(collectionName);
       host.retryScheduled.delete(collectionName);
       startFlush(host, collectionName);
-    }, WATCHER_RETRY_BACKOFF_MS)
+    }, delayMs)
   );
 }
 

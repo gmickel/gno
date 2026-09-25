@@ -1050,7 +1050,12 @@ GNO_SESSIONS_HOOKS=off claude                                                  #
 
 ### "Database locked"
 
-Another process has the database open.
+Another process holds the SQLite write lock. GNO writers (`gno index`,
+`update`, `embed`, MCP write tools, and a resident's background writes) share
+the `.mcp-write.lock` lease, so a GNO-vs-GNO overlap reports `BUSY` (exit 4)
+after `--lock-wait` rather than this raw error. A raw `database is locked`
+therefore points at a writer outside the lease: an older GNO version, or
+another tool with the index open for writing.
 
 ```bash
 # Find processes
@@ -1058,6 +1063,25 @@ lsof ~/.local/share/gno/*.sqlite
 
 # Or wait and retry
 ```
+
+### Resident uses CPU, embeddings stay pending, or `--stop` needs SIGKILL
+
+Check `gno status` (or `gno serve --status` / `gno daemon --status`) for
+`Background issues`:
+
+- `background embed failing` / `parked`: every background embed pass failed.
+  Common causes are an inference deadline on a slow CPU batch or a crashing
+  native worker. The log (`serve.log` / `daemon.log`) has one line per retry
+  step with the error. Run `gno embed` in the foreground to see per-chunk
+  errors; a parked resident does not retry by itself until files change.
+- `overrunning`: a single background pass has run for over 15 minutes.
+- `resident did not answer its status request`: the process is alive but its
+  event loop is busy or stopped. `gno serve --stop` still sends SIGTERM first;
+  a SIGKILL report means it stayed unresponsive for the full 12s grace.
+
+The serve/daemon log is append-only across runs, so repeated `GNO server
+running` / `Shutting down...` blocks are separate starts and stops, not a
+restart loop.
 
 ### Corrupted Database
 

@@ -14,6 +14,7 @@ import type {
   VectorStatsPort,
 } from "../store/vector";
 import type { VectorVariantStore } from "../store/vector/variants";
+import type { AcquireWriteTurn } from "./retry";
 
 import {
   assertInferenceActive,
@@ -32,6 +33,7 @@ import { getEmbeddingFingerprint } from "./fingerprint";
 import {
   chunkRetryKey,
   embedAndStoreBatch,
+  inWriteTurn,
   MAX_EMBED_CHUNK_ATTEMPTS,
 } from "./retry";
 import { embedVariantBacklog } from "./variant-backlog";
@@ -52,6 +54,12 @@ export interface EmbedBacklogDeps {
   variantStore?: VectorVariantStore;
   /** Recheck the effective runtime identity after asynchronous inference. */
   identityStillCurrent?: () => boolean;
+  /**
+   * Write gate for callers that do not already hold the shared writer lease
+   * (the resident scheduler): taken around each page's writes and released
+   * after. null means another writer holds it; the pass stops as deferred.
+   */
+  acquireWriteTurn?: AcquireWriteTurn;
   /** Explicit confirmation to build a separate vector partition (never implied by --yes). */
   allowNewPartition?: boolean;
 }
@@ -66,6 +74,8 @@ export interface EmbedBacklogResult {
   contentionErrors?: number;
   /** Error message if vec index sync failed (embeddings stored, but search may be stale) */
   syncError?: string;
+  /** The pass stopped early because another writer held the write gate. */
+  deferred?: boolean;
 }
 
 interface Cursor {
@@ -85,7 +95,18 @@ export async function embedBacklog(
   deps: EmbedBacklogDeps
 ): Promise<StoreResult<EmbedBacklogResult>> {
   assertInferenceActive();
-  const prepared = await prepareEmbeddingBacklog(deps);
+  if (deps.acquireWriteTurn && !deps.variantStore) {
+    // Model loading stays outside the write turn; preparation's partition
+    // writes below take one like every other background write.
+    const initialized = await deps.embedPort.init();
+    if (!initialized.ok) return err("INTERNAL", initialized.error.message);
+  }
+  const turn = await inWriteTurn(deps.acquireWriteTurn, () =>
+    prepareEmbeddingBacklog(deps)
+  );
+  if (turn.deferred)
+    return ok({ embedded: 0, errors: 0, contentionErrors: 0, deferred: true });
+  const prepared = turn.value;
   if (!prepared.ok) return prepared;
   deps = prepared.value;
   if (deps.variantStore) return embedVariantBacklog(deps, deps.variantStore);
@@ -208,7 +229,10 @@ export async function embedBacklog(
         embedFingerprint,
         identityStillCurrent: deps.identityStillCurrent,
         statsPort,
+        acquireWriteTurn: deps.acquireWriteTurn,
       });
+      if (batchStoreResult.deferred)
+        return ok({ embedded, errors, contentionErrors, deferred: true });
       embedded += batchStoreResult.embedded;
       errors += batchStoreResult.errors;
       contentionErrors += batchStoreResult.contentionErrors;
@@ -232,7 +256,12 @@ export async function embedBacklog(
     // Sync vec index once at end if any vec0 writes failed
     let syncError: string | undefined;
     if (vectorIndex.vecDirty) {
-      const syncResult = await vectorIndex.syncVecIndex();
+      const turn = await inWriteTurn(deps.acquireWriteTurn, () =>
+        vectorIndex.syncVecIndex()
+      );
+      if (turn.deferred)
+        return ok({ embedded, errors, contentionErrors, deferred: true });
+      const syncResult = turn.value;
       if (syncResult.ok) {
         const { added, removed } = syncResult.value;
         if (added > 0 || removed > 0) {

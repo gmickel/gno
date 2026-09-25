@@ -20,7 +20,7 @@ import { mkdir, stat, unlink } from "node:fs/promises";
 // node:path — no Bun path utils.
 import { dirname, join } from "node:path";
 
-import type { ResidentStatus } from "../serve/status-model";
+import type { BackgroundIssue, ResidentStatus } from "../serve/status-model";
 
 import { VERSION, resolveDirs } from "../app/constants";
 import { toAbsolutePath } from "../config/paths";
@@ -838,6 +838,34 @@ export async function statusProcess(
     log_file: options.logFile,
     log_size_bytes: logSize,
   };
+}
+
+/** Issues a running detached resident reports, or that it failed to answer at all. */
+export function residentIssues(status: ProcessStatus): BackgroundIssue[] {
+  if (!status.running) return [];
+  if (!status.resident)
+    return [
+      {
+        job: "resident",
+        state: "unresponsive",
+        consecutiveFailures: 0,
+        runningSeconds: null,
+      },
+    ];
+  return status.resident.backgroundIssues ?? [];
+}
+
+export function formatBackgroundIssue(issue: BackgroundIssue): string {
+  switch (issue.state) {
+    case "unresponsive":
+      return "resident did not answer its status request within 500ms (busy or hung)";
+    case "failing":
+      return `background embed failing (${issue.consecutiveFailures} failed passes in a row; details in the log)`;
+    case "parked":
+      return `background embed parked after ${issue.consecutiveFailures} failed passes; pending chunks wait for new changes or \`gno embed\``;
+    case "overrunning":
+      return `background embed pass running for ${issue.runningSeconds ?? 0}s`;
+  }
 }
 
 /**

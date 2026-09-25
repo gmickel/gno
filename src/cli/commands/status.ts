@@ -8,6 +8,7 @@
 import type { ContentTypeBoostStatus } from "../../config/content-types";
 import type { ActivationStatus } from "../../core/activation-status";
 import type { MemoryStatus } from "../../core/memory-diagnostics";
+import type { BackgroundIssue } from "../../serve/status-model";
 import type { IndexStatus } from "../../store/types";
 
 import { getIndexDbPath, getModelsCachePath } from "../../app/constants";
@@ -30,6 +31,12 @@ import { getActivePreset, resolveModelUri } from "../../llm/registry";
 import { getConnectorVerificationTargets } from "../../serve/connectors";
 import { createStandaloneResidentStatus } from "../../serve/resident-status";
 import { SqliteAdapter } from "../../store/sqlite/adapter";
+import {
+  formatBackgroundIssue,
+  residentIssues,
+  resolveProcessPaths,
+  statusProcess,
+} from "../detach";
 
 /**
  * Options for status command.
@@ -55,8 +62,34 @@ export type StatusResult =
       activation: ActivationStatus;
       contentTypeBoost: ContentTypeBoostStatus;
       memory: MemoryStatus;
+      backgroundIssues: ResidentBackgroundIssue[];
     }
   | { success: false; error: string };
+
+/** A background issue reported by (or about) a running detached resident. */
+export type ResidentBackgroundIssue = BackgroundIssue & {
+  process: "serve" | "daemon";
+  pid: number;
+};
+
+/**
+ * Ask each detached resident for its background issues. Each request is
+ * bounded (500ms), so a hung resident is reported, never waited on.
+ */
+async function collectResidentIssues(): Promise<ResidentBackgroundIssue[]> {
+  const statuses = await Promise.all(
+    (["serve", "daemon"] as const).map((kind) =>
+      statusProcess({ kind, ...resolveProcessPaths(kind) })
+    )
+  );
+  return statuses.flatMap((processStatus) =>
+    residentIssues(processStatus).map((issue) => ({
+      process: processStatus.cmd,
+      pid: processStatus.pid ?? 0,
+      ...issue,
+    }))
+  );
+}
 
 function connectorProjectionLine(activation: ActivationStatus): string | null {
   const { projected, total, truncated } = activation.connectorProjection;
@@ -330,6 +363,7 @@ export async function status(
       activation,
       contentTypeBoost: buildContentTypeBoostStatus(config.contentTypes ?? []),
       memory: await buildMemoryStatus(store, config.collections),
+      backgroundIssues: await collectResidentIssues(),
     };
   } finally {
     await store.close();
@@ -377,6 +411,9 @@ export function formatStatus(
         contentTypeBoost: result.contentTypeBoost,
         activation: result.activation,
         memory: result.memory,
+        ...(result.backgroundIssues.length
+          ? { backgroundIssues: result.backgroundIssues }
+          : {}),
       },
       null,
       2
@@ -392,10 +429,17 @@ export function formatStatus(
     );
   }
 
-  return formatTerminal(
-    result.status,
-    result.activation,
-    result.contentTypeBoost,
-    result.memory
+  const issueLines = result.backgroundIssues.map(
+    (issue) =>
+      `  ${issue.process} (pid ${issue.pid}): ${formatBackgroundIssue(issue)}`
   );
+  return [
+    formatTerminal(
+      result.status,
+      result.activation,
+      result.contentTypeBoost,
+      result.memory
+    ),
+    ...(issueLines.length ? ["", "Background issues:", ...issueLines] : []),
+  ].join("\n");
 }

@@ -113,6 +113,16 @@ export interface ResidentStatus {
     content: number;
     index: number;
   };
+  /** Present only while a background job is in trouble. */
+  backgroundIssues?: BackgroundIssue[];
+}
+
+/** A resident background job that keeps failing, has stopped retrying, or overruns. */
+export interface BackgroundIssue {
+  job: "embed" | "resident";
+  state: "failing" | "parked" | "overrunning" | "unresponsive";
+  consecutiveFailures: number;
+  runningSeconds: number | null;
 }
 
 export interface BackgroundServiceState {

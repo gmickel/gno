@@ -771,6 +771,11 @@ content, or caller/session identity. Detached `gno serve|daemon --status --json`
 copies this object on a best-effort 500 ms listener read and returns
 `resident:null` when that listener snapshot is unavailable.
 
+While a background job is in trouble the object carries `backgroundIssues`
+(absent otherwise): items with `job` (`embed`), `state` (`failing`, `parked`,
+or `overrunning`), `consecutiveFailures`, and `runningSeconds` (set for an
+overrunning pass). Error text stays in the resident log, never in this object.
+
 ```bash
 curl http://127.0.0.1:3000/api/resident/status | jq
 ```

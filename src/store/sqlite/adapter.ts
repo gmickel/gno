@@ -715,6 +715,11 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  /** Set this connection's SQLite busy_timeout (resident event-loop bound). */
+  setBusyTimeout(ms: number): void {
+    this.db?.exec(`PRAGMA busy_timeout = ${Math.max(0, Math.floor(ms))}`);
+  }
+
   /** Cap subsequent SQLite lock waits to the resident settlement deadline. */
   beginShutdown(deadline: number): void {
     this.shutdownDeadline = deadline;

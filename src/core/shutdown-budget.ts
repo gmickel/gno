@@ -4,6 +4,12 @@ export const SHUTDOWN_ABORT_MS = 5_000;
 export const SHUTDOWN_EXIT_MS = 1_000;
 // The detached parent must not be killed before it can reap its native child.
 export const RESIDENT_STOP_GRACE_MS = 12_000;
+/**
+ * Longest synchronous SQLite busy wait a resident allows itself. A signal is
+ * handled only after the wait in progress ends, so this plus the shutdown
+ * clock must fit inside the stop grace (asserted in shutdown-budget tests).
+ */
+export const RESIDENT_BUSY_TIMEOUT_MS = 500;
 
 /** Observe settlement without abandoning rejection handling or retaining a timer. */
 export async function settlesBy(

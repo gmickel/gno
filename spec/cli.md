@@ -355,6 +355,32 @@ truthful about its lifecycle: `mode:"direct-cli"`, `resident:false`, no
 listener, and zero resident counters. It does not imply attachment to a live
 `serve` or `daemon`.
 
+When a detached `serve` or `daemon` (found through its pid-file) has a
+background job in trouble, JSON output adds `backgroundIssues`; the key is
+absent otherwise. Each item is a resident-status `backgroundIssue` plus the
+process that reported it:
+
+```json
+"backgroundIssues": [
+  {
+    "process": "serve",
+    "pid": 41234,
+    "job": "embed",
+    "state": "parked",
+    "consecutiveFailures": 5,
+    "runningSeconds": null
+  }
+]
+```
+
+`state` is `failing` (background embed passes failing and retrying with
+backoff), `parked` (retries stopped after 5 failed passes; pending chunks wait
+for new changes or `gno embed`), `overrunning` (one pass running longer than 15
+minutes, `runningSeconds` set), or `unresponsive` (`job:"resident"`: the process
+is alive but did not answer its status request within 500ms). Each resident is
+asked once with that 500ms budget, so `gno status` never waits on a hung
+resident. Terminal output lists the same issues under `Background issues:`.
+
 Local activation fingerprints use active-document identifiers and source/mirror
 hashes plus schema, tokenizer, and owned FTS synchronization metadata. Passive
 status never selects or compares stored markdown or FTS bodies. On a receipt
@@ -1033,7 +1059,7 @@ gno update [--git-pull] [--json] [--lock-wait <duration>] [--no-wait]
 | `--lock-wait <duration>` | duration | How long to wait for the index write lease (default: `120s`). Accepts `120`, `120s`, or `2m`. |
 | `--no-wait` | boolean | Do not wait; fail immediately if another writer holds the lease |
 
-**Concurrency:** One writer at a time on the shared index database. `update` waits up to `--lock-wait` for the lease (the same `.mcp-write.lock` MCP write tools use); `index`, `embed`, `cleanup`, `vec sync`, `vec rebuild`, `vec drop`, `collection clear-embeddings`, `tags add`, and `tags rm` follow the same contract; `capture` takes the same lock internally, and single-row writes such as `collection policy set` are absorbed by `busy_timeout`. `--no-wait` opts out. Reads (`search`, `query`, `get`) never take the lease. External serialising wrappers are no longer required for CLI-vs-CLI and CLI-vs-MCP overlap. Residual window: a resident (`gno serve`/`gno daemon`) watch or embed flush writes without the lease; those short transactions are absorbed by the raised `busy_timeout` and the SQLITE_BUSY retry, and a deferred chunk is reported as contention, never as an embedding failure.
+**Concurrency:** One writer at a time on the shared index database. `update` waits up to `--lock-wait` for the lease (the same `.mcp-write.lock` MCP write tools use); `index`, `embed`, `cleanup`, `vec sync`, `vec rebuild`, `vec drop`, `collection clear-embeddings`, `tags add`, and `tags rm` follow the same contract; `capture` takes the same lock internally, and single-row writes such as `collection policy set` are absorbed by `busy_timeout`. `--no-wait` opts out. Reads (`search`, `query`, `get`) never take the lease. External serialising wrappers are no longer required for CLI-vs-CLI and CLI-vs-MCP overlap. A resident (`gno serve`/`gno daemon`) takes the same lease without waiting around each watcher sync, embed preparation, background-embedding page write (never around inference), and the final vector activation; when the lease is held it defers that work (watcher retry after 5s, embed pass rescheduled) instead of writing, so resident background writes never hold a SQLite write lock outside the lease. The resident's own SQLite busy wait is capped at 500ms so a stop signal is always handled within the stop grace.
 
 **Behavior:**
 

@@ -15,6 +15,28 @@ import { getVectorStatsDatabase } from "../store/vector/stats";
 import { embedTextsWithRecovery } from "./batch";
 
 export const MAX_EMBED_CHUNK_ATTEMPTS = 2;
+
+/**
+ * Write gate for callers that do not already hold the shared writer lease
+ * (the resident scheduler). Returns a release, or null when another writer
+ * holds the lease.
+ */
+export type AcquireWriteTurn = () => Promise<(() => Promise<void>) | null>;
+
+/** Run `write` inside one write turn, or report that the gate is held elsewhere. */
+export async function inWriteTurn<T>(
+  acquire: AcquireWriteTurn | undefined,
+  write: () => Promise<T>
+): Promise<{ deferred: true } | { deferred: false; value: T }> {
+  if (!acquire) return { deferred: false, value: await write() };
+  const release = await acquire();
+  if (!release) return { deferred: true };
+  try {
+    return { deferred: false, value: await write() };
+  } finally {
+    await release();
+  }
+}
 export const MAX_EMBED_FAILURE_SAMPLES = 5;
 
 /** Total upsert attempts (initial + retries) when persistence hits SQLITE_BUSY/LOCKED. */
@@ -44,6 +66,8 @@ export interface EmbedStoreBatchResult {
   suggestion?: string;
   batchFailed: boolean;
   batchError?: string;
+  /** The write gate was held elsewhere; nothing was persisted. */
+  deferred?: boolean;
 }
 
 // fn-127 integration: CLI consumers (src/cli/commands/embed.ts,
@@ -173,6 +197,8 @@ export async function embedAndStoreBatch(params: {
   identityStillCurrent?: () => boolean;
   /** Test seam: override contention-retry delays in milliseconds. */
   delays?: number[];
+  /** Gate held only around persistence, never around inference. */
+  acquireWriteTurn?: AcquireWriteTurn;
 }): Promise<EmbedStoreBatchResult> {
   const { embedPort, vectorIndex, items, modelUri, embedFingerprint } = params;
   const db = params.statsPort && getVectorStatsDatabase(params.statsPort);
@@ -282,35 +308,48 @@ export async function embedAndStoreBatch(params: {
       );
     });
   };
-  const storeResult = await upsertVectorsWithContentionRetry(
-    {
-      upsertVectors: async (rows) => {
-        if (vectorIndex.upsertVectorsChecked) {
-          const result = await vectorIndex.upsertVectorsChecked(
-            rows,
-            (candidates) => {
-              committedRows = checkpoint(candidates);
-              return committedRows;
-            }
-          );
-          if (!result.ok) return result;
-          written = result.value;
-          return ok(undefined);
-        }
-        if (db)
-          return err("INVALID_INPUT", "Atomic vector checkpoint unavailable");
-        const valid = checkpoint(rows);
-        const result = await vectorIndex.upsertVectors(valid);
-        if (result.ok) {
-          written = valid.length;
-          committedRows = valid;
-        }
-        return result;
+  const turn = await inWriteTurn(params.acquireWriteTurn, () =>
+    upsertVectorsWithContentionRetry(
+      {
+        upsertVectors: async (rows) => {
+          if (vectorIndex.upsertVectorsChecked) {
+            const result = await vectorIndex.upsertVectorsChecked(
+              rows,
+              (candidates) => {
+                committedRows = checkpoint(candidates);
+                return committedRows;
+              }
+            );
+            if (!result.ok) return result;
+            written = result.value;
+            return ok(undefined);
+          }
+          if (db)
+            return err("INVALID_INPUT", "Atomic vector checkpoint unavailable");
+          const valid = checkpoint(rows);
+          const result = await vectorIndex.upsertVectors(valid);
+          if (result.ok) {
+            written = valid.length;
+            committedRows = valid;
+          }
+          return result;
+        },
       },
-    },
-    vectors,
-    params.delays
+      vectors,
+      params.delays
+    )
   );
+  if (turn.deferred)
+    return {
+      embedded: 0,
+      errors: 0,
+      contentionErrors: 0,
+      retryItems: [],
+      errorSamples: [],
+      batchFailed: false,
+      deferred: true,
+    };
+  const storeResult = turn.value;
   if (!storeResult.ok) {
     if (isUpsertLockContention(storeResult.error)) {
       return {

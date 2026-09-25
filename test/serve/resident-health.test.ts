@@ -5,8 +5,10 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import type { BackgroundIssue } from "../../src/serve/status-model";
+
 import { VERSION } from "../../src/app/constants";
-import { statusProcess } from "../../src/cli/detach";
+import { residentIssues, statusProcess } from "../../src/cli/detach";
 import {
   buildResidentStatusSnapshot,
   createStandaloneResidentStatus,
@@ -24,7 +26,7 @@ afterEach(async () => {
   );
 });
 
-function residentSnapshot() {
+function residentSnapshot(backgroundIssues?: BackgroundIssue[]) {
   return buildResidentStatusSnapshot({
     mode: "serve",
     startedAt: 1_000,
@@ -53,6 +55,7 @@ function residentSnapshot() {
     },
     jobs: { active: 1, recent: 2, failed: 1 },
     generations: { content: 7, index: 5 },
+    backgroundIssues,
   });
 }
 
@@ -121,6 +124,46 @@ describe("resident health truth surface", () => {
     expect(processStatus.running).toBe(true);
     expect(processStatus.port).toBe(3210);
     expect(processStatus.resident).toEqual(snapshot);
+  });
+
+  test("background issues appear only while a job is in trouble and stay schema-valid", async () => {
+    const issue = {
+      job: "embed" as const,
+      state: "parked" as const,
+      consecutiveFailures: 5,
+      runningSeconds: null,
+    };
+    const snapshot = residentSnapshot([issue]);
+    expect(snapshot.backgroundIssues).toEqual([issue]);
+    expect(assertValid(snapshot, await loadSchema("resident-status"))).toBe(
+      true
+    );
+    expect(residentSnapshot([])).not.toHaveProperty("backgroundIssues");
+
+    const running = {
+      running: true,
+      pid: 1,
+      port: 3210,
+      cmd: "serve" as const,
+      version: VERSION,
+      started_at: null,
+      uptime_seconds: 1,
+      pid_file: "serve.pid",
+      log_file: "serve.log",
+      log_size_bytes: 0,
+    };
+    expect(residentIssues({ ...running, resident: snapshot })).toEqual([issue]);
+    expect(residentIssues({ ...running, resident: null })).toEqual([
+      {
+        job: "resident",
+        state: "unresponsive",
+        consecutiveFailures: 0,
+        runningSeconds: null,
+      },
+    ]);
+    expect(
+      residentIssues({ ...running, running: false, resident: null })
+    ).toEqual([]);
   });
 
   test("stdio and direct CLI report explicit standalone lifecycles", () => {

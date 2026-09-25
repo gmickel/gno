@@ -16,10 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `gno status`, `gno serve --status`, and `gno daemon --status` report background issues: a failing, parked, or overrunning background embed pass, or a detached resident that does not answer its status request. Each resident query is bounded to 500ms, so status never waits on a hung resident.
 - `gno vec drop <partition>` removes an abandoned shadow vector partition (legacy shadows included) the calling runtime does not read; status prints its hint for exactly those partitions, and every active partition, legacy included, is refused. `gno vsearch` from a runtime without a usable partition says vector search is unavailable and points to `gno query` / `gno search` or `gno embed --new-partition`.
 
 ### Fixed
 
+- A resident `gno serve` / `gno daemon` no longer makes CLI writers fail with a raw `database is locked`: watcher syncs and background embedding now take the shared write lease (without waiting) and defer while a CLI writer holds it, so the CLI reports `BUSY` (exit 4) at worst.
+- `gno serve --stop` no longer escalates to SIGKILL when another process holds the database write lock; the resident caps its own SQLite busy wait at 500ms.
+- Background embedding no longer retries a failing pass every 30 seconds forever, and no longer drops a timed-out pass silently. Failed passes back off, park after 5 in a row, and are logged once per step.
 - Piped CLI output is no longer cut off at exit. When stdout or stderr was a pipe, output larger than the pipe buffer (for example `gno search --json | jq` or a subprocess reading through a pipe) was truncated to 8 KB or 16 KB, which left JSON consumers with invalid input. The CLI now flushes both streams before it exits, and a consumer that closes the pipe early (such as `| head`) still lets it exit promptly with the command's exit code.
 - `spec/output-schemas/error.schema.json` now lists every CLI error code, including `BUSY` (exit 4), so a schema-validating client no longer rejects a valid busy error. A contract test keeps the schema in step with the CLI's error codes.
 
