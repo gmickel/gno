@@ -5,8 +5,11 @@ import { chmod, cp, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
 import { runCli } from "../../src/cli/run";
+import { acquireWriteLock } from "../../src/core/file-lock";
+import { importLockPath } from "../../src/sessions/state";
 import { safeRm } from "../helpers/cleanup";
 import { FIXTURES, snapshotSessionEnv, tempDir } from "../sessions/helpers";
+import { assertValid, loadSchema } from "../spec/schemas/validator";
 
 let root: string;
 let archiveConfig: string;
@@ -106,6 +109,38 @@ describe("gno sessions CLI", () => {
     const result = await cli("sessions", "--json");
     expect(result.code).toBe(0);
     expect(JSON.parse(result.stdout)).toMatchObject({ candidates: [] });
+  });
+
+  test("a contended import emits a schema-valid BUSY envelope", async () => {
+    const lock = await acquireWriteLock(
+      importLockPath(join(root, "archive")),
+      1_000
+    );
+    expect(lock).not.toBeNull();
+    try {
+      const result = await cli(
+        "--json",
+        "--config",
+        archiveConfig,
+        "--index",
+        "sessions",
+        "sessions",
+        "import",
+        "--source",
+        "codex"
+      );
+      expect(result.code).toBe(4);
+      const envelope = JSON.parse(
+        result.stderr.trim().split("\n").at(-1) ?? "{}"
+      );
+      expect(envelope.error).toMatchObject({
+        code: "BUSY",
+        details: { sessionsCode: "SESSIONS_BUSY" },
+      });
+      expect(assertValid(envelope, await loadSchema("error"))).toBe(true);
+    } finally {
+      await lock?.release();
+    }
   });
 
   const failures: Array<[string, string[], number, string]> = [

@@ -9,13 +9,14 @@ This document specifies the command-line interface for GNO, a local knowledge in
 
 ### Exit Codes
 
-| Code | Name        | Description                                                                                                                                                                    |
-| ---- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 0    | SUCCESS     | Command completed successfully                                                                                                                                                 |
-| 1    | VALIDATION  | Validation or usage error (bad args, missing required params)                                                                                                                  |
-| 2    | RUNTIME     | Runtime failure (IO, DB, conversion, model, network)                                                                                                                           |
-| 3    | NOT_RUNNING | `--status`/`--stop` found no live matching process                                                                                                                             |
-| 4    | BUSY        | Write-lease contention on `index` / `update` / `embed`; a lost `remember --supersede` race; a concurrent `sessions import`; a request ID still in progress (`REQUEST_PENDING`) |
+| Code | Name          | Description                                                                                                                                                                                                                                                                         |
+| ---- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | SUCCESS       | Command completed successfully                                                                                                                                                                                                                                                      |
+| 1    | VALIDATION    | Validation or usage error (bad args, missing required params)                                                                                                                                                                                                                       |
+| 2    | RUNTIME       | Runtime failure (IO, DB, conversion, model, network)                                                                                                                                                                                                                                |
+| 3    | NOT_RUNNING   | `--status`/`--stop` found no live matching process; `CONTEXT_STALE`: a saved Context Capsule is stale                                                                                                                                                                               |
+| 4    | BUSY          | Write-lease contention on `index` / `update` / `embed`; a lost `remember --supersede` race; a concurrent `sessions import`; a request ID still in progress (`REQUEST_PENDING`); `AUDIT_FINDINGS`: `gno audit` found findings; `CONTEXT_CONFLICT`: a saved Context Capsule conflicts |
+| 5    | AUDIT_PARTIAL | `gno audit` evidence is partial                                                                                                                                                                                                                                                     |
 
 ### Global Flags
 
@@ -4436,15 +4437,14 @@ Errors are written to stderr. With `--json` flag, errors are also returned as:
 }
 ```
 
-Error codes match exit codes: `VALIDATION` (exit 1), `RUNTIME` (exit 2), `NOT_RUNNING` (exit 3), `BUSY` (exit 4).
+Error codes and their exit codes: `VALIDATION` (1), `RUNTIME` (2), `NOT_RUNNING` (3), `CONTEXT_STALE` (3), `BUSY` (4), `AUDIT_FINDINGS` (4), `CONTEXT_CONFLICT` (4), `AUDIT_PARTIAL` (5). `error.schema.json` lists exactly this set.
+`AUDIT_FINDINGS`, `AUDIT_PARTIAL`, `CONTEXT_STALE`, and `CONTEXT_CONFLICT` signal through the exit code alone, after the command's own output; they write no envelope.
 Request ID errors keep their stable request code in `details.requestCode`
 (see [gno request-status](#gno-request-status)).
 
 Write-lease contention on `index` / `update` / `embed` does not use the generic envelope. Text mode writes the dedicated "index is busy" message to stderr; `--json` writes `{ success: false, error, contention }` to stdout. Both exit 4. `gno audit` also uses exit 4 for findings.
 
-**`NOT_RUNNING` is not an error envelope.**
-
-**`NOT_RUNNING` is not an error envelope.** `gno serve|daemon --status --json` returns a `process-status`-shaped payload on stdout with exit 3 when no live matching process is found (it reports observable state, not failure). `--stop` exits 3 silently when there is nothing to stop and does not accept `--json`. The error envelope above is reserved for `VALIDATION` and `RUNTIME` failures where the command could not produce its structured output at all.
+**`NOT_RUNNING` is not a failure payload.** `gno serve|daemon --status --json` returns a `process-status`-shaped payload on stdout with exit 3 when no live matching process is found (it reports observable state, not failure); the `NOT_RUNNING` envelope goes to stderr only. `--stop` exits 3 silently when there is nothing to stop and does not accept `--json`. The error envelope above is reserved for `VALIDATION`, `RUNTIME`, and `BUSY` failures where the command could not produce its structured output at all.
 
 ---
 
