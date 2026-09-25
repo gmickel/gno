@@ -11,7 +11,7 @@ import {
   symlink,
 } from "node:fs/promises";
 // node:path has no Bun path utilities
-import { join } from "node:path";
+import { join, win32 } from "node:path";
 
 import type { Config } from "../../src/config/types";
 
@@ -30,7 +30,11 @@ import {
   initSessionArchive,
   removeSessionSource,
 } from "../../src/sessions/setup";
-import { enumerateUnits, type ReadDirectory } from "../../src/sessions/sources";
+import {
+  enumerateUnits,
+  isFilesystemRoot,
+  type ReadDirectory,
+} from "../../src/sessions/sources";
 import { importLockPath } from "../../src/sessions/state";
 import { type SessionHarness, SessionsError } from "../../src/sessions/types";
 import { openScopedIndexStore } from "../../src/store/sqlite/scoped-index";
@@ -1264,6 +1268,21 @@ describe("unreadable sources never read as up to date", () => {
 
 describe("archive paths and binding order", () => {
   const FILESYSTEM_ROOT = process.platform === "win32" ? "C:\\" : "/";
+
+  test("a Windows drive root is recognised in every resolver form", () => {
+    const cases: Array<[string, boolean]> = [
+      ["C:\\", true],
+      ["C:", true],
+      ["c:/", true],
+      ["\\\\?\\C:\\", true],
+      ["\\\\?\\C:", true],
+      ["C:\\Users", false],
+      ["\\\\?\\C:\\Users", false],
+    ];
+    for (const [path, expected] of cases) {
+      expect([path, isFilesystemRoot(path, win32)]).toEqual([path, expected]);
+    }
+  });
 
   test("a filesystem root is refused as archive or source, even via a symlink", async () => {
     const rootLink = join(root, "root-link");

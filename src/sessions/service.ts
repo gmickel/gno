@@ -44,6 +44,7 @@ import {
   requireSessionsConfig,
 } from "./setup";
 import {
+  assertNotFilesystemRootAnyForm,
   assertSafeSourceRoot,
   canonicalPath,
   defaultDiscoveryRoots,
@@ -447,6 +448,7 @@ export class SessionsService {
           `Unknown session source "${input.sourceId}". Registered: ${sessions.sources.map((item) => item.id).join(", ") || "(none)"}.`
         );
       }
+      await assertNotFilesystemRootAnyForm(source.path, "A session source");
       const found = await canonicalPath(source.path);
       if (found) assertSafeSourceRoot(found, protectedRoots(sessions));
       const canonical = found && (await isReadableRoot(found)) ? found : null;
@@ -495,6 +497,7 @@ export class SessionsService {
           "Session paths must be absolute."
         );
       }
+      await assertNotFilesystemRootAnyForm(path, "A session source");
       const canonical = await canonicalPath(path);
       if (!(canonical && (await isReadableRoot(canonical)))) {
         throw new SessionsError(

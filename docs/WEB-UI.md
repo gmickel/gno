@@ -176,6 +176,13 @@ success state shows the write result, FTS sync state, and embedding state
 separately. Quick Capture syncs for FTS when possible, but it does not imply
 embedding; run embed/index when vector search should include the new note.
 
+Each submitted capture carries a request ID. If the request fails or its
+response is lost and you click **Try again** without changing anything, the
+dialog reuses the same ID, so the server returns the note it already created
+instead of writing a suffixed copy. Changing the content, title, tags, or
+source starts a new capture with a new ID, and so does the next capture after
+a success. See [Retries and Request IDs](guides/retries-and-request-ids.md).
+
 ### 4. Search
 
 Click **Search** or press **/**. Choose your mode, then open **Advanced Retrieval** for:
@@ -246,6 +253,26 @@ The split-view editor provides:
 | **Safe Editing**     | Converted source formats stay read-only                   |
 | **Wiki Linking**     | `[[...]]` autocomplete and linked-note creation           |
 | **Preset Insert**    | Insert structured note scaffolds from presets             |
+
+### Save Conflicts and Retries
+
+Saves (auto-save, Cmd/Ctrl+S, and tag edits on the document view) send the
+revision the editor loaded, and the server checks it under the shared write
+lease. If the file changed on disk since you loaded it, the save is refused
+with "Document changed on disk" and nothing is overwritten; reload before
+saving again. If another writer holds the lease past the wait window, the save
+fails with a `LOCKED` error and nothing is written; save again once it
+finishes.
+
+Each save also carries a request ID tied to the loaded revision and the
+content (or tag set) being saved. Retrying the same save after a network error
+reuses that ID, so a save that reached disk but lost its response returns the
+committed result instead of a false "Document changed on disk" conflict.
+Edited content or a different tag set gets a new ID. Pending and conflict
+errors show the server's message. The unconfirmed request ID is kept for the
+browser tab, so retrying the same capture or save after a page refresh still
+replays instead of writing twice; after a refresh the editor reloads the
+current document from disk.
 
 ### Keyboard Shortcuts
 
@@ -1185,6 +1212,10 @@ Refresh the page. If content still doesn't appear, check browser console for err
 
 ### Changes not saving
 
+- "Document changed on disk": the file was edited elsewhere since you opened
+  it. Reload the document, then reapply your change.
+- `LOCKED`: another write (an index run, a CLI or MCP write) held the shared
+  write lease for the whole wait window. Nothing was written; save again.
 - Check browser console for API errors
 - Verify collection folder has write permissions
 - Check disk space

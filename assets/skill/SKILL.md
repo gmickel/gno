@@ -620,6 +620,28 @@ gno --config ~/gno-sessions/archive.yml --index sessions query "why sqlite" --ca
   `remember`/`recall` automatically; store a fact only when asked, with the
   turn's URI as `--source`. Workflow: `recipes/session-evidence-lookup.md`.
 
+## Retry-Safe Writes (request IDs)
+
+For capture, `remember --add`/`--supersede`, and REST document saves, generate
+one fresh ID (a UUID) per write intent and save it before sending: CLI
+`--request-id <id>`, MCP/REST/SDK `requestId`.
+
+```bash
+gno capture "Launch moved to Oct 3" --request-id 7d0c6f2e-... --json
+gno request-status 7d0c6f2e-... --json   # after a timeout or lost response
+```
+
+- Check before retrying (`gno request-status <id>`, MCP `gno_request_status`,
+  REST `GET /api/requests/:requestId`, SDK `client.requestStatus(id)`):
+  `committed` = done, use `result`, do not resend; `pending` or `not_found` =
+  resend the identical call with the same ID; `expired` = it already ran.
+- Never reuse an ID for a changed payload (`REQUEST_ID_CONFLICT`); a new
+  intent gets a new ID.
+- `REQUEST_RECOVERY_CONFLICT`, `CONFLICT`, or a predecessor-hash mismatch:
+  re-read (`gno get` / `gno recall`) and decide again; never force-overwrite.
+- A request ID is not a recall `receipt`: the receipt fences recalled text,
+  the ID identifies one write for retries. Details: [cli-reference.md](cli-reference.md).
+
 ## Reference-Safe Rename and Move
 
 When MCP writes are enabled and the user asks to rename or move an editable

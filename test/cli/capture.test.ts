@@ -1,9 +1,11 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { clearDataDir } from "../../src/cli/commands/reset";
 import { runCli } from "../../src/cli/run";
+import { defaultSyncService } from "../../src/ingestion";
 import { safeRm } from "../helpers/cleanup";
 
 let stdoutData = "";
@@ -103,6 +105,119 @@ describe("gno capture", () => {
     const content = await Bun.file(join(notesDir, receipt.relPath)).text();
     expect(content).toContain("Remember this");
     expect(content).toContain("source:");
+  });
+
+  test("a retried request ID replays, reports status, and refuses a changed payload", async () => {
+    const args = [
+      "capture",
+      "Retry me",
+      "--collection",
+      "notes",
+      "--title",
+      "Retry",
+      "--collision-policy",
+      "create_with_suffix",
+      "--request-id",
+      "cli-retry-1",
+      "--json",
+    ];
+    const first = await cli(...args);
+    const again = await cli(...args);
+    expect([first.code, again.code]).toEqual([0, 0]);
+    const [a, b] = [JSON.parse(first.stdout), JSON.parse(again.stdout)];
+    expect(a.request).toMatchObject({
+      requestId: "cli-retry-1",
+      replayed: false,
+    });
+    expect(b).toEqual({ ...a, request: { ...a.request, replayed: true } });
+
+    const status = await cli("request-status", "cli-retry-1", "--json");
+    expect(status.code).toBe(0);
+    expect(JSON.parse(status.stdout)).toMatchObject({
+      status: "committed",
+      operation: "capture",
+      result: { uri: a.uri },
+    });
+
+    const changed = await cli(
+      ...args.map((arg) => (arg === "Retry me" ? "Different body" : arg))
+    );
+    expect(changed.code).toBe(1);
+    expect(changed.stderr).toContain("REQUEST_ID_CONFLICT");
+    const files = [...new Bun.Glob("**/*.md").scanSync(notesDir)];
+    expect(files).toEqual([a.relPath]);
+  });
+
+  test("without a request ID a failed lexical sync is still a receipt (exit 0)", async () => {
+    const syncPaths = spyOn(defaultSyncService, "syncPaths").mockResolvedValue({
+      collection: "notes",
+      filesProcessed: 1,
+      filesAdded: 0,
+      filesUpdated: 0,
+      filesUnchanged: 0,
+      filesErrored: 1,
+      filesSkipped: 0,
+      filesMarkedInactive: 0,
+      durationMs: 1,
+      files: [
+        {
+          relPath: "unsynced.md",
+          status: "error",
+          errorCode: "PARSE_ERROR",
+          errorMessage: "bad markdown",
+        },
+      ],
+      errors: [],
+    });
+    try {
+      const result = await cli(
+        "capture",
+        "Body",
+        "--collection",
+        "notes",
+        "--title",
+        "Unsynced",
+        "--json"
+      );
+      expect(result.code).toBe(0);
+      expect(JSON.parse(result.stdout).sync).toEqual({
+        status: "failed",
+        error: "PARSE_ERROR - bad markdown",
+      });
+    } finally {
+      syncPaths.mockRestore();
+    }
+  });
+
+  test("reset keeps the request ledger so a used ID never runs again", async () => {
+    const args = [
+      "capture",
+      "Before reset",
+      "--collection",
+      "notes",
+      "--title",
+      "Reset",
+      "--collision-policy",
+      "create_with_suffix",
+      "--request-id",
+      "survives-reset",
+      "--json",
+    ];
+    const first = JSON.parse((await cli(...args)).stdout);
+    // reset() refuses paths outside the real home directory, so drive the
+    // data-directory step it runs directly.
+    const cleared = await clearDataDir(join(testDir, "data"));
+    expect(cleared.map((entry) => entry.status)).toEqual(["deleted", "kept"]);
+
+    const again = await cli(...args);
+    expect(again.code).toBe(0);
+    expect(JSON.parse(again.stdout)).toEqual({
+      ...first,
+      request: { ...first.request, replayed: true },
+    });
+    expect([...new Bun.Glob("**/*.md").scanSync(notesDir)]).toEqual([
+      first.relPath,
+    ]);
   });
 
   test("quiet output prints only the URI", async () => {

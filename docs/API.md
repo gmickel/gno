@@ -122,6 +122,8 @@ CLI.
 | `/api/sessions/status`                 | GET    | Session archive and per-source status (archive pair only)   |
 | `/api/sessions/discover`               | GET    | Preview local agent session stores (same host only)         |
 
+| `/api/requests/:requestId` | GET | Look up a write request ID before retrying it |
+
 ### Write Operations
 
 | Endpoint                      | Method | Description                            |
@@ -2199,6 +2201,35 @@ with CLI, MCP, and SDK:
 
 ---
 
+### Request IDs
+
+`POST /api/capture`, `POST /api/memory/remember`, and `PUT /api/docs/:id`
+accept an optional `requestId` string in the JSON body. Retrying the same write
+with the same ID returns the recorded outcome instead of writing again. With an
+ID, a successful response gains a `request` object
+(`{ requestId, status: "committed", replayed, committedAt }`), and a replay
+keeps the original HTTP status. `/api/capture/clip` does not accept
+`requestId`; it keeps its `Idempotency-Key` header.
+
+Look an ID up before retrying:
+
+```http
+GET /api/requests/:requestId
+```
+
+```bash
+curl http://localhost:3000/api/requests/0f8e5c1a-3c1e-4d0b-9a57-2f4f3b8f2c11
+```
+
+The response follows
+[`request-status.schema.json`](../spec/output-schemas/request-status.schema.json)
+(`pending`, `committed`, `expired`, or `not_found`, with a content-free result
+pointer). Errors use the stable `REQUEST_*` codes in the standard error body.
+ID format, retry semantics, the codes and their HTTP statuses, namespaces, and
+retention are in [Retries and Request IDs](guides/retries-and-request-ids.md).
+
+---
+
 ### Capture Note
 
 ```http
@@ -2235,6 +2266,9 @@ a note.
 indexed documents and disk-only files. Capture content must be text, and capture
 writes use exclusive create semantics so a late-arriving file fails instead of
 being replaced.
+
+Add `"requestId": "<id>"` to make a retry after a lost response safe; see
+[Request IDs](#request-ids).
 
 **Response** (`201 Created`, or `200 OK` for `opened_existing`):
 
@@ -2341,12 +2375,16 @@ Remember is fact-granular with supersession, not a second capture: use
 | `receipt`         | no               | A recall receipt; replaying one of its spans is rejected                           |
 | `derivedFrom`     | no               | Declared origins; any `gno://` origin is rejected                                  |
 | `source`          | no               | Free-form source evidence                                                          |
+| `requestId`       | no               | Retry identity for `add` / `supersede` ([Request IDs](#request-ids))               |
 
 **Response**: `201 Created` when a record was written (`outcome: "added"` or
 `"superseded"`), otherwise `200 OK` (`"existing"` for an exact duplicate,
 `"candidates"` when no decision was given). The write and its lexical sync
 complete under the shared write lease before the response, so a written fact
 is immediately recallable; `sync.status` is therefore `completed`.
+
+`requestId` requires a `decision`. With an ID, the response gains `request`;
+see [Request IDs](#request-ids). It is unrelated to the recall `receipt`.
 
 ```json
 {
@@ -2749,7 +2787,13 @@ curl -X POST http://localhost:3000/api/docs \
 PUT /api/docs/:id
 ```
 
-Update an existing document's content. Triggers background sync to re-index.
+Update an existing document's content or tags. The Web UI editor and tag
+editor use this endpoint. Triggers background sync to re-index.
+
+The revision check and the file write run under the shared write lease
+(`.mcp-write.lock`), so two saves from the same revision cannot both win: one
+gets `409 CONFLICT`. If the lease stays busy past the wait window, the save
+returns `409 LOCKED` and nothing is written.
 
 **URL Parameters**:
 
@@ -2766,10 +2810,14 @@ Update an existing document's content. Triggers background sync to re-index.
 }
 ```
 
-| Field     | Type     | Required | Description                                      |
-| :-------- | :------- | :------- | :----------------------------------------------- |
-| `content` | string   | No\*     | New file content                                 |
-| `tags`    | string[] | No\*     | Tags to set (replaces frontmatter tags on write) |
+| Field                | Type     | Required | Description                                                    |
+| :------------------- | :------- | :------- | :------------------------------------------------------------- |
+| `content`            | string   | No\*     | New file content                                               |
+| `tags`               | string[] | No\*     | Tags to set (replaces frontmatter tags on write)               |
+| `expectedSourceHash` | string   | No       | Reject with `409 CONFLICT` unless the file still has this hash |
+| `expectedModifiedAt` | string   | No       | Reject with `409 CONFLICT` unless the file mtime still matches |
+| `uri`                | string   | No       | Exact document URI when the docid is not unique                |
+| `requestId`          | string   | No       | Retry identity ([Request IDs](#request-ids))                   |
 
 \*At least one of `content` or `tags` must be provided.
 
@@ -2787,16 +2835,22 @@ When `tags` is provided, the tags are written to the document's YAML frontmatter
 }
 ```
 
+With a `requestId`, the response also carries `request`, and a replayed save
+returns the original result with `jobId: null` (the original save already
+started the sync). See [Request IDs](#request-ids).
+
 **Errors**:
 
-| Code             | Status | Description                             |
-| :--------------- | :----- | :-------------------------------------- |
-| `VALIDATION`     | 400    | Missing or invalid content              |
-| `READ_ONLY`      | 409    | Source format cannot be edited in place |
-| `NOT_FOUND`      | 404    | Document not found in index             |
-| `FILE_NOT_FOUND` | 404    | Source file no longer exists            |
-| `CONFLICT`       | 409    | Sync job already running                |
-| `RUNTIME`        | 500    | Failed to write file                    |
+| Code             | Status  | Description                                                                                                 |
+| :--------------- | :------ | :---------------------------------------------------------------------------------------------------------- |
+| `VALIDATION`     | 400     | Missing or invalid content                                                                                  |
+| `READ_ONLY`      | 409     | Source format cannot be edited in place                                                                     |
+| `NOT_FOUND`      | 404     | Document not found in index                                                                                 |
+| `FILE_NOT_FOUND` | 404     | Source file no longer exists                                                                                |
+| `CONFLICT`       | 409     | File changed since `expectedSourceHash` / `expectedModifiedAt`; the body carries `currentVersion` to reload |
+| `LOCKED`         | 409     | Shared write lease busy past the wait window; nothing written                                               |
+| `REQUEST_*`      | 4xx/5xx | Request ID errors ([Request IDs](#request-ids))                                                             |
+| `RUNTIME`        | 500     | Failed to write file                                                                                        |
 
 **Example**:
 
@@ -3868,20 +3922,21 @@ All errors follow a consistent format:
 }
 ```
 
-| Code                  | HTTP Status | Description                                                                  |
-| :-------------------- | :---------- | :--------------------------------------------------------------------------- |
-| `VALIDATION`          | 400         | Invalid request parameters                                                   |
-| `PATH_NOT_FOUND`      | 400         | Specified path does not exist                                                |
-| `HAS_REFERENCES`      | 400         | Resource has dependencies (e.g., collection in contexts)                     |
-| `CSRF_VIOLATION`      | 403         | Cross-origin request rejected                                                |
-| `NOT_FOUND`           | 404         | Resource not found                                                           |
-| `DUPLICATE`           | 409         | Resource already exists                                                      |
-| `CONFLICT`            | 409         | Operation already in progress                                                |
-| `UNAVAILABLE`         | 503         | Feature not available (model not loaded)                                     |
-| `LOCKED`              | 409         | Shared write lease busy past the wait window ([Capture Note](#capture-note)) |
-| `RUNTIME`             | 500         | Internal error                                                               |
-| `CAPTURE_SYNC_FAILED` | 500         | Capture written but not lexically synced ([Capture Note](#capture-note))     |
-| `MEMORY_*`            | 400-500     | Memory contract codes, see [Remember a Fact](#remember-a-fact)               |
+| Code                  | HTTP Status | Description                                                                                                       |
+| :-------------------- | :---------- | :---------------------------------------------------------------------------------------------------------------- |
+| `VALIDATION`          | 400         | Invalid request parameters                                                                                        |
+| `PATH_NOT_FOUND`      | 400         | Specified path does not exist                                                                                     |
+| `HAS_REFERENCES`      | 400         | Resource has dependencies (e.g., collection in contexts)                                                          |
+| `CSRF_VIOLATION`      | 403         | Cross-origin request rejected                                                                                     |
+| `NOT_FOUND`           | 404         | Resource not found                                                                                                |
+| `DUPLICATE`           | 409         | Resource already exists                                                                                           |
+| `CONFLICT`            | 409         | Operation already in progress                                                                                     |
+| `UNAVAILABLE`         | 503         | Feature not available (model not loaded)                                                                          |
+| `LOCKED`              | 409         | Shared write lease busy past the wait window ([Capture Note](#capture-note), [Update Document](#update-document)) |
+| `RUNTIME`             | 500         | Internal error                                                                                                    |
+| `CAPTURE_SYNC_FAILED` | 500         | Capture written but not lexically synced ([Capture Note](#capture-note))                                          |
+| `MEMORY_*`            | 400-500     | Memory contract codes, see [Remember a Fact](#remember-a-fact)                                                    |
+| `REQUEST_*`           | 400-507     | Request ID codes, see [Request IDs](#request-ids)                                                                 |
 
 ---
 

@@ -82,6 +82,7 @@ import {
   handleTrashDoc,
   handleUpdateCollection,
   handleUpdateCollectionEgressPolicy,
+  handleRequestStatus,
   handleUpdateDoc,
   handleVerifyConnector,
 } from "./routes/api";
@@ -1127,6 +1128,18 @@ export async function startServer(
             const id = decodeURIComponent(url.pathname.split("/").pop() || "");
             return withSecurityHeaders(
               await handleUpdateDoc(ctxHolder, store, id, req),
+              isDev
+            );
+          },
+        },
+        "/api/requests/:requestId": {
+          GET: async (req: Request) => {
+            const url = new URL(req.url);
+            const requestId = decodeURIComponent(
+              url.pathname.split("/").pop() || ""
+            );
+            return withSecurityHeaders(
+              await handleRequestStatus(store, requestId),
               isDev
             );
           },

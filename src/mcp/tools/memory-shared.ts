@@ -19,6 +19,8 @@ import {
   MemoryService,
 } from "../../core/memory";
 import { MEMORY_MAX_SCOPES } from "../../core/memory-record";
+import { requestLedgerPath } from "../../core/request-receipts";
+import { mcpRequestNamespace, rethrowRequestError } from "./request-status";
 
 /** Caller name when the MCP client sent no implementation name. */
 const DEFAULT_MCP_CALLER = "mcp";
@@ -74,6 +76,10 @@ export function createMcpMemoryService(ctx: ToolContext): MemoryService {
     config: ctx.config,
     collections: ctx.collections,
     lockPath: ctx.writeLockPath,
+    requests: {
+      ledgerPath: requestLedgerPath(ctx.store.getDbPath()),
+      namespace: mcpRequestNamespace(ctx),
+    },
   });
 }
 
@@ -82,5 +88,5 @@ export function rethrowMemoryError(error: unknown): never {
   if (error instanceof MemoryError) {
     throw new Error(`${error.code}: ${error.message}`);
   }
-  throw error;
+  return rethrowRequestError(error);
 }

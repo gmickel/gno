@@ -1,0 +1,94 @@
+{
+  "branch": "fn-170-durable-receipts-for-safe-mutation",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "8a2a9b7483ca685c2d843d4047d6cd1941b6a306",
+    "items": [
+      {
+        "body": "Document view metadata TAGS list not refetched after tag save until reload; reproduced on main e09b1e35 (surface: web ui document view)",
+        "classification": "pre_existing",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-a7d3e35f62c319c3c174103be87c3597d1c6666d31c8d39ba3ed5204ecc675df",
+        "id": "finding-d6b2649c5569710c060c3acab36fe6a0",
+        "lastSeenReceiptId": "review-a7d3e35f62c319c3c174103be87c3597d1c6666d31c8d39ba3ed5204ecc675df",
+        "ordinal": 1,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "tags-stale-after-save"
+      },
+      {
+        "body": "During a lost-response state the changed-on-disk banner attributes the users own committed save to an external change; clears after replay (surface: web ui editor)",
+        "classification": "pre_existing",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-a7d3e35f62c319c3c174103be87c3597d1c6666d31c8d39ba3ed5204ecc675df",
+        "id": "finding-a400f82a12b1d38f24fdcb37f3a12881",
+        "lastSeenReceiptId": "review-a7d3e35f62c319c3c174103be87c3597d1c6666d31c8d39ba3ed5204ecc675df",
+        "ordinal": 2,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "lost-response-banner-wording"
+      },
+      {
+        "body": "Home dashboard content 543px wide at 390px viewport (collection card embedded count); no page scroll (surface: web ui dashboard)",
+        "classification": "pre_existing",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-a7d3e35f62c319c3c174103be87c3597d1c6666d31c8d39ba3ed5204ecc675df",
+        "id": "finding-4efd95e1f3922bde3c4c272bd5f6f703",
+        "lastSeenReceiptId": "review-a7d3e35f62c319c3c174103be87c3597d1c6666d31c8d39ba3ed5204ecc675df",
+        "ordinal": 3,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "dashboard-mobile-width"
+      }
+    ],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-a7d3e35f62c319c3c174103be87c3597d1c6666d31c8d39ba3ed5204ecc675df"
+  },
+  "head_sha": "8a2a9b7483ca685c2d843d4047d6cd1941b6a306",
+  "id": "fn-170-durable-receipts-for-safe-mutation",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 7,
+    "rids": [
+      {
+        "coverage": "subtracted",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R7"
+      }
+    ],
+    "total": 7
+  },
+  "timestamp": "2026-09-24T10:21:10Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

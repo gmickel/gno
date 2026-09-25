@@ -1,0 +1,24 @@
+{
+  "branch_name": "fn-182-web-ui-polish-after-retry-safe-writes",
+  "created_at": "2026-09-24T12:44:37.973177Z",
+  "depends_on_epics": [],
+  "id": "fn-182-web-ui-polish-after-retry-safe-writes",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-182-web-ui-polish-after-retry-safe-writes.md",
+  "status": "open",
+  "title": "Web UI polish after retry-safe writes",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-09-24T12:44:37.975749Z"
+}

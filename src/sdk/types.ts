@@ -68,6 +68,10 @@ import type {
 import type { NoteCollisionPolicy } from "../core/note-creation";
 import type { NotePresetId } from "../core/note-presets";
 import type {
+  RequestReceiptInfo,
+  RequestStatusResult,
+} from "../core/request-receipts";
+import type {
   RetrievalTraceDeleteResult,
   RetrievalTraceDetail,
   RetrievalTraceExportRequest,
@@ -269,9 +273,18 @@ export interface GnoCreateNoteResult {
   createdWithSuffix?: boolean;
 }
 
-export interface GnoCaptureOptions extends Omit<CaptureInput, "overwrite"> {}
+export interface GnoCaptureOptions extends Omit<CaptureInput, "overwrite"> {
+  /** Opt-in retry identity; reuse it only to retry this same capture. */
+  requestId?: string;
+}
 
-export type GnoCaptureResult = CaptureReceipt;
+export type GnoCaptureResult = CaptureReceipt & {
+  /** Present when the call carried a requestId. */
+  request?: RequestReceiptInfo;
+};
+
+/** Lookup of a capture/remember request ID in the local-owner namespace. */
+export type GnoRequestStatusResult = RequestStatusResult;
 
 /** Shared memory contract (identical on CLI, MCP, REST, and SDK). */
 export type GnoSessionsStatus = SessionsStatus;
@@ -424,6 +437,11 @@ export interface GnoClient {
   embed(options?: GnoEmbedOptions): Promise<GnoEmbedResult>;
   index(options?: GnoIndexOptions): Promise<GnoIndexResult>;
   capture(options: GnoCaptureOptions): Promise<GnoCaptureResult>;
+  /**
+   * Look up a capture/remember `requestId` before retrying it: pending,
+   * committed (with a content-free result pointer), expired, or not_found.
+   */
+  requestStatus(requestId: string): Promise<GnoRequestStatusResult>;
   /**
    * Store one fact in a memory-managed collection, or propose candidates when
    * `decision` is omitted. Requires caller + session identity and explicit

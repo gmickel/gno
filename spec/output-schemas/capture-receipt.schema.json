@@ -129,6 +129,9 @@
         "overwritten",
         "conflict"
       ]
+    },
+    "request": {
+      "$ref": "gno://schemas/request-status@1.0#/$defs/requestReceipt"
     }
   },
   "definitions": {

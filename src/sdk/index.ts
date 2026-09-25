@@ -62,6 +62,7 @@ export type {
   GnoRecallResult,
   GnoRememberInput,
   GnoRememberResult,
+  GnoRequestStatusResult,
   GnoRenameNoteApplyOptions,
   GnoRenameNoteOptions,
   GnoProjectHintOptions,

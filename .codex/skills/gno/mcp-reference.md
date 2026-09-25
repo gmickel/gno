@@ -216,6 +216,31 @@ gno --config ~/gno-sessions/archive.yml --index sessions mcp --enable-write
   A human turn is what the person said, an assistant turn a proposal.
   Nothing becomes a `gno_remember` fact unless the user asks.
 
+## Retry-Safe Writes
+
+`gno_capture` and `gno_remember` (with `decision`) accept an optional
+`requestId`. Generate one fresh ID (a UUID) per write intent and keep it
+before calling.
+
+- After a timeout or lost response, call `gno_request_status` with
+  `{ requestId }` before retrying. It is read-only and registered with
+  `--enable-write` on the `full` profile (not in `core`).
+- `committed`: use `result` (`uri`, `docid`, `contentHash`); do not resend.
+  `pending` or `not_found`: resend the identical call with the same
+  `requestId`. `expired`: it already ran; do not resend.
+- An identical retry returns the stored outcome with `request.replayed: true`.
+- Never reuse a `requestId` for a changed payload (`REQUEST_ID_CONFLICT`).
+- `REQUEST_RECOVERY_CONFLICT`, `MEMORY_PREDECESSOR_HASH_MISMATCH`, or
+  `MEMORY_SUPERSEDE_CONFLICT`: re-read with `gno_get` / `gno_recall` and
+  decide again; never force-overwrite. `REQUEST_PENDING`: retry the same ID
+  later.
+- `requestId` is not the recall `receipt`: the receipt fences recalled text;
+  the ID identifies one write.
+- Over HTTP MCP, request IDs belong to the authorized identity (loopback or
+  bearer token). Rotating the token starts a new namespace: an old ID reads
+  `not_found`, so do not blindly resend an uncertain old write as new.
+- Errors arrive as tool text `CODE: message` with `structuredContent.error`.
+
 ## Uninstall
 
 ```bash

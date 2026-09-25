@@ -30,6 +30,7 @@ import {
 } from "./binding";
 import {
   assertNotFilesystemRoot,
+  assertNotFilesystemRootAnyForm,
   assertSafeSourceRoot,
   canonicalPath,
   isWithin,
@@ -208,8 +209,12 @@ export async function initSessionArchive(input: InitArchiveInput): Promise<{
       "Collection names are lowercase alphanumeric with hyphens/underscores, 1-64 chars."
     );
   }
-  // Lexically before creating anything, and again once symlinks resolve.
-  assertNotFilesystemRoot(input.archiveRoot, "The session archive");
+  // Before creating anything (named, linked or canonical), and again once
+  // the created directory resolves.
+  await assertNotFilesystemRootAnyForm(
+    input.archiveRoot,
+    "The session archive"
+  );
   const insideGnoDirs = (path: string): boolean =>
     protectedRoots(undefined).some((root) => isWithin(resolve(root), path));
   if (!insideGnoDirs(resolve(input.archiveRoot))) {
@@ -330,7 +335,7 @@ export async function addSessionSource(input: AddSourceInput): Promise<Config> {
       "Source path must be absolute."
     );
   }
-  assertNotFilesystemRoot(input.path, "A session source");
+  await assertNotFilesystemRootAnyForm(input.path, "A session source");
   const canonical = await canonicalPath(input.path);
   if (!canonical) {
     throw new SessionsError(
