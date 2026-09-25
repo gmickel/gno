@@ -496,8 +496,8 @@ gno setup ~/notes --name notes --connector codex-skill
 
 Repeat `--connector` for multiple targets. Supported setup IDs are
 `claude-code-skill`, `claude-desktop-mcp`, `cursor-mcp`, `codex-skill`,
-`opencode-skill`, `openclaw-skill`, and `hermes-skill`. MCP targets run a
-bounded retrieval smoke after lexical proof. Skill targets are installed but
+`opencode-skill`, `openclaw-skill`, and `hermes-skill`. After the lexical check
+passes, MCP targets run one small test retrieval. Skill targets are installed but
 report `target_runtime_unverifiable`; setup cannot execute the agent runtime.
 Existing entries are reused without overwrite, and malformed files are
 preserved.

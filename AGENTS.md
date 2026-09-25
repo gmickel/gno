@@ -102,8 +102,8 @@ those thresholds is the go signal for the harness adapters (fn-135). A
 sub-threshold result is a finding against the memory slice: file it as an
 fn-130 follow-up spec (`flowctl spec create`) with the failing suite and the
 evalite row; never lower a threshold or edit a fixture to make it pass. The
-fixture format and the golden refresh (`bun run eval:memory:fixtures
-[--golden]`) are documented in `docs/MEMORY.md` ("Eval gate and fixtures").
+suite table, fixture format, and golden refresh (`bun run eval:memory:fixtures
+[--golden]`) are documented in `evals/README.md` ("Memory adapter gate").
 
 **Sessions gate contract** (`bun run eval:sessions`, spec fn-171): imports
 synthetic native fixtures for all four harnesses (`evals/fixtures/sessions/`,

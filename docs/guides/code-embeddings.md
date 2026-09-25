@@ -101,7 +101,6 @@ Current result:
 
 - Qwen won strongly enough to become the built-in default
 - collection overrides still matter only when one collection should diverge from that default
-- recent smoke runs on the current Qwen path remain healthy after the compatibility/profile work landed
 
 See:
 

@@ -206,7 +206,7 @@ Supported connector IDs are `claude-code-skill`, `claude-desktop-mcp`,
 `cursor-mcp`, `codex-skill`, `opencode-skill`, `openclaw-skill`, and
 `hermes-skill`. Exact repeats dedupe. Existing entries are reused without
 overwrite; missing entries use the read-only installer only after lexical
-success. MCP targets run a bounded retrieval smoke. Skill targets report
+success. MCP targets run one small test retrieval. Skill targets report
 `target_runtime_unverifiable`, because setup cannot safely execute the host
 agent runtime. Connector follow-up keeps lexical setup successful and exit 0,
 with `completed_with_actions` and bounded remediation. Direct setup remains
@@ -1036,19 +1036,17 @@ work; stale jobs must be retried and rechecked.
 Configure on the collection in `index.yml` (no separate CLI subcommand or egress
 flag). Exact values: `any` (default) | `local`.
 
-- **`any`** — legacy source reads; behaviorally unchanged.
-- **`local`** — opt-in no-materialization guard for tested macOS File Provider
-  layouts (Google Drive, iCloud Drive, OneDrive for both validated immediate
-  SharePoint library roots only). Hierarchical directory classification +
-  guarded content recheck; skips cloud placeholders; preserves indexed
-  descendants under unproven prefixes. Unsupported platforms/filesystems fail
-  closed. Distinct from `egressPolicy`. See
+- **`any`**: GNO reads every matching file (the default).
+- **`local`**: GNO indexes only files already on disk and never makes a cloud
+  provider download one. Supported on macOS with Google Drive, iCloud Drive,
+  and OneDrive SharePoint library roots directly under the SharedLibraries
+  domain. Cloud-only files are skipped and reported; documents already indexed
+  under a cloud-only folder stay in the index. Other platforms and filesystems
+  fail with an error. Independent of `egressPolicy`. See
   [Configuration → Source availability](CONFIGURATION.md#source-availability).
 
-The controlled 5,000-file all-local production-walker benchmark passed both
-median gates: current `any` -1.1280% versus pre-implementation production
-`any`; hierarchical `local` +1.1841% versus current `any` (2 warmups, 9
-interleaved samples per lane).
+On a 5,000-file collection with every file local, `local` scans about 1%
+slower than `any`.
 
 Local content-free receipts:
 

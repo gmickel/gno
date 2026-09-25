@@ -6,9 +6,9 @@ keywords: install gno, bun install gno, local knowledge workspace install, hybri
 
 # Installation
 
-GNO currently requires [Bun](https://bun.sh/) as its JavaScript runtime.
-
-> **Beta runtime note**: This is still the current beta path. GNO does not yet bundle Bun for end users. The app and API now surface this explicitly in the dashboard bootstrap panel so runtime assumptions are visible instead of implicit.
+GNO requires [Bun](https://bun.sh/) 1.3.0 or later as its JavaScript runtime.
+GNO does not bundle Bun, so install it first. The Web UI dashboard shows the
+Bun version it detected and whether it meets the requirement.
 
 ## Quick Install
 
@@ -24,8 +24,8 @@ gno setup ~/notes --name notes
 ```
 
 `gno setup` bootstraps an empty installation, creates or reuses one collection,
-indexes it, and closes only after a corpus-derived BM25 probe returns an exact
-`gno://` result. Rerun the same command safely. Semantic work is a separate
+indexes it, and finishes only after a keyword search built from your files
+returns an exact `gno://` result. Rerun the same command safely. Semantic work is a separate
 one-shot process; `--no-semantic` records skipped state without starting one.
 The printed foreground `gno ... embed <collection>` command resumes work.
 
@@ -40,16 +40,9 @@ gno setup ~/notes --name notes \
 Supported IDs: `claude-code-skill`, `claude-desktop-mcp`, `cursor-mcp`,
 `codex-skill`, `opencode-skill`, `openclaw-skill`, and `hermes-skill`.
 Repeated IDs dedupe. Existing config is reused without overwrite; malformed
-config is preserved and reported as `completed_with_actions`. MCP targets run a
-bounded retrieval smoke. Skill execution remains
-`target_runtime_unverifiable`.
-
-Release packages are smoke-tested with `bun run test:package`, which installs
-the packed npm tarball into isolated temp paths. It verifies `gno setup`
-first-run and idempotent rerun behavior, exact lexical evidence, private
-receipts, all seven connector IDs, no-semantic ownership, and the production
-resident gateway. The gateway proof still covers two clients, stdio/HTTP
-parity, safe lifecycle status, security rejection, restart, and shutdown.
+config is preserved and reported as `completed_with_actions`. For MCP targets,
+setup runs one small test retrieval through the connector. Skill targets report
+`target_runtime_unverifiable`, because GNO cannot run the agent to check them.
 
 Without connector flags, JSON remains `setup-command-result@1.0`. With
 connectors it becomes `setup-activation-result@1.0`, wrapping the unchanged
@@ -138,7 +131,7 @@ agent setup.
 
 | Component | Version | Notes                                       |
 | --------- | ------- | ------------------------------------------- |
-| Bun       | 1.0+    | JavaScript runtime                          |
+| Bun       | 1.3.0+  | JavaScript runtime                          |
 | macOS     | 12+     | Homebrew SQLite required for vector search  |
 | Linux     | x64     | CLI supported; desktop remains experimental |
 | Windows   | 11+ x64 | CLI supported; desktop packaging in beta    |

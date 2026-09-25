@@ -109,12 +109,10 @@ retrievalTraces:
 #   collection: findings
 ```
 
-Project-profile apply also maintains optional `projectProfileBindings` entries
-in this local config. Each timestamp-free entry binds a canonical absolute
-`.gno/index.yml` path to its SHA-256 fingerprint and projected collection.
-These machine-local provenance records are written under the shared config
-lock; they are never copied into the tracked profile or exposed by public
-profile receipts.
+`gno profile apply` also writes `projectProfileBindings` entries to this
+config. GNO manages them: each entry records which `.gno/index.yml` a
+collection came from. They stay on this machine and never appear in the
+tracked profile or in profile receipts.
 
 ## Chunking
 
@@ -366,46 +364,37 @@ find their default stores; GNO sets none of them.
 `collections[].sourceAvailability` is optional and independent of
 `egressPolicy`. Exact values: `any` | `local`. Omitted means `any`.
 
-| Mode    | Behavior                                                                                                                                                                                       |
-| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `any`   | Default. Legacy source reads; no no-materialization guard.                                                                                                                                     |
-| `local` | Opt-in. Indexes only content that is already local; refuses cloud-placeholder materialization on the macOS File Provider layouts covered by physical evidence. Unsupported setup fails closed. |
+| Mode    | Behavior                                                                                                                                                                                                |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `any`   | Default. GNO reads every matching file the way it always has.                                                                                                                                           |
+| `local` | Opt-in. GNO indexes only content already on this machine and never makes a cloud provider download a file. Works with the macOS File Provider setups listed below; any other setup fails with an error. |
 
-**What `local` does (macOS File Provider, evidence-qualified):**
+**What `local` does on macOS File Provider:**
 
-- Establishes a process-scoped no-materialization I/O policy
-  (`IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES`) for content reads.
-- Classifies directories hierarchically (memoized per operation) before descent;
-  does not add one availability syscall per discovered file.
-- Rechecks at the content boundary (sniff, hash, conversion, record import,
-  targeted sync, and watch-triggered ingestion share the same guard).
-- Skips cloud placeholders / partial content as `CLOUD_PLACEHOLDER` /
-  `CLOUD_PARTIAL` (not conversion errors).
-- Refuses descent into dataless or availability-unknown directories
-  (`DATALESS_DIRECTORY` or fail-closed codes) and **preserves previously
-  indexed descendants** under those unproven prefixes rather than proving
-  deletion.
+- Reads only content that is already on disk. GNO never triggers a download of
+  a cloud-only file.
+- Skips cloud-only placeholders and partly downloaded files and reports them
+  as `CLOUD_PLACEHOLDER` or `CLOUD_PARTIAL`, separate from conversion errors.
+- Does not enter a cloud-only directory, or one whose availability GNO cannot
+  determine, and reports `DATALESS_DIRECTORY` or another availability code.
+  Documents already indexed under that directory stay in the index; GNO does
+  not treat them as deleted.
+- Applies the same check to full indexing, targeted sync, and watch updates.
 
-**Evidence scope (do not over-claim):**
+**Supported setups:**
 
-- Proven independently for Google Drive, iCloud Drive, and OneDrive on the
-  tested macOS/provider configuration.
-- OneDrive is claimed only for both installed immediate SharePoint library
-  roots under the SharedLibraries domain — not the aggregation root, not
-  arbitrary deeper trees, not untested library layouts.
-- No Windows Cloud Files or Linux/FUSE guarantee.
-- Metadata or provider bookkeeping may still occur. GNO local mode does not
-  pin, evict, or download as product behavior.
-- Availability controls **source materialization**; egress controls **where
-  derived data may travel**.
+- Google Drive, iCloud Drive, and OneDrive on macOS.
+- For OneDrive, point the collection at a SharePoint library root directly
+  under the SharedLibraries domain. The aggregation root, deeper paths, and
+  other library layouts are not supported.
+- Windows Cloud Files and Linux/FUSE are not supported.
+- The provider may still update its own metadata. `local` mode does not pin,
+  evict, or download files.
+- `sourceAvailability` decides which files GNO reads; `egressPolicy` decides
+  where data derived from them may be sent.
 
-**Measured scan cost:** on the controlled 5,000-file all-local Markdown corpus
-(2 warmups, 9 retained interleaved samples per lane), production traversal
-measured 215.1020 ms for pre-implementation `any`, 212.6756 ms for current
-`any` (-1.1280%, within the 3% budget), and 215.1938 ms for hierarchical
-`local` (+1.1841% versus current `any`, within the 10% budget). Conversion and
-embedding were not applicable to this corpus; raw receipts are tracked under
-`research/file-provider/evidence/`.
+**Scan cost:** on a 5,000-file Markdown collection with every file local,
+`local` scanned about 1% slower than `any`.
 
 ```yaml
 collections:
@@ -431,8 +420,8 @@ The relaxation revision must exactly match the current `get` result. It is
 single-use and becomes stale after any intervening policy change. Tightening
 needs no confirmation and invalidates resident sessions, active streams,
 queued jobs, and saved authorization state; callers must retry against the new
-policy. Removing an explicit policy does not restore network access—it returns
-to the fail-closed local default.
+policy. Removing an explicit policy does not restore network access. The collection
+returns to the local-only default.
 
 Migration does not recall data already disclosed. Tightening a collection
 blocks future GNO-controlled transfers, but an artifact previously uploaded to
@@ -891,7 +880,7 @@ This still uses normal GNO model provisioning rules:
 
 <!-- public-truth:general-embedding-benchmark -->
 
-The immutable April 2026 FastAPI-docs run used 15 documents in five corpus
+The April 2026 FastAPI-docs run used 15 documents in five corpus
 languages (`en`, `de`, `fr`, `es`, `zh`) and 13 queries:
 
 - [bge-m3 incumbent](../evals/fixtures/general-embedding-benchmark/2026-04-06-bge-m3-incumbent.md): vector nDCG@10 `0.3503`, hybrid nDCG@10 `0.642`
@@ -922,26 +911,24 @@ semantic fixture covers only five languages.
 
 <!-- public-truth:cjk-lexical-benchmark -->
 
-Model-free lexical fallback has a separate immutable
+Model-free lexical fallback has a separate
 [July 22, 2026 CJK benchmark](../evals/fixtures/cjk-lexical-benchmark/2026-07-22.md).
-Production BM25 lexical results and frozen floors:
+Production BM25 lexical results and the promotion floors:
 
 - Chinese: baseline Recall@10 `0.2222`, nDCG@10 `0.1481`, zero-result `0.7778`; promotion Recall@10 `0.4722`, nDCG@10 `0.3981`, maximum zero-result `0.5278`
 - Japanese: baseline Recall@10 `0.125`, nDCG@10 `0.125`, zero-result `0.875`; promotion Recall@10 `0.375`, nDCG@10 `0.375`, maximum zero-result `0.625`
 - Korean: baseline Recall@10 `0.5`, nDCG@10 `0.5`, zero-result `0.5`; promotion Recall@10 `0.75`, nDCG@10 `0.75`, maximum zero-result `0.25`
 
-The
+The "promotion" values are the floors a CJK-aware lexical analyzer must reach
+before GNO ships one.
 [promotion-gates.md](../evals/fixtures/cjk-lexical-benchmark/promotion-gates.md)
-also binds MRR, non-regression, and cost requirements. The Chinese fixture
-includes a genuine rank-7 retrieval failure. These lexical results do not
-describe semantic retrieval or select an implementation, and no production
-analyzer/configuration changed. All positive qrels use relevance `3`, so nDCG
-measures placement but not distinctions among positive gain grades.
+lists them along with MRR, non-regression, and cost requirements. No analyzer
+has met them, so production BM25 tokenization is unchanged. These lexical
+numbers do not measure semantic retrieval. All positive qrels use relevance
+`3`, so nDCG measures placement but not distinctions among positive gain
+grades.
 
 <!-- /public-truth -->
-
-The legacy multilingual Evalite lane is a four-case BM25-only sanity check, not
-a release gate.
 
 ### Model Details
 
@@ -1201,89 +1188,64 @@ models:
   warmModelTtl: 300000 # Keep-warm duration (ms)
 ```
 
-`loadTimeout` and `inferenceTimeout` accept integer milliseconds from 1 through
-2,147,483,647; zero, negative, fractional and overflowing values fail configuration
-validation. Neither setting has a disabled-by-zero mode.
+| Key                 | Default          | What it controls                                                      |
+| ------------------- | ---------------- | --------------------------------------------------------------------- |
+| `loadTimeout`       | `60000` (60 s)   | Loading a local model and its context. Does not apply to remote HTTP. |
+| `inferenceTimeout`  | `30000` (30 s)   | One inference request. See below for local and remote timing.         |
+| `expandContextSize` | `2048`           | Context window for query expansion.                                   |
+| `warmModelTtl`      | `300000` (5 min) | How long an idle model stays loaded before GNO unloads it.            |
 
-`inferenceTimeout` starts at native evaluation, after model/context loading.
-The child reports evaluation start using the current generation and request ID;
-metadata and queued requests do not start that timer. `loadTimeout` bounds the
-dispatched request's loading phase independently; the two timers are never added.
-A caller's absolute `deadlineAt` covers queueing and loading through response
-publication. Generation receives an evaluation abort signal. Embedding/reranking
-evaluation may be noncooperative, so canceled active work retains capacity until
-actual settlement. After five seconds without settlement, the parent retires its
-isolated child; queued operations fail explicitly and are never replayed.
+`loadTimeout` and `inferenceTimeout` take whole milliseconds from 1 through
+2,147,483,647. Zero, negative, fractional, and larger values fail config
+validation. Neither timeout can be turned off.
 
-For remote HTTP inference, `inferenceTimeout` measures the complete request
-from policy/DNS preparation through fetch and response-body consumption. The
-client cannot observe the remote model's load/evaluation boundary. The caller's
-`deadlineAt` remains the tighter outer limit. `loadTimeout` applies only to local
-native loading; it does not configure a remote server.
+For a local model, `inferenceTimeout` starts when the model begins evaluating
+the request. Time spent waiting in the queue or loading the model does not
+count, and `loadTimeout` covers loading separately. For a remote HTTP model,
+`inferenceTimeout` covers the whole request: DNS, the HTTP call, and reading
+the response. An SDK caller's `deadlineAt` covers queueing, loading, and the
+response, and applies when it is shorter than these timeouts.
 
-The separate expansion-stage budget still falls back without expansion when it
-expires, while aborting its generation. A caller abort/deadline cannot become a
-successful lexical fallback. Operational cancellation options do not change
-sampling, model selection, candidate counts, or ranking.
+When a query expansion runs out of time, the query continues without
+expansion. When the caller cancels or its deadline passes, the call fails with
+an error; GNO does not quietly return lexical-only results instead. Timeouts
+never change model choice, candidate counts, or ranking.
 
-The resident shutdown contract allocates a shared five-second drain, five-second
-abort-settlement period, then at most one second awaiting forced owned-child
-exit. Requests, accepted jobs, background scheduling and listener cleanup share
-those phases; individual participants do not restart the clock. Admission and
-scheduling stop first. At the abort deadline, suspended parent transactions are
-rolled back and their store access revoked before the database closes. Completed
-checkpoints remain durable; unfinished embedding work stays pending for restart.
-Only the owned native child can be forced to exit; an unconfirmed OS termination
-is reported as an error, never successful cleanup. See [daemon shutdown](DAEMON.md#shutdown).
+If a canceled local embedding or rerank request has not stopped after five
+seconds, GNO restarts the model worker. Requests queued behind it fail with an
+error and are not retried; run the command again. Local inference failures in
+general return an error without an automatic retry.
 
-These bounds apply while the parent event loop can run. JavaScript timers cannot
-preempt a synchronous callback, a blocked OS call or a SQLite statement already
-executing when the signal arrives. During shutdown, ordinary store access caps
-SQLite busy waiting to the remaining settlement budget. Raw database handles
-cached outside the store API do not inherit that per-access cap or transaction
-token; they become unusable when their connection closes. The bounds are not a
-universal query latency promise and have no new CLI/configuration setting.
+Timeouts cannot interrupt a SQLite statement or a blocked system call that is
+already running, so they are not an upper bound on total query time.
 
-Native embedding, generation and reranking share one child per LLM adapter.
-`warmModelTtl` is the inactivity grace for each model and for the native child
-(five minutes by default). Model-specific leases protect actual loading,
-context creation, evaluation and cleanup. Background embedding does not renew
-idle generation/reranking weights; they can expire while the same child remains
-busy. A later call reloads the expired model and rebinds its context. Cached
-metadata and status reads do not renew a model's idle grace.
-Active inference, pending responses and model-use leases prevent idle retirement;
-metadata-only access does not refresh native activity. Retirement exits the
-child to reclaim its native process allocations. The next inference reloads
-models. That complete cold request includes worker startup, model loading and
-context creation; its cost depends on the model, backend and hardware. Changing
-the idle grace does not change candidate counts, precision or input text.
-Command/SDK disposal terminates the owned child. Explicit model disposal retires
-the shared child, so other native roles reload lazily too. HTTP inference is
-unaffected by this child lifecycle.
+**Idle models.** After `warmModelTtl` without use, GNO unloads the model. When
+no model is left loaded, the model worker process exits and frees its memory.
+The next request reloads the model, and that first request pays for worker
+startup and model loading (how long depends on the model and hardware). Lower
+`warmModelTtl` to free memory sooner; raise it to avoid reload delays. Status
+checks do not keep a model loaded, and background embedding does not keep the
+generation or rerank model loaded. Remote HTTP models are not affected.
 
-Background embedding runs in internal turns of at most 32 pending chunks. A
-scheduler run or accepted job may span many turns; it does not report completion
-after one page. Each turn checkpoints current inputs, releases native/model
-ownership and yields before continuing. Foreground requests dispatch first,
-with one pending background native request served after at most eight completed
-foreground native inference dispatches. Metadata init/dispose do not earn or reset
-that service credit. Both classes share the existing 64-call waiting
-queue. Native batches are not preemptible and this is not a total-query deadline.
-Failed chunks remain pending for a subsequent pass; later pages still progress.
-Notifications keep the existing 30-second debounce and five-minute maximum wait,
-and failed scheduler passes retry after debounce. No priority or turn-size
-configuration is exposed.
+**Background embedding.** The daemon and `gno serve` embed in batches of up to
+32 chunks and let searches go first: after at most eight search-side model
+calls, one background batch runs. None of this is configurable. A chunk that
+fails to embed stays pending and is retried on the next pass. A pass starts
+30 seconds after new chunks stop arriving, and no later than five minutes
+after the first one.
 
-Resident model counters are cached child-reported lifecycle snapshots. Reading
-status sends no native request and does not extend the idle deadline. Loaded-model
-counts describe residency, not GPU-memory usage; capability flags describe
-configured functionality.
+**Shutdown.** `gno daemon` and `gno serve` take at most about 11 seconds to
+stop: up to five seconds to finish in-flight work, five seconds for canceled
+work to settle, and one second to stop the model worker. Finished embeddings
+are kept, and unfinished chunks are embedded after the next start. See
+[daemon shutdown](DAEMON.md#shutdown).
 
-Native worker startup or inference failure returns a structured error without
-automatically replaying the operation. The npm package and desktop source
-runtime include the worker entrypoint. A standalone `bun build --compile`
-executable without that source runtime cannot launch native inference and fails
-explicitly instead of recursively launching itself.
+The loaded-model counts in status output show which models are loaded. They
+do not measure GPU memory.
+
+Local models need the npm package or the desktop app. A standalone
+`bun build --compile` executable cannot run local inference and reports an
+error.
 
 ## FTS Tokenizer
 
