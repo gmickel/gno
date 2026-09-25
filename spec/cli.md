@@ -1343,7 +1343,9 @@ by default when the collection root and `source.relPath` can be joined; search
 has no `--source` flag. When `absPath` is absent (unresolvable collection path,
 missing relPath, or a hit without a filesystem file), consumers display the URI
 tail and must disable file-open for that row — do not call `gno get` just to
-recover a path.
+recover a path. The CLI always runs on the owner's machine; the same result shape over
+remote REST or HTTP MCP omits `absPath` (see
+[docs/API.md](../docs/API.md#host-paths-and-remote-callers)).
 
 Every structured search result may include `context`, the matching
 user-configured guidance joined in deterministic global, collection, then

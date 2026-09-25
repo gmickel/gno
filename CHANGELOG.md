@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Remote callers no longer receive host absolute paths. A REST response to a caller that is not a same-host client (the `localClient` rule: loopback peer, loopback `Host`, no forwarding headers) and every Streamable HTTP MCP result omit `source.absPath` (search, vsearch, query, ask, get, multi-get, `/api/doc`), top-level `absPath` (capture and remember receipts, `CAPTURE_SYNC_FAILED` error details), `similar[].absPath`, and peek `recent[].absPath`; a `gno://` resource read over HTTP names the collection-relative path on its `source:` line. Capture and remember errors for a file that was written but not indexed now name it by `gno://` URI instead of its host path, on every surface. Identify and open results by `uri` plus the collection-relative `relPath` instead (`/api/doc?uri=`, `/api/doc-asset?uri=`, `gno_get`). The CLI, stdio MCP, the SDK, and the same-host Web UI keep `absPath` for Reveal and file-open. `absPath` is now optional in the `mcp-capture-result`, `memory-remember`, and `peek` schemas. See [Host Paths and Remote Callers](docs/API.md#host-paths-and-remote-callers).
+
 ### Added
 
 - `gno status`, `gno serve --status`, and `gno daemon --status` report background issues: a failing, parked, or overrunning background embed pass, or a detached resident that does not answer its status request. Each resident query is bounded to 500ms, so status never waits on a hung resident.

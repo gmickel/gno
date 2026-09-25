@@ -3,7 +3,12 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { useEffect, useRef } from "react";
 
 import { extractSections } from "../../../../src/core/sections";
-import { apiOk, renderWithUser, setTestLocation } from "../../../helpers/dom";
+import {
+  apiError,
+  apiOk,
+  renderWithUser,
+  setTestLocation,
+} from "../../../helpers/dom";
 
 const apiFetch = mock(async (..._args: unknown[]) => apiOk<unknown>({}));
 
@@ -60,7 +65,10 @@ void mock.module(
   () => ({
     FrontmatterDisplay: ({ content }: { content: string }) => (
       <div>
-        {content.includes("sources:") ? "Frontmatter card" : "No frontmatter"}
+        <span>
+          {content.includes("sources:") ? "Frontmatter card" : "No frontmatter"}
+        </span>
+        <pre data-testid="frontmatter-source">{content.split("---")[1]}</pre>
       </div>
     ),
     parseFrontmatter: (content: string) => {
@@ -249,7 +257,10 @@ describe("DocView DOM interactions", () => {
     setTestLocation("/doc?uri=file%3A%2F%2F%2Ftmp%2Fnotes%2Falpha.md");
   });
 
-  test("edits tags with the shared TagInput flow and persists them", async () => {
+  /** Open the tagged doc, add `project/docs` via TagInput, and save. */
+  async function saveAddedTag(
+    putResponse: () => ReturnType<typeof apiOk<unknown>>
+  ) {
     apiFetch.mockImplementation(async (...args: unknown[]) => {
       const endpoint = typeof args[0] === "string" ? args[0] : "";
       const options = args[1] as RequestInit | undefined;
@@ -310,17 +321,7 @@ describe("DocView DOM interactions", () => {
         });
       }
       if (endpoint === "/api/docs/doc-1" && options?.method === "PUT") {
-        return apiOk({
-          success: true,
-          docId: "doc-1",
-          uri: "file:///tmp/notes/alpha.md",
-          path: "/tmp/notes/alpha.md",
-          jobId: null,
-          version: {
-            sourceHash: "hash-2",
-            modifiedAt: "2026-04-03T10:05:00.000Z",
-          },
-        });
+        return putResponse();
       }
       return apiOk({});
     });
@@ -348,10 +349,35 @@ describe("DocView DOM interactions", () => {
     await user.keyboard("{ArrowDown}{Enter}");
 
     await user.click(screen.getAllByRole("button", { name: "Save" })[0]!);
+  }
+
+  const frontmatterSources = () =>
+    screen.getAllByTestId("frontmatter-source").map((el) => el.textContent);
+
+  test("edits tags with the shared TagInput flow and shows the saved tags", async () => {
+    await saveAddedTag(() =>
+      apiOk({
+        success: true,
+        docId: "doc-1",
+        uri: "file:///tmp/notes/alpha.md",
+        path: "/tmp/notes/alpha.md",
+        jobId: null,
+        writeBack: "applied",
+        version: {
+          sourceHash: "hash-2",
+          modifiedAt: "2026-04-03T10:05:00.000Z",
+        },
+      })
+    );
 
     await waitFor(() => {
       expect(screen.getAllByText("Saved").length).toBeGreaterThan(0);
     });
+    // The frontmatter tag list reflects the save without a reload.
+    for (const source of frontmatterSources()) {
+      expect(source).toContain("tags: [work, project/docs]");
+      expect(source).toContain("sources:");
+    }
     expect(apiFetch).toHaveBeenCalledWith(
       "/api/docs/doc-1",
       expect.objectContaining({
@@ -359,6 +385,23 @@ describe("DocView DOM interactions", () => {
         body: expect.stringContaining("project/docs"),
       })
     );
+  });
+
+  test("a conflicting tag save keeps the previous tags and shows the error", async () => {
+    await saveAddedTag(
+      () => apiError("Document changed on disk. Reload before saving.") as never
+    );
+
+    expect(
+      (
+        await screen.findAllByText(
+          "Document changed on disk. Reload before saving."
+        )
+      ).length
+    ).toBeGreaterThan(0);
+    for (const source of frontmatterSources()) {
+      expect(source).not.toContain("project/docs");
+    }
   });
 });
 

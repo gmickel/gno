@@ -67,3 +67,11 @@ export function clearRequestIntent(
     // Nothing persisted to clear.
   }
 }
+
+/**
+ * Whether a failed write's HTTP answer leaves its commit unknown: a server
+ * error, or the request ID's earlier attempt is still in progress.
+ */
+export function writeOutcomeUnknown(status: number, code?: string): boolean {
+  return status >= 500 || code === "REQUEST_PENDING";
+}

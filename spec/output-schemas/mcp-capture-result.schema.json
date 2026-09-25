@@ -7,7 +7,6 @@
   "required": [
     "docid",
     "uri",
-    "absPath",
     "collection",
     "relPath",
     "created",
@@ -34,7 +33,7 @@
     },
     "absPath": {
       "type": "string",
-      "description": "Absolute path to the created file"
+      "description": "Absolute path to the created file. Stdio callers only; omitted for HTTP MCP callers, which identify the file by uri + relPath."
     },
     "collection": {
       "type": "string",

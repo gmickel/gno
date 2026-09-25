@@ -10,6 +10,7 @@ import type { Collection, Config } from "../config/types";
 import type { StorePort } from "../store/types";
 import type { CaptureIndexStatus } from "./capture";
 
+import { buildUri } from "../app/constants";
 import {
   type CollectionSyncResult,
   defaultSyncService,
@@ -30,9 +31,14 @@ export class CaptureSyncError extends Error {
   /** The sync failure itself, without the write half of the message. */
   readonly syncError: string;
 
-  constructor(input: { absPath: string; relPath: string; cause: string }) {
+  constructor(input: {
+    absPath: string;
+    relPath: string;
+    uri: string;
+    cause: string;
+  }) {
     super(
-      `Capture written to ${input.absPath} but lexical sync failed: ${input.cause}. Run gno update to retry indexing.`
+      `Capture written to ${input.uri} but lexical sync failed: ${input.cause}. Run gno update to retry indexing.`
     );
     this.name = "CaptureSyncError";
     this.absPath = input.absPath;
@@ -82,6 +88,7 @@ export async function syncCapturedFile(
     throw new CaptureSyncError({
       absPath: input.absPath,
       relPath: input.relPath,
+      uri: buildUri(input.collection.name, input.relPath),
       cause,
     });
   };

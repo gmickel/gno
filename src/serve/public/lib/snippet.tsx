@@ -14,10 +14,9 @@ export function unescapeMarkdown(text: string): string {
 /**
  * Render a search snippet: FTS `<mark>` highlights become real <mark>
  * elements, everything else stays React text (never parsed as HTML).
- * Mirrors the Search page renderer, plus Markdown-escape removal because
- * archived turns are indexed as escaped Markdown.
+ * Markdown backslash escapes are dropped because indexed text keeps them.
  */
-export function renderSessionSnippet(snippet: string): ReactNode[] {
+export function renderSnippet(snippet: string): ReactNode[] {
   const parts: ReactNode[] = [];
   let remaining = snippet;
   let key = 0;
