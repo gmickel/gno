@@ -367,7 +367,7 @@ test("migration re-keys the most complete compatible partition, survives a crash
 
   f.db.exec(`CREATE TRIGGER crash BEFORE DELETE ON vector_partitions
     BEGIN SELECT RAISE(ABORT, 'simulated crash'); END`);
-  expect(
+  await expect(
     resolveRuntimePartition(f.db, runtime.embedPort, primary)
   ).rejects.toThrow("simulated crash");
   expect(partitionIds(f.db)).toEqual([complete, partial].sort());
