@@ -8,7 +8,7 @@ import {
 } from "../llm/inference-scope";
 import { err, ok } from "../store/types";
 import { getVectorStatsDatabase } from "../store/vector/stats";
-import { inWriteTurn } from "./backlog";
+import { inWriteTurn } from "./retry";
 import { variantBacklogPage } from "./variant-plan";
 import { embedVariantBatch } from "./variant-retry";
 
@@ -54,17 +54,15 @@ export async function embedVariantBacklog(
                 .get(owner.documentId, deps.collection!)
           )
         : pending;
-      const turn = await inWriteTurn(deps.acquireWriteTurn, () =>
-        embedVariantBatch({
-          store,
-          embedPort: deps.embedPort,
-          owners,
-          identityStillCurrent,
-          force: deps.force,
-        })
-      );
-      if (turn.deferred) return ok({ ...total, deferred: true });
-      let result = turn.value;
+      let result = await embedVariantBatch({
+        store,
+        embedPort: deps.embedPort,
+        owners,
+        identityStillCurrent,
+        force: deps.force,
+        acquireWriteTurn: deps.acquireWriteTurn,
+      });
+      if (result.deferred) return ok({ ...total, deferred: true });
       total.embedded += result.embedded;
       total.errors += result.errors;
       total.contentionErrors += result.contentionErrors;

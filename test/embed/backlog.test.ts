@@ -431,9 +431,17 @@ describe("embedBacklog", () => {
     expect(events).toEqual([]);
     expect(vectorIndex._syncCalled).toBe(false);
 
+    const embedPort = createMockEmbedPort();
+    embedPort.embedBatch = mock((texts: string[]) => {
+      events.push("infer");
+      return Promise.resolve({
+        ok: true as const,
+        value: texts.map(() => [0.1, 0.2, 0.3]),
+      });
+    }) as typeof embedPort.embedBatch;
     const gated = await embedBacklog({
       statsPort: createMockStatsPort(backlog),
-      embedPort: createMockEmbedPort(),
+      embedPort,
       vectorIndex,
       modelUri: "test-model",
       acquireWriteTurn: async () => {
@@ -445,10 +453,12 @@ describe("embedBacklog", () => {
     });
     expect(gated).toMatchObject({ ok: true, value: { embedded: 1 } });
     expect(gated.ok && gated.value.deferred).toBeFalsy();
-    // One turn each for preparation, the page, and the vec index sync.
+    // One turn each for preparation, the page write, and the vec index sync;
+    // inference runs with the lease released.
     expect(events).toEqual([
       "acquire",
       "release",
+      "infer",
       "acquire",
       "write",
       "release",

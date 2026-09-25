@@ -5,7 +5,9 @@ import type { VectorVariantStore } from "../store/vector/variants";
 import { err, ok } from "../store/types";
 import { embedTextsWithRecovery } from "./batch";
 import {
+  type AcquireWriteTurn,
   chunkRetryKey,
+  inWriteTurn,
   isUpsertLockContention,
   upsertVectorsWithContentionRetry,
 } from "./retry";
@@ -30,11 +32,14 @@ export async function embedVariantBatch(params: {
   identityStillCurrent: () => boolean;
   delays?: number[];
   force?: boolean;
+  /** Gate held only around the checkpoint write, never around inference. */
+  acquireWriteTurn?: AcquireWriteTurn;
 }): Promise<{
   embedded: number;
   errors: number;
   contentionErrors: number;
   retryOwners: VectorOwnerInput[];
+  deferred?: boolean;
 }> {
   const { store, embedPort, identityStillCurrent } = params;
   const empty = {
@@ -76,30 +81,34 @@ export async function embedVariantBatch(params: {
     .map((owner) => ({ owner, embedding: vectors.get(owner.inputHash) }));
   if (!rows.length) return { ...empty, retryOwners };
   let written = 0;
-  const persisted = await upsertVectorsWithContentionRetry(
-    {
-      upsertVectors: () => {
-        try {
-          // A contention wait may allow document or runtime mutations. Revalidate each attempt.
-          if (!identityStillCurrent()) return Promise.resolve(ok(undefined));
-          const valid = rows.filter(({ owner }) => isCurrent(store, owner));
-          store.write(valid);
-          written = valid.length;
-          return Promise.resolve(ok(undefined));
-        } catch (cause) {
-          return Promise.resolve(
-            err(
-              "QUERY_FAILED",
-              cause instanceof Error ? cause.message : String(cause),
-              cause
-            )
-          );
-        }
+  const turn = await inWriteTurn(params.acquireWriteTurn, () =>
+    upsertVectorsWithContentionRetry(
+      {
+        upsertVectors: () => {
+          try {
+            // A contention wait may allow document or runtime mutations. Revalidate each attempt.
+            if (!identityStillCurrent()) return Promise.resolve(ok(undefined));
+            const valid = rows.filter(({ owner }) => isCurrent(store, owner));
+            store.write(valid);
+            written = valid.length;
+            return Promise.resolve(ok(undefined));
+          } catch (cause) {
+            return Promise.resolve(
+              err(
+                "QUERY_FAILED",
+                cause instanceof Error ? cause.message : String(cause),
+                cause
+              )
+            );
+          }
+        },
       },
-    },
-    [],
-    params.delays
+      [],
+      params.delays
+    )
   );
+  if (turn.deferred) return { ...empty, deferred: true };
+  const persisted = turn.value;
   if (!persisted.ok)
     return {
       ...empty,

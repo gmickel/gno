@@ -12,6 +12,7 @@ import type {
   VectorStatsPort,
 } from "../store/vector";
 import type { VectorVariantStore } from "../store/vector/variants";
+import type { AcquireWriteTurn } from "./retry";
 
 import {
   assertInferenceActive,
@@ -27,6 +28,7 @@ import {
 import {
   chunkRetryKey,
   embedAndStoreBatch,
+  inWriteTurn,
   MAX_EMBED_CHUNK_ATTEMPTS,
 } from "./retry";
 import { embedVariantBacklog } from "./variant-backlog";
@@ -52,7 +54,7 @@ export interface EmbedBacklogDeps {
    * (the resident scheduler): taken around each page's writes and released
    * after. null means another writer holds it; the pass stops as deferred.
    */
-  acquireWriteTurn?: () => Promise<(() => Promise<void>) | null>;
+  acquireWriteTurn?: AcquireWriteTurn;
 }
 
 export interface EmbedBacklogResult {
@@ -67,21 +69,6 @@ export interface EmbedBacklogResult {
   syncError?: string;
   /** The pass stopped early because another writer held the write gate. */
   deferred?: boolean;
-}
-
-/** Run `write` inside one write turn, or report that the gate is held elsewhere. */
-export async function inWriteTurn<T>(
-  acquire: EmbedBacklogDeps["acquireWriteTurn"],
-  write: () => Promise<T>
-): Promise<{ deferred: true } | { deferred: false; value: T }> {
-  if (!acquire) return { deferred: false, value: await write() };
-  const release = await acquire();
-  if (!release) return { deferred: true };
-  try {
-    return { deferred: false, value: await write() };
-  } finally {
-    await release();
-  }
 }
 
 interface Cursor {
@@ -227,20 +214,18 @@ export async function embedBacklog(
       }
 
       const beforeEmbedded = embedded;
-      const turn = await inWriteTurn(deps.acquireWriteTurn, () =>
-        embedAndStoreBatch({
-          embedPort,
-          vectorIndex,
-          items: batch,
-          modelUri,
-          embedFingerprint,
-          identityStillCurrent: deps.identityStillCurrent,
-          statsPort,
-        })
-      );
-      if (turn.deferred)
+      const batchStoreResult = await embedAndStoreBatch({
+        embedPort,
+        vectorIndex,
+        items: batch,
+        modelUri,
+        embedFingerprint,
+        identityStillCurrent: deps.identityStillCurrent,
+        statsPort,
+        acquireWriteTurn: deps.acquireWriteTurn,
+      });
+      if (batchStoreResult.deferred)
         return ok({ embedded, errors, contentionErrors, deferred: true });
-      const batchStoreResult = turn.value;
       embedded += batchStoreResult.embedded;
       errors += batchStoreResult.errors;
       contentionErrors += batchStoreResult.contentionErrors;

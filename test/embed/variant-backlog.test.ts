@@ -125,15 +125,26 @@ test("variant pass takes write turns for preparation, pages, and activation and 
   expect(partitions()).toEqual(before);
 
   let turns = 0;
+  let held = false;
+  const inferredWhileHeld: boolean[] = [];
+  const embedBatch = port.embedBatch.bind(port);
+  port.embedBatch = (texts, options) => {
+    inferredWhileHeld.push(held);
+    return embedBatch(texts, options);
+  };
   expect(
     await embedBacklog({
       ...automatic,
       acquireWriteTurn: async () => {
         turns += 1;
-        return async () => {};
+        held = true;
+        return async () => {
+          held = false;
+        };
       },
     })
   ).toMatchObject({ ok: true, value: { embedded: 3 } });
+  expect(inferredWhileHeld).toEqual([false]);
   expect(partitions()).not.toEqual(before);
   // One turn each for preparation, the single page, and activation.
   expect(turns).toBe(3);
