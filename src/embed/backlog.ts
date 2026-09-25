@@ -101,7 +101,18 @@ export async function embedBacklog(
   deps: EmbedBacklogDeps
 ): Promise<StoreResult<EmbedBacklogResult>> {
   assertInferenceActive();
-  const prepared = await prepareEmbeddingBacklog(deps);
+  if (deps.acquireWriteTurn && !deps.variantStore) {
+    // Model loading stays outside the write turn; preparation's partition
+    // writes below take one like every other background write.
+    const initialized = await deps.embedPort.init();
+    if (!initialized.ok) return err("INTERNAL", initialized.error.message);
+  }
+  const turn = await inWriteTurn(deps.acquireWriteTurn, () =>
+    prepareEmbeddingBacklog(deps)
+  );
+  if (turn.deferred)
+    return ok({ embedded: 0, errors: 0, contentionErrors: 0, deferred: true });
+  const prepared = turn.value;
   if (!prepared.ok) return prepared;
   deps = prepared.value;
   if (deps.variantStore) return embedVariantBacklog(deps, deps.variantStore);

@@ -445,8 +445,10 @@ describe("embedBacklog", () => {
     });
     expect(gated).toMatchObject({ ok: true, value: { embedded: 1 } });
     expect(gated.ok && gated.value.deferred).toBeFalsy();
-    // One turn for the page, one for the vec index sync.
+    // One turn each for preparation, the page, and the vec index sync.
     expect(events).toEqual([
+      "acquire",
+      "release",
       "acquire",
       "write",
       "release",

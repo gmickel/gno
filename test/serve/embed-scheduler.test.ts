@@ -452,6 +452,29 @@ describe("EmbedScheduler", () => {
     }
   });
 
+  test("a parked scheduler still continues a lease-deferred remainder after a failed page", async () => {
+    const errors = spyOn(console, "error").mockImplementation(() => undefined);
+    const scheduler = createEmbedScheduler({
+      db: createMockDb(),
+      getEmbedPort: () => createMockEmbedPort(),
+      getVectorIndex: () => createMockVectorIndex(),
+      getModelUri: () => "test-model",
+      embedBacklogFn: (async () => ({
+        ok: true,
+        value: { embedded: 0, errors: 1, deferred: true },
+      })) as never,
+    });
+    try {
+      for (let pass = 0; pass < MAX_FAILED_PASSES; pass += 1)
+        await scheduler.triggerNow();
+      expect(scheduler.getState()).toMatchObject({ parked: true });
+      expect(scheduler.getState().nextRunAt).toBeDefined();
+    } finally {
+      errors.mockRestore();
+      await scheduler.dispose();
+    }
+  });
+
   test("a pass deferred by a held write lease reschedules without counting a failure", async () => {
     let leaseRequests = 0;
     const scheduler = createEmbedScheduler({

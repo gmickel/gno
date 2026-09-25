@@ -8,12 +8,74 @@
   "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-180-investigate-detached-serve-hot-loop-raw",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-180-investigate-detached-serve-hot-loop-raw.1": 1
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "review_attempts": [
+    {
+      "artifact_sha256": "b8182132f29185aea0d6e19bb564d3d6397c1a63f739d01f33e0e612ce04bb3d",
+      "backend": "codex",
+      "base_sha": "d4b61422365fd9fa0c059d27b88fc2092b07c881",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-eb05526190a3d43a0a058ebd77877915",
+            "classification": "introduced",
+            "findingId": "finding-eb05526190a3d43a0a058ebd77877915",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-54ab1d61934498bcccf52d28ea077f5e",
+            "classification": "introduced",
+            "findingId": "finding-54ab1d61934498bcccf52d28ea077f5e",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "31da39cc0246a5ff35acf3cb13943b9fcdec6efd",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 2593,
+      "output_sha256": "2a0a202dde4c11668846bd26e60ddc10187b4afd527be7fe5fead3c828f1bde1",
+      "reservation_id": "6b3599420bef4a3a97b8865a14836527",
+      "round_consumed": true,
+      "scope": "impl:fn-180-investigate-detached-serve-hot-loop-raw.1",
+      "superseded_by": null,
+      "task": "fn-180-investigate-detached-serve-hot-loop-raw.1",
+      "timestamp": "2026-09-25T16:52:19.960944Z",
+      "verdict": "NEEDS_WORK"
+    }
+  ],
+  "review_hash_epoch": {},
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-180-investigate-detached-serve-hot-loop-raw.1": 0
+  },
   "spec_path": ".flow/specs/fn-180-investigate-detached-serve-hot-loop-raw.md",
   "status": "open",
   "title": "Investigate detached serve hot loop, raw SQLite lock hold, and ignored SIGTERM",
@@ -28,5 +90,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-23T21:19:43.725203Z"
+  "updated_at": "2026-09-25T16:52:19.963198Z"
 }

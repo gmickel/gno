@@ -101,29 +101,42 @@ test.each([
   }
 );
 
-test("variant pass writes pages and activation in write turns and defers while held", async () => {
-  const { store, deps } = await variantFixture(["One", "Two", "Three"]);
-  const turns: string[] = [];
-  expect(
-    await embedBacklog({ ...deps, acquireWriteTurn: async () => null })
-  ).toMatchObject({ ok: true, value: { embedded: 0, deferred: true } });
-  expect(store.pending()).toHaveLength(3);
-  expect(store.hasActivated()).toBe(false);
+test("variant pass takes write turns for preparation, pages, and activation and defers while held", async () => {
+  const { db, port, deps } = await variantFixture(["One", "Two", "Three"]);
+  // Production preparation: a new runtime identity creates its own partition.
+  port.getIdentity = () => ({
+    contextSize: 256,
+    truncationPolicy: "gated-tail",
+    modelFingerprint: "actual-test-weights",
+    runtimeFingerprint: "gated-runtime",
+  });
+  const automatic = {
+    ...deps,
+    variantStore: undefined,
+    identityStillCurrent: undefined,
+  };
+  const partitions = () =>
+    db.query("SELECT count(*) AS n FROM vector_partitions").get();
+  const before = partitions();
 
   expect(
+    await embedBacklog({ ...automatic, acquireWriteTurn: async () => null })
+  ).toMatchObject({ ok: true, value: { embedded: 0, deferred: true } });
+  expect(partitions()).toEqual(before);
+
+  let turns = 0;
+  expect(
     await embedBacklog({
-      ...deps,
+      ...automatic,
       acquireWriteTurn: async () => {
-        turns.push(`acquire:${store.pending().length}`);
-        return async () => {
-          turns.push(`release:${store.pending().length}`);
-        };
+        turns += 1;
+        return async () => {};
       },
     })
   ).toMatchObject({ ok: true, value: { embedded: 3 } });
-  // The page's writes land inside its turn; activation takes its own turn.
-  expect(turns).toEqual(["acquire:3", "release:0", "acquire:0", "release:0"]);
-  expect(store.hasActivated()).toBe(true);
+  expect(partitions()).not.toEqual(before);
+  // One turn each for preparation, the single page, and activation.
+  expect(turns).toBe(3);
 });
 
 test.each(["title", "content", "delete", "model"])(

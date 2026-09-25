@@ -334,7 +334,8 @@ export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
         // that arrived meanwhile, and once parked only fresh work earns a pass.
         needsRerun = false;
         recordFailure(outcome.failure);
-        if (parked && pendingCount > 0) {
+        // Parked stops retries of failed work, never a lease-deferred remainder.
+        if (parked && (pendingCount > 0 || outcome.deferred)) {
           firstPendingAt ??= Date.now();
           scheduleRun();
         }
