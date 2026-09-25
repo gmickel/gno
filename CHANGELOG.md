@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Session import and other record-collection syncs (JSONL, mail, calendar exports) now take time in proportion to the number of records. Before, each new record scanned the whole index, so large histories slowed down quadratically. A synthetic history of 90 threads with 200 turns each now imports in about 47 seconds instead of 27 minutes, and 300 threads take about 3 minutes. Index contents, import receipts and checkpoints are unchanged.
+
 ## [2.7.0] - 2026-09-25
 
 ### Changed

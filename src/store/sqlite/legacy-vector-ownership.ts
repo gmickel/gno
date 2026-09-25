@@ -9,7 +9,8 @@ export type LegacyTitleSnapshot = Map<string, (string | null)[]>;
 function activeTitle(db: Database, mirror: string): TitleRow | null {
   return db
     .query<TitleRow, [string]>(`
-    SELECT title FROM documents WHERE mirror_hash = ? AND active = 1
+    SELECT title FROM documents INDEXED BY idx_documents_mirror_hash
+    WHERE mirror_hash = ? AND active = 1
     ORDER BY id LIMIT 1
   `)
     .get(mirror);

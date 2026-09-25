@@ -180,7 +180,7 @@ const enforceInTransaction = (
     db
       .query<{ sequence: number | null }, [number]>(
         `SELECT MAX(sequence) AS sequence
-         FROM document_changes
+         FROM document_changes INDEXED BY idx_document_changes_retention
          WHERE observed_at_ms <= ?`
       )
       .get(ageBoundary)?.sequence ?? state.retention_floor;
