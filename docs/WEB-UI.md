@@ -268,6 +268,9 @@ Each save also carries a request ID tied to the loaded revision and the
 content (or tag set) being saved. Retrying the same save after a network error
 reuses that ID, so a save that reached disk but lost its response returns the
 committed result instead of a false "Document changed on disk" conflict.
+While a save's response is lost, the editor says the save may have completed
+and offers **Retry save** instead of reporting an outside change; the reload
+banner appears only for a change the retry shows came from elsewhere.
 Edited content or a different tag set gets a new ID. Pending and conflict
 errors show the server's message. The unconfirmed request ID is kept for the
 browser tab, so retrying the same capture or save after a page refresh still

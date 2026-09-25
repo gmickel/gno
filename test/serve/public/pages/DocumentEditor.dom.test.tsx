@@ -6,7 +6,15 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  mock,
+  spyOn,
+  test,
+} from "bun:test";
 import { forwardRef, useImperativeHandle } from "react";
 
 import { apiError, apiOk, setTestLocation } from "../../../helpers/dom";
@@ -68,6 +76,7 @@ let putResponses: Array<() => ReturnType<typeof apiOk<unknown>>>;
 /** Source hash the server reports for the document after the first load. */
 let diskHash = "hash-0";
 let docLoads = 0;
+let diskReadFails = false;
 const puts = () =>
   apiFetch.mock.calls
     .filter(
@@ -81,6 +90,7 @@ beforeEach(() => {
   docEvent = null;
   diskHash = "hash-0";
   docLoads = 0;
+  diskReadFails = false;
   setTestLocation(`/edit?uri=${encodeURIComponent(DOC.uri)}`);
   let revision = 0;
   putResponses = [];
@@ -88,6 +98,8 @@ beforeEach(() => {
     const [endpoint, init] = args as [string, { method?: string } | undefined];
     if (endpoint.startsWith("/api/doc?")) {
       docLoads += 1;
+      if (docLoads > 1 && diskReadFails)
+        return apiError("Failed to fetch") as never;
       return apiOk(
         docLoads === 1
           ? DOC
@@ -158,8 +170,28 @@ describe("DocumentEditor saves", () => {
       request: { replayed: true },
     });
 
-  async function lostSaveThenNotice() {
-    putResponses.push(() => apiError("Failed to fetch") as never);
+  const UNCONFIRMED = /save may have completed/u;
+  const OUTSIDE = /changed on disk/u;
+
+  let eventCount = 0;
+  async function changeEvent(rerender: ReturnType<typeof render>["rerender"]) {
+    eventCount += 1;
+    docEvent = { uri: DOC.uri, changedAt: `2026-09-25T00:00:${eventCount}Z` };
+    const { default: DocumentEditor } =
+      await import("../../../../src/serve/public/pages/DocumentEditor");
+    rerender(<DocumentEditor navigate={() => undefined} />);
+  }
+
+  /** A save whose response is lost, then the change event of its own commit. */
+  async function lostSaveThenEvent() {
+    putResponses.push(
+      () =>
+        Promise.resolve({
+          data: null,
+          error: "Failed to fetch",
+          outcomeUnknown: true,
+        }) as never
+    );
     const { editor, rerender } = await openEditor();
     fireEvent.change(editor, { target: { value: "v1" } });
     ctrlS();
@@ -167,36 +199,165 @@ describe("DocumentEditor saves", () => {
     expect((await screen.findByRole("alert")).textContent).toBe(
       "Failed to fetch"
     );
-    docEvent = { uri: DOC.uri, changedAt: new Date().toISOString() };
-    const { default: DocumentEditor } =
-      await import("../../../../src/serve/public/pages/DocumentEditor");
-    rerender(<DocumentEditor navigate={() => undefined} />);
-    await screen.findByText(/changed on disk/u);
+    await screen.findByText(UNCONFIRMED);
+    await changeEvent(rerender);
+    return { editor, rerender };
   }
 
-  test("a replayed save clears the notice when disk still holds that commit", async () => {
-    await lostSaveThenNotice();
-    // The lost save's own sync caused the notice: disk holds its commit.
+  test("a lost save response offers retry instead of claiming an outside change", async () => {
+    await lostSaveThenEvent();
+
+    expect(screen.getByText(UNCONFIRMED)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Retry save" })).toBeTruthy();
+    expect(screen.queryByText(OUTSIDE)).toBeNull();
+  });
+
+  test("a change event with no save pending shows the reload banner", async () => {
+    const { rerender } = await openEditor();
+    await changeEvent(rerender);
+
+    await screen.findByText(OUTSIDE);
+    expect(screen.getByRole("button", { name: "Reload" })).toBeTruthy();
+  });
+
+  test("a replayed retry clears the notice when disk still holds that commit", async () => {
+    await lostSaveThenEvent();
     diskHash = "hash-v1";
     putResponses.push(replayedSave("hash-v1"));
-    ctrlS();
+    fireEvent.click(screen.getByRole("button", { name: "Retry save" }));
 
     await waitFor(() => expect(puts()).toHaveLength(2));
     const [lost, retry] = puts();
     expect(retry.requestId).toBe(lost.requestId);
-    await waitFor(() =>
-      expect(screen.queryByText(/changed on disk/u)).toBeNull()
-    );
+    await waitFor(() => expect(screen.queryByText(UNCONFIRMED)).toBeNull());
+    expect(screen.queryByText(OUTSIDE)).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  test("a replayed save keeps the notice when another writer changed disk since", async () => {
-    await lostSaveThenNotice();
+  test("a replayed retry shows the reload banner when another writer changed disk since", async () => {
+    await lostSaveThenEvent();
     diskHash = "hash-v2-from-someone-else";
     putResponses.push(replayedSave("hash-v1"));
     ctrlS();
 
+    await screen.findByText(OUTSIDE);
+    expect(screen.queryByText(UNCONFIRMED)).toBeNull();
+  });
+
+  test("a replayed retry whose disk read fails claims no outside change", async () => {
+    await lostSaveThenEvent();
+    diskReadFails = true;
+    putResponses.push(replayedSave("hash-v1"));
+    ctrlS();
+
     await waitFor(() => expect(docLoads).toBe(2));
-    expect(screen.getByText(/changed on disk/u)).toBeTruthy();
+    await waitFor(() => expect(screen.queryByText(UNCONFIRMED)).toBeNull());
+    expect(screen.queryByText(OUTSIDE)).toBeNull();
+  });
+
+  test("a retry whose outcome is still unknown keeps offering retry", async () => {
+    await lostSaveThenEvent();
+    putResponses.push(
+      () =>
+        Promise.resolve({
+          data: null,
+          error: "Request is accepted and still in progress",
+          outcomeUnknown: true,
+        }) as never
+    );
+    ctrlS();
+
+    await waitFor(() => expect(puts()).toHaveLength(2));
+    await screen.findAllByText(/still in progress/u);
+    expect(screen.getByText(UNCONFIRMED)).toBeTruthy();
+    expect(screen.queryByText(OUTSIDE)).toBeNull();
+  });
+
+  test("a rejected retry attributes the held change to another writer", async () => {
+    await lostSaveThenEvent();
+    putResponses.push(
+      () => apiError("Document changed on disk. Reload before saving.") as never
+    );
+    ctrlS();
+
+    await screen.findByText(/Reload before continuing/u);
+    expect(screen.queryByText(UNCONFIRMED)).toBeNull();
+  });
+
+  test.each([
+    ["undone to the loaded text", DOC.content],
+    ["edited further", "v2"],
+  ])(
+    "Retry save confirms a lost save when the draft was %s, then saves the draft",
+    async (_case, draft) => {
+      const { editor, rerender } = await lostSaveThenEvent();
+      fireEvent.change(editor, { target: { value: draft } });
+      diskHash = "hash-v1";
+      putResponses.push(replayedSave("hash-v1"));
+      fireEvent.click(screen.getByRole("button", { name: "Retry save" }));
+
+      await waitFor(() => expect(puts()).toHaveLength(3));
+      const [lost, retry, next] = puts();
+      expect(retry.requestId).toBe(lost.requestId);
+      expect(next).toMatchObject({
+        content: draft,
+        expectedSourceHash: "hash-v1",
+      });
+      await waitFor(() => expect(screen.queryByText(UNCONFIRMED)).toBeNull());
+      // Change events are no longer held once the outcome is known.
+      const now = spyOn(Date, "now").mockReturnValue(Date.now() + 10_000);
+      try {
+        await changeEvent(rerender);
+        await screen.findByText(OUTSIDE);
+      } finally {
+        now.mockRestore();
+      }
+    }
+  );
+
+  test("Retry save saves the draft as edited while the retry was pending", async () => {
+    const { editor } = await lostSaveThenEvent();
+    fireEvent.change(editor, { target: { value: "v2" } });
+    let answer = () => undefined as void;
+    putResponses.push(
+      () =>
+        new Promise((resolve) => {
+          answer = () => resolve(replayedSave("hash-v1")() as never);
+        }) as never
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Retry save" }));
+    await waitFor(() => expect(puts()).toHaveLength(2));
+    fireEvent.change(editor, { target: { value: DOC.content } });
+    diskHash = "hash-v1";
+    answer();
+
+    await waitFor(() => expect(puts()).toHaveLength(3));
+    expect(puts()[2]).toMatchObject({ content: DOC.content });
+  });
+
+  test("a lost save keeps an existing outside-change warning", async () => {
+    putResponses.push(
+      () =>
+        Promise.resolve({
+          data: null,
+          error: "Failed to fetch",
+          outcomeUnknown: true,
+        }) as never,
+      () => apiError("Document changed on disk. Reload before saving.") as never
+    );
+    const { editor, rerender } = await openEditor();
+    await changeEvent(rerender);
+    await screen.findByText(OUTSIDE);
+
+    fireEvent.change(editor, { target: { value: "v1" } });
+    ctrlS();
+    await screen.findByRole("alert");
+    expect(screen.getByText(OUTSIDE)).toBeTruthy();
+    expect(screen.queryByText(UNCONFIRMED)).toBeNull();
+
+    ctrlS();
+    await waitFor(() => expect(puts()).toHaveLength(2));
+    await screen.findAllByText(/Reload before saving/u);
+    expect(screen.getByText(/Reload before continuing/u)).toBeTruthy();
   });
 });

@@ -50,49 +50,9 @@ import {
   fetchServerCapabilities,
   type ServerCapabilities,
 } from "../lib/server-capabilities";
+import { renderSnippet } from "../lib/snippet";
 import { cn } from "../lib/utils";
 import { AIModelSelector, TagFacets } from "./search-page-widgets";
-
-/**
- * Render snippet with <mark> tags as highlighted spans.
- * Only allows mark tags - strips all other HTML for safety.
- */
-function renderSnippet(snippet: string): React.ReactNode {
-  const parts: React.ReactNode[] = [];
-  let remaining = snippet;
-  let key = 0;
-
-  while (remaining.length > 0) {
-    const markStart = remaining.indexOf("<mark>");
-    if (markStart === -1) {
-      parts.push(remaining);
-      break;
-    }
-
-    if (markStart > 0) {
-      parts.push(remaining.slice(0, markStart));
-    }
-
-    const markEnd = remaining.indexOf("</mark>", markStart);
-    if (markEnd === -1) {
-      parts.push(remaining.slice(markStart));
-      break;
-    }
-
-    const highlighted = remaining.slice(markStart + 6, markEnd);
-    parts.push(
-      <mark
-        className="rounded bg-primary/20 px-0.5 font-medium text-primary"
-        key={key++}
-      >
-        {highlighted}
-      </mark>
-    );
-    remaining = remaining.slice(markEnd + 7);
-  }
-
-  return parts;
-}
 
 interface PageProps {
   navigate: (to: string | number) => void;
