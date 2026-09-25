@@ -22,6 +22,7 @@ Tier: session (actual_model: claude-opus-5-5)
 
 stage: impl-review - ran (codex gpt-6-astra medium, 3-draw fan-out, SHIP first round)
 ## Evidence
-- Commits: 29f1b79df173425aaaaf6b4e75825bb233b62ce4, 57606c014033af141ff401050b521b114c289d81
+- Commits: 29f1b79df173425aaaaf6b4e75825bb233b62ce4, 57606c014033af141ff401050b521b114c289d81, ecffdd3f (follow-up: document-route host paths)
 - Tests: baseline: green (focused: bun test test/spec/schemas/host-paths.test.ts test/spec/schemas/status.test.ts test/serve/api-status.test.ts test/mcp/tools/status.test.ts; spec defines no Quick commands), bun test test/spec/schemas/host-paths.test.ts (new REST /api/status + /api/collections and MCP gno_status local/remote tests; confirmed red on base code), bun test (full: 5794 pass, 2 skip, 0 fail), bun run lint:check, bun run docs:verify, live QA: .flow/tmp/qa-fn-188-remote-status-and-collection-responses/, gno.sh: bun run check, bun run typecheck, vitest src/lib, bun run build (branch fn-188-remote-config-paths @ abff779)
 - PRs:
+- Follow-up (document-route host paths, coordinator request): bun test test/spec/schemas/host-paths.test.ts ("REST document mutation host paths", confirmed red on 637bee4f), bun test (full: 5795 pass, 2 skip, 0 fail), bun run lint:check, bun run docs:verify, focused codex review gpt-6-astra medium SHIP (637bee4f..ecffdd3f), live check .flow/tmp/qa-fn-188-remote-status-and-collection-responses/doc-route-*.json, gno.sh e16f2cb
