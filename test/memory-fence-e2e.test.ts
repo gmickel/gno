@@ -115,69 +115,74 @@ function memoryFiles(): string[] {
   return Array.from(new Bun.Glob("**/*.md").scanSync(memoryDir)).sort();
 }
 
-beforeAll(async () => {
-  testDir = await mkdtemp(join(tmpdir(), "gno-memory-fence-"));
-  memoryDir = join(testDir, "memory");
-  await mkdir(memoryDir, { recursive: true });
-  process.env.GNO_CONFIG_DIR = join(testDir, "config");
-  process.env.GNO_DATA_DIR = join(testDir, "data");
-  process.env.GNO_CACHE_DIR = join(testDir, "cache");
+// The first CLI calls of a Windows CI run load the command graph cold; this
+// file runs early and its setup has taken 6.8 s there (default hook timeout 5 s).
+beforeAll(
+  async () => {
+    testDir = await mkdtemp(join(tmpdir(), "gno-memory-fence-"));
+    memoryDir = join(testDir, "memory");
+    await mkdir(memoryDir, { recursive: true });
+    process.env.GNO_CONFIG_DIR = join(testDir, "config");
+    process.env.GNO_DATA_DIR = join(testDir, "data");
+    process.env.GNO_CACHE_DIR = join(testDir, "cache");
 
-  expect((await cli("init", memoryDir, "--name", "memory")).code).toBe(0);
-  const configPath = join(testDir, "config", "index.yml");
-  const parsed = Bun.YAML.parse(await Bun.file(configPath).text()) as {
-    collections: Array<{ name: string; memoryManaged?: boolean }>;
-  };
-  for (const collection of parsed.collections) {
-    if (collection.name === "memory") collection.memoryManaged = true;
-  }
-  await Bun.write(configPath, Bun.YAML.stringify(parsed));
+    expect((await cli("init", memoryDir, "--name", "memory")).code).toBe(0);
+    const configPath = join(testDir, "config", "index.yml");
+    const parsed = Bun.YAML.parse(await Bun.file(configPath).text()) as {
+      collections: Array<{ name: string; memoryManaged?: boolean }>;
+    };
+    for (const collection of parsed.collections) {
+      if (collection.name === "memory") collection.memoryManaged = true;
+    }
+    await Bun.write(configPath, Bun.YAML.stringify(parsed));
 
-  // The CLI stores the fact; both surfaces recall it from the same index.
-  const added = await cli(
-    "remember",
-    FACT,
-    "--scope",
-    SCOPE,
-    ...IDENTITY,
-    "--add",
-    "--json"
-  );
-  expect(added.code).toBe(0);
-  expect((JSON.parse(added.stdout) as RememberResult).outcome).toBe("added");
-  expect(memoryFiles()).toHaveLength(1);
+    // The CLI stores the fact; both surfaces recall it from the same index.
+    const added = await cli(
+      "remember",
+      FACT,
+      "--scope",
+      SCOPE,
+      ...IDENTITY,
+      "--add",
+      "--json"
+    );
+    expect(added.code).toBe(0);
+    expect((JSON.parse(added.stdout) as RememberResult).outcome).toBe("added");
+    expect(memoryFiles()).toHaveLength(1);
 
-  const storeInit = await initStore({ syncConfig: true });
-  if (!storeInit.ok) throw new Error(storeInit.error);
-  ({ store, config, collections } = storeInit);
-  const ctx: ToolContext = {
-    indexName: "default",
-    store,
-    config,
-    collections,
-    actualConfigPath: configPath,
-    toolMutex: { acquire: async () => () => {} },
-    jobManager: {} as ToolContext["jobManager"],
-    serverInstanceId: SERVER_INSTANCE_ID,
-    writeLockPath: writeLeasePath(getIndexDbPath()),
-    enableWrite: true,
-    isShuttingDown: () => false,
-    markContentMutation: () => {},
-  };
-  const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
-  const server = createMcpServerSurface(ctx, {
-    name: "memory-fence",
-    version: "1.0.0",
-  });
-  await server.connect(serverSide);
-  client = new Client({ name: CLIENT_NAME, version: "1.0.0" });
-  await client.connect(clientSide);
-  closeSurface = async () => {
-    await client.close();
-    await server.close();
-    await store.close();
-  };
-});
+    const storeInit = await initStore({ syncConfig: true });
+    if (!storeInit.ok) throw new Error(storeInit.error);
+    ({ store, config, collections } = storeInit);
+    const ctx: ToolContext = {
+      indexName: "default",
+      store,
+      config,
+      collections,
+      actualConfigPath: configPath,
+      toolMutex: { acquire: async () => () => {} },
+      jobManager: {} as ToolContext["jobManager"],
+      serverInstanceId: SERVER_INSTANCE_ID,
+      writeLockPath: writeLeasePath(getIndexDbPath()),
+      enableWrite: true,
+      isShuttingDown: () => false,
+      markContentMutation: () => {},
+    };
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    const server = createMcpServerSurface(ctx, {
+      name: "memory-fence",
+      version: "1.0.0",
+    });
+    await server.connect(serverSide);
+    client = new Client({ name: CLIENT_NAME, version: "1.0.0" });
+    await client.connect(clientSide);
+    closeSurface = async () => {
+      await client.close();
+      await server.close();
+      await store.close();
+    };
+  },
+  process.platform === "win32" ? 30_000 : 5000
+);
 
 afterAll(async () => {
   await closeSurface?.();

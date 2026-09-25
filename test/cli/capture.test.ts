@@ -53,6 +53,11 @@ async function cli(
   }
 }
 
+// A request ID makes each test open a fresh ledger directory, which on Windows
+// runs the PowerShell DACL helper: ~0.4 s warm, 2.5 s to over 5 s when it is
+// the first PowerShell start of a CI run (bun's default test timeout is 5 s).
+const LEDGER_TEST_TIMEOUT_MS = process.platform === "win32" ? 30_000 : 5000;
+
 describe("gno capture", () => {
   let testDir: string;
   let notesDir: string;
@@ -107,46 +112,56 @@ describe("gno capture", () => {
     expect(content).toContain("source:");
   });
 
-  test("a retried request ID replays, reports status, and refuses a changed payload", async () => {
-    const args = [
-      "capture",
-      "Retry me",
-      "--collection",
-      "notes",
-      "--title",
-      "Retry",
-      "--collision-policy",
-      "create_with_suffix",
-      "--request-id",
-      "cli-retry-1",
-      "--json",
-    ];
-    const first = await cli(...args);
-    const again = await cli(...args);
-    expect([first.code, again.code]).toEqual([0, 0]);
-    const [a, b] = [JSON.parse(first.stdout), JSON.parse(again.stdout)];
-    expect(a.request).toMatchObject({
-      requestId: "cli-retry-1",
-      replayed: false,
-    });
-    expect(b).toEqual({ ...a, request: { ...a.request, replayed: true } });
+  test(
+    "a retried request ID replays, reports status, and refuses a changed payload",
+    async () => {
+      const args = [
+        "capture",
+        "Retry me",
+        "--collection",
+        "notes",
+        "--title",
+        "Retry",
+        "--collision-policy",
+        "create_with_suffix",
+        "--request-id",
+        "cli-retry-1",
+        "--json",
+      ];
+      const first = await cli(...args);
+      const again = await cli(...args);
+      // Carry stderr so a failed exit code names its error.
+      expect(
+        [first, again].map(({ code, stderr }) => ({ code, stderr }))
+      ).toEqual([
+        { code: 0, stderr: "" },
+        { code: 0, stderr: "" },
+      ]);
+      const [a, b] = [JSON.parse(first.stdout), JSON.parse(again.stdout)];
+      expect(a.request).toMatchObject({
+        requestId: "cli-retry-1",
+        replayed: false,
+      });
+      expect(b).toEqual({ ...a, request: { ...a.request, replayed: true } });
 
-    const status = await cli("request-status", "cli-retry-1", "--json");
-    expect(status.code).toBe(0);
-    expect(JSON.parse(status.stdout)).toMatchObject({
-      status: "committed",
-      operation: "capture",
-      result: { uri: a.uri },
-    });
+      const status = await cli("request-status", "cli-retry-1", "--json");
+      expect(status.code).toBe(0);
+      expect(JSON.parse(status.stdout)).toMatchObject({
+        status: "committed",
+        operation: "capture",
+        result: { uri: a.uri },
+      });
 
-    const changed = await cli(
-      ...args.map((arg) => (arg === "Retry me" ? "Different body" : arg))
-    );
-    expect(changed.code).toBe(1);
-    expect(changed.stderr).toContain("REQUEST_ID_CONFLICT");
-    const files = [...new Bun.Glob("**/*.md").scanSync(notesDir)];
-    expect(files).toEqual([a.relPath]);
-  });
+      const changed = await cli(
+        ...args.map((arg) => (arg === "Retry me" ? "Different body" : arg))
+      );
+      expect(changed.code).toBe(1);
+      expect(changed.stderr).toContain("REQUEST_ID_CONFLICT");
+      const files = [...new Bun.Glob("**/*.md").scanSync(notesDir)];
+      expect(files).toEqual([a.relPath]);
+    },
+    LEDGER_TEST_TIMEOUT_MS
+  );
 
   test("without a request ID a failed lexical sync is still a receipt (exit 0)", async () => {
     const syncPaths = spyOn(defaultSyncService, "syncPaths").mockResolvedValue({
@@ -189,36 +204,40 @@ describe("gno capture", () => {
     }
   });
 
-  test("reset keeps the request ledger so a used ID never runs again", async () => {
-    const args = [
-      "capture",
-      "Before reset",
-      "--collection",
-      "notes",
-      "--title",
-      "Reset",
-      "--collision-policy",
-      "create_with_suffix",
-      "--request-id",
-      "survives-reset",
-      "--json",
-    ];
-    const first = JSON.parse((await cli(...args)).stdout);
-    // reset() refuses paths outside the real home directory, so drive the
-    // data-directory step it runs directly.
-    const cleared = await clearDataDir(join(testDir, "data"));
-    expect(cleared.map((entry) => entry.status)).toEqual(["deleted", "kept"]);
+  test(
+    "reset keeps the request ledger so a used ID never runs again",
+    async () => {
+      const args = [
+        "capture",
+        "Before reset",
+        "--collection",
+        "notes",
+        "--title",
+        "Reset",
+        "--collision-policy",
+        "create_with_suffix",
+        "--request-id",
+        "survives-reset",
+        "--json",
+      ];
+      const first = JSON.parse((await cli(...args)).stdout);
+      // reset() refuses paths outside the real home directory, so drive the
+      // data-directory step it runs directly.
+      const cleared = await clearDataDir(join(testDir, "data"));
+      expect(cleared.map((entry) => entry.status)).toEqual(["deleted", "kept"]);
 
-    const again = await cli(...args);
-    expect(again.code).toBe(0);
-    expect(JSON.parse(again.stdout)).toEqual({
-      ...first,
-      request: { ...first.request, replayed: true },
-    });
-    expect([...new Bun.Glob("**/*.md").scanSync(notesDir)]).toEqual([
-      first.relPath,
-    ]);
-  });
+      const again = await cli(...args);
+      expect(again.code).toBe(0);
+      expect(JSON.parse(again.stdout)).toEqual({
+        ...first,
+        request: { ...first.request, replayed: true },
+      });
+      expect([...new Bun.Glob("**/*.md").scanSync(notesDir)]).toEqual([
+        first.relPath,
+      ]);
+    },
+    LEDGER_TEST_TIMEOUT_MS
+  );
 
   test("quiet output prints only the URI", async () => {
     const result = await cli(
