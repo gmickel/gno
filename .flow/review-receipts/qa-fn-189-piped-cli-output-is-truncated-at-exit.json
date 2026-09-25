@@ -1,0 +1,34 @@
+{
+  "branch": "fn-189-piped-cli-output-is-truncated-at-exit",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "13391f025ecd5baca986fc17879a0ea0a03a7e95",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-045bff3c281f958894e3fc1bdc031263e7536054643a68b35060541b9f95ec90"
+  },
+  "head_sha": "13391f025ecd5baca986fc17879a0ea0a03a7e95",
+  "id": "fn-189-piped-cli-output-is-truncated-at-exit",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 2,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R2"
+      }
+    ],
+    "total": 2
+  },
+  "timestamp": "2026-09-25T16:48:18Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
