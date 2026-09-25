@@ -297,13 +297,6 @@ All scores are normalized to **[0.0 - 1.0]** range where 1.0 is the best match. 
 
 **Important**: Scores are normalized _per query_ and are NOT comparable across different queries. A score of 0.8 on query A doesn't mean the same relevance as 0.8 on query B.
 
-The committed fn-97 project-affinity lane measures this seam with two controlled
-ambiguous pairs: correct top-1 moved from `0/2` with affinity disabled to `2/2`
-with trusted local affinity. Across the existing 24 hard-collection tasks it
-measured zero URI-rank, required-evidence coverage, or fixed multilingual loss.
-This closed synthetic result isolates the `+0.03` seam; it is not a claim of
-superiority on general workloads.
-
 ### BM25 Scores
 
 ```
@@ -651,7 +644,7 @@ languages: English, German, French, Italian, Chinese, Japanese, and Korean
 
 <!-- public-truth:general-embedding-benchmark -->
 
-The immutable April 2026 FastAPI-docs fixture contains 15 documents in five
+The April 2026 FastAPI-docs benchmark contains 15 documents in five
 languages (`en`, `de`, `fr`, `es`, `zh`) and 13 queries. It measured
 [bge-m3 incumbent](../evals/fixtures/general-embedding-benchmark/2026-04-06-bge-m3-incumbent.md)
 at vector nDCG@10 `0.3503` / hybrid `0.642`, and
@@ -670,29 +663,24 @@ These are small semantic/hybrid fixtures, not general language guarantees.
 
 <!-- public-truth:cjk-lexical-benchmark -->
 
-Degraded lexical behavior is measured separately in the immutable
-[July 22, 2026 CJK benchmark](../evals/fixtures/cjk-lexical-benchmark/2026-07-22.md).
-Across 25 queries, production BM25 lexical results and frozen floors:
+Keyword search in Chinese, Japanese, and Korean is weaker, measured separately
+in the [July 22, 2026 CJK benchmark](../evals/fixtures/cjk-lexical-benchmark/2026-07-22.md).
+Across 25 queries, production BM25 lexical results and the promotion floors:
 
 - Chinese: baseline Recall@10 `0.2222`, nDCG@10 `0.1481`, zero-result `0.7778`; promotion Recall@10 `0.4722`, nDCG@10 `0.3981`, maximum zero-result `0.5278`
 - Japanese: baseline Recall@10 `0.125`, nDCG@10 `0.125`, zero-result `0.875`; promotion Recall@10 `0.375`, nDCG@10 `0.375`, maximum zero-result `0.625`
 - Korean: baseline Recall@10 `0.5`, nDCG@10 `0.5`, zero-result `0.5`; promotion Recall@10 `0.75`, nDCG@10 `0.75`, maximum zero-result `0.25`
 
-The frozen
+The "promotion" values are the floors a CJK-aware lexical analyzer must reach
+before GNO ships one.
 [promotion-gates.md](../evals/fixtures/cjk-lexical-benchmark/promotion-gates.md)
-also binds MRR, non-regression, and cost requirements before any lexical
-analyzer can ship.
-Token-boundary, normalization, mixed-script, identifier, and ranking failures
-are reported as concrete cases; ranking uses a genuine rank-7 retrieval
-fixture. This lexical baseline does not measure semantic
-retrieval, and production BM25 remains unchanged. All positive qrels use
-relevance `3`; nDCG therefore measures placement but not distinctions among
-positive gain grades.
+lists them along with MRR, non-regression, and cost requirements. No analyzer
+has met them, so production BM25 tokenization is unchanged. These lexical
+numbers do not measure semantic retrieval. All positive qrels use relevance
+`3`, so nDCG measures placement but not distinctions among positive gain
+grades.
 
 <!-- /public-truth -->
-
-The legacy `evals/multilingual.eval.ts` suite remains a four-case BM25-only
-sanity lane and is not a release gate.
 
 ## Performance Characteristics
 

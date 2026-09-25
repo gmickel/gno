@@ -466,13 +466,13 @@ GNO auto-detects query language using [franc](https://github.com/wooorm/franc). 
 ### Multilingual Embedding
 
 The default `Qwen3-Embedding-0.6B-GGUF` model supports cross-language vector
-retrieval. The committed semantic fixture is small: 15 FastAPI documents in
-five languages and 13 queries. It is evidence for the default-model decision,
-not a general guarantee for every classified or indexed language. Dedicated
-lexical CJK benchmarking is committed, but production tokenization remains
-unchanged: the frozen Chinese promotion gates were not met, so fn-109
-intentionally shipped no analyzer change. Treat CJK lexical fallback as
-measured degraded behavior, not a multilingual-quality guarantee.
+retrieval. The benchmark behind that choice is small: 15 FastAPI documents in
+five languages and 13 queries, so it does not guarantee quality for every
+language GNO can detect or index. Keyword (BM25) search in Chinese, Japanese,
+and Korean is weaker: GNO has no CJK-specific tokenizer yet, so expect more
+missed and zero-result keyword queries in those languages. See
+[How search works](HOW-SEARCH-WORKS.md#measured-multilingual-scope) for the
+numbers.
 
 ## Incremental Updates
 

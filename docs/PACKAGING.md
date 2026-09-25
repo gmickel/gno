@@ -214,7 +214,7 @@ CLI package proof:
 
 - packs the npm tarball from the same `package.json` file allowlist used for
   publish
-- verifies required runtime files ship, including `src/embed/retry.ts`
+- verifies that every required runtime file ships in the tarball
 - installs from the tarball into isolated `HOME`, `GNO_*`, npm cache, and npm
   prefix paths
 - runs packaged `gno --version`, `gno --help`, and `gno doctor --json`

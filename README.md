@@ -184,9 +184,8 @@ See the [guide](docs/COMPILED-CONTEXT.md).
   explicit read-only retrieval smoke from Connectors.
 - **One resident gateway**: `gno serve` and `gno daemon` now host stateful
   Streamable HTTP MCP at `/mcp` from the same long-lived runtime as their
-  watcher, jobs, stores, and models. The packed npm smoke proves two-client
-  parity, warm reuse, redacted lifecycle status, fail-closed security, restart,
-  and shutdown.
+  watcher, jobs, stores, and models. Several MCP clients can share one
+  resident process and get the same results as stdio MCP.
 - **Knowledge Delta**: `gno changes`, `gno diff`, and `gno impact` expose
   bounded metadata-only history, structural change summaries, and explainable
   dependency paths across CLI, REST, MCP, and SDK.
@@ -215,17 +214,13 @@ See the [guide](docs/COMPILED-CONTEXT.md).
   `local_only`, `lan`, or `remote` boundary that follows mixed and derived
   evidence through resident serving, inference, publishing, exports, Capsules,
   and traces. Authentication never overrides policy.
-- **Source availability (`any` | `local`)**: opt-in `local` refuses
-  cloud-placeholder materialization on the macOS File Provider layouts covered
-  by physical evidence (Google Drive, iCloud Drive, and OneDrive for both
-  validated immediate SharePoint library roots). Hierarchical directory
-  classification + guarded content recheck; skips are not conversion errors;
-  unproven prefixes preserve indexed descendants. Distinct from egress.
-  Unsupported platforms fail closed; no claim of zero provider activity or
-  universal provider support. On the controlled 5,000-file all-local corpus,
-  production `any` regressed -1.1280% and hierarchical `local` added 1.1841%
-  median traversal overhead (2 warmups, 9 samples per lane; same corpus and
-  interleaved pre-implementation/current production walkers).
+- **Source availability (`any` | `local`)**: opt-in `local` indexes only files
+  already on disk and never makes a cloud provider download one. Supported on
+  macOS with Google Drive, iCloud Drive, and OneDrive SharePoint library roots.
+  Cloud-only files are skipped and reported, not treated as conversion errors,
+  and documents under a cloud-only folder stay indexed. Other platforms fail
+  with an error. On a 5,000-file all-local collection, `local` scans about 1%
+  slower than `any`.
 - **Read-only integrity audits**: `gno audit` and MCP `gno_audit` inspect local
   links, declared provenance, and source/index freshness offline. Stable,
   bounded findings distinguish complete, partial, unavailable, and changing
@@ -240,7 +235,7 @@ See the [guide](docs/COMPILED-CONTEXT.md).
 <!-- public-truth:default-embed-model -->
 - **Default Embed Model**: all four built-in presets use `Qwen3-Embedding-0.6B-GGUF`; see the dated, fixture-scoped evidence below
 <!-- /public-truth -->
-- **Regression Fixes**: tightened phrase/negation/hyphen/underscore BM25 behavior, cleaned non-TTY hyperlink output, improved `gno doctor` chunking and embedding fingerprint visibility, and fixed the embedding autoresearch harness
+- **Regression Fixes**: tightened phrase/negation/hyphen/underscore BM25 behavior, cleaned non-TTY hyperlink output, and improved `gno doctor` chunking and embedding fingerprint visibility
 
 ### Upgrading Existing Collections
 
@@ -1318,10 +1313,10 @@ Current product stance:
 
 Why Qwen is the current default:
 
-- matches or exceeds `bge-m3` on the tiny canonical benchmark
-- significantly beats `bge-m3` on the real GNO `src/serve` code slice
-- also beats `bge-m3` on a pinned public-OSS code slice
-- also beats `bge-m3` on the multilingual prose/docs benchmark lane
+- ties `bge-m3` on the small [canonical code benchmark](./evals/fixtures/code-embedding-benchmark/canonical.md) (vector nDCG@10 `0.95` each)
+- beats `bge-m3` on [GNO's own web server code](./evals/fixtures/code-embedding-benchmark/repo-serve.md) (`0.8102` vs `0.1003`)
+- beats `bge-m3` on [pinned open-source code slices](./evals/fixtures/code-embedding-benchmark/oss-slices.md) (`1.0` vs `0.6116`)
+- beats `bge-m3` on the multilingual prose/docs benchmark below
 
 Current trade-off:
 
@@ -1340,7 +1335,7 @@ bun run bench:general-embeddings --candidate qwen3-embedding-0.6b --write
 
 <!-- public-truth:general-embedding-benchmark -->
 
-The immutable April 2026 FastAPI-docs run used 15 documents in five corpus
+The April 2026 FastAPI-docs run used 15 documents in five corpus
 languages (`en`, `de`, `fr`, `es`, `zh`) and 13 queries:
 
 - [bge-m3 incumbent](./evals/fixtures/general-embedding-benchmark/2026-04-06-bge-m3-incumbent.md): vector nDCG@10 `0.3503`, hybrid nDCG@10 `0.642`
@@ -1362,23 +1357,23 @@ languages.
 
 <!-- public-truth:cjk-lexical-benchmark -->
 
-Lexical fallback has separate evidence. The immutable
+Lexical fallback has separate evidence. The
 [July 22, 2026 CJK result](./evals/fixtures/cjk-lexical-benchmark/2026-07-22.md)
 uses 21 synthetic documents and 25 same-language queries across Chinese,
-Japanese, and Korean. Production BM25 lexical results and frozen floors:
+Japanese, and Korean. Production BM25 lexical results and the promotion floors:
 
 - Chinese: baseline Recall@10 `0.2222`, nDCG@10 `0.1481`, zero-result `0.7778`; promotion Recall@10 `0.4722`, nDCG@10 `0.3981`, maximum zero-result `0.5278`
 - Japanese: baseline Recall@10 `0.125`, nDCG@10 `0.125`, zero-result `0.875`; promotion Recall@10 `0.375`, nDCG@10 `0.375`, maximum zero-result `0.625`
 - Korean: baseline Recall@10 `0.5`, nDCG@10 `0.5`, zero-result `0.5`; promotion Recall@10 `0.75`, nDCG@10 `0.75`, maximum zero-result `0.25`
 
-The
+The "promotion" values are the floors a CJK-aware lexical analyzer must reach
+before GNO ships one.
 [promotion-gates.md](./evals/fixtures/cjk-lexical-benchmark/promotion-gates.md)
-also bind MRR, non-regression, and cost requirements. This lexical result does
-not reduce or replace the semantic evidence above. All positive qrels use
-relevance `3`, so
-nDCG measures placement but not distinctions among positive gain grades.
-Production tokenization is unchanged; improvements remain gated work for
-`fn-109`.
+lists them along with MRR, non-regression, and cost requirements. No analyzer
+has met them, so production BM25 tokenization is unchanged. These lexical
+numbers do not measure semantic retrieval. All positive qrels use relevance
+`3`, so nDCG measures placement but not distinctions among positive gain
+grades.
 
 <!-- /public-truth -->
 

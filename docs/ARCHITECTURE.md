@@ -225,16 +225,16 @@ never registered as collections.
 ```
 Harness session store (JSONL files or SQLite, opened read-only)
     │
-    ▼ Discovery / registered source (src/sessions/sources.ts)
+    ▼ Discovery / registered source
     │
-    ▼ Harness parser (src/sessions/parsers/*)
+    ▼ Harness parser
     │   structural speaker classification; tool calls, reasoning, injected
     │   context, copied history, and programmatic prompts are skipped
     │
-    ▼ Sanitizer (src/sessions/sanitize.ts)
+    ▼ Sanitizer
     │   credential shapes + configured literals, before any persistence
     │
-    ▼ Archive writer (src/sessions/archive.ts)
+    ▼ Archive writer
     │   one JSONL file per thread, atomic writes, byte-compared on rerun
     │   <archiveRoot>/<collection>/<harness>/<sourceId>/<hash>.jsonl
     │
@@ -245,13 +245,11 @@ Harness session store (JSONL files or SQLite, opened read-only)
         recorded date from the collection's fieldMapping)
 ```
 
-`SessionsService` (`src/sessions/service.ts`) owns discovery, registration,
-import, status, and prune. CLI, MCP, REST, SDK, and Web UI are thin adapters
-that share its receipt and status types (`src/sessions/types.ts`).
+One sessions service owns discovery, registration, import, status, and prune.
+The CLI, MCP, REST, SDK, and Web UI all call it and return the same receipt and
+status shapes.
 
-**Opt-in automation** (`src/sessions/automation*.ts`,
-`src/sessions/claude-hook.ts`, `src/serve/session-automation.ts`) adds
-triggers, not a second importer:
+**Opt-in automation** adds triggers that run the same importer:
 
 ```
 Claude Code SessionEnd ─► `gno sessions hook` ─┐   (validate, recheck the
@@ -259,7 +257,7 @@ Claude Code SessionEnd ─► `gno sessions hook` ─┐   (validate, recheck th
 daemon tick: due schedule ──────────────────────┘    per-profile pending marker)
                                                           │
           daemon tick / `sessions automation run`  ───────▼
-             recheck profile authority ─► SessionsService.import (per source,
+             recheck profile authority ─► sessions import (per source,
              bounded limit) ─► settle only the generation the run started with
 ```
 
@@ -273,7 +271,7 @@ installer, or cron engine: schedules are elapsed cadences evaluated by the
 daemon's 30-second tick.
 
 **Isolation by config/index pair.** An archive is one config file with a
-`sessions` block bound to one named index. `src/sessions/binding.ts` checks
+`sessions` block bound to one named index. GNO checks
 the pair before every CLI command, when the SDK opens a client, on the REST
 routes, and for cross-index `get`; the rules are in
 [Archive binding](SESSIONS.md#archive-binding-one-config-one-index). The archive root must lie outside GNO's
@@ -372,16 +370,11 @@ recheck. Cloud placeholders surface as distinct skips
 directories refuse descent (`DATALESS_DIRECTORY` or fail-closed codes) while
 preserving previously indexed descendants under unproven prefixes. Unsupported
 platform/filesystem/policy setup fails closed. This is distinct from
-`egressPolicy` (where derived data may travel). Evidence covers Google Drive,
-iCloud Drive, and OneDrive only for the tested configuration and both validated
-immediate SharePoint library roots — not Windows/Linux cloud filesystems, and
-not a claim of zero provider activity or universal provider support.
-
-The final controlled 5,000-file all-local benchmark compared the actual
-pre-implementation production walker with current production paths on the same
-corpus: current `any` measured -1.1280% and hierarchical `local` added 1.1841%
-median traversal overhead (2 warmups, 9 interleaved samples per lane). These are
-fixture-scoped performance results, not provider-latency guarantees.
+`egressPolicy` (where derived data may travel). Supported setups are Google
+Drive, iCloud Drive, and OneDrive on macOS, with OneDrive limited to SharePoint
+library roots directly under the SharedLibraries domain. Windows and Linux
+cloud filesystems are not supported. On a 5,000-file collection with every
+file local, `local` scans about 1% slower than `any`.
 
 `syncAll` defers this projection until every collection has synced, then runs
 one exact global reconciliation. The resident watcher sends every contained,
@@ -425,12 +418,12 @@ GNO uses **"Ports without DI"** - a pragmatic simplification of hexagonal archit
 CLI/MCP/Web UI/SDK → new Adapter() → adapter.createPort() → Port interface → Pipeline
 ```
 
-**Port interfaces** (in `src/llm/types.ts`):
+**Port interfaces**:
 
 - `EmbeddingPort` - vector embeddings
 - `GenerationPort` - LLM text generation
 - `RerankPort` - cross-encoder reranking
-- `VectorIndexPort` - vector search (in `src/store/vector`)
+- `VectorIndexPort` - vector search
 
 **Adapters** (instantiate ports):
 
@@ -518,18 +511,8 @@ local models are:
 Models are GGUF-quantized for efficiency. First inference resolves model files;
 downloads occur only when the configured policy permits them.
 
-Before native initialization, GNO installs a simulator lifetime guard based on
-node-llama-cpp PR 636. Version 3.20.0 includes the upstream race fix; GNO retains
-additional cleanup after failed model initialization and joined disposal calls. Active resource estimates retain their simulator model
-and backend until context disposal finishes. Installation verifies the exact
-3.20.0 package and simulator source; unexpected dependency changes fail explicitly.
-The guard changes only the in-memory simulator factory, including in npm installs.
-It does not rewrite dependency files, replace native binaries, change model inputs
-or disable predictive resource selection. This repair does not establish that
-every historical native crash has the same cause. A frozen 12-case CUDA
-embedding/restoration probe completed with exact incremental-versus-clean results;
-that scope does not establish generation, reranking, Metal crash resolution or a
-performance gain.
+GNO pins node-llama-cpp 3.20.0. If an install contains a different version,
+GNO stops with an explicit error instead of loading models.
 
 The native rerank port retains one ranking context for its loaded model generation,
 formatter configuration and token-capacity bucket. Batches execute serially within

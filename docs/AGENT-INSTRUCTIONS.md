@@ -28,10 +28,7 @@ All commands take `--target <harness|all>`, repeatable `--extra-dir <path>`,
 
 ## Harness matrix — who reads what
 
-Verified against a real cross-machine deployment (three hosts, seven
-harnesses, fresh-session protocol-canary confirmed, 2026-09).
-
-| Harness      | Target id  | Global instruction file            | Detection root          | Evidence / notes                                                        |
+| Harness      | Target id  | Global instruction file            | Detection root          | Notes                                                                   |
 | ------------ | ---------- | ---------------------------------- | ----------------------- | ----------------------------------------------------------------------- |
 | Claude Code  | `claude`   | `~/.claude/CLAUDE.md`              | `~/.claude`             | Honors `CLAUDE_CONFIG_DIR` when set (instance setups)                   |
 | Codex        | `codex`    | `~/.codex/AGENTS.md`               | `~/.codex`              | Honors `CODEX_HOME` when set                                            |
@@ -41,14 +38,14 @@ harnesses, fresh-session protocol-canary confirmed, 2026-09).
 | Hermes       | `hermes`   | `~/.hermes/SOUL.md`                | `~/.hermes`             | Marker-managed block inside the user-owned SOUL.md                      |
 | OpenClaw     | `openclaw` | `~/.openclaw/workspace/AGENTS.md`  | `~/.openclaw/workspace` | Existing workspaces only                                                |
 
-Import-chain dedupe (Grok → Claude today) is data-driven in the matrix, so
-future chains are new entries, not code changes.
+When one harness imports another's global file (Grok imports Claude's), the
+installer writes the block once and reports the importing harness as covered.
 
 ## Installer guarantees
 
-- **Owned block only** — content outside the markers stays byte-identical
-  (hash-verified in the test suite). A fresh install appends the block after
-  one blank line; uninstall removes the block and that blank line.
+- **Owned block only** — content outside the markers stays byte-identical.
+  A fresh install appends the block after one blank line; uninstall removes
+  the block and that blank line.
 - **Backup-first, atomic** — an existing file is copied to
   `<file>.gno-agents.bak.<timestamp>` (same permissions), then the new content
   lands via a temp file and an atomic rename, so a failed write leaves the
@@ -102,10 +99,10 @@ Detailed workflows stay in the skill; the block is the routing contract.
 stamp version + hash match the installed release. Exit 1 on any `outdated`,
 `missing`, or `malformed` target; exit 2 when a file could not be read.
 
-**Operator practice (not automated):** after installing, start a fresh session
-in each harness and ask for the loaded knowledge protocol; the agent should
-describe the GNO retrieval ladder. Behavioral canaries like this stay manual
-by design — v1 verification is deterministic only.
+**Check agent behavior by hand:** after installing, start a fresh session in
+each harness and ask for the loaded knowledge protocol. The agent should
+describe the GNO retrieval ladder. `gno agents verify` checks the installed
+file only; it cannot check what the agent does with it.
 
 ## Multi-machine reality
 

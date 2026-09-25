@@ -603,15 +603,14 @@ already exist; the Web UI and REST always use the recorded or default file:
   collections, or privacy routing; the import covers the profile's
   registered sources.
 
-Verified against Claude Code 2.1.280: SessionEnd fires for non-interactive
-`claude -p` runs with the fields `session_id`, `transcript_path`, `cwd`,
-`hook_event_name`, `reason`, and `prompt_id`, and the hook finishes inside
-Claude Code's default 1.5-second SessionEnd budget. Whether SessionEnd fires
-when an interactive session ends with `/exit` was not verified; the schedule
-catches up either way.
+The hook supports Claude Code 2.1.2xx. SessionEnd fires for non-interactive
+`claude -p` runs, and the hook finishes inside Claude Code's default
+1.5-second SessionEnd budget. Limitation: GNO does not guarantee that
+SessionEnd fires when an interactive session ends with `/exit`. The daemon
+schedule catches up on any session the hook missed.
 
-Other harnesses (Codex, OpenClaw, Hermes) and pre-compaction triggers have no
-verified hook in GNO. `enable --hook codex` fails with
+GNO has no hook for other harnesses (Codex, OpenClaw, Hermes) or for
+pre-compaction triggers. `enable --hook codex` fails with
 `SESSIONS_UNSUPPORTED_INTEGRATION`; import those harnesses manually or on a
 daemon schedule.
 
@@ -873,17 +872,20 @@ the archive.
 | OpenClaw    | `$OPENCLAW_STATE_DIR`, else `~/.openclaw`              | `agents/<agent>/agent/openclaw-agent.sqlite` (schema 23) and legacy `agents/<agent>/sessions/*.jsonl` |
 | Hermes      | `$HERMES_HOME`, else `~/.hermes`                       | `state.db` and `profiles/<name>/state.db`                                                             |
 
-What each parser was verified against:
+Supported versions:
 
-| Harness     | Verified against                                                                                                                                                                                      |
-| :---------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Codex       | Structure of a local store written by CLI 0.58 through 0.156.1 (2026-09): the legacy `user_message` / `agent_message` events (0.150 and earlier) and `item_completed` speech items (0.151 and later). |
-| Claude Code | Structure of local stores written by CLI 2.1.2xx (2026-09). Files without the `origin` field use a conservative fallback; no such file was available to verify it.                                    |
-| OpenClaw    | Upstream v2026.9.6 source definitions, with synthetic fixtures. Not verified against a live installation. zstd-compressed events are supported.                                                       |
-| Hermes      | The v0.19.0 schema (schema version 22) from the installed source, with synthetic fixtures. No populated store was available.                                                                          |
+| Harness     | Supported versions                                                                                                                                                     |
+| :---------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Codex       | CLI 0.58 through 0.156.1. Both the older `user_message` / `agent_message` events (0.150 and earlier) and the `item_completed` speech items (0.151 and later) are read. |
+| Claude Code | CLI 2.1.2xx. Files without the `origin` field fall back to conservative role attribution.                                                                              |
+| OpenClaw    | 2026.9.6, early support. zstd-compressed events are supported.                                                                                                         |
+| Hermes      | 0.19.0 (schema version 22), early support.                                                                                                                             |
 
-Other versions may work; a format change shows up as `format_drift` or
-`unknownKinds` in the receipt rather than as misattributed speech.
+Other versions may work. When a store's format differs from what GNO reads,
+the receipt reports `format_drift` or `unknownKinds` and GNO skips the
+unrecognized records instead of attributing them to the wrong speaker. With
+the early-support harnesses, check the receipt for `format_drift` after the
+first import.
 
 Consumer chat exports (downloaded conversation archives from chat apps) are
 out of scope for `gno sessions`; index them with the generic
@@ -1001,7 +1003,7 @@ so the fact points back to its evidence.
 | `SESSIONS_SELECTION_REQUIRED`, `SESSIONS_DESTINATION_REQUIRED`                  | No source or paths selected; path import without a collection      | 1        | 400  | `VALIDATION` | `VALIDATION` |
 | `SESSIONS_UNKNOWN_SOURCE`, `SESSIONS_UNKNOWN_COLLECTION`                        | Unregistered source ID or archive collection                       | 1        | 400  | `VALIDATION` | `VALIDATION` |
 | `SESSIONS_UNKNOWN_PROFILE`                                                      | Unknown automation profile ID                                      | 1        | 400  | `VALIDATION` | `VALIDATION` |
-| `SESSIONS_UNSUPPORTED_INTEGRATION`                                              | Hook for a harness without a verified integration                  | 1        | 400  | `VALIDATION` | `VALIDATION` |
+| `SESSIONS_UNSUPPORTED_INTEGRATION`                                              | Hook for a harness GNO has no hook integration for                 | 1        | 400  | `VALIDATION` | `VALIDATION` |
 | `SESSIONS_UNSAFE_PATH`, `SESSIONS_UNSUPPORTED_FORMAT`, `SESSIONS_INVALID_INPUT` | Unsafe path, unknown harness, or malformed input                   | 1        | 400  | `VALIDATION` | `VALIDATION` |
 | `SESSIONS_SOURCE_UNAVAILABLE`                                                   | Source path missing or unreadable (no host path when remote)       | 2        | 500  | `RUNTIME`    | `RUNTIME`    |
 | `SESSIONS_BUSY`                                                                 | Another import holds the archive lock                              | 4        | 409  | `BUSY`       | `RUNTIME`    |
