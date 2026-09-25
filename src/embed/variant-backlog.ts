@@ -5,6 +5,7 @@ import type { EmbedBacklogDeps, EmbedBacklogResult } from "./backlog";
 import {
   assertInferenceActive,
   isBackgroundInference,
+  withInferencePage,
 } from "../llm/inference-scope";
 import { err, ok } from "../store/types";
 import { getVectorStatsDatabase } from "../store/vector/stats";
@@ -54,14 +55,25 @@ export async function embedVariantBacklog(
                 .get(owner.documentId, deps.collection!)
           )
         : pending;
-      let result = await embedVariantBatch({
-        store,
-        embedPort: deps.embedPort,
-        owners,
-        identityStillCurrent,
-        force: deps.force,
-        acquireWriteTurn: deps.acquireWriteTurn,
-      });
+      const embedPage = () =>
+        embedVariantBatch({
+          store,
+          embedPort: deps.embedPort,
+          owners,
+          identityStillCurrent,
+          force: deps.force,
+          acquireWriteTurn: deps.acquireWriteTurn,
+        });
+      let result = background
+        ? await withInferencePage(embedPage)
+        : await embedPage();
+      if (!result) {
+        // Past its deadline: this page stays pending for the next pass.
+        total.errors += owners.length;
+        deps.onProgress?.(total.embedded, total.errors);
+        await Bun.sleep(0);
+        continue;
+      }
       if (result.deferred) return ok({ ...total, deferred: true });
       total.embedded += result.embedded;
       total.errors += result.errors;

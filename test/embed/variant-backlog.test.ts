@@ -13,6 +13,7 @@ import type { VectorIndexPort } from "../../src/store/vector";
 import { embedBacklog } from "../../src/embed/backlog";
 import { embedVariantBatch } from "../../src/embed/variant-retry";
 import {
+  recordInferenceTimeout,
   withBackgroundInference,
   withOwnedInferenceScope,
 } from "../../src/llm/inference-scope";
@@ -369,6 +370,26 @@ test("background owner turns cap at 32, pass failed first page and resume only u
   expect(batches).toEqual([32, 32, 6, 32]);
   expect(store.pending()).toEqual([]);
   expect(store.isActive()).toBe(true);
+});
+
+test("background page past its inference deadline fails only that page", async () => {
+  const { store, deps, port } = await variantFixture(["Slow", "Beta", "Gamma"]);
+  port.embedBatch = async (texts) => {
+    if (texts.some((text) => text.includes("Slow"))) {
+      recordInferenceTimeout();
+      return {
+        ok: false,
+        error: { code: "TIMEOUT", message: "deadline", retryable: false },
+      };
+    }
+    return { ok: true, value: texts.map(() => [1, 2, 3]) };
+  };
+  // The scheduler's owned pass scope: the deadline must not fail it.
+  const result = await withBackgroundInference(() =>
+    withOwnedInferenceScope({}, () => embedBacklog({ ...deps, batchSize: 1 }))
+  );
+  expect(result).toMatchObject({ ok: true, value: { embedded: 2, errors: 1 } });
+  expect(store.pending().map((owner) => owner.documentId)).toEqual([1]);
 });
 
 test("interrupted background turns preserve checkpoints and resume each remaining owner once", async () => {

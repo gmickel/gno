@@ -5,7 +5,11 @@ import type { EmbeddingPort } from "../../src/llm/types";
 
 import { embedBacklog } from "../../src/embed/backlog";
 import { embedAndStoreBatch } from "../../src/embed/retry";
-import { withBackgroundInference } from "../../src/llm/inference-scope";
+import {
+  recordInferenceTimeout,
+  withBackgroundInference,
+  withOwnedInferenceScope,
+} from "../../src/llm/inference-scope";
 import { createLazyVectorIndex } from "../../src/store/vector/lazy";
 import { createVectorIndexPort } from "../../src/store/vector/sqlite-vec";
 import { createVectorStatsPort } from "../../src/store/vector/stats";
@@ -177,4 +181,40 @@ test("checked checkpoint revalidates after contention and never reports rolled-b
     })
   ).toMatchObject({ embedded: 0, errors: 1 });
   expect(db.query("SELECT * FROM content_vectors").all()).toEqual([]);
+});
+
+test("legacy background page past its inference deadline fails only that page", async () => {
+  const { db, port, statsPort } = fixture();
+  db.exec(`INSERT INTO content_chunks VALUES('body',1,'Second body','2020-01-01');
+    INSERT INTO content_chunks VALUES('body',2,'Third body','2020-01-01');`);
+  port.embedBatch = async (texts) => {
+    if (texts.some((text) => text.includes("Original body"))) {
+      recordInferenceTimeout();
+      return {
+        ok: false,
+        error: { code: "TIMEOUT", message: "deadline", retryable: false },
+      };
+    }
+    return { ok: true, value: texts.map(() => [1, 2, 3]) };
+  };
+  const index = await createVectorIndexPort(db, {
+    model: port.modelUri,
+    dimensions: 3,
+  });
+  if (!index.ok) throw new Error(index.error.message);
+  const result = await withBackgroundInference(() =>
+    withOwnedInferenceScope({}, () =>
+      embedBacklog({
+        statsPort,
+        embedPort: port,
+        vectorIndex: index.value,
+        modelUri: port.modelUri,
+        batchSize: 1,
+      })
+    )
+  );
+  expect(result).toMatchObject({ ok: true, value: { embedded: 2, errors: 1 } });
+  expect(
+    db.query("SELECT seq FROM content_vectors ORDER BY seq").all()
+  ).toEqual([{ seq: 1 }, { seq: 2 }]);
 });

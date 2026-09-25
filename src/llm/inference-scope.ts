@@ -168,6 +168,24 @@ export function withOwnedInferenceScope<T>(
   return scope.run({}, () => withInferenceScope(options, operation));
 }
 
+/**
+ * One page of a background pass: an inference deadline inside it fails only
+ * that page (undefined), leaving the pass scope active for later pages.
+ * Cancellation, or a deadline of the enclosing scope itself, still throws.
+ */
+export async function withInferencePage<T>(
+  operation: () => Promise<T>
+): Promise<T | undefined> {
+  try {
+    return await withOwnedInferenceScope(inferenceOptions(), operation);
+  } catch (cause) {
+    if (!(cause instanceof DOMException && cause.name === "TimeoutError"))
+      throw cause;
+    assertInferenceActive();
+    return undefined;
+  }
+}
+
 /** A cancelled queued reader releases only its eventual grant, never another caller's. */
 export async function acquireInferencePermit(
   acquire: () => Promise<() => void>

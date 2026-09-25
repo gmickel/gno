@@ -377,6 +377,13 @@ export async function startResidentRuntime(
     acquireWriteLease: leaseFor(`gno ${mode} (watch sync)`),
   });
   watchService.start();
+  // A backlog left by `--no-embed` or an earlier run gets a pass without
+  // waiting for a file change.
+  const startupStatus = await store.getStatus({
+    embedModel: getActivePreset(initialConfig).embed,
+  });
+  if (startupStatus.ok && startupStatus.value.embeddingBacklog > 0)
+    scheduler.notifySyncComplete([]);
   ctxHolder.watchService = watchService;
   ctxHolder.current.watchService = watchService;
 

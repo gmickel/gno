@@ -19,6 +19,7 @@ import type { AcquireWriteTurn } from "./retry";
 import {
   assertInferenceActive,
   isBackgroundInference,
+  withInferencePage,
 } from "../llm/inference-scope";
 import { formatDocForEmbedding } from "../pipeline/contextual";
 import { err, ok } from "../store/types";
@@ -221,16 +222,27 @@ export async function embedBacklog(
       }
 
       const beforeEmbedded = embedded;
-      const batchStoreResult = await embedAndStoreBatch({
-        embedPort,
-        vectorIndex,
-        items: batch,
-        modelUri,
-        embedFingerprint,
-        identityStillCurrent: deps.identityStillCurrent,
-        statsPort,
-        acquireWriteTurn: deps.acquireWriteTurn,
-      });
+      const storePage = () =>
+        embedAndStoreBatch({
+          embedPort,
+          vectorIndex,
+          items: batch,
+          modelUri,
+          embedFingerprint,
+          identityStillCurrent: deps.identityStillCurrent,
+          statsPort,
+          acquireWriteTurn: deps.acquireWriteTurn,
+        });
+      const batchStoreResult = background
+        ? await withInferencePage(storePage)
+        : await storePage();
+      if (!batchStoreResult) {
+        // Past its deadline: this page stays pending for the next pass.
+        errors += batch.length;
+        deps.onProgress?.(embedded, errors);
+        await Bun.sleep(0);
+        continue;
+      }
       if (batchStoreResult.deferred)
         return ok({ embedded, errors, contentionErrors, deferred: true });
       embedded += batchStoreResult.embedded;

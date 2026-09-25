@@ -1230,9 +1230,11 @@ generation or rerank model loaded. Remote HTTP models are not affected.
 **Background embedding.** The daemon and `gno serve` embed in batches of up to
 32 chunks and let searches go first: after at most eight search-side model
 calls, one background batch runs. None of this is configurable. A chunk that
-fails to embed stays pending and is retried on the next pass. A pass starts
-30 seconds after new chunks stop arriving, and no later than five minutes
-after the first one.
+fails to embed stays pending and is retried on the next pass; a batch that
+exceeds `inferenceTimeout` fails only itself, and later batches still embed in
+the same pass. A pass starts 30 seconds after new chunks stop arriving, and no
+later than five minutes after the first one. Chunks already pending when the
+daemon or `gno serve` starts get a pass 30 seconds after startup.
 
 **Shutdown.** `gno daemon` and `gno serve` take at most about 11 seconds to
 stop: up to five seconds to finish in-flight work, five seconds for canceled

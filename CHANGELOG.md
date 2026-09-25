@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `gno serve` and `gno daemon` now drain an embedding backlog that already exists when they start (for example after `gno index --no-embed` or an interrupted run) instead of waiting for the next file change; the first pass runs 30 seconds after startup.
+- A background embedding batch that exceeds `models.inferenceTimeout` no longer aborts the whole pass. Only that batch fails and stays pending; later batches still embed, so one slow chunk at the head of the backlog cannot keep every other chunk pending.
+
 ## [2.7.0] - 2026-09-25
 
 ### Changed
