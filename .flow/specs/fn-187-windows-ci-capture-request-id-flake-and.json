@@ -1,9 +1,17 @@
 {
   "branch_name": "fn-187-windows-ci-capture-request-id-flake-and",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
   "created_at": "2026-09-25T09:30:23.015321Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-187-windows-ci-capture-request-id-flake-and",
+  "impl_review_rounds": {},
   "next_task": 1,
+  "no_plan": true,
+  "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-187-windows-ci-capture-request-id-flake-and.md",
@@ -20,5 +28,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T09:30:23.019285Z"
+  "updated_at": "2026-09-25T19:50:27.514032Z"
 }
