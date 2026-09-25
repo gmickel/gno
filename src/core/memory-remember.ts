@@ -24,6 +24,7 @@ import type {
   RememberResult,
 } from "./memory-types";
 
+import { buildUri } from "../app/constants";
 import { defaultSyncService, withContentTypeRules } from "../ingestion";
 import { withWriteLock } from "./file-lock";
 import { atomicCreate } from "./file-ops";
@@ -399,7 +400,7 @@ export async function rememberFact(
     if (sync.status === "failed") {
       throw new MemoryError(
         "MEMORY_SYNC_FAILED",
-        `Memory record written to ${absPath} but lexical sync failed: ${sync.error}. Run gno update to retry indexing.`
+        `Memory record written to ${buildUri(collection.name, relPath)} but lexical sync failed: ${sync.error}. Run gno update to retry indexing.`
       );
     }
     const written = (doc as { value: DocumentRow }).value;
@@ -415,13 +416,13 @@ export async function rememberFact(
       if (!projected) {
         throw new MemoryError(
           "MEMORY_SUPERSEDE_PROJECTION_FAILED",
-          `Successor written to ${absPath} but its supersedes edge did not project${projectionErrors ? ` (${projectionErrors})` : ""}; the predecessor still reads as current. Run gno update to retry the projection.`
+          `Successor written to ${buildUri(collection.name, relPath)} but its supersedes edge did not project${projectionErrors ? ` (${projectionErrors})` : ""}; the predecessor still reads as current. Run gno update to retry the projection.`
         );
       }
     } else if (projectionErrors.length > 0) {
       throw new MemoryError(
         "MEMORY_SYNC_FAILED",
-        `Memory record written to ${absPath} but typed-edge projection failed: ${projectionErrors}. Run gno update to retry indexing.`
+        `Memory record written to ${buildUri(collection.name, relPath)} but typed-edge projection failed: ${projectionErrors}. Run gno update to retry indexing.`
       );
     }
     const record: MemoryFact = {

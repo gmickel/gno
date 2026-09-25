@@ -99,14 +99,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "docid",
-          "uri",
-          "title",
-          "collection",
-          "absPath",
-          "modifiedAt"
-        ],
+        "required": ["docid", "uri", "title", "collection", "modifiedAt"],
         "properties": {
           "docid": {
             "type": "string",
@@ -129,7 +122,7 @@
           "absPath": {
             "type": "string",
             "minLength": 1,
-            "description": "Absolute source path (collection root + relative path)"
+            "description": "Absolute source path (collection root + relative path). CLI and stdio MCP only; omitted for HTTP MCP callers."
           },
           "modifiedAt": {
             "type": "string",

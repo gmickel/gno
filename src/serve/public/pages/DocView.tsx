@@ -583,11 +583,10 @@ export default function DocView({ navigate }: PageProps) {
     return buildDocAssetUrl(doc.uri, doc.relPath);
   }, [doc, isPdf]);
 
-  // Remote "Open original" target for any document that has a source file:
-  // /api/doc-asset serves any collection file inline, so this keeps the
-  // previous file:// scope (every read-only source) for remote clients.
+  // Remote "Open original" target: /api/doc-asset serves any collection file
+  // inline by URI, and remote clients never receive the host absPath.
   const sourceAssetUrl = useMemo(() => {
-    if (!doc?.source.absPath) {
+    if (!doc) {
       return null;
     }
     return buildDocAssetUrl(doc.uri, doc.relPath);

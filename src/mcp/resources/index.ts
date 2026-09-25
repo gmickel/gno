@@ -21,6 +21,7 @@ import { resolveEffectiveIndex } from "../../core/indexed-reference";
 import { normalizeTag, validateTag } from "../../core/tags";
 import { normalizeCollectionName } from "../../core/validation";
 import { openScopedIndexStore } from "../../store/sqlite/scoped-index";
+import { exposesHostPaths } from "../context";
 
 // Tags resource URI prefix
 const TAGS_URI = `${URI_PREFIX}tags`;
@@ -53,15 +54,15 @@ function formatResourceContent(
   ctx: ToolContext,
   indexName = ctx.indexName
 ): string {
-  // Find collection for absPath
+  // Host path for stdio callers; HTTP callers see the relative path.
   const uriParsed = parseUri(doc.uri);
-  let absPath = doc.relPath;
-  if (uriParsed) {
+  let source = doc.relPath;
+  if (uriParsed && exposesHostPaths(ctx)) {
     const collection = ctx.collections.find(
       (c) => c.name === uriParsed.collection
     );
     if (collection) {
-      absPath = pathJoin(collection.path, doc.relPath);
+      source = pathJoin(collection.path, doc.relPath);
     }
   }
 
@@ -72,7 +73,7 @@ function formatResourceContent(
   const displayUri = decorateUriForIndex(doc.uri, indexName);
   const header = `<!-- ${displayUri}
      docid: ${doc.docid}
-     source: ${absPath}
+     source: ${source}
      mime: ${doc.sourceMime}${langLine}
 -->
 

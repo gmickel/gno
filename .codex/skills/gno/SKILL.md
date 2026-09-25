@@ -130,8 +130,9 @@ Open without fetching content via `gno get`:
   `#anchor`). Take `serveUrl` from peek `serve.url` when `serve.running` is
   true.
 - **Source file**: peek `recent[].absPath`, or search `--json`
-  `results[].source.absPath`. If `absPath` is absent, show the URI tail and
-  do not offer file-open for that row.
+  `results[].source.absPath`. If `absPath` is absent (always for remote REST
+  and HTTP MCP callers), show the URI tail and do not offer file-open for
+  that row.
 
 ## Search Modes
 
@@ -557,7 +558,8 @@ Programmatic capture uses the same receipt contract:
 
 MCP capture writes structured `source:` frontmatter, runs under the MCP write
 lock, syncs the file for FTS, and preserves legacy MCP fields (`docid`,
-`absPath`, `overwritten`, `serverInstanceId`) alongside the shared receipt. It
+`absPath` over stdio only, `overwritten`, `serverInstanceId`) alongside the
+shared receipt. It
 does not auto-embed.
 
 For an explicit browser capture, use the local unpacked Chromium clipper with

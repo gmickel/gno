@@ -1,11 +1,4 @@
 import type { HttpGatewayOverrides } from "../mcp/http-security";
-/**
- * Bun.serve() web server for GNO web UI.
- * Uses Bun's fullstack dev server with HTML imports.
- * Opens DB once at startup, closes on shutdown.
- *
- * @module src/serve/server
- */
 import type { RequestPeerServer } from "./request-locality";
 import type { ResidentRuntime } from "./resident-runtime";
 import type { ContextHolder } from "./routes/api";
@@ -23,6 +16,14 @@ import {
   handlePdfjsVendorRequest,
   isPdfjsVendorPath,
 } from "./fn112-routes";
+/**
+ * Bun.serve() web server for GNO web UI.
+ * Uses Bun's fullstack dev server with HTML imports.
+ * Opens DB once at startup, closes on shutdown.
+ *
+ * @module src/serve/server
+ */
+import { withRemoteHostPathRedaction } from "./host-path-redaction";
 import { PDFJS_ASSET_CACHE_CONTROL } from "./pdfjs-assets";
 // HTML import - Bun handles bundling TSX/CSS automatically via routes
 import homepage from "./public/index.html";
@@ -571,7 +572,7 @@ export async function startServer(
       development: isDev,
 
       // Static routes - Bun handles HTML bundling and /_bun/* assets automatically
-      routes: {
+      routes: withRemoteHostPathRedaction({
         "/mcp": gateway.route,
         ...clipperRoutesForBind(
           isHttpGatewayLoopbackBind(gatewayConfig.host),
@@ -1743,7 +1744,7 @@ export async function startServer(
             );
           },
         },
-      },
+      }),
       // Production catch-all: /vendor/pdfjs prefix, then hashed SPA chunks
       // (gzip + immutable) and the private SPA source — the same factory the
       // tests mount (no test-only fallback path).

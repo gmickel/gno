@@ -299,7 +299,7 @@ describe("gno_capture MCP", () => {
     expect(result.isError).toBe(true);
     expect(result.structuredContent?.error).toBe("CAPTURE_SYNC_FAILED");
     expect(result.content[0]?.text).toContain(
-      `Capture written to ${join(tmpDir, "sync-failed.md")} but lexical sync failed: PARSE_ERROR - bad markdown`
+      "Capture written to gno://notes/sync-failed.md but lexical sync failed: PARSE_ERROR - bad markdown"
     );
     expect(await Bun.file(join(tmpDir, "sync-failed.md")).text()).toContain(
       "Written before sync fails"

@@ -127,7 +127,7 @@ export function formatRememberResult(result: RememberResult): string {
       lines.push(`Outcome: ${result.outcome}`);
       lines.push(`URI: ${result.record.uri}`);
       lines.push(`Hash: ${result.record.contentHash}`);
-      lines.push(`Path: ${result.absPath}`);
+      if (result.absPath) lines.push(`Path: ${result.absPath}`);
       lines.push(`Sync: ${result.sync.status}`);
       if (result.record.supersedes.length > 0) {
         lines.push(`Supersedes: ${result.record.supersedes.join(", ")}`);
