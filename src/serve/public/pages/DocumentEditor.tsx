@@ -332,9 +332,10 @@ export default function DocumentEditor({ navigate }: PageProps) {
   // One request ID per (document revision, content) save intent: retrying a
   // save whose response was lost replays it instead of reporting a conflict.
   const saveIntentRef = useRef<RequestIntent | null>(null);
-  // A save is in flight or its response was lost: its commit is unknown, so
-  // change events are held until a response says whose change they were.
-  const saveOutcomeUnknownRef = useRef(false);
+  // Content of a save that is in flight or whose response was lost: its
+  // commit is unknown, so change events are held until a response says whose
+  // change they were. Retry save re-sends exactly this content.
+  const unknownSaveRef = useRef<string | null>(null);
   const changedWhileUnknownRef = useRef(false);
 
   /** Save `contentToSave`; resolves true once it is committed on disk. */
@@ -349,7 +350,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
 
       setSaveStatus("saving");
       setSaveError(null);
-      saveOutcomeUnknownRef.current = true;
+      unknownSaveRef.current = contentToSave;
 
       const {
         data,
@@ -377,12 +378,15 @@ export default function DocumentEditor({ navigate }: PageProps) {
         setSaveStatus("error");
         setSaveError(err);
         if (outcomeUnknown) {
-          setChangeNotice("unconfirmed");
+          // Never downgrade a warning about a change from elsewhere.
+          setChangeNotice((notice) =>
+            notice === "outside" ? notice : "unconfirmed"
+          );
           return false;
         }
         // A definitive rejection: this save did not commit, so a change seen
         // meanwhile came from elsewhere.
-        saveOutcomeUnknownRef.current = false;
+        unknownSaveRef.current = null;
         if (changedWhileUnknownRef.current) {
           changedWhileUnknownRef.current = false;
           setChangeNotice("outside");
@@ -394,7 +398,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
         return false;
       }
 
-      saveOutcomeUnknownRef.current = false;
+      unknownSaveRef.current = null;
       changedWhileUnknownRef.current = false;
       if (data?.request?.replayed) {
         // A replay reports an earlier commit; disk may have moved on since.
@@ -621,6 +625,15 @@ export default function DocumentEditor({ navigate }: PageProps) {
     }
   }, [cancelAutosave, content, hasUnsavedChanges, persistContent]);
 
+  // Retry the unconfirmed save itself (same content, same request ID), even
+  // when the draft has since returned to the loaded text.
+  const retryUnconfirmedSave = useCallback(async () => {
+    const pending = unknownSaveRef.current;
+    if (pending === null) return;
+    cancelAutosave();
+    await persistContent(pending);
+  }, [cancelAutosave, persistContent]);
+
   const loadDocument = useCallback(() => {
     const uri = currentTarget.uri;
 
@@ -669,7 +682,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
       return;
     }
     handledDocEventRef.current = latestDocEvent.changedAt;
-    if (saveOutcomeUnknownRef.current) {
+    if (unknownSaveRef.current !== null) {
       changedWhileUnknownRef.current = true;
       return;
     }
@@ -680,7 +693,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
   }, [doc, latestDocEvent?.changedAt, latestDocEvent?.uri]);
 
   const reloadDocument = useCallback(() => {
-    saveOutcomeUnknownRef.current = false;
+    unknownSaveRef.current = null;
     changedWhileUnknownRef.current = false;
     setChangeNotice(null);
     loadDocument();
@@ -1181,7 +1194,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
             </p>
             <Button
               disabled={saveStatus === "saving"}
-              onClick={handleForceSave}
+              onClick={retryUnconfirmedSave}
               size="sm"
               variant="outline"
             >

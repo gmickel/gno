@@ -165,8 +165,10 @@ describe("DocumentEditor saves", () => {
   const UNCONFIRMED = /save may have completed/u;
   const OUTSIDE = /changed on disk/u;
 
+  let eventCount = 0;
   async function changeEvent(rerender: ReturnType<typeof render>["rerender"]) {
-    docEvent = { uri: DOC.uri, changedAt: new Date().toISOString() };
+    eventCount += 1;
+    docEvent = { uri: DOC.uri, changedAt: `2026-09-25T00:00:${eventCount}Z` };
     const { default: DocumentEditor } =
       await import("../../../../src/serve/public/pages/DocumentEditor");
     rerender(<DocumentEditor navigate={() => undefined} />);
@@ -191,6 +193,7 @@ describe("DocumentEditor saves", () => {
     );
     await screen.findByText(UNCONFIRMED);
     await changeEvent(rerender);
+    return { editor, rerender };
   }
 
   test("a lost save response offers retry instead of claiming an outside change", async () => {
@@ -271,5 +274,47 @@ describe("DocumentEditor saves", () => {
 
     await screen.findByText(/Reload before continuing/u);
     expect(screen.queryByText(UNCONFIRMED)).toBeNull();
+  });
+
+  test("Retry save resolves a lost save after the draft is undone to the loaded text", async () => {
+    const { editor, rerender } = await lostSaveThenEvent();
+    fireEvent.change(editor, { target: { value: DOC.content } });
+    diskHash = "hash-v1";
+    putResponses.push(replayedSave("hash-v1"));
+    fireEvent.click(screen.getByRole("button", { name: "Retry save" }));
+
+    await waitFor(() => expect(puts()).toHaveLength(2));
+    const [lost, retry] = puts();
+    expect(retry.requestId).toBe(lost.requestId);
+    await waitFor(() => expect(screen.queryByText(UNCONFIRMED)).toBeNull());
+    // Change events are no longer held once the outcome is known.
+    await changeEvent(rerender);
+    await screen.findByText(OUTSIDE);
+  });
+
+  test("a lost save keeps an existing outside-change warning", async () => {
+    putResponses.push(
+      () =>
+        Promise.resolve({
+          data: null,
+          error: "Failed to fetch",
+          outcomeUnknown: true,
+        }) as never,
+      () => apiError("Document changed on disk. Reload before saving.") as never
+    );
+    const { editor, rerender } = await openEditor();
+    await changeEvent(rerender);
+    await screen.findByText(OUTSIDE);
+
+    fireEvent.change(editor, { target: { value: "v1" } });
+    ctrlS();
+    await screen.findByRole("alert");
+    expect(screen.getByText(OUTSIDE)).toBeTruthy();
+    expect(screen.queryByText(UNCONFIRMED)).toBeNull();
+
+    ctrlS();
+    await waitFor(() => expect(puts()).toHaveLength(2));
+    await screen.findAllByText(/Reload before saving/u);
+    expect(screen.getByText(/Reload before continuing/u)).toBeTruthy();
   });
 });
