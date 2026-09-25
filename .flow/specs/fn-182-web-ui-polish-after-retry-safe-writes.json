@@ -147,7 +147,7 @@
     "impl:fn-182-web-ui-polish-after-retry-safe-writes.1": 0
   },
   "spec_path": ".flow/specs/fn-182-web-ui-polish-after-retry-safe-writes.md",
-  "status": "open",
+  "status": "done",
   "title": "Web UI polish after retry-safe writes",
   "tracker": {
     "baseHashFlow": null,
@@ -160,5 +160,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T14:43:45.519310Z"
+  "updated_at": "2026-09-25T14:43:57.309138Z"
 }

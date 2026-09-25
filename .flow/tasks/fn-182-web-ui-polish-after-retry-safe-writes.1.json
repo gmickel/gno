@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-182-web-ui-polish-after-retry-safe-writes",
   "spec_path": ".flow/tasks/fn-182-web-ui-polish-after-retry-safe-writes.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Web UI polish after retry-safe writes",
   "updated_at": "2026-09-25T14:12:12.696010Z"
 }
