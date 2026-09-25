@@ -21,7 +21,7 @@
 import { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { closeSync, openSync, utimesSync } from "node:fs";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -44,17 +44,9 @@ const TEST_TIMEOUT_MS = IS_WIN ? 20_000 : 15_000;
 // SIGKILL fallback test pays a real SIGTERM-grace cost; give it more room.
 const SIGKILL_TEST_TIMEOUT_MS = IS_WIN ? 30_000 : 25_000;
 
-let _seq = 0;
-
-function uniqueDirName(prefix: string): string {
-  _seq += 1;
-  return `${prefix}-${process.pid}-${Date.now()}-${_seq}`;
-}
-
+/** Private (0700, unpredictable name) root per test, like the rest of the suite. */
 async function makeTestDir(prefix = "gno-detach-int"): Promise<string> {
-  const base = join(tmpdir(), uniqueDirName(prefix));
-  await mkdir(base, { recursive: true });
-  return base;
+  return await mkdtemp(join(tmpdir(), `${prefix}-`));
 }
 
 interface CliEnv {
