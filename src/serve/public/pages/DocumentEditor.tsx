@@ -626,13 +626,16 @@ export default function DocumentEditor({ navigate }: PageProps) {
   }, [cancelAutosave, content, hasUnsavedChanges, persistContent]);
 
   // Retry the unconfirmed save itself (same content, same request ID), even
-  // when the draft has since returned to the loaded text.
+  // when the draft has since changed or returned to the loaded text; once it
+  // is confirmed, the current draft is saved on top of it.
   const retryUnconfirmedSave = useCallback(async () => {
     const pending = unknownSaveRef.current;
     if (pending === null) return;
     cancelAutosave();
-    await persistContent(pending);
-  }, [cancelAutosave, persistContent]);
+    if ((await persistContent(pending)) && content !== pending) {
+      await persistContent(content);
+    }
+  }, [cancelAutosave, content, persistContent]);
 
   const loadDocument = useCallback(() => {
     const uri = currentTarget.uri;

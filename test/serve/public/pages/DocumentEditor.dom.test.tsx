@@ -6,7 +6,15 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  mock,
+  spyOn,
+  test,
+} from "bun:test";
 import { forwardRef, useImperativeHandle } from "react";
 
 import { apiError, apiOk, setTestLocation } from "../../../helpers/dom";
@@ -276,21 +284,36 @@ describe("DocumentEditor saves", () => {
     expect(screen.queryByText(UNCONFIRMED)).toBeNull();
   });
 
-  test("Retry save resolves a lost save after the draft is undone to the loaded text", async () => {
-    const { editor, rerender } = await lostSaveThenEvent();
-    fireEvent.change(editor, { target: { value: DOC.content } });
-    diskHash = "hash-v1";
-    putResponses.push(replayedSave("hash-v1"));
-    fireEvent.click(screen.getByRole("button", { name: "Retry save" }));
+  test.each([
+    ["undone to the loaded text", DOC.content],
+    ["edited further", "v2"],
+  ])(
+    "Retry save confirms a lost save when the draft was %s, then saves the draft",
+    async (_case, draft) => {
+      const { editor, rerender } = await lostSaveThenEvent();
+      fireEvent.change(editor, { target: { value: draft } });
+      diskHash = "hash-v1";
+      putResponses.push(replayedSave("hash-v1"));
+      fireEvent.click(screen.getByRole("button", { name: "Retry save" }));
 
-    await waitFor(() => expect(puts()).toHaveLength(2));
-    const [lost, retry] = puts();
-    expect(retry.requestId).toBe(lost.requestId);
-    await waitFor(() => expect(screen.queryByText(UNCONFIRMED)).toBeNull());
-    // Change events are no longer held once the outcome is known.
-    await changeEvent(rerender);
-    await screen.findByText(OUTSIDE);
-  });
+      await waitFor(() => expect(puts()).toHaveLength(3));
+      const [lost, retry, next] = puts();
+      expect(retry.requestId).toBe(lost.requestId);
+      expect(next).toMatchObject({
+        content: draft,
+        expectedSourceHash: "hash-v1",
+      });
+      await waitFor(() => expect(screen.queryByText(UNCONFIRMED)).toBeNull());
+      // Change events are no longer held once the outcome is known.
+      const now = spyOn(Date, "now").mockReturnValue(Date.now() + 10_000);
+      try {
+        await changeEvent(rerender);
+        await screen.findByText(OUTSIDE);
+      } finally {
+        now.mockRestore();
+      }
+    }
+  );
 
   test("a lost save keeps an existing outside-change warning", async () => {
     putResponses.push(
