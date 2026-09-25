@@ -1,0 +1,50 @@
+{
+  "branch": "fn-180-investigate-detached-serve-hot-loop-raw",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "368e12d7afaeb9c9e25adccf8202e478327a16b0",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-c6f17053886c178f9ff9c302fa11659ce998d8b2f04852c74fed9622372de30b"
+  },
+  "head_sha": "368e12d7afaeb9c9e25adccf8202e478327a16b0",
+  "id": "fn-180-investigate-detached-serve-hot-loop-raw",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 6,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R7"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R5"
+      }
+    ],
+    "total": 6
+  },
+  "timestamp": "2026-09-25T17:09:56Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
