@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-183-error-schema-lists-the-cli-busy-code",
   "spec_path": ".flow/tasks/fn-183-error-schema-lists-the-cli-busy-code.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Error schema lists the CLI BUSY code",
   "updated_at": "2026-09-25T14:11:51.886587Z"
 }
