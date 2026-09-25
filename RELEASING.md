@@ -113,4 +113,3 @@ Run the repo's checks (`bun x biome check .`, `bun x tsc --noEmit`,
 `bun run build`), check `/apps/gno` at desktop and phone width, open a PR,
 and merge when checks and the Vercel preview pass. Confirm production:
 `https://mickel.tech/apps/gno` returns 200 and shows the new version.
-
