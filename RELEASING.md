@@ -1,7 +1,9 @@
 # Releasing GNO
 
 The checklist for an authorized product release: npm package, desktop and
-clipper assets, the ClawHub skill, and the matching gno.sh update. Policy on
+clipper assets, the ClawHub skill, and the downstream sites (gno.sh and the
+GNO page on mickel.tech). A release is not finished until every step below
+is done; the downstream steps are part of the release, not a separate request. Policy on
 when a change needs a release lives in [AGENTS.md](AGENTS.md#versioning--release)
 and [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md#release-process).
 Documentation-only and CI-only merges skip this file.
@@ -91,3 +93,24 @@ Verify production:
 - The pages changed in step 3, their Markdown twins, `/llms.txt`, and
   `/llms-full.txt` return 200 and show the new content, checked in a browser
   at desktop and phone width.
+
+## 5. Update the GNO page on mickel.tech
+
+Repo `~/work/mickel.tech` (Vercel deploys `main`; read its `CLAUDE.md` first,
+including the frozen `pnpm-lock.yaml` rule). Work in a worktree from
+`origin/main`; the main checkout often carries unrelated branches.
+
+- `lib/releases.ts`: add the vX.Y.Z entry (EN and DE) linking the GitHub
+  release.
+- `app/apps/gno/page.tsx`: version, MCP tool counts, client and install
+  commands, and a mention of each new user-facing capability in the section
+  it fits, linked to its gno.sh feature or docs page. Remove any claim the
+  release makes untrue.
+- The GNO card in `lib/apps.ts` and `app/apps/gno/opengraph-image.tsx` when
+  their summary changed.
+
+Run the repo's checks (`bun x biome check .`, `bun x tsc --noEmit`,
+`bun run build`), check `/apps/gno` at desktop and phone width, open a PR,
+and merge when checks and the Vercel preview pass. Confirm production:
+`https://mickel.tech/apps/gno` returns 200 and shows the new version.
+
