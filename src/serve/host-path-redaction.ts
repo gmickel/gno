@@ -1,9 +1,10 @@
 /**
  * REST boundary for host paths: a caller the request-locality rule judges
  * remote never receives an `absPath` field from any `/api/*` JSON response,
- * nor the owner configuration paths (`configPath`, `dbPath`, `path`) of the
- * status, collection, and connector routes. Same-host callers (the loopback
- * Web UI) keep them for Reveal, "Open original", and the Collections page.
+ * nor the host `path` fields of the status, collection, connector, and
+ * document-mutation routes (plus `configPath`/`dbPath` on status and the
+ * `file://` `uri` of a document save). Same-host callers (the loopback Web
+ * UI) keep them for Reveal, "Open original", and the Collections page.
  * Routes that stream original source bytes are exempt: their body is the
  * owner's file, not an API envelope.
  */
@@ -23,12 +24,30 @@ const OWNER_CONFIG_FIELDS: ReadonlySet<string> = new Set([
   ...HOST_PATH_FIELDS,
   ...OWNER_CONFIG_PATH_FIELDS,
 ]);
-const OWNER_CONFIG_ROUTES = new Set([
-  "/api/status",
-  "/api/collections",
-  "/api/collections/:name",
-  "/api/connectors",
-  "/api/connectors/install",
+/** Document mutations answer with the file's host `path`. */
+const DOC_PATH_FIELDS: ReadonlySet<string> = new Set([
+  ...HOST_PATH_FIELDS,
+  "path",
+]);
+/** A document save also names the file by a `file://` `uri`. */
+const DOC_SAVE_FIELDS: ReadonlySet<string> = new Set([
+  ...DOC_PATH_FIELDS,
+  "uri",
+]);
+const ROUTE_FIELDS = new Map<string, ReadonlySet<string>>([
+  ["/api/status", OWNER_CONFIG_FIELDS],
+  ["/api/collections", OWNER_CONFIG_FIELDS],
+  ["/api/collections/:name", OWNER_CONFIG_FIELDS],
+  ["/api/connectors", OWNER_CONFIG_FIELDS],
+  ["/api/connectors/install", OWNER_CONFIG_FIELDS],
+  ["/api/docs", DOC_PATH_FIELDS],
+  ["/api/docs/:id", DOC_SAVE_FIELDS],
+  ["/api/docs/:id/rename", DOC_PATH_FIELDS],
+  ["/api/docs/:id/move", DOC_PATH_FIELDS],
+  ["/api/docs/:id/duplicate", DOC_PATH_FIELDS],
+  ["/api/docs/:id/trash", DOC_PATH_FIELDS],
+  ["/api/docs/:id/editable-copy", DOC_PATH_FIELDS],
+  ["/api/folders", DOC_PATH_FIELDS],
 ]);
 
 type RouteHandler = (
@@ -79,9 +98,7 @@ export function withRemoteHostPathRedaction<T extends Record<string, unknown>>(
   const wrapped: Record<string, unknown> = { ...routes };
   for (const [path, route] of Object.entries(routes)) {
     if (!path.startsWith("/api/") || SOURCE_BYTE_ROUTES.has(path)) continue;
-    const fields = OWNER_CONFIG_ROUTES.has(path)
-      ? OWNER_CONFIG_FIELDS
-      : HOST_PATH_FIELDS;
+    const fields = ROUTE_FIELDS.get(path) ?? HOST_PATH_FIELDS;
     if (typeof route === "function") {
       wrapped[path] = redacting(route as RouteHandler, fields);
     } else if (isMethodTable(route)) {
