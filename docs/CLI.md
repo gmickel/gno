@@ -1121,8 +1121,10 @@ positional collection argument or `--collection`.
 Switching backend (`GNO_LLAMA_GPU`), Bun version or thread count resumes the
 backlog in the existing partition when a measured sample of stored chunks
 reproduces its vectors. When it does not, embedding would build a separate
-partition. `gno embed` first states that, with the full chunk count and an
-estimate from the measured sample, then asks for confirmation. Non-interactive
+partition. The same holds when a vector-defining setting (weights, context size,
+truncation) changes for a model that already has vectors. `gno embed` first
+states that, with the full chunk count and an estimate from the measured
+sample, then asks for confirmation. Non-interactive
 runs need `--new-partition`; `--yes` alone never confirms a separate
 partition, and MCP, SDK and resident embedding refuse it.
 
@@ -2125,7 +2127,8 @@ an activated partition first, so an incomplete shadow partition never reads as
 lost embeddings. When more than one partition exists (or one is legacy, or a
 runtime was measured incompatible), status lists every partition under
 `Vector partitions:` with its state, chunk count and provenance (for example
-`CUDA, Bun 1.4.2`), marks the one retrieval uses, and names each other
+`CUDA, Bun 1.4.2`) and the runtimes that read it, marks the activated
+runtime-independent partition the counts use, and names each other
 partition's `gno vec drop` command. JSON output carries the same list as
 `vectorPartitions`.
 

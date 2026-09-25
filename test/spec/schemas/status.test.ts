@@ -78,6 +78,7 @@ describe("status schema", () => {
         retrieval: true,
         owners: 12,
         provenance: "CUDA, Bun 1.4.2",
+        compatibleRuntimes: ["CUDA, Bun 1.4.2"],
         incompatibleRuntimes: ["CPU, Bun 1.3.14"],
       };
       const shadow = {

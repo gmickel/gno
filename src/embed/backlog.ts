@@ -310,8 +310,12 @@ export async function prepareEmbeddingBacklog(
           resolved.blocked?.separate ?? resolved.identity,
           identity.runtimeLabel
         );
-        if (resolved.blocked || resolved.verdict === "unverified")
+        if (resolved.blocked || resolved.verdict === "unverified") {
+          // Vectors without a current owner cannot be measured; they must not
+          // survive to be reused by the runtime that becomes the reference.
+          variantStore.collectGarbage();
           recordReferenceRuntime(db, variantStore.partitionId, identity);
+        }
         variantStore.selectForEmbedding();
         return ok({
           ...deps,

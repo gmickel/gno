@@ -180,10 +180,13 @@ test("partial owner batch checkpoints successes and retries only incomplete inpu
 
 test("production stats select exact runtime partition and retain authority on metadata loss", async () => {
   const { db, port, deps } = await variantFixture(["Alpha", "Beta"]);
+  // The fixture already holds a partition for this model, so a new identity
+  // is a separate partition and needs explicit confirmation (fn-184 R3).
   const automatic = {
     ...deps,
     variantStore: undefined,
     identityStillCurrent: undefined,
+    allowNewPartition: true,
   };
   const identity = {
     contextSize: 512,
@@ -209,6 +212,9 @@ test("production stats select exact runtime partition and retain authority on me
   const originalSelection = selectedPartition();
   expect(originalSelection).toBeString();
   identity.contextSize = 256;
+  expect(
+    await embedBacklog({ ...automatic, allowNewPartition: false })
+  ).toMatchObject({ ok: false, error: { code: "VECTOR_PARTITION_FORK" } });
   expect(await embedBacklog(automatic)).toMatchObject({
     ok: true,
     value: { embedded: 2 },

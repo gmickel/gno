@@ -220,7 +220,6 @@ async function verdictFor(
 
 interface LegacyPartition {
   partition_id: string;
-  activated: number;
 }
 
 type LegacyOutcome =
@@ -241,7 +240,7 @@ async function rekeyLegacy(
 ): Promise<LegacyOutcome> {
   const legacy = db
     .query<LegacyPartition, [string, number]>(`
-      SELECT partition_id, activated_epoch IS NOT NULL AND state = 'active' AS activated
+      SELECT partition_id
       FROM vector_partitions WHERE legacy = 1 AND model = ? AND dimensions = ?
       ORDER BY partition_id
     `)
@@ -264,7 +263,7 @@ async function rekeyLegacy(
         owners: currentOwnerCount(db, partition.partition_id),
       });
   }
-  compatible.sort((a, b) => b.activated - a.activated || b.owners - a.owners);
+  compatible.sort((a, b) => b.owners - a.owners);
   const [winner, runnerUp] = compatible;
   if (!winner)
     return {
@@ -272,17 +271,11 @@ async function rekeyLegacy(
       reason: `none of the ${legacy.length} existing partition(s) reproduces its stored vectors under ${runtime.label}`,
       msPerChunk,
     };
-  if (
-    runnerUp &&
-    runnerUp.activated === winner.activated &&
-    runnerUp.owners === winner.owners
-  )
+  if (runnerUp?.owners === winner.owners)
     return {
       kind: "blocked",
       reason: `ambiguous migration: partitions ${compatible
-        .filter(
-          (p) => p.activated === winner.activated && p.owners === winner.owners
-        )
+        .filter((p) => p.owners === winner.owners)
         .map((p) => p.partition_id.slice(0, 12))
         .join(
           ", "
@@ -312,10 +305,15 @@ async function rekeyLegacy(
     db.run("PRAGMA defer_foreign_keys = ON");
     db.run(
       `INSERT INTO vector_partitions
-      (partition_id, version, model, fingerprint, dimensions, state, activated_epoch, provenance, legacy)
-      SELECT ?, version, model, ?, dimensions, state, activated_epoch, provenance, 0
+      (partition_id, version, model, fingerprint, dimensions, state, activated_epoch, provenance, legacy, base_fingerprint)
+      SELECT ?, version, model, ?, dimensions, state, activated_epoch, provenance, 0, ?
       FROM vector_partitions WHERE partition_id = ?`,
-      [newId, vectorVariantFingerprint(primary), oldId]
+      [
+        newId,
+        vectorVariantFingerprint(primary),
+        vectorVariantFingerprint(primary),
+        oldId,
+      ]
     );
     for (const table of [
       "vector_variants",
@@ -354,7 +352,9 @@ async function rekeyLegacy(
 
 /**
  * Resolve the partition an initialized verified runtime may use. Runs the
- * one-time legacy migration and the measured check on first contact.
+ * one-time legacy migration, then measures every partition of this vector
+ * space (the primary first, then confirmed forks, most complete first) and
+ * reuses the first compatible one.
  */
 export async function resolveRuntimePartition(
   db: Database,
@@ -367,40 +367,70 @@ export async function resolveRuntimePartition(
     fingerprint: identity.runtimeFingerprint,
     label: identity.runtimeLabel ?? "unknown runtime",
   };
-  const fork = { ...primary, fork: runtime.fingerprint };
-  // An explicitly confirmed separate partition belongs to this runtime alone.
-  if (partitionExists(db, identityPartitionId(fork)))
-    return { identity: fork, verdict: "compatible" };
-  const primaryId = identityPartitionId(primary);
-  if (!partitionExists(db, primaryId)) {
+  const blocked = (
+    reason: string,
+    separate: VectorVariantIdentity,
+    msPerChunk?: number
+  ): RuntimePartition => ({
+    identity: primary,
+    verdict: "incompatible",
+    blocked: { reason, separate },
+    msPerChunk,
+  });
+  if (!partitionExists(db, identityPartitionId(primary))) {
     const legacy = await rekeyLegacy(db, port, primary, runtime);
     if (legacy.kind === "blocked")
-      return {
-        identity: primary,
-        verdict: "incompatible",
-        blocked: { reason: legacy.reason, separate: primary },
-        msPerChunk: legacy.msPerChunk,
-      };
-    if (legacy.kind === "none")
-      return { identity: primary, verdict: "unverified" };
+      return blocked(legacy.reason, primary, legacy.msPerChunk);
   }
-  const measured = await verdictFor(
-    db,
-    port,
-    primaryId,
-    primary.model,
-    runtime
-  );
-  if (measured.verdict !== "incompatible")
-    return { identity: primary, ...measured };
-  return {
-    identity: primary,
-    ...measured,
-    blocked: {
-      reason: `${runtime.label} does not reproduce the stored vectors (cosine below ${RUNTIME_MIN_COSINE})`,
-      separate: fork,
-    },
-  };
+  const candidates = db
+    .query<
+      { partition_id: string; fork: string | null },
+      [string, string, number]
+    >(`
+      SELECT p.partition_id, p.fork FROM vector_partitions p
+      WHERE p.legacy = 0 AND p.base_fingerprint = ? AND p.model = ? AND p.dimensions = ?
+      ORDER BY p.fork IS NOT NULL,
+        (SELECT count(*) FROM vector_owners o WHERE o.partition_id = p.partition_id) DESC,
+        p.partition_id
+    `)
+    .all(vectorVariantFingerprint(primary), primary.model, primary.dimensions);
+  let unverified: VectorVariantIdentity | undefined;
+  let msPerChunk: number | undefined;
+  for (const candidate of candidates) {
+    const partition = candidate.fork
+      ? { ...primary, fork: candidate.fork }
+      : primary;
+    const measured = await verdictFor(
+      db,
+      port,
+      candidate.partition_id,
+      primary.model,
+      runtime
+    );
+    msPerChunk ??= measured.msPerChunk;
+    if (measured.verdict === "compatible")
+      return { identity: partition, verdict: "compatible" };
+    if (measured.verdict === "unverified") unverified ??= partition;
+  }
+  if (unverified) return { identity: unverified, verdict: "unverified" };
+  if (candidates.length)
+    return blocked(
+      `${runtime.label} does not reproduce the stored vectors (cosine below ${RUNTIME_MIN_COSINE})`,
+      { ...primary, fork: runtime.fingerprint },
+      msPerChunk
+    );
+  // First partition of this vector space: only an index without vectors for
+  // the model may start it silently (a changed context size or weights may not).
+  if (
+    db
+      .query("SELECT 1 FROM vector_partitions WHERE model = ? LIMIT 1")
+      .get(primary.model)
+  )
+    return blocked(
+      "the embedding identity changed (weights, formatter, dimensions, context size or truncation policy)",
+      primary
+    );
+  return { identity: primary, verdict: "unverified" };
 }
 
 /**

@@ -26,6 +26,8 @@ export function formatVectorPartitionLines(
     lines.push(
       `  ${p.retrieval ? "*" : " "} ${shortId(p.id)} ${p.state}${p.legacy ? " legacy" : ""}, ${p.owners} chunks, ${p.provenance}${role}`
     );
+    if (p.compatibleRuntimes.length)
+      lines.push(`      read by: ${p.compatibleRuntimes.join("; ")}`);
     for (const runtime of p.incompatibleRuntimes)
       lines.push(
         `      incompatible runtime: ${runtime} (its queries use lexical retrieval only)`

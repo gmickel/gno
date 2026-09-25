@@ -258,6 +258,7 @@
                 "retrieval",
                 "owners",
                 "provenance",
+                "compatibleRuntimes",
                 "incompatibleRuntimes"
               ],
               "properties": {
@@ -287,6 +288,12 @@
                 },
                 "provenance": {
                   "type": "string"
+                },
+                "compatibleRuntimes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 },
                 "incompatibleRuntimes": {
                   "type": "array",

@@ -165,6 +165,7 @@
           "retrieval",
           "owners",
           "provenance",
+          "compatibleRuntimes",
           "incompatibleRuntimes"
         ],
         "properties": {
@@ -191,7 +192,7 @@
           },
           "retrieval": {
             "type": "boolean",
-            "description": "Status counts and retrieval use this partition"
+            "description": "Status counts use this partition: the activated runtime-independent partition every compatible runtime reads"
           },
           "owners": {
             "type": "integer",
@@ -202,12 +203,19 @@
             "type": "string",
             "description": "Runtime that built the partition, e.g. \"CUDA, Bun 1.4.2\""
           },
+          "compatibleRuntimes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Runtimes measured (or recorded as the builder) to read this partition"
+          },
           "incompatibleRuntimes": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "Runtimes measured incompatible; their queries use lexical retrieval only"
+            "description": "Runtimes measured incompatible; they read another partition or use lexical retrieval only"
           }
         }
       }

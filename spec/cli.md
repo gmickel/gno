@@ -232,8 +232,11 @@ exact-input storage is authoritative, counting pending document/chunk owners.
 `vectorPartitions` (omitted when no partition exists) lists every partition of
 the model with `id`, `model`, `dimensions`, `state` (`active`|`shadow`),
 `legacy` (pre-runtime-independent key), `retrieval`, `owners` (current chunks),
-`provenance` (building runtime, e.g. `CUDA, Bun 1.4.2`) and
-`incompatibleRuntimes`. Terminal output prints a `Vector partitions:` block
+`provenance` (building runtime, e.g. `CUDA, Bun 1.4.2`),
+`compatibleRuntimes` (runtimes that read it) and `incompatibleRuntimes`.
+Counts use the activated runtime-independent partition; a runtime with a
+confirmed separate partition reads that one instead, as `compatibleRuntimes`
+shows. Terminal output prints a `Vector partitions:` block
 unless there is exactly one healthy partition. Per-collection chunk totals remain deduplicated by canonical chunk;
 embedded counts require matching current inputs for every active owner within
 that collection. Status reads persisted identity and coverage without loading
@@ -275,6 +278,7 @@ gno status [--json|--md]
       "retrieval": true,
       "owners": 500,
       "provenance": "CUDA, Bun 1.4.2",
+      "compatibleRuntimes": ["CUDA, Bun 1.4.2", "CPU, Bun 1.3.14"],
       "incompatibleRuntimes": []
     }
   ],

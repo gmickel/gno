@@ -1353,6 +1353,7 @@ counters; it never claims attachment to another process.
         "retrieval": true,
         "owners": 500,
         "provenance": "CUDA, Bun 1.4.2",
+        "compatibleRuntimes": ["CUDA, Bun 1.4.2", "CPU, Bun 1.3.14"],
         "incompatibleRuntimes": []
       }
     ],
@@ -1368,7 +1369,8 @@ counters; it never claims attachment to another process.
 `vectorPartitions` (omitted when none exist) lists the embedding model's
 vector partitions; `embeddingBacklog` and per-collection embedded counts use
 the one with `retrieval: true`. Other partitions carry `state`, `owners` and a
-readable `provenance`; `incompatibleRuntimes` names runtimes measured unable to
+readable `provenance`; `compatibleRuntimes` names the runtimes that read a
+partition and `incompatibleRuntimes` names runtimes measured unable to
 reproduce the stored vectors, whose queries use lexical retrieval only.
 
 `contentTypeBoost` is a redacted ranking-status projection. It exposes only

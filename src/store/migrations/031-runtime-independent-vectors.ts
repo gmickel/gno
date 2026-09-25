@@ -8,6 +8,10 @@ export const migration: Migration = {
     db.exec(`
       ALTER TABLE vector_partitions ADD COLUMN provenance TEXT;
       ALTER TABLE vector_partitions ADD COLUMN legacy INTEGER NOT NULL DEFAULT 0;
+      -- Vector-defining key shared by a primary and its confirmed forks.
+      ALTER TABLE vector_partitions ADD COLUMN base_fingerprint TEXT;
+      -- Runtime fingerprint of a confirmed separate partition; NULL = primary.
+      ALTER TABLE vector_partitions ADD COLUMN fork TEXT;
       UPDATE vector_partitions SET legacy = 1;
       CREATE TABLE vector_runtime_verdicts (
         partition_id TEXT NOT NULL,

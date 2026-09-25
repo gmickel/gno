@@ -20,6 +20,7 @@ interface Partition {
   activated_epoch: number | null;
   legacy: number;
   provenance: string | null;
+  fork: string | null;
 }
 
 export interface VectorPartitionStatus {
@@ -29,13 +30,19 @@ export interface VectorPartitionStatus {
   state: "active" | "shadow";
   /** Pre-fn-184 runtime-keyed partition awaiting measured re-keying. */
   legacy: boolean;
-  /** Status counts and retrieval use this partition for its model. */
+  /**
+   * Status counts use this partition: the activated runtime-independent one
+   * every compatible runtime reads. Each runtime reads the partition that lists
+   * it in `compatibleRuntimes`.
+   */
   retrieval: boolean;
   /** Current document chunks bound to this partition. */
   owners: number;
   /** Runtime that built the partition, e.g. "CUDA, Bun 1.4.2". */
   provenance: string;
-  /** Runtimes measured incompatible; their queries use lexical retrieval only. */
+  /** Runtimes measured (or recorded as the builder) to read this partition. */
+  compatibleRuntimes: string[];
+  /** Runtimes measured incompatible; they need another partition or lexical. */
   incompatibleRuntimes: string[];
 }
 
@@ -43,9 +50,10 @@ const activated = (p: Partition): boolean =>
   p.state === "active" && p.activated_epoch !== null;
 
 /**
- * The partition status reports against: an activated runtime-independent
- * partition first, then an activated legacy one, so an incomplete shadow never
- * reads as lost embeddings. The last embedding selection breaks ties.
+ * The partition status reports against: the activated primary (shared by all
+ * compatible runtimes) first, then an activated confirmed fork, then an
+ * activated legacy one, so an incomplete shadow never reads as lost embeddings.
+ * The last embedding selection, then coverage, breaks ties within a tier.
  */
 function retrievalPartition(
   db: Database,
@@ -53,6 +61,7 @@ function retrievalPartition(
   selection: string | undefined
 ): Partition | undefined {
   for (const tier of [
+    candidates.filter((p) => activated(p) && !p.legacy && !p.fork),
     candidates.filter((p) => activated(p) && !p.legacy),
     candidates.filter(activated),
   ]) {
@@ -78,7 +87,7 @@ function readPartitions(db: Database, model: string | null): Partition[] {
   return db
     .query<Partition, [string | null, string | null]>(`
       SELECT partition_id, version, model, fingerprint, dimensions, state,
-        activated_epoch, legacy, provenance
+        activated_epoch, legacy, provenance, fork
       FROM vector_partitions WHERE (? IS NULL OR model = ?)
       ORDER BY model, partition_id
     `)
@@ -125,8 +134,8 @@ export function listVectorPartitions(
       );
       if (chosen) retrieval.add(chosen.partition_id);
     }
-    const incompatible = db.prepare<{ label: string }, [string]>(
-      "SELECT label FROM vector_runtime_verdicts WHERE partition_id = ? AND verdict = 'incompatible' ORDER BY label"
+    const runtimes = db.prepare<{ label: string }, [string, string]>(
+      "SELECT DISTINCT label FROM vector_runtime_verdicts WHERE partition_id = ? AND verdict = ? ORDER BY label"
     );
     return partitions.map(
       (p): VectorPartitionStatus => ({
@@ -140,8 +149,11 @@ export function listVectorPartitions(
         provenance:
           p.provenance ??
           (p.legacy ? "unrecorded (pre-fn-184 key)" : "unrecorded"),
-        incompatibleRuntimes: incompatible
-          .all(p.partition_id)
+        compatibleRuntimes: runtimes
+          .all(p.partition_id, "compatible")
+          .map((row) => row.label),
+        incompatibleRuntimes: runtimes
+          .all(p.partition_id, "incompatible")
           .map((row) => row.label),
       })
     );

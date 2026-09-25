@@ -49,14 +49,14 @@ function vectorFor(text: string, skew: number): number[] {
 }
 
 /** Deterministic port; `skew` simulates a runtime that is not measurably equal. */
-function port(runtime: string, skew = 0) {
+function port(runtime: string, skew = 0, contextSize = 512) {
   const calls: string[] = [];
   const embedPort: EmbeddingPort = {
     modelUri: MODEL,
     init: async () => ({ ok: true, value: undefined }),
     dimensions: () => DIMS,
     getIdentity: () => ({
-      contextSize: 512,
+      contextSize,
       truncationPolicy: "truncate-tail-v1",
       modelFingerprint: "weights-v1",
       runtimeFingerprint: runtime,
@@ -224,6 +224,56 @@ test("an incompatible runtime is refused without explicit confirmation and queri
   expect(
     (await resolveVectorSearchIdentity(c.embedPort, f.index)).identity?.fork
   ).toBe("runtime-c");
+
+  // Status still counts the primary A reads; the fork names its reader.
+  const listed = listVectorPartitions(f.db, MODEL);
+  expect(listed.find((p) => p.retrieval)?.id).toBe(primary);
+  expect(listed.find((p) => !p.retrieval)?.compatibleRuntimes).toEqual([
+    "runtime-c label",
+  ]);
+
+  // A Bun-only upgrade of C measures and reuses its fork instead of forking again.
+  const upgraded = await f.embed(port("runtime-c-next-bun", 1).embedPort);
+  expect(upgraded.ok && upgraded.value.embedded).toBe(0);
+  expect(partitionIds(f.db)).toHaveLength(2);
+});
+
+test("a changed vector-defining identity needs confirmation before a new partition", async () => {
+  const f = await fixture();
+  expect((await f.embed(port("runtime-a").embedPort)).ok).toBe(true);
+  const wider = port("runtime-a", 0, 1024);
+  const refused = await f.embed(wider.embedPort);
+  expect(!refused.ok && refused.error.message).toContain(
+    "embedding identity changed"
+  );
+  expect(partitionIds(f.db)).toHaveLength(1);
+  const built = await f.embed(wider.embedPort, true);
+  expect(built.ok && built.value.embedded).toBe(12);
+});
+
+test("a new reference runtime never reuses stale vectors of another runtime", async () => {
+  const f = await fixture(1);
+  expect((await f.embed(port("runtime-a").embedPort)).ok).toBe(true);
+  f.db.run("UPDATE documents SET title = 'Renamed'");
+  // No current owner can be sampled, so incompatible B becomes the reference.
+  const b = port("runtime-b", 1);
+  expect((await f.embed(b.embedPort)).ok).toBe(true);
+  f.db.run("UPDATE documents SET title = 'Note 0'");
+  const restored = await f.embed(b.embedPort);
+  expect(restored.ok && restored.value.embedded).toBe(1);
+  const row = f.db
+    .query<{ input: string; embedding: Uint8Array }, []>(`
+      SELECT c.text AS input, v.embedding FROM vector_owners o
+      JOIN vector_variants v ON v.variant_id = o.variant_id
+      JOIN content_chunks c ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
+    `)
+    .all();
+  expect(row).toHaveLength(1);
+  const stored = Array.from(new Float32Array(row[0]!.embedding.slice().buffer));
+  // The restored input is embedded by B, not bound to A's old vector.
+  expect(stored).toEqual(
+    Array.from(new Float32Array(vectorFor(b.calls.at(-1)!, 1)))
+  );
 });
 
 test("hybrid query from an incompatible runtime is lexical-only with a notice", async () => {
@@ -414,6 +464,25 @@ test("migration re-keys the most complete compatible partition, survives a crash
   expect(
     (await resolveVectorSearchIdentity(runtime.embedPort, f.index)).identity
   ).toEqual(primary);
+});
+
+test("migration prefers current coverage over an earlier activation", async () => {
+  const f = await fixture();
+  const shrunk = await legacyPartition(f, "gpu-bun-a", 12, true);
+  f.db.run(
+    "DELETE FROM vector_owners WHERE partition_id = ? AND document_id > 2",
+    [shrunk]
+  );
+  const complete = await legacyPartition(f, "cpu-bun-b", 12, false);
+  const runtime = port("cpu-bun-c");
+  const primary = embeddingPartitionIdentity(runtime.embedPort)!;
+  expect(
+    (await resolveRuntimePartition(f.db, runtime.embedPort, primary)).verdict
+  ).toBe("compatible");
+  expect(partitionIds(f.db)).toEqual(
+    [identityPartitionId(primary), shrunk].sort()
+  );
+  expect(partitionIds(f.db)).not.toContain(complete);
 });
 
 test("an ambiguous migration keeps every partition and reports it", async () => {

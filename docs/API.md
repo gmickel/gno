@@ -462,6 +462,7 @@ Returns index statistics plus first-run onboarding, health-center state, backgro
       "retrieval": true,
       "owners": 1853,
       "provenance": "CUDA, Bun 1.4.2",
+      "compatibleRuntimes": ["CUDA, Bun 1.4.2", "CPU, Bun 1.3.14"],
       "incompatibleRuntimes": []
     }
   ],

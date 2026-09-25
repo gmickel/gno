@@ -95,14 +95,17 @@ export class VectorVariantStore {
     db.transaction(() => {
       db.run(
         `INSERT OR IGNORE INTO vector_partitions
-        (partition_id, version, model, fingerprint, dimensions, provenance)
-        VALUES (?, 1, ?, ?, ?, ?)`,
+        (partition_id, version, model, fingerprint, dimensions, provenance,
+          base_fingerprint, fork)
+        VALUES (?, 1, ?, ?, ?, ?, ?, ?)`,
         [
           this.partitionId,
           identity.model,
           this.fingerprint,
           identity.dimensions,
           provenance ?? null,
+          vectorVariantFingerprint({ ...identity, fork: undefined }),
+          identity.fork ?? null,
         ]
       );
       if (searchAvailable) {

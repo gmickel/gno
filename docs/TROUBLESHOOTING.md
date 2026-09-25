@@ -890,6 +890,13 @@ threshold:
   count and an estimate, then asks for confirmation. Non-interactive runs need
   `gno embed --new-partition`; `--yes` alone does not confirm.
 
+The confirmed partition is shared by later versions of that runtime too: after
+a Bun or binding upgrade GNO measures every partition of the same vector space
+and reuses the first compatible one. The same confirmation applies when a
+vector-defining setting changes for a model that already has vectors (for
+example `GNO_EMBED_CONTEXT_SIZE`). Status counts the runtime-independent
+partition and lists which runtimes read each partition.
+
 Existing indexes are re-keyed once, on first contact after upgrading: the most
 complete partition that passes the check becomes the runtime-independent
 partition without re-embedding, and the others stay as `shadow`. If two
