@@ -8,12 +8,59 @@
   "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-188-remote-status-and-collection-responses",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-188-remote-status-and-collection-responses.1": 0
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "review_attempts": [
+    {
+      "artifact_sha256": "f1d7ba176b855102658344b5dd412adc5fe455f0b5ea4298c4aec7d45eb667cd",
+      "backend": "codex",
+      "base_sha": "1ae2bd42b1156abef174e6b737d4da5f9414345e",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "57606c014033af141ff401050b521b114c289d81",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 1120,
+      "output_sha256": "cfef95d5e58354110f4ce7048a88890819ccaebf7b476553f44b41510dc5fcc9",
+      "reservation_id": "3dea288b431547a688a5217dbd874c2d",
+      "round_consumed": true,
+      "scope": "impl:fn-188-remote-status-and-collection-responses.1",
+      "superseded_by": null,
+      "task": "fn-188-remote-status-and-collection-responses.1",
+      "timestamp": "2026-09-25T22:14:22.746910Z",
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "impl:fn-188-remote-status-and-collection-responses.1": 1
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-188-remote-status-and-collection-responses.1": 0
+  },
   "spec_path": ".flow/specs/fn-188-remote-status-and-collection-responses.md",
   "status": "open",
   "title": "Remote status and collection responses expose owner config paths",
@@ -28,5 +75,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T21:59:37.962677Z"
+  "updated_at": "2026-09-25T22:14:22.749127Z"
 }
