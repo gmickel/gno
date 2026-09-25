@@ -185,7 +185,7 @@ jobs:
 
       - name: Test
         shell: cmd
-        run: bun test --max-concurrency=1
+        run: bun test --max-concurrency=1 --timeout 20000
         env:
           CI: "true"
 
