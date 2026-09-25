@@ -15,6 +15,7 @@ import {
   fileIdentity,
   fingerprintModel,
   fingerprintRuntime,
+  runtimeLabel,
 } from "./embedding-identity";
 import { NativeWorkerError } from "./errors";
 import { checkEvaluation } from "./evaluation";
@@ -174,6 +175,7 @@ export class NativeDispatcher {
                   gpu: llama.gpu,
                   cpuMathCores: llama.cpuMathCores,
                 }),
+                runtimeLabel: runtimeLabel(llama.gpu),
               },
             },
           };

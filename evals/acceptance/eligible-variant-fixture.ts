@@ -8,8 +8,8 @@ import type { EmbeddingPort } from "../../src/llm/types";
 import type { StoreResult } from "../../src/store/types";
 
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
+import { embeddingPartitionIdentity } from "../../src/store/vector/runtime-compat";
 import { createVectorIndexPort } from "../../src/store/vector/sqlite-vec";
-import { resolveVectorSearchIdentity } from "../../src/store/vector/variant-search";
 import { createVectorVariantStore } from "../../src/store/vector/variants";
 import { canonicalFingerprint } from "../agentic/canonical";
 import { scalingCorpus } from "./eligible-scaling";
@@ -29,7 +29,7 @@ export const embedPort: EmbeddingPort = {
     runtimeFingerprint: "known-cpu-v1",
   }),
 };
-export const identity = resolveVectorSearchIdentity(embedPort)!;
+export const identity = embeddingPartitionIdentity(embedPort)!;
 export const must = <T>(value: StoreResult<T>): T => {
   if (!value.ok) throw new Error(`${value.error.code}: ${value.error.message}`);
   return value.value;

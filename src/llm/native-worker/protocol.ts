@@ -112,6 +112,7 @@ export const EmbeddingIdentitySchema = z.strictObject({
   truncationPolicy: z.string().min(1),
   modelFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
   runtimeFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+  runtimeLabel: z.string().min(1),
 });
 const metadata = z.strictObject({
   dimensions: id.optional(),

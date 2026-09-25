@@ -14,6 +14,7 @@ import { resolveFusionOwners } from "../../src/pipeline/owner-fusion";
 import { DEFAULT_PIPELINE_CONFIG } from "../../src/pipeline/types";
 import { searchVectorWithEmbedding } from "../../src/pipeline/vsearch";
 import { migration } from "../../src/store/migrations/028-vector-variants";
+import { migration as runtimeMigration } from "../../src/store/migrations/031-runtime-independent-vectors";
 import { createVectorIndexPort } from "../../src/store/vector/sqlite-vec";
 import { createVectorVariantStore } from "../../src/store/vector/variants";
 
@@ -39,6 +40,7 @@ async function fixture() {
     INSERT INTO content_chunks VALUES ('body',0,'Shared body','en');
     INSERT INTO doc_tags VALUES (2,'beta');`);
   migration.up(db, "unicode61");
+  runtimeMigration.up(db, "unicode61");
   const created = await createVectorIndexPort(db, {
     model: identity.model,
     dimensions: 2,

@@ -150,6 +150,104 @@
       "description": "Chunks awaiting embedding",
       "minimum": 0
     },
+    "vectorPartitions": {
+      "type": "array",
+      "description": "Vector partitions of the embedding model; omitted when none exist",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "model",
+          "dimensions",
+          "state",
+          "legacy",
+          "retrieval",
+          "droppable",
+          "owners",
+          "provenance",
+          "compatibleRuntimes",
+          "incompatibleRuntimes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Partition id (drop with `gno vec drop <id-prefix>`)"
+          },
+          "model": {
+            "type": "string",
+            "description": "Embedding model URI"
+          },
+          "dimensions": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "state": {
+            "type": "string",
+            "enum": ["active", "shadow"],
+            "description": "active = activated for retrieval; shadow = incomplete or abandoned"
+          },
+          "legacy": {
+            "type": "boolean",
+            "description": "Pre-runtime-independent key, awaiting measured re-keying"
+          },
+          "retrieval": {
+            "type": "boolean",
+            "description": "Status counts use this partition: the activated runtime-independent partition every compatible runtime reads"
+          },
+          "droppable": {
+            "type": "boolean",
+            "description": "`gno vec drop` accepts it; never the partition this runtime's retrieval uses"
+          },
+          "owners": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Current chunks bound to this partition"
+          },
+          "provenance": {
+            "type": "string",
+            "description": "Runtime that built the partition, e.g. \"CUDA, Bun 1.4.2\""
+          },
+          "compatibleRuntimes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Runtimes measured (or recorded as the builder) to read this partition"
+          },
+          "incompatibleRuntimes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Runtimes measured incompatible; they read another partition or use lexical retrieval only"
+          }
+        }
+      }
+    },
+    "vectorRuntime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "state", "partition"],
+      "description": "This process's runtime, resolved by the same selection rule its queries use",
+      "properties": {
+        "label": {
+          "type": ["string", "null"],
+          "description": "Runtime recorded by this caller's last query or embed"
+        },
+        "state": {
+          "type": "string",
+          "enum": ["vectors", "unavailable", "unresolved"],
+          "description": "vectors: queries read `partition`; unavailable: lexical retrieval only; unresolved: no query or embed has resolved this caller yet"
+        },
+        "partition": {
+          "type": ["string", "null"]
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
     "recentErrors": {
       "type": "integer",
       "description": "Recent ingest errors in the last 24 hours",

@@ -861,6 +861,70 @@ only if you have headroom and `bench:cpu-embeddings -- --real` shows a gain:
 GNO_EMBED_CONTEXTS=2 gno embed --yes
 ```
 
+### Switching Backend Or Bun Version
+
+What changes vector identity, and therefore needs a full re-embed: the
+embedding model weights, the embedding formatter, dimensions, context size and
+truncation policy. What does not: `GNO_LLAMA_GPU` / `NODE_LLAMA_CPP_GPU`, the
+Bun version (for example a scheduled CLI and the desktop app on different Bun
+releases), the `node-llama-cpp` version and the CPU thread count
+(`GNO_EMBED_THREADS`, `GNO_EMBED_CONTEXTS`). Those are recorded as provenance.
+
+The first time a runtime meets an existing vector partition, GNO re-embeds up
+to 8 stored chunks and compares them with the stored vectors. Every sampled
+chunk must reach cosine 0.99. Measured on the default model, Bun versions and
+thread counts produced bit-identical vectors and GPU (Vulkan) vs CPU stayed
+above 0.9993, so these switches resume the backlog in the same partition:
+
+```bash
+GNO_LLAMA_GPU=false gno embed --yes   # resumes, no re-embed of stored chunks
+```
+
+The verdict is cached per partition and runtime. If a runtime falls below the
+threshold:
+
+- queries from it use lexical retrieval only; results carry a
+  `vector_runtime_incompatible` warning and `gno vsearch` reports why;
+- `gno status` lists that runtime as incompatible under the partition;
+- `gno embed` states that it would build a separate partition, the full chunk
+  count and an estimate, then asks for confirmation. Non-interactive runs need
+  `gno embed --new-partition`; `--yes` alone does not confirm.
+
+The confirmed partition is shared by later versions of that runtime too: after
+a Bun or binding upgrade GNO measures every partition of the same vector space
+and reuses the first compatible one. The same confirmation applies when a
+vector-defining setting changes for a model that already has vectors (for
+example `GNO_EMBED_CONTEXT_SIZE`). Status counts the runtime-independent
+partition and lists which runtimes read each partition.
+
+Existing indexes are re-keyed once, on first contact after upgrading: the most
+complete partition that passes the check becomes the runtime-independent
+partition without re-embedding, and the others stay as `shadow`. If two
+partitions are equally complete, nothing is re-keyed; status and embed report
+the ambiguity. Active partitions are never dropped, so continue with
+`gno embed --new-partition`: once the new runtime-independent partition
+activates, the pre-upgrade partitions become shadows you can drop.
+
+`gno status` reports against the partition this runtime's queries read and
+lists every other partition with its state, chunk count, provenance and
+readers, so an incomplete shadow partition never looks like lost embeddings.
+Status cannot load a model, so every query and embed records the identity it resolved under a key of its runtime (Bun and binding version, platform, the model URI and the `GNO_LLAMA_GPU`, `NODE_LLAMA_CPP_GPU`, `GNO_EMBED_*` settings). Status looks that record up for its own process and applies the same selection rule retrieval uses, so the partition it marks is the one this runtime's queries read. Remove an abandoned shadow partition with its id
+prefix from status:
+
+```bash
+gno status            # Vector partitions: ... (drop with: gno vec drop 9a8b7c6d5e4f)
+gno vec drop 9a8b7c6d5e4f
+```
+
+`gno vec drop` accepts exactly the partitions status offers a drop hint for:
+shadow partitions (legacy shadows included) this runtime does not read. Active
+partitions, legacy ones included, are refused: another runtime may read them,
+and an active legacy partition may be the only copy until its one-time re-key.
+
+`gno vsearch` has no lexical fallback: from a runtime without a usable
+partition it fails with `Vector search unavailable for this runtime` and points
+to `gno query` / `gno search` or `gno embed --new-partition`.
+
 ## Model Issues
 
 ### Downloaded Model Is Not GGUF

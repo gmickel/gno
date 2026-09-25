@@ -14,6 +14,8 @@ export interface VectorVariantIdentity {
   contextSize: number;
   truncationPolicy: string;
   dimensions: number;
+  /** Runtime fingerprint of an explicitly confirmed separate partition. */
+  fork?: string;
 }
 
 /** Snapshot carried through asynchronous embedding; write revalidates input. */

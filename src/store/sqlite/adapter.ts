@@ -158,7 +158,11 @@ import { getSchemaVersion, migrations, runMigrations } from "../migrations";
 import { err, ok } from "../types";
 import { getStoredEmbeddingFingerprint } from "../vector/freshness";
 import { modelTableName } from "../vector/sqlite-vec";
-import { getVariantStatus } from "../vector/status";
+import {
+  getVariantStatus,
+  listVectorPartitions,
+  vectorRuntimeStatus,
+} from "../vector/status";
 import {
   deleteSavedCapsuleRegistration as deleteStoredSavedCapsuleRegistration,
   getSavedCapsuleRegistration as getStoredSavedCapsuleRegistration,
@@ -5898,6 +5902,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         (embedModel ? getStoredEmbeddingFingerprint(db, embedModel) : null);
 
       const variantStatus = getVariantStatus(db, options);
+      const vectorPartitions = listVectorPartitions(
+        db,
+        embedModel ?? undefined
+      );
 
       // Get version
       const versionRow = db
@@ -6082,6 +6090,14 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             ? (variantStatus.embeddedByCollection.get(s.name) ?? 0)
             : s.embedded_count,
         })),
+        ...(vectorPartitions.length
+          ? {
+              vectorPartitions,
+              ...(embedModel
+                ? { vectorRuntime: vectorRuntimeStatus(db, embedModel) }
+                : {}),
+            }
+          : {}),
         totalDocuments: totalsRow?.total ?? 0,
         activeDocuments: totalsRow?.active ?? 0,
         totalChunks: chunkCount,

@@ -8,6 +8,10 @@ import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
 
 import { getEmbeddingFingerprint } from "../../src/embed/fingerprint";
 import {
+  listVectorPartitions,
+  vectorRuntimeStatus,
+} from "../../src/store/vector/status";
+import {
   createVectorVariantStore,
   SELECTED_VECTOR_PARTITION_PREFIX,
 } from "../../src/store/vector/variants";
@@ -103,20 +107,31 @@ test("stale epochs retain valid owners but missing/title-changed owners remain p
   expect((await coverage(store)).collections[1]?.embedded).toBe(2);
 });
 
-test("selected verified partition switches ignore old complete coverage and accept new complete coverage", async () => {
-  const { store } = await fixture();
-  const replacement = await createVectorVariantStore(store.getRawDb(), {
+test("without a resolved runtime, counts use activated coverage and activated partitions stay protected", async () => {
+  const { store, variants } = await fixture();
+  const db = store.getRawDb();
+  const replacement = await createVectorVariantStore(db, {
     ...statusIdentity,
     contextSize: 1024,
   });
-  // Older ambiguous indexes fail closed until embedding records its actual selection.
-  expect((await coverage(store)).backlog).toBe(6);
+  const protectedIds = () =>
+    listVectorPartitions(db, statusIdentity.model)
+      .filter((p) => !p.droppable)
+      .map((p) => p.id)
+      .sort();
+  // fn-184 R4: no query or embed resolved this process, so no partition is
+  // claimed as this runtime's; counts use activated coverage, not the shadow.
+  expect(vectorRuntimeStatus(db, statusIdentity.model).state).toBe(
+    "unresolved"
+  );
+  expect((await coverage(store)).backlog).toBe(0);
   replacement.selectForEmbedding();
   const owners = replacement.pending();
   replacement.write([
     { owner: owners[0]!, embedding: new Float32Array([0, 1]) },
   ]);
-  expect((await coverage(store)).backlog).toBe(5);
+  expect((await coverage(store)).backlog).toBe(0);
+  expect(protectedIds()).toEqual([variants.partitionId]);
   replacement.write(
     replacement
       .pending()
@@ -124,12 +139,16 @@ test("selected verified partition switches ignore old complete coverage and acce
   );
   replacement.activate(replacement.epoch());
   expect((await coverage(store)).backlog).toBe(0);
-  store
-    .getRawDb()
-    .run("UPDATE schema_meta SET value = 'missing-partition' WHERE key = ?", [
-      SELECTED_VECTOR_PARTITION_PREFIX + statusIdentity.model,
-    ]);
-  expect((await coverage(store)).backlog).toBe(6);
+  expect(protectedIds()).toEqual(
+    [variants.partitionId, replacement.partitionId].sort()
+  );
+  db.run("UPDATE schema_meta SET value = 'missing-partition' WHERE key = ?", [
+    SELECTED_VECTOR_PARTITION_PREFIX + statusIdentity.model,
+  ]);
+  expect((await coverage(store)).backlog).toBe(0);
+  expect(
+    listVectorPartitions(db, statusIdentity.model).some((p) => p.retrieval)
+  ).toBe(false);
 });
 
 test("model and explicit fingerprint scopes never fall back to unrelated legacy data after activation", async () => {

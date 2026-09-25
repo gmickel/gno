@@ -1,0 +1,50 @@
+{
+  "branch": "fn-184-runtime-independent-vector-identity",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "47e31780a4417a0340c45f323be8c5d4fd043308",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-80d71dcddb4f68f00b9f7b5de7abbd7857d1ee6fe25addf526c0461a2bd11630"
+  },
+  "head_sha": "47e31780a4417a0340c45f323be8c5d4fd043308",
+  "id": "fn-184-runtime-independent-vector-identity",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 6,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R6"
+      }
+    ],
+    "total": 6
+  },
+  "timestamp": "2026-09-25T16:37:02Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

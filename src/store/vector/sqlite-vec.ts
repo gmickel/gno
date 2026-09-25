@@ -67,6 +67,23 @@ export function modelTableName(modelUri: string): string {
 // Factory
 // ─────────────────────────────────────────────────────────────────────────────
 
+const indexDatabases = new WeakMap<VectorIndexPort, Database>();
+
+/** Partition resolution needs the database behind a vector index port. */
+export function getVectorIndexDatabase(
+  port: VectorIndexPort
+): Database | undefined {
+  return indexDatabases.get(port);
+}
+
+export function bindVectorIndexDatabase<T extends VectorIndexPort>(
+  port: T,
+  db: Database
+): T {
+  indexDatabases.set(port, db);
+  return port;
+}
+
 export interface VectorIndexOptions {
   model: string;
   dimensions: number;
@@ -224,7 +241,7 @@ export async function createVectorIndexPort(
     return Promise.resolve(ok(rows.length));
   }
 
-  return ok({
+  const port: VectorIndexPort = {
     searchAvailable,
     model,
     dimensions,
@@ -531,5 +548,6 @@ export async function createVectorIndexPort(
         );
       }
     },
-  });
+  };
+  return ok(bindVectorIndexDatabase(port, db));
 }

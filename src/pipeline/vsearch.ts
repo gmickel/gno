@@ -21,7 +21,10 @@ import {
 } from "../llm/inference-scope";
 import { getContentBatch } from "../store/content-batch";
 import { err, ok } from "../store/types";
-import { resolveVectorSearchIdentity } from "../store/vector/variant-search";
+import {
+  resolveVectorSearchIdentity,
+  vectorSearchUnavailableMessage,
+} from "../store/vector/variant-search";
 import { createChunkLookup } from "./chunk-lookup";
 import {
   applyContentTypeBoost,
@@ -144,7 +147,16 @@ async function searchVectorWithEmbeddingOwned(
 
   let embeddingIdentity;
   try {
-    embeddingIdentity = resolveVectorSearchIdentity(deps.embedPort);
+    const partition = await resolveVectorSearchIdentity(
+      deps.embedPort,
+      vectorIndex
+    );
+    if (partition.unavailable)
+      return err(
+        "VEC_SEARCH_UNAVAILABLE",
+        vectorSearchUnavailableMessage(partition.unavailable)
+      );
+    embeddingIdentity = partition.identity;
   } catch (cause) {
     return err(
       "QUERY_FAILED",
