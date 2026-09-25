@@ -1,9 +1,17 @@
 {
   "branch_name": "fn-182-web-ui-polish-after-retry-safe-writes",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
   "created_at": "2026-09-24T12:44:37.973177Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-182-web-ui-polish-after-retry-safe-writes",
+  "impl_review_rounds": {},
   "next_task": 1,
+  "no_plan": true,
+  "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-182-web-ui-polish-after-retry-safe-writes.md",
@@ -20,5 +28,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-24T12:44:37.975749Z"
+  "updated_at": "2026-09-25T14:12:12.076287Z"
 }
