@@ -182,7 +182,8 @@ and MCP `gno_get` need to fetch or open it.
   (loopback peer, loopback `Host`, no forwarding headers) has every `absPath`
   field removed. The same-host Web UI keeps it for Reveal and the `file://`
   "Open original"; a remote Web UI opens originals through
-  `/api/doc-asset?uri=`.
+  `/api/doc-asset?uri=`. The status, collection, and connector routes also
+  drop their owner configuration paths for that caller (table below).
 - **MCP**: stdio callers keep host paths. Every Streamable HTTP caller
   (`gno serve` or `gno daemon` `/mcp`, loopback or not) gets none.
 - **CLI** and the **SDK** run on the owner's machine and are unchanged.
@@ -198,13 +199,27 @@ Inventory of result fields that carry a host absolute path:
 | `recent[].absPath`                    | peek snapshot                                                                     | HTTP MCP `gno_peek`                                                                                                                                | field omitted            |
 | `source:` line of a `gno://` resource | MCP resource read header                                                          | HTTP MCP resource reads                                                                                                                            | collection-relative path |
 
+Owner configuration paths reveal the same layout and follow the same rule. A
+remote caller identifies a collection by its `name`:
+
+| Field                                                     | Carried by                                 | Remote-reachable surfaces                                        | Remote caller gets |
+| :-------------------------------------------------------- | :----------------------------------------- | :--------------------------------------------------------------- | :----------------- |
+| `configPath`, `dbPath`                                    | index status                               | REST `/api/status`; HTTP MCP `gno_status` (and its text summary) | field omitted      |
+| `collections[].path`                                      | collection root in index status            | REST `/api/status`; HTTP MCP `gno_status`                        | field omitted      |
+| `path`, `collection.path`                                 | collection list, create, and update        | REST `/api/collections`, `/api/collections/:name`                | field omitted      |
+| `onboarding.suggestedCollections[].path`                  | suggested folders to add                   | REST `/api/status`                                               | field omitted      |
+| `bootstrap.cache.path`, `bootstrap.models.entries[].path` | model cache directory and model files      | REST `/api/status`                                               | field omitted      |
+| `connectors[].path`, `connector.path`                     | connector skill directory or client config | REST `/api/connectors`, `/api/connectors/install`                | field omitted      |
+
+The same-host Web UI keeps these fields for the Collections page, the
+dashboard, and the connector list. A remote Web UI shows the same pages without
+the path lines and offers no suggested-folder quick picks, because it has no
+host path to prefill. The CLI, stdio MCP, and the SDK are unchanged.
+
 Context Capsules, retrieval traces, and publish exports carry no host paths.
 A capture or remember whose file was written but not indexed names the file by
 its `gno://` URI in the error message. `/api/doc-asset` streams the original
-file's bytes unchanged. Owner configuration fields are outside this rule and
-still reach a remote REST or HTTP MCP caller: collection root `path` in
-`/api/collections`, `/api/status`, and `gno_status`, plus status `configPath`
-and `dbPath`.
+file's bytes unchanged.
 
 ### Browser Clipper Boundary
 
@@ -441,6 +456,11 @@ GET /api/status
 ```
 
 Returns index statistics plus first-run onboarding, health-center state, background-service telemetry, and bootstrap/runtime-model provisioning state for the dashboard.
+
+`configPath`, `dbPath`, and every `path` field (collection roots, suggested
+folders, model cache and model files) reach same-host callers only; a remote
+caller's response omits them (see
+[Host Paths and Remote Callers](#host-paths-and-remote-callers)).
 
 **Response**:
 
@@ -838,6 +858,10 @@ The web UI uses this field to decide whether host-local actions (Reveal,
 ```http
 GET /api/collections
 ```
+
+Each collection's root `path` reaches same-host callers only; a remote
+caller's response omits it (see
+[Host Paths and Remote Callers](#host-paths-and-remote-callers)).
 
 **Response**:
 

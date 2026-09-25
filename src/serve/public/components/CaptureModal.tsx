@@ -75,7 +75,7 @@ export interface CaptureModalProps {
 
 interface Collection {
   name: string;
-  path: string;
+  path?: string;
 }
 
 interface CreateDocResponse {

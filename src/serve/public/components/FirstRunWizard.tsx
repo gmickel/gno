@@ -235,6 +235,8 @@ export function FirstRunWizard({
       ? steps[activeIndex + 1]
       : null;
   const progressValue = getStepProgress(onboarding);
+  // A remote caller's suggestions carry no host path to prefill.
+  const quickPicks = onboarding.suggestedCollections.filter(({ path }) => path);
   const isShowingRecommended = activeStep?.id === recommendedStepId;
   const runRecommendedAction = () => {
     if (!activeStep) {
@@ -277,7 +279,7 @@ export function FirstRunWizard({
             </Button>
           </div>
 
-          {onboarding.suggestedCollections.length > 0 && (
+          {quickPicks.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -295,7 +297,7 @@ export function FirstRunWizard({
                 <Badge variant="outline">Quick picks</Badge>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
-                {onboarding.suggestedCollections.map((suggestion) => (
+                {quickPicks.map((suggestion) => (
                   <button
                     className="rounded-xl border border-border/70 bg-background/80 p-4 text-left shadow-sm transition-all hover:border-primary/35 hover:bg-background hover:shadow-md"
                     key={suggestion.path}

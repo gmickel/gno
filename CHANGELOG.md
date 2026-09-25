@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Remote callers no longer receive your configuration paths. A REST response to a caller that is not on your machine (the same `localClient` rule as document paths) and every Streamable HTTP MCP result now omit the config file and index database locations (`configPath`, `dbPath`) and each collection's root folder (`path`) from `/api/status`, `/api/collections`, and `gno_status`. REST `/api/status` also omits suggested-folder, model cache, and model file paths, and `/api/connectors` omits connector install paths. Remote callers name collections by `name`. The Collections page, dashboard, and connector list work as before on your machine; a remote Web UI shows them without the path lines. `path`, `configPath`, and `dbPath` are now optional in the `status` and `collection-list` schemas. See [Host Paths and Remote Callers](docs/API.md#host-paths-and-remote-callers).
+
 ## [2.7.0] - 2026-09-25
 
 ### Changed

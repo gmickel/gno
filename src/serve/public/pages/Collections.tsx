@@ -76,7 +76,8 @@ interface PageProps {
 interface CollectionStats {
   activePresetId?: string;
   name: string;
-  path: string;
+  /** Host path; omitted for remote callers. */
+  path?: string;
   documentCount: number;
   chunkCount: number;
   embeddedCount: number;
@@ -262,18 +263,20 @@ function CollectionCard({
           </DropdownMenu>
         </div>
 
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <p className="truncate font-mono text-muted-foreground text-xs">
-                {truncatePath(collection.path)}
-              </p>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-xs break-all">
-              <p className="font-mono text-xs">{collection.path}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        {collection.path && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <p className="truncate font-mono text-muted-foreground text-xs">
+                  {truncatePath(collection.path)}
+                </p>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs break-all">
+                <p className="font-mono text-xs">{collection.path}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </CardHeader>
 
       <CardContent className="pt-2">
