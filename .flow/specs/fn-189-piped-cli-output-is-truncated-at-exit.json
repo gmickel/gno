@@ -62,7 +62,7 @@
     "impl:fn-189-piped-cli-output-is-truncated-at-exit.1": 0
   },
   "spec_path": ".flow/specs/fn-189-piped-cli-output-is-truncated-at-exit.md",
-  "status": "open",
+  "status": "done",
   "title": "Piped CLI output is truncated at exit",
   "tracker": {
     "baseHashFlow": null,
@@ -75,5 +75,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T16:48:18.918442Z"
+  "updated_at": "2026-09-25T16:48:30.555512Z"
 }

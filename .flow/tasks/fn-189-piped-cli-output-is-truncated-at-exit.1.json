@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-189-piped-cli-output-is-truncated-at-exit",
   "spec_path": ".flow/tasks/fn-189-piped-cli-output-is-truncated-at-exit.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Piped CLI output is truncated at exit",
   "updated_at": "2026-09-25T16:35:24.142166Z"
 }
