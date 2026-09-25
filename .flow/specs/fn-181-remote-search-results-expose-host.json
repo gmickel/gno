@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-181-remote-search-results-expose-host",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-25T15:00:34.912398Z",
   "created_at": "2026-09-24T12:44:37.594095Z",
   "default_impl": null,
   "default_review": null,
@@ -152,5 +152,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T14:42:47.867883Z"
+  "updated_at": "2026-09-25T15:00:34.912406Z"
 }
