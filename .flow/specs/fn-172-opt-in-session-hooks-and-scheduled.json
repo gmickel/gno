@@ -394,7 +394,7 @@
     "plan": 0
   },
   "spec_path": ".flow/specs/fn-172-opt-in-session-hooks-and-scheduled.md",
-  "status": "open",
+  "status": "done",
   "title": "Opt-in session hooks and scheduled ingestion",
   "tracker": {
     "baseHashFlow": null,
@@ -407,5 +407,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-24T15:31:45.246176Z"
+  "updated_at": "2026-09-25T07:27:08.242029Z"
 }

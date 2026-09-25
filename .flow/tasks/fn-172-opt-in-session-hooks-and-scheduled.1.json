@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-172-opt-in-session-hooks-and-scheduled",
   "spec_path": ".flow/tasks/fn-172-opt-in-session-hooks-and-scheduled.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Opt-in session hooks and scheduled ingestion",
   "updated_at": "2026-09-24T13:54:16.737160Z"
 }
