@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-184-runtime-independent-vector-identity",
   "spec_path": ".flow/tasks/fn-184-runtime-independent-vector-identity.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Runtime-independent vector identity",
   "updated_at": "2026-09-25T14:12:46.055130Z"
 }

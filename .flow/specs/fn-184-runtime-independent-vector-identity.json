@@ -363,7 +363,7 @@
     "impl:fn-184-runtime-independent-vector-identity.1": 0
   },
   "spec_path": ".flow/specs/fn-184-runtime-independent-vector-identity.md",
-  "status": "open",
+  "status": "done",
   "title": "Runtime-independent vector identity",
   "tracker": {
     "baseHashFlow": null,
@@ -376,5 +376,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T16:37:02.849985Z"
+  "updated_at": "2026-09-25T16:37:14.741141Z"
 }
