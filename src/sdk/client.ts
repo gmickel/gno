@@ -50,6 +50,10 @@ import type {
   GnoRenameNoteApplyOptions,
   GnoRenameNoteOptions,
   GnoSearchOptions,
+  GnoSessionsDiscovery,
+  GnoSessionsImportInput,
+  GnoSessionsImportReceipt,
+  GnoSessionsStatus,
   GnoUpdateOptions,
   GnoVectorSearchOptions,
   KnowledgeChangesResult,
@@ -91,6 +95,7 @@ import { buildVerifiedAsk } from "../app/verified-ask";
 import {
   buildContentTypeBoostStatus,
   ConfigSchema,
+  getConfigPaths,
   loadConfig,
   normalizeConfigContentTypes,
   normalizeContentTypes,
@@ -198,6 +203,9 @@ import { searchHybrid } from "../pipeline/hybrid";
 import { RequestHydration } from "../pipeline/hydration";
 import { searchBm25 } from "../pipeline/search";
 import { searchVectorWithEmbedding } from "../pipeline/vsearch";
+import { assertSessionBinding } from "../sessions/binding";
+import { SessionsService } from "../sessions/service";
+import { SESSIONS_VALIDATION_CODES, SessionsError } from "../sessions/types";
 import { SqliteAdapter } from "../store/sqlite/adapter";
 import { openScopedIndexStore } from "../store/sqlite/scoped-index";
 import { createVectorIndexPort } from "../store/vector";
@@ -319,6 +327,19 @@ async function resolveClientState(
     options.indexName ?? DEFAULT_INDEX_NAME
   );
   const dbPath = options.dbPath ?? getIndexDbPath(indexName);
+  try {
+    await assertSessionBinding({
+      config,
+      configPath:
+        configSource === "inline"
+          ? "<inline-config>"
+          : (options.configPath ?? getConfigPaths().configFile),
+      indexName,
+      dbPath,
+    });
+  } catch (cause) {
+    throw toSessionsSdkError(cause);
+  }
   await mkdir(dirname(dbPath), { recursive: true });
 
   const store = new SqliteAdapter();
@@ -340,6 +361,16 @@ async function resolveClientState(
       options.downloadPolicy ?? resolveDownloadPolicy(process.env, {}),
     indexName,
   };
+}
+
+/** Map a sessions error onto the SDK family; the sessions code survives in `details.code`. */
+function toSessionsSdkError(cause: unknown): unknown {
+  if (!(cause instanceof SessionsError)) return cause;
+  return sdkError(
+    SESSIONS_VALIDATION_CODES.has(cause.code) ? "VALIDATION" : "RUNTIME",
+    cause.message,
+    { cause, details: { code: cause.code } }
+  );
 }
 
 /** SDK error family per memory code; exhaustive so a new code fails to compile. */
@@ -1369,6 +1400,8 @@ class GnoClientImpl implements GnoClient {
       requestedIndexName: resolution.value.indexName,
       config: this.config,
       configPath: this.configPath,
+    }).catch((cause: unknown) => {
+      throw toSessionsSdkError(cause);
     });
     try {
       const result = await getDocumentByRef(
@@ -1408,6 +1441,8 @@ class GnoClientImpl implements GnoClient {
       requestedIndexName: resolution.value.indexName,
       config: this.config,
       configPath: this.configPath,
+    }).catch((cause: unknown) => {
+      throw toSessionsSdkError(cause);
     });
     try {
       const result = await multiGetDocuments(
@@ -1824,6 +1859,43 @@ class GnoClientImpl implements GnoClient {
       throw toMemorySdkError(cause);
     } finally {
       await this.disposeRuntimePorts(ports);
+    }
+  }
+
+  private sessionsService(): SessionsService {
+    this.assertOpen();
+    return new SessionsService({
+      config: this.config,
+      configPath: this.configPath ?? getConfigPaths().configFile,
+      indexName: this.indexName,
+      store: this.store,
+    });
+  }
+
+  async sessionsStatus(): Promise<GnoSessionsStatus> {
+    try {
+      return await this.sessionsService().status();
+    } catch (cause) {
+      throw toSessionsSdkError(cause);
+    }
+  }
+
+  async discoverSessions(): Promise<GnoSessionsDiscovery> {
+    try {
+      return await this.sessionsService().discover();
+    } catch (cause) {
+      throw toSessionsSdkError(cause);
+    }
+  }
+
+  async importSessions(
+    input: GnoSessionsImportInput
+  ): Promise<GnoSessionsImportReceipt> {
+    try {
+      // The SDK runs in the owner's process, so explicit paths are allowed.
+      return await this.sessionsService().import(input, { allowPaths: true });
+    } catch (cause) {
+      throw toSessionsSdkError(cause);
     }
   }
 

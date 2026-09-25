@@ -153,7 +153,7 @@ the resident gateway applies one profile to every connected client.
 
 | Profile          | Without `--enable-write`                                                                              | With `--enable-write`                                   |
 | ---------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `full` (default) | Every read tool below (36)                                                                            | Every read tool plus every write tool (56)              |
+| `full` (default) | Every read tool below (37)                                                                            | Every read tool plus every write tool (58)              |
 | `core`           | `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`, `gno_changes`, `gno_recall` (7) | The 7 read tools plus `gno_capture`, `gno_remember` (9) |
 
 Both lists are exact: `core` advertises nothing else, and `full` is byte-for-byte
@@ -1789,6 +1789,73 @@ error text `CODE: message`, `structuredContent.error` = `CODE`):
 `docs/guides/retries-and-request-ids.md#errors`.
 
 ---
+
+### gno_sessions_status
+
+Read-only status of a session-archive server (a server started with the
+dedicated archive `--config` and `--index`). Registered with the `full`
+profile only; not part of `core`.
+
+**Input Schema:** `{}` (no arguments).
+
+**Output:** the shared `sessions-status` schema
+(`spec/output-schemas/sessions-status.schema.json`): archive collections with
+thread counts and, per owner-registered source, its ID, harness, destination
+collection, availability, unit counts (complete, incomplete, failed,
+pending), `sourceUnavailable`, `staleParser` and last import time. The result
+contains no host paths.
+
+**Errors:** `SESSIONS_NOT_CONFIGURED` when the server's config has no
+`sessions` block.
+
+### gno_sessions_import
+
+Manually import one owner-registered session source into the archive and sync
+the changed archive files (write-enabled; `full` profile only). There is no
+MCP discovery tool: remote clients never learn host directories.
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sourceId"],
+  "properties": {
+    "sourceId": {
+      "type": "string",
+      "description": "ID of an owner-registered session source (see gno_sessions_status)"
+    },
+    "dryRun": {
+      "type": "boolean",
+      "description": "Parse and report without writing archive or index state"
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100000,
+      "description": "Maximum changed units processed this call; the rest are deferred"
+    }
+  }
+}
+```
+
+Unknown keys (for example `paths`) are rejected: MCP imports name a
+registered source ID only.
+
+**Output:** the shared `sessions-import-receipt` schema. Partial imports
+(`status: "partial"`) stay visible and are retried by the next call; the
+receipt carries no host paths or session content.
+
+Registered only with `--enable-write` (like `gno_capture` and
+`gno_remember`); without it the tool is not advertised. A dispatch while
+writes are disabled returns `WRITE_DISABLED`.
+
+**Errors:** `SESSIONS_UNKNOWN_SOURCE`, `SESSIONS_SOURCE_UNAVAILABLE`,
+`SESSIONS_UNKNOWN_COLLECTION`, `SESSIONS_INVALID_INPUT`,
+`SESSIONS_NOT_CONFIGURED`; `SESSIONS_BUSY` when another import holds the
+archive lock; `SESSIONS_RUNTIME_FAILURE` (fixed, path-free message) for filesystem or
+index failures.
 
 ### gno_list_tags
 

@@ -1,0 +1,7 @@
+{"timestamp":"2025-12-01T15:00:00.000Z","type":"session_meta","payload":{"id":"0000e7a1-0000-7000-8000-00000000b001","timestamp":"2025-12-01T15:00:00.000Z","cwd":"/work/b/api","originator":"codex_cli_rs","cli_version":"0.58.0","source":"cli"}}
+{"timestamp":"2025-12-01T15:00:01.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"<environment_context>placeholder</environment_context>"}]}}
+{"timestamp":"2025-12-01T15:00:02.000Z","type":"event_msg","payload":{"type":"user_message","message":"Decision: the heron ledger API paginates with opaque cursor tokens, never numeric offsets.","images":[]}}
+{"timestamp":"2025-12-01T15:00:03.000Z","type":"response_item","payload":{"type":"reasoning","summary":[],"encrypted_content":"placeholder"}}
+{"timestamp":"2025-12-01T15:00:04.000Z","type":"event_msg","payload":{"type":"agent_reasoning","text":"placeholder reasoning"}}
+{"timestamp":"2025-12-01T15:00:05.000Z","type":"event_msg","payload":{"type":"agent_message","message":"Suggestion: numeric offsets would make heron ledger pagination simpler for clients."}}
+{"timestamp":"2025-12-01T15:00:05.000Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Suggestion: numeric offsets would make heron ledger pagination simpler for clients."}]}}

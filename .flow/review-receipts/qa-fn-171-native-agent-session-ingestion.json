@@ -1,0 +1,111 @@
+{
+  "branch": "fn-171-native-agent-session-ingestion",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "531ee0b257cac06d2b463d423a833f5798b0d636",
+    "items": [
+      {
+        "body": "Running serve keeps listing a session source removed via CLI; UI Remove then 400s until restart (surface: sessions REST/Web UI)",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-9261db00ef35a73134e589350576002456b5abc2c77dae9e6babbeca3e3976c2",
+        "id": "finding-2f2783e453dba64008b1cd3656ee7e48",
+        "lastSeenReceiptId": "review-9261db00ef35a73134e589350576002456b5abc2c77dae9e6babbeca3e3976c2",
+        "ordinal": 1,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "serve-stale-source-config"
+      },
+      {
+        "body": "Enter on Discover local sources drops keyboard focus to body (surface: sessions Web UI)",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-9261db00ef35a73134e589350576002456b5abc2c77dae9e6babbeca3e3976c2",
+        "id": "finding-dc46dcce2ab4b9114d662b97db664ee7",
+        "lastSeenReceiptId": "review-9261db00ef35a73134e589350576002456b5abc2c77dae9e6babbeca3e3976c2",
+        "ordinal": 2,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "discover-focus-loss"
+      },
+      {
+        "body": "ask --json meta.answerContext.selected[].uri and archive ls --json URIs lack ?index= (surface: cli ask/ls)",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-9261db00ef35a73134e589350576002456b5abc2c77dae9e6babbeca3e3976c2",
+        "id": "finding-bb13006ce0217d17009a15108de02371",
+        "lastSeenReceiptId": "review-9261db00ef35a73134e589350576002456b5abc2c77dae9e6babbeca3e3976c2",
+        "ordinal": 3,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "ask-answercontext-uri-index"
+      },
+      {
+        "body": "First-run model download progress printed to stdout before --json output (surface: cli ask/context)",
+        "classification": "pre_existing",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-9261db00ef35a73134e589350576002456b5abc2c77dae9e6babbeca3e3976c2",
+        "id": "finding-fd3e4c817122dbb9a61fa675eeb1d2cf",
+        "lastSeenReceiptId": "review-9261db00ef35a73134e589350576002456b5abc2c77dae9e6babbeca3e3976c2",
+        "ordinal": 4,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "json-progress-on-stdout"
+      }
+    ],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-9261db00ef35a73134e589350576002456b5abc2c77dae9e6babbeca3e3976c2"
+  },
+  "head_sha": "531ee0b257cac06d2b463d423a833f5798b0d636",
+  "id": "fn-171-native-agent-session-ingestion",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 8,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R6"
+      },
+      {
+        "coverage": "live",
+        "id": "R7"
+      },
+      {
+        "coverage": "live",
+        "id": "R8"
+      }
+    ],
+    "total": 8
+  },
+  "timestamp": "2026-09-24T13:51:31Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

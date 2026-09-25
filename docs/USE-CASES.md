@@ -208,6 +208,35 @@ For new meeting pages, use `gno capture --preset meeting`. Keep the synthesis,
 decisions, and follow-ups above `## Timeline`; put raw notes, transcript excerpts,
 and dated evidence below it.
 
+## Past Agent Sessions
+
+Decisions often happen inside a coding-agent conversation and never reach a
+note. `gno sessions` imports selected local Codex, Claude Code, OpenClaw, and
+Hermes conversations into a separate archive so you can find them later
+without mixing them into curated notes.
+
+### Setup
+
+```bash
+gno sessions discover
+gno --config ~/gno-sessions/archive.yml --index sessions \
+  sessions init --archive ~/gno-sessions/archive --collection sessions-work
+gno --config ~/gno-sessions/archive.yml --index sessions \
+  sessions source add claude --harness claude-code --path ~/.claude/projects --collection sessions-work
+gno --config ~/gno-sessions/archive.yml --index sessions sessions import --source claude
+```
+
+### Finding a Decision
+
+```bash
+gno --config ~/gno-sessions/archive.yml --index sessions \
+  search "retry budget" --author human --tags-all project/api
+```
+
+Human turns show what you said; assistant turns are labelled as proposals.
+Imports are manual: rerun the import when you want new sessions included.
+See [Agent Sessions](SESSIONS.md).
+
 ## Multi-Project Setup
 
 Manage multiple collections.
@@ -295,7 +324,7 @@ After installation, restart your agent. It will detect the GNO skill and can sea
 
 - `SKILL.md` - Instructions for the agent on how to use GNO
 - CLI references for search, query, retrieval, links, capture, MCP, and examples
-- `recipes/` - Second-brain playbooks for lookup, capture, meetings, email context, source summaries, ideas, citations, and memory (file a decision, supersede a stale fact, scoped recall)
+- `recipes/` - Second-brain playbooks for lookup, capture, meetings, email context, source summaries, ideas, citations, memory (file a decision, supersede a stale fact, scoped recall), and past agent sessions
 
 The recipes are agent-facing guidance, not native connectors. Email, calendar, chat, and web material must be user-supplied or exported unless you use a separate connector outside GNO.
 
@@ -314,6 +343,7 @@ gno skill show --file recipes/citation-and-provenance.md
 gno skill show --file recipes/memory-file-decision.md
 gno skill show --file recipes/memory-supersede-fact.md
 gno skill show --file recipes/memory-scoped-recall.md
+gno skill show --file recipes/session-evidence-lookup.md
 ```
 
 Use these when an agent should search local context first, write durable notes with provenance, verify claims with citations, or store and recall facts through `gno remember` / `gno recall` (see [MEMORY.md](MEMORY.md)). Write-flavored recipes require post-write verification with `gno index`, `gno embed`, `gno search`, `gno query`, or `gno get` as appropriate.

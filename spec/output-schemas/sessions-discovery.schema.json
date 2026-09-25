@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/sessions-discovery@1.0",
+  "title": "GNO Session Source Discovery",
+  "description": "Preview of supported local session sources (CLI `gno sessions discover --json`, REST GET /api/sessions/discover for same-host browsers only, SDK client.discoverSessions()). Discovery never imports. It carries host paths and is therefore never exposed over MCP or to non-local HTTP clients.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "candidates", "warnings"],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "harness",
+          "path",
+          "units",
+          "bytes",
+          "truncated",
+          "formatVersions",
+          "registeredAs"
+        ],
+        "properties": {
+          "harness": { "enum": ["codex", "claude-code", "openclaw", "hermes"] },
+          "path": { "type": "string", "minLength": 1 },
+          "units": { "type": "integer", "minimum": 0 },
+          "bytes": { "type": "integer", "minimum": 0 },
+          "truncated": { "type": "boolean" },
+          "formatVersions": { "type": "array", "items": { "type": "string" } },
+          "registeredAs": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  }
+}

@@ -1,0 +1,10 @@
+{"type":"session","version":4,"id":"0c1a0000-0000-4000-8000-000000000001","timestamp":"2026-09-19T09:00:00.000Z","cwd":"/work/delta"}
+{"type":"model_change","id":"e0","parentId":null,"timestamp":"2026-09-19T09:00:00.100Z","provider":"placeholder","modelId":"placeholder-model"}
+{"type":"message","id":"e1","parentId":"e0","timestamp":"2026-09-19T09:00:01.000Z","message":{"role":"custom","customType":"openclaw.runtime-context","display":false,"content":"<<<BEGIN_OPENCLAW_INTERNAL_CONTEXT>>> placeholder runtime context"}}
+{"type":"message","id":"e2","parentId":"e1","timestamp":"2026-09-19T09:00:02.000Z","message":{"role":"user","content":[{"type":"text","text":"Delta decision: rotate the placeholder logs weekly. Authorization: Bearer GnoFixtureBearerToken0123456789"}],"timestamp":1789808402000,"provenance":{"kind":"external_user"}}}
+{"type":"message","id":"e3","parentId":"e2","timestamp":"2026-09-19T09:00:03.000Z","message":{"role":"assistant","content":[{"type":"thinking","thinking":"placeholder"},{"type":"text","text":"Suggestion: daily rotation might be safer for delta logs."},{"type":"toolCall","id":"call_1","name":"placeholder","arguments":{}}],"timestamp":1789808403000}}
+{"type":"message","id":"e4","parentId":"e3","timestamp":"2026-09-19T09:00:04.000Z","message":{"role":"toolResult","toolCallId":"call_1","toolName":"placeholder","content":[{"type":"text","text":"placeholder tool output"}],"isError":false,"timestamp":1789808404000}}
+{"type":"message","id":"e5","parentId":"e4","timestamp":"2026-09-19T09:00:05.000Z","message":{"role":"user","content":"Subagent announce placeholder","timestamp":1789808405000,"provenance":{"kind":"inter_session","sourceTool":"subagent_announce"}}}
+{"type":"compaction","id":"e6","parentId":"e5","timestamp":"2026-09-19T09:00:06.000Z","summary":"placeholder compaction summary","firstKeptEntryId":"e5","tokensBefore":100}
+{"type":"message","id":"e7","parentId":"e6","timestamp":"2026-09-19T09:00:07.000Z","message":{"role":"user","content":"Continue the OpenClaw runtime event.","timestamp":1789808407000}}
+{"type":"unknown_entry_kind","id":"e8","parentId":"e7","timestamp":"2026-09-19T09:00:08.000Z"}

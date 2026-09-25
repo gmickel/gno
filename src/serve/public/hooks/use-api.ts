@@ -81,7 +81,12 @@ export function useApi<T>() {
 export async function apiFetch<T>(
   endpoint: string,
   options?: RequestInit
-): Promise<{ data: T | null; error: string | null }> {
+): Promise<{
+  data: T | null;
+  error: string | null;
+  /** `error.details` of the JSON error envelope, when the server sent one. */
+  details?: Record<string, unknown>;
+}> {
   try {
     const res = await fetch(endpoint, {
       headers: { "Content-Type": "application/json" },
@@ -95,10 +100,13 @@ export async function apiFetch<T>(
     }
 
     if (!res.ok) {
-      const apiError = json as { error?: { message?: string } };
+      const apiError = json as {
+        error?: { message?: string; details?: Record<string, unknown> };
+      };
       return {
         data: null,
         error: apiError.error?.message || `Request failed: ${res.status}`,
+        details: apiError.error?.details,
       };
     }
 

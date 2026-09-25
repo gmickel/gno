@@ -216,6 +216,48 @@ and vector-index materialization. Stored variants can repair lost materializatio
 without inference. Completeness and durable activation are separate: losing an
 index table does not authorize fallback to legacy vectors after promotion.
 
+### Session Archive Ingestion
+
+`gno sessions` feeds local agent conversations into the ordinary ingestion
+pipeline above through a durable intermediate archive. Harness stores are
+never registered as collections.
+
+```
+Harness session store (JSONL files or SQLite, opened read-only)
+    │
+    ▼ Discovery / registered source (src/sessions/sources.ts)
+    │
+    ▼ Harness parser (src/sessions/parsers/*)
+    │   structural speaker classification; tool calls, reasoning, injected
+    │   context, copied history, and programmatic prompts are skipped
+    │
+    ▼ Sanitizer (src/sessions/sanitize.ts)
+    │   credential shapes + configured literals, before any persistence
+    │
+    ▼ Archive writer (src/sessions/archive.ts)
+    │   one JSONL file per thread, atomic writes, byte-compared on rerun
+    │   <archiveRoot>/<collection>/<harness>/<sourceId>/<hash>.jsonl
+    │
+    ▼ Checkpoint (<archiveRoot>/.gno-sessions/state.json, import.lock)
+    │
+    ▼ Collection sync of the changed files through the JSONL record adapter
+        (one logical record per turn; author, tags, session and thread IDs,
+        recorded date from the collection's fieldMapping)
+```
+
+`SessionsService` (`src/sessions/service.ts`) owns discovery, registration,
+import, status, and prune. CLI, MCP, REST, SDK, and Web UI are thin adapters
+that share its receipt and status types (`src/sessions/types.ts`).
+
+**Isolation by config/index pair.** An archive is one config file with a
+`sessions` block bound to one named index. `src/sessions/binding.ts` checks
+the pair before every CLI command, when the SDK opens a client, on the REST
+routes, and for cross-index `get`; the rules are in
+[Archive binding](SESSIONS.md#archive-binding-one-config-one-index). The archive root must lie outside GNO's
+config/data/cache directories, so reset, cleanup, and uninstall cannot remove
+it; the SQLite index remains disposable and can be rebuilt from the archive
+with `gno update`.
+
 ### Search Pipeline
 
 ```

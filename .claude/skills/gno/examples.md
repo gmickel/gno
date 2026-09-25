@@ -362,6 +362,36 @@ gno query "auth" --tags-all security,reviewed
 gno ask "deployment steps" -c work --tags-any devops --answer
 ```
 
+## Agent Sessions
+
+### Make past agent sessions searchable
+
+```bash
+# Preview local session stores (imports nothing)
+gno sessions discover
+
+# Dedicated archive: its own config file + named index
+gno --config ~/gno-sessions/archive.yml --index sessions sessions init --archive ~/gno-sessions/archive --collection sessions-work
+gno --config ~/gno-sessions/archive.yml --index sessions sessions source add claude --harness claude-code --path ~/.claude/projects --collection sessions-work
+
+# Dry run, then import; rerun later to pick up new turns
+gno --config ~/gno-sessions/archive.yml --index sessions sessions import --source claude --dry-run
+gno --config ~/gno-sessions/archive.yml --index sessions sessions import --source claude
+```
+
+### Find a past decision
+
+```bash
+# What the person said, in one project
+gno --config ~/gno-sessions/archive.yml --index sessions search "retry budget" --author human --tags-all project/api
+
+# What an agent proposed, in one harness
+gno --config ~/gno-sessions/archive.yml --index sessions search "retry budget" --author assistant --category harness/codex
+
+# Read the turn (keep ?index=sessions on the URI)
+gno --config ~/gno-sessions/archive.yml --index sessions get "gno://sessions-work/.gno/records/...?index=sessions"
+```
+
 ## Tips
 
 ### Search Modes

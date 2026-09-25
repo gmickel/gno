@@ -1,4 +1,5 @@
 import {
+  ArchiveIcon,
   BookOpen,
   CheckCircle2Icon,
   CpuIcon,
@@ -539,6 +540,15 @@ export default function Dashboard({ navigate }: PageProps) {
           >
             <HistoryIcon className="size-4" />
             Trace history
+          </Button>
+          <Button
+            className="gap-2"
+            onClick={() => navigate("/sessions")}
+            size="lg"
+            variant="outline"
+          >
+            <ArchiveIcon className="size-4" />
+            Agent sessions
           </Button>
           <Button
             onClick={() => navigate("/context/compiled")}

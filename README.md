@@ -60,6 +60,7 @@ Everything runs on your machine. Zero telemetry. The three network boundaries ar
 - your knowledge is split across Markdown, code, PDFs, Office files, and exported mail or transcripts
 - you want one retrieval layer for the CLI, the browser, MCP, and a Bun/TypeScript SDK
 - you want your coding agent to have a real memory without shipping your docs to a cloud API
+- you want to search what you and your coding agents said in past sessions, kept apart from your curated notes
 - you need to prove, later, which bytes supported a conclusion
 
 ## Two minutes, end to end
@@ -118,7 +119,7 @@ gno daemon --detach  # headless indexing + resident MCP gateway
 
 **Start here** · [Quick Start](#quick-start) · [Installation](#installation) · [Agent Integration](#agent-integration) · [Search Modes](#search-modes)
 
-**Surfaces** · [Web UI](#web-ui) · [Omarchy Plugin](#omarchy-plugin) · [REST API](#rest-api) · [SDK](#sdk) · [Daemon Mode](#daemon-mode) · [Publish to gno.sh](#publish-to-gnosh)
+**Surfaces** · [Agent Sessions](#agent-sessions) · [Web UI](#web-ui) · [Omarchy Plugin](#omarchy-plugin) · [REST API](#rest-api) · [SDK](#sdk) · [Daemon Mode](#daemon-mode) · [Publish to gno.sh](#publish-to-gnosh)
 
 **Under the hood** · [How It Works](#how-it-works) · [Features](#features) · [Local Models](#local-models) · [Fine-Tuned Models](#fine-tuned-models) · [Architecture](#architecture) · [Development](#development)
 
@@ -144,6 +145,11 @@ See the [guide](docs/COMPILED-CONTEXT.md).
 
 > Full release history: [CHANGELOG.md](./CHANGELOG.md)
 
+- **Agent session search** (unreleased): `gno sessions` imports selected local
+  Codex, Claude Code, OpenClaw, and Hermes conversations into a dedicated,
+  redacted archive with speaker labels and provenance. Imports are manual;
+  search runs on the archive's own config/index pair. See
+  [Agent Sessions](docs/SESSIONS.md).
 - **Cheap peek snapshot**: `gno peek --json` and MCP `gno_peek` return a
   model-free `peek@1.0` snapshot (document/collection counts, embedding backlog,
   10 recent docs with `docid` and `absPath`, pid-file serve detection).
@@ -712,9 +718,10 @@ Connect GNO to Claude Desktop, Cursor, Raycast, and more:
 
 ![GNO MCP](./assets/screenshots/mcp.jpg)
 
-GNO exposes 33 tools by default via [Model Context Protocol](https://modelcontextprotocol.io),
+GNO exposes 37 tools by default via [Model Context Protocol](https://modelcontextprotocol.io),
 including the core retrieval tools below. Starting MCP with `--enable-write`
-adds 18 opt-in mutation tools, for 51 total.
+adds 20 opt-in mutation tools and the read-only `gno_request_status` lookup,
+for 58 total.
 
 | Tool                 | Description                                     |
 | :------------------- | :---------------------------------------------- |
@@ -757,6 +764,42 @@ enables mutation tools.
 
 ---
 
+## Agent Sessions
+
+Make past conversations with Codex, Claude Code, OpenClaw, and Hermes
+searchable without mixing them into your curated notes. GNO reads the local
+session stores (never writes to them), keeps human and assistant turns
+apart, redacts common credential shapes, and writes one sanitized JSONL file
+per thread into an archive you own. Nothing is imported until you ask.
+
+```bash
+# Preview what is on this machine (imports nothing)
+gno sessions discover
+
+# One dedicated config + named index for the archive
+gno --config ~/gno-sessions/archive.yml --index sessions \
+  sessions init --archive ~/gno-sessions/archive --collection sessions-work
+gno --config ~/gno-sessions/archive.yml --index sessions \
+  sessions source add codex --harness codex --path ~/.codex/sessions --collection sessions-work
+
+# Dry run, then import (rerun any time; unchanged sessions are skipped)
+gno --config ~/gno-sessions/archive.yml --index sessions sessions import --source codex --dry-run
+gno --config ~/gno-sessions/archive.yml --index sessions sessions import --source codex
+
+# Search what people said, in one harness
+gno --config ~/gno-sessions/archive.yml --index sessions \
+  query "why did we pick sqlite" --category harness/codex --author human
+```
+
+Imported turns are evidence, not facts: assistant turns stay labelled as
+assistant output, and nothing is promoted to `gno remember` automatically.
+Status, import, and receipts are also available through MCP, REST, the SDK,
+and a `/sessions` Web UI page on a server started with the archive pair.
+Redaction is best effort; see [Agent Sessions](docs/SESSIONS.md) for the
+support matrix, privacy boundary, recovery, and opt-in mixed retrieval.
+
+---
+
 ## Web UI
 
 Visual dashboard for search, browsing, editing, and AI answers. Right in your browser.
@@ -777,6 +820,7 @@ Open `http://localhost:3000` to:
 - **Capture with provenance**: `gno capture` and Web UI Quick Capture write quick notes to an editable collection with structured `source:` metadata, typed preset scaffolds, and a receipt that separates write, sync, and embed state
 - **Same capture contract everywhere**: CLI, MCP `gno_capture`, REST `/api/capture`, SDK `client.capture()`, and Web UI Quick Capture return the same provenance receipt shape
 - **Agent memory**: `gno remember` / `gno recall` (also MCP, REST, SDK) store single facts with explicit scopes and supersession, and return budgeted, cited recall with a fencing receipt. See [Memory](docs/MEMORY.md).
+- **Agent sessions**: on a server started with a session-archive config/index pair, `/sessions` manages sources, previews and runs manual imports, and searches sessions with Human/Assistant badges. See [Agent Sessions](docs/SESSIONS.md).
 - **Browser clipper**: npm-distributed unpacked Chromium extension for explicit
   visible selection or Reader capture through a local preview/confirm flow.
   See [Browser Clipper](docs/integrations/browser-clipper.md).
@@ -1076,10 +1120,11 @@ graph TD
 | **Web UI**           | Visual dashboard for search, browse, edit, and AI Q&A                                       |
 | **REST API**         | HTTP API for custom tools and integrations                                                  |
 | **Multi-Format**     | Markdown, PDF, Office, JSONL, EML/MBOX, ICS, transcript, and browser exports                |
+| **Agent Sessions**   | Manual, redacted import of local coding-agent conversations into a separate archive         |
 | **Local LLM**        | AI answers via llama.cpp, no API keys                                                       |
 | **Remote Inference** | Optional HTTP endpoints for embedding, reranking, expansion, and generation                 |
 | **Privacy First**    | Fail-closed per-collection egress policy; no telemetry; explicit network use                |
-| **MCP Server**       | 10 automatic client targets; 36 read-only tools, 56 with writes enabled                     |
+| **MCP Server**       | 10 automatic client targets; 37 read-only tools, 58 with writes enabled                     |
 | **Integrity Audits** | Offline link, declared-provenance, and freshness reports with stable IDs                    |
 | **Knowledge Delta**  | Bounded metadata history, structural diffs, and dependency impact paths                     |
 | **Context Capsules** | Deterministic evidence bundles plus saved-file freshness reverification                     |

@@ -73,6 +73,7 @@ standard release workflow because generation-backed suites are machine-intensive
 bun run eval          # Run full eval suite (~5s)
 bun run eval:hybrid   # Run hybrid benchmark suite only
 bun run eval:memory   # Memory adapter gate (fn-134): threshold 100, ~2s, offline
+bun run eval:sessions # Session ingestion gate (fn-171): threshold 100, offline
 bun run eval:watch    # Watch mode for development
 ```
 
@@ -88,6 +89,7 @@ bun run eval:watch    # Watch mode for development
 | `thoroughness.eval.ts` | Fast/balanced/thorough comparison (stats only) | 70%       |
 | `ask.eval.ts`          | Answer quality by preset                       | 70%       |
 | `memory.eval.ts`       | Memory adapter gate: upsert, supersession, recall budget, fence, scopes, agent day, latency | 100% (gate) |
+| `sessions.eval.ts`     | Session ingestion gate: per-format provenance/role fidelity vs a hand-normalized gold archive, exact lookups, capsule coverage vs gold, role safety, secret leaks | 100% (gate) |
 
 **Memory gate contract** (`bun run eval:memory`, spec fn-134): seven
 deterministic suites drive the fn-130 remember/recall contracts through the
@@ -102,6 +104,29 @@ fn-130 follow-up spec (`flowctl spec create`) with the failing suite and the
 evalite row; never lower a threshold or edit a fixture to make it pass. The
 fixture format and the golden refresh (`bun run eval:memory:fixtures
 [--golden]`) are documented in `docs/MEMORY.md` ("Eval gate and fixtures").
+
+**Sessions gate contract** (`bun run eval:sessions`, spec fn-171): imports
+synthetic native fixtures for all four harnesses (`evals/fixtures/sessions/`,
+sha256-pinned in `manifest.json`) through the real session service and
+compares the result with a manually normalized gold archive
+(`gold/turns.json`: hand-written per-turn records with native identity,
+locator, role, time and redacted text). The gold arm is indexed with the
+identical mandatory record envelope of the archive format (title shape,
+speaker prefix, one-line provenance, categories), which is what "same usable
+budget" means for R6; both arms use the same
+lexical retrieval and Context Capsule budget/byte cap, offline, and both are
+judged against the gold records (exact turn text fully present in the
+delivered text with verified identity and role). Thresholds live in
+`SESSIONS_GATE` at the top of `evals/sessions.eval.ts`: exact lookups and
+provenance/role fidelity at 1.0, zero secret leaks, zero noise archived as
+human speech, zero role-safety violations, and no capsule coverage regression
+versus gold. Coverage below 100% in both arms is a retained negative result
+about the budget; a turn the gold arm delivers and the pipeline arm does not
+is a failing gate, reported with its capsule omission reason. Helpers follow
+the memory eval layout (`evals/helpers/sessions-*.ts`); `buildSessionsManifest`
+is the single fixture walk. Re-pin fixtures with
+`bun scripts/sessions-eval-fixtures.ts` after reviewing the diff; never lower a
+threshold or edit a fixture to make a run pass.
 
 **Per-eval thresholds**: Evalite applies a single `scoreThreshold` (70 in
 `evalite.config.ts`) per run and has no per-file override. Stricter gates are
@@ -119,6 +144,7 @@ run, not the global 70. Add a new strict eval to that map and to a dedicated
 - `hybrid-baseline/` - benchmark snapshot artifacts (json + md)
 - `ask-cases.json` - 8 ask test cases
 - `memory/` - memory gate fixtures (one JSON per suite + `agent-day.golden.json`), sha256-pinned in `manifest.json`
+- `sessions/` - session ingestion gate fixtures (native sources, SQL stores, gold archive, `cases.json`), sha256-pinned in `manifest.json`
 
 **Key Design Decisions:**
 
@@ -143,6 +169,7 @@ run, not the global 70. Add a new strict eval to that map and to a dedicated
 | `cpu-embed-autoresearch.ts`       | Benchmarks CPU embedding context-count variants with synthetic scheduling or real GGUF embedding paths, and prints the Windows memory heuristic used by the native embedding path. |
 | `native-embedding-batch-probe.ts` | Probes whether the installed node-llama-cpp binding can retrieve distinct embeddings from a multi-sequence native batch.                                                           |
 | `generate-test-fixtures.ts`       | Generates test fixtures for unit tests.                                                                                                                                            |
+| `sessions-eval-fixtures.ts`       | Re-pins the session eval fixture hashes in `evals/fixtures/sessions/manifest.json` after a reviewed fixture edit (`bun scripts/sessions-eval-fixtures.ts`).                                                                    |
 | `memory-eval-fixtures.ts`         | Refreshes the memory eval fixture pins in `evals/fixtures/memory/manifest.json`; `--golden` also regenerates `agent-day.golden.json` from a fresh run (`bun run eval:memory:fixtures`). |
 | `og-screenshots.ts`               | Generates PNG screenshots from OG image HTML templates using Playwright.                                                                                                           |
 | `sync-assets.ts`                  | Syncs all website assets: OG images, screenshots, README hero. Run before release.                                                                                                 |

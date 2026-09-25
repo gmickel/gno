@@ -32,7 +32,10 @@
  *    removed only for the historical comparison. fn-170 additionally permits
  *    the optional `requestId` property on exactly `gno_capture` and
  *    `gno_remember` and adds one read-only write-gated `gno_request_status`
- *    tool, removed only for the historical comparison.
+ *    tool; fn-171 adds exactly two session-archive tools
+ *    (`gno_sessions_status` read, `gno_sessions_import` write). Both are
+ *    pinned by the current golden and removed only for the historical
+ *    comparison.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -270,6 +273,18 @@ const COMPILED_CONTEXT_TOOLS = new Set([
 const REQUEST_STATUS_TOOLS = new Set(["gno_request_status"]);
 const REQUEST_ID_TOOLS = new Set(["gno_capture", "gno_remember"]);
 
+const SESSION_ARCHIVE_TOOLS = new Set([
+  "gno_sessions_status",
+  "gno_sessions_import",
+]);
+
+/** Tools added after the historical capture; pinned by the current golden. */
+const ADDITIVE_TOOLS = new Set([
+  ...COMPILED_CONTEXT_TOOLS,
+  ...REQUEST_STATUS_TOOLS,
+  ...SESSION_ARCHIVE_TOOLS,
+]);
+
 const TYPED_FILTER_TOOLS = new Set([
   "gno_context",
   "gno_ask",
@@ -320,11 +335,7 @@ function withoutTypedFilterExtension(tool: WireTool): Record<string, unknown> {
 function normalizeToolsList(line: string): string {
   const envelope = parseJsonRpc<ToolsListEnvelope>(line);
   const tools = envelope.result.tools
-    .filter(
-      (tool) =>
-        !COMPILED_CONTEXT_TOOLS.has(tool.name) &&
-        !REQUEST_STATUS_TOOLS.has(tool.name)
-    )
+    .filter((tool) => !ADDITIVE_TOOLS.has(tool.name))
     .map((tool) => {
       const {
         execution: _execution,
@@ -458,7 +469,7 @@ describe("MCP legacy 2025-11-25 wire parity", () => {
           .filter((tool) => !historicalNames.has(tool.name))
           .map((tool) => tool.name)
       )
-    ).toEqual(new Set([...COMPILED_CONTEXT_TOOLS, ...REQUEST_STATUS_TOOLS]));
+    ).toEqual(ADDITIVE_TOOLS);
     for (const tool of actualTools.filter((entry) =>
       REQUEST_STATUS_TOOLS.has(entry.name)
     )) {

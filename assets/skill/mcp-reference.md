@@ -195,6 +195,27 @@ transport session, never from tool arguments.
   rejected (`MEMORY_FENCED_DERIVED`). Optional `source` stores evidence.
 - Writes sync for FTS before returning and do not auto-embed.
 
+## Sessions
+
+`gno_sessions_status` (read) and `gno_sessions_import` (write, needs
+`--enable-write`) are in the `full` profile only and work on a server started
+with the session-archive pair:
+
+```bash
+gno --config ~/gno-sessions/archive.yml --index sessions mcp --enable-write
+```
+
+- `gno_sessions_status` takes no arguments and lists archive collections and
+  registered sources (IDs, availability, unit counts), no host paths.
+- `gno_sessions_import` takes `sourceId` plus optional `dryRun` and `limit`;
+  `paths` and other keys are rejected, and there is no MCP discovery. Returns
+  the import receipt; `partial` is retried by the next call. It does not
+  embed.
+- Search the imported turns with `gno_search` / `gno_query` on the same
+  server (filters `author`, `categories`, `tagsAll`); cite by `gno://` URI.
+  A human turn is what the person said, an assistant turn a proposal.
+  Nothing becomes a `gno_remember` fact unless the user asks.
+
 ## Retry-Safe Writes
 
 `gno_capture` and `gno_remember` (with `decision`) accept an optional

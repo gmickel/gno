@@ -119,7 +119,10 @@ CLI.
 | `/api/models/status`                   | GET    | Download status                                             |
 | `/api/models/pull`                     | POST   | Start model download                                        |
 | `/api/memory/recall`                   | POST   | Budgeted, cited recall of current facts with a receipt      |
-| `/api/requests/:requestId`             | GET    | Look up a write request ID before retrying it               |
+| `/api/sessions/status`                 | GET    | Session archive and per-source status (archive pair only)   |
+| `/api/sessions/discover`               | GET    | Preview local agent session stores (same host only)         |
+
+| `/api/requests/:requestId` | GET | Look up a write request ID before retrying it |
 
 ### Write Operations
 
@@ -134,6 +137,10 @@ CLI.
 | `/api/capture/clip/preview`   | POST   | Preview a paired browser clip          |
 | `/api/capture/clip`           | POST   | Commit a matching browser-clip preview |
 | `/api/memory/remember`        | POST   | Store or supersede one fact (memory)   |
+| `/api/sessions/import`        | POST   | Import a registered session source     |
+| `/api/sessions/sources`       | POST   | Register a session source (same host)  |
+| `/api/sessions/sources/:id`   | DELETE | Unregister a session source            |
+| `/api/sessions/init`          | POST   | Create a session archive (same host)   |
 | `/api/docs`                   | POST   | Create new document                    |
 | `/api/docs/:id`               | PUT    | Update document                        |
 | `/api/docs/:id/refactor-plan` | POST   | Preview a reference-safe rename/move   |
@@ -2515,6 +2522,197 @@ Both endpoints are loopback-only like the rest of the API and require the
 [CSRF](#csrf-protection) conditions for mutating requests. The memory service
 takes the shared write lease itself for `remember`; a concurrent supersede of
 the same predecessor returns `MEMORY_SUPERSEDE_CONFLICT`.
+
+---
+
+### Agent Sessions
+
+Session archive endpoints are thin adapters over the same sessions service as
+`gno sessions`, MCP `gno_sessions_*`, and the SDK. They only work on a server
+started on a dedicated session-archive pair:
+
+```bash
+gno --config ~/gno-sessions/archive.yml --index sessions serve --port 3001
+```
+
+The instance is archive-bound when its config carries a `sessions` block;
+there is no cross-index routing, and a curated server never attaches an
+archive (its status and import calls answer `400` with
+`SESSIONS_NOT_CONFIGURED`). See [Agent Sessions](SESSIONS.md) for the archive model, receipts,
+redaction, and recovery.
+
+| Endpoint                    | Method | Who may call                  | Purpose                                             |
+| :-------------------------- | :----- | :---------------------------- | :-------------------------------------------------- |
+| `/api/sessions/status`      | GET    | any allowed client            | Archive collections and per-source status           |
+| `/api/sessions/import`      | POST   | any allowed client (CSRF)     | Manual import of one registered source by ID        |
+| `/api/sessions/discover`    | GET    | same-host browser only (CSRF) | Preview supported local session stores (host paths) |
+| `/api/sessions/sources`     | POST   | same-host browser only (CSRF) | Register a source                                   |
+| `/api/sessions/sources/:id` | DELETE | same-host browser only (CSRF) | Unregister a source; its archive is retained        |
+| `/api/sessions/init`        | POST   | same-host browser only (CSRF) | Create or extend the archive for this instance      |
+
+"Same-host" means the socket peer is loopback, the `Host` header names a
+loopback host, and no forwarding header is present. Other callers get
+`403 FORBIDDEN`. Mutating requests also need the [CSRF](#csrf-protection)
+conditions (`403 CSRF_VIOLATION` otherwise).
+
+#### Session status
+
+```http
+GET /api/sessions/status
+```
+
+Returns the shared `sessions-status` object
+(`spec/output-schemas/sessions-status.schema.json`). It contains no host
+paths.
+
+```json
+{
+  "schemaVersion": "1",
+  "configured": true,
+  "index": "sessions",
+  "collections": [{ "name": "sessions-work", "threads": 4 }],
+  "sources": [
+    {
+      "id": "codex",
+      "harness": "codex",
+      "collection": "sessions-work",
+      "available": true,
+      "units": {
+        "total": 3,
+        "complete": 3,
+        "incomplete": 1,
+        "failed": 0,
+        "pending": 1
+      },
+      "archivedThreads": 4,
+      "staleParser": 0,
+      "sourceUnavailable": 1,
+      "lastImportAt": "2026-09-20T10:05:00.000Z"
+    }
+  ],
+  "warnings": []
+}
+```
+
+#### Import a registered source
+
+```http
+POST /api/sessions/import
+```
+
+**Request Body**:
+
+```json
+{ "sourceId": "codex", "dryRun": true, "limit": 50 }
+```
+
+- `sourceId` (required): an owner-registered source ID.
+- `dryRun` (optional boolean): parse and report without writing archive
+  files, checkpoint state, or index rows.
+- `limit` (optional integer): maximum changed units processed; the rest are
+  reported in `deferredUnits`.
+
+Host paths cannot be named over REST: a body with `paths` returns
+`SESSIONS_UNSAFE_PATH`; `collection` or `format` (path-import options) and any
+other unknown field return `SESSIONS_INVALID_INPUT`; a missing `sourceId`
+returns `SESSIONS_SELECTION_REQUIRED`.
+
+**Response** (200 OK): the shared `sessions-import-receipt` object
+(`spec/output-schemas/sessions-import-receipt.schema.json`), including
+`partial` imports:
+
+```json
+{
+  "schemaVersion": "1",
+  "dryRun": false,
+  "index": "sessions",
+  "sourceIds": ["codex"],
+  "status": "partial",
+  "counts": {
+    "imported": 4,
+    "updated": 0,
+    "unchanged": 0,
+    "skippedPolicy": 0,
+    "unsupported": 0,
+    "incomplete": 1,
+    "failed": 0
+  },
+  "turns": {
+    "human": 3,
+    "assistant": 4,
+    "redactions": 2,
+    "injectedSkipped": 2,
+    "copiedHistorySkipped": 0,
+    "overLimit": 0
+  },
+  "units": [
+    {
+      "sourceId": "codex",
+      "harness": "codex",
+      "locator": "rollout-2026-09-22T12-00-00-example.jsonl",
+      "outcome": "incomplete",
+      "reason": "truncated_tail",
+      "threads": 1,
+      "turns": 1,
+      "collections": ["sessions-work"]
+    }
+  ],
+  "unitsTruncated": false,
+  "deferredUnits": 0,
+  "lexical": { "status": "ready", "collections": ["sessions-work"] },
+  "embedding": { "backlog": 7 },
+  "warnings": []
+}
+```
+
+A successful non-dry-run import that synced collections also schedules the
+server's debounced embedding pass for those collections, when the server runs
+one.
+
+#### Discover, register, and init (same host only)
+
+```http
+GET /api/sessions/discover
+POST /api/sessions/sources
+DELETE /api/sessions/sources/:id
+POST /api/sessions/init
+```
+
+- `discover` returns the shared `sessions-discovery` object: candidate roots
+  with harness, absolute path, unit count, bytes, sampled format versions,
+  and `registeredAs`. It never imports.
+- `sources` takes `{ "id", "harness", "path", "collection", "projects"? }`
+  where `projects` is `[{ "prefix": "/abs/dir", "collection": "name" }]`, and
+  answers `{ "id": "codex", "registered": true }`. Registration never imports.
+- `DELETE /api/sessions/sources/:id` answers
+  `{ "id": "codex", "removed": true, "archiveRetained": true }`.
+- `init` takes `{ "archive": "/abs/archive/root", "collection": "sessions-work" }`
+  and binds this instance's own config/index pair. It answers
+  `{ "schemaVersion": "1", "index", "collection", "archiveRoot", "created" }`.
+  The default config file and the `default` index are refused.
+
+Registration and init persist the archive config and apply it to the running
+server (collections, watcher, egress policy) without a restart.
+
+**Session errors** use the standard envelope with a generic `code` per HTTP
+status and the stable service code in `details.sessionsCode`:
+
+```json
+{
+  "error": {
+    "code": "BUSY",
+    "message": "…",
+    "details": { "sessionsCode": "SESSIONS_BUSY" }
+  }
+}
+```
+
+The code-to-status mapping is in
+[Agent Sessions error codes](SESSIONS.md#error-codes). A same-host refusal is
+`403` with `code: "FORBIDDEN"` and no `details.sessionsCode`. Routes marked
+CSRF also refuse a cross-origin browser `Origin` with `403`
+`CSRF_VIOLATION`, including `GET /api/sessions/discover`, because it returns
+host paths.
 
 ---
 

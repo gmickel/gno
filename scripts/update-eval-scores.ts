@@ -28,6 +28,7 @@ const DEFAULT_THRESHOLD = 70;
 // memory.eval.ts is the adapter gate (spec fn-134): it passes only at 100.
 const EVAL_THRESHOLDS: Record<string, number> = {
   "memory.eval.ts": 100,
+  "sessions.eval.ts": 100,
 };
 
 function thresholdFor(file: string): number {

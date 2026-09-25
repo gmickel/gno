@@ -56,12 +56,12 @@ diagnose can emit the closed, redacted `query-diagnose@1.1` affinity metadata.
 ## Overview
 
 MCP (Model Context Protocol) allows AI assistants to access external tools and
-resources. GNO registers 36 tools in default read-only mode and 56 when writes
+resources. GNO registers 37 tools in default read-only mode and 58 when writes
 are explicitly enabled (the default `full` profile; the opt-in `core` profile
 advertises 7 read tools plus 2 write tools, see [Tool Profiles](#tool-profiles)):
 
-- **Tools (read)**: gno_context, gno_context_verify, gno_ask, gno_recall, gno_search, gno_vsearch, gno_query, gno_query_diagnose, gno_get, gno_section, gno_multi_get, gno_peek, gno_status, gno_audit, gno_egress_policy_get, gno_egress_check, gno_egress_audit_list, gno_egress_audit_show, gno_egress_audit_status, gno_changes, gno_diff, gno_impact, gno_trace_list, gno_trace_show, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph, gno_graph_query, gno_graph_neighbors, gno_graph_path
-- **Tools (write, opt-in)**: gno_egress_policy_set, gno_egress_audit_delete, gno_egress_audit_purge, gno_trace_label, gno_trace_export, gno_trace_delete, gno_trace_purge, gno_remember, gno_capture, gno_add_collection, gno_sync, gno_embed, gno_index, gno_remove_collection, gno_clear_collection_embeddings, gno_create_folder, gno_rename_note, gno_move_note, gno_duplicate_note
+- **Tools (read)**: gno_context, gno_context_verify, gno_ask, gno_recall, gno_search, gno_vsearch, gno_query, gno_query_diagnose, gno_get, gno_section, gno_multi_get, gno_peek, gno_status, gno_audit, gno_egress_policy_get, gno_egress_check, gno_egress_audit_list, gno_egress_audit_show, gno_egress_audit_status, gno_changes, gno_diff, gno_impact, gno_trace_list, gno_trace_show, gno_list_tags, gno_links, gno_backlinks, gno_similar, gno_graph, gno_graph_query, gno_graph_neighbors, gno_graph_path, gno_sessions_status
+- **Tools (write, opt-in)**: gno_egress_policy_set, gno_egress_audit_delete, gno_egress_audit_purge, gno_trace_label, gno_trace_export, gno_trace_delete, gno_trace_purge, gno_remember, gno_capture, gno_add_collection, gno_sync, gno_embed, gno_index, gno_remove_collection, gno_clear_collection_embeddings, gno_create_folder, gno_rename_note, gno_move_note, gno_duplicate_note, gno_sessions_import
 - **Tools (jobs, read)**: gno_job_status, gno_list_jobs
 - **Resources**: Access documents via `gno://collection/path`
 
@@ -289,10 +289,11 @@ gno mcp --enable-write
 GNO_MCP_ENABLE_WRITE=1 gno mcp
 ```
 
-Without this flag, the 36 read-only retrieval, verified-synthesis, memory
+Without this flag, the 37 read-only retrieval, verified-synthesis, memory
 recall, trace, graph, egress, status, and job-inspection tools are available.
-Enabling writes adds 19 mutation tools (including `gno_remember`) and the
-read-only `gno_request_status` lookup, for 56 total. Those counts describe the default `full` profile; see
+Enabling writes adds 20 mutation tools (including `gno_remember` and
+`gno_sessions_import`) and the read-only `gno_request_status` lookup, for 58
+total. Those counts describe the default `full` profile; see
 [Tool Profiles](#tool-profiles) for the slim `core` surface.
 
 ### Tool Profiles
@@ -304,7 +305,7 @@ today's whole surface, byte-for-byte.
 
 | Profile          | Read tools                                                                                            | With `--enable-write` adds    |
 | ---------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------- |
-| `full` (default) | all 36                                                                                                | all 20 write-gated tools      |
+| `full` (default) | all 37                                                                                                | all 21 write-gated tools      |
 | `core`           | `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`, `gno_changes`, `gno_recall` (7) | `gno_capture`, `gno_remember` |
 
 Write tools stay behind `--enable-write` in both profiles; a profile never
@@ -1574,6 +1575,54 @@ committed request a `result` pointer. Request ID errors arrive as tool errors
 `CODE: message`. What each status and code means, and which namespace an HTTP
 MCP caller sees, is in
 [Retries and Request IDs](guides/retries-and-request-ids.md).
+
+### gno_sessions_status
+
+Read-only status of a session archive (full profile only; not in `core`).
+Available when the server runs on a dedicated session-archive pair:
+
+```bash
+gno --config ~/gno-sessions/archive.yml --index sessions mcp
+gno --config ~/gno-sessions/archive.yml --index sessions mcp --enable-write
+```
+
+No arguments. Returns the shared `sessions-status` object: archive
+collections with thread counts and, per owner-registered source, its ID,
+harness, destination collection, availability, unit counts (complete,
+incomplete, failed, pending), `sourceUnavailable`, `staleParser`, and last
+import time. It contains no host paths. A server whose config has no
+`sessions` block returns `SESSIONS_NOT_CONFIGURED`.
+
+### gno_sessions_import
+
+Manually import one owner-registered session source into the archive and sync
+the changed archive files (requires `--enable-write`; full profile only).
+
+```yaml
+sourceId: "codex" # Required: an ID listed by gno_sessions_status
+dryRun: true # Optional: parse and report, write nothing
+limit: 50 # Optional (1-100000): changed units this call; the rest are deferred
+```
+
+Unknown keys, including `paths`, are rejected: MCP imports name a registered
+source ID only, and there is no MCP discovery tool, so clients never learn
+host directories. Sources are registered by the owner with
+`gno sessions source add`, the SDK, or the same-host Web UI.
+
+Returns the shared `sessions-import-receipt` object (status
+`complete`/`partial`/`failed`/`nothing_to_do`, thread and unit counts, turn
+counts, per-unit outcomes with safe locators, `deferredUnits`, lexical
+readiness, and the embedding backlog). A `partial` import stays visible and
+the next call retries it. Import does not embed. Like `gno_capture` and `gno_remember`, the tool is
+registered only with `--enable-write`; without it clients do not see it.
+Errors are a sessions code in `structuredContent.error` (for example
+`SESSIONS_UNKNOWN_SOURCE`, `SESSIONS_BUSY`); see
+[error codes](SESSIONS.md#error-codes).
+
+Imported turns are evidence, not facts: search them with `gno_search` /
+`gno_query` on the same server, cite them by `gno://` URI (with
+`?index=<name>`), and store a fact only through an explicit `gno_remember`.
+See [Agent Sessions](SESSIONS.md).
 
 ### gno_rename_note / gno_move_note
 

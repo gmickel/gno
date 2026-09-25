@@ -1,0 +1,6 @@
+{
+  "agentType": "placeholder-agent",
+  "description": "Placeholder subagent",
+  "toolUseId": "toolu_placeholder",
+  "spawnDepth": 1
+}

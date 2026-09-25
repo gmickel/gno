@@ -273,6 +273,76 @@ collections:
     memoryManaged: true
 ```
 
+## Session archive (`sessions` block)
+
+The `sessions` block turns a config file into a dedicated session-archive
+config for [`gno sessions`](SESSIONS.md). It belongs only in that archive
+config, never in your curated default config, and binds the file to one named
+index and one archive root. `gno sessions init` and `gno sessions source add`
+write it for you; editing it by hand is also supported.
+
+```yaml
+# ~/gno-sessions/archive.yml (used with --index sessions)
+version: "1.0"
+collections:
+  - name: sessions-work
+    path: /Users/you/gno-sessions/archive/sessions-work
+    pattern: "**/*.jsonl"
+    exclude: [.gno-sessions]
+    recordAdapters:
+      jsonl:
+        fieldMapping:
+          id: /id
+          title: /title
+          body: /body
+          author: /author
+          categories: /categories
+          sessionId: /sessionId
+          threadId: /threadId
+          dateFields:
+            recorded: /recordedAt
+sessions:
+  index: sessions
+  archiveRoot: /Users/you/gno-sessions/archive
+  sources:
+    - id: codex
+      harness: codex
+      path: /Users/you/.codex/sessions
+      collection: sessions-work
+      projects:
+        - prefix: /Users/you/work/api
+          collection: sessions-api
+  redaction:
+    literals:
+      - internal.example.net
+```
+
+| Field                  | Required | Rules                                                                                         |
+| ---------------------- | -------- | --------------------------------------------------------------------------------------------- |
+| `index`                | yes      | The index name this config is bound to (1-64 chars); never `default`                          |
+| `archiveRoot`          | yes      | Absolute path outside GNO's config/data/cache directories; collections live directly below it |
+| `sources`              | no       | Up to 64 owner-registered sources with unique IDs (default `[]`)                              |
+| `sources[].id`         | yes      | `^[a-z0-9][a-z0-9_-]{0,63}$`                                                                  |
+| `sources[].harness`    | yes      | `codex`, `claude-code`, `openclaw`, or `hermes`                                               |
+| `sources[].path`       | yes      | Absolute session root, file, or database                                                      |
+| `sources[].collection` | yes      | Default archive collection (`^[a-z0-9][a-z0-9_-]{0,63}$`)                                     |
+| `sources[].projects`   | no       | Up to 64 `{ prefix, collection }` working-directory mappings; `prefix` is absolute            |
+| `redaction.literals`   | no       | Up to 256 exact strings (4-512 chars each) always redacted                                    |
+
+Unknown keys are rejected. Each archive collection is an ordinary collection
+entry at `<archiveRoot>/<collection>` with the JSONL field mapping shown
+above; keep that mapping intact, because author, tags, session identity, and
+record dates come from it. Collection egress policy applies as usual.
+
+The config is bound to its named index; see
+[Archive binding](SESSIONS.md#archive-binding-one-config-one-index). A change to `redaction.literals` takes effect on the next
+import (sources that still exist are re-rendered; archive files whose source
+is gone are rescanned in place).
+
+`gno sessions discover` reads the harnesses' own location variables
+(`CODEX_HOME`, `CLAUDE_CONFIG_DIR`, `OPENCLAW_STATE_DIR`, `HERMES_HOME`) to
+find their default stores; GNO sets none of them.
+
 ## Source availability
 
 `collections[].sourceAvailability` is optional and independent of

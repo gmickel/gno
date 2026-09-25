@@ -23,6 +23,21 @@ A named group of documents from a single directory. Collections define:
 gno collection add ~/notes --name notes --pattern "**/*.md"
 ```
 
+### Session Archive
+
+A dedicated config file (with a `sessions` block) and named index that hold
+imported agent conversations, one sanitized JSONL file per thread and one
+record per turn. Kept separate from curated collections; see
+[Agent Sessions](SESSIONS.md).
+
+### Session Source (Source Profile)
+
+An owner-registered session root, file, or database for one harness (Codex,
+Claude Code, OpenClaw, or Hermes) in a session archive config, with a stable
+ID, a default archive collection, and optional working-directory project
+mappings. Imports name it by ID, and remote surfaces (MCP, remote REST) never
+see its host path. See [Agent Sessions](SESSIONS.md#collections-per-privacy-boundary).
+
 ### Context
 
 Semantic hint attached to a scope to improve search relevance. Contexts provide additional meaning beyond the raw text.

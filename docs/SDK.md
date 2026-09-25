@@ -638,6 +638,64 @@ core `MemoryError` as `cause`.
 Pass `requestId` with `decision: "add"` or `"supersede"` to make a retry safe
 (see [Request IDs](#request-ids)).
 
+### Agent Sessions
+
+`client.sessionsStatus()`, `client.discoverSessions()`, and
+`client.importSessions()` are the SDK bindings of `gno sessions` (MCP
+`gno_sessions_*`, `/api/sessions/*`). Open the client on the dedicated
+session-archive pair
+([archive binding](./SESSIONS.md#archive-binding-one-config-one-index)).
+
+```ts
+import { createGnoClient } from "@gmickel/gno";
+
+const client = await createGnoClient({
+  configPath: "/Users/me/gno-sessions/archive.yml",
+  indexName: "sessions",
+});
+
+// Preview local session stores (host paths; never imports)
+const discovery = await client.discoverSessions();
+
+// Import a registered source: dry run first, then for real
+const preview = await client.importSessions({
+  sourceId: "codex",
+  dryRun: true,
+});
+const receipt = await client.importSessions({ sourceId: "codex", limit: 200 });
+if (receipt.status === "partial") {
+  for (const unit of receipt.units)
+    console.log(unit.locator, unit.outcome, unit.reason);
+}
+
+// Explicit files or directories (absolute paths) into a named archive collection
+await client.importSessions({
+  paths: ["/Users/me/exports/session.jsonl"],
+  collection: "sessions-work",
+  format: "codex",
+});
+
+const status = await client.sessionsStatus();
+
+// Session turns are ordinary records on this index
+const hits = await client.search("why sqlite", {
+  author: "human",
+  categories: ["harness/codex"],
+});
+```
+
+Results are the shared `GnoSessionsStatus`, `GnoSessionsDiscovery`, and
+`GnoSessionsImportReceipt` objects; the input is `GnoSessionsImportInput`
+(`sourceId` or `paths` plus `collection`, optional `format`, `dryRun`,
+`limit`). The SDK runs in your own process, so it may import explicit paths
+and discover host roots; register sources and create the archive with the
+CLI (`gno sessions source add`, `gno sessions init`) or the same-host Web UI.
+Import does not embed; call `client.embed()` afterwards for semantic search.
+
+Errors are `GnoSdkError` (`VALIDATION` or `RUNTIME`) with the sessions code
+in `details.code`; see [error codes](./SESSIONS.md#error-codes). See
+[Agent Sessions](./SESSIONS.md) for receipts, recovery, and redaction.
+
 ### Status
 
 ```ts
@@ -728,6 +786,8 @@ Current stable root import surface:
 - SDK/client/result types
 - Context Capsule result, verification, and error types
 - Memory contract types (`GnoRememberInput`, `GnoRememberResult`, `GnoRecallInput`, `GnoRecallResult`, `MemoryFact`, `MemoryRecallReceipt`) and `MemoryError`
+- Session archive types (`GnoSessionsStatus`, `GnoSessionsDiscovery`, `GnoSessionsImportInput`, `GnoSessionsImportReceipt`)
+
 - `GnoRequestStatusResult` (the `client.requestStatus()` result)
 
 The package root is the SDK entrypoint. The CLI remains available through the `gno` binary.
@@ -751,6 +811,7 @@ The package root is the SDK entrypoint. The CLI remains available through the `g
 - [Structured Query Syntax](./SYNTAX.md)
 - [Architecture](./ARCHITECTURE.md)
 - [Configuration](./CONFIGURATION.md)
+- [Agent Sessions](./SESSIONS.md)
 
 ## Typed metadata predicates
 

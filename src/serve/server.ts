@@ -103,6 +103,14 @@ import {
   handleResolveSectionTarget,
 } from "./routes/section-targets";
 import {
+  handleSessionsAddSource,
+  handleSessionsDiscover,
+  handleSessionsImport,
+  handleSessionsInit,
+  handleSessionsRemoveSource,
+  handleSessionsStatus,
+} from "./routes/sessions";
+import {
   handleTraceDelete,
   handleTraceExport,
   handleTraceLabel,
@@ -110,7 +118,11 @@ import {
   handleTracePurge,
   handleTraceShow,
 } from "./routes/traces";
-import { forbiddenResponse, isRequestAllowed } from "./security";
+import {
+  forbiddenResponse,
+  isOriginOrTokenAllowed,
+  isRequestAllowed,
+} from "./security";
 import {
   createSpaBundleSource,
   type SpaBundleSource,
@@ -567,6 +579,7 @@ export async function startServer(
         "/collections": spaPageRoute,
         "/connectors": spaPageRoute,
         "/traces": spaPageRoute,
+        "/sessions": spaPageRoute,
         "/context/compiled": spaPageRoute,
         "/ask": spaPageRoute,
         "/graph": spaPageRoute,
@@ -830,6 +843,78 @@ export async function startServer(
             }
             return withSecurityHeaders(
               await handleCreateCapture(ctxHolder, store, req),
+              isDev
+            );
+          },
+        },
+        "/api/sessions/status": {
+          GET: async (req: Request) =>
+            withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleSessionsStatus(ctxHolder)
+              ),
+              isDev
+            ),
+        },
+        "/api/sessions/discover": {
+          GET: async (req: Request, server: RequestPeerServer) => {
+            // Returns host paths: a cross-origin page is refused like a write.
+            if (!isOriginOrTokenAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleSessionsDiscover(ctxHolder, req, { server })
+              ),
+              isDev
+            );
+          },
+        },
+        "/api/sessions/import": {
+          POST: async (req: Request) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleSessionsImport(ctxHolder, req),
+              isDev
+            );
+          },
+        },
+        "/api/sessions/sources": {
+          POST: async (req: Request, server: RequestPeerServer) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleSessionsAddSource(ctxHolder, store, req, { server }),
+              isDev
+            );
+          },
+        },
+        "/api/sessions/sources/:id": {
+          DELETE: async (req: Request, server: RequestPeerServer) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            const id = decodeURIComponent(
+              new URL(req.url).pathname.split("/")[4] ?? ""
+            );
+            return withSecurityHeaders(
+              await handleSessionsRemoveSource(ctxHolder, store, id, req, {
+                server,
+              }),
+              isDev
+            );
+          },
+        },
+        "/api/sessions/init": {
+          POST: async (req: Request, server: RequestPeerServer) => {
+            if (!isRequestAllowed(req, port)) {
+              return withSecurityHeaders(forbiddenResponse(), isDev);
+            }
+            return withSecurityHeaders(
+              await handleSessionsInit(ctxHolder, store, req, { server }),
               isDev
             );
           },

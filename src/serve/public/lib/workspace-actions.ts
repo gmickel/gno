@@ -14,7 +14,8 @@ export type WorkspaceActionId =
   | "go-ask"
   | "go-graph"
   | "go-collections"
-  | "go-connectors";
+  | "go-connectors"
+  | "go-sessions";
 
 export interface WorkspaceAction {
   id: WorkspaceActionId;
@@ -155,6 +156,13 @@ export function getWorkspaceActions(
       keywords: ["connectors", "mcp", "skills", "agents"],
       available: true,
     },
+    {
+      id: "go-sessions",
+      group: "Go To",
+      label: "Agent sessions",
+      keywords: ["sessions", "archive", "transcripts", "import", "agents"],
+      available: true,
+    },
   ];
 }
 
@@ -219,6 +227,9 @@ export function runWorkspaceAction(
       break;
     case "go-connectors":
       handlers.navigate("/connectors");
+      break;
+    case "go-sessions":
+      handlers.navigate("/sessions");
       break;
   }
 

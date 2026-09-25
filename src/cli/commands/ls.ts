@@ -14,6 +14,8 @@ import { initStore } from "./shared";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface LsCommandOptions {
+  /** Index name (defaults to "default"). */
+  indexName?: string;
   /** Override config path */
   configPath?: string;
   /** Max results (default 20) */
@@ -111,6 +113,7 @@ export async function ls(
 
   const initResult = await initStore({
     configPath: options.configPath,
+    indexName: options.indexName,
     syncConfig: false,
   });
   if (!initResult.ok) {

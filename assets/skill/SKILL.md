@@ -1,6 +1,6 @@
 ---
 name: gno
-description: Search local documents, files, notes, and knowledge bases. Index directories, search with BM25/vector/hybrid, get AI answers with citations. Use when user wants to search files, find documents, query notes, look up information in local folders, index a directory, set up document search, build a knowledge base, needs RAG/semantic search, or wants to start a local web UI for their docs.
+description: Search local documents, files, notes, and knowledge bases. Index directories, search with BM25/vector/hybrid, get AI answers with citations. Use when user wants to search files, find documents, query notes, look up information in local folders, index a directory, set up document search, build a knowledge base, needs RAG/semantic search, wants to start a local web UI for their docs, or asks what was said in past coding-agent sessions.
 allowed-tools: Bash(gno:*) Read
 ---
 
@@ -26,6 +26,7 @@ network boundaries.
 - User asks about **backlinks, wiki links, or related notes**
 - User wants to **visualize document connections** or see a **knowledge graph**
 - User wants to **export a note or collection for gno.sh publishing**
+- User asks what was **said or decided in past agent sessions** (Codex, Claude Code, OpenClaw, Hermes)
 
 ## Quick Start
 
@@ -65,6 +66,7 @@ the matching recipe, then run the commands it names.
 | File a fact that may change         | `recipes/memory-file-decision.md`    | Fact stored (add) or proposal resolved, cited |
 | Replace a stale recalled fact       | `recipes/memory-supersede-fact.md`   | Successor written, predecessor superseded     |
 | What do we know/believe about X     | `recipes/memory-scoped-recall.md`    | Current facts recalled under budget, cited    |
+| What was said/decided in a session  | `recipes/session-evidence-lookup.md` | Turns cited with speaker; proposals labelled  |
 
 Recipe rules:
 
@@ -92,6 +94,7 @@ Recipe rules:
 | **Serve**    | `serve`, `daemon`                                                                                          | One resident Web/headless gateway and watcher                            |
 | **Publish**  | `publish export`                                                                                           | Export gno.sh publish artifacts                                          |
 | **Memory**   | `remember`, `recall`                                                                                       | Fact-granular agent memory with explicit scopes and supersession         |
+| **Sessions** | `sessions discover/init/source add/source remove/import/status/prune`                                      | Manual import of agent sessions into a separate archive                  |
 | **MCP**      | `mcp`, `mcp install/uninstall/status`                                                                      | AI assistant integration                                                 |
 | **Skill**    | `skill install/uninstall/show/paths`                                                                       | Install skill for AI agents                                              |
 | **Admin**    | `peek`, `status`, `doctor`, `cleanup`, `reset`, `vec`, `completion`                                        | Snapshot, maintenance, and diagnostics                                   |
@@ -583,6 +586,39 @@ existing notes. They work only on a collection with `memoryManaged: true`.
   with `--add` or `--supersede <uri> --predecessor-hash <hash>` from recall.
 - Details, error codes, and the fence's paraphrase limit: `docs/MEMORY.md`,
   [cli-reference.md](cli-reference.md), [mcp-reference.md](mcp-reference.md).
+
+## Agent Sessions (separate archive)
+
+`gno sessions` imports local Codex, Claude Code, OpenClaw, and Hermes
+conversations into a dedicated archive: its own config file plus a named
+index. Broad search on the user's normal index never includes it, so search
+sessions on the archive pair, and pass both flags on every archive command:
+
+```bash
+gno sessions discover                     # preview local stores; imports nothing
+gno --config ~/gno-sessions/archive.yml --index sessions sessions import --source codex --dry-run
+gno --config ~/gno-sessions/archive.yml --index sessions sessions import --source codex --json
+gno --config ~/gno-sessions/archive.yml --index sessions search "postgres" --author human --tags-all project/api
+gno --config ~/gno-sessions/archive.yml --index sessions query "why sqlite" --category harness/codex
+```
+
+- Manual only: discover, then import only when the user asks. Setup (on the
+  pair) is `sessions init --archive <dir> --collection <name>`, then
+  `sessions source add <id> --harness <h> --path <root> --collection <name>`
+  with optional repeatable `--project <prefix>=<collection>`. Keep the
+  archive outside the curated vault, one collection per privacy boundary.
+- Filters: `--author human|assistant`, tags `harness/<h>`, `role/<r>`,
+  `project/<name>`, `project-id/<hash>`, `session-kind/<k>`, `-c <collection>`.
+  Import does not embed; run `embed` on the pair for `query`/`vsearch`.
+- Reruns are incremental. `partial` receipts (`truncated_tail`,
+  `format_drift`) retry on the next import; `--limit <n>` defers the rest;
+  `SESSIONS_BUSY` means another import runs; `SESSIONS_BINDING_MISMATCH`
+  means the config and index were not passed together.
+- Session turns are evidence, not facts. A human turn is what the person
+  said; an assistant turn is a proposal, never the user's decision. Cite by
+  `gno://` URI (keep `?index=sessions`). Nothing is promoted to
+  `remember`/`recall` automatically; store a fact only when asked, with the
+  turn's URI as `--source`. Workflow: `recipes/session-evidence-lookup.md`.
 
 ## Retry-Safe Writes (request IDs)
 

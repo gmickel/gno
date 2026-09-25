@@ -8,6 +8,7 @@
 
 import { runCli } from "./cli/run";
 import { resetModelManager } from "./llm/nodeLlamaCpp/lifecycle";
+import { IMPORT_CHILD_ENV } from "./sessions/import-child-env";
 
 /**
  * Cleanup models and exit.
@@ -36,6 +37,14 @@ process.on("SIGINT", () => {
     // Ignore cleanup errors on exit
   });
 });
+
+// A compiled executable re-run as the session import child (see
+// src/sessions/import-child.ts) serves that one request instead of the CLI.
+if (process.env[IMPORT_CHILD_ENV] === "1") {
+  const { runImportChild } = await import("./sessions/import-child");
+  await runImportChild();
+  await cleanupAndExit(0);
+}
 
 // Await module completion so pending piped stdin keeps Windows Bun alive.
 await runCli(process.argv)

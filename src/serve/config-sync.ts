@@ -16,6 +16,7 @@ import {
   type MutationResult,
 } from "../core/config-mutation";
 import { withContentTypeRules } from "../ingestion";
+import { watchedCollections } from "../sessions/config";
 
 /**
  * Apply a config mutation atomically with serialization.
@@ -56,7 +57,7 @@ export async function applyConfigChange(
 
   if (result.ok) {
     ctxHolder.watchService?.updateCollections(
-      ctxHolder.config.collections,
+      watchedCollections(ctxHolder.config),
       withContentTypeRules({}, ctxHolder.config)
     );
   }
@@ -86,7 +87,7 @@ export async function applyConfigChangeTyped<T>(
 
   if (result.ok) {
     ctxHolder.watchService?.updateCollections(
-      ctxHolder.config.collections,
+      watchedCollections(ctxHolder.config),
       withContentTypeRules({}, ctxHolder.config)
     );
   }

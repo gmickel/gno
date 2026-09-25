@@ -964,6 +964,13 @@ models:
   activePreset: slim-tuned
 ```
 
+## Session Archive Issues
+
+Session archive problems (`SESSIONS_BINDING_MISMATCH`, `partial` receipts,
+quarantined `mixed_domain` threads, `SESSIONS_BUSY`, sessions missing from
+search) are covered in [Agent Sessions troubleshooting](SESSIONS.md#troubleshooting),
+with every code in [error codes](SESSIONS.md#error-codes).
+
 ## Database Issues
 
 ### "Database locked"

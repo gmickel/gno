@@ -1,0 +1,481 @@
+{
+  "suite": "sessions",
+  "description": "Cross-session retrieval eval for native agent-session ingestion. Synthetic placeholder dialogue across four harnesses and seven native formats, with fake credentials, a project basename collision (/work/a/api vs /work/b/api), assistant suggestions that contradict human decisions, and injected-context / subagent-task noise. Every turn key is `<harness>/<source id>/<native thread id>#<native logical turn id>`, built from a gold record in gold/turns.json. `projectIds` is the expected pipeline project-id label for each native working directory; questions name a project by directory and each arm maps it to its own filter.",
+  "sources": [
+    {
+      "id": "codex-eval",
+      "harness": "codex",
+      "native": "native/codex",
+      "sqlite": {}
+    },
+    {
+      "id": "claude-eval",
+      "harness": "claude-code",
+      "native": "native/claude-code/projects",
+      "sqlite": {}
+    },
+    {
+      "id": "openclaw-eval",
+      "harness": "openclaw",
+      "native": "native/openclaw",
+      "sqlite": {
+        "agents/main/agent/openclaw-agent.sqlite": "sql/openclaw-agent.sql"
+      }
+    },
+    {
+      "id": "hermes-eval",
+      "harness": "hermes",
+      "native": null,
+      "sqlite": {
+        "state.db": "sql/hermes-state.sql"
+      }
+    }
+  ],
+  "formats": [
+    "codex",
+    "codex-legacy",
+    "claude-code",
+    "claude-code-legacy",
+    "openclaw-jsonl",
+    "openclaw-sqlite",
+    "hermes"
+  ],
+  "projectIds": {
+    "/work/a/api": "4a517db8c692",
+    "/work/b/api": "ea7c5ad1327e",
+    "/work/c/billing": "dcdbe432ecb9"
+  },
+  "units": [
+    {
+      "sourceId": "codex-eval",
+      "locator": "rollout-2026-09-10T09-00-00-0000e7a1-0000-7000-8000-00000000a001.jsonl",
+      "format": "codex",
+      "outcome": "imported"
+    },
+    {
+      "sourceId": "codex-eval",
+      "locator": "rollout-2026-09-10T09-30-00-0000e7a1-0000-7000-8000-00000000a002.jsonl",
+      "format": "codex",
+      "outcome": "imported"
+    },
+    {
+      "sourceId": "codex-eval",
+      "locator": "rollout-2026-09-11T06-00-00-0000e7a1-0000-7000-8000-00000000c001.jsonl",
+      "format": "codex",
+      "outcome": "imported"
+    },
+    {
+      "sourceId": "codex-eval",
+      "locator": "rollout-2025-12-01T15-00-00-0000e7a1-0000-7000-8000-00000000b001.jsonl",
+      "format": "codex-legacy",
+      "outcome": "imported"
+    },
+    {
+      "sourceId": "claude-eval",
+      "locator": "e7a1c1a0-0000-4000-8000-00000000a001.jsonl",
+      "format": "claude-code",
+      "outcome": "imported"
+    },
+    {
+      "sourceId": "claude-eval",
+      "locator": "e7a1c1a0-0000-4000-8000-00000000a001/agent-b7c2.jsonl",
+      "format": "claude-code",
+      "outcome": "imported"
+    },
+    {
+      "sourceId": "claude-eval",
+      "locator": "e7a1c1a0-0000-4000-8000-00000000b001.jsonl",
+      "format": "claude-code-legacy",
+      "outcome": "imported"
+    },
+    {
+      "sourceId": "openclaw-eval",
+      "locator": "main/sessions/e7a10c1a-0000-4000-8000-00000000c001.jsonl",
+      "format": "openclaw-jsonl",
+      "outcome": "imported"
+    },
+    {
+      "sourceId": "openclaw-eval",
+      "locator": "main/openclaw-agent.sqlite",
+      "format": "openclaw-sqlite",
+      "outcome": "imported"
+    },
+    {
+      "sourceId": "hermes-eval",
+      "locator": "state.db",
+      "format": "hermes",
+      "outcome": "imported"
+    }
+  ],
+  "secrets": [
+    {
+      "value": "sk-proj-GNOEVALorchidStagingKey0123456789abcd",
+      "format": "codex",
+      "where": "human decision and assistant reply (api-key shape)"
+    },
+    {
+      "value": "sk-proj-GNOEVALnoiseEnvironment0123456789",
+      "format": "codex",
+      "where": "injected environment context (never speech)"
+    },
+    {
+      "value": "GnoEvalSecretOrchid2026",
+      "format": "claude-code",
+      "where": "password= assignment, repeated bare in the assistant reply (propagation)"
+    },
+    {
+      "value": "GnoEvalMetaNoise8899",
+      "format": "claude-code",
+      "where": "isMeta injected record (never speech)"
+    },
+    {
+      "value": "GnoEvalBearerInvoice0123456789",
+      "format": "openclaw-jsonl",
+      "where": "Authorization: Bearer header"
+    },
+    {
+      "value": "GnoEvalLedgerPass77",
+      "format": "openclaw-sqlite",
+      "where": "URL credentials"
+    },
+    {
+      "value": "GnoEvalHermesKey4455",
+      "format": "hermes",
+      "where": "api_key= assignment in a compacted original row"
+    }
+  ],
+  "secretMarkers": ["GNOEVAL", "GnoEval"],
+  "neverHuman": [
+    {
+      "text": "treat the orchid gateway limit as 400 requests per minute",
+      "format": "codex",
+      "kind": "developer instructions"
+    },
+    {
+      "text": "placeholder injected environment",
+      "format": "codex",
+      "kind": "environment context"
+    },
+    {
+      "text": "copied parent history",
+      "format": "codex",
+      "kind": "subagent copied history"
+    },
+    {
+      "text": "assume the orchid gateway limit is 400 per minute and draft the config change",
+      "format": "codex",
+      "kind": "subagent task"
+    },
+    {
+      "text": "Scripted prompt: set the invoice archive retention to 30 days",
+      "format": "codex",
+      "kind": "exec prompt"
+    },
+    {
+      "text": "Injected context: the orchid gateway limit is 400",
+      "format": "claude-code",
+      "kind": "attachment"
+    },
+    {
+      "text": "Meta note injected by the harness",
+      "format": "claude-code",
+      "kind": "isMeta record"
+    },
+    {
+      "text": "background check finished: orchid gateway limit raised to 400",
+      "format": "claude-code",
+      "kind": "task notification"
+    },
+    {
+      "text": "the orchid gateway drops excess requests silently",
+      "format": "claude-code",
+      "kind": "compaction summary"
+    },
+    {
+      "text": "list every orchid gateway endpoint that ignores the limit",
+      "format": "claude-code",
+      "kind": "subagent task"
+    },
+    {
+      "text": "command-message>clear",
+      "format": "claude-code-legacy",
+      "kind": "slash-command wrapper"
+    },
+    {
+      "text": "invoice archive purge is set to 90 days",
+      "format": "openclaw-jsonl",
+      "kind": "runtime context"
+    },
+    {
+      "text": "Subagent announce: invoice archive purge moved to 90 days",
+      "format": "openclaw-jsonl",
+      "kind": "inter-session message"
+    },
+    {
+      "text": "Continue the OpenClaw runtime event",
+      "format": "openclaw-jsonl",
+      "kind": "runtime continuation"
+    },
+    {
+      "text": "raise the heron ledger page size to 1000",
+      "format": "openclaw-sqlite",
+      "kind": "subagent task"
+    },
+    {
+      "text": "placeholder summary: page size under discussion",
+      "format": "openclaw-sqlite",
+      "kind": "compaction summary"
+    },
+    {
+      "text": "Retracted line the user rewound",
+      "format": "hermes",
+      "kind": "rewound row"
+    },
+    {
+      "text": "CONTEXT COMPACTION",
+      "format": "hermes",
+      "kind": "compaction summary"
+    },
+    {
+      "text": "Delegated task: switch orchid gateway enforcement to per API key",
+      "format": "hermes",
+      "kind": "delegate task"
+    },
+    {
+      "text": "placeholder system prompt",
+      "format": "hermes",
+      "kind": "system row"
+    }
+  ],
+  "lookups": [
+    {
+      "id": "L01-codex-human-limit",
+      "query": "orchid gateway 40 requests per minute staging deploy key",
+      "expect": "codex/codex-eval/0000e7a1-0000-7000-8000-00000000a001#item-u1"
+    },
+    {
+      "id": "L02-codex-assistant-contradiction",
+      "query": "raise the orchid gateway rate limit to 400 rotate",
+      "expect": "codex/codex-eval/0000e7a1-0000-7000-8000-00000000a001#item-a1"
+    },
+    {
+      "id": "L03-codex-subagent-draft",
+      "query": "Subagent draft orchid gateway config change",
+      "expect": "codex/codex-eval/0000e7a1-0000-7000-8000-00000000a002#item-draft"
+    },
+    {
+      "id": "L04-codex-exec-result",
+      "query": "Exec result invoice archive retention dry-run",
+      "expect": "codex/codex-eval/0000e7a1-0000-7000-8000-00000000c001#item-exec-result"
+    },
+    {
+      "id": "L05-codex-legacy-human-cursor",
+      "query": "heron ledger opaque cursor tokens numeric offsets",
+      "expect": "codex/codex-eval/0000e7a1-0000-7000-8000-00000000b001#ordinal:2"
+    },
+    {
+      "id": "L06-claude-human-429",
+      "query": "orchid gateway 429 Retry-After header tenant passes the limit",
+      "expect": "claude-code/claude-eval/e7a1c1a0-0000-4000-8000-00000000a001#a1000000-0000-4000-8000-000000000002"
+    },
+    {
+      "id": "L07-claude-slash-command",
+      "query": "plan document the orchid gateway 429 behaviour",
+      "expect": "claude-code/claude-eval/e7a1c1a0-0000-4000-8000-00000000a001#a1000000-0000-4000-8000-000000000007"
+    },
+    {
+      "id": "L08-claude-subagent-report",
+      "query": "orchid gateway endpoints bypass the limiter",
+      "expect": "claude-code/claude-eval/e7a1c1a0-0000-4000-8000-00000000a001/agent-b7c2#a1500000-0000-4000-8000-000000000002"
+    },
+    {
+      "id": "L09-claude-legacy-human-expiry",
+      "query": "Decision heron ledger cursor tokens expire",
+      "expect": "claude-code/claude-eval/e7a1c1a0-0000-4000-8000-00000000b001#b1000000-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "L10-claude-legacy-human-followup",
+      "query": "keep the 15 minute expiry heron ledger cursors restart pagination",
+      "expect": "claude-code/claude-eval/e7a1c1a0-0000-4000-8000-00000000b001#b1000000-0000-4000-8000-000000000004"
+    },
+    {
+      "id": "L11-openclaw-jsonl-human-retention",
+      "query": "invoice archives retained seven years purged",
+      "expect": "openclaw/openclaw-eval/e7a10c1a-0000-4000-8000-00000000c001#e2"
+    },
+    {
+      "id": "L12-openclaw-jsonl-human-schedule",
+      "query": "invoice archive purge first Sunday each month",
+      "expect": "openclaw/openclaw-eval/e7a10c1a-0000-4000-8000-00000000c001#e8"
+    },
+    {
+      "id": "L13-openclaw-sqlite-human-page-size",
+      "query": "heron ledger at most 200 records per page read replica",
+      "expect": "openclaw/openclaw-eval/agent:main:main#m1"
+    },
+    {
+      "id": "L14-openclaw-sqlite-assistant-contradiction",
+      "query": "1000 records per page heron ledger round trips",
+      "expect": "openclaw/openclaw-eval/agent:main:main#m2"
+    },
+    {
+      "id": "L15-openclaw-sqlite-human-after-compaction",
+      "query": "large exports batch endpoint heron ledger",
+      "expect": "openclaw/openclaw-eval/agent:main:main#m3"
+    },
+    {
+      "id": "L16-hermes-human-compacted-original",
+      "query": "Decision orchid gateway enforced per tenant",
+      "expect": "hermes/hermes-eval/h-orchid#message:102"
+    },
+    {
+      "id": "L17-hermes-human-followup",
+      "query": "publish the per tenant limit API handbook",
+      "expect": "hermes/hermes-eval/h-orchid#message:108"
+    },
+    {
+      "id": "L18-hermes-delegate-result",
+      "query": "Delegate result per API key enforcement",
+      "expect": "hermes/hermes-eval/h-orchid-delegate#message:202"
+    },
+    {
+      "id": "L19-hermes-assistant-contradiction",
+      "query": "skipping encryption invoice archive exports",
+      "expect": "hermes/hermes-eval/h-invoice#message:302"
+    }
+  ],
+  "questions": [
+    {
+      "id": "Q1-orchid-human-decisions",
+      "goal": "What did the human decide about orchid gateway rate limits and their enforcement?",
+      "queryModes": [
+        {
+          "mode": "term",
+          "text": "orchid gateway limit"
+        },
+        {
+          "mode": "term",
+          "text": "orchid gateway 429"
+        },
+        {
+          "mode": "term",
+          "text": "orchid gateway tenant"
+        }
+      ],
+      "author": "human",
+      "gold": [
+        "codex/codex-eval/0000e7a1-0000-7000-8000-00000000a001#item-u1",
+        "codex/codex-eval/0000e7a1-0000-7000-8000-00000000a001#item-u2",
+        "claude-code/claude-eval/e7a1c1a0-0000-4000-8000-00000000a001#a1000000-0000-4000-8000-000000000002",
+        "hermes/hermes-eval/h-orchid#message:102"
+      ]
+    },
+    {
+      "id": "Q2-heron-human-decisions",
+      "goal": "What did the human decide about heron ledger pagination, page size and cursor expiry?",
+      "queryModes": [
+        {
+          "mode": "term",
+          "text": "heron ledger"
+        },
+        {
+          "mode": "term",
+          "text": "heron ledger cursor"
+        },
+        {
+          "mode": "term",
+          "text": "heron ledger page"
+        }
+      ],
+      "author": "human",
+      "gold": [
+        "codex/codex-eval/0000e7a1-0000-7000-8000-00000000b001#ordinal:2",
+        "claude-code/claude-eval/e7a1c1a0-0000-4000-8000-00000000b001#b1000000-0000-4000-8000-000000000001",
+        "claude-code/claude-eval/e7a1c1a0-0000-4000-8000-00000000b001#b1000000-0000-4000-8000-000000000004",
+        "openclaw/openclaw-eval/agent:main:main#m1",
+        "openclaw/openclaw-eval/agent:main:main#m3"
+      ]
+    },
+    {
+      "id": "Q3-invoice-decisions-unfiltered",
+      "goal": "Invoice archive retention, purge schedule and export encryption decisions",
+      "queryModes": [
+        {
+          "mode": "term",
+          "text": "invoice archive"
+        },
+        {
+          "mode": "term",
+          "text": "invoice archives retained"
+        },
+        {
+          "mode": "term",
+          "text": "invoice archive purge"
+        },
+        {
+          "mode": "term",
+          "text": "invoice archive exports encrypted"
+        }
+      ],
+      "gold": [
+        "openclaw/openclaw-eval/e7a10c1a-0000-4000-8000-00000000c001#e2",
+        "openclaw/openclaw-eval/e7a10c1a-0000-4000-8000-00000000c001#e8",
+        "hermes/hermes-eval/h-invoice#message:301"
+      ]
+    },
+    {
+      "id": "Q4-orchid-rejected-suggestions",
+      "goal": "Which assistant suggestions about the orchid gateway contradicted the human decisions?",
+      "queryModes": [
+        {
+          "mode": "term",
+          "text": "orchid gateway suggestion"
+        },
+        {
+          "mode": "term",
+          "text": "orchid gateway proposal"
+        }
+      ],
+      "author": "assistant",
+      "gold": [
+        "codex/codex-eval/0000e7a1-0000-7000-8000-00000000a001#item-a1",
+        "claude-code/claude-eval/e7a1c1a0-0000-4000-8000-00000000a001#a1000000-0000-4000-8000-000000000004",
+        "hermes/hermes-eval/h-orchid#message:103"
+      ]
+    },
+    {
+      "id": "Q5-project-a-decisions-collision",
+      "goal": "Decisions recorded for the api project in the a workspace",
+      "queryModes": [
+        {
+          "mode": "term",
+          "text": "Decision"
+        }
+      ],
+      "author": "human",
+      "project": "/work/a/api",
+      "gold": [
+        "codex/codex-eval/0000e7a1-0000-7000-8000-00000000a001#item-u1",
+        "claude-code/claude-eval/e7a1c1a0-0000-4000-8000-00000000a001#a1000000-0000-4000-8000-000000000002",
+        "hermes/hermes-eval/h-orchid#message:102"
+      ]
+    },
+    {
+      "id": "Q6-project-b-decisions-collision",
+      "goal": "Decisions recorded for the api project in the b workspace",
+      "queryModes": [
+        {
+          "mode": "term",
+          "text": "Decision"
+        }
+      ],
+      "author": "human",
+      "project": "/work/b/api",
+      "gold": [
+        "codex/codex-eval/0000e7a1-0000-7000-8000-00000000b001#ordinal:2",
+        "claude-code/claude-eval/e7a1c1a0-0000-4000-8000-00000000b001#b1000000-0000-4000-8000-000000000001",
+        "openclaw/openclaw-eval/agent:main:main#m1"
+      ]
+    }
+  ]
+}

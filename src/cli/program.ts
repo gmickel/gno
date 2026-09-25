@@ -344,7 +344,7 @@ export function createProgram(): Command {
     .option("--no-pager", "disable automatic paging of long output");
 
   // Resolve globals ONCE before any command runs (ensures consistency)
-  program.hook("preAction", (thisCommand) => {
+  program.hook("preAction", async (thisCommand) => {
     const rootOpts = thisCommand.optsWithGlobals();
     const globals = parseGlobalOptions(rootOpts);
     if (!isValidIndexName(globals.index)) {
@@ -355,6 +355,8 @@ export function createProgram(): Command {
     }
     applyGlobalOptions(globals);
     globalState.current = globals;
+    const { assertCliSessionBinding } = await import("./session-binding");
+    await assertCliSessionBinding(globals.config, globals.index);
   });
 
   // Wire command groups
@@ -362,6 +364,7 @@ export function createProgram(): Command {
   wireOnboardingCommands(program);
   wireCaptureCommand(program);
   wireMemoryCommands(program);
+  wireSessionsCommands(program);
   wireManagementCommands(program);
   wireTraceCommands(program);
   wirePublishCommand(program);
@@ -2070,6 +2073,187 @@ function wireMemoryCommands(program: Command): void {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Session archive commands (manual import only)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function wireSessionsCommands(program: Command): void {
+  const sessionsCmd = program
+    .command("sessions")
+    .description(
+      "Discover and manually import local agent sessions into a dedicated archive"
+    );
+  const context = () => {
+    const globals = getGlobals();
+    return { configPath: globals.config, indexName: globals.index };
+  };
+  const asJson = (cmdOpts: Record<string, unknown>) =>
+    getFormat(cmdOpts) === "json";
+
+  sessionsCmd
+    .command("discover", { isDefault: true })
+    .description("Preview supported local session sources (never imports)")
+    .option("--json", "JSON output")
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const { discoverSessions, formatDiscovery } =
+        await import("./commands/sessions");
+      const result = await discoverSessions(context());
+      await writeOutput(
+        formatDiscovery(result, asJson(cmdOpts)),
+        getFormat(cmdOpts)
+      );
+    });
+
+  sessionsCmd
+    .command("init")
+    .description("Create or extend the dedicated archive config/index pair")
+    .option(
+      "--archive <dir>",
+      "absolute archive directory (outside the curated vault)"
+    )
+    .option("--collection <name>", "archive collection to create")
+    .option("--json", "JSON output")
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const { initSessions } = await import("./commands/sessions");
+      const result = await initSessions(context(), {
+        archive: cmdOpts.archive as string | undefined,
+        collection: cmdOpts.collection as string | undefined,
+      });
+      await writeOutput(
+        asJson(cmdOpts)
+          ? JSON.stringify(result, null, 2)
+          : `Session archive ${result.created ? "created" : "ready"}: ${result.archiveRoot} (collection ${result.collection}, index ${result.index}, config ${result.configPath})`,
+        getFormat(cmdOpts)
+      );
+    });
+
+  const sourceCmd = sessionsCmd
+    .command("source")
+    .description("Register or unregister owner session sources");
+  sourceCmd
+    .command("add <id>")
+    .description("Register a harness session root for manual import")
+    .option("--harness <harness>", "codex | claude-code | openclaw | hermes")
+    .option("--path <path>", "absolute harness session root, file or database")
+    .option("--collection <name>", "default archive collection")
+    .option(
+      "--project <prefix=collection>",
+      "owner-approved working-directory mapping (repeatable)",
+      collectRepeatableValue,
+      []
+    )
+    .option("--json", "JSON output")
+    .action(async (id: string, cmdOpts: Record<string, unknown>) => {
+      const { addSource } = await import("./commands/sessions");
+      const result = await addSource(context(), {
+        id,
+        harness: cmdOpts.harness as string | undefined,
+        path: cmdOpts.path as string | undefined,
+        collection: cmdOpts.collection as string | undefined,
+        projects: cmdOpts.project as string[],
+      });
+      await writeOutput(
+        asJson(cmdOpts)
+          ? JSON.stringify(result, null, 2)
+          : `Source ${result.id} registered. Nothing was imported.`,
+        getFormat(cmdOpts)
+      );
+    });
+  sourceCmd
+    .command("remove <id>")
+    .description("Unregister a source (its archive is retained)")
+    .option("--json", "JSON output")
+    .action(async (id: string, cmdOpts: Record<string, unknown>) => {
+      const { removeSource } = await import("./commands/sessions");
+      const result = await removeSource(context(), id);
+      await writeOutput(
+        asJson(cmdOpts)
+          ? JSON.stringify(result, null, 2)
+          : `Source ${result.id} removed; archived sessions were retained.`,
+        getFormat(cmdOpts)
+      );
+    });
+
+  sessionsCmd
+    .command("import [paths...]")
+    .description("Import selected sources or paths into the archive (manual)")
+    .option("--source <id>", "registered source to import")
+    .option(
+      "--collection <name>",
+      "destination archive collection (path imports)"
+    )
+    .option("--format <harness>", "codex | claude-code | openclaw | hermes")
+    .option("--dry-run", "parse and report without writing archive or index")
+    .option("--limit <n>", "maximum changed units processed this run")
+    .option("--json", "JSON output")
+    .action(async (paths: string[], cmdOpts: Record<string, unknown>) => {
+      const { formatImportReceipt, importSessions } =
+        await import("./commands/sessions");
+      const receipt = await importSessions(context(), {
+        paths,
+        source: cmdOpts.source as string | undefined,
+        collection: cmdOpts.collection as string | undefined,
+        format: cmdOpts.format as string | undefined,
+        dryRun: Boolean(cmdOpts.dryRun),
+        limit: cmdOpts.limit,
+      });
+      await writeOutput(
+        formatImportReceipt(receipt, asJson(cmdOpts)),
+        getFormat(cmdOpts)
+      );
+      if (receipt.status === "failed") {
+        const unsupportedOnly =
+          receipt.counts.unsupported > 0 &&
+          receipt.counts.failed === 0 &&
+          receipt.counts.incomplete === 0;
+        throw unsupportedOnly
+          ? new CliError(
+              "VALIDATION",
+              "No selected unit is a supported session format; see receipt.",
+              { details: { sessionsCode: "SESSIONS_UNSUPPORTED_FORMAT" } }
+            )
+          : new CliError("RUNTIME", "Session import failed; see receipt.", {
+              details: { sessionsCode: "SESSIONS_IMPORT_FAILED" },
+            });
+      }
+    });
+
+  sessionsCmd
+    .command("status")
+    .description("Show archive, source and checkpoint status")
+    .option("--json", "JSON output")
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const { formatStatus, sessionsStatus } =
+        await import("./commands/sessions");
+      const result = await sessionsStatus(context());
+      await writeOutput(
+        formatStatus(result, asJson(cmdOpts)),
+        getFormat(cmdOpts)
+      );
+    });
+
+  sessionsCmd
+    .command("prune")
+    .description(
+      "Preview (or --apply) removal of archives whose source is gone"
+    )
+    .option("--source <id>", "source to prune")
+    .option("--apply", "delete the previewed archive files")
+    .option("--json", "JSON output")
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const { formatPrune, pruneSessions } =
+        await import("./commands/sessions");
+      const result = await pruneSessions(context(), {
+        source: cmdOpts.source as string | undefined,
+        apply: Boolean(cmdOpts.apply),
+      });
+      await writeOutput(
+        formatPrune(result, asJson(cmdOpts)),
+        getFormat(cmdOpts)
+      );
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Retrieval Commands (get, multi-get, ls)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -2200,6 +2384,7 @@ function wireRetrievalCommands(program: Command): void {
         const { ls, formatLs } = await import("./commands/ls");
         const result = await ls(scope, {
           configPath: globals.config,
+          indexName: globals.index,
           limit: cmdOpts.limit as number | undefined,
           offset: cmdOpts.offset as number | undefined,
           json: format === "json",

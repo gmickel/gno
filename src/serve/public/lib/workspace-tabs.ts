@@ -69,6 +69,8 @@ function getLocationLabel(location: string): string {
       return "Compiled context";
     case "/traces":
       return "Trace history";
+    case "/sessions":
+      return "Agent sessions";
     case "/doc":
     case "/edit": {
       const uri = params.get("uri") ?? "";

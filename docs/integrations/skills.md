@@ -87,6 +87,7 @@ gno skill show --file recipes/email-context.md
 gno skill show --file recipes/source-summary.md
 gno skill show --file recipes/idea-capture.md
 gno skill show --file recipes/citation-and-provenance.md
+gno skill show --file recipes/session-evidence-lookup.md
 ```
 
 Recipe coverage:
@@ -100,6 +101,7 @@ Recipe coverage:
 | `source-summary.md`          | Summarize a source into a durable note                    | Provenance-bearing summary findable           |
 | `idea-capture.md`            | Preserve an idea or prompt pattern                        | Original phrasing captured and searchable     |
 | `citation-and-provenance.md` | Verify claims or produce traceable answers                | Claims labeled with evidence or explicit gaps |
+| `session-evidence-lookup.md` | Find what was said or decided in past agent sessions      | Turns cited with speaker; proposals labelled  |
 
 Email, calendar, chat, and web sources are user-supplied/exported inputs unless a separate connector outside GNO provides them. GNO does not include native Gmail, Calendar, Slack, webhook, cron, or background-agent recipe automation.
 
