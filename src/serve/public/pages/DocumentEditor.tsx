@@ -354,7 +354,7 @@ export default function DocumentEditor({ navigate }: PageProps) {
       const {
         data,
         error: err,
-        noResponse,
+        outcomeUnknown,
       } = await apiFetch<UpdateDocResponse>(
         `/api/docs/${encodeURIComponent(current.docid)}`,
         {
@@ -376,11 +376,11 @@ export default function DocumentEditor({ navigate }: PageProps) {
       if (err) {
         setSaveStatus("error");
         setSaveError(err);
-        if (noResponse) {
+        if (outcomeUnknown) {
           setChangeNotice("unconfirmed");
           return false;
         }
-        // The server answered: this save did not commit, so a change seen
+        // A definitive rejection: this save did not commit, so a change seen
         // meanwhile came from elsewhere.
         saveOutcomeUnknownRef.current = false;
         if (changedWhileUnknownRef.current) {
@@ -398,14 +398,14 @@ export default function DocumentEditor({ navigate }: PageProps) {
       changedWhileUnknownRef.current = false;
       if (data?.request?.replayed) {
         // A replay reports an earlier commit; disk may have moved on since.
-        // Clear the change notice only if the file still holds that commit.
+        // Only a read showing a different hash is evidence of another writer.
         const { data: latest } = await apiFetch<DocData>(
           `/api/doc?uri=${encodeURIComponent(current.uri)}`
         );
         setChangeNotice(
-          latest?.source.sourceHash === data.version.sourceHash
-            ? null
-            : "outside"
+          latest && latest.source.sourceHash !== data.version.sourceHash
+            ? "outside"
+            : null
         );
       } else {
         // Written now against the loaded revision: the next change event is

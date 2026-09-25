@@ -68,6 +68,7 @@ let putResponses: Array<() => ReturnType<typeof apiOk<unknown>>>;
 /** Source hash the server reports for the document after the first load. */
 let diskHash = "hash-0";
 let docLoads = 0;
+let diskReadFails = false;
 const puts = () =>
   apiFetch.mock.calls
     .filter(
@@ -81,6 +82,7 @@ beforeEach(() => {
   docEvent = null;
   diskHash = "hash-0";
   docLoads = 0;
+  diskReadFails = false;
   setTestLocation(`/edit?uri=${encodeURIComponent(DOC.uri)}`);
   let revision = 0;
   putResponses = [];
@@ -88,6 +90,8 @@ beforeEach(() => {
     const [endpoint, init] = args as [string, { method?: string } | undefined];
     if (endpoint.startsWith("/api/doc?")) {
       docLoads += 1;
+      if (docLoads > 1 && diskReadFails)
+        return apiError("Failed to fetch") as never;
       return apiOk(
         docLoads === 1
           ? DOC
@@ -175,7 +179,7 @@ describe("DocumentEditor saves", () => {
         Promise.resolve({
           data: null,
           error: "Failed to fetch",
-          noResponse: true,
+          outcomeUnknown: true,
         }) as never
     );
     const { editor, rerender } = await openEditor();
@@ -227,6 +231,35 @@ describe("DocumentEditor saves", () => {
 
     await screen.findByText(OUTSIDE);
     expect(screen.queryByText(UNCONFIRMED)).toBeNull();
+  });
+
+  test("a replayed retry whose disk read fails claims no outside change", async () => {
+    await lostSaveThenEvent();
+    diskReadFails = true;
+    putResponses.push(replayedSave("hash-v1"));
+    ctrlS();
+
+    await waitFor(() => expect(docLoads).toBe(2));
+    await waitFor(() => expect(screen.queryByText(UNCONFIRMED)).toBeNull());
+    expect(screen.queryByText(OUTSIDE)).toBeNull();
+  });
+
+  test("a retry whose outcome is still unknown keeps offering retry", async () => {
+    await lostSaveThenEvent();
+    putResponses.push(
+      () =>
+        Promise.resolve({
+          data: null,
+          error: "Request is accepted and still in progress",
+          outcomeUnknown: true,
+        }) as never
+    );
+    ctrlS();
+
+    await waitFor(() => expect(puts()).toHaveLength(2));
+    await screen.findAllByText(/still in progress/u);
+    expect(screen.getByText(UNCONFIRMED)).toBeTruthy();
+    expect(screen.queryByText(OUTSIDE)).toBeNull();
   });
 
   test("a rejected retry attributes the held change to another writer", async () => {

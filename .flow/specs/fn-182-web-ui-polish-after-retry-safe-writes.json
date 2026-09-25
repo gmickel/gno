@@ -8,12 +8,82 @@
   "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-182-web-ui-polish-after-retry-safe-writes",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-182-web-ui-polish-after-retry-safe-writes.1": 1
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "review_attempts": [
+    {
+      "artifact_sha256": "72b8f97c388710fe4a195363d8323adf43afe2523abdd50f0042c0f53eabcbea",
+      "backend": "codex",
+      "base_sha": "68a854ffa95f3c47fe3bc303ae7e55f678d24076",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-9bbaafd481402a5d503e92f0bb2c4457",
+            "classification": "introduced",
+            "findingId": "finding-9bbaafd481402a5d503e92f0bb2c4457",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-f5f984a3d5480ab9b98f1430eb320a2f",
+            "classification": "introduced",
+            "findingId": "finding-f5f984a3d5480ab9b98f1430eb320a2f",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-36db0aeb987f24ab311d5fd3721a3838",
+            "classification": "introduced",
+            "findingId": "finding-36db0aeb987f24ab311d5fd3721a3838",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "ecb2c31adaf78f7850956f1986dfa503e9c2e19b",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 2612,
+      "output_sha256": "6e38812e07ef2e377f9309f9e1580386d6e8c33bd954bac3124954124d19d461",
+      "reservation_id": "2f1edcc66f2b4f2e8b78a8d0fffda14d",
+      "round_consumed": true,
+      "scope": "impl:fn-182-web-ui-polish-after-retry-safe-writes.1",
+      "superseded_by": null,
+      "task": "fn-182-web-ui-polish-after-retry-safe-writes.1",
+      "timestamp": "2026-09-25T14:36:07.899707Z",
+      "verdict": "NEEDS_WORK"
+    }
+  ],
+  "review_hash_epoch": {},
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-182-web-ui-polish-after-retry-safe-writes.1": 0
+  },
   "spec_path": ".flow/specs/fn-182-web-ui-polish-after-retry-safe-writes.md",
   "status": "open",
   "title": "Web UI polish after retry-safe writes",
@@ -28,5 +98,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T14:12:12.076287Z"
+  "updated_at": "2026-09-25T14:36:07.902334Z"
 }
