@@ -41,7 +41,7 @@ export interface VectorPartitionStatus {
    * queries use (see `vectorRuntime`); status counts use it.
    */
   retrieval: boolean;
-  /** `gno vec drop` accepts it: never the caller's retrieval partition. */
+  /** `gno vec drop` accepts it: a shadow or legacy partition this runtime does not read. */
   droppable: boolean;
   /** Current document chunks bound to this partition. */
   owners: number;
@@ -190,13 +190,9 @@ export function listVectorPartitions(
     if (!hasPartitionTable(db)) return [];
     const partitions = readPartitions(db, model ?? null);
     const retrieval = new Set<string>();
-    const resolved = new Set<string>();
     for (const name of new Set(partitions.map((p) => p.model))) {
       const { partition } = vectorRuntimeStatus(db, name);
-      if (partition) {
-        retrieval.add(partition);
-        resolved.add(name);
-      }
+      if (partition) retrieval.add(partition);
     }
     const runtimes = db.prepare<{ label: string }, [string, string]>(
       "SELECT DISTINCT label FROM vector_runtime_verdicts WHERE partition_id = ? AND verdict = ? ORDER BY label"
@@ -209,10 +205,10 @@ export function listVectorPartitions(
         state: activated(p) ? "active" : "shadow",
         legacy: p.legacy === 1,
         retrieval: retrieval.has(p.partition_id),
-        // Without a resolved caller, activated current partitions stay protected.
+        // Abandoned shadows and legacy leftovers only: an activated current
+        // partition may be another runtime's retrieval partition.
         droppable:
-          !retrieval.has(p.partition_id) &&
-          (resolved.has(p.model) || !activated(p) || p.legacy === 1),
+          !retrieval.has(p.partition_id) && (!activated(p) || p.legacy === 1),
         owners: currentOwnerCount(db, p.partition_id),
         provenance:
           p.provenance ??
@@ -382,8 +378,9 @@ type DropResult =
   | { ok: false; error: string };
 
 /**
- * Remove a partition this caller's retrieval does not use, with its vectors,
- * owners and verdicts. Status prints the same `droppable` rule as its hint.
+ * Remove an abandoned shadow or legacy partition this caller's retrieval does
+ * not use, with its vectors, owners and verdicts. Status prints its hint for
+ * exactly the same `droppable` partitions.
  */
 export async function dropVectorPartition(
   db: Database,
@@ -413,7 +410,7 @@ export async function dropVectorPartition(
           ok: false,
           error: partition.retrieval
             ? `Refusing to drop partition ${partition.id.slice(0, 12)}: this runtime's retrieval uses it`
-            : `Refusing to drop active partition ${partition.id.slice(0, 12)}: this runtime has not resolved its partition yet; run a query or \`gno embed\` first`,
+            : `Refusing to drop active partition ${partition.id.slice(0, 12)}: other runtimes may read it`,
         };
       const table = `vec_v1_${partition.id}`;
       if (

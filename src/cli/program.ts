@@ -3685,7 +3685,7 @@ function wireVecCommands(program: Command): void {
     vecCmd
       .command("drop <partition>")
       .description(
-        "Drop a vector partition this runtime does not use (id prefix from gno status)"
+        "Drop an abandoned shadow or legacy vector partition (id prefix from gno status)"
       )
       .option("--json", "JSON output")
   ).action(async (partition: string, cmdOpts: Record<string, unknown>) => {

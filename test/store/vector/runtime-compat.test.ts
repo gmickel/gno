@@ -1,3 +1,4 @@
+import { Database } from "bun:sqlite";
 import { afterEach, expect, test } from "bun:test";
 // Bun has no temporary-directory creation API.
 import { mkdtemp } from "node:fs/promises";
@@ -7,11 +8,13 @@ import { join } from "node:path";
 import type { Config } from "../../../src/config/types";
 import type { EmbeddingPort } from "../../../src/llm/types";
 
+import { formatVectorPartitionLines } from "../../../src/core/vector-partition-status";
 import {
   embedBacklog,
   prepareEmbeddingBacklog,
 } from "../../../src/embed/backlog";
 import { searchHybrid } from "../../../src/pipeline/hybrid";
+import { migrations, runMigrations } from "../../../src/store/migrations";
 import { SqliteAdapter } from "../../../src/store/sqlite/adapter";
 import {
   embeddingPartitionIdentity,
@@ -300,22 +303,40 @@ test("status and drop follow the calling runtime's retrieval selection", async (
   for (const embedPort of [c.embedPort, wider.embedPort, a.embedPort])
     await expectStatusMatchesRetrieval(f, embedPort);
 
-  // As runtime A: the drop hint and the drop rule agree for every partition.
-  const partitions = await expectStatusMatchesRetrieval(f, a.embedPort);
-  expect(partitions.map((p) => [p.state, p.retrieval, p.droppable])).toEqual(
-    expect.arrayContaining([
-      ["active", true, false],
-      ["active", false, true],
-      ["active", false, true],
-    ])
+  // An abandoned incomplete shadow (the incident case) next to them.
+  const shadow = await createVectorVariantStore(f.db, {
+    ...embeddingPartitionIdentity(a.embedPort)!,
+    fork: "abandoned-runtime",
+  });
+  shadow.write(
+    shadow.pending({ limit: 2 }).map((owner) => ({
+      owner,
+      embedding: new Float32Array(vectorFor(owner.formattedInput, 1)),
+    }))
   );
-  const inUse = partitions.find((p) => p.retrieval)!;
-  expect((await dropVectorPartition(f.db, inUse.id)).ok).toBe(false);
-  for (const partition of partitions.filter((p) => p.droppable))
-    expect((await dropVectorPartition(f.db, partition.id)).ok).toBe(true);
-  await expectStatusMatchesRetrieval(f, a.embedPort);
-  // C's fork is gone, so C is honestly back to lexical-only.
-  await expectStatusMatchesRetrieval(f, c.embedPort);
+
+  // As runtime A: the drop hint and the drop rule agree for every partition;
+  // active partitions other runtimes read are never offered or dropped.
+  const partitions = await expectStatusMatchesRetrieval(f, a.embedPort);
+  expect(
+    partitions.map((p) => [p.state, p.retrieval, p.droppable]).sort()
+  ).toEqual([
+    ["active", false, false],
+    ["active", false, false],
+    ["active", true, false],
+    ["shadow", false, true],
+  ]);
+  const lines = formatVectorPartitionLines(partitions);
+  for (const partition of partitions) {
+    expect(
+      lines.join("\n").includes(`gno vec drop ${partition.id.slice(0, 12)}`)
+    ).toBe(partition.droppable);
+    expect((await dropVectorPartition(f.db, partition.id)).ok).toBe(
+      partition.droppable
+    );
+  }
+  for (const embedPort of [a.embedPort, c.embedPort, wider.embedPort])
+    await expectStatusMatchesRetrieval(f, embedPort);
 });
 
 test("a new reference runtime never reuses stale vectors of another runtime", async () => {
@@ -568,4 +589,22 @@ test("an ambiguous migration keeps every partition and reports it", async () => 
   expect(partitionIds(f.db)).toEqual([first, second].sort());
   const refused = await f.embed(runtime.embedPort);
   expect(!refused.ok && refused.error.code).toBe("VECTOR_PARTITION_FORK");
+});
+
+test("an index already at schema 31 gains the runtime caller table", () => {
+  const db = new Database(":memory:");
+  try {
+    expect(runMigrations(db, migrations.slice(0, 31), "unicode61").ok).toBe(
+      true
+    );
+    const upgraded = runMigrations(db, migrations, "unicode61");
+    expect(upgraded.ok && upgraded.value.applied).toEqual([32]);
+    expect(vectorRuntimeStatus(db, MODEL)).toEqual({
+      label: null,
+      state: "unresolved",
+      partition: null,
+    });
+  } finally {
+    db.close();
+  }
 });

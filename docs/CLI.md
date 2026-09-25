@@ -2129,10 +2129,10 @@ measured incompatible), status prints a `Vector partitions:` block: first
 what this runtime reads (a partition, lexical retrieval only with the reason,
 or not resolved yet: run a query or `gno embed`), then every partition with its
 state, chunk count, provenance (for example `CUDA, Bun 1.4.2`) and the runtimes
-that read it, and a `gno vec drop` hint for each partition this runtime does
-not use. JSON output carries `vectorRuntime` and `vectorPartitions`. Until this
-runtime has resolved, counts fall back to the activated runtime-independent
-partition and activated partitions are protected from `gno vec drop`.
+that read it, and a `gno vec drop` hint for each abandoned shadow or legacy
+partition this runtime does not read. JSON output carries `vectorRuntime` and
+`vectorPartitions`. Until this runtime has resolved, counts fall back to the
+activated runtime-independent partition.
 
 Once exact-input storage is in use, the backlog counts pending document/chunk
 owners, so documents sharing text can need separate embeddings when their
@@ -2216,17 +2216,16 @@ Vector index maintenance. Use when vector search returns empty despite embedding
 ```bash
 gno vec sync      # Sync vec0 index with content_vectors
 gno vec rebuild   # Full rebuild of vec0 index
-gno vec drop 9a8b7c6d5e4f   # Drop a partition this runtime does not use
+gno vec drop 9a8b7c6d5e4f   # Drop an abandoned shadow or legacy partition
 ```
 
 - `sync` - Fast incremental sync, fixes drift after failed inserts
 - `rebuild` - Full rebuild, use when sync isn't enough
-- `drop <partition>` - Remove a vector partition this runtime's retrieval does
-  not use (id prefix of at least 8 characters from `gno status`) with its
-  vectors. Status prints the hint for exactly the partitions drop accepts. The
-  partition this runtime reads is refused; so is any activated partition while
-  this runtime has not resolved one. Another runtime that reads a dropped
-  partition needs `gno embed --new-partition` again.
+- `drop <partition>` - Remove an abandoned shadow or legacy vector partition
+  that this runtime's retrieval does not read (id prefix of at least 8
+  characters from `gno status`) with its vectors. Status prints the hint for
+  exactly the partitions drop accepts. Activated partitions are refused: another
+  runtime may read them.
 - `--json` - JSON output format
 
 **When to use**: If `gno similar` returns empty results but embeddings exist, run `gno vec sync`.
