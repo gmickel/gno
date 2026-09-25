@@ -2365,7 +2365,7 @@ function wireSessionsAutomationCommands(
       if (result.outcome === "failed" && result.reason === "busy") {
         throw new CliError(
           "BUSY",
-          "The archive is busy (another import or index writer); the run is recorded and retried.",
+          "The archive is busy (another import or index writer); the run is recorded; a running daemon retries it, or run it again once the archive is free.",
           { details: { sessionsCode: "SESSIONS_BUSY" } }
         );
       }
