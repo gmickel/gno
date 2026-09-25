@@ -1472,10 +1472,11 @@ describe("detach integration (Unix)", () => {
         label: "watcher indexes free.md",
       });
 
+      // The resident may still hold the lease for a follow-up flush; wait
+      // for it like a CLI writer does.
       const lease = await acquireCliWriteLease({
         dbPath,
-        waitMs: 0,
-        noWait: true,
+        waitMs: 15_000,
         command: "gno index (test)",
       });
       if (!lease.ok) throw new Error("test could not take the write lease");
