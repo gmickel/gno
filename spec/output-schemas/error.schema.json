@@ -12,8 +12,17 @@
       "properties": {
         "code": {
           "type": "string",
-          "description": "Error code matching exit code",
-          "enum": ["VALIDATION", "RUNTIME"]
+          "description": "CLI error code; each maps to one exit code (see spec/cli.md Error Output)",
+          "enum": [
+            "VALIDATION",
+            "RUNTIME",
+            "NOT_RUNNING",
+            "BUSY",
+            "AUDIT_FINDINGS",
+            "AUDIT_PARTIAL",
+            "CONTEXT_STALE",
+            "CONTEXT_CONFLICT"
+          ]
         },
         "message": {
           "type": "string",

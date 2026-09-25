@@ -9,15 +9,19 @@
 // Error Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type CliErrorCode =
-  | "VALIDATION"
-  | "RUNTIME"
-  | "NOT_RUNNING"
-  | "BUSY"
-  | "AUDIT_FINDINGS"
-  | "AUDIT_PARTIAL"
-  | "CONTEXT_STALE"
-  | "CONTEXT_CONFLICT";
+/** Every code the CLI error model can emit; `error.schema.json` must list each. */
+export const CLI_ERROR_CODES = [
+  "VALIDATION",
+  "RUNTIME",
+  "NOT_RUNNING",
+  "BUSY",
+  "AUDIT_FINDINGS",
+  "AUDIT_PARTIAL",
+  "CONTEXT_STALE",
+  "CONTEXT_CONFLICT",
+] as const;
+
+export type CliErrorCode = (typeof CLI_ERROR_CODES)[number];
 
 export interface CliErrorOptions {
   details?: Record<string, unknown>;
