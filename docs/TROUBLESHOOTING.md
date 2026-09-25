@@ -861,6 +861,54 @@ only if you have headroom and `bench:cpu-embeddings -- --real` shows a gain:
 GNO_EMBED_CONTEXTS=2 gno embed --yes
 ```
 
+### Switching Backend Or Bun Version
+
+What changes vector identity, and therefore needs a full re-embed: the
+embedding model weights, the embedding formatter, dimensions, context size and
+truncation policy. What does not: `GNO_LLAMA_GPU` / `NODE_LLAMA_CPP_GPU`, the
+Bun version (for example a scheduled CLI and the desktop app on different Bun
+releases), the `node-llama-cpp` version and the CPU thread count
+(`GNO_EMBED_THREADS`, `GNO_EMBED_CONTEXTS`). Those are recorded as provenance.
+
+The first time a runtime meets an existing vector partition, GNO re-embeds up
+to 8 stored chunks and compares them with the stored vectors. Every sampled
+chunk must reach cosine 0.99. Measured on the default model, Bun versions and
+thread counts produced bit-identical vectors and GPU (Vulkan) vs CPU stayed
+above 0.9993, so these switches resume the backlog in the same partition:
+
+```bash
+GNO_LLAMA_GPU=false gno embed --yes   # resumes, no re-embed of stored chunks
+```
+
+The verdict is cached per partition and runtime. If a runtime falls below the
+threshold:
+
+- queries from it use lexical retrieval only; results carry a
+  `vector_runtime_incompatible` warning and `gno vsearch` reports why;
+- `gno status` lists that runtime as incompatible under the partition;
+- `gno embed` states that it would build a separate partition, the full chunk
+  count and an estimate, then asks for confirmation. Non-interactive runs need
+  `gno embed --new-partition`; `--yes` alone does not confirm.
+
+Existing indexes are re-keyed once, on first contact after upgrading: the most
+complete partition that passes the check becomes the runtime-independent
+partition without re-embedding, and the others stay as `shadow`. If two
+partitions are equally complete, nothing is re-keyed; status and embed report
+the ambiguity. Drop all but one of them to continue.
+
+`gno status` reports against the partition retrieval uses and lists every other
+partition with its state, chunk count and provenance, so an incomplete shadow
+partition never looks like lost embeddings. Remove an abandoned shadow or
+legacy partition with its id prefix from status:
+
+```bash
+gno status            # Vector partitions: ... (drop with: gno vec drop 9a8b7c6d5e4f)
+gno vec drop 9a8b7c6d5e4f
+```
+
+`gno vec drop` refuses the partition retrieval uses and any activated
+partition.
+
 ## Model Issues
 
 ### Downloaded Model Is Not GGUF

@@ -32,6 +32,7 @@ const identity = {
   truncationPolicy: "truncate-tail-tokens-v1:limit=2044",
   modelFingerprint: "a".repeat(64),
   runtimeFingerprint: "b".repeat(64),
+  runtimeLabel: "CPU, Bun test",
 };
 
 test("native embedding identity rejects unknown limits and unverified fingerprints", () => {
@@ -40,6 +41,7 @@ test("native embedding identity rejects unknown limits and unverified fingerprin
     { contextSize: null },
     { modelFingerprint: "uri-only" },
     { runtimeFingerprint: "unknown" },
+    { runtimeLabel: "" },
     { guessed: true },
   ]) {
     expect(

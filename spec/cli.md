@@ -226,9 +226,15 @@ setup and emits `setup-profile-result@1.0`.
 
 Display index status and health information.
 
-Embedding backlog follows the last verified partition for the selected model
-when exact-input storage is authoritative, counting pending document/chunk
-owners. Per-collection chunk totals remain deduplicated by canonical chunk;
+Embedding backlog follows the partition retrieval uses for the selected model
+(an activated partition before any shadow or recorded selection) when
+exact-input storage is authoritative, counting pending document/chunk owners.
+`vectorPartitions` (omitted when no partition exists) lists every partition of
+the model with `id`, `model`, `dimensions`, `state` (`active`|`shadow`),
+`legacy` (pre-runtime-independent key), `retrieval`, `owners` (current chunks),
+`provenance` (building runtime, e.g. `CUDA, Bun 1.4.2`) and
+`incompatibleRuntimes`. Terminal output prints a `Vector partitions:` block
+unless there is exactly one healthy partition. Per-collection chunk totals remain deduplicated by canonical chunk;
 embedded counts require matching current inputs for every active owner within
 that collection. Status reads persisted identity and coverage without loading
 models. Legacy storage remains the fallback before variant authority; ambiguous
@@ -259,6 +265,19 @@ gno status [--json|--md]
   "totalDocuments": 100,
   "totalChunks": 500,
   "embeddingBacklog": 0,
+  "vectorPartitions": [
+    {
+      "id": "3f2a9c1b2d4e...",
+      "model": "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
+      "dimensions": 1024,
+      "state": "active",
+      "legacy": false,
+      "retrieval": true,
+      "owners": 500,
+      "provenance": "CUDA, Bun 1.4.2",
+      "incompatibleRuntimes": []
+    }
+  ],
   "lastUpdated": "2025-12-23T10:00:00Z",
   "healthy": true,
   "activation": {
@@ -1006,7 +1025,7 @@ gno update [--git-pull] [--json] [--lock-wait <duration>] [--no-wait]
 | `--lock-wait <duration>` | duration | How long to wait for the index write lease (default: `120s`). Accepts `120`, `120s`, or `2m`. |
 | `--no-wait` | boolean | Do not wait; fail immediately if another writer holds the lease |
 
-**Concurrency:** One writer at a time on the shared index database. `update` waits up to `--lock-wait` for the lease (the same `.mcp-write.lock` MCP write tools use); `index`, `embed`, `cleanup`, `vec sync`, `vec rebuild`, `collection clear-embeddings`, `tags add`, and `tags rm` follow the same contract; `capture` takes the same lock internally, and single-row writes such as `collection policy set` are absorbed by `busy_timeout`. `--no-wait` opts out. Reads (`search`, `query`, `get`) never take the lease. External serialising wrappers are no longer required for CLI-vs-CLI and CLI-vs-MCP overlap. Residual window: a resident (`gno serve`/`gno daemon`) watch or embed flush writes without the lease; those short transactions are absorbed by the raised `busy_timeout` and the SQLITE_BUSY retry, and a deferred chunk is reported as contention, never as an embedding failure.
+**Concurrency:** One writer at a time on the shared index database. `update` waits up to `--lock-wait` for the lease (the same `.mcp-write.lock` MCP write tools use); `index`, `embed`, `cleanup`, `vec sync`, `vec rebuild`, `vec drop`, `collection clear-embeddings`, `tags add`, and `tags rm` follow the same contract; `capture` takes the same lock internally, and single-row writes such as `collection policy set` are absorbed by `busy_timeout`. `--no-wait` opts out. Reads (`search`, `query`, `get`) never take the lease. External serialising wrappers are no longer required for CLI-vs-CLI and CLI-vs-MCP overlap. Residual window: a resident (`gno serve`/`gno daemon`) watch or embed flush writes without the lease; those short transactions are absorbed by the raised `busy_timeout` and the SQLITE_BUSY retry, and a deferred chunk is reported as contention, never as an embedding failure.
 
 **Behavior:**
 
@@ -1135,8 +1154,19 @@ memory pressure prevents creating the full pool.
 **Synopsis:**
 
 ```bash
-gno embed [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--yes] [--json] [--lock-wait <duration>] [--no-wait]
+gno embed [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--yes] [--new-partition] [--json] [--lock-wait <duration>] [--no-wait]
 ```
+
+Vector partitions are keyed on model weights, formatter, dimensions, context
+size and truncation policy. Runtime details (Bun, `node-llama-cpp`, GPU/CPU
+backend, threads) are provenance. A runtime meeting a partition for the first
+time re-embeds up to 8 stored chunks; every one must reach cosine 0.99 against
+its stored vector, and the verdict is cached per (partition, runtime). A
+compatible runtime resumes the backlog in that partition. An incompatible one
+(or an ambiguous one-time re-key of pre-existing partitions) would build a
+separate partition: embed then states the full chunk count and an estimate and
+requires confirmation, interactively or with `--new-partition`. `--yes` alone
+never confirms; without confirmation embed exits 2 and writes nothing.
 
 **Options:**
 
@@ -1146,7 +1176,8 @@ gno embed [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--yes] [--js
 | `--model`                | string   | config  | Override embedding model URI                                                |
 | `--batch-size`           | integer  | 32      | Chunks per batch                                                            |
 | `--dry-run`              | boolean  | false   | Show what would be embedded without doing it                                |
-| `--yes`, `-y`            | boolean  | false   | Skip confirmation prompts                                                   |
+| `--yes`, `-y`            | boolean  | false   | Skip confirmation prompts (never confirms a separate vector partition)      |
+| `--new-partition`        | boolean  | false   | Confirm building a separate vector partition for an incompatible runtime    |
 | `--json`                 | boolean  | false   | Output result as JSON                                                       |
 | `--lock-wait <duration>` | duration | `120s`  | How long to wait for the index write lease. Accepts `120`, `120s`, or `2m`. |
 | `--no-wait`              | boolean  | false   | Do not wait; fail immediately if another writer holds the lease             |
@@ -2702,6 +2733,30 @@ non-blank opaque token. Caller-supplied extension fields MUST NOT enter the
 artifact. Encrypted export MUST place bundled assets only inside the encrypted
 client payload. The outer V2 envelope MUST contain neither plaintext note
 content, asset descriptors, source references, nor raster bytes.
+
+---
+
+### gno vec drop
+
+Drop an abandoned vector partition (shadow or legacy) with its vectors, owners
+and runtime verdicts.
+
+**Synopsis:**
+
+```bash
+gno vec drop <partition> [--json] [--lock-wait <duration>] [--no-wait]
+```
+
+`<partition>` is an id prefix of at least 8 characters from `gno status`
+(`vectorPartitions[].id`). The partition retrieval uses and any activated
+runtime-independent partition are refused. JSON output is
+`{"dropped": <vectorPartitions item>}`.
+
+**Exit Codes:**
+
+- 0: Dropped
+- 1: Unknown, ambiguous or protected partition
+- 4: Write lease busy with `--no-wait`
 
 ---
 

@@ -150,6 +150,68 @@
       "description": "Chunks awaiting embedding",
       "minimum": 0
     },
+    "vectorPartitions": {
+      "type": "array",
+      "description": "Vector partitions of the embedding model; omitted when none exist",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "model",
+          "dimensions",
+          "state",
+          "legacy",
+          "retrieval",
+          "owners",
+          "provenance",
+          "incompatibleRuntimes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Partition id (drop with `gno vec drop <id-prefix>`)"
+          },
+          "model": {
+            "type": "string",
+            "description": "Embedding model URI"
+          },
+          "dimensions": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "state": {
+            "type": "string",
+            "enum": ["active", "shadow"],
+            "description": "active = activated for retrieval; shadow = incomplete or abandoned"
+          },
+          "legacy": {
+            "type": "boolean",
+            "description": "Pre-runtime-independent key, awaiting measured re-keying"
+          },
+          "retrieval": {
+            "type": "boolean",
+            "description": "Status counts and retrieval use this partition"
+          },
+          "owners": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Current chunks bound to this partition"
+          },
+          "provenance": {
+            "type": "string",
+            "description": "Runtime that built the partition, e.g. \"CUDA, Bun 1.4.2\""
+          },
+          "incompatibleRuntimes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Runtimes measured incompatible; their queries use lexical retrieval only"
+          }
+        }
+      }
+    },
     "recentErrors": {
       "type": "integer",
       "description": "Recent ingest errors in the last 24 hours",

@@ -144,7 +144,13 @@ async function searchVectorWithEmbeddingOwned(
 
   let embeddingIdentity;
   try {
-    embeddingIdentity = resolveVectorSearchIdentity(deps.embedPort);
+    const partition = await resolveVectorSearchIdentity(
+      deps.embedPort,
+      vectorIndex
+    );
+    if (partition.notice)
+      return err("VEC_SEARCH_UNAVAILABLE", partition.notice);
+    embeddingIdentity = partition.identity;
   } catch (cause) {
     return err(
       "QUERY_FAILED",

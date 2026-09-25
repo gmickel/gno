@@ -44,6 +44,7 @@ import { migration as m027 } from "./027-memory-scopes";
 import { migration as m028 } from "./028-vector-variants";
 import { migration as m029 } from "./029-graph-reference-state";
 import { migration as m030 } from "./030-typed-metadata";
+import { migration as m031 } from "./031-runtime-independent-vectors";
 
 /** All migrations in order */
 export const migrations = [
@@ -77,4 +78,5 @@ export const migrations = [
   m028,
   m029,
   m030,
+  m031,
 ];

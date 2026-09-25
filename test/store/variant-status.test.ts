@@ -7,6 +7,7 @@ import { join } from "node:path";
 import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
 
 import { getEmbeddingFingerprint } from "../../src/embed/fingerprint";
+import { listVectorPartitions } from "../../src/store/vector/status";
 import {
   createVectorVariantStore,
   SELECTED_VECTOR_PARTITION_PREFIX,
@@ -103,20 +104,26 @@ test("stale epochs retain valid owners but missing/title-changed owners remain p
   expect((await coverage(store)).collections[1]?.embedded).toBe(2);
 });
 
-test("selected verified partition switches ignore old complete coverage and accept new complete coverage", async () => {
-  const { store } = await fixture();
-  const replacement = await createVectorVariantStore(store.getRawDb(), {
+test("an incomplete selected partition never replaces activated coverage; activation switches it", async () => {
+  const { store, variants } = await fixture();
+  const db = store.getRawDb();
+  const replacement = await createVectorVariantStore(db, {
     ...statusIdentity,
     contextSize: 1024,
   });
-  // Older ambiguous indexes fail closed until embedding records its actual selection.
-  expect((await coverage(store)).backlog).toBe(6);
+  const retrieval = () =>
+    listVectorPartitions(db, statusIdentity.model)
+      .filter((p) => p.retrieval)
+      .map((p) => p.id);
+  // fn-184 R4: status reports the activated partition, not the newer shadow.
+  expect((await coverage(store)).backlog).toBe(0);
   replacement.selectForEmbedding();
   const owners = replacement.pending();
   replacement.write([
     { owner: owners[0]!, embedding: new Float32Array([0, 1]) },
   ]);
-  expect((await coverage(store)).backlog).toBe(5);
+  expect((await coverage(store)).backlog).toBe(0);
+  expect(retrieval()).toEqual([variants.partitionId]);
   replacement.write(
     replacement
       .pending()
@@ -124,12 +131,12 @@ test("selected verified partition switches ignore old complete coverage and acce
   );
   replacement.activate(replacement.epoch());
   expect((await coverage(store)).backlog).toBe(0);
-  store
-    .getRawDb()
-    .run("UPDATE schema_meta SET value = 'missing-partition' WHERE key = ?", [
-      SELECTED_VECTOR_PARTITION_PREFIX + statusIdentity.model,
-    ]);
-  expect((await coverage(store)).backlog).toBe(6);
+  expect(retrieval()).toEqual([replacement.partitionId]);
+  db.run("UPDATE schema_meta SET value = 'missing-partition' WHERE key = ?", [
+    SELECTED_VECTOR_PARTITION_PREFIX + statusIdentity.model,
+  ]);
+  expect((await coverage(store)).backlog).toBe(0);
+  expect(retrieval()).toHaveLength(1);
 });
 
 test("model and explicit fingerprint scopes never fall back to unrelated legacy data after activation", async () => {

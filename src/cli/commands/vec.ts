@@ -13,6 +13,10 @@ import {
   createVectorIndexPort,
   createVectorStatsPort,
 } from "../../store/vector";
+import {
+  dropVectorPartition,
+  type VectorPartitionStatus,
+} from "../../store/vector/status";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -293,4 +297,54 @@ export function formatVecRebuild(
   }
 
   return `Vec index rebuilt: ${result.count.toLocaleString()} vectors`;
+}
+
+export type VecDropResult =
+  | { success: true; partition: VectorPartitionStatus }
+  | { success: false; error: string };
+
+/**
+ * Drop an abandoned vector partition (shadow or legacy). Active partitions
+ * that retrieval uses are refused.
+ */
+export async function vecDrop(
+  partition: string,
+  options: VecOptions = {}
+): Promise<VecDropResult> {
+  if (!(await isInitialized(options.configPath)))
+    return { success: false, error: "GNO not initialized. Run: gno init" };
+  const configResult = await loadConfig(options.configPath);
+  if (!configResult.ok)
+    return { success: false, error: configResult.error.message };
+  const store = new SqliteAdapter();
+  const openResult = await store.open(
+    getIndexDbPath(options.indexName),
+    configResult.value.ftsTokenizer,
+    configResult.value.busyTimeoutMs
+  );
+  if (!openResult.ok)
+    return { success: false, error: openResult.error.message };
+  try {
+    const dropped = await dropVectorPartition(store.getRawDb(), partition);
+    return dropped.ok
+      ? { success: true, partition: dropped.partition }
+      : { success: false, error: dropped.error };
+  } finally {
+    await store.close();
+  }
+}
+
+export function formatVecDrop(
+  result: VecDropResult,
+  options: { json?: boolean }
+): string {
+  if (!result.success) {
+    return options.json
+      ? JSON.stringify({ error: { code: "RUNTIME", message: result.error } })
+      : `Error: ${result.error}`;
+  }
+  const { partition } = result;
+  return options.json
+    ? JSON.stringify({ dropped: partition }, null, 2)
+    : `Dropped ${partition.state} partition ${partition.id.slice(0, 12)} (${partition.provenance}, ${partition.owners} chunks)`;
 }

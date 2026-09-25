@@ -8,6 +8,7 @@ import { join } from "node:path";
 import type { VectorVariantIdentity } from "../../../src/store/vector/types";
 
 import { migration } from "../../../src/store/migrations/028-vector-variants";
+import { migration as runtimeMigration } from "../../../src/store/migrations/031-runtime-independent-vectors";
 import {
   createVectorVariantStore,
   VectorVariantStore,
@@ -40,6 +41,7 @@ function fixture(path = ":memory:"): Database {
     INSERT INTO content_vectors VALUES ('body', 0, 'model-a', X'0000803f00000000');
   `);
   migration.up(db, "unicode61");
+  runtimeMigration.up(db, "unicode61");
   return db;
 }
 

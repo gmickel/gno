@@ -1343,6 +1343,19 @@ counters; it never claims attachment to another process.
     "totalDocuments": 150,
     "totalChunks": 800,
     "embeddingBacklog": 0,
+    "vectorPartitions": [
+      {
+        "id": "3f2a9c1b2d4e...",
+        "model": "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "dimensions": 1024,
+        "state": "active",
+        "legacy": false,
+        "retrieval": true,
+        "owners": 500,
+        "provenance": "CUDA, Bun 1.4.2",
+        "incompatibleRuntimes": []
+      }
+    ],
     "contentTypeBoost": {
       "rulesFingerprint": "<sha256>",
       "rules": [{ "id": "decision", "searchBoost": 2 }]
@@ -1351,6 +1364,12 @@ counters; it never claims attachment to another process.
   }
 }
 ```
+
+`vectorPartitions` (omitted when none exist) lists the embedding model's
+vector partitions; `embeddingBacklog` and per-collection embedded counts use
+the one with `retrieval: true`. Other partitions carry `state`, `owners` and a
+readable `provenance`; `incompatibleRuntimes` names runtimes measured unable to
+reproduce the stored vectors, whose queries use lexical retrieval only.
 
 `contentTypeBoost` is a redacted ranking-status projection. It exposes only
 normalized IDs/factors plus the rules fingerprint; path prefixes are never

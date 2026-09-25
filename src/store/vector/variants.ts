@@ -22,8 +22,28 @@ export function vectorVariantFingerprint(
       identity.modelFingerprint,
       identity.contextSize,
       identity.truncationPolicy,
+      ...(identity.fork ? [identity.fork] : []),
     ])
   );
+}
+
+export function vectorPartitionId(
+  model: string,
+  fingerprint: string,
+  dimensions: number
+): string {
+  return embeddingInputHash(JSON.stringify([model, fingerprint, dimensions]));
+}
+
+/** Storage stays usable without sqlite-vec; search and activation need it. */
+export async function loadSqliteVec(db: Database): Promise<boolean> {
+  try {
+    const sqliteVec = await import("sqlite-vec");
+    sqliteVec.load(db);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 interface OwnerRow {
@@ -49,7 +69,9 @@ export class VectorVariantStore {
   constructor(
     private readonly db: Database,
     identity: VectorVariantIdentity,
-    readonly searchAvailable: boolean
+    readonly searchAvailable: boolean,
+    /** Readable label of the runtime that creates the partition. */
+    provenance?: string
   ) {
     if (
       !identity.model ||
@@ -64,19 +86,23 @@ export class VectorVariantStore {
     }
     this.identity = Object.freeze({ ...identity });
     this.fingerprint = vectorVariantFingerprint(identity);
-    this.partitionId = embeddingInputHash(
-      JSON.stringify([identity.model, this.fingerprint, identity.dimensions])
+    this.partitionId = vectorPartitionId(
+      identity.model,
+      this.fingerprint,
+      identity.dimensions
     );
     this.tableName = `vec_v1_${this.partitionId}`;
     db.transaction(() => {
       db.run(
         `INSERT OR IGNORE INTO vector_partitions
-        (partition_id, version, model, fingerprint, dimensions) VALUES (?, 1, ?, ?, ?)`,
+        (partition_id, version, model, fingerprint, dimensions, provenance)
+        VALUES (?, 1, ?, ?, ?, ?)`,
         [
           this.partitionId,
           identity.model,
           this.fingerprint,
           identity.dimensions,
+          provenance ?? null,
         ]
       );
       if (searchAvailable) {
@@ -448,15 +474,13 @@ export class VectorVariantStore {
 
 export async function createVectorVariantStore(
   db: Database,
-  identity: VectorVariantIdentity
+  identity: VectorVariantIdentity,
+  provenance?: string
 ): Promise<VectorVariantStore> {
-  let searchAvailable = false;
-  try {
-    const sqliteVec = await import("sqlite-vec");
-    sqliteVec.load(db);
-    searchAvailable = true;
-  } catch {
-    // Storage remains usable offline; activation waits for a materialized index.
-  }
-  return new VectorVariantStore(db, identity, searchAvailable);
+  return new VectorVariantStore(
+    db,
+    identity,
+    await loadSqliteVec(db),
+    provenance
+  );
 }

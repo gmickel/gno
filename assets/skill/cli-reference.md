@@ -117,8 +117,14 @@ gno collection clear-embeddings <name> [--all] [--json]
 ### gno embed
 
 ```bash
-gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-size <n>] [--dry-run]
+gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--new-partition]
 ```
+
+Switching `GNO_LLAMA_GPU`, Bun version or thread count resumes the existing
+vector partition when a measured sample of stored chunks matches. If it does
+not, embed refuses to build a separate partition without `--new-partition`
+(`--yes` alone never confirms); queries from that runtime fall back to lexical
+retrieval with a `vector_runtime_incompatible` warning.
 
 ## Indexing
 
@@ -150,7 +156,7 @@ gno index [options]
 Generate embeddings only.
 
 ```bash
-gno embed [--force] [--model <uri>] [--batch-size <n>] [--dry-run]
+gno embed [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--new-partition]
 ```
 
 ## Project Profiles
@@ -857,6 +863,7 @@ Vector index maintenance. Use when `gno similar` returns empty despite embedding
 ```bash
 gno vec sync      # Fast incremental sync
 gno vec rebuild   # Full rebuild
+gno vec drop <partition>   # Drop an abandoned shadow/legacy partition (id prefix from gno status)
 ```
 
 | Option   | Description |

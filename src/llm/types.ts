@@ -95,7 +95,10 @@ export interface EmbeddingIdentity {
   /** Versioned policy including the effective token limit. */
   truncationPolicy: string;
   modelFingerprint: string;
+  /** Runtime provenance (Bun, binding, backend, threads); not vector identity. */
   runtimeFingerprint: string;
+  /** Readable provenance such as "CUDA, Bun 1.4.2". */
+  runtimeLabel?: string;
 }
 
 export interface EmbeddingPort {

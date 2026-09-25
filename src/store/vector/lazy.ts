@@ -5,7 +5,7 @@ import type { EmbeddingPort } from "../../llm/types";
 import type { VectorIndexPort } from "./types";
 
 import { getStoredEmbeddingDimensions } from "./freshness";
-import { createVectorIndexPort } from "./sqlite-vec";
+import { bindVectorIndexDatabase, createVectorIndexPort } from "./sqlite-vec";
 
 export async function createLazyVectorIndex(
   db: Database,
@@ -35,47 +35,50 @@ export async function createLazyVectorIndex(
     });
     return loading;
   };
-  return {
-    model,
-    get dimensions() {
-      return current?.dimensions ?? embedPort.dimensions();
+  return bindVectorIndexDatabase(
+    {
+      model,
+      get dimensions() {
+        return current?.dimensions ?? embedPort.dimensions();
+      },
+      get searchAvailable() {
+        return current?.searchAvailable ?? true;
+      },
+      get loadError() {
+        return current?.loadError;
+      },
+      get guidance() {
+        return current?.guidance;
+      },
+      get vecDirty() {
+        return current?.vecDirty ?? dirty;
+      },
+      set vecDirty(value) {
+        dirty = value;
+        if (current) current.vecDirty = value;
+      },
+      async upsertVectors(rows) {
+        return (await get()).upsertVectors(rows);
+      },
+      async upsertVectorsChecked(rows, checkpoint) {
+        const port = await get();
+        if (!port.upsertVectorsChecked)
+          throw new Error("Atomic vector checkpoint unavailable");
+        return port.upsertVectorsChecked(rows, checkpoint);
+      },
+      async deleteVectorsForMirror(hash) {
+        return (await get()).deleteVectorsForMirror(hash);
+      },
+      async searchNearest(embedding, k, options) {
+        return (await get()).searchNearest(embedding, k, options);
+      },
+      async rebuildVecIndex() {
+        return (await get()).rebuildVecIndex();
+      },
+      async syncVecIndex() {
+        return (await get()).syncVecIndex();
+      },
     },
-    get searchAvailable() {
-      return current?.searchAvailable ?? true;
-    },
-    get loadError() {
-      return current?.loadError;
-    },
-    get guidance() {
-      return current?.guidance;
-    },
-    get vecDirty() {
-      return current?.vecDirty ?? dirty;
-    },
-    set vecDirty(value) {
-      dirty = value;
-      if (current) current.vecDirty = value;
-    },
-    async upsertVectors(rows) {
-      return (await get()).upsertVectors(rows);
-    },
-    async upsertVectorsChecked(rows, checkpoint) {
-      const port = await get();
-      if (!port.upsertVectorsChecked)
-        throw new Error("Atomic vector checkpoint unavailable");
-      return port.upsertVectorsChecked(rows, checkpoint);
-    },
-    async deleteVectorsForMirror(hash) {
-      return (await get()).deleteVectorsForMirror(hash);
-    },
-    async searchNearest(embedding, k, options) {
-      return (await get()).searchNearest(embedding, k, options);
-    },
-    async rebuildVecIndex() {
-      return (await get()).rebuildVecIndex();
-    },
-    async syncVecIndex() {
-      return (await get()).syncVecIndex();
-    },
-  };
+    db
+  );
 }

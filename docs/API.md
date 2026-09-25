@@ -452,6 +452,19 @@ Returns index statistics plus first-run onboarding, health-center state, backgro
   "totalDocuments": 142,
   "totalChunks": 1853,
   "embeddingBacklog": 0,
+  "vectorPartitions": [
+    {
+      "id": "3f2a9c1b2d4e...",
+      "model": "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
+      "dimensions": 1024,
+      "state": "active",
+      "legacy": false,
+      "retrieval": true,
+      "owners": 1853,
+      "provenance": "CUDA, Bun 1.4.2",
+      "incompatibleRuntimes": []
+    }
+  ],
   "recentErrors": 0,
   "lastUpdated": "2025-01-15T10:30:00Z",
   "healthy": true,
@@ -618,6 +631,14 @@ Returns index statistics plus first-run onboarding, health-center state, backgro
   }
 }
 ```
+
+`vectorPartitions` (omitted when none exist) is the same list `gno status
+--json` reports: `embeddingBacklog` and embedded counts use the partition with
+`retrieval: true`, and every other partition appears with its `state`,
+`owners` and `provenance`, so an incomplete shadow partition never reads as
+lost embeddings. Search results from a runtime that cannot reproduce the stored
+vectors fall back to lexical retrieval and carry a
+`meta.warnings[].code: "vector_runtime_incompatible"` notice.
 
 The activation object is identical to the `gno status --json`/doctor/Web model.
 Lexical readiness is proven per collection; semantic availability remains

@@ -734,6 +734,7 @@ export async function buildAppStatus(
     totalDocuments: status.activeDocuments,
     totalChunks: status.totalChunks,
     embeddingBacklog: status.embeddingBacklog,
+    vectorPartitions: status.vectorPartitions,
     chunking: status.chunking,
     lastUpdated: status.lastUpdatedAt,
     recentErrors: status.recentErrors,

@@ -31,3 +31,14 @@ export function fingerprintRuntime(settings: Record<string, unknown>): string {
     )
     .digest("hex");
 }
+
+const BACKEND_LABELS: Record<string, string> = {
+  cuda: "CUDA",
+  metal: "Metal",
+  vulkan: "Vulkan",
+};
+
+/** Readable provenance for status output; identity stays the fingerprint. */
+export function runtimeLabel(gpu: string | false): string {
+  return `${gpu ? (BACKEND_LABELS[gpu] ?? gpu) : "CPU"}, Bun ${Bun.version}`;
+}

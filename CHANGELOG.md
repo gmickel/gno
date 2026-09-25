@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Vector identity no longer depends on the runtime. Switching `GNO_LLAMA_GPU` / `NODE_LLAMA_CPP_GPU`, the Bun version, the `node-llama-cpp` version or the CPU thread count reuses the existing vector partition and resumes its backlog when re-embedding up to 8 stored chunks reproduces their vectors (cosine >= 0.99 each; measured: Bun versions and thread counts bit-identical, GPU vs CPU >= 0.9993). The verdict is cached per partition and runtime. Existing indexes are re-keyed once without re-embedding: the most complete compatible partition becomes the runtime-independent one and the rest stay as shadow; an ambiguous tie keeps every partition and is reported. See [Switching backend or Bun version](docs/TROUBLESHOOTING.md#switching-backend-or-bun-version).
+- A genuine fork is never silent: when a runtime cannot reproduce the stored vectors, `gno embed` states that it would build a separate partition, the full chunk count and a measured estimate, and requires confirmation (interactive prompt or `--new-partition`; `--yes` alone does not confirm). Queries from that runtime use lexical retrieval only, with a `vector_runtime_incompatible` warning.
+- `gno status`, `gno doctor`, REST `/api/status`, MCP `gno_status` and the SDK report embedding counts against the partition retrieval uses and list every vector partition (`vectorPartitions`) with state, chunk count, provenance such as `CUDA, Bun 1.4.2`, and runtimes measured incompatible, so an incomplete shadow partition no longer reads as lost embeddings.
+
+### Added
+
+- `gno vec drop <partition>` removes an abandoned shadow or legacy vector partition; the partition retrieval uses is refused.
+
 ## [2.6.0] - 2026-09-25
 
 ### Added

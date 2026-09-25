@@ -17,6 +17,7 @@ import {
   withOwnedInferenceScope,
 } from "../../src/llm/inference-scope";
 import { migration } from "../../src/store/migrations/028-vector-variants";
+import { migration as runtimeMigration } from "../../src/store/migrations/031-runtime-independent-vectors";
 import { createVectorIndexPort } from "../../src/store/vector/sqlite-vec";
 import { createVectorStatsPort } from "../../src/store/vector/stats";
 import {
@@ -44,6 +45,7 @@ async function variantFixture(titles = ["Alpha", "Beta", "Alpha"]) {
       title,
     ]);
   migration.up(db, "unicode61");
+  runtimeMigration.up(db, "unicode61");
   const store = await createVectorVariantStore(db, {
     model: "test-model",
     modelFingerprint: "actual-test-weights",

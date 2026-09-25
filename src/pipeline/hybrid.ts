@@ -33,7 +33,10 @@ import {
   withInferenceScope,
 } from "../llm/inference-scope";
 import { err, ok } from "../store/types";
-import { resolveVectorSearchIdentity } from "../store/vector/variant-search";
+import {
+  resolveVectorSearchIdentity,
+  VECTOR_RUNTIME_INCOMPATIBLE,
+} from "../store/vector/variant-search";
 import { createChunkLookup } from "./chunk-lookup";
 import {
   attachAuxiliaryScoreMetadata,
@@ -284,7 +287,10 @@ async function searchVectorChunks(
     allowedMirrorHashes?: string[];
     eligibility?: VectorSearchOptions["eligibility"];
   }
-): Promise<{ ok: true; chunks: ChunkId[] } | { ok: false; reason: string }> {
+): Promise<
+  | { ok: true; chunks: ChunkId[] }
+  | { ok: false; reason: string; notice?: string }
+> {
   if (!vectorIndex.searchAvailable) {
     return { ok: false, reason: "vector_unavailable" };
   }
@@ -298,12 +304,19 @@ async function searchVectorChunks(
     return { ok: false, reason: "vector_embed_error" };
   }
 
+  const partition = await resolveVectorSearchIdentity(embedPort, vectorIndex);
+  if (partition.notice)
+    return {
+      ok: false,
+      reason: VECTOR_RUNTIME_INCOMPATIBLE,
+      notice: partition.notice,
+    };
   const queryEmbedding = new Float32Array(embedResult.value);
   const searchResult = await vectorIndex.searchNearest(
     queryEmbedding,
     options.limit,
     {
-      embeddingIdentity: resolveVectorSearchIdentity(embedPort),
+      embeddingIdentity: partition.identity,
       minScore: options.minScore,
       allowedMirrorHashes: options.allowedMirrorHashes,
       eligibility: options.eligibility,
@@ -630,6 +643,7 @@ async function searchHybridWithHydration(
   // Vector search
   let vecCount = 0;
   let vectorsUsed = false;
+  let vectorNotice: string | undefined;
   const vectorAvailable =
     (vectorIndex?.searchAvailable && embedPort !== null) ?? false;
   if (!vectorAvailable) {
@@ -662,8 +676,10 @@ async function searchHybridWithHydration(
         }
       );
 
-      if (!vectorResult.ok) counters.fallbackEvents.push(vectorResult.reason);
-      else vectorsUsed = true;
+      if (!vectorResult.ok) {
+        counters.fallbackEvents.push(vectorResult.reason);
+        vectorNotice = vectorResult.notice;
+      } else vectorsUsed = true;
       const vecChunks = vectorResult.ok ? vectorResult.chunks : [];
       vecCount = vecChunks.length;
       vectorTraceChunks.push(...vecChunks);
@@ -691,8 +707,14 @@ async function searchHybridWithHydration(
       );
 
       assertInferenceResult(embedResult);
+      const partition = embedResult.ok
+        ? await resolveVectorSearchIdentity(embedPort, vectorIndex)
+        : undefined;
       if (!embedResult.ok) {
         counters.fallbackEvents.push("vector_embed_error");
+      } else if (partition?.notice) {
+        counters.fallbackEvents.push(VECTOR_RUNTIME_INCOMPATIBLE);
+        vectorNotice = partition.notice;
       } else {
         if (embedResult.value.batchFailed) {
           counters.fallbackEvents.push("vector_embed_batch_fallback");
@@ -709,7 +731,7 @@ async function searchHybridWithHydration(
             new Float32Array(embedding),
             variant.limit,
             {
-              embeddingIdentity: resolveVectorSearchIdentity(embedPort),
+              embeddingIdentity: partition?.identity,
               allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
               eligibility: vectorEligibility,
             }
@@ -1390,6 +1412,11 @@ async function searchHybridWithHydration(
       trace: diagnoseTrace,
     },
   };
+  if (vectorNotice)
+    output.meta.warnings = [
+      ...(output.meta.warnings ?? []),
+      { code: VECTOR_RUNTIME_INCOMPATIBLE, message: vectorNotice },
+    ];
   const fallbackCodes = [...new Set(counters.fallbackEvents)].sort();
   const capabilityOutcomes = [
     { capability: "lexical_search", status: "used" as const },
@@ -1400,7 +1427,9 @@ async function searchHybridWithHydration(
             status: "failed" as const,
             reasonCode: fallbackCodes.includes("vector_embed_error")
               ? "vector_embed_error"
-              : "vector_search_error",
+              : vectorNotice
+                ? VECTOR_RUNTIME_INCOMPATIBLE
+                : "vector_search_error",
           }
         : { capability: "semantic_search", status: "used" as const }
       : {

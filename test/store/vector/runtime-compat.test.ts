@@ -1,0 +1,435 @@
+import { afterEach, expect, test } from "bun:test";
+// Bun has no temporary-directory creation API.
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import type { Config } from "../../../src/config/types";
+import type { EmbeddingPort } from "../../../src/llm/types";
+
+import {
+  embedBacklog,
+  prepareEmbeddingBacklog,
+} from "../../../src/embed/backlog";
+import { searchHybrid } from "../../../src/pipeline/hybrid";
+import { SqliteAdapter } from "../../../src/store/sqlite/adapter";
+import {
+  embeddingPartitionIdentity,
+  identityPartitionId,
+  resolveRuntimePartition,
+} from "../../../src/store/vector/runtime-compat";
+import { createVectorIndexPort } from "../../../src/store/vector/sqlite-vec";
+import { createVectorStatsPort } from "../../../src/store/vector/stats";
+import {
+  dropVectorPartition,
+  listVectorPartitions,
+} from "../../../src/store/vector/status";
+import {
+  resolveVectorSearchIdentity,
+  VECTOR_RUNTIME_INCOMPATIBLE,
+} from "../../../src/store/vector/variant-search";
+import { createVectorVariantStore } from "../../../src/store/vector/variants";
+import { safeRm } from "../../helpers/cleanup";
+
+const MODEL = "runtime-compat-model";
+const DIMS = 4;
+const stores: SqliteAdapter[] = [];
+const directories: string[] = [];
+afterEach(async () => {
+  for (const store of stores.splice(0)) await store.close();
+  for (const directory of directories.splice(0)) await safeRm(directory);
+});
+
+function vectorFor(text: string, skew: number): number[] {
+  const hash = new Bun.CryptoHasher("sha256").update(text).digest();
+  const vector = Array.from({ length: DIMS }, (_, i) => hash[i]! / 255 + 0.1);
+  // An incompatible runtime rotates the space: same input, different vector.
+  if (skew) vector.reverse();
+  return vector;
+}
+
+/** Deterministic port; `skew` simulates a runtime that is not measurably equal. */
+function port(runtime: string, skew = 0) {
+  const calls: string[] = [];
+  const embedPort: EmbeddingPort = {
+    modelUri: MODEL,
+    init: async () => ({ ok: true, value: undefined }),
+    dimensions: () => DIMS,
+    getIdentity: () => ({
+      contextSize: 512,
+      truncationPolicy: "truncate-tail-v1",
+      modelFingerprint: "weights-v1",
+      runtimeFingerprint: runtime,
+      runtimeLabel: `${runtime} label`,
+    }),
+    embed: async (text) => {
+      calls.push(text);
+      return { ok: true, value: vectorFor(text, skew) };
+    },
+    embedBatch: async (texts) => {
+      calls.push(...texts);
+      return { ok: true, value: texts.map((text) => vectorFor(text, skew)) };
+    },
+    dispose: async () => {},
+  };
+  return { embedPort, calls };
+}
+
+async function addDocs(store: SqliteAdapter, from: number, to: number) {
+  for (let i = from; i < to; i++) {
+    const mirrorHash = `mirror-${i}`;
+    const doc = await store.upsertDocument({
+      collection: "notes",
+      relPath: `note-${i}.md`,
+      title: `Note ${i}`,
+      mirrorHash,
+      sourceHash: `source-${i}`,
+      sourceMime: "text/markdown",
+      sourceExt: ".md",
+      sourceSize: 20,
+      sourceMtime: "2026-09-25T00:00:00Z",
+    });
+    if (!doc.ok) throw new Error(doc.error.message);
+    await store.upsertContent(mirrorHash, `Body ${i}`);
+    await store.upsertChunks(mirrorHash, [
+      { seq: 0, pos: 0, text: `Chunk text ${i}`, startLine: 1, endLine: 1 },
+    ]);
+    const fts = await store.rebuildFtsForHash(mirrorHash);
+    if (!fts.ok) throw new Error(fts.error.message);
+  }
+}
+
+async function fixture(docs = 12) {
+  const directory = await mkdtemp(join(tmpdir(), "gno-runtime-compat-"));
+  directories.push(directory);
+  const store = new SqliteAdapter();
+  const opened = await store.open(join(directory, "index.sqlite"), "unicode61");
+  if (!opened.ok) throw new Error(opened.error.message);
+  stores.push(store);
+  await store.syncCollections([
+    {
+      name: "notes",
+      path: "/synthetic/notes",
+      pattern: "**/*.md",
+      include: [],
+      exclude: [],
+    },
+  ]);
+  await addDocs(store, 0, docs);
+  const db = store.getRawDb();
+  const index = await createVectorIndexPort(db, {
+    model: MODEL,
+    dimensions: DIMS,
+  });
+  if (!index.ok) throw new Error(index.error.message);
+  const embed = async (
+    embedPort: EmbeddingPort,
+    allowNewPartition?: boolean
+  ) => {
+    const deps = {
+      embedPort,
+      statsPort: createVectorStatsPort(db),
+      vectorIndex: index.value,
+      modelUri: MODEL,
+      allowNewPartition,
+    };
+    const prepared = await prepareEmbeddingBacklog(deps);
+    if (!prepared.ok) return prepared;
+    return embedBacklog(prepared.value);
+  };
+  const status = async () => {
+    const result = await store.getStatus({ embedModel: MODEL });
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  };
+  return { store, db, index: index.value, embed, status };
+}
+
+const partitionIds = (db: ReturnType<SqliteAdapter["getRawDb"]>) =>
+  db
+    .query<{ partition_id: string }, []>(
+      "SELECT partition_id FROM vector_partitions ORDER BY partition_id"
+    )
+    .all()
+    .map((row) => row.partition_id);
+
+test("runtime-only change resumes the backlog in the same partition", async () => {
+  const f = await fixture();
+  const a = port("runtime-a");
+  expect((await f.embed(a.embedPort)).ok).toBe(true);
+  const [partition] = partitionIds(f.db);
+  expect(partition).toBe(
+    identityPartitionId(embeddingPartitionIdentity(a.embedPort)!)
+  );
+
+  await addDocs(f.store, 12, 14);
+  const b = port("runtime-b");
+  const result = await f.embed(b.embedPort);
+  expect(result.ok && result.value.embedded).toBe(2);
+  expect(partitionIds(f.db)).toEqual([partition!]);
+  // Only the 8-chunk sample plus the 2 new chunks were embedded under B.
+  expect(b.calls).toHaveLength(10);
+  expect(
+    f.db
+      .query("SELECT verdict FROM vector_runtime_verdicts WHERE runtime = ?")
+      .get("runtime-b")
+  ).toEqual({ verdict: "compatible" });
+  expect((await f.status()).embeddingBacklog).toBe(0);
+});
+
+test("a verdict write failure re-measures next time and never forks", async () => {
+  const f = await fixture();
+  expect((await f.embed(port("runtime-a").embedPort)).ok).toBe(true);
+  f.db
+    .exec(`CREATE TRIGGER fail_verdicts BEFORE INSERT ON vector_runtime_verdicts
+    BEGIN SELECT RAISE(ABORT, 'disk full'); END`);
+  const b = port("runtime-b");
+  for (let run = 1; run <= 2; run++) {
+    expect((await f.embed(b.embedPort)).ok).toBe(true);
+    expect(b.calls).toHaveLength(8 * run);
+  }
+  expect(partitionIds(f.db)).toHaveLength(1);
+});
+
+test("an incompatible runtime is refused without explicit confirmation and queries go lexical", async () => {
+  const f = await fixture();
+  expect((await f.embed(port("runtime-a").embedPort)).ok).toBe(true);
+  const c = port("runtime-c", 1);
+
+  const refused = await f.embed(c.embedPort);
+  expect(refused.ok).toBe(false);
+  if (!refused.ok) {
+    expect(refused.error.code).toBe("VECTOR_PARTITION_FORK");
+    expect(refused.error.message).toContain("all 12 chunks");
+    expect(refused.error.message).toContain("--new-partition");
+  }
+  expect(partitionIds(f.db)).toHaveLength(1);
+
+  const search = await resolveVectorSearchIdentity(c.embedPort, f.index);
+  expect(search.identity).toBeUndefined();
+  expect(search.notice).toContain("lexical retrieval only");
+  expect(VECTOR_RUNTIME_INCOMPATIBLE).toBe("vector_runtime_incompatible");
+
+  const forked = await f.embed(c.embedPort, true);
+  expect(forked.ok && forked.value.embedded).toBe(12);
+  expect(partitionIds(f.db)).toHaveLength(2);
+  const [primary] = partitionIds(f.db).filter(
+    (id) => id === identityPartitionId(embeddingPartitionIdentity(c.embedPort)!)
+  );
+  expect(
+    listVectorPartitions(f.db, MODEL).find((p) => p.id === primary)
+      ?.incompatibleRuntimes
+  ).toEqual(["runtime-c label"]);
+  // The confirmed partition now belongs to runtime C and is used by its queries.
+  expect(
+    (await resolveVectorSearchIdentity(c.embedPort, f.index)).identity?.fork
+  ).toBe("runtime-c");
+});
+
+test("hybrid query from an incompatible runtime is lexical-only with a notice", async () => {
+  const f = await fixture();
+  expect((await f.embed(port("runtime-a").embedPort)).ok).toBe(true);
+  const result = await searchHybrid(
+    {
+      store: f.store,
+      config: {} as Config,
+      vectorIndex: f.index,
+      embedPort: port("runtime-c", 1).embedPort,
+      expandPort: null,
+      rerankPort: null,
+    },
+    "Body",
+    { limit: 3, noExpand: true, noRerank: true }
+  );
+  if (!result.ok) throw new Error(result.error.message);
+  expect(result.value.meta.mode).toBe("bm25_only");
+  expect(result.value.results.length).toBeGreaterThan(0);
+  expect(result.value.meta.warnings).toEqual([
+    {
+      code: VECTOR_RUNTIME_INCOMPATIBLE,
+      message: expect.stringContaining("lexical retrieval only"),
+    },
+  ]);
+});
+
+test("an empty partition is unverified, not compatible", async () => {
+  const f = await fixture();
+  const a = port("runtime-a");
+  const primary = embeddingPartitionIdentity(a.embedPort)!;
+  await createVectorVariantStore(f.db, primary);
+  const resolved = await resolveRuntimePartition(f.db, a.embedPort, primary);
+  expect(resolved.verdict).toBe("unverified");
+  expect(resolved.blocked).toBeUndefined();
+  expect(
+    f.db.query("SELECT count(*) AS n FROM vector_runtime_verdicts").get()
+  ).toEqual({ n: 0 });
+});
+
+test("status reports the retrieval partition with a shadow present; dropping it restores status exactly", async () => {
+  const f = await fixture();
+  expect((await f.embed(port("runtime-a").embedPort)).ok).toBe(true);
+  const before = await f.status();
+  expect(before.vectorPartitions).toHaveLength(1);
+
+  // An abandoned, incomplete shadow partition from another runtime.
+  const shadow = await createVectorVariantStore(
+    f.db,
+    {
+      ...embeddingPartitionIdentity(port("runtime-z").embedPort)!,
+      fork: "runtime-z",
+    },
+    "CPU, Bun 1.3.14"
+  );
+  shadow.write(
+    shadow.pending({ limit: 3 }).map((owner) => ({
+      owner,
+      embedding: new Float32Array(vectorFor(owner.formattedInput, 1)),
+    }))
+  );
+  shadow.selectForEmbedding();
+
+  const during = await f.status();
+  expect(during.embeddingBacklog).toBe(before.embeddingBacklog);
+  expect(during.collections).toEqual(before.collections);
+  expect(
+    during.vectorPartitions?.map(
+      ({ state, retrieval, owners, provenance }) => ({
+        state,
+        retrieval,
+        owners,
+        provenance,
+      })
+    )
+  ).toEqual(
+    expect.arrayContaining([
+      {
+        state: "active",
+        retrieval: true,
+        owners: 12,
+        provenance: "runtime-a label",
+      },
+      {
+        state: "shadow",
+        retrieval: false,
+        owners: 3,
+        provenance: "CPU, Bun 1.3.14",
+      },
+    ])
+  );
+
+  const retrieval = during.vectorPartitions!.find((p) => p.retrieval)!;
+  expect(await dropVectorPartition(f.db, retrieval.id)).toEqual({
+    ok: false,
+    error: expect.stringContaining("Refusing to drop"),
+  });
+  expect(
+    (await dropVectorPartition(f.db, shadow.partitionId.slice(0, 12))).ok
+  ).toBe(true);
+  expect(await f.status()).toEqual(before);
+});
+
+/** Pre-fn-184 partitions were keyed on weights plus runtime. */
+async function legacyPartition(
+  f: Awaited<ReturnType<typeof fixture>>,
+  runtime: string,
+  owners: number,
+  activate: boolean
+) {
+  const store = await createVectorVariantStore(f.db, {
+    ...embeddingPartitionIdentity(port(runtime).embedPort)!,
+    modelFingerprint: `legacy-weights+${runtime}`,
+  });
+  store.write(
+    store.pending({ limit: owners }).map((owner) => ({
+      owner,
+      embedding: new Float32Array(vectorFor(owner.formattedInput, 0)),
+    }))
+  );
+  if (activate) store.activate(store.epoch());
+  f.db.run("UPDATE vector_partitions SET legacy = 1 WHERE partition_id = ?", [
+    store.partitionId,
+  ]);
+  return store.partitionId;
+}
+
+test("migration re-keys the most complete compatible partition, survives a crash and is idempotent", async () => {
+  const f = await fixture();
+  const complete = await legacyPartition(f, "gpu-bun-a", 12, true);
+  const partial = await legacyPartition(f, "cpu-bun-b", 5, false);
+  const variantsBefore = f.db
+    .query(
+      "SELECT variant_id, input_hash, embedding FROM vector_variants WHERE partition_id = ? ORDER BY variant_id"
+    )
+    .all(complete);
+  const runtime = port("cpu-bun-c");
+  const primary = embeddingPartitionIdentity(runtime.embedPort)!;
+  const newId = identityPartitionId(primary);
+
+  f.db.exec(`CREATE TRIGGER crash BEFORE DELETE ON vector_partitions
+    BEGIN SELECT RAISE(ABORT, 'simulated crash'); END`);
+  expect(
+    resolveRuntimePartition(f.db, runtime.embedPort, primary)
+  ).rejects.toThrow("simulated crash");
+  expect(partitionIds(f.db)).toEqual([complete, partial].sort());
+  expect(
+    f.db
+      .query("SELECT 1 FROM sqlite_master WHERE name = ?")
+      .get(`vec_v1_${newId}`)
+  ).toBeNull();
+  f.db.exec("DROP TRIGGER crash");
+
+  const resolved = await resolveRuntimePartition(
+    f.db,
+    runtime.embedPort,
+    primary
+  );
+  expect(resolved.blocked).toBeUndefined();
+  expect(resolved.verdict).toBe("compatible");
+  expect(partitionIds(f.db)).toEqual([newId, partial].sort());
+  expect(
+    f.db
+      .query(
+        "SELECT variant_id, input_hash, embedding FROM vector_variants WHERE partition_id = ? ORDER BY variant_id"
+      )
+      .all(newId)
+  ).toEqual(variantsBefore);
+  expect(
+    f.db
+      .query(
+        "SELECT state, legacy FROM vector_partitions WHERE partition_id = ?"
+      )
+      .all(partial)
+  ).toEqual([{ state: "shadow", legacy: 1 }]);
+  const callsAfterMigration = runtime.calls.length;
+
+  expect(
+    (await resolveRuntimePartition(f.db, runtime.embedPort, primary)).identity
+  ).toEqual(primary);
+  expect(runtime.calls).toHaveLength(callsAfterMigration);
+  expect(partitionIds(f.db)).toEqual([newId, partial].sort());
+
+  // No re-embedding: the backlog is empty and search reads the re-keyed vectors.
+  const embedded = await f.embed(runtime.embedPort);
+  expect(embedded.ok && embedded.value.embedded).toBe(0);
+  expect(
+    (await resolveVectorSearchIdentity(runtime.embedPort, f.index)).identity
+  ).toEqual(primary);
+});
+
+test("an ambiguous migration keeps every partition and reports it", async () => {
+  const f = await fixture();
+  const first = await legacyPartition(f, "bun-a", 12, true);
+  const second = await legacyPartition(f, "bun-b", 12, true);
+  const runtime = port("bun-c");
+  const primary = embeddingPartitionIdentity(runtime.embedPort)!;
+
+  const resolved = await resolveRuntimePartition(
+    f.db,
+    runtime.embedPort,
+    primary
+  );
+  expect(resolved.blocked?.reason).toContain("ambiguous migration");
+  expect(partitionIds(f.db)).toEqual([first, second].sort());
+  const refused = await f.embed(runtime.embedPort);
+  expect(!refused.ok && refused.error.code).toBe("VECTOR_PARTITION_FORK");
+});

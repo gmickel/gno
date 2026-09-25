@@ -2,34 +2,68 @@ import type { Database } from "bun:sqlite";
 
 import type { EmbeddingPort } from "../../llm/types";
 import type {
+  VectorIndexPort,
   VectorSearchOptions,
   VectorSearchResult,
   VectorVariantIdentity,
 } from "./types";
 
-import { getVariantModelFingerprint } from "../../embed/fingerprint";
 import { formatDocForEmbedding } from "../../pipeline/contextual";
 import { buildEligibleDocumentQuery } from "../sqlite/eligibility";
-import { encodeEmbedding } from "./sqlite-vec";
-import { embeddingInputHash, vectorVariantFingerprint } from "./variants";
+import {
+  embeddingPartitionIdentity,
+  identityPartitionId,
+  isPartitionActivated,
+  resolveRuntimePartition,
+} from "./runtime-compat";
+import { encodeEmbedding, getVectorIndexDatabase } from "./sqlite-vec";
+import { embeddingInputHash } from "./variants";
 
-/** Call after query embedding initialized the port; never infer runtime policy. */
-export function resolveVectorSearchIdentity(
-  port: EmbeddingPort
-): VectorVariantIdentity | undefined {
-  const identity = port.getIdentity?.();
-  if (!identity) return undefined;
-  const dimensions = port.dimensions();
-  return {
-    model: port.modelUri,
-    modelFingerprint: getVariantModelFingerprint(
-      { modelUri: port.modelUri, dimensions },
-      identity
-    ),
-    contextSize: identity.contextSize,
-    truncationPolicy: identity.truncationPolicy,
-    dimensions,
-  };
+/** Fallback/warning code: this runtime may not read the activated vectors. */
+export const VECTOR_RUNTIME_INCOMPATIBLE = "vector_runtime_incompatible";
+
+export type SearchPartition =
+  | { identity?: VectorVariantIdentity; notice?: undefined }
+  | { identity?: undefined; notice: string };
+
+/**
+ * Call after query embedding initialized the port. A runtime that cannot use
+ * an activated partition gets a notice and must fall back to lexical retrieval;
+ * vector spaces are never mixed.
+ */
+export async function resolveVectorSearchIdentity(
+  port: EmbeddingPort,
+  vectorIndex: VectorIndexPort
+): Promise<SearchPartition> {
+  const primary = embeddingPartitionIdentity(port);
+  const db = getVectorIndexDatabase(vectorIndex);
+  if (!primary || !db) return { identity: primary };
+  let resolved;
+  try {
+    resolved = await resolveRuntimePartition(db, port, primary);
+  } catch (cause) {
+    return {
+      notice: `Semantic search unavailable: the runtime compatibility check failed (${cause instanceof Error ? cause.message : String(cause)}). Using lexical retrieval only.`,
+    };
+  }
+  if (resolved.blocked)
+    return {
+      notice: `Semantic search unavailable for this runtime: ${resolved.blocked.reason}. Using lexical retrieval only; see \`gno status\`.`,
+    };
+  const activatedElsewhere = db
+    .query(
+      "SELECT 1 FROM vector_partitions WHERE model = ? AND state = 'active' AND activated_epoch IS NOT NULL LIMIT 1"
+    )
+    .get(primary.model);
+  if (
+    activatedElsewhere &&
+    !isPartitionActivated(db, identityPartitionId(resolved.identity))
+  )
+    return {
+      notice:
+        "Semantic search unavailable for this runtime: its vector partition is still being built. Using lexical retrieval only; run `gno embed`.",
+    };
+  return { identity: resolved.identity };
 }
 
 /** Null means legacy authority. Once promoted, unavailable provenance fails closed. */
@@ -66,9 +100,7 @@ function searchVectorVariantsInSnapshot(
     embedding.length !== dimensions
   )
     throw new Error("Query embedding identity does not match vector index");
-  const partitionId = embeddingInputHash(
-    JSON.stringify([model, vectorVariantFingerprint(identity), dimensions])
-  );
+  const partitionId = identityPartitionId(identity);
   const partition = db
     .query<{ state: string; activated_epoch: number | null }, [string]>(
       "SELECT state, activated_epoch FROM vector_partitions WHERE partition_id = ?"

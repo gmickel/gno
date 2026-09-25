@@ -3544,6 +3544,10 @@ function wireManagementCommands(program: Command): void {
       .option("--model <uri>", "embedding model URI")
       .option("--batch-size <num>", "batch size", "32")
       .option("--force", "regenerate all embeddings")
+      .option(
+        "--new-partition",
+        "confirm building a separate vector partition for an incompatible runtime"
+      )
       .option("--dry-run", "show what would be done")
       .option("--json", "JSON output")
   ).action(
@@ -3567,6 +3571,7 @@ function wireManagementCommands(program: Command): void {
         force: Boolean(cmdOpts.force),
         dryRun: Boolean(cmdOpts.dryRun),
         yes: globals.yes,
+        newPartition: Boolean(cmdOpts.newPartition),
         json: format === "json",
         verbose: globals.verbose,
         offline: globals.offline,
@@ -3672,6 +3677,43 @@ function wireVecCommands(program: Command): void {
 
     process.stdout.write(
       `${formatVecSync(result, { json: format === "json" })}\n`
+    );
+  });
+
+  // vec drop
+  addWriteLeaseFlags(
+    vecCmd
+      .command("drop <partition>")
+      .description(
+        "Drop an abandoned shadow or legacy vector partition (id prefix from gno status)"
+      )
+      .option("--json", "JSON output")
+  ).action(async (partition: string, cmdOpts: Record<string, unknown>) => {
+    const format = getFormat(cmdOpts);
+    const globals = getGlobals();
+
+    const { vecDrop, formatVecDrop } = await import("./commands/vec");
+    const lease = parseWriteLeaseFlags(cmdOpts);
+    const result = await withCliWriteLease(
+      {
+        indexName: globals.index,
+        lockWaitMs: lease.lockWaitMs,
+        noWait: lease.noWait,
+      },
+      () =>
+        vecDrop(partition, {
+          configPath: globals.config,
+          indexName: globals.index,
+        })
+    );
+    throwIfWriteLeaseBusy(result, format === "json");
+
+    if (!result.success) {
+      throw new CliError("VALIDATION", result.error);
+    }
+
+    process.stdout.write(
+      `${formatVecDrop(result, { json: format === "json" })}\n`
     );
   });
 

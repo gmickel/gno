@@ -1,3 +1,5 @@
+import type { Database } from "bun:sqlite";
+
 import type { EmbeddingPort } from "../llm/types";
 /**
  * Shared embedding backlog processor.
@@ -18,12 +20,14 @@ import {
   isBackgroundInference,
 } from "../llm/inference-scope";
 import { err, ok } from "../store/types";
+import {
+  embeddingPartitionIdentity,
+  recordReferenceRuntime,
+  resolveRuntimePartition,
+} from "../store/vector/runtime-compat";
 import { getVectorStatsDatabase } from "../store/vector/stats";
 import { createVectorVariantStore } from "../store/vector/variants";
-import {
-  getEmbeddingFingerprint,
-  getVariantModelFingerprint,
-} from "./fingerprint";
+import { getEmbeddingFingerprint } from "./fingerprint";
 import {
   chunkRetryKey,
   embedAndStoreBatch,
@@ -47,6 +51,8 @@ export interface EmbedBacklogDeps {
   variantStore?: VectorVariantStore;
   /** Recheck the effective runtime identity after asynchronous inference. */
   identityStillCurrent?: () => boolean;
+  /** Explicit confirmation to build a separate vector partition (never implied by --yes). */
+  allowNewPartition?: boolean;
 }
 
 export interface EmbedBacklogResult {
@@ -248,6 +254,32 @@ export async function embedBacklog(
   }
 }
 
+function formatEstimate(ms: number): string {
+  const minutes = Math.ceil(ms / 60_000);
+  return minutes < 60
+    ? `about ${minutes} min`
+    : `about ${(minutes / 60).toFixed(1)} h`;
+}
+
+/** R3: a fork names itself, its full size and a measured estimate before it runs. */
+function separatePartitionMessage(
+  db: Database,
+  reason: string,
+  resolved: { msPerChunk?: number }
+): string {
+  const chunks = db
+    .query<{ count: number }, []>(`
+      SELECT count(*) AS count FROM documents d
+      JOIN content_chunks c ON c.mirror_hash = d.mirror_hash WHERE d.active = 1
+    `)
+    .get()!.count;
+  const estimate =
+    resolved.msPerChunk === undefined
+      ? "no estimate available"
+      : `estimated ${formatEstimate(resolved.msPerChunk * chunks)}`;
+  return `Embedding would build a separate vector partition (${reason}). It re-embeds all ${chunks} chunks (${estimate}). Confirm with \`gno embed --new-partition\`; --yes alone does not confirm.`;
+}
+
 /** Resolve authority before counts, dry runs, forced work, or early returns. */
 export async function prepareEmbeddingBacklog(
   deps: EmbedBacklogDeps
@@ -259,19 +291,27 @@ export async function prepareEmbeddingBacklog(
       const initialized = await deps.embedPort.init();
       if (!initialized.ok) return err("INTERNAL", initialized.error.message);
       const identity = deps.embedPort.getIdentity?.();
-      if (identity) {
+      const primary = embeddingPartitionIdentity(deps.embedPort);
+      if (identity && primary) {
         const identitySnapshot = JSON.stringify(identity);
-        const dimensions = deps.embedPort.dimensions();
-        const variantStore = await createVectorVariantStore(db, {
-          model: deps.modelUri,
-          modelFingerprint: getVariantModelFingerprint(
-            { modelUri: deps.modelUri, dimensions },
-            identity
-          ),
-          contextSize: identity.contextSize,
-          truncationPolicy: identity.truncationPolicy,
-          dimensions,
-        });
+        const dimensions = primary.dimensions;
+        const resolved = await resolveRuntimePartition(
+          db,
+          deps.embedPort,
+          primary
+        );
+        if (resolved.blocked && !deps.allowNewPartition)
+          return err(
+            "VECTOR_PARTITION_FORK",
+            separatePartitionMessage(db, resolved.blocked.reason, resolved)
+          );
+        const variantStore = await createVectorVariantStore(
+          db,
+          resolved.blocked?.separate ?? resolved.identity,
+          identity.runtimeLabel
+        );
+        if (resolved.blocked || resolved.verdict === "unverified")
+          recordReferenceRuntime(db, variantStore.partitionId, identity);
         variantStore.selectForEmbedding();
         return ok({
           ...deps,

@@ -26,6 +26,7 @@ import type {
   ChunkingStatus,
   PendingChunkingMirror,
 } from "./chunking";
+import type { VectorPartitionStatus } from "./vector/status";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Error Types
@@ -61,7 +62,9 @@ export type StoreErrorCode =
   | "VEC_SEARCH_UNAVAILABLE"
   | "VEC_SEARCH_FAILED"
   | "VEC_REBUILD_FAILED"
-  | "VEC_SYNC_FAILED";
+  | "VEC_SYNC_FAILED"
+  /** Embedding would build a separate vector partition without confirmation. */
+  | "VECTOR_PARTITION_FORK";
 
 /** Store error with structured details */
 export interface StoreError {
@@ -820,6 +823,8 @@ export interface IndexStatus {
   totalChunks: number;
   /** Chunks without embeddings */
   embeddingBacklog: number;
+  /** Vector partitions of the status model; counts use the `retrieval` one. */
+  vectorPartitions?: VectorPartitionStatus[];
   /** Configuration and applied cached layouts; separate from source freshness. */
   chunking?: ChunkingStatus;
   /** Recent ingest errors (last 24h) */

@@ -7,6 +7,9 @@
 
 import type { Database } from "bun:sqlite";
 
+// node:readline/promises is the platform line-input API; Bun has no equivalent
+import { createInterface } from "node:readline/promises";
+
 import type { EmbeddingPort } from "../../llm/types";
 import type { StoreResult } from "../../store/types";
 
@@ -77,8 +80,10 @@ export interface EmbedOptions extends CliWriteLeaseOptions {
   force?: boolean;
   /** Show what would be done without embedding */
   dryRun?: boolean;
-  /** Skip confirmation prompts */
+  /** Skip confirmation prompts (never confirms a separate vector partition) */
   yes?: boolean;
+  /** Explicitly confirm building a separate vector partition */
+  newPartition?: boolean;
   /** Output as JSON */
   json?: boolean;
   /** Verbose error logging */
@@ -450,6 +455,24 @@ async function initEmbedContext(
   return { ok: true, config, modelUri, store };
 }
 
+async function confirmSeparatePartition(message: string): Promise<boolean> {
+  process.stderr.write(`${message}\n`);
+  const prompt = createInterface({
+    input: process.stdin,
+    output: process.stderr,
+  });
+  try {
+    const answer = await prompt.question(
+      "Build the separate partition? [y/N] "
+    );
+    return /^(?:y|yes)$/i.test(answer.trim());
+  } catch {
+    return false;
+  } finally {
+    prompt.close();
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Command
 // ─────────────────────────────────────────────────────────────────────────────
@@ -574,7 +597,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
         }
         vectorIndex = vectorResult.value;
 
-        const prepared = await prepareEmbeddingBacklog({
+        const backlogDeps = {
           statsPort: stats,
           embedPort,
           vectorIndex,
@@ -582,7 +605,22 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           collection: options.collection,
           batchSize,
           force,
-        });
+          allowNewPartition: options.newPartition,
+        };
+        let prepared = await prepareEmbeddingBacklog(backlogDeps);
+        if (
+          !prepared.ok &&
+          prepared.error.code === "VECTOR_PARTITION_FORK" &&
+          !dryRun &&
+          !options.json &&
+          !options.yes &&
+          process.stdin.isTTY &&
+          (await confirmSeparatePartition(prepared.error.message))
+        )
+          prepared = await prepareEmbeddingBacklog({
+            ...backlogDeps,
+            allowNewPartition: true,
+          });
         if (!prepared.ok)
           return { success: false, error: prepared.error.message };
         if (prepared.value.variantStore) {

@@ -243,6 +243,60 @@
               "type": "string"
             }
           },
+          "vectorPartitions": {
+            "type": "array",
+            "description": "Vector partitions (vector-partitions check); `retrieval` marks the one status and search use",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "model",
+                "dimensions",
+                "state",
+                "legacy",
+                "retrieval",
+                "owners",
+                "provenance",
+                "incompatibleRuntimes"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "dimensions": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "state": {
+                  "type": "string",
+                  "enum": ["active", "shadow"]
+                },
+                "legacy": {
+                  "type": "boolean"
+                },
+                "retrieval": {
+                  "type": "boolean"
+                },
+                "owners": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "provenance": {
+                  "type": "string"
+                },
+                "incompatibleRuntimes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
           "embeddingFingerprint": {
             "type": "object",
             "description": "Embedding freshness fingerprint diagnostics",
