@@ -199,11 +199,12 @@ Inventory of result fields that carry a host absolute path:
 | `source:` line of a `gno://` resource | MCP resource read header                                                          | HTTP MCP resource reads                                                                                                                            | collection-relative path |
 
 Context Capsules, retrieval traces, and publish exports carry no host paths.
-Two host-path surfaces are outside this rule and still reach a remote REST or
-HTTP MCP caller: owner configuration fields (collection root `path` in
+A capture or remember whose file was written but not indexed names the file by
+its `gno://` URI in the error message. `/api/doc-asset` streams the original
+file's bytes unchanged. Owner configuration fields are outside this rule and
+still reach a remote REST or HTTP MCP caller: collection root `path` in
 `/api/collections`, `/api/status`, and `gno_status`, plus status `configPath`
-and `dbPath`), and the error message of a capture or remember whose file was
-written but not indexed, which names the written file.
+and `dbPath`.
 
 ### Browser Clipper Boundary
 

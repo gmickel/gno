@@ -8,12 +8,74 @@
   "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-181-remote-search-results-expose-host",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-181-remote-search-results-expose-host.1": 1
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "review_attempts": [
+    {
+      "artifact_sha256": "2983177b4a3240f49795396b110631b69f759521e571bab7ef4b91340afda844",
+      "backend": "codex",
+      "base_sha": "e9c9e62c345b8df9d76900a642d63dfd1cc0559d",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-36564545914ce4496215bc6d4424093a",
+            "classification": "introduced",
+            "findingId": "finding-36564545914ce4496215bc6d4424093a",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-c16b82eb0880e8490a4aebb4b5f03683",
+            "classification": "pre_existing",
+            "findingId": "finding-c16b82eb0880e8490a4aebb4b5f03683",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "63d798fb08bc1d277c085ca050c7ca4f8bd2a43c",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 2087,
+      "output_sha256": "e2daabfe62d23794b27b8430b9ed0d14d89493eefb7aa2f78bc1ba19171686c4",
+      "reservation_id": "ddac76734e3e492db687df492ec610b9",
+      "round_consumed": true,
+      "scope": "impl:fn-181-remote-search-results-expose-host.1",
+      "superseded_by": null,
+      "task": "fn-181-remote-search-results-expose-host.1",
+      "timestamp": "2026-09-25T14:41:39.657674Z",
+      "verdict": "NEEDS_WORK"
+    }
+  ],
+  "review_hash_epoch": {},
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-181-remote-search-results-expose-host.1": 0
+  },
   "spec_path": ".flow/specs/fn-181-remote-search-results-expose-host.md",
   "status": "open",
   "title": "Remote search results expose host absolute paths",
@@ -28,5 +90,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T14:12:28.645196Z"
+  "updated_at": "2026-09-25T14:41:39.659938Z"
 }

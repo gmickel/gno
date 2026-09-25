@@ -23,6 +23,7 @@ import { createDefaultConfig } from "../../../src/config/defaults";
 import { SyncService } from "../../../src/ingestion/sync";
 import { createToolContext, Mutex } from "../../../src/mcp/context";
 import { handleSearch as handleMcpSearch } from "../../../src/mcp/tools/search";
+import { withRemoteHostPathRedaction } from "../../../src/serve/host-path-redaction";
 import { startServer } from "../../../src/serve/server";
 import { SqliteAdapter } from "../../../src/store/sqlite/adapter";
 import { safeRm } from "../../helpers/cleanup";
@@ -181,6 +182,20 @@ describe("REST /api/search", () => {
       else process.env[ENV_DATA_DIR] = previousDataDir;
     }
   });
+});
+
+test("remote original-file download keeps its bytes (doc-asset is exempt)", async () => {
+  const source = '{"absPath":"owner data","keep":true}';
+  const routes = withRemoteHostPathRedaction({
+    "/api/doc-asset": {
+      GET: () =>
+        new Response(source, {
+          headers: { "content-type": "application/json" },
+        }),
+    },
+  });
+  const response = await routes["/api/doc-asset"].GET();
+  expect(await response.text()).toBe(source);
 });
 
 describe("MCP gno_search", () => {

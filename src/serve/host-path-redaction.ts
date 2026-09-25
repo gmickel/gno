@@ -2,7 +2,8 @@
  * REST boundary for host paths: a caller the request-locality rule judges
  * remote never receives an `absPath` field from any `/api/*` JSON response.
  * Same-host callers (the loopback Web UI) keep them for Reveal and
- * "Open original".
+ * "Open original". Routes that stream original source bytes are exempt:
+ * their body is the owner's file, not an API envelope.
  */
 
 import { withoutHostPaths } from "../core/host-paths";
@@ -12,6 +13,7 @@ import {
 } from "./request-locality";
 
 const HOST_PATH_KEY = '"absPath"';
+const SOURCE_BYTE_ROUTES = new Set(["/api/doc-asset"]);
 
 type RouteHandler = (
   req: Request,
@@ -59,7 +61,7 @@ export function withRemoteHostPathRedaction<T extends Record<string, unknown>>(
 ): T {
   const wrapped: Record<string, unknown> = { ...routes };
   for (const [path, route] of Object.entries(routes)) {
-    if (!path.startsWith("/api/")) continue;
+    if (!path.startsWith("/api/") || SOURCE_BYTE_ROUTES.has(path)) continue;
     if (typeof route === "function") {
       wrapped[path] = redacting(route as RouteHandler);
     } else if (isMethodTable(route)) {
