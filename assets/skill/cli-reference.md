@@ -863,7 +863,7 @@ Vector index maintenance. Use when `gno similar` returns empty despite embedding
 ```bash
 gno vec sync      # Fast incremental sync
 gno vec rebuild   # Full rebuild
-gno vec drop <partition>   # Drop an abandoned shadow/legacy partition (id prefix from gno status)
+gno vec drop <partition>   # Drop an abandoned shadow partition (id prefix from gno status)
 ```
 
 | Option   | Description |

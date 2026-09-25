@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `gno vec drop <partition>` removes an abandoned shadow or legacy vector partition the calling runtime does not read; status prints its hint for exactly those partitions, and activated partitions are refused. `gno vsearch` from a runtime without a usable partition says vector search is unavailable and points to `gno query` / `gno search` or `gno embed --new-partition`.
+- `gno vec drop <partition>` removes an abandoned shadow vector partition (legacy shadows included) the calling runtime does not read; status prints its hint for exactly those partitions, and every active partition, legacy included, is refused. `gno vsearch` from a runtime without a usable partition says vector search is unavailable and points to `gno query` / `gno search` or `gno embed --new-partition`.
 
 ### Fixed
 

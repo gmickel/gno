@@ -41,7 +41,7 @@ export interface VectorPartitionStatus {
    * queries use (see `vectorRuntime`); status counts use it.
    */
   retrieval: boolean;
-  /** `gno vec drop` accepts it: a shadow or legacy partition this runtime does not read. */
+  /** `gno vec drop` accepts it: a shadow partition this runtime does not read. */
   droppable: boolean;
   /** Current document chunks bound to this partition. */
   owners: number;
@@ -205,10 +205,10 @@ export function listVectorPartitions(
         state: activated(p) ? "active" : "shadow",
         legacy: p.legacy === 1,
         retrieval: retrieval.has(p.partition_id),
-        // Abandoned shadows and legacy leftovers only: an activated current
-        // partition may be another runtime's retrieval partition.
-        droppable:
-          !retrieval.has(p.partition_id) && (!activated(p) || p.legacy === 1),
+        // Shadows only (legacy shadows included). An activated partition may be
+        // another runtime's retrieval partition, or a legacy one awaiting its
+        // measured re-key: possibly the only copy of its vectors.
+        droppable: !retrieval.has(p.partition_id) && !activated(p),
         owners: currentOwnerCount(db, p.partition_id),
         provenance:
           p.provenance ??
@@ -378,7 +378,7 @@ type DropResult =
   | { ok: false; error: string };
 
 /**
- * Remove an abandoned shadow or legacy partition this caller's retrieval does
+ * Remove an abandoned shadow partition (legacy included) this caller's retrieval does
  * not use, with its vectors, owners and verdicts. Status prints its hint for
  * exactly the same `droppable` partitions.
  */
@@ -410,7 +410,7 @@ export async function dropVectorPartition(
           ok: false,
           error: partition.retrieval
             ? `Refusing to drop partition ${partition.id.slice(0, 12)}: this runtime's retrieval uses it`
-            : `Refusing to drop active partition ${partition.id.slice(0, 12)}: other runtimes may read it`,
+            : `Refusing to drop active partition ${partition.id.slice(0, 12)}: other runtimes may read it, or it awaits its one-time re-key`,
         };
       const table = `vec_v1_${partition.id}`;
       if (

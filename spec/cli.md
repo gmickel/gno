@@ -2748,7 +2748,7 @@ content, asset descriptors, source references, nor raster bytes.
 
 ### gno vec drop
 
-Drop an abandoned shadow or legacy vector partition the calling runtime's
+Drop an abandoned shadow vector partition (legacy shadows included) the calling runtime's
 retrieval does not read, with its vectors, owners and runtime verdicts.
 
 **Synopsis:**
@@ -2759,8 +2759,8 @@ gno vec drop <partition> [--json] [--lock-wait <duration>] [--no-wait]
 
 `<partition>` is an id prefix of at least 8 characters from `gno status`
 (`vectorPartitions[].id`). Only partitions with `droppable: true` are accepted:
-shadow or legacy partitions this runtime does not read; activated partitions
-are refused. JSON output is
+shadow partitions this runtime does not read; every active partition, legacy
+included, is refused. JSON output is
 `{"dropped": <vectorPartitions item>}`.
 
 **Exit Codes:**

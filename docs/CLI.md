@@ -2129,8 +2129,8 @@ measured incompatible), status prints a `Vector partitions:` block: first
 what this runtime reads (a partition, lexical retrieval only with the reason,
 or not resolved yet: run a query or `gno embed`), then every partition with its
 state, chunk count, provenance (for example `CUDA, Bun 1.4.2`) and the runtimes
-that read it, and a `gno vec drop` hint for each abandoned shadow or legacy
-partition this runtime does not read. JSON output carries `vectorRuntime` and
+that read it, and a `gno vec drop` hint for each shadow partition (legacy
+shadows included) this runtime does not read. JSON output carries `vectorRuntime` and
 `vectorPartitions`. Until this runtime has resolved, counts fall back to the
 activated runtime-independent partition.
 
@@ -2216,16 +2216,17 @@ Vector index maintenance. Use when vector search returns empty despite embedding
 ```bash
 gno vec sync      # Sync vec0 index with content_vectors
 gno vec rebuild   # Full rebuild of vec0 index
-gno vec drop 9a8b7c6d5e4f   # Drop an abandoned shadow or legacy partition
+gno vec drop 9a8b7c6d5e4f   # Drop an abandoned shadow partition
 ```
 
 - `sync` - Fast incremental sync, fixes drift after failed inserts
 - `rebuild` - Full rebuild, use when sync isn't enough
-- `drop <partition>` - Remove an abandoned shadow or legacy vector partition
-  that this runtime's retrieval does not read (id prefix of at least 8
-  characters from `gno status`) with its vectors. Status prints the hint for
-  exactly the partitions drop accepts. Activated partitions are refused: another
-  runtime may read them.
+- `drop <partition>` - Remove an abandoned shadow vector partition (legacy
+  shadows included) that this runtime's retrieval does not read (id prefix of
+  at least 8 characters from `gno status`) with its vectors. Status prints the
+  hint for exactly the partitions drop accepts. Active partitions, legacy ones
+  included, are refused: another runtime may read them, and an active legacy
+  partition may hold the only copy of the vectors until its one-time re-key.
 - `--json` - JSON output format
 
 **When to use**: If `gno similar` returns empty results but embeddings exist, run `gno vec sync`.

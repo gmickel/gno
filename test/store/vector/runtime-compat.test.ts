@@ -554,6 +554,25 @@ test("migration re-keys the most complete compatible partition, survives a crash
   ).toEqual(primary);
 });
 
+test("before its re-key, an active legacy partition gets no drop hint and drop refuses it", async () => {
+  const f = await fixture();
+  const active = await legacyPartition(f, "gpu-bun-a", 12, true);
+  const shadow = await legacyPartition(f, "cpu-bun-b", 4, false);
+  // Upgraded index, no query or embed yet: nothing has been re-keyed.
+  const status = await f.status();
+  expect(status.vectorRuntime?.state).toBe("unresolved");
+  const lines = formatVectorPartitionLines(
+    status.vectorPartitions,
+    status.vectorRuntime
+  ).join("\n");
+  expect(lines).not.toContain(`gno vec drop ${active.slice(0, 12)}`);
+  expect(lines).toContain(`gno vec drop ${shadow.slice(0, 12)}`);
+  const refused = await dropVectorPartition(f.db, active);
+  expect(!refused.ok && refused.error).toContain("Refusing to drop active");
+  expect(partitionIds(f.db)).toContain(active);
+  expect((await dropVectorPartition(f.db, shadow)).ok).toBe(true);
+});
+
 test("migration prefers current coverage over an earlier activation", async () => {
   const f = await fixture();
   const shrunk = await legacyPartition(f, "gpu-bun-a", 12, true);
