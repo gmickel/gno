@@ -8,12 +8,59 @@
   "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-183-error-schema-lists-the-cli-busy-code",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-183-error-schema-lists-the-cli-busy-code.1": 0
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "review_attempts": [
+    {
+      "artifact_sha256": "9031fe119b9a076943b0525a90ba08a49fb566a04a01025c1d45aa9efbe6d7da",
+      "backend": "codex",
+      "base_sha": "8becbe6bbc05d29cf809ca32afa1591b4fab5482",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "a1bd012dc8f2feb073fe819ff3547bbae71f1a60",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 1004,
+      "output_sha256": "20e6282cd45aefc218c9786d932e327f805db8ea3ca6a1e25e6a945ba679d5e8",
+      "reservation_id": "53c9bcd3a0354d329df772e3ee12699c",
+      "round_consumed": true,
+      "scope": "impl:fn-183-error-schema-lists-the-cli-busy-code.1",
+      "superseded_by": null,
+      "task": "fn-183-error-schema-lists-the-cli-busy-code.1",
+      "timestamp": "2026-09-25T14:23:54.453603Z",
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "impl:fn-183-error-schema-lists-the-cli-busy-code.1": 1
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-183-error-schema-lists-the-cli-busy-code.1": 0
+  },
   "spec_path": ".flow/specs/fn-183-error-schema-lists-the-cli-busy-code.md",
   "status": "open",
   "title": "Error schema lists the CLI BUSY code",
@@ -28,5 +75,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T14:11:51.222870Z"
+  "updated_at": "2026-09-25T14:23:54.455720Z"
 }
