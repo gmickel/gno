@@ -188,7 +188,7 @@ test("remote original-file download keeps its bytes (doc-asset is exempt)", asyn
   const source = '{"absPath":"owner data","keep":true}';
   const routes = withRemoteHostPathRedaction({
     "/api/doc-asset": {
-      GET: () =>
+      GET: async () =>
         new Response(source, {
           headers: { "content-type": "application/json" },
         }),
