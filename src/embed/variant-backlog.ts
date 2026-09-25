@@ -39,7 +39,11 @@ export async function embedVariantBacklog(
   const total = { embedded: 0, errors: 0, contentionErrors: 0 };
   let after: { documentId: number; seq: number } | undefined;
   try {
-    while (identityStillCurrent()) {
+    while (true) {
+      // A failed request drops the port's cached identity (a timed-out native
+      // worker is retired); reload it so one failed page cannot end the pass.
+      if (background) await withInferencePage(() => deps.embedPort.init());
+      if (!identityStillCurrent()) break;
       assertInferenceActive();
       const pending = variantBacklogPage(deps, store, batchSize, after);
       if (!pending.length) break;
