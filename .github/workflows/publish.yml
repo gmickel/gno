@@ -24,6 +24,8 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     # No continue-on-error - releases must pass on all platforms
+    # Windows normally takes 12-14 minutes; a hung test must fail, not hold the runner.
+    timeout-minutes: 25
 
     steps:
       - uses: actions/checkout@v7
