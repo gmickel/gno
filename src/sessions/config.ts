@@ -14,7 +14,7 @@ import { z } from "zod";
 
 import type { Collection, Config } from "../config/types";
 
-import { SESSION_HARNESSES } from "./types";
+import { MAX_IMPORT_LIMIT, SESSION_HARNESSES } from "./types";
 
 const COLLECTION_NAME = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 const SOURCE_ID = /^[a-z0-9][a-z0-9_-]{0,63}$/;
@@ -51,6 +51,60 @@ export const SessionSourceSchema = z
   })
   .strict();
 
+/** Host hooks GNO can install. Only verified integrations are listed. */
+export const SESSION_HOOK_HARNESSES = ["claude-code"] as const;
+export type SessionHookHarness = (typeof SESSION_HOOK_HARNESSES)[number];
+
+/**
+ * Owner-controlled automation profile. Every trigger is off until the owner
+ * enables it explicitly; nothing here is ever switched on by install,
+ * upgrade, repair or restart. Destinations and privacy routing stay on the
+ * referenced sources (collection + project mappings), never on the profile.
+ */
+export const SessionAutomationProfileSchema = z
+  .object({
+    id: z
+      .string()
+      .regex(
+        SOURCE_ID,
+        "Profile ID must be lowercase alphanumeric with hyphens/underscores, 1-64 chars"
+      ),
+    /** Registered source IDs this profile imports. */
+    sources: z
+      .array(z.string().regex(SOURCE_ID))
+      .min(1)
+      .max(64)
+      .refine((ids) => new Set(ids).size === ids.length, {
+        message: "Profile sources must be unique",
+      }),
+    hook: z
+      .object({
+        harness: z.enum(SESSION_HOOK_HARNESSES),
+        enabled: z.boolean(),
+        /** Absolute host settings file that holds the owned hook entry. */
+        settings: AbsolutePathSchema,
+      })
+      .strict()
+      .optional(),
+    schedule: z
+      .object({
+        enabled: z.boolean(),
+        /** Elapsed cadence `<n>s|m|h|d`; validated by the automation module. */
+        cadence: z.string().min(2).max(8),
+      })
+      .strict()
+      .optional(),
+    /** Changed units imported per source per run (bounded work budget). */
+    limit: z.number().int().min(1).max(MAX_IMPORT_LIMIT).optional(),
+    /** Automatic retries after a failed run before waiting for a new trigger. */
+    retries: z.number().int().min(0).max(10).optional(),
+  })
+  .strict();
+
+export type SessionAutomationProfile = z.infer<
+  typeof SessionAutomationProfileSchema
+>;
+
 export const SessionsConfigSchema = z
   .object({
     /** Index name this archive config is bound to. */
@@ -81,6 +135,24 @@ export const SessionsConfigSchema = z
       })
       .strict()
       .optional(),
+    /** Opt-in automation profiles (hooks and daemon schedules). */
+    automation: z
+      .array(SessionAutomationProfileSchema)
+      .max(16)
+      .optional()
+      .superRefine((profiles, ctx) => {
+        const ids = new Set<string>();
+        for (const [index, profile] of (profiles ?? []).entries()) {
+          if (ids.has(profile.id)) {
+            ctx.addIssue({
+              code: "custom",
+              message: "Automation profile IDs must be unique",
+              path: [index, "id"],
+            });
+          }
+          ids.add(profile.id);
+        }
+      }),
   })
   .strict();
 

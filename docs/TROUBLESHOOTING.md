@@ -971,6 +971,17 @@ quarantined `mixed_domain` threads, `SESSIONS_BUSY`, sessions missing from
 search) are covered in [Agent Sessions troubleshooting](SESSIONS.md#troubleshooting),
 with every code in [error codes](SESSIONS.md#error-codes).
 
+Automation problems (a hook that says `accepted` but nothing was archived,
+`not running: no daemon`, a missing hook entry, retries and backoff) are
+covered in [Automation](SESSIONS.md#failures-retries-and-recovery). The
+quickest checks:
+
+```bash
+gno --config ~/gno-sessions/archive.yml --index sessions sessions status        # state and recovery action
+gno --config ~/gno-sessions/archive.yml --index sessions sessions automation run <profile>
+GNO_SESSIONS_HOOKS=off claude                                                  # run Claude Code with the hook disabled
+```
+
 ## Database Issues
 
 ### "Database locked"

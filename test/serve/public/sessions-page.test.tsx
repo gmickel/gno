@@ -43,6 +43,29 @@ const status = {
       lastImportAt: null,
     },
   ],
+  automation: {
+    daemon: { state: "not_running", heartbeatAt: null },
+    timezone: "UTC",
+    profiles: [
+      {
+        id: "nightly",
+        sources: ["codex-main"],
+        collections: ["work"],
+        state: "idle",
+        hook: null,
+        schedule: { enabled: true, cadence: "30m", nextDueAt: null },
+        limit: 200,
+        retries: 3,
+        pending: null,
+        running: null,
+        lastTrigger: null,
+        lastRun: null,
+        lastSuccessAt: null,
+        retryAt: null,
+        recovery: null,
+      },
+    ],
+  },
   warnings: [],
 };
 
@@ -198,6 +221,190 @@ describe("sessions page", () => {
     expect(
       await screen.findByRole("button", { name: "Discover local sources" })
     ).toBeTruthy();
+  });
+
+  test("automation switches reflect status and a schedule without a daemon is not shown as due", async () => {
+    await renderPage();
+    const schedule = await screen.findByRole("switch", {
+      name: /Daemon schedule/,
+    });
+    const hook = screen.getByRole("switch", {
+      name: /Claude Code SessionEnd hook/,
+    });
+    expect((schedule as HTMLInputElement).checked).toBe(true);
+    expect((hook as HTMLInputElement).checked).toBe(false);
+    expect(screen.getByText("every 30m; not running: no daemon")).toBeTruthy();
+  });
+
+  test("automation actions move keyboard focus to their outcome", async () => {
+    const { user } = await renderPage();
+    const failWith = (text: string): Promise<SessionsApiResult> =>
+      Promise.resolve({
+        data: null,
+        error: text,
+        sessionsCode: "SESSIONS_INVALID_INPUT",
+        status: 400,
+      });
+    sessionsApi.mockImplementation(async (...args: unknown[]) => {
+      const endpoint = String(args[0]);
+      const method = (args[1] as RequestInit | undefined)?.method ?? "GET";
+      if (endpoint === "/api/sessions/status") return statusResult();
+      if (endpoint.endsWith("/preview")) {
+        return ok({
+          archiveRoot: "/a",
+          sources: [],
+          collections: [],
+          hook: { settings: "/s", command: "c" },
+          daemon: { state: "not_running", command: "gno daemon" },
+          notes: [],
+        });
+      }
+      if (endpoint.endsWith("/enable")) return failWith("Cadence is invalid");
+      if (method === "PUT" || method === "DELETE") return ok({});
+      if (endpoint.endsWith("/disable")) return ok({});
+      return ok({});
+    });
+
+    // Create profile: focus lands on the announcement.
+    await user.type(await screen.findByLabelText("Profile ID"), "web");
+    await user.click(screen.getByRole("checkbox", { name: /codex-main/ }));
+    await user.click(screen.getByRole("button", { name: /Create profile/ }));
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toContain(
+        "Profile web created"
+      )
+    );
+
+    // Pause: the Pause button disappears; focus lands on a switch.
+    const paused = structuredClone(status);
+    paused.automation.profiles[0]!.schedule!.enabled = false;
+    statusResult = () => ok(paused);
+    await user.click(screen.getByRole("button", { name: "Pause nightly" }));
+    await waitFor(() =>
+      expect(document.activeElement?.getAttribute("role")).toBe("switch")
+    );
+
+    // An invalid cadence error takes focus, also when it repeats.
+    const scheduleSwitch = screen.getByRole("switch", {
+      name: /Daemon schedule/,
+    });
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      (scheduleSwitch as HTMLInputElement).focus();
+      await user.click(scheduleSwitch);
+      await user.click(await screen.findByRole("button", { name: "Enable" }));
+      await waitFor(() =>
+        expect(document.activeElement?.textContent).toContain(
+          "Cadence is invalid"
+        )
+      );
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+    }
+
+    // Remove: the card disappears; focus lands on the announcement.
+    await user.click(
+      screen.getByRole("button", { name: "Remove profile nightly" })
+    );
+    await user.click(screen.getByRole("button", { name: "Confirm remove" }));
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toContain(
+        "Profile nightly removed"
+      )
+    );
+  });
+
+  test("a failed status poll keeps the panel and polling alive", async () => {
+    const running = structuredClone(status);
+    running.automation.profiles[0]!.state = "running";
+    statusResult = () => ok(running);
+    await renderPage();
+    await screen.findByText("running");
+    statusResult = () =>
+      Promise.resolve({
+        data: null,
+        error: "Server unavailable",
+        sessionsCode: null,
+        status: 503,
+      });
+    await screen.findByText("Server unavailable", undefined, { timeout: 3500 });
+    expect(screen.getByText("running")).toBeTruthy();
+    statusResult = () => ok(status);
+    await screen.findByText("idle", undefined, { timeout: 3500 });
+  });
+
+  test("a failed profile shows its recovery, not queued work, and Remove moves focus to Confirm", async () => {
+    const failed = structuredClone(status);
+    Object.assign(failed.automation.profiles[0]!, {
+      state: "failed",
+      pending: { since: "2026-09-24T10:00:00.000Z", triggers: ["manual"] },
+      recovery: "A selected source is missing: fix it, then run again.",
+    });
+    statusResult = () => ok(failed);
+    const { user } = await renderPage();
+    await screen.findByText(/A selected source is missing/);
+    expect(screen.queryByText("Pending")).toBeNull();
+
+    await user.click(
+      screen.getByRole("button", { name: "Remove profile nightly" })
+    );
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe("Confirm remove")
+    );
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() =>
+      expect(document.activeElement?.getAttribute("aria-label")).toBe(
+        "Remove profile nightly"
+      )
+    );
+  });
+
+  test("a retryable Run now failure shows its retry time, not a missing recovery action", async () => {
+    const retrying = structuredClone(status);
+    Object.assign(retrying.automation.profiles[0]!, {
+      state: "retrying",
+      retryAt: "2026-09-24T10:05:00.000Z",
+      recovery: null,
+    });
+    statusResult = () => ok(retrying);
+    sessionsApi.mockImplementation(async (...args: unknown[]) => {
+      if (args[0] === "/api/sessions/status") return statusResult();
+      if (args[0] === "/api/sessions/automation/run") {
+        return ok({
+          schemaVersion: "1",
+          profileId: "nightly",
+          ran: true,
+          outcome: "failed",
+          reason: "busy",
+          pending: true,
+          receipts: [],
+        });
+      }
+      return ok({});
+    });
+    const { user } = await renderPage();
+    await user.click(
+      await screen.findByRole("button", { name: "Run nightly now" })
+    );
+    const line = await screen.findByText(/Run now: failed \(busy\)/);
+    // No daemon runs in this fixture: no retry time is promised.
+    expect(line.textContent).toContain("retried when the daemon runs");
+    expect(line.textContent).not.toContain("retried automatically");
+    expect(line.textContent).not.toContain("recovery action");
+  });
+
+  test("status is polled while a profile is running", async () => {
+    const running = structuredClone(status);
+    running.automation.profiles[0]!.state = "running";
+    statusResult = () => ok(running);
+    await renderPage();
+    await screen.findByText("running");
+    const calls = () =>
+      sessionsApi.mock.calls.filter(
+        (args) => args[0] === "/api/sessions/status"
+      ).length;
+    const before = calls();
+    await waitFor(() => expect(calls()).toBeGreaterThan(before), {
+      timeout: 3500,
+    });
   });
 
   test("preview shows a partial receipt with redaction and destination policy", async () => {

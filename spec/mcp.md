@@ -153,7 +153,7 @@ the resident gateway applies one profile to every connected client.
 
 | Profile          | Without `--enable-write`                                                                              | With `--enable-write`                                   |
 | ---------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `full` (default) | Every read tool below (37)                                                                            | Every read tool plus every write tool (58)              |
+| `full` (default) | Every read tool below (37)                                                                            | Every read tool plus every write tool (59)              |
 | `core`           | `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`, `gno_changes`, `gno_recall` (7) | The 7 read tools plus `gno_capture`, `gno_remember` (9) |
 
 Both lists are exact: `core` advertises nothing else, and `full` is byte-for-byte
@@ -1802,8 +1802,10 @@ profile only; not part of `core`.
 (`spec/output-schemas/sessions-status.schema.json`): archive collections with
 thread counts and, per owner-registered source, its ID, harness, destination
 collection, availability, unit counts (complete, incomplete, failed,
-pending), `sourceUnavailable`, `staleParser` and last import time. The result
-contains no host paths.
+pending), `sourceUnavailable`, `staleParser` and last import time, and the
+`automation` block (daemon state, per-profile state, hook and schedule
+switches, pending and running work, last run, last success, next due time,
+recovery action). The result contains no host paths.
 
 **Errors:** `SESSIONS_NOT_CONFIGURED` when the server's config has no
 `sessions` block.
@@ -1850,6 +1852,38 @@ receipt carries no host paths or session content.
 Registered only with `--enable-write` (like `gno_capture` and
 `gno_remember`); without it the tool is not advertised. A dispatch while
 writes are disabled returns `WRITE_DISABLED`.
+
+### gno_sessions_automation_run
+
+Run one owner-configured automation profile now through the manual importer
+and record the outcome in automation status (write-enabled; `full` profile
+only). It cannot enable hooks or schedules, add sources, or change
+destinations; those stay local-owner operations.
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profileId"],
+  "properties": {
+    "profileId": {
+      "type": "string",
+      "description": "ID of an owner-configured automation profile (see gno_sessions_status)"
+    }
+  }
+}
+```
+
+**Output:** the shared `sessions-automation-run` schema
+(`spec/output-schemas/sessions-automation-run.schema.json`): `ran`,
+`outcome` (`complete`, `up_to_date`, `partial`, `failed`, or `not_started`),
+`reason`, `pending`, and one `sessions-import-receipt` per source. No host
+paths or session content.
+
+**Errors:** `SESSIONS_UNKNOWN_PROFILE`, `SESSIONS_NOT_CONFIGURED`,
+`WRITE_DISABLED`; unknown keys are rejected.
 
 **Errors:** `SESSIONS_UNKNOWN_SOURCE`, `SESSIONS_SOURCE_UNAVAILABLE`,
 `SESSIONS_UNKNOWN_COLLECTION`, `SESSIONS_INVALID_INPUT`,

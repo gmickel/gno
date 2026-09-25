@@ -10,8 +10,25 @@
 
 import type { Config } from "../../config/types";
 
+import { getIndexDbPath } from "../../app/constants";
 import { getConfigPaths, isInitialized, loadConfig } from "../../config";
+import { acquireCliWriteLease } from "../../core/write-lease";
 import {
+  type AutomationContext,
+  admitHookTrigger,
+  disableAutomation,
+  enableAutomation,
+  type HookAdmission,
+  previewAutomationProfile,
+  removeAutomationProfile,
+  runAutomationProfile,
+  type SessionAutomationChange,
+  type SessionAutomationPreview,
+  setAutomationProfile,
+} from "../../sessions/automation";
+import { HOOK_ADMISSION_DEADLINE_MS } from "../../sessions/automation-state";
+import {
+  formatAutomationRunText,
   formatImportReceiptText,
   formatStatusText,
 } from "../../sessions/format";
@@ -26,6 +43,7 @@ import {
 } from "../../sessions/setup";
 import {
   SESSION_HARNESSES,
+  type SessionAutomationRunResult,
   type SessionHarness,
   type SessionImportReceipt,
   type SessionsDiscovery,
@@ -33,6 +51,7 @@ import {
   type SessionsStatus,
   SESSIONS_VALIDATION_CODES,
 } from "../../sessions/types";
+import { SqliteAdapter } from "../../store/sqlite/adapter";
 import { CliError } from "../errors";
 import { initStore } from "./shared";
 
@@ -331,6 +350,307 @@ export function pruneSessions(
       await opened.store.close();
     }
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Automation (opt-in hooks and daemon schedules)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function automationContext(context: SessionsCliContext): AutomationContext {
+  return {
+    configPath: requireArchivePair(context),
+    indexName: context.indexName,
+  };
+}
+
+function parseOptionalInt(raw: unknown, flag: string): number | undefined {
+  if (raw === undefined) return undefined;
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new CliError(
+      "VALIDATION",
+      `${flag} must be a non-negative integer.`,
+      {
+        details: { sessionsCode: "SESSIONS_INVALID_INPUT" },
+      }
+    );
+  }
+  return value;
+}
+
+export function setAutomation(
+  context: SessionsCliContext,
+  id: string,
+  options: {
+    sources: string[];
+    cadence?: string;
+    limit?: unknown;
+    retries?: unknown;
+  }
+): Promise<SessionAutomationPreview> {
+  return withCliErrors(() =>
+    setAutomationProfile(automationContext(context), {
+      id,
+      sources: options.sources,
+      cadence: options.cadence,
+      limit: parseOptionalInt(options.limit, "--limit"),
+      retries: parseOptionalInt(options.retries, "--retries"),
+    })
+  );
+}
+
+export function previewAutomation(
+  context: SessionsCliContext,
+  id: string,
+  options: { settings?: string }
+): Promise<SessionAutomationPreview> {
+  return withCliErrors(() =>
+    previewAutomationProfile(automationContext(context), id, options)
+  );
+}
+
+export function enableAutomationCli(
+  context: SessionsCliContext,
+  id: string,
+  options: {
+    hook?: string;
+    settings?: string;
+    schedule?: boolean;
+    cadence?: string;
+  }
+): Promise<SessionAutomationPreview> {
+  return withCliErrors(() =>
+    enableAutomation(automationContext(context), id, {
+      ...(options.hook
+        ? { hook: { harness: options.hook, settings: options.settings } }
+        : {}),
+      ...(options.schedule ? { schedule: { cadence: options.cadence } } : {}),
+    })
+  );
+}
+
+export function disableAutomationCli(
+  context: SessionsCliContext,
+  id: string,
+  options: { hook?: boolean; schedule?: boolean }
+): Promise<SessionAutomationChange> {
+  return withCliErrors(() =>
+    disableAutomation(automationContext(context), id, {
+      ...(options.hook ? { hook: true } : {}),
+      ...(options.schedule ? { schedule: true } : {}),
+    })
+  );
+}
+
+export function removeAutomation(
+  context: SessionsCliContext,
+  id: string
+): Promise<SessionAutomationChange> {
+  return withCliErrors(() =>
+    removeAutomationProfile(automationContext(context), id)
+  );
+}
+
+/** Explicit run-now through the same importer and pending marker as the daemon. */
+export function runAutomation(
+  context: SessionsCliContext,
+  id: string
+): Promise<SessionAutomationRunResult> {
+  return withCliErrors(async () => {
+    const ctx = automationContext(context);
+    const { config } = await loadArchiveConfig(context);
+    const dbPath = getIndexDbPath(context.indexName);
+    // Open without projecting the config: the run syncs only what it needs,
+    // so a busy index becomes a recorded `busy` run, not a raw lock error.
+    const store = new SqliteAdapter();
+    store.setConfigPath(ctx.configPath);
+    const opened = await store.open(
+      dbPath,
+      config.ftsTokenizer,
+      config.busyTimeoutMs
+    );
+    if (!opened.ok) throw new CliError("RUNTIME", opened.error.message);
+    try {
+      return await runAutomationProfile(
+        {
+          ...ctx,
+          store,
+          // Like the daemon: a concurrent writer is a recorded busy run.
+          acquireLease: async () => {
+            const lease = await acquireCliWriteLease({
+              dbPath,
+              waitMs: 0,
+              noWait: true,
+              command: "gno sessions automation run",
+            });
+            return lease.ok
+              ? { ok: true, release: lease.release }
+              : { ok: false };
+          },
+        },
+        id,
+        { trigger: "manual" }
+      );
+    } finally {
+      await store.close();
+    }
+  });
+}
+
+/** Kill switch for every installed hook: `GNO_SESSIONS_HOOKS=off`. */
+export const SESSIONS_HOOKS_ENV = "GNO_SESSIONS_HOOKS";
+const HOOK_PAYLOAD_MAX_BYTES = 64 * 1024;
+
+/** Read the small JSON event a host hook writes on stdin (bounded). */
+export async function readHookPayload(
+  stream?: ReadableStream<Uint8Array>
+): Promise<unknown> {
+  if (!stream && process.stdin.isTTY) return null;
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  const reader = (stream ?? Bun.stdin.stream()).getReader();
+  const read = (async () => {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) return true;
+      size += value.byteLength;
+      if (size > HOOK_PAYLOAD_MAX_BYTES) return false;
+      chunks.push(value);
+    }
+  })();
+  const timer = Bun.sleep(HOOK_ADMISSION_DEADLINE_MS / 2).then(() => null);
+  const complete = await Promise.race([read, timer]);
+  // A host that keeps stdin open must not cost the admission: cleanup
+  // failures are ignored.
+  await reader.cancel().catch(() => undefined);
+  try {
+    reader.releaseLock();
+  } catch {
+    // Still locked by the abandoned read; the process exits right after.
+  }
+  if (complete === false) return "oversized";
+  if (complete === null || size === 0) return null;
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  } catch {
+    return "invalid";
+  }
+}
+
+/**
+ * Host hook entrypoint. Tiny by design: it validates the event, durably
+ * marks the profile pending and returns. It never imports, parses sessions
+ * or touches the network; its one-line output is content-free.
+ */
+export async function runSessionsHook(
+  context: SessionsCliContext,
+  harness: string,
+  options: { profile?: string }
+): Promise<string> {
+  const profileId = options.profile ?? "";
+  const killSwitch = process.env[SESSIONS_HOOKS_ENV]?.trim().toLowerCase();
+  if (killSwitch === "off" || killSwitch === "0") {
+    return `gno sessions hook: skipped (${SESSIONS_HOOKS_ENV}=${killSwitch})`;
+  }
+  if (harness !== "claude-code" || !profileId) {
+    throw new CliError(
+      "VALIDATION",
+      "gno sessions hook: not accepted (usage: sessions hook claude-code --profile <id>)",
+      { details: { sessionsCode: "SESSIONS_UNSUPPORTED_INTEGRATION" } }
+    );
+  }
+  const payload = await readHookPayload();
+  if (payload === "invalid" || payload === "oversized") {
+    return `gno sessions hook: skipped (profile ${profileId}: ${payload}_event)`;
+  }
+  let admission: HookAdmission;
+  try {
+    admission = await admitHookTrigger(automationContext(context), {
+      harness: "claude-code",
+      profileId,
+      payload,
+    });
+  } catch (error) {
+    const code =
+      error instanceof SessionsError ? error.code : "SESSIONS_RUNTIME_FAILURE";
+    const reason =
+      code === "SESSIONS_BUSY" ? "admission_deadline" : code.toLowerCase();
+    throw new CliError(
+      "RUNTIME",
+      `gno sessions hook: not accepted (profile ${profileId}: ${reason}); nothing was archived`,
+      { details: { sessionsCode: code } }
+    );
+  }
+  if (admission.outcome === "skipped") {
+    return `gno sessions hook: skipped (profile ${profileId}: ${admission.reason})`;
+  }
+  const next =
+    admission.daemon === "running"
+      ? "the daemon imports it on its next tick"
+      : `not running: no daemon; run gno sessions automation run ${profileId}`;
+  return `gno sessions hook: accepted (profile ${profileId} pending, not yet archived; ${next})`;
+}
+
+export function formatAutomationPreview(
+  preview: SessionAutomationPreview,
+  asJson: boolean
+): string {
+  if (asJson) return json(preview);
+  const lines = [
+    `Automation profile ${preview.profileId} (archive ${preview.archiveRoot}, index ${preview.index}, config ${preview.configPath})`,
+    "Sources:",
+    ...preview.sources.map((source) => {
+      const projects = source.projects
+        .map((mapping) => `${mapping.prefix}=${mapping.collection}`)
+        .join(", ");
+      return source.harness
+        ? `- ${source.id} (${source.harness}) ${source.path}${source.available ? "" : " [UNAVAILABLE]"} -> ${source.collection}${projects ? ` (projects: ${projects})` : ""}`
+        : `- ${source.id}: NOT REGISTERED`;
+    }),
+    `Destination collections: ${preview.collections.join(", ") || "(none)"}`,
+    `Hook ${preview.hook.harness}: ${preview.hook.enabled ? "on" : "off"}; settings ${preview.hook.settings} (entry ${preview.hook.installed === null ? "unreadable" : preview.hook.installed ? "installed" : "not installed"})`,
+    `  command: ${preview.hook.command}`,
+    `Schedule: ${preview.schedule.enabled ? `on, every ${preview.schedule.cadence}` : `off${preview.schedule.cadence ? ` (cadence ${preview.schedule.cadence})` : ""}`}; minimum ${preview.schedule.minimum}`,
+    `Budget: ${preview.limit} changed units per source per run; ${preview.retries} automatic retries`,
+    `Daemon: ${preview.daemon.state === "running" ? "running" : "not running: no daemon"} (${preview.daemon.command})`,
+    ...preview.notes.map((note) =>
+      note.startsWith("warning: ") ? note : `note: ${note}`
+    ),
+  ];
+  return lines.join("\n");
+}
+
+export function formatAutomationChange(
+  change: SessionAutomationChange,
+  asJson: boolean
+): string {
+  if (asJson) return json(change);
+  const lines = [
+    change.removed
+      ? `Automation profile ${change.profileId} removed; archived sessions were retained.`
+      : `Automation profile ${change.profileId} paused.`,
+  ];
+  if (change.hook) {
+    lines.push(
+      `hook: off (${change.hook.entriesRemoved} owned settings entr${change.hook.entriesRemoved === 1 ? "y" : "ies"} removed)`
+    );
+  }
+  if (change.schedule) lines.push("schedule: off");
+  if (change.pendingCleared) lines.push("pending work: cleared");
+  if (change.running) {
+    lines.push(
+      `a run started at ${change.running.startedAt} finishes its bounded batch; nothing new starts`
+    );
+  }
+  for (const warning of change.warnings) lines.push(`warning: ${warning}`);
+  return lines.join("\n");
+}
+
+export function formatAutomationRun(
+  result: SessionAutomationRunResult,
+  asJson: boolean
+): string {
+  return asJson ? json(result) : formatAutomationRunText(result);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

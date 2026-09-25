@@ -1975,6 +1975,13 @@ gno --config <archive.yml> --index <name> sessions source remove <id> [--json]
 gno --config <archive.yml> --index <name> sessions import (--source <id> | <paths...> --collection <name>) [--format <harness>] [--dry-run] [--limit <n>] [--json]
 gno --config <archive.yml> --index <name> sessions status [--json]
 gno --config <archive.yml> --index <name> sessions prune --source <id> [--apply] [--json]
+gno --config <archive.yml> --index <name> sessions automation set <profile> --source <id>... [--cadence <n>s|m|h|d] [--limit <n>] [--retries <n>] [--json]
+gno --config <archive.yml> --index <name> sessions automation preview <profile> [--settings <file>] [--json]
+gno --config <archive.yml> --index <name> sessions automation enable <profile> [--hook claude-code [--settings <file>]] [--schedule --cadence <n>s|m|h|d] [--json]
+gno --config <archive.yml> --index <name> sessions automation disable <profile> [--hook] [--schedule] [--json]
+gno --config <archive.yml> --index <name> sessions automation remove <profile> [--json]
+gno --config <archive.yml> --index <name> sessions automation run <profile> [--json]
+gno --config <archive.yml> --index <name> sessions hook claude-code --profile <id>
 ```
 
 **discover** (default): previews supported local roots (`$CODEX_HOME` or
@@ -2056,8 +2063,54 @@ adapter.
 
 **status**: archive collections with thread counts, and per source its
 availability (`false` when the root is missing or cannot be read), unit counts (complete, incomplete, failed, pending),
-`sourceUnavailable`, `staleParser` and last import time. Output:
-`sessions-status` schema.
+`sourceUnavailable`, `staleParser` and last import time, plus the
+`automation` block (daemon state, per-profile state, triggers, pending and
+running work, last run, last success, next due time only with a live
+daemon, recovery action). Output: `sessions-status` schema.
+
+**automation** (opt-in; nothing is enabled by install, upgrade, repair or
+restart):
+
+- `set` creates or reconfigures a profile in `sessions.automation` of the
+  archive config: registered `--source` IDs (1-64), optional `--cadence`
+  (`<n>s|m|h|d`, 1m..30d), `--limit` (changed units per source per run,
+  default 200) and `--retries` (0-10, default 3). Triggers keep their state;
+  a new profile has none. Unknown sources exit `VALIDATION`
+  (`SESSIONS_UNKNOWN_SOURCE`). Output: the preview object.
+- `preview` prints sources with host paths, destination collections, the
+  hook command and target settings file (`--settings`, else
+  `$CLAUDE_CONFIG_DIR/settings.json` or `~/.claude/settings.json`), the
+  schedule, the budget, and the daemon prerequisite. Local only.
+- `enable --hook claude-code` installs exactly one owned SessionEnd entry
+  (identified by its command for this config and profile; other entries are
+  preserved; a `.bak` copy is kept; invalid JSON is left untouched and exits
+  `VALIDATION`) and then sets `hook.enabled`. Other harnesses exit
+  `VALIDATION` with `SESSIONS_UNSUPPORTED_INTEGRATION`. `enable --schedule`
+  requires a cadence (flag or profile); the first run is due one cadence
+  later. Enabling never installs or starts a service.
+- `disable` switches the selected triggers off (both when none is named),
+  removes the owned hook entry, and clears pending work admitted by those
+  triggers; a run in progress finishes. `remove` uninstalls the owned entry
+  (failing closed when the settings file cannot be read) and deletes the
+  profile and its run state. Archives are never deleted.
+- `run` admits a manual trigger and runs the profile through the importer
+  (`sessions import --source` per source, bounded by `limit`). Output:
+  `sessions-automation-run` schema; exit `BUSY` (4, `SESSIONS_BUSY`) when the
+  run failed with reason `busy` (another import, lease holder or a locked
+  index; the busy run is recorded), exit `RUNTIME` (2) when the outcome is
+  `failed`.
+
+**hook**: `sessions hook claude-code --profile <id>` is the command an
+installed hook runs. It reads the event JSON on stdin (at most 64 KiB), skips
+anything other than `SessionEnd`, rechecks under the marker lock that the
+profile's hook is enabled, and durably records one pending generation. It
+never imports, parses sessions or uses the network, and waits at most 1 s for
+the lock. Output is one content-free line: `accepted (…pending, not yet
+archived…)`, `skipped (…)` (exit 0), or `not accepted (…)` (exit 2).
+`GNO_SESSIONS_HOOKS=off` or `0` skips immediately. An unknown profile is
+reported as `skipped (… unknown_profile)`, a profile whose hook is off as
+`skipped (… hook_disabled)`. An explicit `--settings` other than the default
+location must name an existing file (`VALIDATION`).
 
 **prune**: lists archived units whose source is gone (preview by default);
 `--apply` deletes exactly those archive files and syncs the index, never a
@@ -2070,8 +2123,8 @@ archive files.
 
 **Exit codes:** `VALIDATION` (1) for selection, destination, binding,
 unknown source/collection, unsafe path and unsupported format errors;
-`BUSY` (4) for `SESSIONS_BUSY`; `RUNTIME` (2) for an import whose status is
-`failed`, except `VALIDATION` (1, `SESSIONS_UNSUPPORTED_FORMAT`) when no
+`BUSY` (4) for `SESSIONS_BUSY`; `RUNTIME` (2) for an import or automation
+run whose status is `failed` and for a hook that was not accepted, except `VALIDATION` (1, `SESSIONS_UNSUPPORTED_FORMAT`) when no
 selected unit is a supported format. The JSON error envelope carries the core code in
 `details.sessionsCode`.
 
@@ -4413,6 +4466,7 @@ Write-lease contention on `index` / `update` / `embed` does not use the generic 
 | `CODEX_HOME`               | Codex config dir; same rule as `CLAUDE_CONFIG_DIR`; `gno sessions discover` checks its `sessions/`                                                                              |
 | `OPENCLAW_STATE_DIR`       | OpenClaw state dir checked by `gno sessions discover` (else `$OPENCLAW_HOME/.openclaw` or `~/.openclaw`)                                                                        |
 | `HERMES_HOME`              | Hermes home checked by `gno sessions discover` (else `~/.hermes`)                                                                                                               |
+| `GNO_SESSIONS_HOOKS`       | `off` or `0` makes every installed `gno sessions hook` return immediately without admitting work                                                                                |
 
 ---
 

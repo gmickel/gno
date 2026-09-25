@@ -29,19 +29,19 @@ trust boundary: any `projectHints` input is opaque/untrusted and has zero
 affinity effect. Use CLI cwd or `--project-root` when trusted local
 project-aware ranking is desired.
 
-| Page              | Purpose                                                         |
-| :---------------- | :-------------------------------------------------------------- |
-| **Dashboard**     | First-run onboarding, health center, stats, and quick capture   |
-| **Search**        | BM25/vector/hybrid + advanced retrieval controls and tag facets |
-| **Browse**        | Cross-collection tree workspace with folder detail panes        |
-| **Doc View**      | View document with edit/delete actions and tag editing          |
-| **Editor**        | Split-view markdown editor with live preview                    |
-| **Collections**   | Add, remove, and re-index collections                           |
-| **Connectors**    | Install and verify core agent integrations                      |
-| **Ask**           | AI-powered Q&A or closed-Capsule verified synthesis             |
-| **Graph**         | Interactive knowledge graph visualization                       |
-| **Trace History** | Inspect, label, export, delete, and purge private receipts      |
-| **Sessions**      | Manual agent-session import and search (archive servers only)   |
+| Page              | Purpose                                                                |
+| :---------------- | :--------------------------------------------------------------------- |
+| **Dashboard**     | First-run onboarding, health center, stats, and quick capture          |
+| **Search**        | BM25/vector/hybrid + advanced retrieval controls and tag facets        |
+| **Browse**        | Cross-collection tree workspace with folder detail panes               |
+| **Doc View**      | View document with edit/delete actions and tag editing                 |
+| **Editor**        | Split-view markdown editor with live preview                           |
+| **Collections**   | Add, remove, and re-index collections                                  |
+| **Connectors**    | Install and verify core agent integrations                             |
+| **Ask**           | AI-powered Q&A or closed-Capsule verified synthesis                    |
+| **Graph**         | Interactive knowledge graph visualization                              |
+| **Trace History** | Inspect, label, export, delete, and purge private receipts             |
+| **Sessions**      | Agent-session import, opt-in automation, search (archive servers only) |
 
 ### Export for gno.sh
 
@@ -882,9 +882,11 @@ useful only on a server started with that archive pair:
 gno --config ~/gno-sessions/archive.yml --index sessions serve --port 3001
 ```
 
-Pick a free `--port` when your curated server already runs on 3000. A curated
-server never attaches an archive, and its broad search does not include
-archived sessions.
+Only one `gno serve` or `gno daemon` may own a GNO data directory, so while
+your curated server runs, start the archive server with its own
+`GNO_DATA_DIR` (and a free `--port`); see
+[Daemon schedule](SESSIONS.md#daemon-schedule). A curated server never
+attaches an archive, and its broad search does not include archived sessions.
 
 What the page does:
 
@@ -903,15 +905,32 @@ What the page does:
   per-unit outcomes without writing anything. **Import** runs the manual
   import. A `partial` receipt stays on screen with each incomplete, failed,
   deferred, or quarantined unit and its reason; importing again retries them.
+- **Automation.** Off by default. A browser on this machine can create a profile
+  from registered sources and switch the Claude Code SessionEnd hook and the
+  daemon schedule on separately; each switch first shows a preview of the
+  sources, destinations, the settings file it edits, and the daemon
+  prerequisite, and waits for **Enable**. Each profile shows its state
+  (off, idle, pending, running, retrying, partial, needs attention), pending
+  and running work, last run and last success (in the server's timezone),
+  the next due time only while a daemon runs (otherwise `not running: no
+daemon`), and a recovery action. **Run now** works for any allowed client;
+  **Pause** and **Remove** (which uninstalls the owned hook entry and keeps
+  archives) are same-host only. While a run is in progress the page refreshes
+  its status every 2 seconds, so the profile shows `running`, and after each
+  action keyboard focus moves to the resulting status, switch, or error.
+  Status requests to a `gno serve` that is itself running an import can take
+  several seconds.
 - **Session search.** Searches the archive with harness, project, role
   (human only, assistant only, or both), and archive-collection filters. Each
   result carries an explicit **Human** or **Assistant** badge and opens the
   turn in the document view with its provenance block.
 
-Nothing on the page imports automatically; there is no watcher or schedule
-for session sources. Discovery, registration, removal, and archive init are
-refused (403) for anything other than a same-host browser; status, import by
-source ID, and search follow the normal API rules. See
+The page never imports on its own, and `gno serve` does not run hooks'
+pending work or schedules: they run in `gno daemon` on the archive (see
+[Automation](SESSIONS.md#automation-opt-in)). Discovery, registration,
+removal, archive init, and automation changes are refused (403) for anything
+other than a same-host client; status, import by source ID, automation
+runs, and search follow the normal API rules. See
 [Agent Sessions](SESSIONS.md) and the [REST endpoints](API.md#agent-sessions).
 
 ## Configuration

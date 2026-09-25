@@ -197,16 +197,22 @@ transport session, never from tool arguments.
 
 ## Sessions
 
-`gno_sessions_status` (read) and `gno_sessions_import` (write, needs
-`--enable-write`) are in the `full` profile only and work on a server started
-with the session-archive pair:
+`gno_sessions_status` (read), `gno_sessions_import` and
+`gno_sessions_automation_run` (write, need `--enable-write`) are in the
+`full` profile only and work on a server started with the session-archive
+pair:
 
 ```bash
 gno --config ~/gno-sessions/archive.yml --index sessions mcp --enable-write
 ```
 
-- `gno_sessions_status` takes no arguments and lists archive collections and
-  registered sources (IDs, availability, unit counts), no host paths.
+- `gno_sessions_status` takes no arguments and lists archive collections,
+  registered sources (IDs, availability, unit counts), and the `automation`
+  block (daemon state, per-profile state, pending, last run, last success,
+  recovery), no host paths.
+- `gno_sessions_automation_run` takes `profileId` only and runs a configured
+  profile now; it cannot enable hooks or schedules or add sources. Enabling
+  automation is a local owner action (`gno sessions automation enable`).
 - `gno_sessions_import` takes `sourceId` plus optional `dryRun` and `limit`;
   `paths` and other keys are rejected, and there is no MCP discovery. Returns
   the import receipt; `partial` is retried by the next call. It does not

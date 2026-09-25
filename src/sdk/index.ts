@@ -70,6 +70,7 @@ export type {
   GnoSessionsDiscovery,
   GnoSessionsImportInput,
   GnoSessionsImportReceipt,
+  GnoSessionsAutomationRunResult,
   GnoSessionsStatus,
   GnoSkippedDocument,
   GnoUpdateOptions,

@@ -106,6 +106,32 @@ For Skills, add to `~/.claude/settings.json`:
 }
 ```
 
+## Session Archive Hook (opt-in)
+
+GNO can archive your Claude Code conversations into a separate
+[session archive](../SESSIONS.md). Installing the MCP server or the skill
+never installs a hook. To keep the archive current after each session, opt
+in explicitly:
+
+```bash
+A="gno --config ~/gno-sessions/archive.yml --index sessions"
+$A sessions source add claude-code --harness claude-code --path ~/.claude/projects --collection sessions-work
+$A sessions automation set claude --source claude-code
+$A sessions automation preview claude        # shows the exact hook command and settings file
+$A sessions automation enable claude --hook claude-code
+$A daemon --detach                            # performs the imports
+```
+
+`enable --hook claude-code` adds one `SessionEnd` entry to
+`$CLAUDE_CONFIG_DIR/settings.json` (else `~/.claude/settings.json`; pass
+`--settings` for another file) and leaves every other hook untouched. When a
+session ends, the hook marks the profile pending in about 70 ms and returns;
+the import runs in `gno daemon`, never inside Claude Code. Set
+`GNO_SESSIONS_HOOKS=off` to silence it, `sessions automation disable claude
+--hook` to pause and remove the entry, and `sessions automation remove
+claude` to uninstall the profile. Verified with Claude Code 2.1.280; see
+[Automation](../SESSIONS.md#automation-opt-in).
+
 ## Troubleshooting
 
 **Skill not found**

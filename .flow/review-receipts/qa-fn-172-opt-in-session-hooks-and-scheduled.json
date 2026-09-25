@@ -1,0 +1,94 @@
+{
+  "branch": "fn-172-opt-in-session-hooks-and-scheduled",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "495cbe927c935ac3ef7efb41b755f923a1afe5b1",
+    "items": [
+      {
+        "body": "Large imports are slow (fn-186); daemon idle status ~700 ms on a large archive (surface: sessions importer)",
+        "classification": "pre_existing",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-357faebdf06acb2483242b7a2a30e00aeaebd522840ad2cdc8830282f9120c4c",
+        "id": "finding-2dbb37e8ae4e9c5430c55e7019a08b92",
+        "lastSeenReceiptId": "review-357faebdf06acb2483242b7a2a30e00aeaebd522840ad2cdc8830282f9120c4c",
+        "ordinal": 1,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "import-throughput"
+      },
+      {
+        "body": "Resident runtime already active message names a different index (fn-180) (surface: serve/daemon lock)",
+        "classification": "pre_existing",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-357faebdf06acb2483242b7a2a30e00aeaebd522840ad2cdc8830282f9120c4c",
+        "id": "finding-d0382c4a6309a3d4787583dea5d170d3",
+        "lastSeenReceiptId": "review-357faebdf06acb2483242b7a2a30e00aeaebd522840ad2cdc8830282f9120c4c",
+        "ordinal": 2,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "resident-lock-message"
+      },
+      {
+        "body": "MCP stdio started with a different archive config on a running daemon data dir hangs at initialize (surface: mcp)",
+        "classification": "pre_existing",
+        "confidence": 50,
+        "firstSeenReceiptId": "review-357faebdf06acb2483242b7a2a30e00aeaebd522840ad2cdc8830282f9120c4c",
+        "id": "finding-2a5f9209bba6ab1e51ee7a2a76f6b5a1",
+        "lastSeenReceiptId": "review-357faebdf06acb2483242b7a2a30e00aeaebd522840ad2cdc8830282f9120c4c",
+        "ordinal": 3,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "mcp-hang-foreign-archive"
+      }
+    ],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-357faebdf06acb2483242b7a2a30e00aeaebd522840ad2cdc8830282f9120c4c"
+  },
+  "head_sha": "495cbe927c935ac3ef7efb41b755f923a1afe5b1",
+  "id": "fn-172-opt-in-session-hooks-and-scheduled",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 7,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      },
+      {
+        "coverage": "live",
+        "id": "R7"
+      }
+    ],
+    "total": 7
+  },
+  "timestamp": "2026-09-25T07:26:56Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

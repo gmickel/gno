@@ -283,7 +283,104 @@ export interface SessionsStatus {
   index: string;
   collections: Array<{ name: string; threads: number }>;
   sources: SessionSourceStatus[];
+  /** Opt-in automation; `profiles` is empty when nothing is configured. */
+  automation: SessionAutomationStatus;
   warnings: string[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Automation (opt-in hooks and daemon schedules)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** What admitted a run: a host hook, a daemon schedule tick, or an explicit run. */
+export type SessionTriggerKind = "hook" | "schedule" | "manual";
+
+/** Outcome of one automation run. `up_to_date` is a verified no-op. */
+export type SessionRunOutcome =
+  | "complete"
+  | "up_to_date"
+  | "partial"
+  | "failed";
+
+/**
+ * Reader-facing profile state: `off` (no trigger enabled, nothing pending),
+ * `idle`, `pending`, `running`, `retrying` (a failed run waits for its
+ * backoff), `partial` or `failed` (the last run; see `recovery`).
+ */
+export type SessionProfileState =
+  | "off"
+  | "idle"
+  | "pending"
+  | "running"
+  | "retrying"
+  | "partial"
+  | "failed";
+
+export interface SessionRunRecord {
+  triggers: SessionTriggerKind[];
+  startedAt: string;
+  finishedAt: string;
+  outcome: SessionRunOutcome;
+  /** Stable reason code for partial/failed runs (no content, no paths). */
+  reason: string | null;
+  threads: { imported: number; updated: number; unchanged: number };
+  units: { incomplete: number; failed: number; deferred: number };
+}
+
+export interface SessionProfileStatus {
+  id: string;
+  sources: string[];
+  /** Destination archive collections of the selected sources. */
+  collections: string[];
+  state: SessionProfileState;
+  hook: {
+    harness: string;
+    enabled: boolean;
+    /** Owned entry present in the host settings; null when unreadable. */
+    installed: boolean | null;
+  } | null;
+  schedule: {
+    enabled: boolean;
+    cadence: string;
+    nextDueAt: string | null;
+  } | null;
+  limit: number;
+  retries: number;
+  pending: {
+    since: string;
+    triggers: SessionTriggerKind[];
+  } | null;
+  running: { startedAt: string; triggers: SessionTriggerKind[] } | null;
+  lastTrigger: { kind: SessionTriggerKind; at: string } | null;
+  lastRun: SessionRunRecord | null;
+  lastSuccessAt: string | null;
+  retryAt: string | null;
+  /** Next action for the owner when the profile needs attention. */
+  recovery: string | null;
+}
+
+export interface SessionAutomationStatus {
+  daemon: {
+    /** `running` only with a fresh heartbeat from a live daemon process. */
+    state: "running" | "not_running" | "stale";
+    heartbeatAt: string | null;
+  };
+  /** IANA timezone used for human-readable times; stored instants are UTC. */
+  timezone: string;
+  profiles: SessionProfileStatus[];
+}
+
+/** Result of one explicit or daemon-drained automation run. */
+export interface SessionAutomationRunResult {
+  schemaVersion: "1";
+  profileId: string;
+  /** False when the run could not start (busy, disabled, nothing pending). */
+  ran: boolean;
+  outcome: SessionRunOutcome | "not_started";
+  reason: string | null;
+  /** True when admitted work is still waiting (deferred units, failure, busy). */
+  pending: boolean;
+  receipts: SessionImportReceipt[];
 }
 
 export interface SessionDiscoveryCandidate {
@@ -315,7 +412,9 @@ export type SessionsErrorCode =
   | "SESSIONS_UNSUPPORTED_FORMAT"
   | "SESSIONS_INVALID_INPUT"
   | "SESSIONS_BUSY"
-  | "SESSIONS_RUNTIME_FAILURE";
+  | "SESSIONS_RUNTIME_FAILURE"
+  | "SESSIONS_UNKNOWN_PROFILE"
+  | "SESSIONS_UNSUPPORTED_INTEGRATION";
 
 /** Typed error shared by every sessions surface. */
 export class SessionsError extends Error {
@@ -340,6 +439,8 @@ export const SESSIONS_VALIDATION_CODES: ReadonlySet<SessionsErrorCode> =
     "SESSIONS_UNSAFE_PATH",
     "SESSIONS_UNSUPPORTED_FORMAT",
     "SESSIONS_INVALID_INPUT",
+    "SESSIONS_UNKNOWN_PROFILE",
+    "SESSIONS_UNSUPPORTED_INTEGRATION",
   ]);
 
 /**

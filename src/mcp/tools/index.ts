@@ -115,10 +115,13 @@ import {
   sectionOutputSchema,
 } from "./sections";
 import {
+  handleSessionsAutomationRun,
   handleSessionsImport,
   handleSessionsStatus,
+  SESSIONS_AUTOMATION_RUN_MCP_ANNOTATIONS,
   SESSIONS_IMPORT_MCP_ANNOTATIONS,
   SESSIONS_STATUS_MCP_ANNOTATIONS,
+  sessionsAutomationRunInputSchema,
   sessionsImportInputSchema,
   sessionsStatusInputSchema,
 } from "./sessions";
@@ -1162,7 +1165,7 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
     "gno_sessions_status",
     {
       description:
-        "Status of this session-archive instance: archive collections, owner-registered session sources (by ID, no host paths), pending/incomplete/failed units and last import. Only available when the server runs on a dedicated session-archive config/index pair; nothing is imported automatically.",
+        "Status of this session-archive instance: archive collections, owner-registered session sources (by ID, no host paths), pending/incomplete/failed units, last import, and opt-in automation profiles (enabled hook/schedule, daemon availability, pending/running/partial/failed, last success, next due, recovery action). Only available when the server runs on a dedicated session-archive config/index pair; nothing is imported unless the owner enabled it.",
       inputSchema: sessionsStatusInputSchema,
       annotations: SESSIONS_STATUS_MCP_ANNOTATIONS,
     },
@@ -1538,6 +1541,17 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
         annotations: SESSIONS_IMPORT_MCP_ANNOTATIONS,
       },
       (args) => handleSessionsImport(args, ctx)
+    );
+
+    registerTool(
+      "gno_sessions_automation_run",
+      {
+        description:
+          "Run one owner-configured session automation profile now: imports its registered sources through the manual importer and records the outcome in automation status. Takes a profile ID only; it cannot enable hooks or schedules, add sources or change destinations. Returns the run outcome (complete, up_to_date, partial, failed, or not_started with a reason such as busy) and one import receipt per source.",
+        inputSchema: sessionsAutomationRunInputSchema,
+        annotations: SESSIONS_AUTOMATION_RUN_MCP_ANNOTATIONS,
+      },
+      (args) => handleSessionsAutomationRun(args, ctx)
     );
 
     registerTool(

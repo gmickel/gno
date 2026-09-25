@@ -234,8 +234,9 @@ gno --config ~/gno-sessions/archive.yml --index sessions \
 ```
 
 Human turns show what you said; assistant turns are labelled as proposals.
-Imports are manual: rerun the import when you want new sessions included.
-See [Agent Sessions](SESSIONS.md).
+Imports are manual by default: rerun the import when you want new sessions
+included, or opt in to a Claude Code SessionEnd hook or a daemon schedule
+(`gno sessions automation`). See [Agent Sessions](SESSIONS.md).
 
 ## Multi-Project Setup
 

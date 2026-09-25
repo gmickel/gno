@@ -33,7 +33,8 @@
  *    the optional `requestId` property on exactly `gno_capture` and
  *    `gno_remember` and adds one read-only write-gated `gno_request_status`
  *    tool; fn-171 adds exactly two session-archive tools
- *    (`gno_sessions_status` read, `gno_sessions_import` write). Both are
+ *    (`gno_sessions_status` read, `gno_sessions_import` write) and fn-172 adds
+ *    the `gno_sessions_automation_run` write tool. All are
  *    pinned by the current golden and removed only for the historical
  *    comparison.
  */
@@ -276,6 +277,7 @@ const REQUEST_ID_TOOLS = new Set(["gno_capture", "gno_remember"]);
 const SESSION_ARCHIVE_TOOLS = new Set([
   "gno_sessions_status",
   "gno_sessions_import",
+  "gno_sessions_automation_run",
 ]);
 
 /** Tools added after the historical capture; pinned by the current golden. */

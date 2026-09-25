@@ -2231,6 +2231,8 @@ function wireSessionsCommands(program: Command): void {
       );
     });
 
+  wireSessionsAutomationCommands(sessionsCmd, context, asJson);
+
   sessionsCmd
     .command("prune")
     .description(
@@ -2250,6 +2252,175 @@ function wireSessionsCommands(program: Command): void {
         formatPrune(result, asJson(cmdOpts)),
         getFormat(cmdOpts)
       );
+    });
+}
+
+/** Opt-in automation: profiles, explicit trigger switches, run-now, host hook. */
+function wireSessionsAutomationCommands(
+  sessionsCmd: Command,
+  context: () => { configPath?: string; indexName: string },
+  asJson: (cmdOpts: Record<string, unknown>) => boolean
+): void {
+  const automationCmd = sessionsCmd
+    .command("automation")
+    .description(
+      "Opt-in hooks and daemon schedules for registered sources (off until enabled)"
+    );
+
+  automationCmd
+    .command("set <profile>")
+    .description(
+      "Create or reconfigure a profile (sources, cadence, budget); enables nothing"
+    )
+    .option(
+      "--source <id>",
+      "registered source to include (repeatable)",
+      collectRepeatableValue,
+      []
+    )
+    .option("--cadence <n>", "elapsed schedule cadence <n>s|m|h|d (min 1m)")
+    .option("--limit <n>", "changed units per source per run")
+    .option("--retries <n>", "automatic retries after a failed run")
+    .option("--json", "JSON output")
+    .action(async (id: string, cmdOpts: Record<string, unknown>) => {
+      const { formatAutomationPreview, setAutomation } =
+        await import("./commands/sessions");
+      const preview = await setAutomation(context(), id, {
+        sources: cmdOpts.source as string[],
+        cadence: cmdOpts.cadence as string | undefined,
+        limit: cmdOpts.limit,
+        retries: cmdOpts.retries,
+      });
+      await writeOutput(
+        formatAutomationPreview(preview, asJson(cmdOpts)),
+        getFormat(cmdOpts)
+      );
+    });
+
+  automationCmd
+    .command("preview <profile>")
+    .description(
+      "Show sources, destinations, hook command, schedule and daemon prerequisite"
+    )
+    .option("--settings <path>", "Claude Code settings file to preview")
+    .option("--json", "JSON output")
+    .action(async (id: string, cmdOpts: Record<string, unknown>) => {
+      const { formatAutomationPreview, previewAutomation } =
+        await import("./commands/sessions");
+      const preview = await previewAutomation(context(), id, {
+        settings: cmdOpts.settings as string | undefined,
+      });
+      await writeOutput(
+        formatAutomationPreview(preview, asJson(cmdOpts)),
+        getFormat(cmdOpts)
+      );
+    });
+
+  automationCmd
+    .command("enable <profile>")
+    .description(
+      "Explicitly switch on a host hook and/or the daemon schedule for a profile"
+    )
+    .option("--hook <harness>", "install the owned hook (claude-code)")
+    .option(
+      "--settings <path>",
+      "Claude Code settings file (default: $CLAUDE_CONFIG_DIR or ~/.claude settings.json)"
+    )
+    .option("--schedule", "run on the daemon's elapsed cadence")
+    .option("--cadence <n>", "elapsed cadence <n>s|m|h|d (min 1m)")
+    .option("--json", "JSON output")
+    .action(async (id: string, cmdOpts: Record<string, unknown>) => {
+      const { enableAutomationCli, formatAutomationPreview } =
+        await import("./commands/sessions");
+      const preview = await enableAutomationCli(context(), id, {
+        hook: cmdOpts.hook as string | undefined,
+        settings: cmdOpts.settings as string | undefined,
+        schedule: Boolean(cmdOpts.schedule),
+        cadence: cmdOpts.cadence as string | undefined,
+      });
+      await writeOutput(
+        formatAutomationPreview(preview, asJson(cmdOpts)),
+        getFormat(cmdOpts)
+      );
+    });
+
+  automationCmd
+    .command("disable <profile>")
+    .description(
+      "Pause: switch triggers off, remove the owned hook entry, clear pending work"
+    )
+    .option("--hook", "only the hook")
+    .option("--schedule", "only the schedule")
+    .option("--json", "JSON output")
+    .action(async (id: string, cmdOpts: Record<string, unknown>) => {
+      const { disableAutomationCli, formatAutomationChange } =
+        await import("./commands/sessions");
+      const change = await disableAutomationCli(context(), id, {
+        hook: Boolean(cmdOpts.hook),
+        schedule: Boolean(cmdOpts.schedule),
+      });
+      await writeOutput(
+        formatAutomationChange(change, asJson(cmdOpts)),
+        getFormat(cmdOpts)
+      );
+    });
+
+  automationCmd
+    .command("remove <profile>")
+    .description(
+      "Uninstall owned integrations and delete the profile (archive retained)"
+    )
+    .option("--json", "JSON output")
+    .action(async (id: string, cmdOpts: Record<string, unknown>) => {
+      const { formatAutomationChange, removeAutomation } =
+        await import("./commands/sessions");
+      const change = await removeAutomation(context(), id);
+      await writeOutput(
+        formatAutomationChange(change, asJson(cmdOpts)),
+        getFormat(cmdOpts)
+      );
+    });
+
+  automationCmd
+    .command("run <profile>")
+    .description("Run a profile now through the manual importer")
+    .option("--json", "JSON output")
+    .action(async (id: string, cmdOpts: Record<string, unknown>) => {
+      const { formatAutomationRun, runAutomation } =
+        await import("./commands/sessions");
+      const result = await runAutomation(context(), id);
+      await writeOutput(
+        formatAutomationRun(result, asJson(cmdOpts)),
+        getFormat(cmdOpts)
+      );
+      if (result.outcome === "failed" && result.reason === "busy") {
+        throw new CliError(
+          "BUSY",
+          "The archive is busy (another import or index writer); the run is recorded; a running daemon retries it, or run it again once the archive is free.",
+          { details: { sessionsCode: "SESSIONS_BUSY" } }
+        );
+      }
+      if (result.outcome === "failed") {
+        throw new CliError(
+          "RUNTIME",
+          `Automation run failed (${result.reason ?? "unknown"}); see gno sessions status.`,
+          { details: { sessionsCode: "SESSIONS_IMPORT_FAILED" } }
+        );
+      }
+    });
+
+  sessionsCmd
+    .command("hook <harness>")
+    .description(
+      "Host hook entrypoint: durably mark a profile pending (installed by automation enable)"
+    )
+    .option("--profile <id>", "automation profile")
+    .action(async (harness: string, cmdOpts: Record<string, unknown>) => {
+      const { runSessionsHook } = await import("./commands/sessions");
+      const line = await runSessionsHook(context(), harness, {
+        profile: cmdOpts.profile as string | undefined,
+      });
+      process.stdout.write(`${line}\n`);
     });
 }
 

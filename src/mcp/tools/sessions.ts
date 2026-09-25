@@ -1,6 +1,8 @@
 /**
- * MCP session-archive tools: bounded status and import of owner-registered
- * sources. Thin adapters over the core sessions service.
+ * MCP session-archive tools: bounded status (including opt-in automation),
+ * import of owner-registered sources, and a run request for a configured
+ * automation profile. Thin adapters over the core sessions services. Hooks,
+ * schedules and source access are managed only by the local owner.
  *
  * Remote callers never discover host directories and never name paths:
  * import accepts a registered source ID only. Import is registered only with
@@ -13,7 +15,9 @@ import { z } from "zod";
 
 import type { ToolContext } from "../server";
 
+import { runAutomationProfile } from "../../sessions/automation";
 import {
+  formatAutomationRunText,
   formatImportReceiptText,
   formatStatusText,
 } from "../../sessions/format";
@@ -21,6 +25,7 @@ import { importInChildProcess } from "../../sessions/import-child";
 import { SessionsService } from "../../sessions/service";
 import {
   MAX_IMPORT_LIMIT,
+  type SessionAutomationRunResult,
   type SessionImportReceipt,
   remoteSafeSessionsError,
 } from "../../sessions/types";
@@ -55,6 +60,30 @@ export const sessionsImportInputSchema = z
   .strict();
 
 export type SessionsImportToolInput = z.infer<typeof sessionsImportInputSchema>;
+
+export const sessionsAutomationRunInputSchema = z
+  .object({
+    profileId: z
+      .string()
+      .trim()
+      .min(1)
+      .max(64)
+      .describe(
+        "ID of an owner-configured automation profile (see gno_sessions_status)"
+      ),
+  })
+  .strict();
+
+export type SessionsAutomationRunToolInput = z.infer<
+  typeof sessionsAutomationRunInputSchema
+>;
+
+export const SESSIONS_AUTOMATION_RUN_MCP_ANNOTATIONS = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+} as const;
 
 export const SESSIONS_STATUS_MCP_ANNOTATIONS = {
   readOnlyHint: true,
@@ -134,5 +163,46 @@ export function handleSessionsImport(
       return receipt;
     },
     formatImportReceiptText
+  );
+}
+
+export function handleSessionsAutomationRun(
+  args: SessionsAutomationRunToolInput,
+  ctx: ToolContext
+): Promise<ToolResult> {
+  return runTool(
+    ctx,
+    "gno_sessions_automation_run",
+    async () => {
+      if (!ctx.enableWrite) {
+        throw new Error(
+          "WRITE_DISABLED: gno_sessions_automation_run requires --enable-write or GNO_MCP_ENABLE_WRITE=1"
+        );
+      }
+      let result: SessionAutomationRunResult;
+      try {
+        result = await runAutomationProfile(
+          {
+            configPath: ctx.actualConfigPath,
+            indexName: ctx.indexName,
+            store: ctx.store,
+            // A child process keeps this server answering during the run.
+            inChildProcess: true,
+          },
+          args.profileId,
+          { trigger: "manual" }
+        );
+      } catch (error) {
+        return rethrowSessionsError(error);
+      }
+      if (
+        result.receipts.some((receipt) => receipt.lexical.collections.length)
+      ) {
+        ctx.markContentMutation?.();
+        ctx.markIndexMutation?.();
+      }
+      return result;
+    },
+    formatAutomationRunText
   );
 }

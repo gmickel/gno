@@ -3,6 +3,7 @@ import type { HttpGatewayOverrides } from "../../mcp/http-security";
 import type { BackgroundRuntimeResult } from "../../serve/background-runtime";
 import type { FindingsPassResult } from "../../serve/findings-pass";
 import type { ResidentRuntime } from "../../serve/resident-runtime";
+import type { SessionAutomationRunResult } from "../../sessions/types";
 
 import {
   enforceCollectionEgress,
@@ -17,6 +18,7 @@ import {
 import { startBackgroundRuntime } from "../../serve/background-runtime";
 import { handleResidentStatus, handleStatus } from "../../serve/routes/api";
 import { createMcpHttpGateway } from "../../serve/routes/mcp";
+import { SessionsError } from "../../sessions/types";
 
 export interface DaemonOptions extends HttpGatewayOverrides {
   configPath?: string;
@@ -64,6 +66,31 @@ export function logFindingsPassResult(
   if (changed === 0 || options.quiet) return;
   logger.log(
     `findings pass: ${counts.written} new, ${counts.reopened} reopened, ${counts.resolved} resolved, ${counts.deleted} expired (${counts.open} open)`
+  );
+}
+
+/** Content-free: counts and reason codes only; clean no-ops stay silent. */
+export function logSessionAutomationResult(
+  result: SessionAutomationRunResult,
+  logger: DaemonLogger,
+  options: { quiet?: boolean }
+): void {
+  if (!result.ran) return;
+  if (result.outcome === "failed") {
+    logger.error(
+      `session automation ${result.profileId}: failed (${result.reason ?? "unknown"})`
+    );
+    return;
+  }
+  if (result.outcome === "up_to_date" || options.quiet) return;
+  let imported = 0;
+  let updated = 0;
+  for (const receipt of result.receipts) {
+    imported += receipt.counts.imported;
+    updated += receipt.counts.updated;
+  }
+  logger.log(
+    `session automation ${result.profileId}: ${result.outcome}${result.reason ? ` (${result.reason})` : ""}; ${imported} threads imported, ${updated} updated`
   );
 }
 
@@ -175,6 +202,20 @@ export async function daemon(
         quiet: options.quiet,
         verbose: options.verbose,
       }),
+    onSessionAutomationResult: (result) =>
+      logSessionAutomationResult(result, logger, { quiet: options.quiet }),
+    onSessionAutomationError: (error) => {
+      // Busy state (a run or state change in progress) is retried next tick.
+      if (error instanceof SessionsError && error.code === "SESSIONS_BUSY") {
+        if (options.verbose) {
+          logger.log("session automation: run in progress; next tick retries");
+        }
+        return;
+      }
+      logger.error(
+        `session automation tick failed: ${error instanceof SessionsError ? error.code : "runtime error"}`
+      );
+    },
     watchCallbacks: {
       onSyncStart: ({ collection, relPaths }) => {
         if (!options.quiet) {

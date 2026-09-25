@@ -527,6 +527,30 @@ function isDatabaseLockedError(cause: unknown): boolean {
   );
 }
 
+/**
+ * Run a best-effort write without waiting for another writer: when the index
+ * is locked (SQLITE_BUSY) the write is skipped instead of blocking the event
+ * loop for the configured busy timeout.
+ */
+function withoutBusyWait(db: Database, write: () => void): void {
+  const current =
+    db.query<{ timeout: number }, []>("PRAGMA busy_timeout").get()?.timeout ??
+    0;
+  db.exec("PRAGMA busy_timeout = 0");
+  try {
+    write();
+  } catch (cause) {
+    const code = (cause as { code?: unknown } | null)?.code;
+    const busy =
+      code === "SQLITE_BUSY" ||
+      code === "SQLITE_LOCKED" ||
+      isDatabaseLockedError(cause);
+    if (!busy) throw cause;
+  } finally {
+    db.exec(`PRAGMA busy_timeout = ${current}`);
+  }
+}
+
 /** Resolve a caller-supplied busy_timeout, defaulting rather than using 0. */
 function resolveBusyTimeoutMs(busyTimeoutMs?: number): number {
   if (
@@ -1207,9 +1231,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         return ok(null);
       }
       if (row.fingerprint !== expectedFingerprint) {
-        db.run(
-          "DELETE FROM activation_receipts WHERE collection = ? AND connector_target = ?",
-          [collection, connectorTarget]
+        // Best-effort cleanup: a busy writer leaves the stale row for later.
+        withoutBusyWait(db, () =>
+          db.run(
+            "DELETE FROM activation_receipts WHERE collection = ? AND connector_target = ?",
+            [collection, connectorTarget]
+          )
         );
         return ok(null);
       }
@@ -1221,9 +1248,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         receipt.collection !== row.collection ||
         (receipt.evidence.connectorTarget ?? "") !== row.connector_target
       ) {
-        db.run(
-          "DELETE FROM activation_receipts WHERE collection = ? AND connector_target = ?",
-          [collection, connectorTarget]
+        // Best-effort cleanup: a busy writer leaves the stale row for later.
+        withoutBusyWait(db, () =>
+          db.run(
+            "DELETE FROM activation_receipts WHERE collection = ? AND connector_target = ?",
+            [collection, connectorTarget]
+          )
         );
         return ok(null);
       }
@@ -1248,8 +1278,11 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       if (!serialized.ok) {
         return err("INVALID_INPUT", serialized.error);
       }
-      db.run(
-        `INSERT INTO activation_receipts (
+      // A receipt is a cache: status paths on resident event loops must not
+      // busy-wait behind another writer (for example an import child).
+      withoutBusyWait(db, () =>
+        db.run(
+          `INSERT INTO activation_receipts (
            collection, connector_target, schema_version, fingerprint,
            receipt_json, updated_at
          ) VALUES (?, ?, ?, ?, ?, datetime('now'))
@@ -1258,13 +1291,14 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
            fingerprint = excluded.fingerprint,
            receipt_json = excluded.receipt_json,
            updated_at = datetime('now')`,
-        [
-          serialized.projected.collection,
-          serialized.connectorTarget,
-          serialized.projected.schemaVersion,
-          serialized.projected.fingerprint,
-          serialized.json,
-        ]
+          [
+            serialized.projected.collection,
+            serialized.connectorTarget,
+            serialized.projected.schemaVersion,
+            serialized.projected.fingerprint,
+            serialized.json,
+          ]
+        )
       );
       return ok(undefined);
     } catch (cause) {

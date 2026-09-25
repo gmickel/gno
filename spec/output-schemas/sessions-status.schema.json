@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "gno://schemas/sessions-status@1.0",
   "title": "GNO Session Archive Status",
-  "description": "Shared status of a session archive on every surface (CLI `gno sessions status --json`, MCP gno_sessions_status, REST GET /api/sessions/status, SDK client.sessionsStatus()). Derived from SessionsStatus in src/sessions/types.ts. Contains no host paths.",
+  "description": "Shared status of a session archive on every surface (CLI `gno sessions status --json`, MCP gno_sessions_status, REST GET /api/sessions/status, SDK client.sessionsStatus()). Derived from SessionsStatus in src/sessions/types.ts. Includes opt-in automation state. Contains no host paths and no session content.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -11,12 +11,20 @@
     "index",
     "collections",
     "sources",
+    "automation",
     "warnings"
   ],
   "properties": {
-    "schemaVersion": { "const": "1" },
-    "configured": { "const": true },
-    "index": { "type": "string", "minLength": 1 },
+    "schemaVersion": {
+      "const": "1"
+    },
+    "configured": {
+      "const": true
+    },
+    "index": {
+      "type": "string",
+      "minLength": 1
+    },
     "collections": {
       "type": "array",
       "items": {
@@ -24,8 +32,13 @@
         "additionalProperties": false,
         "required": ["name", "threads"],
         "properties": {
-          "name": { "type": "string" },
-          "threads": { "type": "integer", "minimum": 0 }
+          "name": {
+            "type": "string"
+          },
+          "threads": {
+            "type": "integer",
+            "minimum": 0
+          }
         }
       }
     },
@@ -64,14 +77,32 @@
               "pending"
             ],
             "properties": {
-              "total": { "type": "integer", "minimum": 0 },
-              "complete": { "type": "integer", "minimum": 0 },
-              "incomplete": { "type": "integer", "minimum": 0 },
-              "failed": { "type": "integer", "minimum": 0 },
-              "pending": { "type": "integer", "minimum": 0 }
+              "total": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "complete": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "incomplete": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "failed": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "pending": {
+                "type": "integer",
+                "minimum": 0
+              }
             }
           },
-          "archivedThreads": { "type": "integer", "minimum": 0 },
+          "archivedThreads": {
+            "type": "integer",
+            "minimum": 0
+          },
           "staleParser": {
             "type": "integer",
             "minimum": 0,
@@ -89,6 +120,313 @@
         }
       }
     },
-    "warnings": { "type": "array", "items": { "type": "string" } }
+    "automation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["daemon", "timezone", "profiles"],
+      "properties": {
+        "daemon": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "heartbeatAt"],
+          "properties": {
+            "state": {
+              "enum": ["running", "not_running", "stale"],
+              "description": "running only with a fresh heartbeat from a live daemon on this archive; serve never counts."
+            },
+            "heartbeatAt": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            }
+          }
+        },
+        "timezone": {
+          "type": "string",
+          "description": "IANA timezone for human-readable times; stored instants are UTC."
+        },
+        "profiles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "sources",
+              "collections",
+              "state",
+              "hook",
+              "schedule",
+              "limit",
+              "retries",
+              "pending",
+              "running",
+              "lastTrigger",
+              "lastRun",
+              "lastSuccessAt",
+              "retryAt",
+              "recovery"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "sources": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "collections": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "state": {
+                "enum": [
+                  "off",
+                  "idle",
+                  "pending",
+                  "running",
+                  "retrying",
+                  "partial",
+                  "failed"
+                ],
+                "description": "off: no trigger enabled and nothing pending. partial/failed describe the last run."
+              },
+              "hook": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["harness", "enabled", "installed"],
+                    "properties": {
+                      "harness": {
+                        "enum": ["claude-code"]
+                      },
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "installed": {
+                        "type": ["boolean", "null"],
+                        "description": "Owned entry present in the host settings file; null when the file cannot be read."
+                      }
+                    }
+                  }
+                ]
+              },
+              "schedule": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["enabled", "cadence", "nextDueAt"],
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "cadence": {
+                        "type": "string"
+                      },
+                      "nextDueAt": {
+                        "type": ["string", "null"],
+                        "format": "date-time",
+                        "description": "Null unless enabled and a daemon is running on this archive."
+                      }
+                    }
+                  }
+                ]
+              },
+              "limit": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "retries": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "pending": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["since", "triggers"],
+                    "properties": {
+                      "since": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "triggers": {
+                        "type": "array",
+                        "items": {
+                          "enum": ["hook", "schedule", "manual"]
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "running": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["startedAt", "triggers"],
+                    "properties": {
+                      "startedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "triggers": {
+                        "type": "array",
+                        "items": {
+                          "enum": ["hook", "schedule", "manual"]
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "lastTrigger": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["kind", "at"],
+                    "properties": {
+                      "kind": {
+                        "enum": ["hook", "schedule", "manual"]
+                      },
+                      "at": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    }
+                  }
+                ]
+              },
+              "lastRun": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/definitions/runRecord"
+                  }
+                ]
+              },
+              "lastSuccessAt": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "retryAt": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "recovery": {
+                "type": ["string", "null"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "definitions": {
+    "runRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "triggers",
+        "startedAt",
+        "finishedAt",
+        "outcome",
+        "reason",
+        "threads",
+        "units"
+      ],
+      "properties": {
+        "triggers": {
+          "type": "array",
+          "items": {
+            "enum": ["hook", "schedule", "manual"]
+          }
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "finishedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "outcome": {
+          "enum": ["complete", "up_to_date", "partial", "failed"]
+        },
+        "reason": {
+          "type": ["string", "null"],
+          "description": "Stable reason code for partial or failed runs, e.g. busy, runtime_error, source_revoked, source_unavailable, invalid_configuration, import_failed, interrupted, deferred, incomplete_units, index_sync_failed, unit_failures."
+        },
+        "threads": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["imported", "updated", "unchanged"],
+          "properties": {
+            "imported": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "updated": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unchanged": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "units": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["incomplete", "failed", "deferred"],
+          "properties": {
+            "incomplete": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "failed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "deferred": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    }
   }
 }

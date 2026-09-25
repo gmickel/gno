@@ -132,8 +132,9 @@ walk the model through:
 - private retrieval traces/replay and Knowledge Delta inspection
 - project affinity, explainable content boosts, and collection egress policy
 - JSONL, mail, calendar, transcript, and browser-export source adapters
-- manual agent-session import into a separate archive, and citing session
-  turns as evidence rather than facts
+- manual agent-session import into a separate archive, opt-in automation
+  (Claude Code SessionEnd hook, daemon schedule), and citing session turns as
+  evidence rather than facts
 - provenance-aware browser clipping and typed second-brain capture recipes
 - tagging, contexts, and per-collection embedding models
 - publishing notes as gno.sh reader snapshots (`publish export`)

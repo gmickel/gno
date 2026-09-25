@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-172-opt-in-session-hooks-and-scheduled",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-24T15:31:45.246168Z",
   "created_at": "2026-09-21T20:55:15.566621Z",
   "default_impl": null,
   "default_review": null,
@@ -10,7 +10,9 @@
     "fn-171-native-agent-session-ingestion"
   ],
   "id": "fn-172-opt-in-session-hooks-and-scheduled",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-172-opt-in-session-hooks-and-scheduled.1": 3
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
@@ -103,6 +105,282 @@
       "task": null,
       "timestamp": "2026-09-21T22:27:28.569468Z",
       "verdict": "SHIP"
+    },
+    {
+      "artifact_sha256": "ba45a5928dee4095d79190fe8107185e50dd24b0f52b0756edf3ac922767cc1f",
+      "backend": "codex",
+      "base_sha": "1da41b7bc70dd7e213ca73ce5438bb14d9368153",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-2bda2286eb2eabc4e8d5cf44bda7e400",
+            "classification": "introduced",
+            "findingId": "finding-2bda2286eb2eabc4e8d5cf44bda7e400",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-9d7b22ca1e3e1d69117803555724e391",
+            "classification": "introduced",
+            "findingId": "finding-9d7b22ca1e3e1d69117803555724e391",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-ba52705b2b87def6248c6e2397b7c965",
+            "classification": "introduced",
+            "findingId": "finding-ba52705b2b87def6248c6e2397b7c965",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-38119346056f4725e659db02b4dbc41c",
+            "classification": "introduced",
+            "findingId": "finding-38119346056f4725e659db02b4dbc41c",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-49655d41be4c87afb95829a341e71b82",
+            "classification": "introduced",
+            "findingId": "finding-49655d41be4c87afb95829a341e71b82",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-40488dc6df9edf28d4c8a38c9571bde5",
+            "classification": "introduced",
+            "findingId": "finding-40488dc6df9edf28d4c8a38c9571bde5",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "dec57a5408530bf49b2c61f7f71c085e9bd001d0",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 4566,
+      "output_sha256": "59a01f906a031293a1527c448ba768f943eef862b8b7161a9d72cf65b4984f4a",
+      "reservation_id": "603e890e128946c2a03dc15f2327296c",
+      "round_consumed": true,
+      "scope": "impl:fn-172-opt-in-session-hooks-and-scheduled.1",
+      "superseded_by": null,
+      "task": "fn-172-opt-in-session-hooks-and-scheduled.1",
+      "timestamp": "2026-09-24T15:10:16.071827Z",
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "7dd936bcd4818f8b9b239d469de846685f52e3e01c559dfb140195486b82392a",
+      "backend": "codex",
+      "base_sha": "1da41b7bc70dd7e213ca73ce5438bb14d9368153",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-2bda2286eb2eabc4e8d5cf44bda7e400",
+            "classification": "introduced",
+            "findingId": "finding-2bda2286eb2eabc4e8d5cf44bda7e400",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "not_fixed"
+          },
+          {
+            "chainRoot": "finding-9d7b22ca1e3e1d69117803555724e391",
+            "classification": "introduced",
+            "findingId": "finding-9d7b22ca1e3e1d69117803555724e391",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-ba52705b2b87def6248c6e2397b7c965",
+            "classification": "introduced",
+            "findingId": "finding-ba52705b2b87def6248c6e2397b7c965",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-38119346056f4725e659db02b4dbc41c",
+            "classification": "introduced",
+            "findingId": "finding-38119346056f4725e659db02b4dbc41c",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-54e3b0f6b7afb11090881e3bb02077e1",
+            "classification": "introduced",
+            "findingId": "finding-54e3b0f6b7afb11090881e3bb02077e1",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-49655d41be4c87afb95829a341e71b82",
+            "classification": "introduced",
+            "findingId": "finding-49655d41be4c87afb95829a341e71b82",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-40488dc6df9edf28d4c8a38c9571bde5",
+            "classification": "introduced",
+            "findingId": "finding-40488dc6df9edf28d4c8a38c9571bde5",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "d6c78bc18c597e13bb9b6f80dddbf8ace7f97d56",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 2574,
+      "output_sha256": "1159c4091e8ef684c206b560054b12fb01c1140335585c96119bd9e9a53db195",
+      "reservation_id": "a47941a59f2f4982a01a1f0df4afa5c7",
+      "round_consumed": true,
+      "scope": "impl:fn-172-opt-in-session-hooks-and-scheduled.1",
+      "superseded_by": null,
+      "task": "fn-172-opt-in-session-hooks-and-scheduled.1",
+      "timestamp": "2026-09-24T15:16:41.992422Z",
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "d41da50a00b537f9b68270beb5e5931050a197b436c195f4df852bde1ed48cf7",
+      "backend": "codex",
+      "base_sha": "1da41b7bc70dd7e213ca73ce5438bb14d9368153",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-2bda2286eb2eabc4e8d5cf44bda7e400",
+            "classification": "introduced",
+            "findingId": "finding-2bda2286eb2eabc4e8d5cf44bda7e400",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "not_fixed"
+          },
+          {
+            "chainRoot": "finding-9d7b22ca1e3e1d69117803555724e391",
+            "classification": "introduced",
+            "findingId": "finding-9d7b22ca1e3e1d69117803555724e391",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-ba52705b2b87def6248c6e2397b7c965",
+            "classification": "introduced",
+            "findingId": "finding-ba52705b2b87def6248c6e2397b7c965",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-38119346056f4725e659db02b4dbc41c",
+            "classification": "introduced",
+            "findingId": "finding-38119346056f4725e659db02b4dbc41c",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-54e3b0f6b7afb11090881e3bb02077e1",
+            "classification": "introduced",
+            "findingId": "finding-54e3b0f6b7afb11090881e3bb02077e1",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-49655d41be4c87afb95829a341e71b82",
+            "classification": "introduced",
+            "findingId": "finding-49655d41be4c87afb95829a341e71b82",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-40488dc6df9edf28d4c8a38c9571bde5",
+            "classification": "introduced",
+            "findingId": "finding-40488dc6df9edf28d4c8a38c9571bde5",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-2c0d141f82b634c4dc63ca3263ddf4ca",
+            "classification": "introduced",
+            "findingId": "finding-2c0d141f82b634c4dc63ca3263ddf4ca",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "545bffc15d6930f424a451f82d3b7d4d59dbe035",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 1970,
+      "output_sha256": "5da0253baa566fa713da0aaf6744e5b446c4baea837a92d155051bc1891ed9e8",
+      "reservation_id": "2a293eeecbf4493fb58a5634acd087b7",
+      "round_consumed": true,
+      "scope": "impl:fn-172-opt-in-session-hooks-and-scheduled.1",
+      "superseded_by": null,
+      "task": "fn-172-opt-in-session-hooks-and-scheduled.1",
+      "timestamp": "2026-09-24T15:19:07.287303Z",
+      "verdict": "NEEDS_WORK"
     }
   ],
   "review_hash_epoch": {
@@ -112,10 +390,11 @@
   "review_pending_rounds": {},
   "review_reservations": {},
   "review_transport_failures": {
+    "impl:fn-172-opt-in-session-hooks-and-scheduled.1": 0,
     "plan": 0
   },
   "spec_path": ".flow/specs/fn-172-opt-in-session-hooks-and-scheduled.md",
-  "status": "open",
+  "status": "done",
   "title": "Opt-in session hooks and scheduled ingestion",
   "tracker": {
     "baseHashFlow": null,
@@ -128,5 +407,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-21T22:27:28.571734Z"
+  "updated_at": "2026-09-25T07:27:08.242029Z"
 }

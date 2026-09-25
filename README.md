@@ -147,9 +147,10 @@ See the [guide](docs/COMPILED-CONTEXT.md).
 
 - **Agent session search** (unreleased): `gno sessions` imports selected local
   Codex, Claude Code, OpenClaw, and Hermes conversations into a dedicated,
-  redacted archive with speaker labels and provenance. Imports are manual;
-  search runs on the archive's own config/index pair. See
-  [Agent Sessions](docs/SESSIONS.md).
+  redacted archive with speaker labels and provenance. Imports are manual
+  by default; an opt-in Claude Code SessionEnd hook and daemon schedule can
+  keep the archive current. Search runs on the archive's own config/index
+  pair. See [Agent Sessions](docs/SESSIONS.md).
 - **Cheap peek snapshot**: `gno peek --json` and MCP `gno_peek` return a
   model-free `peek@1.0` snapshot (document/collection counts, embedding backlog,
   10 recent docs with `docid` and `absPath`, pid-file serve detection).
@@ -720,8 +721,8 @@ Connect GNO to Claude Desktop, Cursor, Raycast, and more:
 
 GNO exposes 37 tools by default via [Model Context Protocol](https://modelcontextprotocol.io),
 including the core retrieval tools below. Starting MCP with `--enable-write`
-adds 20 opt-in mutation tools and the read-only `gno_request_status` lookup,
-for 58 total.
+adds 21 opt-in mutation tools and the read-only `gno_request_status` lookup,
+for 59 total.
 
 | Tool                 | Description                                     |
 | :------------------- | :---------------------------------------------- |
@@ -789,11 +790,19 @@ gno --config ~/gno-sessions/archive.yml --index sessions sessions import --sourc
 # Search what people said, in one harness
 gno --config ~/gno-sessions/archive.yml --index sessions \
   query "why did we pick sqlite" --category harness/codex --author human
+
+# Optional: keep it current (off until you enable it; imports run in gno daemon)
+gno --config ~/gno-sessions/archive.yml --index sessions sessions automation set codex --source codex
+gno --config ~/gno-sessions/archive.yml --index sessions sessions automation enable codex --schedule --cadence 1h
+gno --config ~/gno-sessions/archive.yml --index sessions daemon --detach
 ```
 
 Imported turns are evidence, not facts: assistant turns stay labelled as
 assistant output, and nothing is promoted to `gno remember` automatically.
-Status, import, and receipts are also available through MCP, REST, the SDK,
+Automation is opt-in per profile: a Claude Code SessionEnd hook or a daemon
+schedule marks work pending and `gno daemon` on the archive imports it through
+the same importer; nothing installs or starts a service. Status, import,
+automation runs, and receipts are also available through MCP, REST, the SDK,
 and a `/sessions` Web UI page on a server started with the archive pair.
 Redaction is best effort; see [Agent Sessions](docs/SESSIONS.md) for the
 support matrix, privacy boundary, recovery, and opt-in mixed retrieval.
@@ -1124,7 +1133,7 @@ graph TD
 | **Local LLM**        | AI answers via llama.cpp, no API keys                                                       |
 | **Remote Inference** | Optional HTTP endpoints for embedding, reranking, expansion, and generation                 |
 | **Privacy First**    | Fail-closed per-collection egress policy; no telemetry; explicit network use                |
-| **MCP Server**       | 10 automatic client targets; 37 read-only tools, 58 with writes enabled                     |
+| **MCP Server**       | 10 automatic client targets; 37 read-only tools, 59 with writes enabled                     |
 | **Integrity Audits** | Offline link, declared-provenance, and freshness reports with stable IDs                    |
 | **Knowledge Delta**  | Bounded metadata history, structural diffs, and dependency impact paths                     |
 | **Context Capsules** | Deterministic evidence bundles plus saved-file freshness reverification                     |

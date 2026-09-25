@@ -2541,19 +2541,28 @@ archive (its status and import calls answer `400` with
 `SESSIONS_NOT_CONFIGURED`). See [Agent Sessions](SESSIONS.md) for the archive model, receipts,
 redaction, and recovery.
 
-| Endpoint                    | Method | Who may call                  | Purpose                                             |
-| :-------------------------- | :----- | :---------------------------- | :-------------------------------------------------- |
-| `/api/sessions/status`      | GET    | any allowed client            | Archive collections and per-source status           |
-| `/api/sessions/import`      | POST   | any allowed client (CSRF)     | Manual import of one registered source by ID        |
-| `/api/sessions/discover`    | GET    | same-host browser only (CSRF) | Preview supported local session stores (host paths) |
-| `/api/sessions/sources`     | POST   | same-host browser only (CSRF) | Register a source                                   |
-| `/api/sessions/sources/:id` | DELETE | same-host browser only (CSRF) | Unregister a source; its archive is retained        |
-| `/api/sessions/init`        | POST   | same-host browser only (CSRF) | Create or extend the archive for this instance      |
+| Endpoint                               | Method | Who may call                 | Purpose                                                               |
+| :------------------------------------- | :----- | :--------------------------- | :-------------------------------------------------------------------- |
+| `/api/sessions/status`                 | GET    | any allowed client           | Archive collections and per-source status                             |
+| `/api/sessions/import`                 | POST   | any allowed client (CSRF)    | Manual import of one registered source by ID                          |
+| `/api/sessions/discover`               | GET    | same-host client only (CSRF) | Preview supported local session stores (host paths)                   |
+| `/api/sessions/sources`                | POST   | same-host client only (CSRF) | Register a source                                                     |
+| `/api/sessions/sources/:id`            | DELETE | same-host client only (CSRF) | Unregister a source; its archive is retained                          |
+| `/api/sessions/init`                   | POST   | same-host client only (CSRF) | Create or extend the archive for this instance                        |
+| `/api/sessions/automation/run`         | POST   | any allowed client (CSRF)    | Run a configured automation profile now                               |
+| `/api/sessions/automation/:id`         | PUT    | same-host client only (CSRF) | Create or reconfigure a profile (enables nothing)                     |
+| `/api/sessions/automation/:id`         | DELETE | same-host client only (CSRF) | Uninstall owned integrations, delete the profile                      |
+| `/api/sessions/automation/:id/preview` | GET    | same-host client only (CSRF) | Sources, destinations, hook command, daemon prerequisite (host paths) |
+| `/api/sessions/automation/:id/enable`  | POST   | same-host client only (CSRF) | Switch on the Claude Code hook and/or the schedule                    |
+| `/api/sessions/automation/:id/disable` | POST   | same-host client only (CSRF) | Pause triggers, remove the owned hook entry, clear pending work       |
 
 "Same-host" means the socket peer is loopback, the `Host` header names a
 loopback host, and no forwarding header is present. Other callers get
 `403 FORBIDDEN`. Mutating requests also need the [CSRF](#csrf-protection)
-conditions (`403 CSRF_VIOLATION` otherwise).
+conditions (`403 CSRF_VIOLATION` otherwise): a browser page on another
+origin is refused, while a local process on the same machine (the Web UI,
+`curl`, a script) is treated as the owner, as for every other owner-only
+route of `gno serve`.
 
 #### Session status
 
@@ -2562,8 +2571,8 @@ GET /api/sessions/status
 ```
 
 Returns the shared `sessions-status` object
-(`spec/output-schemas/sessions-status.schema.json`). It contains no host
-paths.
+(`spec/output-schemas/sessions-status.schema.json`), including the
+`automation` block. It contains no host paths.
 
 ```json
 {
@@ -2590,6 +2599,11 @@ paths.
       "lastImportAt": "2026-09-20T10:05:00.000Z"
     }
   ],
+  "automation": {
+    "daemon": { "state": "not_running", "heartbeatAt": null },
+    "timezone": "Europe/Zurich",
+    "profiles": []
+  },
   "warnings": []
 }
 ```
@@ -2693,6 +2707,38 @@ POST /api/sessions/init
 
 Registration and init persist the archive config and apply it to the running
 server (collections, watcher, egress policy) without a restart.
+
+#### Automation
+
+```http
+POST   /api/sessions/automation/run            { "profileId": "claude" }
+PUT    /api/sessions/automation/:id            { "sources": ["claude-code"], "cadence"?: "30m", "limit"?: 200, "retries"?: 3 }
+GET    /api/sessions/automation/:id/preview
+POST   /api/sessions/automation/:id/enable     { "hook"?: { "harness": "claude-code", "settings"?: "/abs/settings.json" }, "schedule"?: { "cadence"?: "30m" } }
+POST   /api/sessions/automation/:id/disable    { "hook"?: true, "schedule"?: true }
+DELETE /api/sessions/automation/:id
+```
+
+- `run` is open to any allowed client. It runs a configured profile through
+  the importer and returns the shared `sessions-automation-run` object
+  (`spec/output-schemas/sessions-automation-run.schema.json`); unknown keys
+  are rejected. It cannot enable triggers or widen sources.
+- Every other automation route answers only a same-host client: remote
+  requests cannot create profiles or enable machine integrations. `enable`
+  installs the hook only into the profile's recorded settings file or the
+  default `$CLAUDE_CONFIG_DIR/settings.json` (else `~/.claude/settings.json`);
+  a `hook.settings` field is rejected, so another settings file can only be
+  chosen with the CLI. `preview` returns host paths, so it also applies the
+  CSRF Origin check although it is a GET: a cross-origin page gets
+  `403 CSRF_VIOLATION`. `PUT`,
+  `enable`, and `preview` return the preview object (sources with host
+  paths, destination collections, the hook command and settings file, the
+  schedule, and the daemon prerequisite); `disable` and `DELETE` return
+  `{ profileId, hook, schedule, pendingCleared, running, removed, warnings }`.
+- Changes are written to the archive config and applied to the running
+  server. `gno serve` itself never drains hooks' pending work or runs
+  schedules; that happens in `gno daemon` on the archive (see
+  [Automation](SESSIONS.md#automation-opt-in)).
 
 **Session errors** use the standard envelope with a generic `code` per HTTP
 status and the stable service code in `details.sessionsCode`:

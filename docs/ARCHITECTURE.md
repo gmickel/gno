@@ -249,6 +249,29 @@ Harness session store (JSONL files or SQLite, opened read-only)
 import, status, and prune. CLI, MCP, REST, SDK, and Web UI are thin adapters
 that share its receipt and status types (`src/sessions/types.ts`).
 
+**Opt-in automation** (`src/sessions/automation*.ts`,
+`src/sessions/claude-hook.ts`, `src/serve/session-automation.ts`) adds
+triggers, not a second importer:
+
+```
+Claude Code SessionEnd ─► `gno sessions hook` ─┐   (validate, recheck the
+                                                ├─►  owner config, fsync a
+daemon tick: due schedule ──────────────────────┘    per-profile pending marker)
+                                                          │
+          daemon tick / `sessions automation run`  ───────▼
+             recheck profile authority ─► SessionsService.import (per source,
+             bounded limit) ─► settle only the generation the run started with
+```
+
+Profiles live in the owner's archive config (`sessions.automation`); pending
+generations, last run, next due time and the daemon heartbeat live in
+`<archiveRoot>/.gno-sessions/automation.json`, changed only under
+`automation.lock` and written with fsync. A trigger that arrives during a run
+stays pending; a run whose process dies is redone after restart; import
+checkpoints make every rerun incremental. There is no job queue, service
+installer, or cron engine: schedules are elapsed cadences evaluated by the
+daemon's 30-second tick.
+
 **Isolation by config/index pair.** An archive is one config file with a
 `sessions` block bound to one named index. `src/sessions/binding.ts` checks
 the pair before every CLI command, when the SDK opens a client, on the REST

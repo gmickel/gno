@@ -18,7 +18,11 @@ import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
 
 import { initStore } from "../../src/cli/commands/shared";
 import { createMcpServerSurface } from "../../src/mcp/context";
-import { handleSessionsImport } from "../../src/mcp/tools/sessions";
+import {
+  handleSessionsAutomationRun,
+  handleSessionsImport,
+} from "../../src/mcp/tools/sessions";
+import { setAutomationProfile } from "../../src/sessions/automation";
 import { addSessionSource, initSessionArchive } from "../../src/sessions/setup";
 import { safeRm } from "../helpers/cleanup";
 import { FIXTURES, snapshotSessionEnv, tempDir } from "../sessions/helpers";
@@ -188,5 +192,49 @@ describe("MCP session tools", () => {
       error: "SESSIONS_RUNTIME_FAILURE",
     });
     expect(JSON.stringify(result)).not.toContain(root);
+  });
+
+  test("automation run is write-gated, runs a configured profile only, and takes no sources", async () => {
+    const refused = await handleSessionsAutomationRun(
+      { profileId: "main" },
+      { ...ctxBase, enableWrite: false }
+    );
+    expect(refused.structuredContent).toMatchObject({
+      error: "WRITE_DISABLED",
+    });
+    await setAutomationProfile(
+      { configPath, indexName: "sessions" },
+      { id: "main", sources: ["codex-main"] }
+    );
+    const live = await surface(true);
+    try {
+      const names = (await live.client.listTools()).tools.map(
+        (tool) => tool.name
+      );
+      expect(names).toContain("gno_sessions_automation_run");
+      const widened = await live.client.callTool({
+        name: "gno_sessions_automation_run",
+        arguments: { profileId: "main", sources: ["other"] },
+      });
+      expect(widened.isError).toBe(true);
+      const unknown = await live.client.callTool({
+        name: "gno_sessions_automation_run",
+        arguments: { profileId: "ghost" },
+      });
+      expect(unknown.structuredContent).toMatchObject({
+        error: "SESSIONS_UNKNOWN_PROFILE",
+      });
+      const ran = await live.client.callTool({
+        name: "gno_sessions_automation_run",
+        arguments: { profileId: "main" },
+      });
+      expect(ran.structuredContent).toMatchObject({
+        profileId: "main",
+        ran: true,
+      });
+      expect(JSON.stringify(ran.structuredContent)).not.toContain(root);
+    } finally {
+      await live.close();
+    }
   });
 });

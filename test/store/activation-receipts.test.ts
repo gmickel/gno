@@ -1,3 +1,4 @@
+import { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -96,6 +97,38 @@ describe("activation receipt store", () => {
   afterEach(async () => {
     await adapter.close();
     await safeRm(testDir);
+  });
+
+  // A resident status request verifies activation and caches a receipt. With
+  // another writer holding the index (for example a session import child)
+  // those cache writes must return at once instead of busy-waiting on the
+  // server's event loop for the configured busy timeout.
+  test("receipt cache writes never wait on another writer", async () => {
+    await adapter.close();
+    const path = join(testDir, "index-test.sqlite");
+    expect((await adapter.open(path, "unicode61", 60_000)).ok).toBe(true);
+    expect((await adapter.upsertActivationReceipt(receipt())).ok).toBe(true);
+
+    const writer = new Database(path);
+    writer.exec("PRAGMA busy_timeout = 0");
+    writer.exec("BEGIN IMMEDIATE");
+    try {
+      const started = performance.now();
+      const upserted = await adapter.upsertActivationReceipt(
+        receipt({ generatedAt: "2026-07-22T11:00:00.000Z" })
+      );
+      const stale = await adapter.getActivationReceipt("notes", "d".repeat(64));
+      const elapsed = performance.now() - started;
+      expect(upserted.ok).toBe(true);
+      expect(stale).toEqual({ ok: true, value: null });
+      expect(elapsed).toBeLessThan(1000);
+    } finally {
+      writer.exec("ROLLBACK");
+      writer.close();
+    }
+    // The skipped writes left the cached receipt in place; nothing broke.
+    const current = await adapter.getActivationReceipt("notes", FINGERPRINT);
+    expect(current).toEqual({ ok: true, value: receipt() });
   });
 
   test("round-trips the strict bounded receipt and removes stale fingerprints", async () => {
