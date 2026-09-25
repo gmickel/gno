@@ -11,13 +11,32 @@ import { resetModelManager } from "./llm/nodeLlamaCpp/lifecycle";
 import { IMPORT_CHILD_ENV } from "./sessions/import-child-env";
 
 /**
- * Cleanup models and exit.
- * Without this, llama.cpp native threads can keep the process alive.
+ * End `stream` and resolve once its queued writes have reached the OS.
+ * process.exit() drops pending asynchronous pipe writes, so a pipe consumer
+ * would otherwise see output cut at the pipe buffer size. Bun reports no
+ * writableLength and fires an empty write's callback immediately, so end()
+ * is the flush that actually waits. A closed consumer (EPIPE) settles
+ * through the callback or the 'error' event.
+ */
+function flushStream(stream: NodeJS.WriteStream): Promise<void> {
+  if (stream.destroyed || stream.writableEnded) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    stream.once("error", () => resolve());
+    stream.end(() => resolve());
+  });
+}
+
+/**
+ * Cleanup models, flush output, and exit.
+ * Without the explicit exit, llama.cpp native threads can keep the process alive.
  */
 async function cleanupAndExit(code: number): Promise<never> {
   await resetModelManager().catch(() => {
     // Ignore cleanup errors on exit
   });
+  await Promise.all([flushStream(process.stdout), flushStream(process.stderr)]);
   process.exit(code);
 }
 
