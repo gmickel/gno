@@ -61,6 +61,8 @@ already did it. For each item check:
   `surfaces`, `pillars`, `featureHighlights`, and so on). The landing page
   reveals capability from simple to advanced; add to the rung a feature
   belongs to, keep grids balanced, and add a section only when nothing fits.
+  Every card links to the docs page or section it describes;
+  `src/lib/landing-card-links.test.ts` fails on a missing link or anchor.
 - **Counts and claims:** MCP tool counts, integration lists, comparison rows,
   FAQ answers, and `src/lib/public-truth-content.test.ts` pins match the
   release.
