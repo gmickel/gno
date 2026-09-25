@@ -130,7 +130,13 @@ describe("gno capture", () => {
       ];
       const first = await cli(...args);
       const again = await cli(...args);
-      expect([first.code, again.code]).toEqual([0, 0]);
+      // Carry stderr so a failed exit code names its error.
+      expect(
+        [first, again].map(({ code, stderr }) => ({ code, stderr }))
+      ).toEqual([
+        { code: 0, stderr: "" },
+        { code: 0, stderr: "" },
+      ]);
       const [a, b] = [JSON.parse(first.stdout), JSON.parse(again.stdout)];
       expect(a.request).toMatchObject({
         requestId: "cli-retry-1",
