@@ -1,9 +1,17 @@
 {
   "branch_name": "fn-189-piped-cli-output-is-truncated-at-exit",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
   "created_at": "2026-09-25T16:35:02.899492Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-189-piped-cli-output-is-truncated-at-exit",
+  "impl_review_rounds": {},
   "next_task": 1,
+  "no_plan": true,
+  "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-189-piped-cli-output-is-truncated-at-exit.md",
@@ -20,5 +28,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T16:35:02.902052Z"
+  "updated_at": "2026-09-25T16:35:23.383735Z"
 }
