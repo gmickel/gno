@@ -214,7 +214,9 @@ remote caller identifies a collection by its `name`:
 The same-host Web UI keeps these fields for the Collections page, the
 dashboard, and the connector list. A remote Web UI shows the same pages without
 the path lines and offers no suggested-folder quick picks, because it has no
-host path to prefill. The CLI, stdio MCP, and the SDK are unchanged.
+host path to prefill. The disk health check reports free space for the model
+cache without naming its location, for every caller. The CLI, stdio MCP, and
+the SDK are unchanged.
 
 Context Capsules, retrieval traces, and publish exports carry no host paths.
 A capture or remember whose file was written but not indexed names the file by

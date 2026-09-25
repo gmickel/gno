@@ -148,7 +148,7 @@
         "id": "disk",
         "title": "Disk",
         "status": "ok",
-        "summary": "12.0 GB free near ~/Library/Caches/gno",
+        "summary": "12.0 GB free for the model cache",
         "detail": "Enough headroom for the active local models and routine indexing work."
       }
     ]
