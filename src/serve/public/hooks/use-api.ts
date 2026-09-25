@@ -1,5 +1,7 @@
 import { useCallback, useState } from "react";
 
+import { writeOutcomeUnknown } from "../lib/request-intent";
+
 interface ApiState<T> {
   data: T | null;
   loading: boolean;
@@ -86,6 +88,11 @@ export async function apiFetch<T>(
   error: string | null;
   /** `error.details` of the JSON error envelope, when the server sent one. */
   details?: Record<string, unknown>;
+  /**
+   * A write may or may not have committed: no readable response, a server
+   * error, or the request is still pending under its request ID.
+   */
+  outcomeUnknown?: true;
 }> {
   try {
     const res = await fetch(endpoint, {
@@ -96,17 +103,24 @@ export async function apiFetch<T>(
     const { json, parseError } = await parseJsonSafe(res);
 
     if (parseError) {
-      return { data: null, error: parseError };
+      return { data: null, error: parseError, outcomeUnknown: true };
     }
 
     if (!res.ok) {
       const apiError = json as {
-        error?: { message?: string; details?: Record<string, unknown> };
+        error?: {
+          code?: string;
+          message?: string;
+          details?: Record<string, unknown>;
+        };
       };
       return {
         data: null,
         error: apiError.error?.message || `Request failed: ${res.status}`,
         details: apiError.error?.details,
+        ...(writeOutcomeUnknown(res.status, apiError.error?.code)
+          ? { outcomeUnknown: true as const }
+          : {}),
       };
     }
 
@@ -115,6 +129,7 @@ export async function apiFetch<T>(
     return {
       data: null,
       error: err instanceof Error ? err.message : "Network error",
+      outcomeUnknown: true,
     };
   }
 }

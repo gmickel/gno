@@ -788,25 +788,28 @@ export default function Dashboard({ navigate }: PageProps) {
                   }
                   style={{ animationDelay: `${0.4 + index * 0.1}s` }}
                 >
-                  <CardContent className="flex items-center justify-between py-4">
-                    <div className="flex items-center gap-3">
+                  <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+                    <div className="flex min-w-0 flex-1 basis-48 items-center gap-3">
                       {syncing ? (
-                        <Loader2Icon className="size-4 animate-spin text-amber-500" />
+                        <Loader2Icon className="size-4 shrink-0 animate-spin text-amber-500" />
                       ) : collection.embeddedCount >= collection.chunkCount ? (
-                        <CheckCircle2Icon className="size-4 text-green-500" />
+                        <CheckCircle2Icon className="size-4 shrink-0 text-green-500" />
                       ) : (
-                        <div className="size-4 rounded-full border-2 border-amber-500" />
+                        <div className="size-4 shrink-0 rounded-full border-2 border-amber-500" />
                       )}
-                      <div>
-                        <div className="font-medium text-lg transition-colors group-hover:text-primary">
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-lg transition-colors group-hover:text-primary">
                           {collection.name}
                         </div>
-                        <div className="font-mono text-muted-foreground text-sm">
+                        <div
+                          className="truncate font-mono text-muted-foreground text-sm"
+                          title={collection.path}
+                        >
                           {collection.path}
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 text-right">
+                    <div className="flex shrink-0 items-center gap-3 text-right">
                       <Button
                         onClick={(event) => {
                           event.stopPropagation();

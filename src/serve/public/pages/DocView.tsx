@@ -37,6 +37,7 @@ import {
   type FileRefactorPreviewPlan,
 } from "../../../core/file-refactor-contract";
 import { extractSections } from "../../../core/sections";
+import { updateFrontmatterTags } from "../../../ingestion/frontmatter";
 import {
   CodeBlock,
   CodeBlockCopyButton,
@@ -1242,10 +1243,15 @@ export default function DocView({ navigate }: PageProps) {
     }
 
     clearRequestIntent(tagIntentRef, TAG_INTENT_KEY);
-    // Update doc with new tags
+    // Mirror the committed write-back so the frontmatter tag list is current
+    // without waiting for the index to resync.
     setDoc({
       ...doc,
       tags: editedTags,
+      content:
+        data?.writeBack === "applied" && doc.content !== null
+          ? updateFrontmatterTags(doc.content, editedTags)
+          : doc.content,
       source: {
         ...doc.source,
         sourceHash: data?.version.sourceHash ?? doc.source.sourceHash,
