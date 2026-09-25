@@ -62,7 +62,7 @@
       "properties": {
         "absPath": {
           "type": "string",
-          "description": "Absolute path to source file"
+          "description": "Absolute path to source file. Host path: local callers only (CLI, stdio MCP, same-host Web UI/REST); omitted for remote REST and HTTP MCP callers, which identify the document by uri + relPath."
         },
         "relPath": {
           "type": "string",

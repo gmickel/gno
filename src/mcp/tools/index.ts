@@ -20,6 +20,7 @@ import {
   compiledContextPreviewSchema,
   compiledContextCheckSchema,
 } from "../../core/compiled-context";
+import { withoutHostPaths } from "../../core/host-paths";
 import { NOTE_PRESETS, type NotePresetId } from "../../core/note-presets";
 import { RETRIEVAL_TRACE_METADATA } from "../../core/retrieval-trace-session";
 import { normalizeTag } from "../../core/tags";
@@ -31,6 +32,7 @@ import {
   assertInferenceActive,
   acquireInferencePermit,
 } from "../../llm/inference-scope";
+import { exposesHostPaths } from "../context";
 import { profileToolDescription } from "../tool-descriptions-core";
 import {
   createProfileToolRegistrar,
@@ -972,6 +974,10 @@ export interface ToolResult {
 // DRY Helper: Exception Firewall + Mutex + Response Shaping
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Tool data as the current caller may see it (no host paths over HTTP). */
+const forCaller = <T>(ctx: ToolContext, data: T): T =>
+  exposesHostPaths(ctx) ? data : withoutHostPaths(data);
+
 export async function runTool<T>(
   ctx: ToolContext,
   name: string,
@@ -990,12 +996,13 @@ export async function runTool<T>(
   const release = await acquireInferencePermit(() => ctx.toolMutex.acquire());
   try {
     assertInferenceActive();
-    const data = await (ctx.runWithSnapshot?.(fn) ?? fn());
+    const raw = await (ctx.runWithSnapshot?.(fn) ?? fn());
     assertInferenceActive();
     const traceMetadata =
-      data !== null && typeof data === "object"
-        ? (data as Record<PropertyKey, unknown>)[RETRIEVAL_TRACE_METADATA]
+      raw !== null && typeof raw === "object"
+        ? (raw as Record<PropertyKey, unknown>)[RETRIEVAL_TRACE_METADATA]
         : undefined;
+    const data = forCaller(ctx, raw);
     return {
       content: [{ type: "text", text: formatText(data) }],
       structuredContent: data as { [x: string]: unknown },
@@ -1039,7 +1046,7 @@ export async function runToolNoMutex<T>(
 
   try {
     assertInferenceActive();
-    const data = await (ctx.runWithSnapshot?.(fn) ?? fn());
+    const data = forCaller(ctx, await (ctx.runWithSnapshot?.(fn) ?? fn()));
     assertInferenceActive();
     return {
       content: [{ type: "text", text: formatText(data) }],

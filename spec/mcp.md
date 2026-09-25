@@ -267,6 +267,15 @@ Because `gno serve` shares this listener with its Web UI and REST API, it
 remains loopback-only. Use the headless `gno daemon` command for an explicitly
 authenticated non-loopback MCP listener.
 
+HTTP MCP results never carry a host absolute path, whatever the peer zone:
+every `absPath` field (`source.absPath` on search/query/ask/get/multi-get
+results, top-level `absPath` on `gno_capture` and `gno_remember` receipts,
+`similar[].absPath`, peek `recent[].absPath`) is removed from both
+`structuredContent` and the text content, and a resource header's `source:`
+line names the collection-relative path. Callers address documents by `uri`
+and `relPath`. Stdio callers keep host paths. The field inventory lives in
+[docs/API.md](../docs/API.md#host-paths-and-remote-callers).
+
 HTTP MCP remains read-only unless `gateway.enableWrite: true` or
 `--mcp-enable-write` is explicitly set. Bearer authentication alone does not
 authorize mutation. Unauthorized calls to write tools fail with HTTP 403 before
@@ -1707,7 +1716,7 @@ file edits update existing notes, `gno_remember` upserts a fact.
   fact, nothing written
 - `outcome: "candidates"` — likely matches and no `decision`; `candidates[]`
   carry `similarity` and `match` (`exact` | `likely` | `weak`), nothing written
-- `outcome: "added" | "superseded"` — `record`, `absPath`, and
+- `outcome: "added" | "superseded"` — `record`, `absPath` (stdio only), and
   `sync.status` (`completed` before the call returns; the fact is lexically
   searchable)
 - `matching` — `mode` (`semantic` | `lexical`), `threshold`, and
@@ -2940,7 +2949,7 @@ Content includes optional header comment:
 |-------|-------------|
 | URI | Full gno:// URI |
 | docid | Document ID |
-| source | Absolute path to source file |
+| source | Absolute path to source file (stdio); collection-relative path over HTTP |
 | mime | Source file MIME type |
 | language | Document language hint (if available) |
 

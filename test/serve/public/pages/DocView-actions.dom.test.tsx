@@ -1,6 +1,7 @@
 import { cleanup, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
+import { withoutHostPaths } from "../../../../src/core/host-paths";
 import {
   apiError,
   apiOk,
@@ -132,7 +133,10 @@ function mockApi(doc: DocFixture, capabilities: CapabilitiesMode) {
         relPath: doc.relPath,
         tags: [],
         source: {
-          ...doc.source,
+          // The server strips host paths for a caller it judges remote.
+          ...(capabilities === "remote"
+            ? withoutHostPaths(doc.source)
+            : doc.source),
           modifiedAt: "2026-07-31T10:00:00.000Z",
           sizeBytes: 4096,
           sourceHash: "hash-1",

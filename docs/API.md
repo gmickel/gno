@@ -167,6 +167,45 @@ or caller identities. On a non-loopback daemon listener, it also requires a
 compatible collection egress policy; authentication and policy remain
 independent gates.
 
+### Host Paths and Remote Callers
+
+A host absolute path reveals the owner's home directory and folder layout, so
+only callers on the owner's machine receive one. Every other caller
+identifies a document by its `gno://` URI plus the collection-relative
+`relPath`, which is all `GET /api/doc?uri=`, `GET /api/doc-asset`, `gno get`,
+and MCP `gno_get` need to fetch or open it.
+
+"Remote" uses the existing classifications; there is no new auth model:
+
+- **REST** (`gno serve`): any `/api/*` JSON response to a caller whose
+  request is not judged local by the [`localClient`](#capabilities) rule
+  (loopback peer, loopback `Host`, no forwarding headers) has every `absPath`
+  field removed. The same-host Web UI keeps it for Reveal and the `file://`
+  "Open original"; a remote Web UI opens originals through
+  `/api/doc-asset?uri=`.
+- **MCP**: stdio callers keep host paths. Every Streamable HTTP caller
+  (`gno serve` or `gno daemon` `/mcp`, loopback or not) gets none.
+- **CLI** and the **SDK** run on the owner's machine and are unchanged.
+
+Inventory of result fields that carry a host absolute path:
+
+| Field                                 | Carried by                                                                        | Remote-reachable surfaces                                                                                                                          | Remote caller gets       |
+| :------------------------------------ | :-------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------- |
+| `source.absPath`                      | search, vsearch, query, and ask results; get, multi-get, and `/api/doc` documents | REST `/api/search`, `/api/query`, `/api/ask`, `/api/doc`; HTTP MCP `gno_search`, `gno_vsearch`, `gno_query`, `gno_ask`, `gno_get`, `gno_multi_get` | field omitted            |
+| `absPath`                             | capture and remember receipts                                                     | REST `/api/capture`, `/api/memory/remember`; HTTP MCP `gno_capture`, `gno_remember`                                                                | field omitted            |
+| `error.details.absPath`               | `CAPTURE_SYNC_FAILED` capture error                                               | REST `/api/capture`                                                                                                                                | field omitted            |
+| `similar[].absPath`                   | similar-document results                                                          | HTTP MCP `gno_similar`                                                                                                                             | field omitted            |
+| `recent[].absPath`                    | peek snapshot                                                                     | HTTP MCP `gno_peek`                                                                                                                                | field omitted            |
+| `source:` line of a `gno://` resource | MCP resource read header                                                          | HTTP MCP resource reads                                                                                                                            | collection-relative path |
+
+Context Capsules, retrieval traces, and publish exports carry no host paths.
+A capture or remember whose file was written but not indexed names the file by
+its `gno://` URI in the error message. `/api/doc-asset` streams the original
+file's bytes unchanged. Owner configuration fields are outside this rule and
+still reach a remote REST or HTTP MCP caller: collection root `path` in
+`/api/collections`, `/api/status`, and `gno_status`, plus status `configPath`
+and `dbPath`.
+
 ### Browser Clipper Boundary
 
 `gno serve` mounts a separate loopback-only browser-clipper gateway. Its grants
@@ -1458,6 +1497,10 @@ not-found path on `/doc`; they do not produce a CLI error. See
 }
 ````
 
+`source.absPath` is present only for a same-host caller; a remote caller
+opens the document by `uri` (see
+[Host Paths and Remote Callers](#host-paths-and-remote-callers)).
+
 For converted source formats such as PDF or DOCX, `capabilities.editable` is `false` and `capabilities.canCreateEditableCopy` is `true`. Those documents remain viewable/searchable, but GNO will not write converted markdown back into the original binary source file.
 
 Logical records derived from JSONL, mail, calendar, transcript, or browser
@@ -2303,16 +2346,17 @@ the same lease the CLI and MCP writers use) before the response, so a captured
 note is searchable the moment `201` arrives and `sync.status` is `completed`.
 `open_existing` on a file that is on disk but not indexed yet syncs it first
 and still returns `200` with `sync.status: "completed"`. The receipt keeps the
-write half (`created`, `contentHash`, `absPath`) separate from `sync`; embed
+write half (`created`, `contentHash`, and, for a same-host caller, `absPath`)
+separate from `sync`; embed
 state stays separate and `embed.status` is `not_requested` unless a separate
 embed job completes.
 
 Capture never reports success with a failed sync:
 
-| Status | Code                  | Meaning                                                                                                                                                                        |
-| :----- | :-------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `409`  | `LOCKED`              | The write lease stayed busy for the whole wait window (120s, the v1.38 `--lock-wait` default); nothing was written. Retry once the concurrent writer finishes.                 |
-| `500`  | `CAPTURE_SYNC_FAILED` | The file was written but lexical sync failed; `error.details` carries the write receipt half (`absPath`, `relPath`, `uri`, `contentHash`). Run `gno update` to retry indexing. |
+| Status | Code                  | Meaning                                                                                                                                                                                                    |
+| :----- | :-------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `409`  | `LOCKED`              | The write lease stayed busy for the whole wait window (120s, the v1.38 `--lock-wait` default); nothing was written. Retry once the concurrent writer finishes.                                             |
+| `500`  | `CAPTURE_SYNC_FAILED` | The file was written but lexical sync failed; `error.details` carries the write receipt half (`relPath`, `uri`, `contentHash`, plus `absPath` for a same-host caller). Run `gno update` to retry indexing. |
 
 The browser-clip route (`/api/capture/clip`) keeps its own `202` + sync-job
 contract described under [Browser Clipper](#browser-clipper).
@@ -2435,6 +2479,9 @@ see [Request IDs](#request-ids). It is unrelated to the recall `receipt`.
   }
 }
 ```
+
+`absPath` is returned to a same-host caller only (see
+[Host Paths and Remote Callers](#host-paths-and-remote-callers)).
 
 A `candidates` response lists current same-scope facts with `similarity` and
 `match` (`exact`, `likely`, `weak`); the caller decides between `add` and
@@ -3256,8 +3303,10 @@ is the correct value for subsequent get calls.
 Default snippets skip leading YAML frontmatter and prefer document prose. When
 the FTS window is frontmatter-dominated, GNO falls back to stripped chunk
 prose. `line` follows that trimmed display range. File-backed hits include
-`results[].source.absPath` (collection root + relative path). If `absPath` is
-absent, show the URI tail and do not offer file-open for that row.
+`results[].source.absPath` (collection root + relative path) for same-host
+callers only; [remote callers](#host-paths-and-remote-callers) never receive
+it. If `absPath` is absent, show the URI tail and do not offer file-open for
+that row.
 
 **Example**:
 
@@ -3540,7 +3589,9 @@ or built-in heuristic is available, plus the full `categories` array used by
 category filters. Default snippets skip leading YAML frontmatter and prefer
 document prose. A frontmatter-dominated FTS window falls back to stripped chunk
 prose. `line` follows that trimmed display range. File-backed hits include
-`results[].source.absPath`. Plain text, CSV, Markdown, and XML formatters keep
+`results[].source.absPath` for same-host callers only (see
+[Host Paths and Remote Callers](#host-paths-and-remote-callers)). Plain text,
+CSV, Markdown, and XML formatters keep
 their existing shapes. They also preserve optional configured `context` guidance
 and the exact source `uri`/`docid`; grounded Ask delimits that trusted guidance
 from untrusted retrieved document content.
