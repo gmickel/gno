@@ -23,7 +23,21 @@ import {
 } from "../cli/commands/mcp/config";
 import { findBunPath } from "../cli/commands/mcp/paths";
 import { getCurrentGnoEntrypoint } from "../core/runtime-entrypoint";
+import { canonicalConfigPath } from "./binding";
 import { SessionsError } from "./types";
+
+/**
+ * Ownership is keyed on the canonical archive config path, so a symlinked
+ * path (for example macOS `/var` -> `/private/var`) matches its entry.
+ */
+async function canonicalIdentity(
+  identity: HookIdentity
+): Promise<HookIdentity> {
+  return {
+    ...identity,
+    configPath: await canonicalConfigPath(identity.configPath),
+  };
+}
 
 /**
  * Claude Code's hook `timeout` (seconds). SessionEnd hooks otherwise share a
@@ -149,8 +163,9 @@ const countOwned = (groups: Json[], identity: HookIdentity): number =>
 /** Whether the owned entry is present; null when the file cannot be read. */
 export async function inspectClaudeHook(
   settingsPath: string,
-  identity: HookIdentity
+  given: HookIdentity
 ): Promise<boolean | null> {
+  const identity = await canonicalIdentity(given);
   try {
     const settings = await readSettings(settingsPath);
     if (!settings) return false;
@@ -165,8 +180,9 @@ export async function inspectClaudeHook(
 /** Install (or repair) exactly one owned SessionEnd entry. */
 export async function installClaudeHook(
   settingsPath: string,
-  identity: HookIdentity
+  given: HookIdentity
 ): Promise<{ command: string; changed: boolean }> {
+  const identity = await canonicalIdentity(given);
   const settings = (await readSettings(settingsPath)) ?? {};
   const groups = sessionEndGroups(settings, settingsPath) ?? [];
   const command = buildClaudeHookCommand(identity);
@@ -203,8 +219,9 @@ export async function installClaudeHook(
 /** Remove owned entries only. A missing file or entry is not an error. */
 export async function removeClaudeHook(
   settingsPath: string,
-  identity: HookIdentity
+  given: HookIdentity
 ): Promise<{ removed: number }> {
+  const identity = await canonicalIdentity(given);
   const settings = await readSettings(settingsPath);
   if (!settings) return { removed: 0 };
   const groups = sessionEndGroups(settings, settingsPath);

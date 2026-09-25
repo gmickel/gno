@@ -502,11 +502,13 @@ export const SESSIONS_HOOKS_ENV = "GNO_SESSIONS_HOOKS";
 const HOOK_PAYLOAD_MAX_BYTES = 64 * 1024;
 
 /** Read the small JSON event a host hook writes on stdin (bounded). */
-async function readHookPayload(): Promise<unknown> {
-  if (process.stdin.isTTY) return null;
+export async function readHookPayload(
+  stream?: ReadableStream<Uint8Array>
+): Promise<unknown> {
+  if (!stream && process.stdin.isTTY) return null;
   const chunks: Uint8Array[] = [];
   let size = 0;
-  const reader = Bun.stdin.stream().getReader();
+  const reader = (stream ?? Bun.stdin.stream()).getReader();
   const read = (async () => {
     for (;;) {
       const { done, value } = await reader.read();
@@ -518,8 +520,14 @@ async function readHookPayload(): Promise<unknown> {
   })();
   const timer = Bun.sleep(HOOK_ADMISSION_DEADLINE_MS / 2).then(() => null);
   const complete = await Promise.race([read, timer]);
+  // A host that keeps stdin open must not cost the admission: cleanup
+  // failures are ignored.
   await reader.cancel().catch(() => undefined);
-  reader.releaseLock();
+  try {
+    reader.releaseLock();
+  } catch {
+    // Still locked by the abandoned read; the process exits right after.
+  }
   if (complete === false) return "oversized";
   if (complete === null || size === 0) return null;
   try {

@@ -7,7 +7,15 @@
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 // node:fs/promises for temp fixtures (no Bun equivalent for cp/mkdir/readdir/rename)
-import { chmod, cp, mkdir, readdir, rename } from "node:fs/promises";
+import {
+  chmod,
+  cp,
+  mkdir,
+  readdir,
+  realpath,
+  rename,
+  symlink,
+} from "node:fs/promises";
 // node:path has no Bun path utilities
 import { join, relative } from "node:path";
 
@@ -15,6 +23,7 @@ import type { SessionTriggerKind } from "../../src/sessions/types";
 
 import {
   formatAutomationPreview,
+  readHookPayload,
   runSessionsHook,
 } from "../../src/cli/commands/sessions";
 import { initStore } from "../../src/cli/commands/shared";
@@ -55,7 +64,9 @@ import {
 } from "../../src/sessions/automation-state";
 import {
   buildClaudeHookCommand,
+  inspectClaudeHook,
   installClaudeHook,
+  removeClaudeHook,
 } from "../../src/sessions/claude-hook";
 import {
   formatAutomationRunText,
@@ -323,7 +334,9 @@ describe("Claude Code hook entry ownership (R5)", () => {
     const commands = installed.hooks.SessionEnd.flatMap((group) =>
       group.hooks.map((item) => item.command)
     );
-    const mine = buildClaudeHookCommand({ ...other, profileId: "main" });
+    // Entries carry the canonical config path (macOS: /var -> /private/var).
+    const canonical = { ...other, configPath: await realpath(configPath) };
+    const mine = buildClaudeHookCommand({ ...canonical, profileId: "main" });
     expect(commands.filter((command) => command === mine)).toHaveLength(1);
     expect(commands).toContain(FOREIGN_HOOK.command);
     expect(installed.model).toBe("x");
@@ -334,7 +347,10 @@ describe("Claude Code hook entry ownership (R5)", () => {
     const left = after.hooks.SessionEnd.flatMap((group) =>
       group.hooks.map((item) => item.command)
     );
-    expect(left).toEqual([FOREIGN_HOOK.command, buildClaudeHookCommand(other)]);
+    expect(left).toEqual([
+      FOREIGN_HOOK.command,
+      buildClaudeHookCommand(canonical),
+    ]);
     expect(await Bun.file(`${settingsPath}.bak`).exists()).toBe(true);
   });
 });
@@ -1267,5 +1283,68 @@ describe("index contention is a busy run", () => {
     expect(output).toContain("SESSIONS_BUSY");
     expect(output).not.toContain("database is locked");
     expect((await profileRun())?.lastRun?.reason).toBe("busy");
+  });
+});
+
+describe("PR review regressions", () => {
+  test("hook ownership matches a symlinked config path to its canonical path", async () => {
+    const linked = join(root, "linked");
+    await symlink(root, linked);
+    const viaLink = {
+      configPath: join(linked, "archive.yml"),
+      indexName: INDEX,
+      profileId: "main",
+    };
+    const direct = { ...viaLink, configPath: configPath };
+    await installClaudeHook(settingsPath, viaLink);
+    expect(await inspectClaudeHook(settingsPath, direct)).toBe(true);
+    expect((await removeClaudeHook(settingsPath, direct)).removed).toBe(1);
+    expect(await inspectClaudeHook(settingsPath, viaLink)).toBe(false);
+  });
+
+  test("a host that keeps stdin open still gets its hook admitted", async () => {
+    const neverEnds = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"hook_event_name":'));
+      },
+    });
+    const started = performance.now();
+    await expect(readHookPayload(neverEnds)).resolves.toBeNull();
+    expect(performance.now() - started).toBeLessThan(1500);
+    const silent = new ReadableStream<Uint8Array>({ start() {} });
+    await expect(readHookPayload(silent)).resolves.toBeNull();
+    // A reader whose lock release throws after cancel must not abort admission.
+    const stubborn = {
+      getReader: () => ({
+        read: () => new Promise<never>(() => undefined),
+        cancel: async () => undefined,
+        releaseLock: () => {
+          throw new TypeError("pending read");
+        },
+      }),
+    } as unknown as ReadableStream<Uint8Array>;
+    await expect(readHookPayload(stubborn)).resolves.toBeNull();
+  });
+
+  test("enable installs nothing while another state change holds the marker lock", async () => {
+    const lock = await acquireSqliteWriteLock(
+      join(archiveRoot, ".gno-sessions", "automation.lock"),
+      1000
+    );
+    await mkdir(join(archiveRoot, ".gno-sessions"), { recursive: true });
+    const enabling = enableAutomation(ctx(), "main", {
+      hook: { harness: "claude-code", settings: settingsPath },
+    }).catch((error: unknown) => error);
+    await Bun.sleep(300);
+    const during = (await Bun.file(settingsPath).json()) as {
+      hooks: { SessionEnd: Array<{ hooks: Array<{ command: string }> }> };
+    };
+    const commands = during.hooks.SessionEnd.flatMap((group) =>
+      group.hooks.map((item) => item.command)
+    );
+    await lock?.release();
+    expect(commands).toEqual([FOREIGN_HOOK.command]);
+    const done = await enabling;
+    expect(done).toMatchObject({ hook: { enabled: true, installed: true } });
   });
 });

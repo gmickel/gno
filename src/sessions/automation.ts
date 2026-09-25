@@ -523,36 +523,39 @@ export async function enableAutomation(
     cadence = validCadence(requested);
   }
   await ensureStateDir(sessions.archiveRoot);
-  if (settings) {
-    const identity = await hookIdentity(ctx, id);
-    const previous = profile.hook?.settings;
-    if (previous && resolve(previous) !== settings) {
-      // Moving to another settings file: remove the old owned entry first
-      // (fails closed), so no untracked integration keeps firing.
-      await removeClaudeHook(previous, identity);
-    }
-    // Install before recording: a settings file that cannot be edited
-    // leaves the profile unchanged.
-    await installClaudeHook(settings, identity);
-  }
-  await editProfile(ctx, id, (existing) => {
-    if (!existing) throw unknownProfile(id);
-    return {
-      ...existing,
-      ...(settings
-        ? {
-            hook: {
-              harness: "claude-code" as const,
-              enabled: true,
-              settings,
-            },
-          }
-        : {}),
-      ...(cadence ? { schedule: { enabled: true, cadence } } : {}),
-    };
-  });
   const cadenceMs = cadence ? automationCadenceMs(cadence) : null;
-  await mutateAutomationState(sessions.archiveRoot, (state) => {
+  const identity = await hookIdentity(ctx, id);
+  // Install, record and state change under the marker lock that remove also
+  // holds, so a concurrent remove never leaves an owned entry behind.
+  await mutateAutomationState(sessions.archiveRoot, async (state) => {
+    const current = findProfile((await loadArchive(ctx)).sessions, id);
+    if (settings) {
+      const previous = current.hook?.settings;
+      if (previous && resolve(previous) !== settings) {
+        // Moving to another settings file: remove the old owned entry first
+        // (fails closed), so no untracked integration keeps firing.
+        await removeClaudeHook(previous, identity);
+      }
+      // Install before recording: a settings file that cannot be edited
+      // leaves the profile unchanged.
+      await installClaudeHook(settings, identity);
+    }
+    await editProfile(ctx, id, (existing) => {
+      if (!existing) throw unknownProfile(id);
+      return {
+        ...existing,
+        ...(settings
+          ? {
+              hook: {
+                harness: "claude-code" as const,
+                enabled: true,
+                settings,
+              },
+            }
+          : {}),
+        ...(cadence ? { schedule: { enabled: true, cadence } } : {}),
+      };
+    });
     // Enabling is an owner action: it clears a block awaiting correction.
     const existing = ownProfile(state, id);
     if (existing) unblock(existing);
