@@ -665,6 +665,12 @@ For the default index that is
 `~/Library/Application Support/gno/data/write-receipts/index-default.sqlite`
 on macOS, and `%LOCALAPPDATA%\gno\data\write-receipts\index-default.sqlite`
 on Windows. On POSIX the directory is created `0700` and the file `0600`.
+On Windows the directory is restricted to the current user and checked with
+built-in Windows PowerShell. The first write with a request ID runs that check
+and records it in `write-receipts/.owner-only-verified`; later writes skip it
+until the directory is replaced or its permissions change, and then check
+again. A directory another account can access is refused before anything is
+written.
 
 GNO never removes the ledger: index maintenance and `gno reset` keep it.
 Include it when you back up private GNO state. Retention, the row cap, and what

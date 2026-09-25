@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Windows: writes with a request ID (`gno capture --request-id`, `gno remember --request-id`, and the MCP, REST, and SDK equivalents) no longer start PowerShell on every call to check the private ledger directory's permissions. The check runs once and is recorded, and later calls skip it while the directory and its permissions are unchanged. A replaced directory or a permissions change triggers the full check again, and a directory another account can access is still refused before anything is written.
+
 ## [2.7.0] - 2026-09-25
 
 ### Changed
