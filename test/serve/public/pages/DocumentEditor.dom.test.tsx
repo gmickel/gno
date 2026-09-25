@@ -315,6 +315,26 @@ describe("DocumentEditor saves", () => {
     }
   );
 
+  test("Retry save saves the draft as edited while the retry was pending", async () => {
+    const { editor } = await lostSaveThenEvent();
+    fireEvent.change(editor, { target: { value: "v2" } });
+    let answer = () => undefined as void;
+    putResponses.push(
+      () =>
+        new Promise((resolve) => {
+          answer = () => resolve(replayedSave("hash-v1")() as never);
+        }) as never
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Retry save" }));
+    await waitFor(() => expect(puts()).toHaveLength(2));
+    fireEvent.change(editor, { target: { value: DOC.content } });
+    diskHash = "hash-v1";
+    answer();
+
+    await waitFor(() => expect(puts()).toHaveLength(3));
+    expect(puts()[2]).toMatchObject({ content: DOC.content });
+  });
+
   test("a lost save keeps an existing outside-change warning", async () => {
     putResponses.push(
       () =>

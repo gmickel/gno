@@ -326,9 +326,13 @@ export default function DocumentEditor({ navigate }: PageProps) {
   // read the current revision and last committed content from refs.
   const docRef = useRef(doc);
   const committedContentRef = useRef(originalContent);
+  const draftRef = useRef(content);
   useEffect(() => {
     docRef.current = doc;
   }, [doc]);
+  useEffect(() => {
+    draftRef.current = content;
+  }, [content]);
   // One request ID per (document revision, content) save intent: retrying a
   // save whose response was lost replays it instead of reporting a conflict.
   const saveIntentRef = useRef<RequestIntent | null>(null);
@@ -627,15 +631,15 @@ export default function DocumentEditor({ navigate }: PageProps) {
 
   // Retry the unconfirmed save itself (same content, same request ID), even
   // when the draft has since changed or returned to the loaded text; once it
-  // is confirmed, the current draft is saved on top of it.
+  // is confirmed, the draft as it is then is saved on top of it.
   const retryUnconfirmedSave = useCallback(async () => {
     const pending = unknownSaveRef.current;
     if (pending === null) return;
     cancelAutosave();
-    if ((await persistContent(pending)) && content !== pending) {
-      await persistContent(content);
+    if (await persistContent(pending)) {
+      await persistContent(draftRef.current);
     }
-  }, [cancelAutosave, content, persistContent]);
+  }, [cancelAutosave, persistContent]);
 
   const loadDocument = useCallback(() => {
     const uri = currentTarget.uri;
