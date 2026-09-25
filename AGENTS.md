@@ -236,12 +236,12 @@ Capture settings:
 After adding new features or changing CLI/MCP behavior, re-run the autoresearch eval to check if the skill needs updating.
 
 **Experiment repo**: `github.com/gmickel/autoresearch-experiments` (private), dir `gno-skill/`
-**Local copy**: `~/repos/autoresearch-gno-skill/`
+**Local copy**: `~/repos/autoresearch-experiments/gno-skill/`
 
 **Workflow**:
 
 1. Add new feature to gno
-2. Run eval: `cd ~/repos/autoresearch-gno-skill && uv run eval.py > run.log 2>&1`
+2. Run eval: `cd ~/repos/autoresearch-experiments/gno-skill && uv run eval.py > run.log 2>&1`
 3. If score < 100%: update `skill.md` in the experiment, iterate until passing
 4. Copy winning skill back: `cp skill.md ~/work/gno/assets/skill/SKILL.md`
 5. Reinstall: `gno skill install --scope user --force --target all`
