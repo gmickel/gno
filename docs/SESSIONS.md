@@ -445,11 +445,11 @@ gno --config ~/gno-sessions/archive.yml --index sessions sessions source remove 
   them all; `complete`, `incomplete`, and `failed` give the outcome of each
   one's last import (`failed` includes unsupported units), and units never
   imported are in none of the three. `pending` is not a separate outcome: it
-  counts the units the next import would read, meaning those never imported,
-  every `incomplete` and `failed` unit, and `complete` units whose file
-  changed or whose destination collection changed since their import. So
-  `pending` overlaps the other counts, and `pending` is `0` when the archive
-  is fully up to date.
+  counts units never imported, every `incomplete` and `failed` unit, and
+  `complete` units whose file or destination collection changed since their
+  import. So `pending` overlaps the other counts. An import can also re-read
+  `complete` units that `pending` does not count, after an upgrade changes
+  the session parser, the archive format, or the redaction rules.
 - Deleting or rotating a source file never deletes its archive. `status`
   counts such units under `sourceUnavailable`.
 - `prune` previews the archive files whose source is gone. It needs a

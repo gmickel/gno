@@ -186,11 +186,14 @@ function instanceIdentity(ctxHolder: ContextHolder): {
 }
 
 /** Refuse an archive config opened against a different index (and vice versa). */
-async function assertInstanceBinding(ctxHolder: ContextHolder): Promise<void> {
+async function assertInstanceBinding(
+  ctxHolder: ContextHolder,
+  config: Config = ctxHolder.config
+): Promise<void> {
   const { configPath, indexName } = instanceIdentity(ctxHolder);
-  if (!ctxHolder.config.sessions) return;
+  if (!config.sessions) return;
   await assertSessionBinding({
-    config: ctxHolder.config,
+    config,
     configPath,
     indexName,
     dbPath: getIndexDbPath(indexName),
@@ -246,7 +249,11 @@ async function adoptConfig(
   ctxHolder.markIndexMutation?.();
 }
 
-/** Read this instance's config file; unreadable is an error, never stale. */
+/**
+ * Read this instance's config file, binding checked: unreadable is an error,
+ * never served stale, and a config rebound to another index is refused
+ * before it can touch this one.
+ */
 async function readConfigFile(ctxHolder: ContextHolder): Promise<Config> {
   const loaded = await loadConfig(instanceIdentity(ctxHolder).configPath);
   if (!loaded.ok) {
@@ -255,34 +262,40 @@ async function readConfigFile(ctxHolder: ContextHolder): Promise<Config> {
       "The server could not read its config file; fix the file (gno doctor shows the error) and reload."
     );
   }
+  await assertInstanceBinding(ctxHolder, loaded.value);
   return loaded.value;
-}
-
-/**
- * Adopt the config file when it changed underneath the running server, for
- * example after `gno sessions source add/remove` on the same pair.
- */
-async function refreshServedConfig(
-  ctxHolder: ContextHolder,
-  store: SqliteAdapter
-): Promise<void> {
-  const config = await readConfigFile(ctxHolder);
-  if (!Bun.deepEquals(config, ctxHolder.config)) {
-    await adoptConfig(ctxHolder, store, config);
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Handlers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** GET /api/sessions/status */
-export async function handleSessionsStatus(
+/**
+ * Adopt the config file when it changed underneath the running server, for
+ * example after `gno sessions source add/remove` on the same pair. Runs
+ * before the status read is admitted: adopting new collections moves the
+ * authorization epoch, which would void a read already in flight. Returns an
+ * error response, or null when the served config is current.
+ */
+export async function refreshSessionsConfig(
   ctxHolder: ContextHolder,
   store: SqliteAdapter
+): Promise<Response | null> {
+  try {
+    const config = await readConfigFile(ctxHolder);
+    if (Bun.deepEquals(config, ctxHolder.config)) return null;
+    await adoptConfig(ctxHolder, store, config);
+    return null;
+  } catch (error) {
+    return sessionsErrorResponse(error);
+  }
+}
+
+/** GET /api/sessions/status */
+export async function handleSessionsStatus(
+  ctxHolder: ContextHolder
 ): Promise<Response> {
   try {
-    await refreshServedConfig(ctxHolder, store);
     const service = await archiveService(ctxHolder);
     return Response.json(await service.status());
   } catch (error) {
