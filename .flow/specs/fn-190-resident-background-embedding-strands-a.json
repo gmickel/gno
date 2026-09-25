@@ -8,12 +8,59 @@
   "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-190-resident-background-embedding-strands-a",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-190-resident-background-embedding-strands-a.1": 0
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "review_attempts": [
+    {
+      "artifact_sha256": "c3bc7ef6f2fb48651ecf173ee4dc4fd53d0600aceec2321e3ca6926a1be05ff1",
+      "backend": "codex",
+      "base_sha": "2cc3f52c0b72684d4fa840ea8ebea7b80aa032d8",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "d1a62b0890ca8805076104b8fb32253ce0e13232",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 1155,
+      "output_sha256": "3ab2039366bab11c34315b74eacfd88d58eec55bbcd71fe26e4d2ce1a795ca4c",
+      "reservation_id": "1455a03953894efe8f85e96499988064",
+      "round_consumed": true,
+      "scope": "impl:fn-190-resident-background-embedding-strands-a.1",
+      "superseded_by": null,
+      "task": "fn-190-resident-background-embedding-strands-a.1",
+      "timestamp": "2026-09-25T22:18:16.715797Z",
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "impl:fn-190-resident-background-embedding-strands-a.1": 1
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-190-resident-background-embedding-strands-a.1": 0
+  },
   "spec_path": ".flow/specs/fn-190-resident-background-embedding-strands-a.md",
   "status": "open",
   "title": "Resident background embedding strands a pending backlog",
@@ -28,5 +75,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T21:59:53.170341Z"
+  "updated_at": "2026-09-25T22:18:16.718776Z"
 }
