@@ -7,6 +7,7 @@
 
 import type { DocumentRow, StorePort, StoreResult } from "../../store/types";
 
+import { decorateUriForIndex } from "../../app/constants";
 import { initStore } from "./shared";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -145,7 +146,11 @@ export async function ls(
     // Apply offset and limit
     const offset = options.offset ?? 0;
     const limit = options.limit ?? 20;
-    const paged = allActive.slice(offset, offset + limit);
+    // Sorted on canonical URIs; the output URIs carry `?index=` like search.
+    const paged = allActive.slice(offset, offset + limit).map((doc) => ({
+      ...doc,
+      uri: decorateUriForIndex(doc.uri, options.indexName),
+    }));
 
     return {
       success: true,

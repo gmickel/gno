@@ -862,7 +862,7 @@ export async function startServer(
           GET: async (req: Request) =>
             withSecurityHeaders(
               await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleSessionsStatus(ctxHolder)
+                handleSessionsStatus(ctxHolder, store)
               ),
               isDev
             ),

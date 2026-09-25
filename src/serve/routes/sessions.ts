@@ -42,6 +42,7 @@ import {
   type SessionHarness,
   type SessionImportReceipt,
   remoteSafeSessionsError,
+  SessionsError,
   type SessionsErrorCode,
   SESSIONS_VALIDATION_CODES,
 } from "../../sessions/types";
@@ -245,15 +246,43 @@ async function adoptConfig(
   ctxHolder.markIndexMutation?.();
 }
 
+/** Read this instance's config file; unreadable is an error, never stale. */
+async function readConfigFile(ctxHolder: ContextHolder): Promise<Config> {
+  const loaded = await loadConfig(instanceIdentity(ctxHolder).configPath);
+  if (!loaded.ok) {
+    throw new SessionsError(
+      "SESSIONS_RUNTIME_FAILURE",
+      "The server could not read its config file; fix the file (gno doctor shows the error) and reload."
+    );
+  }
+  return loaded.value;
+}
+
+/**
+ * Adopt the config file when it changed underneath the running server, for
+ * example after `gno sessions source add/remove` on the same pair.
+ */
+async function refreshServedConfig(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter
+): Promise<void> {
+  const config = await readConfigFile(ctxHolder);
+  if (!Bun.deepEquals(config, ctxHolder.config)) {
+    await adoptConfig(ctxHolder, store, config);
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Handlers
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** GET /api/sessions/status */
 export async function handleSessionsStatus(
-  ctxHolder: ContextHolder
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter
 ): Promise<Response> {
   try {
+    await refreshServedConfig(ctxHolder, store);
     const service = await archiveService(ctxHolder);
     return Response.json(await service.status());
   } catch (error) {
@@ -427,7 +456,18 @@ export async function handleSessionsRemoveSource(
   try {
     const { configPath } = instanceIdentity(ctxHolder);
     await assertInstanceBinding(ctxHolder);
-    const config = await removeSessionSource({ configPath, id });
+    const config = await removeSessionSource({ configPath, id }).catch(
+      (error: unknown) => {
+        // Already unregistered (for example from the CLI): the goal holds.
+        if (
+          error instanceof SessionsError &&
+          error.code === "SESSIONS_UNKNOWN_SOURCE"
+        ) {
+          return readConfigFile(ctxHolder);
+        }
+        throw error;
+      }
+    );
     await adoptConfig(ctxHolder, store, config);
   } catch (error) {
     return sessionsErrorResponse(error);

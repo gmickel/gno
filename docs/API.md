@@ -2776,14 +2776,18 @@ POST /api/sessions/init
   where `projects` is `[{ "prefix": "/abs/dir", "collection": "name" }]`, and
   answers `{ "id": "codex", "registered": true }`. Registration never imports.
 - `DELETE /api/sessions/sources/:id` answers
-  `{ "id": "codex", "removed": true, "archiveRetained": true }`.
+  `{ "id": "codex", "removed": true, "archiveRetained": true }`, also when
+  the source is no longer registered (for example removed with the CLI).
 - `init` takes `{ "archive": "/abs/archive/root", "collection": "sessions-work" }`
   and binds this instance's own config/index pair. It answers
   `{ "schemaVersion": "1", "index", "collection", "archiveRoot", "created" }`.
   The default config file and the `default` index are refused.
 
 Registration and init persist the archive config and apply it to the running
-server (collections, watcher, egress policy) without a restart.
+server (collections, watcher, egress policy) without a restart. `status` also
+applies changes the CLI made to the config file (`gno sessions source
+add/remove`); a config file the server cannot read answers `500` with
+`SESSIONS_RUNTIME_FAILURE` rather than stale sources.
 
 #### Automation
 

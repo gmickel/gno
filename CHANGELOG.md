@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Agent sessions: a running `gno serve` on a session archive picks up sources added or removed with `gno sessions source add/remove` without a restart, both on the Sessions page and in `/api/sessions/status`. Remove on the page succeeds for a source the CLI already removed, and a config file the server cannot read is reported instead of serving stale sources.
+- Agent sessions: pressing Enter on "Discover local sources" moves keyboard focus to the discovery results instead of dropping it.
+- URIs from a named index now carry `?index=` in `gno ls --json` and in `gno ask --json` `meta.answerContext`, like the other JSON outputs, so they read back from the right index with `gno get`.
+- The session archive guide explains how the `pending` unit count relates to the other unit counts in `gno sessions status`.
+
 ## [2.7.0] - 2026-09-25
 
 ### Changed

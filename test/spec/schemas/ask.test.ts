@@ -1,5 +1,8 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 
+import type { AskResult } from "../../../src/pipeline/types";
+
+import { decorateAskUris } from "../../../src/cli/commands/ask";
 import { assertInvalid, assertValid, loadSchema } from "./validator";
 
 describe("ask schema", () => {
@@ -250,5 +253,57 @@ describe("ask schema", () => {
       };
       expect(assertInvalid(response, schema)).toBe(true);
     });
+  });
+
+  test("every document URI on a named index carries ?index=", () => {
+    const uri = "gno://work/doc.md";
+    const entry = {
+      docid: "#abc123",
+      uri,
+      score: 0.9,
+      queryTokenHits: 1,
+      facetHits: 0,
+      reason: "top",
+    };
+    const response: AskResult = {
+      query: "q",
+      mode: "bm25_only",
+      queryLanguage: "en",
+      answer: "A [1].",
+      citations: [{ docid: "#abc123", uri, startLine: 1, endLine: 2 }],
+      results: [
+        {
+          docid: "#abc123",
+          score: 0.9,
+          uri,
+          snippet: "A",
+          source: { relPath: "doc.md", mime: "text/markdown", ext: ".md" },
+        },
+      ],
+      meta: {
+        expanded: false,
+        reranked: false,
+        vectorsUsed: false,
+        answerGenerated: true,
+        answerContext: {
+          strategy: "adaptive_coverage_v1",
+          targetSources: 1,
+          facets: [],
+          selected: [entry],
+          dropped: [entry],
+        },
+      },
+    };
+    const decorated = decorateAskUris(response, "sessions");
+    expect(assertValid(decorated, schema)).toBe(true);
+    const context = decorated.meta.answerContext!;
+    expect(
+      [
+        ...decorated.results,
+        ...(decorated.citations ?? []),
+        ...context.selected,
+        ...context.dropped,
+      ].map((item) => item.uri)
+    ).toEqual(Array(4).fill(`${uri}?index=sessions`));
   });
 });

@@ -81,6 +81,36 @@ export type AskCommandResult =
     }
   | { success: false; error: string };
 
+/**
+ * Give every document URI `?index=` on a named index, like search and
+ * Capsule results: results, citations and the answer-context selection.
+ */
+export function decorateAskUris(
+  result: AskResult,
+  indexName: string | undefined
+): AskResult {
+  const decorate = <T extends { uri: string }>(item: T): T => ({
+    ...item,
+    uri: decorateUriForIndex(item.uri, indexName),
+  });
+  const answerContext = result.meta.answerContext;
+  return {
+    ...result,
+    results: result.results.map(decorate),
+    citations: result.citations?.map(decorate),
+    meta: answerContext
+      ? {
+          ...result.meta,
+          answerContext: {
+            ...answerContext,
+            selected: answerContext.selected.map(decorate),
+            dropped: answerContext.dropped.map(decorate),
+          },
+        }
+      : result.meta,
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Command Implementation
 // ─────────────────────────────────────────────────────────────────────────────
@@ -435,20 +465,9 @@ export async function ask(
         return { success: false, error: finalized.error.message };
       }
     }
-    // URIs carry `?index=` like search and Capsule results on a named index.
     return {
       success: true,
-      data: {
-        ...askResult,
-        results: askResult.results.map((result) => ({
-          ...result,
-          uri: decorateUriForIndex(result.uri, globals.index),
-        })),
-        citations: askResult.citations?.map((citation) => ({
-          ...citation,
-          uri: decorateUriForIndex(citation.uri, globals.index),
-        })),
-      },
+      data: decorateAskUris(askResult, globals.index),
       metadata: traceSession?.metadata(),
     };
   } catch (cause) {

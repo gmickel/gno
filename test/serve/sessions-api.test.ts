@@ -37,7 +37,11 @@ import {
 } from "../../src/serve/routes/sessions";
 import { startServer } from "../../src/serve/server";
 import { setAutomationProfile } from "../../src/sessions/automation";
-import { addSessionSource, initSessionArchive } from "../../src/sessions/setup";
+import {
+  addSessionSource,
+  initSessionArchive,
+  removeSessionSource,
+} from "../../src/sessions/setup";
 import { importLockPath } from "../../src/sessions/state";
 import { safeRm } from "../helpers/cleanup";
 import {
@@ -162,7 +166,7 @@ afterEach(async () => {
 
 describe("GET /api/sessions/status", () => {
   test("reports the bound archive without host paths", async () => {
-    const response = await handleSessionsStatus(ctxHolder);
+    const response = await handleSessionsStatus(ctxHolder, store);
     expect(response.status).toBe(200);
     const text = await response.text();
     expect(text).not.toContain(root);
@@ -179,12 +183,64 @@ describe("GET /api/sessions/status", () => {
 
   test("an instance without a sessions block is not configured", async () => {
     const curated = { ...ctxHolder.config, sessions: undefined } as Config;
-    ctxHolder.config = curated;
+    await saveConfigToPath(curated, configPath);
     await expectError(
-      await handleSessionsStatus(ctxHolder),
+      await handleSessionsStatus(ctxHolder, store),
       400,
       "SESSIONS_NOT_CONFIGURED"
     );
+  });
+
+  test("CLI source changes show without a restart and Remove still succeeds", async () => {
+    const sourceIds = async (): Promise<string[]> => {
+      const response = await handleSessionsStatus(ctxHolder, store);
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as {
+        sources: Array<{ id: string }>;
+      };
+      return body.sources.map((source) => source.id);
+    };
+    expect(await sourceIds()).toEqual(["codex-main"]);
+
+    // Same config file, changed by another process (the CLI).
+    await addSessionSource({
+      configPath,
+      id: "codex-two",
+      harness: "codex",
+      path: codexRoot,
+      collection: "second",
+    });
+    expect(await sourceIds()).toEqual(["codex-main", "codex-two"]);
+    const stored = await store.getCollections();
+    expect(stored.ok && stored.value.map((c) => c.name)).toContain("second");
+
+    // The page still lists codex-main after the CLI removed it.
+    await removeSessionSource({ configPath, id: "codex-main" });
+    const removed = await handleSessionsRemoveSource(
+      ctxHolder,
+      store,
+      "codex-main",
+      post("/api/sessions/sources/codex-main", undefined, "DELETE"),
+      { server: localServer }
+    );
+    expect(removed.status).toBe(200);
+    expect(await removed.json()).toEqual({
+      id: "codex-main",
+      removed: true,
+      archiveRetained: true,
+    });
+    expect(await sourceIds()).toEqual(["codex-two"]);
+  });
+
+  test("an unreadable config is reported, not served stale", async () => {
+    await Bun.write(configPath, "version: [not valid\n");
+    const body = await expectError(
+      await handleSessionsStatus(ctxHolder, store),
+      500,
+      "SESSIONS_RUNTIME_FAILURE"
+    );
+    expect(body.error.message).toContain("could not read its config file");
+    expect(body.error.message).not.toContain(root);
   });
 });
 
@@ -559,7 +615,7 @@ describe("owner-only routes", () => {
     });
     expect(ctxHolder.config.sessions?.index).toBe("fresh-sessions");
     expect(ctxHolder.config.collections.map((c) => c.name)).toEqual(["notes"]);
-    const status = await handleSessionsStatus(ctxHolder);
+    const status = await handleSessionsStatus(ctxHolder, store);
     expect(status.status).toBe(200);
 
     ctxHolder.actualConfigPath = getConfigPaths().configFile;
@@ -815,7 +871,7 @@ describe("automation routes", () => {
       400,
       "SESSIONS_INVALID_INPUT"
     );
-    const status = await handleSessionsStatus(ctxHolder);
+    const status = await handleSessionsStatus(ctxHolder, store);
     const current = await status.json();
     assertValid(current, await loadSchema("sessions-status"));
     expect(current.automation.profiles[0]).toMatchObject({
