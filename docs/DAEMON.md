@@ -386,7 +386,20 @@ Only the native process owned by the adapter is force-terminated. If the OS does
 not confirm exit within the final budget, shutdown reports the PID and failure;
 it does not report the child as absent. `--stop` gives the resident 12 seconds
 before its existing identity-checked parent SIGKILL fallback, allowing the
-resident's 11-second internal sequence to finish first.
+resident's 11-second internal sequence to finish first. The resident's own
+SQLite busy wait is capped at 500ms: a signal arriving while another process
+holds the database write lock is handled after at most that wait, so the stop
+still fits the grace instead of escalating to SIGKILL.
+
+Background writes (watcher syncs and each page of background embedding) take
+the shared `.mcp-write.lock` lease without waiting. While a CLI writer holds
+it, the resident defers that work and retries, so the CLI never meets a raw
+SQLite lock from resident work. A background embed pass that fails is retried
+with backoff (30s, 60s, 120s, 240s); after 5 failed passes in a row it parks,
+logging each step once. Parked chunks stay pending: fresh changes still get a
+pass and `gno embed` retries them explicitly. `--status` prints an `issue` line
+for a failing, parked, or overrunning pass, or for a resident that did not
+answer its status request.
 
 The finite policy requires a responsive parent event loop: synchronous JavaScript,
 SQLite or OS blocking cannot be preempted by a timer. Ordinary store calls cap

@@ -41,7 +41,11 @@ import {
   type GlobalOptions,
   parseGlobalOptions,
 } from "./context";
-import { DETACHED_CHILD_FLAG } from "./detach";
+import {
+  DETACHED_CHILD_FLAG,
+  formatBackgroundIssue,
+  residentIssues,
+} from "./detach";
 import { CliError } from "./errors";
 import {
   assertFormatSupported,
@@ -5017,6 +5021,9 @@ async function runDaemonStatus(deps: DaemonStatusDeps): Promise<void> {
     } else {
       process.stdout.write(` (${status.log_size_bytes} bytes)\n`);
     }
+    for (const issue of residentIssues(status)) {
+      process.stdout.write(`  issue    ${formatBackgroundIssue(issue)}\n`);
+    }
     if (findings) {
       process.stdout.write(
         `  findings ${formatFindingsRunStatusLine(findings)}\n`
@@ -5371,6 +5378,9 @@ async function runServeStatus(deps: ServeStatusDeps): Promise<void> {
       process.stdout.write(" (missing)\n");
     } else {
       process.stdout.write(` (${status.log_size_bytes} bytes)\n`);
+    }
+    for (const issue of residentIssues(status)) {
+      process.stdout.write(`  issue    ${formatBackgroundIssue(issue)}\n`);
     }
 
     if (foreign) {

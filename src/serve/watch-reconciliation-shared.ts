@@ -45,6 +45,9 @@ export const WATCHER_MAX_SUPPRESSION_ENTRIES = 4_096;
 /** Bounded retry delay after failed classification/sync. */
 export const WATCHER_RETRY_BACKOFF_MS = 500;
 
+/** Retry delay while another writer holds the shared writer lease. */
+export const WATCHER_LEASE_RETRY_MS = 5_000;
+
 /**
  * Single fixed budget for fallback classification across visited directories,
  * candidates, removals, dirty dirs, and aggregate store rows.

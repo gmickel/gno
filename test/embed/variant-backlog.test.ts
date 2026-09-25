@@ -101,6 +101,31 @@ test.each([
   }
 );
 
+test("variant pass writes pages and activation in write turns and defers while held", async () => {
+  const { store, deps } = await variantFixture(["One", "Two", "Three"]);
+  const turns: string[] = [];
+  expect(
+    await embedBacklog({ ...deps, acquireWriteTurn: async () => null })
+  ).toMatchObject({ ok: true, value: { embedded: 0, deferred: true } });
+  expect(store.pending()).toHaveLength(3);
+  expect(store.hasActivated()).toBe(false);
+
+  expect(
+    await embedBacklog({
+      ...deps,
+      acquireWriteTurn: async () => {
+        turns.push(`acquire:${store.pending().length}`);
+        return async () => {
+          turns.push(`release:${store.pending().length}`);
+        };
+      },
+    })
+  ).toMatchObject({ ok: true, value: { embedded: 3 } });
+  // The page's writes land inside its turn; activation takes its own turn.
+  expect(turns).toEqual(["acquire:3", "release:0", "acquire:0", "release:0"]);
+  expect(store.hasActivated()).toBe(true);
+});
+
 test.each(["title", "content", "delete", "model"])(
   "discards concurrent %s completion and preserves successful current owners",
   async (mutation) => {

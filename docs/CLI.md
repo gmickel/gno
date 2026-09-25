@@ -1287,9 +1287,11 @@ use (`.mcp-write.lock` next to the database); `capture` takes the same lock
 internally. Readers (`search`,
 `query`, `get`) always proceed. `--no-wait` opts out. External serialising
 wrappers are no longer required for CLI-vs-CLI and CLI-vs-MCP overlap. A
-resident watch or embed flush can still briefly contend at the SQLite level;
-that window is absorbed by `busy_timeout` and retry, and a deferred chunk is
-reported as contention, never as an embedding failure.
+resident (`gno serve` / `gno daemon`) takes the same lease, without waiting, for
+each watcher sync and each page of background embedding. When a CLI writer holds
+it, the resident defers that work and retries later, so a CLI writer waiting on
+a busy resident reports the lease `BUSY` outcome (exit 4), not a raw SQLite
+`database is locked` error.
 
 **Incremental**: Both `gno index` and `gno update` are incremental. Files are tracked by SHA-256 hash. Only new or modified files are processed. Unchanged files are skipped instantly.
 

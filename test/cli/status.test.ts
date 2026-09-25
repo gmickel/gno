@@ -93,6 +93,7 @@ function statusResult(): StatusResult {
       malformed: 0,
       collections: [],
     },
+    backgroundIssues: [],
   };
 }
 

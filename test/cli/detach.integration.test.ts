@@ -18,6 +18,7 @@
  * detached process onto the developer machine.
  */
 
+import { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { closeSync, openSync, utimesSync } from "node:fs";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
@@ -27,6 +28,7 @@ import { fileURLToPath } from "node:url";
 
 import { VERSION } from "../../src/app/constants";
 import { DETACHED_CHILD_FLAG } from "../../src/cli/detach";
+import { acquireCliWriteLease } from "../../src/core/write-lease";
 import { safeRm } from "../helpers/cleanup";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -276,6 +278,54 @@ async function readLiveArgv(pid: number): Promise<string[] | null> {
   }
 }
 
+/**
+ * Pids of `lockf`/`flock` owner-lock or lease helpers whose argv names a path
+ * under `root`. A detached resident spawns these; they must die with it.
+ */
+async function lockHelpersUnder(root: string): Promise<number[]> {
+  const proc = Bun.spawn({
+    cmd: ["ps", "-eo", "pid=,args="],
+    stdout: "pipe",
+    stderr: "ignore",
+  });
+  const out = await new Response(proc.stdout).text();
+  await proc.exited;
+  return out
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.includes(root) && /\b(lockf|flock)\b/.test(line))
+    .map((line) => Number.parseInt(line, 10))
+    .filter((pid) => Number.isInteger(pid) && pid > 0);
+}
+
+/** Hold the index's SQLite write lock from another process, outside the lease. */
+async function holdSqliteWriteLock(
+  dbPath: string
+): Promise<ReturnType<typeof Bun.spawn>> {
+  const holder = Bun.spawn({
+    cmd: [
+      "bun",
+      "-e",
+      `const { Database } = require("bun:sqlite");
+       const db = new Database(${JSON.stringify(dbPath)});
+       db.exec("PRAGMA busy_timeout = 5000");
+       db.exec("BEGIN IMMEDIATE");
+       console.log("HOLDING");
+       setInterval(() => {}, 1000);`,
+    ],
+    stdout: "pipe",
+    stderr: "inherit",
+  });
+  const reader = holder.stdout.getReader();
+  const first = await reader.read();
+  reader.releaseLock();
+  if (!new TextDecoder().decode(first.value).includes("HOLDING")) {
+    holder.kill("SIGKILL");
+    throw new Error("SQLite lock holder did not start");
+  }
+  return holder;
+}
+
 interface CollectionInit {
   /** Path under testDir that gets seeded with a one-file collection. */
   notesDir: string;
@@ -478,7 +528,17 @@ describe("detach integration (Unix)", () => {
       }
     }
 
+    // A lock helper outliving its resident is a leak this test caused:
+    // reap it, then fail the test that started it.
+    let helpers = await lockHelpersUnder(testDir);
+    const helperDeadline = Date.now() + 2_000;
+    while (helpers.length > 0 && Date.now() < helperDeadline) {
+      await Bun.sleep(50);
+      helpers = await lockHelpersUnder(testDir);
+    }
+    for (const pid of helpers) bestEffortKill(pid);
     await safeRm(testDir);
+    expect(helpers).toEqual([]);
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -1387,6 +1447,150 @@ describe("detach integration (Unix)", () => {
       expect(blocked.stderr).toMatch(/another serve start is in progress/);
     },
     SIGKILL_TEST_TIMEOUT_MS
+  );
+  // ───────────────────────────────────────────────────────────────────────────
+  // fn-180: resident background writes, bounded stop, and status under load
+  // ───────────────────────────────────────────────────────────────────────────
+  test.skipIf(IS_WIN)(
+    "resident watcher writes wait for the shared writer lease instead of racing a CLI writer",
+    async () => {
+      const { notesDir } = await initSampleCollection(testDir, env);
+      const spawned = await spawnServeDetached(testDir, env);
+      spawnedPids.add(spawned.pid);
+      await waitForHttpReady(requirePort(spawned));
+      const dbPath = join(testDir, "data", "index-default.sqlite");
+      const indexed = (relPath: string): boolean => {
+        const db = new Database(dbPath, { readonly: true });
+        try {
+          return (
+            db
+              .query(
+                "SELECT 1 FROM documents WHERE rel_path = ? AND active = 1"
+              )
+              .get(relPath) !== null
+          );
+        } finally {
+          db.close();
+        }
+      };
+      // Baseline: with the lease free, the watcher indexes a new file.
+      await writeFile(join(notesDir, "free.md"), "# Free\n\nlease free\n");
+      await waitFor(() => (indexed("free.md") ? true : null), {
+        timeoutMs: 10_000,
+        label: "watcher indexes free.md",
+      });
+
+      const lease = await acquireCliWriteLease({
+        dbPath,
+        waitMs: 0,
+        noWait: true,
+        command: "gno index (test)",
+      });
+      if (!lease.ok) throw new Error("test could not take the write lease");
+      try {
+        await writeFile(join(notesDir, "held.md"), "# Held\n\nlease held\n");
+        // Several watcher debounce and retry periods pass with no write.
+        await Bun.sleep(4_000);
+        expect(indexed("held.md")).toBe(false);
+      } finally {
+        await lease.release();
+      }
+      await waitFor(() => (indexed("held.md") ? true : null), {
+        timeoutMs: 15_000,
+        label: "watcher indexes held.md after the lease is released",
+      });
+    },
+    40_000
+  );
+
+  test.skipIf(IS_WIN)(
+    "SIGTERM stops a resident blocked by an unleased SQLite writer without SIGKILL",
+    async () => {
+      const { notesDir } = await initSampleCollection(testDir, env);
+      const spawned = await spawnServeDetached(testDir, env);
+      spawnedPids.add(spawned.pid);
+      await waitForHttpReady(requirePort(spawned));
+      const holder = await holdSqliteWriteLock(
+        join(testDir, "data", "index-default.sqlite")
+      );
+      try {
+        // The watcher's sync now waits on SQLite; before fn-180 each wait
+        // froze the resident's event loop for the full 60s busy timeout.
+        await writeFile(join(notesDir, "blocked.md"), "# Blocked\n");
+        await Bun.sleep(3_000);
+        const started = Date.now();
+        const stop = await runCli(
+          [
+            "serve",
+            "--stop",
+            "--pid-file",
+            spawned.pidFile,
+            "--log-file",
+            spawned.logFile,
+          ],
+          env,
+          { timeoutMs: 20_000 }
+        );
+        expect(stop.code).toBe(0);
+        expect(stop.stdout).toContain("SIGTERM");
+        expect(stop.stdout).not.toContain("SIGKILL");
+        expect(Date.now() - started).toBeLessThan(12_000);
+        await waitForExit(spawned.pid, 5_000);
+      } finally {
+        holder.kill("SIGKILL");
+        await holder.exited;
+      }
+    },
+    40_000
+  );
+
+  test.skipIf(IS_WIN)(
+    "gno status and serve --status report a hung resident within a bounded time",
+    async () => {
+      await initSampleCollection(testDir, env);
+      const spawned = await spawnServeDetached(testDir, env);
+      spawnedPids.add(spawned.pid);
+      await waitForHttpReady(requirePort(spawned));
+
+      const healthy = await runCli(["status", "--json"], env);
+      expect(healthy.code).toBe(0);
+      expect(JSON.parse(healthy.stdout).backgroundIssues).toBeUndefined();
+
+      process.kill(spawned.pid, "SIGSTOP");
+      try {
+        const started = Date.now();
+        const status = await runCli(["status", "--json"], env);
+        expect(Date.now() - started).toBeLessThan(8_000);
+        expect(status.code).toBe(0);
+        expect(JSON.parse(status.stdout).backgroundIssues).toEqual([
+          {
+            process: "serve",
+            pid: spawned.pid,
+            job: "resident",
+            state: "unresponsive",
+            consecutiveFailures: 0,
+            runningSeconds: null,
+          },
+        ]);
+        const serveStatus = await runCli(
+          [
+            "serve",
+            "--status",
+            "--pid-file",
+            spawned.pidFile,
+            "--log-file",
+            spawned.logFile,
+          ],
+          env
+        );
+        expect(serveStatus.stdout).toContain(
+          "issue    resident did not answer its status request"
+        );
+      } finally {
+        process.kill(spawned.pid, "SIGCONT");
+      }
+    },
+    40_000
   );
 });
 

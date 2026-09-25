@@ -8,6 +8,7 @@ import {
 } from "../llm/inference-scope";
 import { err, ok } from "../store/types";
 import { getVectorStatsDatabase } from "../store/vector/stats";
+import { inWriteTurn } from "./backlog";
 import { variantBacklogPage } from "./variant-plan";
 import { embedVariantBatch } from "./variant-retry";
 
@@ -53,13 +54,17 @@ export async function embedVariantBacklog(
                 .get(owner.documentId, deps.collection!)
           )
         : pending;
-      let result = await embedVariantBatch({
-        store,
-        embedPort: deps.embedPort,
-        owners,
-        identityStillCurrent,
-        force: deps.force,
-      });
+      const turn = await inWriteTurn(deps.acquireWriteTurn, () =>
+        embedVariantBatch({
+          store,
+          embedPort: deps.embedPort,
+          owners,
+          identityStillCurrent,
+          force: deps.force,
+        })
+      );
+      if (turn.deferred) return ok({ ...total, deferred: true });
+      let result = turn.value;
       total.embedded += result.embedded;
       total.errors += result.errors;
       total.contentionErrors += result.contentionErrors;
@@ -83,16 +88,18 @@ export async function embedVariantBacklog(
     // Capture the epoch before checking completeness; activate rechecks under write lock.
     const epoch = store.epoch();
     if (identityStillCurrent() && !store.pending({ limit: 1 }).length) {
-      try {
-        if (!store.isActive()) store.syncIndex();
-        if (!identityStillCurrent()) return ok(total);
-        store.activate(epoch);
-      } catch (cause) {
-        return ok({
-          ...total,
-          syncError: cause instanceof Error ? cause.message : String(cause),
-        });
-      }
+      const turn = await inWriteTurn(deps.acquireWriteTurn, async () => {
+        try {
+          if (!store.isActive()) store.syncIndex();
+          if (identityStillCurrent()) store.activate(epoch);
+          return undefined;
+        } catch (cause) {
+          return cause instanceof Error ? cause.message : String(cause);
+        }
+      });
+      if (turn.deferred) return ok({ ...total, deferred: true });
+      if (turn.value !== undefined)
+        return ok({ ...total, syncError: turn.value });
     }
     assertInferenceActive();
     return ok(total);

@@ -410,4 +410,49 @@ describe("embedBacklog", () => {
     expect(upserts).toHaveLength(1);
     expect(upserts[0]?.map((row) => row.seq)).toEqual([0]);
   });
+
+  test("background writes run inside a write turn and a held gate defers the pass", async () => {
+    const events: string[] = [];
+    const vectorIndex = createMockVectorIndex({ vecDirty: true });
+    vectorIndex.upsertVectors = mock(() => {
+      events.push("write");
+      return Promise.resolve({ ok: true as const, value: undefined });
+    }) as typeof vectorIndex.upsertVectors;
+    const backlog = [{ mirrorHash: "abc123", seq: 0, text: "content" }];
+
+    const held = await embedBacklog({
+      statsPort: createMockStatsPort(backlog),
+      embedPort: createMockEmbedPort(),
+      vectorIndex,
+      modelUri: "test-model",
+      acquireWriteTurn: async () => null,
+    });
+    expect(held).toMatchObject({ ok: true, value: { deferred: true } });
+    expect(events).toEqual([]);
+    expect(vectorIndex._syncCalled).toBe(false);
+
+    const gated = await embedBacklog({
+      statsPort: createMockStatsPort(backlog),
+      embedPort: createMockEmbedPort(),
+      vectorIndex,
+      modelUri: "test-model",
+      acquireWriteTurn: async () => {
+        events.push("acquire");
+        return async () => {
+          events.push("release");
+        };
+      },
+    });
+    expect(gated).toMatchObject({ ok: true, value: { embedded: 1 } });
+    expect(gated.ok && gated.value.deferred).toBeFalsy();
+    // One turn for the page, one for the vec index sync.
+    expect(events).toEqual([
+      "acquire",
+      "write",
+      "release",
+      "acquire",
+      "release",
+    ]);
+    expect(vectorIndex._syncCalled).toBe(true);
+  });
 });

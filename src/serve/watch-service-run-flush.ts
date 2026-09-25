@@ -14,6 +14,7 @@ import type { WatchQueueHost } from "./watch-service-events";
 import type { CollectionPending } from "./watch-service-state";
 import type { WatcherSnapshot, WatcherSnapshotFs } from "./watch-snapshot";
 
+import { WATCHER_LEASE_RETRY_MS } from "./watch-reconciliation-shared";
 import {
   requeueAfterFailure,
   requeueGenerationReconcile,
@@ -65,6 +66,11 @@ export interface RunFlushContext {
   snapshotFs?: WatcherSnapshotFs;
   /** Test seam: lower snapshot entry ceiling for overflow→full proofs. */
   snapshotEntryCeiling?: number;
+  /**
+   * Shared writer lease for this flush; null when another writer holds it,
+   * which leaves the work queued for the retry timer instead of waiting.
+   */
+  acquireWriteLease?: () => Promise<(() => Promise<void>) | null>;
 }
 
 /**
@@ -86,19 +92,44 @@ export async function runOwnedCollectionFlush(
     return;
   }
 
+  ctx.syncing.add(collectionName);
+  let releaseLease: (() => Promise<void>) | null = null;
+  if (ctx.acquireWriteLease) {
+    releaseLease = await ctx.acquireWriteLease();
+    if (!releaseLease || ctx.disposed()) {
+      ctx.syncing.delete(collectionName);
+      await releaseLease?.();
+      if (!ctx.disposed()) {
+        requeueAfterFailure(
+          ctx.queueHost,
+          collectionName,
+          [],
+          [],
+          undefined,
+          WATCHER_LEASE_RETRY_MS
+        );
+      }
+      return;
+    }
+  }
+
   const collection = ctx
     .collections()
     .find((entry) => entry.name === collectionName);
   if (!collection) {
+    await releaseLease?.();
+    ctx.syncing.delete(collectionName);
     ctx.pendingByCollection.delete(collectionName);
     ctx.flushDeadlineAt.delete(collectionName);
     return;
   }
 
-  const taken = takePending(pending);
+  // Events that arrived while the lease was being taken join this flush.
+  const taken = takePending(
+    ctx.pendingByCollection.get(collectionName) ?? pending
+  );
   ctx.pendingByCollection.set(collectionName, emptyPending());
   ctx.flushDeadlineAt.delete(collectionName);
-  ctx.syncing.add(collectionName);
 
   const ownerGeneration = ctx.collectionGenerations.get(collectionName) ?? 0;
   const ownerRoot = normalize(collection.path);
@@ -219,6 +250,8 @@ export async function runOwnedCollectionFlush(
       throw outcome.error;
     }
   } finally {
+    // Release before any follow-up flush below tries to take the lease again.
+    await releaseLease?.();
     ctx.syncing.delete(collectionName);
     ctx.clearLifecycleTombstones(collectionName);
     ctx.pruneSuppression();

@@ -4,13 +4,27 @@
  * @module test/serve/embed-scheduler
  */
 
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  mock,
+  spyOn,
+  test,
+} from "bun:test";
 
 import type { EmbeddingPort } from "../../src/llm/types";
 import type { VectorIndexPort } from "../../src/store/vector";
 
 import { isBackgroundInference } from "../../src/llm/inference-scope";
-import { createEmbedScheduler } from "../../src/serve/embed-scheduler";
+import {
+  createEmbedScheduler,
+  embedSchedulerIssues,
+  failedPassRetryDelayMs,
+  MAX_FAILED_PASSES,
+  PASS_OVERRUN_MS,
+} from "../../src/serve/embed-scheduler";
 
 // Mock database
 function createMockDb() {
@@ -376,5 +390,150 @@ describe("EmbedScheduler", () => {
     finishEmbed?.();
     await Promise.all([run, disposal]);
     expect(disposed).toBe(true);
+  });
+
+  test("failing passes back off, park after the cap, and log once per step", async () => {
+    const errors = spyOn(console, "error").mockImplementation(() => undefined);
+    let outcome: "throw" | "errors" | "ok" = "throw";
+    const scheduler = createEmbedScheduler({
+      db: createMockDb(),
+      getEmbedPort: () => createMockEmbedPort(),
+      getVectorIndex: () => createMockVectorIndex(),
+      getModelUri: () => "test-model",
+      embedBacklogFn: (async () => {
+        if (outcome === "throw")
+          throw new DOMException("Inference deadline exceeded", "TimeoutError");
+        return {
+          ok: true,
+          value: { embedded: 0, errors: outcome === "errors" ? 1 : 0 },
+        };
+      }) as never,
+    });
+    try {
+      // A thrown pass is a counted failure, never a dropped rejection.
+      expect(await scheduler.triggerNow()).toEqual({ embedded: 0, errors: 0 });
+      outcome = "errors";
+      for (let failures = 1; failures < MAX_FAILED_PASSES; failures += 1) {
+        const state = scheduler.getState();
+        expect(state).toMatchObject({
+          consecutiveFailures: failures,
+          parked: false,
+        });
+        const delay = (state.nextRunAt ?? 0) - Date.now();
+        expect(delay).toBeGreaterThan(failedPassRetryDelayMs(failures) - 1000);
+        expect(delay).toBeLessThanOrEqual(failedPassRetryDelayMs(failures));
+        await scheduler.triggerNow();
+      }
+      expect(scheduler.getState()).toMatchObject({
+        consecutiveFailures: MAX_FAILED_PASSES,
+        parked: true,
+      });
+      expect(scheduler.getState().nextRunAt).toBeUndefined();
+      expect(errors).toHaveBeenCalledTimes(MAX_FAILED_PASSES);
+      expect(String(errors.mock.calls[0]?.[0])).toContain(
+        "Inference deadline exceeded"
+      );
+
+      // Parked passes stay silent; fresh work still earns a pass.
+      await scheduler.triggerNow();
+      expect(errors).toHaveBeenCalledTimes(MAX_FAILED_PASSES);
+      scheduler.notifySyncComplete(["fresh"]);
+      expect(scheduler.getState().nextRunAt).toBeDefined();
+
+      outcome = "ok";
+      await scheduler.triggerNow();
+      expect(scheduler.getState()).toMatchObject({
+        consecutiveFailures: 0,
+        parked: false,
+      });
+    } finally {
+      errors.mockRestore();
+      await scheduler.dispose();
+    }
+  });
+
+  test("a pass deferred by a held write lease reschedules without counting a failure", async () => {
+    let leaseRequests = 0;
+    const scheduler = createEmbedScheduler({
+      db: createMockDb(),
+      getEmbedPort: () => createMockEmbedPort(),
+      getVectorIndex: () => createMockVectorIndex(),
+      getModelUri: () => "test-model",
+      acquireWriteLease: async () => {
+        leaseRequests += 1;
+        return null;
+      },
+      embedBacklogFn: (async (deps: {
+        acquireWriteTurn?: () => Promise<unknown>;
+      }) => {
+        const turn = await deps.acquireWriteTurn?.();
+        return {
+          ok: true,
+          value: { embedded: 0, errors: 0, deferred: turn === null },
+        };
+      }) as never,
+    });
+    await scheduler.triggerNow();
+    expect(leaseRequests).toBe(1);
+    expect(scheduler.getState()).toMatchObject({ consecutiveFailures: 0 });
+    expect(scheduler.getState().nextRunAt).toBeDefined();
+    await scheduler.dispose();
+  });
+
+  test("status issues stay empty while healthy and name failing, parked, or overrunning passes", () => {
+    const now = 10_000_000;
+    const healthy = {
+      pendingDocCount: 0,
+      running: false,
+      consecutiveFailures: 0,
+      parked: false,
+    };
+    expect(embedSchedulerIssues(healthy, now)).toEqual([]);
+    expect(
+      embedSchedulerIssues(
+        { ...healthy, running: true, runningSince: now - 1000 },
+        now
+      )
+    ).toEqual([]);
+    expect(
+      embedSchedulerIssues({ ...healthy, consecutiveFailures: 2 }, now)
+    ).toEqual([
+      {
+        job: "embed",
+        state: "failing",
+        consecutiveFailures: 2,
+        runningSeconds: null,
+      },
+    ]);
+    expect(
+      embedSchedulerIssues(
+        { ...healthy, consecutiveFailures: 5, parked: true },
+        now
+      )
+    ).toEqual([
+      {
+        job: "embed",
+        state: "parked",
+        consecutiveFailures: 5,
+        runningSeconds: null,
+      },
+    ]);
+    expect(
+      embedSchedulerIssues(
+        {
+          ...healthy,
+          running: true,
+          runningSince: now - PASS_OVERRUN_MS - 5000,
+        },
+        now
+      )
+    ).toEqual([
+      {
+        job: "embed",
+        state: "overrunning",
+        consecutiveFailures: 0,
+        runningSeconds: PASS_OVERRUN_MS / 1000 + 5,
+      },
+    ]);
   });
 });

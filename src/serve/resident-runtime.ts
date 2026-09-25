@@ -45,9 +45,11 @@ import { JobManager } from "../core/job-manager";
 import { recordContentMutation } from "../core/mutation-generations";
 import {
   shutdownDuration,
+  RESIDENT_BUSY_TIMEOUT_MS,
   SHUTDOWN_DRAIN_MS,
   SHUTDOWN_ABORT_MS,
 } from "../core/shutdown-budget";
+import { acquireCliWriteLease } from "../core/write-lease";
 import { defaultSyncService, withContentTypeRules } from "../ingestion";
 import { withOwnedInferenceScope } from "../llm/inference-scope";
 import { getActivePreset } from "../llm/registry";
@@ -60,7 +62,7 @@ import {
   disposeServerContext,
   type ServerContext,
 } from "./context";
-import { createEmbedScheduler } from "./embed-scheduler";
+import { createEmbedScheduler, embedSchedulerIssues } from "./embed-scheduler";
 import { FindingsScheduler, type FindingsPassResult } from "./findings-pass";
 import { AdmissionController, ReaderGate } from "./resident-admission";
 import { ResidentBackgroundWork } from "./resident-background-work";
@@ -189,9 +191,24 @@ export type ResidentRuntimeDeps = {
     eventBus?: DocumentEventBus | null;
     callbacks?: CollectionWatchCallbacks;
     syncOptions?: Parameters<typeof withContentTypeRules>[0];
+    acquireWriteLease?: () => Promise<(() => Promise<void>) | null>;
   }) => CollectionWatchService;
   modelManagerFactory?: (config: Config) => ModelManager;
 };
+
+/** No-wait shared writer lease for background writes; null when held elsewhere. */
+async function acquireBackgroundWriteLease(
+  dbPath: string,
+  command: string
+): Promise<(() => Promise<void>) | null> {
+  const lease = await acquireCliWriteLease({
+    dbPath,
+    waitMs: 0,
+    noWait: true,
+    command,
+  });
+  return lease.ok ? lease.release : null;
+}
 
 export async function startResidentRuntime(
   options: ResidentRuntimeOptions = {},
@@ -274,6 +291,11 @@ export async function startResidentRuntime(
   if (!syncCollections.ok) return failStartup(syncCollections.error.message);
   const syncContexts = await store.syncContexts(initialConfig.contexts ?? []);
   if (!syncContexts.ok) return failStartup(syncContexts.error.message);
+  // SQLite busy waits block this event loop; keep each one short enough that
+  // a stop signal is still handled within the stop grace.
+  store.setBusyTimeout?.(RESIDENT_BUSY_TIMEOUT_MS);
+  const leaseFor = (command: string) => () =>
+    acquireBackgroundWriteLease(dbPath, command);
 
   let ctx: ServerContext;
   try {
@@ -322,6 +344,7 @@ export async function startResidentRuntime(
     onEmbedded: () => {
       generations.index += 1;
     },
+    acquireWriteLease: leaseFor(`gno ${mode} (background embed)`),
   });
   ctxHolder.scheduler = scheduler;
   ctxHolder.current.scheduler = scheduler;
@@ -351,6 +374,7 @@ export async function startResidentRuntime(
       },
     },
     syncOptions: withContentTypeRules({}, initialConfig),
+    acquireWriteLease: leaseFor(`gno ${mode} (watch sync)`),
   });
   watchService.start();
   ctxHolder.watchService = watchService;
@@ -590,6 +614,7 @@ export async function startResidentRuntime(
           failed: jobs.recent.filter((job) => job.status === "failed").length,
         },
         generations: { ...generations },
+        backgroundIssues: embedSchedulerIssues(scheduler.getState()),
       });
     },
     setListenerPort(port) {

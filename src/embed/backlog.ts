@@ -47,6 +47,12 @@ export interface EmbedBacklogDeps {
   variantStore?: VectorVariantStore;
   /** Recheck the effective runtime identity after asynchronous inference. */
   identityStillCurrent?: () => boolean;
+  /**
+   * Write gate for callers that do not already hold the shared writer lease
+   * (the resident scheduler): taken around each page's writes and released
+   * after. null means another writer holds it; the pass stops as deferred.
+   */
+  acquireWriteTurn?: () => Promise<(() => Promise<void>) | null>;
 }
 
 export interface EmbedBacklogResult {
@@ -59,6 +65,23 @@ export interface EmbedBacklogResult {
   contentionErrors?: number;
   /** Error message if vec index sync failed (embeddings stored, but search may be stale) */
   syncError?: string;
+  /** The pass stopped early because another writer held the write gate. */
+  deferred?: boolean;
+}
+
+/** Run `write` inside one write turn, or report that the gate is held elsewhere. */
+export async function inWriteTurn<T>(
+  acquire: EmbedBacklogDeps["acquireWriteTurn"],
+  write: () => Promise<T>
+): Promise<{ deferred: true } | { deferred: false; value: T }> {
+  if (!acquire) return { deferred: false, value: await write() };
+  const release = await acquire();
+  if (!release) return { deferred: true };
+  try {
+    return { deferred: false, value: await write() };
+  } finally {
+    await release();
+  }
 }
 
 interface Cursor {
@@ -193,15 +216,20 @@ export async function embedBacklog(
       }
 
       const beforeEmbedded = embedded;
-      const batchStoreResult = await embedAndStoreBatch({
-        embedPort,
-        vectorIndex,
-        items: batch,
-        modelUri,
-        embedFingerprint,
-        identityStillCurrent: deps.identityStillCurrent,
-        statsPort,
-      });
+      const turn = await inWriteTurn(deps.acquireWriteTurn, () =>
+        embedAndStoreBatch({
+          embedPort,
+          vectorIndex,
+          items: batch,
+          modelUri,
+          embedFingerprint,
+          identityStillCurrent: deps.identityStillCurrent,
+          statsPort,
+        })
+      );
+      if (turn.deferred)
+        return ok({ embedded, errors, contentionErrors, deferred: true });
+      const batchStoreResult = turn.value;
       embedded += batchStoreResult.embedded;
       errors += batchStoreResult.errors;
       contentionErrors += batchStoreResult.contentionErrors;
@@ -225,7 +253,12 @@ export async function embedBacklog(
     // Sync vec index once at end if any vec0 writes failed
     let syncError: string | undefined;
     if (vectorIndex.vecDirty) {
-      const syncResult = await vectorIndex.syncVecIndex();
+      const turn = await inWriteTurn(deps.acquireWriteTurn, () =>
+        vectorIndex.syncVecIndex()
+      );
+      if (turn.deferred)
+        return ok({ embedded, errors, contentionErrors, deferred: true });
+      const syncResult = turn.value;
       if (syncResult.ok) {
         const { added, removed } = syncResult.value;
         if (added > 0 || removed > 0) {

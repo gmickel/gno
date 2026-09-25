@@ -108,6 +108,8 @@ interface CollectionWatchServiceOptions {
    * Production leaves this unset (uses WATCHER_SNAPSHOT_ENTRY_CEILING).
    */
   snapshotEntryCeiling?: number;
+  /** Shared writer lease taken (no wait) around each flush's writes. */
+  acquireWriteLease?: () => Promise<(() => Promise<void>) | null>;
 }
 
 export class CollectionWatchService {
@@ -146,6 +148,7 @@ export class CollectionWatchService {
     | undefined;
   readonly #snapshotFs: WatcherSnapshotFs | undefined;
   readonly #snapshotEntryCeiling: number | undefined;
+  readonly #acquireWriteLease: CollectionWatchServiceOptions["acquireWriteLease"];
   #nextCollectionGeneration = 0;
   #disposed = false;
   #lastEventAt: string | null = null;
@@ -169,6 +172,7 @@ export class CollectionWatchService {
     this.#buildSnapshot = options.buildSnapshot;
     this.#snapshotFs = options.snapshotFs;
     this.#snapshotEntryCeiling = options.snapshotEntryCeiling;
+    this.#acquireWriteLease = options.acquireWriteLease;
   }
 
   start(): void {
@@ -394,6 +398,7 @@ export class CollectionWatchService {
       },
       snapshotFs: this.#snapshotFs,
       snapshotEntryCeiling: this.#snapshotEntryCeiling,
+      acquireWriteLease: this.#acquireWriteLease,
     });
   }
 

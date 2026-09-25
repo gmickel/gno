@@ -1,6 +1,10 @@
 /** Safe, transport-neutral resident lifecycle status projection. */
 
-import type { ResidentStatus, RuntimeMode } from "./status-model";
+import type {
+  BackgroundIssue,
+  ResidentStatus,
+  RuntimeMode,
+} from "./status-model";
 
 const EMPTY_MODELS: ResidentStatus["models"] = {
   activeLeases: 0,
@@ -50,6 +54,7 @@ export interface ResidentStatusSnapshotInput {
   models: ResidentStatus["models"];
   jobs: ResidentStatus["jobs"];
   generations: ResidentStatus["generations"];
+  backgroundIssues?: BackgroundIssue[];
   now?: number;
 }
 
@@ -72,6 +77,13 @@ export function buildResidentStatusSnapshot(
     models: { ...input.models },
     jobs: { ...input.jobs },
     generations: { ...input.generations },
+    ...(input.backgroundIssues?.length
+      ? {
+          backgroundIssues: input.backgroundIssues.map((issue) => ({
+            ...issue,
+          })),
+        }
+      : {}),
   };
 }
 
