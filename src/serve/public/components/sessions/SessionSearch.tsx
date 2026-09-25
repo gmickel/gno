@@ -8,10 +8,10 @@ import {
 } from "../../../../sessions/types";
 import { apiFetch } from "../../hooks/use-api";
 import { buildDocDeepLink } from "../../lib/deep-links";
+import { renderSnippet } from "../../lib/snippet";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { renderSessionSnippet } from "./snippet";
 
 interface SessionSearchResult {
   docid: string;
@@ -274,7 +274,7 @@ export function SessionSearch({ collections, navigate }: SessionSearchProps) {
                   {result.title || result.uri}
                 </a>
                 <p className="line-clamp-3 break-words text-muted-foreground text-sm">
-                  {renderSessionSnippet(result.snippet)}
+                  {renderSnippet(result.snippet)}
                 </p>
               </li>
             );

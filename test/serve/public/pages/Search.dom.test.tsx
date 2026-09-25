@@ -183,6 +183,48 @@ describe("Search page DOM interactions", () => {
       );
     });
   });
+  test("result snippets render highlights as elements and drop Markdown escapes", async () => {
+    apiFetch.mockImplementation(async (...args: unknown[]) => {
+      if (args[0] === "/api/capabilities")
+        return apiOk({ bm25: true, vector: false, hybrid: false });
+      if (args[0] === "/api/collections") return apiOk([]);
+      if (args[0] === "/api/presets") return apiOk({ activePreset: "local" });
+      return apiOk({
+        results: [
+          {
+            docid: "doc-1",
+            uri: "gno://notes/alpha.md",
+            title: "Alpha",
+            snippet:
+              "The state.db\\# file stores <mark>escaped</mark>\\_underscore <img src=x onerror=alert(1)>",
+            score: 0.9,
+          },
+        ],
+        meta: { query: "escaped", mode: "search", totalResults: 1 },
+      });
+    });
+
+    const { default: Search } =
+      await import("../../../../src/serve/public/pages/Search");
+    const { container, user } = renderWithUser(
+      <Search navigate={() => undefined} />
+    );
+    await user.type(
+      await screen.findByPlaceholderText(/Search your documents/),
+      "escaped"
+    );
+    await user.click(screen.getByRole("button", { name: "Search" }));
+    await screen.findByText("Alpha");
+
+    expect(container.querySelector("mark")?.textContent).toBe("escaped");
+    const text = container.textContent ?? "";
+    expect(text).toContain("state.db# file stores escaped_underscore");
+    expect(text).not.toContain("<mark>");
+    // Untrusted snippet markup stays inert text.
+    expect(container.querySelector("img")).toBeNull();
+    expect(text).toContain("<img src=x onerror=alert(1)>");
+  });
+
   test("invalid typed filter blocks retrieval; correction sends typed predicate and shows coverage warning", async () => {
     apiFetch.mockImplementation(async (...args: unknown[]) => {
       if (args[0] === "/api/capabilities")
