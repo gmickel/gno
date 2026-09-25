@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 
+import { CLI_ERROR_CODES } from "../../../src/cli/errors";
 import { assertInvalid, assertValid, loadSchema } from "./validator";
 
 describe("error schema", () => {
@@ -7,6 +8,15 @@ describe("error schema", () => {
 
   beforeAll(async () => {
     schema = await loadSchema("error");
+  });
+
+  test("code enum lists exactly the CLI error model's codes", () => {
+    const codeSchema = (
+      schema as {
+        properties: { error: { properties: { code: { enum: string[] } } } };
+      }
+    ).properties.error.properties.code;
+    expect(codeSchema.enum.toSorted()).toEqual([...CLI_ERROR_CODES].toSorted());
   });
 
   describe("valid inputs", () => {
