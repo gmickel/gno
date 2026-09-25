@@ -451,6 +451,8 @@ pipeline itself changes.
 **Hosted website docs**: New features, CLI/MCP/API output changes, model behavior,
 and troubleshooting updates must also be reflected in `~/work/gno.sh` when they
 affect website docs, product pages, landing-page cards, install pages, comparisons, or FAQs.
+Write those pages for users: supported behavior, limits and actions, never test
+methodology, spec/PR ids, source paths or implementation internals.
 
 **Hosted website source/deploy**:
 

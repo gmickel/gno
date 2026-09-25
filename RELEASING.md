@@ -65,6 +65,10 @@ already did it. For each item check:
   belongs to, keep grids balanced, and add a section only when nothing fits.
   Every card links to the docs page or section it describes;
   `src/lib/landing-card-links.test.ts` fails on a missing link or anchor.
+- **Written for users:** public pages state supported versions, defaults,
+  commands, limits and what to do. Leave out how we tested (fixtures,
+  "verified on", eval scores), spec/PR/commit ids, source paths and
+  implementation internals; those belong in the changelog, specs or PRs.
 - **Counts and claims:** MCP tool counts, integration lists, comparison rows,
   FAQ answers, and `src/lib/public-truth-content.test.ts` pins match the
   release.
