@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-180-investigate-detached-serve-hot-loop-raw",
   "spec_path": ".flow/tasks/fn-180-investigate-detached-serve-hot-loop-raw.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Investigate detached serve hot loop, raw SQLite lock hold, and ignored SIGTERM",
   "updated_at": "2026-09-25T15:31:43.026910Z"
 }

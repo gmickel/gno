@@ -131,7 +131,7 @@
     "impl:fn-180-investigate-detached-serve-hot-loop-raw.1": 0
   },
   "spec_path": ".flow/specs/fn-180-investigate-detached-serve-hot-loop-raw.md",
-  "status": "open",
+  "status": "done",
   "title": "Investigate detached serve hot loop, raw SQLite lock hold, and ignored SIGTERM",
   "tracker": {
     "baseHashFlow": null,
@@ -144,5 +144,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T17:09:57.367987Z"
+  "updated_at": "2026-09-25T17:10:10.412080Z"
 }
