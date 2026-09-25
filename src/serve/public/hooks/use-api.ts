@@ -86,6 +86,8 @@ export async function apiFetch<T>(
   error: string | null;
   /** `error.details` of the JSON error envelope, when the server sent one. */
   details?: Record<string, unknown>;
+  /** No HTTP response arrived: a write's outcome is unknown. */
+  noResponse?: true;
 }> {
   try {
     const res = await fetch(endpoint, {
@@ -115,6 +117,7 @@ export async function apiFetch<T>(
     return {
       data: null,
       error: err instanceof Error ? err.message : "Network error",
+      noResponse: true,
     };
   }
 }

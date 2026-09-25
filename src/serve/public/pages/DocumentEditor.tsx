@@ -207,8 +207,12 @@ export default function DocumentEditor({ navigate }: PageProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [creatingCopy, setCreatingCopy] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
-  const [externalChangeNotice, setExternalChangeNotice] = useState<
-    string | null
+  /**
+   * `outside`: the file changed under the editor. `unconfirmed`: a save's
+   * response was lost, so a change on disk may be that save's own commit.
+   */
+  const [changeNotice, setChangeNotice] = useState<
+    "outside" | "unconfirmed" | null
   >(null);
   const [historyEntries, setHistoryEntries] = useState<LocalHistoryEntry[]>([]);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
@@ -328,6 +332,10 @@ export default function DocumentEditor({ navigate }: PageProps) {
   // One request ID per (document revision, content) save intent: retrying a
   // save whose response was lost replays it instead of reporting a conflict.
   const saveIntentRef = useRef<RequestIntent | null>(null);
+  // A save is in flight or its response was lost: its commit is unknown, so
+  // change events are held until a response says whose change they were.
+  const saveOutcomeUnknownRef = useRef(false);
+  const changedWhileUnknownRef = useRef(false);
 
   /** Save `contentToSave`; resolves true once it is committed on disk. */
   const persistContent = useCallback(
@@ -341,8 +349,13 @@ export default function DocumentEditor({ navigate }: PageProps) {
 
       setSaveStatus("saving");
       setSaveError(null);
+      saveOutcomeUnknownRef.current = true;
 
-      const { data, error: err } = await apiFetch<UpdateDocResponse>(
+      const {
+        data,
+        error: err,
+        noResponse,
+      } = await apiFetch<UpdateDocResponse>(
         `/api/docs/${encodeURIComponent(current.docid)}`,
         {
           method: "PUT",
@@ -363,23 +376,42 @@ export default function DocumentEditor({ navigate }: PageProps) {
       if (err) {
         setSaveStatus("error");
         setSaveError(err);
+        if (noResponse) {
+          setChangeNotice("unconfirmed");
+          return false;
+        }
+        // The server answered: this save did not commit, so a change seen
+        // meanwhile came from elsewhere.
+        saveOutcomeUnknownRef.current = false;
+        if (changedWhileUnknownRef.current) {
+          changedWhileUnknownRef.current = false;
+          setChangeNotice("outside");
+        } else {
+          setChangeNotice((notice) =>
+            notice === "unconfirmed" ? null : notice
+          );
+        }
         return false;
       }
 
+      saveOutcomeUnknownRef.current = false;
+      changedWhileUnknownRef.current = false;
       if (data?.request?.replayed) {
         // A replay reports an earlier commit; disk may have moved on since.
         // Clear the change notice only if the file still holds that commit.
         const { data: latest } = await apiFetch<DocData>(
           `/api/doc?uri=${encodeURIComponent(current.uri)}`
         );
-        if (latest?.source.sourceHash === data.version.sourceHash) {
-          setExternalChangeNotice(null);
-        }
+        setChangeNotice(
+          latest?.source.sourceHash === data.version.sourceHash
+            ? null
+            : "outside"
+        );
       } else {
         // Written now against the loaded revision: the next change event is
         // this save's own sync, and any earlier notice is stale.
         ignoreDocEventsUntilRef.current = Date.now() + 5_000;
-        setExternalChangeNotice(null);
+        setChangeNotice(null);
       }
       const previous = committedContentRef.current;
       if (previous !== contentToSave) {
@@ -637,16 +669,20 @@ export default function DocumentEditor({ navigate }: PageProps) {
       return;
     }
     handledDocEventRef.current = latestDocEvent.changedAt;
+    if (saveOutcomeUnknownRef.current) {
+      changedWhileUnknownRef.current = true;
+      return;
+    }
     if (Date.now() < ignoreDocEventsUntilRef.current) {
       return;
     }
-    setExternalChangeNotice(
-      "This document changed on disk. Reload before continuing."
-    );
+    setChangeNotice("outside");
   }, [doc, latestDocEvent?.changedAt, latestDocEvent?.uri]);
 
   const reloadDocument = useCallback(() => {
-    setExternalChangeNotice(null);
+    saveOutcomeUnknownRef.current = false;
+    changedWhileUnknownRef.current = false;
+    setChangeNotice(null);
     loadDocument();
   }, [loadDocument]);
 
@@ -1136,10 +1172,31 @@ export default function DocumentEditor({ navigate }: PageProps) {
         </p>
       )}
 
-      {externalChangeNotice && (
+      {changeNotice === "unconfirmed" && (
         <div className="border-amber-500/30 border-b bg-amber-500/10 px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-amber-500 text-sm">{externalChangeNotice}</p>
+            <p className="text-amber-500 text-sm">
+              The save may have completed, but its response was lost. Retry to
+              confirm it.
+            </p>
+            <Button
+              disabled={saveStatus === "saving"}
+              onClick={handleForceSave}
+              size="sm"
+              variant="outline"
+            >
+              Retry save
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {changeNotice === "outside" && (
+        <div className="border-amber-500/30 border-b bg-amber-500/10 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-amber-500 text-sm">
+              This document changed on disk. Reload before continuing.
+            </p>
             <Button onClick={reloadDocument} size="sm" variant="outline">
               Reload
             </Button>

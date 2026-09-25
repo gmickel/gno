@@ -158,8 +158,26 @@ describe("DocumentEditor saves", () => {
       request: { replayed: true },
     });
 
-  async function lostSaveThenNotice() {
-    putResponses.push(() => apiError("Failed to fetch") as never);
+  const UNCONFIRMED = /save may have completed/u;
+  const OUTSIDE = /changed on disk/u;
+
+  async function changeEvent(rerender: ReturnType<typeof render>["rerender"]) {
+    docEvent = { uri: DOC.uri, changedAt: new Date().toISOString() };
+    const { default: DocumentEditor } =
+      await import("../../../../src/serve/public/pages/DocumentEditor");
+    rerender(<DocumentEditor navigate={() => undefined} />);
+  }
+
+  /** A save whose response is lost, then the change event of its own commit. */
+  async function lostSaveThenEvent() {
+    putResponses.push(
+      () =>
+        Promise.resolve({
+          data: null,
+          error: "Failed to fetch",
+          noResponse: true,
+        }) as never
+    );
     const { editor, rerender } = await openEditor();
     fireEvent.change(editor, { target: { value: "v1" } });
     ctrlS();
@@ -167,36 +185,58 @@ describe("DocumentEditor saves", () => {
     expect((await screen.findByRole("alert")).textContent).toBe(
       "Failed to fetch"
     );
-    docEvent = { uri: DOC.uri, changedAt: new Date().toISOString() };
-    const { default: DocumentEditor } =
-      await import("../../../../src/serve/public/pages/DocumentEditor");
-    rerender(<DocumentEditor navigate={() => undefined} />);
-    await screen.findByText(/changed on disk/u);
+    await screen.findByText(UNCONFIRMED);
+    await changeEvent(rerender);
   }
 
-  test("a replayed save clears the notice when disk still holds that commit", async () => {
-    await lostSaveThenNotice();
-    // The lost save's own sync caused the notice: disk holds its commit.
+  test("a lost save response offers retry instead of claiming an outside change", async () => {
+    await lostSaveThenEvent();
+
+    expect(screen.getByText(UNCONFIRMED)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Retry save" })).toBeTruthy();
+    expect(screen.queryByText(OUTSIDE)).toBeNull();
+  });
+
+  test("a change event with no save pending shows the reload banner", async () => {
+    const { rerender } = await openEditor();
+    await changeEvent(rerender);
+
+    await screen.findByText(OUTSIDE);
+    expect(screen.getByRole("button", { name: "Reload" })).toBeTruthy();
+  });
+
+  test("a replayed retry clears the notice when disk still holds that commit", async () => {
+    await lostSaveThenEvent();
     diskHash = "hash-v1";
     putResponses.push(replayedSave("hash-v1"));
-    ctrlS();
+    fireEvent.click(screen.getByRole("button", { name: "Retry save" }));
 
     await waitFor(() => expect(puts()).toHaveLength(2));
     const [lost, retry] = puts();
     expect(retry.requestId).toBe(lost.requestId);
-    await waitFor(() =>
-      expect(screen.queryByText(/changed on disk/u)).toBeNull()
-    );
+    await waitFor(() => expect(screen.queryByText(UNCONFIRMED)).toBeNull());
+    expect(screen.queryByText(OUTSIDE)).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  test("a replayed save keeps the notice when another writer changed disk since", async () => {
-    await lostSaveThenNotice();
+  test("a replayed retry shows the reload banner when another writer changed disk since", async () => {
+    await lostSaveThenEvent();
     diskHash = "hash-v2-from-someone-else";
     putResponses.push(replayedSave("hash-v1"));
     ctrlS();
 
-    await waitFor(() => expect(docLoads).toBe(2));
-    expect(screen.getByText(/changed on disk/u)).toBeTruthy();
+    await screen.findByText(OUTSIDE);
+    expect(screen.queryByText(UNCONFIRMED)).toBeNull();
+  });
+
+  test("a rejected retry attributes the held change to another writer", async () => {
+    await lostSaveThenEvent();
+    putResponses.push(
+      () => apiError("Document changed on disk. Reload before saving.") as never
+    );
+    ctrlS();
+
+    await screen.findByText(/Reload before continuing/u);
+    expect(screen.queryByText(UNCONFIRMED)).toBeNull();
   });
 });
