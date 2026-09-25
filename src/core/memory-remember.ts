@@ -56,6 +56,13 @@ import {
   MEMORY_SEMANTIC_LIKELY_THRESHOLD,
   MemoryError,
 } from "./memory-types";
+import {
+  isLeaseBusy,
+  RequestReceiptError,
+  requestDigest,
+  runRequestedWrite,
+  validateRequestId,
+} from "./request-receipts";
 
 export interface CandidateQuery {
   text: string;
@@ -249,6 +256,12 @@ async function supersedesEdgeProjected(
 // remember
 // ─────────────────────────────────────────────────────────────────────────────
 
+interface RememberPlan {
+  frontmatter: MemoryRecordFrontmatter;
+  supersedes: string[];
+  relPath: string;
+}
+
 export async function rememberFact(
   deps: MemoryServiceDeps,
   rawInput: RememberInput
@@ -270,14 +283,26 @@ export async function rememberFact(
       );
     }
   }
+  const requestId =
+    rawInput.requestId === undefined
+      ? undefined
+      : validateRequestId(rawInput.requestId);
+  if (requestId !== undefined && decision === undefined) {
+    throw new RequestReceiptError(
+      "REQUEST_ID_INVALID",
+      "requestId applies only to writes: pass decision add or supersede."
+    );
+  }
 
   const { candidates, matching } = await findMemoryCandidates(deps, {
     text,
     collection: collection.name,
     scopes,
   });
+  // With a request ID the exact-duplicate decision is made (and recorded)
+  // under the lease, so a later retry replays it instead of re-deciding.
   const exact = candidates.find((candidate) => candidate.match === "exact");
-  if (exact && decision !== "supersede") {
+  if (exact && decision !== "supersede" && requestId === undefined) {
     const { similarity: _similarity, match: _match, ...record } = exact;
     return { outcome: "existing", record, matching };
   }
@@ -285,135 +310,222 @@ export async function rememberFact(
     return { outcome: "candidates", candidates, matching };
   }
 
-  const createdAt = memoryNow(deps).toISOString();
   const source = rawInput.source?.trim() || undefined;
-  const frontmatter: MemoryRecordFrontmatter = {
-    recordId: buildMemoryRecordId({
-      contentHash,
-      createdAt,
+  const absPathOf = (plan: RememberPlan) => join(collection.path, plan.relPath);
+
+  /** Under the lease: decide against current state; never writes. */
+  const prepare = async (): Promise<
+    { plan: RememberPlan } | { result: RememberResult }
+  > => {
+    const supersedes: string[] = [];
+    if (decision === "supersede") {
+      supersedes.push(
+        await verifyPredecessor(
+          deps,
+          collection.name,
+          rawInput.predecessorUri as string,
+          rawInput.predecessorHash as string
+        )
+      );
+    } else {
+      // The pre-lease check raced with any concurrent writer; decide
+      // idempotency on the state visible under the lease.
+      const existing = await findExactCurrent(deps, {
+        text,
+        collection: collection.name,
+        scopes,
+        contentHash,
+      });
+      if (existing) {
+        return { result: { outcome: "existing", record: existing, matching } };
+      }
+    }
+    const createdAt = memoryNow(deps).toISOString();
+    const frontmatter: MemoryRecordFrontmatter = {
+      recordId: buildMemoryRecordId({
+        contentHash,
+        createdAt,
+        caller: identity.caller,
+        session: identity.session,
+      }),
+      scopes,
       caller: identity.caller,
       session: identity.session,
-    }),
-    scopes,
-    caller: identity.caller,
-    session: identity.session,
-    createdAt,
-    contentHash,
-    ...(source ? { source } : {}),
-  };
-  const relPath = buildMemoryRecordRelPath(frontmatter);
-  const absPath = join(collection.path, relPath);
-  const lockWaitMs = memoryLockWaitMs(deps);
-
-  let leased: RememberResult;
-  try {
-    leased = await withWriteLock(
-      deps.lockPath,
-      async () => {
-        const supersedes: string[] = [];
-        if (decision === "supersede") {
-          supersedes.push(
-            await verifyPredecessor(
-              deps,
-              collection.name,
-              rawInput.predecessorUri as string,
-              rawInput.predecessorHash as string
-            )
-          );
-        } else {
-          // The pre-lease check raced with any concurrent writer; decide
-          // idempotency on the state visible under the lease.
-          const existing = await findExactCurrent(deps, {
-            text,
-            collection: collection.name,
-            scopes,
-            contentHash,
-          });
-          if (existing) {
-            return { outcome: "existing", record: existing, matching };
-          }
-        }
-        await mkdir(dirname(absPath), { recursive: true });
-        await atomicCreate(
-          absPath,
-          serializeMemoryRecord({ frontmatter, supersedes, text })
-        );
-        // syncPaths (not syncFiles) so typed-edge projection errors surface.
-        const syncResult = await (
-          deps.syncService ?? defaultSyncService
-        ).syncPaths(
-          collection,
-          store,
-          [relPath],
-          withContentTypeRules({ runUpdateCmd: false, gitPull: false }, config)
-        );
-        const fileResult = syncResult.files?.[0];
-        const doc = await store.getDocument(collection.name, relPath);
-        const sync: MemorySyncState =
-          fileResult?.status === "error" || !doc.ok || doc.value === null
-            ? {
-                status: "failed",
-                error:
-                  fileResult?.errorMessage ??
-                  fileResult?.errorCode ??
-                  "memory record was written but is not retrievable yet",
-              }
-            : { status: "completed" };
-        if (sync.status === "failed") {
-          throw new MemoryError(
-            "MEMORY_SYNC_FAILED",
-            `Memory record written to ${absPath} but lexical sync failed: ${sync.error}. Run gno update to retry indexing.`
-          );
-        }
-        const written = (doc as { value: DocumentRow }).value;
-        const projectionErrors = syncResult.errors
-          .map((error) => `${error.relPath}: ${error.message}`)
-          .join("; ");
-        if (decision === "supersede") {
-          // The write is only a supersession once the edge is projected;
-          // until then the predecessor still reads as current.
-          const projected =
-            projectionErrors.length === 0 &&
-            (await supersedesEdgeProjected(deps, written.id, supersedes));
-          if (!projected) {
-            throw new MemoryError(
-              "MEMORY_SUPERSEDE_PROJECTION_FAILED",
-              `Successor written to ${absPath} but its supersedes edge did not project${projectionErrors ? ` (${projectionErrors})` : ""}; the predecessor still reads as current. Run gno update to retry the projection.`
-            );
-          }
-        } else if (projectionErrors.length > 0) {
-          throw new MemoryError(
-            "MEMORY_SYNC_FAILED",
-            `Memory record written to ${absPath} but typed-edge projection failed: ${projectionErrors}. Run gno update to retry indexing.`
-          );
-        }
-        const record: MemoryFact = {
-          uri: written.uri,
-          docid: written.docid,
-          recordId: frontmatter.recordId,
-          text,
-          scopes,
-          caller: identity.caller,
-          session: identity.session,
-          createdAt,
-          contentHash,
-          supersedes,
-          ...(source ? { source } : {}),
-        };
-        return {
-          outcome: decision === "supersede" ? "superseded" : "added",
-          record,
-          absPath,
-          sync,
-          matching,
-        };
+      createdAt,
+      contentHash,
+      ...(source ? { source } : {}),
+    };
+    return {
+      plan: {
+        frontmatter,
+        supersedes,
+        relPath: buildMemoryRecordRelPath(frontmatter),
       },
-      lockWaitMs
+    };
+  };
+  const serialize = (plan: RememberPlan): string =>
+    serializeMemoryRecord({
+      frontmatter: plan.frontmatter,
+      supersedes: plan.supersedes,
+      text,
+    });
+  const publish = async (plan: RememberPlan): Promise<void> => {
+    await mkdir(dirname(absPathOf(plan)), { recursive: true });
+    await atomicCreate(absPathOf(plan), serialize(plan));
+  };
+  /** Under the lease: lexical sync, projection check, result. */
+  const finish = async (plan: RememberPlan): Promise<RememberResult> => {
+    const { relPath, supersedes, frontmatter } = plan;
+    const absPath = absPathOf(plan);
+    // syncPaths (not syncFiles) so typed-edge projection errors surface.
+    const syncResult = await (deps.syncService ?? defaultSyncService).syncPaths(
+      collection,
+      store,
+      [relPath],
+      withContentTypeRules({ runUpdateCmd: false, gitPull: false }, config)
     );
+    const fileResult = syncResult.files?.[0];
+    const doc = await store.getDocument(collection.name, relPath);
+    const sync: MemorySyncState =
+      fileResult?.status === "error" || !doc.ok || doc.value === null
+        ? {
+            status: "failed",
+            error:
+              fileResult?.errorMessage ??
+              fileResult?.errorCode ??
+              "memory record was written but is not retrievable yet",
+          }
+        : { status: "completed" };
+    if (sync.status === "failed") {
+      throw new MemoryError(
+        "MEMORY_SYNC_FAILED",
+        `Memory record written to ${absPath} but lexical sync failed: ${sync.error}. Run gno update to retry indexing.`
+      );
+    }
+    const written = (doc as { value: DocumentRow }).value;
+    const projectionErrors = syncResult.errors
+      .map((error) => `${error.relPath}: ${error.message}`)
+      .join("; ");
+    if (decision === "supersede") {
+      // The write is only a supersession once the edge is projected;
+      // until then the predecessor still reads as current.
+      const projected =
+        projectionErrors.length === 0 &&
+        (await supersedesEdgeProjected(deps, written.id, supersedes));
+      if (!projected) {
+        throw new MemoryError(
+          "MEMORY_SUPERSEDE_PROJECTION_FAILED",
+          `Successor written to ${absPath} but its supersedes edge did not project${projectionErrors ? ` (${projectionErrors})` : ""}; the predecessor still reads as current. Run gno update to retry the projection.`
+        );
+      }
+    } else if (projectionErrors.length > 0) {
+      throw new MemoryError(
+        "MEMORY_SYNC_FAILED",
+        `Memory record written to ${absPath} but typed-edge projection failed: ${projectionErrors}. Run gno update to retry indexing.`
+      );
+    }
+    const record: MemoryFact = {
+      uri: written.uri,
+      docid: written.docid,
+      recordId: frontmatter.recordId,
+      text,
+      scopes: frontmatter.scopes,
+      caller: frontmatter.caller,
+      session: frontmatter.session,
+      createdAt: frontmatter.createdAt,
+      contentHash,
+      supersedes,
+      ...(frontmatter.source ? { source: frontmatter.source } : {}),
+    };
+    return {
+      outcome: decision === "supersede" ? "superseded" : "added",
+      record,
+      absPath,
+      sync,
+      matching,
+    };
+  };
+
+  const lockWaitMs = memoryLockWaitMs(deps);
+  try {
+    if (requestId === undefined) {
+      return await withWriteLock(
+        deps.lockPath,
+        async () => {
+          const prepared = await prepare();
+          if ("result" in prepared) return prepared.result;
+          await publish(prepared.plan);
+          return finish(prepared.plan);
+        },
+        lockWaitMs
+      );
+    }
+    if (!deps.requests) {
+      throw new RequestReceiptError(
+        "REQUEST_LEDGER_UNAVAILABLE",
+        "This memory service has no request ledger; retry without requestId."
+      );
+    }
+    const outcome = await runRequestedWrite<RememberPlan, RememberResult>({
+      ledgerPath: deps.requests.ledgerPath,
+      namespace: deps.requests.namespace,
+      requestId,
+      operation: "remember",
+      // Caller/session are provenance, not intent: a retry may reconnect
+      // under a new session and must still match.
+      digest: requestDigest("remember", {
+        collection: collection.name,
+        text,
+        scopes,
+        decision,
+        predecessorUri: rawInput.predecessorUri?.trim(),
+        predecessorHash: rawInput.predecessorHash,
+        source,
+      }),
+      lockPath: deps.lockPath,
+      lockWaitMs,
+      checkpoint: deps.requests.checkpoint,
+      prepare: async () => {
+        const prepared = await prepare();
+        if ("result" in prepared) return prepared;
+        return { plan: prepared.plan, publish: () => publish(prepared.plan) };
+      },
+      inspect: async (plan) => {
+        const file = Bun.file(absPathOf(plan));
+        if (!(await file.exists())) return "absent";
+        if ((await file.text()) !== serialize(plan)) return "unexpected";
+        // Another successor may have superseded the predecessor while this
+        // one sat unprojected: finishing would leave two successors.
+        const [predecessorUri] = plan.supersedes;
+        if (!predecessorUri) return "published";
+        const predecessor = await store.getDocumentByUri(predecessorUri);
+        if (!predecessor.ok || !predecessor.value) return "unexpected";
+        const successors = await store.getEdgeBacklinksForDoc(
+          predecessor.value.id,
+          { edgeType: MEMORY_SUPERSEDES_EDGE }
+        );
+        const ownUri = `gno://${collection.name}/${plan.relPath}`;
+        return successors.ok &&
+          successors.value.every((edge) => edge.sourceUri === ownUri)
+          ? "published"
+          : "unexpected";
+      },
+      finish,
+      resultRef: (result) =>
+        result.outcome === "candidates"
+          ? {}
+          : {
+              uri: result.record.uri,
+              docid: result.record.docid,
+              contentHash: result.record.contentHash,
+            },
+    });
+    return { ...outcome.result, request: outcome.request } as RememberResult;
   } catch (error) {
-    if (error instanceof MemoryError) throw error;
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.startsWith("LOCKED")) {
+    if (error instanceof MemoryError || error instanceof RequestReceiptError) {
+      throw error;
+    }
+    if (isLeaseBusy(error)) {
       throw new MemoryError(
         "MEMORY_WRITE_LEASE_BUSY",
         `Could not acquire the shared write lease at ${deps.lockPath} within ${lockWaitMs}ms: another write holds it. The memory service takes the lease itself; callers must not pre-hold it.`
@@ -421,5 +533,4 @@ export async function rememberFact(
     }
     throw error;
   }
-  return leased;
 }

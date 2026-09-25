@@ -101,6 +101,12 @@ import { handleMultiGet } from "./multi-get";
 import { handlePeek, PEEK_MCP_ANNOTATIONS } from "./peek";
 import { handleQuery, handleQueryDiagnose } from "./query";
 import { handleRemoveCollection } from "./remove-collection";
+import {
+  handleRequestStatus,
+  REQUEST_STATUS_MCP_ANNOTATIONS,
+  requestIdInputSchema,
+  requestStatusInputSchema,
+} from "./request-status";
 import { handleSearch } from "./search";
 import {
   handleSection,
@@ -175,6 +181,8 @@ export const MCP_TOOL_DESCRIPTIONS = {
   ask: "Generate one answer from a deterministic Context Capsule, verify every substantive claim against exact retained spans, and abstain unless support coverage is complete. Read-only; returns the Capsule, freshness receipt, claim verdicts, gaps, and evidence IDs.",
   recall:
     "Recall current facts from a memory-managed collection for explicit scopes. Call before answering about the user's preferences, decisions, people, or prior work, and before gno_remember to find the predecessor of a changed fact. Returns at most 8 facts within 512 tokens by default, each with text, scopes, provenance, gno:// cite, and content hash, plus a content-free receipt; superseded facts are excluded. Pass the receipt to gno_remember when a stored fact derives from this recall. An empty result names the command that stores the first fact.",
+  requestStatus:
+    "Look up a write request ID sent with gno_capture or gno_remember before retrying it. Returns pending, committed (with the result uri and hashes), expired, or not_found within this caller's own namespace; never returns note or fact content. Committed: do not resend. Pending: retry the same request ID later. not_found: nothing was accepted under that ID.",
   remember:
     "Store one fact in a memory-managed collection under explicit scopes. Call when the user states a durable preference, decision, or fact worth recalling later; use gno_capture for documents and file edits for existing notes. Without decision it returns likely matches and writes nothing; decision=add writes a new fact; decision=supersede replaces predecessorUri after a hash check, one successor per fact. Exact duplicates return the existing record. Text that replays a recall receipt span or declares a gno:// origin is rejected. The fact is lexically searchable when the call returns.",
 } as const;
@@ -366,6 +374,7 @@ export const captureInputSchema = z.object({
     .describe(
       "Structured provenance metadata written under source frontmatter"
     ),
+  requestId: requestIdInputSchema.optional(),
 });
 
 const addCollectionInputSchema = z.object({
@@ -1511,6 +1520,19 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
         inputSchema: captureInputSchema,
       },
       (args) => handleCapture(args, ctx)
+    );
+
+    registerTool(
+      "gno_request_status",
+      {
+        description: describe(
+          "gno_request_status",
+          MCP_TOOL_DESCRIPTIONS.requestStatus
+        ),
+        inputSchema: requestStatusInputSchema,
+        annotations: REQUEST_STATUS_MCP_ANNOTATIONS,
+      },
+      (args) => handleRequestStatus(args, ctx)
     );
 
     registerTool(

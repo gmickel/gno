@@ -12,7 +12,10 @@
       "properties": {
         "outcome": { "const": "existing" },
         "record": { "$ref": "#/$defs/fact" },
-        "matching": { "$ref": "#/$defs/matching" }
+        "matching": { "$ref": "#/$defs/matching" },
+        "request": {
+          "$ref": "gno://schemas/request-status@1.0#/$defs/requestReceipt"
+        }
       }
     },
     {
@@ -40,7 +43,10 @@
           "description": "Absolute path of the fact file that was written."
         },
         "sync": { "$ref": "#/$defs/sync" },
-        "matching": { "$ref": "#/$defs/matching" }
+        "matching": { "$ref": "#/$defs/matching" },
+        "request": {
+          "$ref": "gno://schemas/request-status@1.0#/$defs/requestReceipt"
+        }
       }
     }
   ],

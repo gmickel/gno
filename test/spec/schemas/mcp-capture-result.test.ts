@@ -35,6 +35,77 @@ describe("mcp-capture-result schema", () => {
     expect(assertValid(result, schema)).toBe(true);
   });
 
+  test("valid replayed capture result with request", () => {
+    const result = {
+      docid: "#abc123",
+      uri: "gno://notes/test.md",
+      absPath: "/tmp/test.md",
+      collection: "notes",
+      relPath: "test.md",
+      created: true,
+      openedExisting: false,
+      createdWithSuffix: false,
+      overwritten: false,
+      contentHash:
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      source: {
+        kind: "direct",
+        capturedAt: "2026-06-04T12:34:56.000Z",
+      },
+      tags: [],
+      sync: { status: "completed" },
+      embed: { status: "not_requested" },
+      collisionPolicyResult: "created",
+      serverInstanceId: "550e8400-e29b-41d4-a716-446655440000",
+      request: {
+        requestId: "0f8e5c1a-3c1e-4d0b-9a57-2f4f3b8f2c11",
+        status: "committed",
+        replayed: true,
+        committedAt: "2026-06-04T12:34:56.120Z",
+      },
+    };
+    expect(assertValid(result, schema)).toBe(true);
+  });
+
+  test("request field is validated through the shared request-status $ref", () => {
+    const base = {
+      docid: "#abc123",
+      uri: "gno://notes/test.md",
+      absPath: "/tmp/test.md",
+      collection: "notes",
+      relPath: "test.md",
+      created: true,
+      openedExisting: false,
+      createdWithSuffix: false,
+      overwritten: false,
+      contentHash:
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      source: { kind: "direct", capturedAt: "2026-06-04T12:34:56.000Z" },
+      tags: [],
+      sync: { status: "completed" },
+      embed: { status: "not_requested" },
+      collisionPolicyResult: "created",
+    };
+    const request = {
+      requestId: "0f8e5c1a-3c1e-4d0b-9a57-2f4f3b8f2c11",
+      status: "committed",
+      replayed: false,
+      committedAt: "2026-06-04T12:34:56.120Z",
+    };
+    expect(
+      assertInvalid(
+        { ...base, request: { ...request, status: "pending" } },
+        schema
+      )
+    ).toBe(true);
+    expect(
+      assertInvalid(
+        { ...base, request: { ...request, requestId: "-bad" } },
+        schema
+      )
+    ).toBe(true);
+  });
+
   test("valid failed sync capture result", () => {
     const result = {
       docid: "",

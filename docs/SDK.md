@@ -510,9 +510,16 @@ const receipt = await client.capture({
 console.log(receipt.uri, receipt.sync.status, receipt.embed.status);
 ```
 
-`client.capture()` writes into an editable collection, syncs the created file
-directly, and returns `sync.status: "completed"` when ingestion succeeds.
-Embedding is separate; `embed.status` remains `not_requested` until you run
+`client.capture()` takes the shared write lease (`.mcp-write.lock`, the same
+lease the CLI, MCP, and REST writers use), plans the path, writes the note, and
+syncs it lexically before resolving. A lease held by another writer past the
+wait window rejects with the busy error and writes nothing. It returns
+`sync.status: "completed"` when ingestion succeeds; if the note was written but
+sync failed, the receipt still resolves with `sync.status: "failed"` and
+`sync.error` (run `client.update()` or `gno update` to index it).
+`open_existing` on a file that is not indexed yet returns
+`sync.status: "skipped"`. With a `requestId`, a sync failure throws instead
+(see [Request IDs](#request-ids)). Embedding is separate; `embed.status` remains `not_requested` until you run
 `client.embed()` or `client.index()` without `noEmbed`. Capture content must be
 text, `presetId` accepts `blank`, `project-note`, `research-note`,
 `decision-note`, `prompt-pattern`, `source-summary`, `idea-original`, `person`,
@@ -532,6 +539,38 @@ create a distinct note.
 
 Use `client.createNote()` for lower-level raw note creation without provenance
 capture semantics.
+
+### Request IDs
+
+`client.capture()` and `client.remember()` accept an optional `requestId`
+(a UUID works). Retrying the same call with the same ID returns the recorded
+outcome instead of writing again. Look an ID up with `client.requestStatus()`
+before retrying:
+
+```ts
+const requestId = crypto.randomUUID();
+const receipt = await client.capture({
+  collection: "notes",
+  content: "Release moves to Friday",
+  requestId,
+});
+console.log(receipt.request); // { requestId, status: "committed", replayed: false, committedAt }
+
+const status = await client.requestStatus(requestId);
+// status.status: "committed" | "pending" | "expired" | "not_found"
+if (status.status === "pending" || status.status === "not_found") {
+  // Resend the exact same call with the same requestId.
+}
+```
+
+- Results carry `request` only when a `requestId` was sent.
+- `requestStatus()` returns `GnoRequestStatusResult`, the content-free
+  `request-status` lookup.
+- Request errors are `GnoSdkError` with the `REQUEST_*` code in
+  `details.code`.
+
+Statuses, error codes, namespaces, and retention are in
+[Retries and Request IDs](guides/retries-and-request-ids.md).
 
 ### Remember / Recall (memory)
 
@@ -595,6 +634,9 @@ embedding model is available locally, otherwise `matching.mode` /
 `NOT_FOUND`, or `RUNTIME`) with the stable memory code in `details.code`
 (for example `MEMORY_SCOPES_REQUIRED`, `MEMORY_SUPERSEDE_CONFLICT`) and the
 core `MemoryError` as `cause`.
+
+Pass `requestId` with `decision: "add"` or `"supersede"` to make a retry safe
+(see [Request IDs](#request-ids)).
 
 ### Status
 
@@ -686,6 +728,7 @@ Current stable root import surface:
 - SDK/client/result types
 - Context Capsule result, verification, and error types
 - Memory contract types (`GnoRememberInput`, `GnoRememberResult`, `GnoRecallInput`, `GnoRecallResult`, `MemoryFact`, `MemoryRecallReceipt`) and `MemoryError`
+- `GnoRequestStatusResult` (the `client.requestStatus()` result)
 
 The package root is the SDK entrypoint. The CLI remains available through the `gno` binary.
 

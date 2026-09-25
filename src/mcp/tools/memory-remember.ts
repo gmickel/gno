@@ -14,6 +14,7 @@ import type { ToolContext } from "../server";
 
 import { type RememberResult } from "../../core/memory";
 import { MEMORY_MAX_FACT_BYTES } from "../../core/memory-record";
+import { formatRequestReceiptLine } from "../../core/request-receipts";
 import { runTool, type ToolResult } from "./index";
 import {
   createMcpMemoryService,
@@ -22,6 +23,7 @@ import {
   resolveMcpMemoryIdentity,
   rethrowMemoryError,
 } from "./memory-shared";
+import { requestIdInputSchema } from "./request-status";
 
 export const REMEMBER_MCP_ANNOTATIONS = {
   readOnlyHint: false,
@@ -92,6 +94,7 @@ export const rememberInputSchema = z.object({
     .min(1)
     .optional()
     .describe("Free-text evidence for the fact (where it came from)"),
+  requestId: requestIdInputSchema.optional(),
 });
 
 export type RememberToolInput = z.infer<typeof rememberInputSchema>;
@@ -132,6 +135,9 @@ export function formatRememberResult(result: RememberResult): string {
       break;
   }
   lines.push(matching);
+  if ("request" in result && result.request) {
+    lines.push(formatRequestReceiptLine(result.request));
+  }
   return lines.join("\n");
 }
 
@@ -163,6 +169,7 @@ export function handleRemember(
           receipt: args.receipt,
           derivedFrom: args.derivedFrom,
           source: args.source,
+          requestId: args.requestId,
         });
       } catch (error) {
         return rethrowMemoryError(error);

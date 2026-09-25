@@ -572,6 +572,28 @@ preserved for repair. Connector failures or unverifiable skill runtimes report
 `completed_with_actions` after lexical proof without rolling back the
 collection.
 
+## Write Request Ledger
+
+Writes sent with a request ID (`--request-id` on `gno capture` /
+`gno remember`, `requestId` on MCP, REST, and SDK writes, and Web UI saves)
+are recorded in one private SQLite ledger per index, next to the index
+database:
+
+```text
+<dataDir>/write-receipts/<index db filename>
+```
+
+For the default index that is
+`~/.local/share/gno/write-receipts/index-default.sqlite` on Linux,
+`~/Library/Application Support/gno/data/write-receipts/index-default.sqlite`
+on macOS, and `%LOCALAPPDATA%\gno\data\write-receipts\index-default.sqlite`
+on Windows. On POSIX the directory is created `0700` and the file `0600`.
+
+GNO never removes the ledger: index maintenance and `gno reset` keep it.
+Include it when you back up private GNO state. Retention, the row cap, and what
+deleting it by hand means are in
+[Retries and Request IDs](guides/retries-and-request-ids.md#storage-and-retention).
+
 ## Collections
 
 Collections define what gets indexed.
@@ -1243,19 +1265,21 @@ when memory headroom is clear and a real benchmark shows a gain.
 
 **Linux** (XDG):
 
-| Path                                      | Purpose     |
-| ----------------------------------------- | ----------- |
-| `~/.config/gno/index.yml`                 | Config      |
-| `~/.local/share/gno/index-default.sqlite` | Database    |
-| `~/.cache/gno/models/`                    | Model cache |
+| Path                                      | Purpose                                       |
+| ----------------------------------------- | --------------------------------------------- |
+| `~/.config/gno/index.yml`                 | Config                                        |
+| `~/.local/share/gno/index-default.sqlite` | Database                                      |
+| `~/.local/share/gno/write-receipts/`      | [Write request ledger](#write-request-ledger) |
+| `~/.cache/gno/models/`                    | Model cache                                   |
 
 **macOS**:
 
-| Path                                                          | Purpose     |
-| ------------------------------------------------------------- | ----------- |
-| `~/Library/Application Support/gno/config/index.yml`          | Config      |
-| `~/Library/Application Support/gno/data/index-default.sqlite` | Database    |
-| `~/Library/Caches/gno/models/`                                | Model cache |
+| Path                                                          | Purpose                                       |
+| ------------------------------------------------------------- | --------------------------------------------- |
+| `~/Library/Application Support/gno/config/index.yml`          | Config                                        |
+| `~/Library/Application Support/gno/data/index-default.sqlite` | Database                                      |
+| `~/Library/Application Support/gno/data/write-receipts/`      | [Write request ledger](#write-request-ledger) |
+| `~/Library/Caches/gno/models/`                                | Model cache                                   |
 
 Run `gno doctor` to see resolved paths for your system.
 

@@ -84,6 +84,13 @@ import {
 } from "../lib/doc-asset-url";
 import { waitForDocumentAvailability } from "../lib/document-availability";
 import {
+  clearRequestIntent,
+  type RequestIntent,
+  requestIdForIntent,
+} from "../lib/request-intent";
+
+const TAG_INTENT_KEY = "gno:tag-intent";
+import {
   buildReadableSectionUrl,
   createCitationSectionUrl,
   readSectionTargetLinkParam,
@@ -1201,7 +1208,8 @@ export default function DocView({ navigate }: PageProps) {
     setTagSaveError(null);
   }, []);
 
-  // Save tags
+  // Save tags (one request ID per tag-set intent, reused on retry)
+  const tagIntentRef = useRef<RequestIntent | null>(null);
   const handleSaveTags = useCallback(async () => {
     if (!doc) return;
 
@@ -1218,6 +1226,11 @@ export default function DocView({ navigate }: PageProps) {
           expectedSourceHash: doc.source.sourceHash,
           expectedModifiedAt: doc.source.modifiedAt,
           uri: doc.uri,
+          requestId: requestIdForIntent(
+            tagIntentRef,
+            `${doc.uri}\u0000${doc.source.sourceHash}\u0000${editedTags.join(",")}`,
+            TAG_INTENT_KEY
+          ),
         }),
       }
     );
@@ -1229,6 +1242,7 @@ export default function DocView({ navigate }: PageProps) {
       return;
     }
 
+    clearRequestIntent(tagIntentRef, TAG_INTENT_KEY);
     // Update doc with new tags
     setDoc({
       ...doc,

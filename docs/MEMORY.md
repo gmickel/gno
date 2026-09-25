@@ -200,6 +200,26 @@ Superseded facts stay on disk and in ordinary search; `recall` excludes them
 inside the query. Nothing is ever deleted by the memory contract (see
 [What memory does not do](#what-memory-does-not-do)).
 
+### Retrying a remember
+
+If a `remember` write loses its response (timeout, dropped connection,
+crash), resending it blindly may not do what you meant. Send an opt-in request
+ID with the write instead, and look it up before retrying:
+
+```bash
+gno remember "Prod deploys from main only" --scope project:gno --add \
+  --request-id 7d2e4b90-1f7a-4c2e-8f55-0b9c1d3e6a42 --json
+gno request-status 7d2e4b90-1f7a-4c2e-8f55-0b9c1d3e6a42
+```
+
+The same field is `requestId` on MCP `gno_remember`,
+`POST /api/memory/remember`, and `client.remember()`. It requires `add` or
+`supersede`; `caller` and `session` may differ on the retry. A request ID is
+not a recall receipt: the receipt fences recalled text, the request ID
+identifies one write. Statuses, recovery after `MEMORY_SYNC_FAILED`, error
+codes, and retention are in
+[Retries and Request IDs](guides/retries-and-request-ids.md).
+
 ## Recall
 
 ```bash
@@ -309,6 +329,9 @@ security boundary.
 MCP returns the code in `structuredContent.error` (plus `WRITE_DISABLED`
 when the server runs without `--enable-write`); the SDK throws `GnoSdkError`
 with the code in `details.code` and the `MemoryError` as `cause`.
+
+A write that carries a request ID can also fail with a `REQUEST_*` code; see
+[Retries and Request IDs](guides/retries-and-request-ids.md#errors).
 
 ## What memory does not do
 

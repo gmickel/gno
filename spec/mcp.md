@@ -153,7 +153,7 @@ the resident gateway applies one profile to every connected client.
 
 | Profile          | Without `--enable-write`                                                                              | With `--enable-write`                                   |
 | ---------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `full` (default) | Every read tool below (34)                                                                            | Every read tool plus every write tool (53)              |
+| `full` (default) | Every read tool below (36)                                                                            | Every read tool plus every write tool (56)              |
 | `core`           | `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`, `gno_changes`, `gno_recall` (7) | The 7 read tools plus `gno_capture`, `gno_remember` (9) |
 
 Both lists are exact: `core` advertises nothing else, and `full` is byte-for-byte
@@ -231,6 +231,10 @@ For async jobs, the lock is held for the full job duration.
 the core memory service acquires the same `.mcp-write.lock` lease for every
 memory write, so an MCP remember and a CLI writer serialise on one lease. A
 lease that stays busy past the wait window returns `MEMORY_WRITE_LEASE_BUSY`.
+
+With a `requestId`, `gno_capture` and `gno_remember` admit the request under
+this same lease; there is no second lock. A request whose earlier attempt
+still holds the lease past the wait window returns `REQUEST_PENDING`.
 
 ### Resident Streamable HTTP boundary
 
@@ -1531,6 +1535,10 @@ Create a new document in a collection (write-enabled).
         "capturedAt": { "type": "string", "format": "date-time" },
         "externalId": { "type": "string" }
       }
+    },
+    "requestId": {
+      "type": "string",
+      "description": "Optional caller request ID (1-128 of A-Z a-z 0-9 . _ : -). Reuse the same ID when retrying the same write after a lost response; a new intent needs a new ID"
     }
   },
   "required": ["collection"]
@@ -1585,6 +1593,13 @@ Create a new document in a collection (write-enabled).
   writing
 - Writes run under the MCP write lock and are only registered when the server
   starts with `--enable-write` or `GNO_MCP_ENABLE_WRITE=1`
+- `requestId` (optional) makes a retry of the same call safe; look it up with
+  [`gno_request_status`](#gno_request_status). Semantics:
+  `docs/guides/retries-and-request-ids.md`
+- With a `requestId`, the result adds
+  `request: { requestId, status: "committed", replayed, committedAt }` and the
+  text output adds `Request: <id> committed` (`(replayed)` on a replay). The
+  field is absent when no `requestId` was sent
 
 **Output Schema:** `gno://schemas/mcp-capture-result@1.0`, compatible with the
 shared `gno://schemas/capture-receipt@1.0` contract.
@@ -1651,6 +1666,10 @@ file edits update existing notes, `gno_remember` upserts a fact.
     "source": {
       "type": "string",
       "description": "Free-text evidence for the fact"
+    },
+    "requestId": {
+      "type": "string",
+      "description": "Optional caller request ID (1-128 of A-Z a-z 0-9 . _ : -). Reuse the same ID when retrying the same write after a lost response; a new intent needs a new ID"
     }
   },
   "required": ["text", "collection", "scopes"]
@@ -1668,6 +1687,9 @@ file edits update existing notes, `gno_remember` upserts a fact.
   searchable)
 - `matching` — `mode` (`semantic` | `lexical`), `threshold`, and
   `semanticUnavailable` when lexical matching was used
+- `request` — present on `existing`, `added`, and `superseded` results when a
+  `requestId` was sent: `{ requestId, status: "committed", replayed,
+committedAt }`
 
 **Notes:**
 
@@ -1682,6 +1704,10 @@ file edits update existing notes, `gno_remember` upserts a fact.
 - The core service holds the shared write lease for the write and lexical
   sync; the MCP adapter takes no lock of its own
 - Identity mapping is the same as `gno_recall`
+- `requestId` requires `decision` (`add` or `supersede`); a candidates-only
+  call with a `requestId` returns `REQUEST_ID_INVALID`. `caller`, `session`,
+  and the MCP session are not part of the request identity. Semantics:
+  `docs/guides/retries-and-request-ids.md`
 - Annotations: `readOnlyHint: false`, `destructiveHint: false`,
   `idempotentHint: false`
 
@@ -1693,7 +1719,74 @@ file edits update existing notes, `gno_remember` upserts a fact.
 `MEMORY_PREDECESSOR_NOT_FOUND`, `MEMORY_PREDECESSOR_HASH_MISMATCH`,
 `MEMORY_SUPERSEDE_CONFLICT`, `MEMORY_FENCED_REPLAY`, `MEMORY_FENCED_DERIVED`,
 `MEMORY_WRITE_LEASE_BUSY`, `MEMORY_SYNC_FAILED`,
-`MEMORY_SUPERSEDE_PROJECTION_FAILED`, `MEMORY_QUERY_FAILED`.
+`MEMORY_SUPERSEDE_PROJECTION_FAILED`, `MEMORY_QUERY_FAILED`, and the
+`REQUEST_*` codes listed under [`gno_request_status`](#gno_request_status).
+
+---
+
+### gno_request_status
+
+Look up a `requestId` sent with `gno_capture` or `gno_remember` before retrying
+the write (write-enabled server).
+
+The tool is read-only but registered only when the server starts with
+`--enable-write` (or `GNO_MCP_ENABLE_WRITE=1`), and only on the `full` tool
+profile; `core` does not advertise it.
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "description": "Request ID previously sent with gno_capture or gno_remember"
+    }
+  },
+  "required": ["requestId"]
+}
+```
+
+**Response (`structuredContent`):** `gno://schemas/request-status@1.0`
+
+```json
+{
+  "requestId": "0f8e5c1a-3c1e-4d0b-9a57-2f4f3b8f2c11",
+  "status": "committed",
+  "operation": "capture",
+  "createdAt": "2026-09-24T08:00:00.000Z",
+  "updatedAt": "2026-09-24T08:00:00.120Z",
+  "result": {
+    "uri": "gno://notes/inbox/2026-09-24/capture-3f9c.md",
+    "docid": "#a1b2c3",
+    "contentHash": "<sha256>"
+  }
+}
+```
+
+- `status`: `pending` | `committed` | `expired` | `not_found`.
+- `operation`: `capture` | `remember` | `document.update`. `result` appears
+  only for `committed` and carries `uri`, `docid`, and `contentHash` (or
+  `sourceHash` for a document update). Never note or fact content. A
+  `not_found` result has only `requestId` and `status`.
+- Text output: `Request:`, `Status:`, and, when present, `Operation:`,
+  `Updated:`, `URI:` lines.
+
+**Namespaces:** stdio uses the local-owner namespace shared with the CLI, SDK,
+and `gno serve` REST; resident Streamable HTTP uses the authorized identity
+(loopback, or the configured bearer token), not the MCP session. Visibility
+and token-rotation rules: `docs/guides/retries-and-request-ids.md`.
+
+**Annotations:** `readOnlyHint: true`, `destructiveHint: false`,
+`idempotentHint: true`, `openWorldHint: false`.
+
+**Request error codes** (on `gno_capture`, `gno_remember`, and this tool; tool
+error text `CODE: message`, `structuredContent.error` = `CODE`):
+`REQUEST_ID_INVALID`, `REQUEST_ID_CONFLICT`, `REQUEST_EXPIRED`,
+`REQUEST_PENDING`, `REQUEST_RECOVERY_CONFLICT`, `REQUEST_CAPACITY_EXHAUSTED`,
+`REQUEST_LEDGER_UNAVAILABLE`. Meanings:
+`docs/guides/retries-and-request-ids.md#errors`.
 
 ---
 
@@ -2793,6 +2886,8 @@ Resource errors use standard MCP error responses.
 - `MEMORY_*` — Memory contract errors from `gno_recall` / `gno_remember`;
   the stable code set is `MemoryErrorCode` in `src/core/memory.ts` and each
   tool section above lists the codes it returns
+- `REQUEST_*` — Request ID errors from `gno_capture`, `gno_remember`, and
+  `gno_request_status`; see [`gno_request_status`](#gno_request_status)
 
 ---
 

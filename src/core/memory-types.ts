@@ -15,6 +15,7 @@ import type { EmbeddingPort } from "../llm/types";
 import type { StorePort } from "../store/types";
 import type { VectorIndexPort } from "../store/vector/types";
 import type { EgressLineage } from "./egress-provenance";
+import type { RequestCheckpoint, RequestReceiptInfo } from "./request-receipts";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Binding defaults (tunable here, documented in docs/MEMORY.md)
@@ -106,6 +107,8 @@ export interface RememberInput extends MemoryIdentity {
   /** Declared origins; any gno:// origin is fenced. */
   derivedFrom?: string[];
   source?: string;
+  /** Opt-in retry identity for add/supersede; see docs/MEMORY.md. */
+  requestId?: string;
 }
 
 export interface MemoryFact {
@@ -149,6 +152,7 @@ export type RememberResult =
       outcome: "existing";
       record: MemoryFact;
       matching: MemoryMatchDiagnostics;
+      request?: RequestReceiptInfo;
     }
   | {
       outcome: "candidates";
@@ -161,6 +165,7 @@ export type RememberResult =
       absPath: string;
       sync: MemorySyncState;
       matching: MemoryMatchDiagnostics;
+      request?: RequestReceiptInfo;
     };
 
 export interface RecallInput extends MemoryIdentity {
@@ -208,4 +213,10 @@ export interface MemoryServiceDeps {
   /** Must surface typed-edge projection errors (`syncPaths`, not `syncFiles`). */
   syncService?: Pick<typeof defaultSyncService, "syncPaths">;
   now?: () => Date;
+  /** Request ledger + caller namespace; required to honour `requestId`. */
+  requests?: {
+    ledgerPath: string;
+    namespace: string;
+    checkpoint?: (stage: RequestCheckpoint) => Promise<void> | void;
+  };
 }

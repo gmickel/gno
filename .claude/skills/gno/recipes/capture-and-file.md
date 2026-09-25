@@ -18,6 +18,12 @@ gno capture "summary or fact" --preset decision-note --title "<title>" --json
 gno capture --file ./clip.md --source-url https://example.com --source-kind web --json
 ```
 
+When a retry may follow a timeout or lost response, pass
+`--request-id <uuid>` (one fresh ID per note). Check
+`gno request-status <uuid>` before retrying: `committed` = already saved,
+do not resend; `pending` or `not_found` = resend the identical command with
+the same ID. Never reuse the ID for changed content.
+
 2. For an explicit browser capture, use the local Chromium clipper. The user
    selects visible top-frame text or chooses Reader mode, reviews the
    server-owned preview, then confirms the write. Pairing and capture stay

@@ -17,7 +17,7 @@ Operator incident report (paraphrased; host, user, and vault details removed):
 
 A resident `gno serve` must be safe to leave running unattended. In the reported incident it burned a CPU core for hours, blocked every CLI index run on the same index with a raw SQLite lock error that the writer-lease wait could not absorb, and ignored a polite stop. [paraphrase] The operator only recovered by force-killing it, and nothing in status output pointed at the cause. [paraphrase]
 
-A related failure surfaced the same night while working around a busy GPU. Running `GNO_LLAMA_GPU=false gno embed --yes`, documented as a plain backend switch, did not resume the ~1,900-chunk backlog. The CPU runtime fingerprint differs from the GPU one, so GNO started a new `shadow` vector partition and began re-embedding the whole ~15,600-chunk corpus. It hit "Inference deadline exceeded" after ~1,000 chunks. Afterwards `gno status` reported against that incomplete shadow partition regardless of `GNO_LLAMA_GPU` (collections dropped from ~1,200 embedded to 0, backlog from ~1,900 to ~14,600), although both active GPU partitions were intact. [user] Nothing warned before the fork, and status gave no hint that it was showing a different partition.
+A related backend-switch vector fork observed the same night is tracked in fn-184-runtime-independent-vector-identity (runtime-independent vector identity).
 
 This spec is investigation first: reproduce the incident, confirm or rule out the hypotheses below, and land the smallest fixes that satisfy the acceptance criteria. [user] If a confirmed root cause needs a larger change, that fix moves into its own spec and this one closes with the findings recorded. [user]
 
@@ -62,13 +62,12 @@ No new command or endpoint. The existing resident status reported by `gno serve 
 - **R3:** SIGTERM to a resident server (including via `gno serve --stop`) ends the process within a bounded time without SIGKILL escalation, including while background embedding or a native model call is in flight. Errors: if graceful drain exceeds its budget, the process force-exits on its own before the stop grace expires; `--stop` reports SIGKILL only when the process was truly unresponsive. [user]
 - **R4:** `gno serve --status` and `gno status` surface a stuck or repeatedly failing background job (for example a re-embed that keeps failing or a background pass running far longer than expected), with enough detail to identify it. Errors: no background job in trouble reports nothing extra; a status read must not block on the stuck job. [user]
 - **R5:** The investigation records, for each hypothesis H1 to H5, whether it was confirmed, ruled out, or left unknown, with the reproduction evidence, and any confirmed root cause whose fix is too large for this spec is split into its own spec. No error surface beyond an honest unknown. [user]
-- **R6:** Switching the embedding backend never silently forks or hides the vector index. Before a run whose runtime fingerprint differs from the active partition, `gno embed` states that it will build a separate partition, the full chunk count and an estimate, and requires explicit confirmation (non-interactive: an explicit flag); `--yes` alone does not confirm a fork. `gno status` and `gno doctor` report against the partition that retrieval actually uses and list every other partition with state, owner count and fingerprint label (e.g. CUDA, Metal, CPU), so an incomplete shadow partition can never appear as the index having lost embeddings. A documented, supported command drops an abandoned shadow partition without touching active ones. The docs for `GNO_LLAMA_GPU` / `NODE_LLAMA_CPP_GPU` state that changing the backend changes vector identity. Tests: fixture with an active partition, a CPU-fingerprint run (refused without the explicit flag), status output with a shadow present, and removing the shadow restores the prior status exactly. [user]
 
 ## Boundaries
 <!-- scope: business -->
 
 - Not a redesign of the resident runtime, the writer lease, or the embedding pipeline; fixes stay targeted to the confirmed causes. [user]
-- Not a change to embedding truncation limits or chunk sizing, and not a change to when vector identity differs (R6 only makes a fork explicit and visible). [inferred]
+- Not a change to embedding truncation limits or chunk sizing, or to vector identity and partition forks (moved to fn-184-runtime-independent-vector-identity). [inferred]
 - Not a change to how the MCP server holds the DB open; it was observed not to block writes. [paraphrase]
 
 ## Decision Context

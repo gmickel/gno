@@ -142,7 +142,8 @@ describe("PUT /api/docs/:id", () => {
       ctxHolder,
       store as never,
       "nonexistent",
-      req
+      req,
+      { lockPath: join(tmpDir, ".mcp-write.lock") }
     );
     expect(res.status).toBe(404);
     const body = (await res.json()) as ErrorBody;
@@ -186,7 +187,8 @@ describe("PUT /api/docs/:id", () => {
       ctxHolder,
       store as never,
       "#abc123",
-      req
+      req,
+      { lockPath: join(tmpDir, ".mcp-write.lock") }
     );
     expect(res.status).toBe(404);
     const body = (await res.json()) as ErrorBody;
@@ -241,7 +243,8 @@ describe("PUT /api/docs/:id", () => {
       ctxHolder,
       store as never,
       "#abc123",
-      req
+      req,
+      { lockPath: join(tmpDir, ".mcp-write.lock") }
     );
     expect(res.status).toBe(404);
     const body = (await res.json()) as ErrorBody;
@@ -301,7 +304,8 @@ describe("PUT /api/docs/:id", () => {
       ctxHolder,
       store as never,
       "#abc123",
-      req
+      req,
+      { lockPath: join(tmpDir, ".mcp-write.lock") }
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as SuccessBody;
@@ -395,7 +399,8 @@ describe("PUT /api/docs/:id", () => {
       ctxHolder,
       store as never,
       "#samehash",
-      req
+      req,
+      { lockPath: join(tmpDir, ".mcp-write.lock") }
     );
 
     expect(res.status).toBe(200);
@@ -457,7 +462,8 @@ describe("PUT /api/docs/:id", () => {
       ctxHolder,
       store as never,
       "#nested123",
-      req
+      req,
+      { lockPath: join(tmpDir, ".mcp-write.lock") }
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as SuccessBody;
@@ -519,7 +525,8 @@ describe("PUT /api/docs/:id", () => {
       ctxHolder,
       store as never,
       "#case123",
-      req
+      req,
+      { lockPath: join(tmpDir, ".mcp-write.lock") }
     );
     expect(res.status).toBe(200);
   });
@@ -576,7 +583,8 @@ describe("PUT /api/docs/:id", () => {
       ctxHolder,
       store as never,
       "#pdf123",
-      req
+      req,
+      { lockPath: join(tmpDir, ".mcp-write.lock") }
     );
     expect(res.status).toBe(409);
     const body = (await res.json()) as ErrorBody;
@@ -640,7 +648,8 @@ describe("PUT /api/docs/:id", () => {
       ctxHolder,
       store as never,
       "#stale123",
-      req
+      req,
+      { lockPath: join(tmpDir, ".mcp-write.lock") }
     );
 
     expect(res.status).toBe(409);

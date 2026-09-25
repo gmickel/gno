@@ -205,6 +205,8 @@ Important behavior:
 - `--json` returns a capture receipt with separate write, sync, and embed status.
 - Capture syncs the file into FTS but does not imply embedding unless
   `embed.status` is `completed`.
+- `--request-id <id>` makes a retry safe; see
+  [Retry-safe writes](#retry-safe-writes-request-ids).
 
 ## Memory
 
@@ -236,6 +238,9 @@ gno remember "..." --scope family --scope shared --collection memory --add --sou
   `--derived-from gno://...` is rejected. `--source <text>` stores evidence.
 - `--caller` / `--session` default from `$GNO_MEMORY_CALLER` /
   `$GNO_MEMORY_SESSION`, then `cli:<user>` / `ppid:<pid>`.
+- `--request-id <id>` needs `--add` or `--supersede`; a candidates-only call
+  with an ID is rejected `REQUEST_ID_INVALID`. It is unrelated to
+  `--receipt`.
 
 ### gno recall
 
@@ -253,6 +258,73 @@ gno recall "kindergarten" --scope family --max-facts 3 --max-tokens 256 --json >
 - Retrieval is hybrid when the embedding model is already cached, else
   lexical with the reason; recall never downloads a model.
 - Nothing in scope prints the self-teaching line naming `gno remember`.
+
+## Retry-safe writes (request IDs)
+
+An optional request ID lets a write be retried after a lost response
+(timeout, dropped connection, crash, restart) without a duplicate capture, a
+double supersede, or overwriting a newer document edit. Calls without an ID
+behave as before.
+
+| Write                  | CLI                                        | MCP / REST / SDK field                                                     |
+| ---------------------- | ------------------------------------------ | -------------------------------------------------------------------------- |
+| Capture                | `gno capture ... --request-id <id>`        | `gno_capture`, `POST /api/capture`, `client.capture` `requestId`           |
+| Remember add/supersede | `gno remember ... --add --request-id <id>` | `gno_remember`, `POST /api/memory/remember`, `client.remember` `requestId` |
+| Document save/tags     | none                                       | REST `PUT /api/docs/:id` body `requestId`                                  |
+
+The browser-clipper route `POST /api/capture/clip` keeps its
+`Idempotency-Key` header and rejects `requestId`.
+
+IDs are 1-128 characters of letters, digits, `.`, `_`, `:`, `-`, starting with
+a letter or digit; a UUID works.
+
+```bash
+ID=$(uuidgen)                                   # one ID per write intent; save it first
+gno capture "Launch moved to Oct 3" --request-id "$ID" --json
+# response lost? check before retrying:
+gno request-status "$ID" --json
+```
+
+### gno request-status
+
+`gno request-status <request-id> [--json]` (MCP `gno_request_status`
+`{ requestId }`, REST `GET /api/requests/:requestId`, SDK
+`client.requestStatus(id)`). Read-only and content-free: `requestId`,
+`status`, `operation` (`capture` | `remember` | `document.update`),
+timestamps, and for committed requests a `result` with `uri`, `docid`, and
+`contentHash` (or `sourceHash` for a document save).
+
+| `status`    | Meaning                                          | Next step                                  |
+| ----------- | ------------------------------------------------ | ------------------------------------------ |
+| `committed` | The write finished                               | Use `result`; do not resend                |
+| `pending`   | Accepted and written but not finished            | Resend the identical call with the same ID |
+| `not_found` | Nothing accepted under this ID                   | Resend the identical call with the same ID |
+| `expired`   | Ran before; full receipt compacted after 30 days | Do not resend; it will not run again       |
+
+Retry rules:
+
+- Identical retry of a committed request replays the stored outcome with
+  `request.replayed: true`; nothing is written again. Retrying a `pending`
+  request with the same ID finishes the recorded write instead of writing
+  again. Retrying with a new ID is a new write; do not.
+- Successful writes sent with an ID include
+  `request: { requestId, status, replayed, committedAt }`; CLI text prints
+  `Request: <id> committed`.
+- Never reuse an ID for a changed payload, destination, revision, or
+  predecessor: `REQUEST_ID_CONFLICT`. New intent, new ID.
+- `REQUEST_RECOVERY_CONFLICT` (the interrupted target changed on disk),
+  `CONFLICT` (document revision moved), `MEMORY_PREDECESSOR_HASH_MISMATCH`, or
+  `MEMORY_SUPERSEDE_CONFLICT`: re-read with `gno get` or `gno recall` and
+  decide again. Never force-overwrite.
+- `REQUEST_PENDING` (exit 4): another caller is still executing it; retry the
+  same ID later. `REQUEST_EXPIRED`: do not resend.
+- A rejected write (validation, stale hash, conflict) records nothing, so
+  status reads `not_found` and a same-ID retry re-evaluates current state.
+- Request IDs are not recall receipts: `--receipt` / `receipt` fences recalled
+  text; `requestId` identifies one write for retries.
+- Other codes: `REQUEST_ID_INVALID`, `REQUEST_CAPACITY_EXHAUSTED`,
+  `REQUEST_LEDGER_UNAVAILABLE` (all rejected before any write). CLI errors
+  carry the code in `details.requestCode`.
 
 ## Search Commands
 

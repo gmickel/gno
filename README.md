@@ -1079,7 +1079,7 @@ graph TD
 | **Local LLM**        | AI answers via llama.cpp, no API keys                                                       |
 | **Remote Inference** | Optional HTTP endpoints for embedding, reranking, expansion, and generation                 |
 | **Privacy First**    | Fail-closed per-collection egress policy; no telemetry; explicit network use                |
-| **MCP Server**       | 10 automatic client targets; 32 read-only tools, 50 with writes enabled                     |
+| **MCP Server**       | 10 automatic client targets; 36 read-only tools, 56 with writes enabled                     |
 | **Integrity Audits** | Offline link, declared-provenance, and freshness reports with stable IDs                    |
 | **Knowledge Delta**  | Bounded metadata history, structural diffs, and dependency impact paths                     |
 | **Context Capsules** | Deterministic evidence bundles plus saved-file freshness reverification                     |
@@ -1087,6 +1087,7 @@ graph TD
 | **Private Replay**   | Opt-in local traces, explicit qrels, and read-only ranking comparison                       |
 | **Verified Setup**   | Exact lexical activation proof plus portable project-local profiles                         |
 | **Browser Clipper**  | Explicit selection/Reader capture through visible loopback pairing                          |
+| **Safe Retries**     | Opt-in request IDs: retried captures, facts, and saves replay instead of writing twice      |
 | **Collections**      | Organize sources with patterns, contexts, and <code>local_only / lan / remote</code> policy |
 | **Tag Filtering**    | Frontmatter tags with hierarchical paths, filter via `--tags-any`/`--tags-all`              |
 | **Note Linking**     | Wiki links, backlinks, related notes, cross-collection navigation                           |

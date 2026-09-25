@@ -172,7 +172,8 @@ describe("Serve logical export records", () => {
           content: "attempted overwrite",
           uri: doc.uri,
         }),
-      })
+      }),
+      { lockPath: join(root, ".mcp-write.lock") }
     );
 
     expect(response.status).toBe(409);
