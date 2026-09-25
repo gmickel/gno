@@ -483,7 +483,14 @@ async function legacyPartition(
       embedding: new Float32Array(vectorFor(owner.formattedInput, 0)),
     }))
   );
-  if (activate) store.activate(store.epoch());
+  // Activated by pre-fn-184 code, which never superseded sibling partitions.
+  if (activate) {
+    store.syncIndex();
+    f.db.run(
+      "UPDATE vector_partitions SET state = 'active', activated_epoch = (SELECT epoch FROM vector_variant_epoch) WHERE partition_id = ?",
+      [store.partitionId]
+    );
+  }
   f.db.run("UPDATE vector_partitions SET legacy = 1 WHERE partition_id = ?", [
     store.partitionId,
   ]);
@@ -608,6 +615,22 @@ test("an ambiguous migration keeps every partition and reports it", async () => 
   expect(partitionIds(f.db)).toEqual([first, second].sort());
   const refused = await f.embed(runtime.embedPort);
   expect(!refused.ok && refused.error.code).toBe("VECTOR_PARTITION_FORK");
+  // Recovery without deleting active vectors: both stay protected until a
+  // confirmed runtime-independent partition activates and supersedes them.
+  for (const id of [first, second])
+    expect((await dropVectorPartition(f.db, id)).ok).toBe(false);
+  const rebuilt = await f.embed(runtime.embedPort, true);
+  expect(rebuilt.ok && rebuilt.value.embedded).toBe(12);
+  const partitions = listVectorPartitions(f.db, MODEL);
+  expect(
+    partitions.filter((p) => p.legacy).map((p) => [p.state, p.droppable])
+  ).toEqual([
+    ["shadow", true],
+    ["shadow", true],
+  ]);
+  for (const id of [first, second])
+    expect((await dropVectorPartition(f.db, id)).ok).toBe(true);
+  expect(partitionIds(f.db)).toEqual([identityPartitionId(primary)]);
 });
 
 test("an index already at schema 31 gains the runtime caller table", () => {

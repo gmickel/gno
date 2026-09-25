@@ -306,7 +306,7 @@ async function rekeyLegacy(
         .map((p) => p.partition_id.slice(0, 12))
         .join(
           ", "
-        )} are equally complete; all were kept. Drop all but one with \`gno vec drop <partition>\``,
+        )} are equally complete; all were kept. Build the runtime-independent partition with \`gno embed --new-partition\`; once it activates they become droppable shadows`,
       msPerChunk,
     };
   if (!(await loadSqliteVec(db)))

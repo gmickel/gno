@@ -378,6 +378,14 @@ export class VectorVariantStore {
           `UPDATE vector_partitions SET state = 'active', activated_epoch = ? WHERE partition_id = ?`,
           [expectedEpoch, this.partitionId]
         );
+        // A complete runtime-independent partition supersedes the pre-fn-184
+        // partitions of its vector space, as the one-time re-key does.
+        if (!this.identity.fork)
+          this.db.run(
+            `UPDATE vector_partitions SET state = 'shadow', activated_epoch = NULL
+            WHERE legacy = 1 AND model = ? AND dimensions = ?`,
+            [this.identity.model, this.identity.dimensions]
+          );
       })
       .immediate();
   }

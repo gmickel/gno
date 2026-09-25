@@ -901,7 +901,9 @@ Existing indexes are re-keyed once, on first contact after upgrading: the most
 complete partition that passes the check becomes the runtime-independent
 partition without re-embedding, and the others stay as `shadow`. If two
 partitions are equally complete, nothing is re-keyed; status and embed report
-the ambiguity. Drop all but one of them to continue.
+the ambiguity. Active partitions are never dropped, so continue with
+`gno embed --new-partition`: once the new runtime-independent partition
+activates, the pre-upgrade partitions become shadows you can drop.
 
 `gno status` reports against the partition this runtime's queries read and
 lists every other partition with its state, chunk count, provenance and
