@@ -37,6 +37,7 @@ import {
   createVectorIndexPort,
   type VectorIndexPort,
 } from "../../store/vector";
+import { VECTOR_RUNTIME_INCOMPATIBLE } from "../../store/vector/variant-search";
 import { getGlobals } from "../program";
 import {
   createProgressRenderer,
@@ -517,6 +518,10 @@ export function formatQuery(
   }
   // Output explain to stderr if present (async but best-effort)
   outputExplainToStderr(result.data);
+  if (options.format !== "json")
+    for (const warning of result.data.meta.warnings ?? [])
+      if (warning.code === VECTOR_RUNTIME_INCOMPATIBLE)
+        process.stderr.write(`Warning: ${warning.message}\n`);
 
   // Use shared formatter for consistent output
   // Dynamic import to keep module loading fast

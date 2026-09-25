@@ -65,6 +65,55 @@ describe("status schema", () => {
       expect(assertValid(fixture, schema)).toBe(true);
     });
 
+    test("validates vector partitions with a shadow and rejects unknown states", async () => {
+      const fixture = await Bun.file(
+        "test/fixtures/outputs/status-healthy.json"
+      ).json();
+      const partition = {
+        id: "a".repeat(64),
+        model: "hf:model.gguf",
+        dimensions: 1024,
+        state: "active",
+        legacy: false,
+        retrieval: true,
+        droppable: false,
+        owners: 12,
+        provenance: "CUDA, Bun 1.4.2",
+        compatibleRuntimes: ["CUDA, Bun 1.4.2"],
+        incompatibleRuntimes: ["CPU, Bun 1.3.14"],
+      };
+      const shadow = {
+        ...partition,
+        id: "b".repeat(64),
+        state: "shadow",
+        retrieval: false,
+        droppable: true,
+        owners: 3,
+        provenance: "CPU, Bun 1.4.2",
+        incompatibleRuntimes: [],
+      };
+      expect(
+        assertValid(
+          {
+            ...fixture,
+            vectorPartitions: [partition, shadow],
+            vectorRuntime: {
+              label: "CUDA, Bun 1.4.2",
+              state: "vectors",
+              partition: partition.id,
+            },
+          },
+          schema
+        )
+      ).toBe(true);
+      expect(
+        assertInvalid(
+          { ...fixture, vectorPartitions: [{ ...shadow, state: "forked" }] },
+          schema
+        )
+      ).toBe(true);
+    });
+
     test("validates minimal status", () => {
       const status = {
         resident,

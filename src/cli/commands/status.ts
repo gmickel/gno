@@ -24,6 +24,7 @@ import {
   buildMemoryStatus,
   formatMemoryStatusLines,
 } from "../../core/memory-diagnostics";
+import { formatVectorPartitionLines } from "../../core/vector-partition-status";
 import { ModelCache } from "../../llm/cache";
 import { getActivePreset, resolveModelUri } from "../../llm/registry";
 import { getConnectorVerificationTargets } from "../../serve/connectors";
@@ -117,6 +118,12 @@ function formatTerminal(
   if (indexStatus.embeddingBacklog > 0) {
     lines.push(`Embedding backlog: ${indexStatus.embeddingBacklog} chunks`);
   }
+  lines.push(
+    ...formatVectorPartitionLines(
+      indexStatus.vectorPartitions,
+      indexStatus.vectorRuntime
+    )
+  );
 
   const chunking = formatChunkingStatus(indexStatus.chunking);
   if (chunking) lines.push(chunking);
@@ -205,6 +212,11 @@ function formatMarkdown(
   lines.push(`- **Documents**: ${indexStatus.activeDocuments}`);
   lines.push(`- **Chunks**: ${indexStatus.totalChunks}`);
   lines.push(`- **Embedding backlog**: ${indexStatus.embeddingBacklog}`);
+  for (const line of formatVectorPartitionLines(
+    indexStatus.vectorPartitions,
+    indexStatus.vectorRuntime
+  ))
+    lines.push(`- ${line.trim()}`);
   if (indexStatus.typedMetadata)
     lines.push(
       `- **Typed metadata**: ${indexStatus.typedMetadata.pending} pending sync, ${indexStatus.typedMetadata.invalid} invalid`
@@ -356,6 +368,8 @@ export function formatStatus(
         totalDocuments: s.activeDocuments,
         totalChunks: s.totalChunks,
         embeddingBacklog: s.embeddingBacklog,
+        vectorPartitions: s.vectorPartitions,
+        vectorRuntime: s.vectorRuntime,
         typedMetadata: s.typedMetadata,
         chunking: s.chunking,
         lastUpdated: s.lastUpdatedAt,

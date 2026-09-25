@@ -107,6 +107,19 @@ Accepted values: `auto`, `metal`, `vulkan`, `cuda`, or CPU-only values
 `false`, `off`, `none`, `disable`, `disabled`, `0`. Invalid values warn once
 and use `auto`.
 
+**Vector identity**: Changing `GNO_LLAMA_GPU`, the Bun version, the
+`node-llama-cpp` version or the CPU thread count does not start a new vector
+partition. A partition is keyed on the embedding model weights, formatter,
+dimensions, context size and truncation policy; runtime details are recorded as
+provenance. The first time a runtime meets an existing partition, GNO re-embeds
+up to 8 stored chunks and compares them with the stored vectors. If every
+sampled chunk reaches cosine 0.99, the runtime reuses the partition and resumes
+its backlog. The verdict is cached per partition and runtime, so the check runs
+once. A runtime below the threshold is incompatible: its queries use lexical
+retrieval only with a `vector_runtime_incompatible` notice, and `gno embed`
+refuses to build a separate partition until you confirm it. See
+[Troubleshooting](TROUBLESHOOTING.md#switching-backend-or-bun-version).
+
 GNO uses prebuilt `node-llama-cpp` backends by default. Set
 `GNO_LLAMA_BUILD=autoAttempt` only if you intentionally want to allow local
 source builds. Backend initialization is capped by `GNO_LLAMA_INIT_TIMEOUT_MS`
@@ -1105,6 +1118,20 @@ gno embed --no-wait          # Exit 4 immediately if a writer holds the lease
 If you only want one collection to catch up after a model change, use the
 positional collection argument or `--collection`.
 
+Switching backend (`GNO_LLAMA_GPU`), Bun version or thread count resumes the
+backlog in the existing partition when a measured sample of stored chunks
+reproduces its vectors. When it does not, embedding would build a separate
+partition. The same holds when a vector-defining setting (weights, context size,
+truncation) changes for a model that already has vectors. `gno embed` first
+states that, with the full chunk count and an estimate from the measured
+sample, then asks for confirmation. Non-interactive
+runs need `--new-partition`; `--yes` alone never confirms a separate
+partition, and MCP, SDK and resident embedding refuse it.
+
+```bash
+gno embed --new-partition   # confirm building a separate partition
+```
+
 For a model that provides verified runtime identity, backlog and `--dry-run`
 counts refer to current document/chunk owners in that exact model partition.
 Two documents sharing canonical content can need different vectors when their
@@ -2095,16 +2122,26 @@ configured collection passed. Status exits 0 even when those fields are false
 so automation can inspect remediation. It does not start connector children,
 initialize/download models, or invoke remote inference.
 
-Embedding backlog uses the last verified embedding partition for the selected
-model once exact-input storage is in use. It counts pending document/chunk
+Embedding backlog uses the partition this runtime's retrieval reads, so an
+incomplete shadow partition never reads as lost embeddings. Status cannot load a model, so every query and embed records the identity it resolved under a key of its runtime (Bun and binding version, platform, the model URI and the `GNO_LLAMA_GPU`, `NODE_LLAMA_CPP_GPU`, `GNO_EMBED_*` settings). Status looks that record up for its own process and applies the same selection rule retrieval uses, so the partition it marks is the one this runtime's queries read.
+When more than one partition exists (or one is legacy, or a runtime was
+measured incompatible), status prints a `Vector partitions:` block: first
+what this runtime reads (a partition, lexical retrieval only with the reason,
+or not resolved yet: run a query or `gno embed`), then every partition with its
+state, chunk count, provenance (for example `CUDA, Bun 1.4.2`) and the runtimes
+that read it, and a `gno vec drop` hint for each shadow partition (legacy
+shadows included) this runtime does not read. JSON output carries `vectorRuntime` and
+`vectorPartitions`. Until this runtime has resolved, counts fall back to the
+activated runtime-independent partition.
+
+Once exact-input storage is in use, the backlog counts pending document/chunk
 owners, so documents sharing text can need separate embeddings when their
 titles differ. Collection chunk totals stay deduplicated; a shared chunk counts
 as embedded only when every active owner in that collection has matching input
 coverage. Older indexes without exact-input storage retain legacy counts.
 Status reads saved coverage without loading the model; `gno embed --dry-run`
-also resolves the current runtime identity. If an older index has several
-possible partitions and no recorded selection, run normal `gno embed` once to
-record the selection. `--force` is unnecessary for correcting status.
+also resolves the current runtime identity. `--force` is unnecessary for
+correcting status.
 
 Semantic availability is separate: unknown resident capability is
 `semantic_not_checked`; only a positively known unavailable vector runtime is
@@ -2144,6 +2181,9 @@ Checks include:
 - local model cache readiness
 - embedding fingerprint freshness: current fingerprint, pending/stale chunks,
   legacy empty-fingerprint vectors, and mixed stored fingerprint groups
+- vector partitions: the partition this runtime's retrieval uses, every other partition with
+  state, chunk count and provenance, and runtimes measured incompatible
+  (`vector-partitions`, warns when anything beyond one healthy partition exists)
 - per-collection corpus-derived lexical retrieval proof
 - passive projection of explicit connector proof receipts
 
@@ -2176,10 +2216,17 @@ Vector index maintenance. Use when vector search returns empty despite embedding
 ```bash
 gno vec sync      # Sync vec0 index with content_vectors
 gno vec rebuild   # Full rebuild of vec0 index
+gno vec drop 9a8b7c6d5e4f   # Drop an abandoned shadow partition
 ```
 
 - `sync` - Fast incremental sync, fixes drift after failed inserts
 - `rebuild` - Full rebuild, use when sync isn't enough
+- `drop <partition>` - Remove an abandoned shadow vector partition (legacy
+  shadows included) that this runtime's retrieval does not read (id prefix of
+  at least 8 characters from `gno status`) with its vectors. Status prints the
+  hint for exactly the partitions drop accepts. Active partitions, legacy ones
+  included, are refused: another runtime may read them, and an active legacy
+  partition may hold the only copy of the vectors until its one-time re-key.
 - `--json` - JSON output format
 
 **When to use**: If `gno similar` returns empty results but embeddings exist, run `gno vec sync`.

@@ -17,6 +17,26 @@ Make vector identity depend only on what shapes the vectors, reuse an existing p
 - **Incompatible runtime.** `gno embed` from an incompatible runtime does not fork silently (R3). Queries from an incompatible runtime never mix vector spaces: they fall back to lexical retrieval and say so in results and status. [inferred]
 - **Migration.** Existing fingerprints cannot be decomposed. On first open under the new key, run the same sample check against each existing partition with the same model and dimensions; re-key the most complete compatible partition as active under the new key; leave the rest as `shadow`. Crash-safe and idempotent. [inferred]
 
+### Measured threshold
+
+Measured 2026-09-25 before implementation, on Linux x64 (Ryzen 9 7950X3D, 32 logical CPUs), with the default embedding model `hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf`, node-llama-cpp from `bun.lock`, and a synthetic 40-note corpus (53 chunks). Each condition ran `gno init` / `gno update` / `gno embed` in an isolated temp GNO root (own config, data and model cache); stored vectors were compared chunk by chunk through the identical exact input hash.
+
+| Comparison | Chunks | Bit-identical | Cosine min | Cosine mean |
+| --- | --- | --- | --- | --- |
+| Bun 1.4.2 vs Bun 1.3.14, CPU (`GNO_LLAMA_GPU=false`) | 53 | 53 | 1.000000 | 1.000000 |
+| Bun 1.4.2 vs Bun 1.3.14, Vulkan GPU | 53 | 53 | 1.000000 | 1.000000 |
+| Vulkan GPU vs CPU, Bun 1.4.2 | 53 | 0 | 0.999374 | 0.999673 |
+| CPU `GNO_EMBED_THREADS=1` (1 context) vs default (2 contexts) | 53 | 53 | 1.000000 | 1.000000 |
+| CPU `GNO_EMBED_THREADS=4` vs default | 53 | 53 | 1.000000 | 1.000000 |
+| CPU `GNO_EMBED_THREADS=16` (1 context) vs default | 53 | 53 | 1.000000 | 1.000000 |
+| Different chunks of the same run (1,378 pairs; incompatibility reference) | - | - | max 0.951407 | mean 0.383572 |
+
+The GPU run used the Vulkan backend on the integrated AMD Radeon (Raphael) through `GNO_LLAMA_GPU=vulkan` with `GGML_VK_VISIBLE_DEVICES=1`; the probe confirmed `llama.gpu === "vulkan"` on that device. CUDA on the RTX 4090 could not be measured: another process held 23.4 of 24 GiB of VRAM, and the CUDA run failed with `CUDA error: out of memory` before embedding.
+
+**Threshold: every sampled chunk must reach cosine >= 0.99 against its stored vector.** Bun version and CPU thread count produced bit-identical vectors; the GPU/CPU backend switch moved the worst chunk to 0.99937. 0.99 leaves ten times the measured backend deviation as headroom for unmeasured backends (CUDA, Metal) while staying far above the 0.951 that two different chunks of the same corpus reached, so vectors from a genuinely different space cannot pass.
+
+**Sample.** The first 8 stored variants (by variant id) that still have a current owner. A partition with no samplable stored chunk is `unverified`; a partition with 1-7 samplable chunks is judged on all of them, because runtime deviation measured uniform across chunks and a larger floor would lock small indexes out of vector retrieval on every runtime except the one that built them.
+
 ## Acceptance Criteria
 <!-- scope: both -->
 

@@ -13,6 +13,7 @@ import { CONFIG_VERSION } from "../../src/config/types";
 import { getEmbeddingFingerprint } from "../../src/embed/fingerprint";
 import { runEmbed } from "../../src/sdk/embed";
 import { migration } from "../../src/store/migrations/028-vector-variants";
+import { migration as runtimeMigration } from "../../src/store/migrations/031-runtime-independent-vectors";
 import { encodeEmbedding } from "../../src/store/vector";
 import { safeRm } from "../helpers/cleanup";
 
@@ -70,6 +71,8 @@ describe("runEmbed", () => {
     `);
 
       migration.up(db, "unicode61");
+
+      runtimeMigration.up(db, "unicode61");
 
       const staleStoredFingerprint = getEmbeddingFingerprint({
         modelUri: MODEL_URI,

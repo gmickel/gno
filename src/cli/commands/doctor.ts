@@ -12,6 +12,10 @@ import { arch, platform } from "node:os";
 
 import type { Config } from "../../config/types";
 import type { ActivationStatus } from "../../core/activation-status";
+import type {
+  VectorPartitionStatus,
+  VectorRuntimeStatus,
+} from "../../store/vector/status";
 
 import { getIndexDbPath, getModelsCachePath } from "../../app/constants";
 import {
@@ -26,6 +30,7 @@ import {
   readFindingsRunStatus,
   resolveFindingsSchedule,
 } from "../../core/findings-run-state";
+import { formatVectorPartitionLines } from "../../core/vector-partition-status";
 import { getCodeChunkingStatus } from "../../ingestion/chunker";
 import { ModelCache } from "../../llm/cache";
 import { getActivePreset, resolveModelUri } from "../../llm/registry";
@@ -57,6 +62,9 @@ export interface DoctorCheck {
   details?: string[];
   /** Embedding fingerprint diagnostics for machine consumers */
   embeddingFingerprint?: EmbeddingFingerprintHealth;
+  /** Vector partitions; `retrieval` marks the one status and search use */
+  vectorPartitions?: VectorPartitionStatus[];
+  vectorRuntime?: VectorRuntimeStatus;
 }
 
 export interface EmbeddingFingerprintGroup {
@@ -261,16 +269,18 @@ function describeFingerprintGroup(group: EmbeddingFingerprintGroup): string {
 async function checkEmbeddingFingerprints(
   config: Config,
   indexName?: string
-): Promise<DoctorCheck> {
+): Promise<DoctorCheck[]> {
   const dbPath = getIndexDbPath(indexName);
   try {
     await stat(dbPath);
   } catch {
-    return {
-      name: "embedding-fingerprint",
-      status: "warn",
-      message: "Database not found. Run: gno init",
-    };
+    return [
+      {
+        name: "embedding-fingerprint",
+        status: "warn",
+        message: "Database not found. Run: gno init",
+      },
+    ];
   }
 
   const store = new SqliteAdapter();
@@ -283,12 +293,14 @@ async function checkEmbeddingFingerprints(
     config.busyTimeoutMs ?? DEFAULT_BUSY_TIMEOUT_MS
   );
   if (!openResult.ok) {
-    return {
-      name: "embedding-fingerprint",
-      status: "warn",
-      message: `Fingerprint health unavailable: ${openResult.error.message}`,
-      details: ["Run: gno doctor --json", "Then run: gno embed"],
-    };
+    return [
+      {
+        name: "embedding-fingerprint",
+        status: "warn",
+        message: `Fingerprint health unavailable: ${openResult.error.message}`,
+        details: ["Run: gno doctor --json", "Then run: gno embed"],
+      },
+    ];
   }
 
   try {
@@ -297,12 +309,14 @@ async function checkEmbeddingFingerprints(
     const currentFingerprint = getStoredEmbeddingFingerprint(db, model);
     const statusResult = await store.getStatus({ embedModel: model });
     if (!statusResult.ok) {
-      return {
-        name: "embedding-fingerprint",
-        status: "warn",
-        message: `Fingerprint health unavailable: ${statusResult.error.message}`,
-        details: ["Run: gno embed"],
-      };
+      return [
+        {
+          name: "embedding-fingerprint",
+          status: "warn",
+          message: `Fingerprint health unavailable: ${statusResult.error.message}`,
+          details: ["Run: gno embed"],
+        },
+      ];
     }
 
     const legacyChunks =
@@ -389,13 +403,33 @@ async function checkEmbeddingFingerprints(
       }
     }
 
-    return {
+    const fingerprintCheck: DoctorCheck = {
       name: "embedding-fingerprint",
       status: hasWarnings ? "warn" : "ok",
       message,
       details: details.length > 0 ? details : undefined,
       embeddingFingerprint: health,
     };
+    const partitions = statusResult.value.vectorPartitions;
+    if (!partitions) return [fingerprintCheck];
+    const runtime = statusResult.value.vectorRuntime;
+    const partitionLines = formatVectorPartitionLines(partitions, runtime);
+    const retrieval = partitions.find((p) => p.retrieval);
+    return [
+      fingerprintCheck,
+      {
+        name: "vector-partitions",
+        status: partitionLines.length ? "warn" : "ok",
+        message: retrieval
+          ? `this runtime's retrieval uses ${retrieval.id.slice(0, 12)} (${retrieval.state}, ${retrieval.owners} chunks, ${retrieval.provenance}); ${partitions.length - 1} other partition(s)`
+          : runtime?.state === "unavailable"
+            ? `this runtime uses lexical retrieval only: ${runtime.reason}`
+            : `this runtime has not resolved a partition yet; ${partitions.length} partition(s)`,
+        details: partitionLines.length ? partitionLines.slice(1) : undefined,
+        vectorPartitions: partitions,
+        vectorRuntime: runtime,
+      },
+    ];
   } finally {
     await store.close();
   }
@@ -669,7 +703,7 @@ export async function doctor(
   checks.push(checkCodeChunking());
 
   // Embedding fingerprint freshness
-  checks.push(await checkEmbeddingFingerprints(config, options.indexName));
+  checks.push(...(await checkEmbeddingFingerprints(config, options.indexName)));
 
   // Scheduled findings pass (daemon-only, opt-in)
   checks.push(await checkFindingsPass(config, options.indexName));

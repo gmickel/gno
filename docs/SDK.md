@@ -716,6 +716,13 @@ console.log(
 
 Status exposes normalized rule IDs/factors, not configured path prefixes.
 
+`status.vectorPartitions` (omitted when none exist) lists the embedding model's
+vector partitions with `state`, `owners`, `provenance` and
+`incompatibleRuntimes`; `embeddingBacklog` counts against the one with
+`retrieval: true`. SDK embedding never builds a separate partition for a
+runtime that cannot reproduce the stored vectors; confirm that with
+`gno embed --new-partition`.
+
 `status.chunking` reports configured/applied parameters, layout state, and
 pending document/mirror counts. Pass optional `chunking` in the client config
 to set `maxTokens` and `overlapPercent`; partial config inherits defaults.

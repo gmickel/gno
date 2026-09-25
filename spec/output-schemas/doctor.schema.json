@@ -243,6 +243,94 @@
               "type": "string"
             }
           },
+          "vectorPartitions": {
+            "type": "array",
+            "description": "Vector partitions (vector-partitions check); `retrieval` marks the one status and search use",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "model",
+                "dimensions",
+                "state",
+                "legacy",
+                "retrieval",
+                "droppable",
+                "owners",
+                "provenance",
+                "compatibleRuntimes",
+                "incompatibleRuntimes"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "dimensions": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "state": {
+                  "type": "string",
+                  "enum": ["active", "shadow"]
+                },
+                "legacy": {
+                  "type": "boolean"
+                },
+                "retrieval": {
+                  "type": "boolean"
+                },
+                "droppable": {
+                  "type": "boolean"
+                },
+                "owners": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "provenance": {
+                  "type": "string"
+                },
+                "compatibleRuntimes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "incompatibleRuntimes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "vectorRuntime": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "state", "partition"],
+            "description": "This process's runtime, resolved by the same selection rule its queries use",
+            "properties": {
+              "label": {
+                "type": ["string", "null"],
+                "description": "Runtime recorded by this caller's last query or embed"
+              },
+              "state": {
+                "type": "string",
+                "enum": ["vectors", "unavailable", "unresolved"],
+                "description": "vectors: queries read `partition`; unavailable: lexical retrieval only; unresolved: no query or embed has resolved this caller yet"
+              },
+              "partition": {
+                "type": ["string", "null"]
+              },
+              "reason": {
+                "type": "string"
+              }
+            }
+          },
           "embeddingFingerprint": {
             "type": "object",
             "description": "Embedding freshness fingerprint diagnostics",

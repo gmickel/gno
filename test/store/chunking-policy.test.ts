@@ -65,7 +65,7 @@ test("opening a pre-feature schema preserves schema identity, chunks and legacy 
   const beforeVectors = old.query("SELECT * FROM content_vectors").all();
   const beforeSchema = old
     .query(
-      "SELECT name, sql FROM sqlite_master WHERE name != 'documents' ORDER BY name"
+      "SELECT name, sql FROM sqlite_master WHERE name != 'documents' AND name NOT LIKE '%vector_partitions%' AND name NOT LIKE '%vector_runtime_%' ORDER BY name"
     )
     .all();
   old.close();
@@ -87,11 +87,12 @@ test("opening a pre-feature schema preserves schema identity, chunks and legacy 
     expect(
       db
         .query(
-          "SELECT name, sql FROM sqlite_master WHERE name != 'documents' ORDER BY name"
+          "SELECT name, sql FROM sqlite_master WHERE name != 'documents' AND name NOT LIKE '%vector_partitions%' AND name NOT LIKE '%vector_runtime_%' ORDER BY name"
         )
         .all()
     ).toEqual(beforeSchema);
-    // Migration 30 adds only typed document metadata; chunk policy still
+    // Migration 30 adds only typed document metadata and migration 31 only
+    // runtime-independent vector partition keys (fn-184); chunk policy still
     // performs no schema migration or legacy vector rewrite.
     const columns = db
       .query<{ name: string }, []>("PRAGMA table_info(documents)")

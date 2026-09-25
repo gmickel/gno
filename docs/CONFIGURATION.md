@@ -1345,6 +1345,11 @@ Runtime/model env vars:
 | `GNO_EMBED_THREADS`         | Override CPU threads per embedding context                         |
 | `GNO_NO_AUTO_DOWNLOAD`      | Disable automatic model downloads; explicit `models pull` allowed  |
 
+Neither `GNO_LLAMA_GPU` nor `NODE_LLAMA_CPP_GPU` changes vector identity: a
+backend switch reuses the existing vector partition when a measured sample of
+stored chunks reproduces its vectors. See
+[Switching backend or Bun version](TROUBLESHOOTING.md#switching-backend-or-bun-version).
+
 On Windows CPU-only runs, GNO defaults to one embedding context below 16GB RAM,
 and at most two contexts from 16GB upward. Increase `GNO_EMBED_CONTEXTS` only
 when memory headroom is clear and a real benchmark shows a gain.
