@@ -1,13 +1,68 @@
 {
   "branch_name": "fn-189-piped-cli-output-is-truncated-at-exit",
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-25T16:48:18.918436Z",
   "created_at": "2026-09-25T16:35:02.899492Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-189-piped-cli-output-is-truncated-at-exit",
+  "impl_review_rounds": {
+    "fn-189-piped-cli-output-is-truncated-at-exit.1": 0
+  },
   "next_task": 1,
+  "no_plan": true,
+  "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "review_attempts": [
+    {
+      "artifact_sha256": "6d67c7fde536ce296ae3e8fa1fad38ee4b68e6035745cf697ad3668e300f4ee3",
+      "backend": "codex",
+      "base_sha": "59ffc7566872b65b3973ee98a40659b4a13bcbc9",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "183b8a1ac3ea2023933a63c99c9104b05fb247a8",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 1292,
+      "output_sha256": "16245b0f31781a7ce2acc6c5bdbf349d653d03f6e1c353a3934ec058375c4386",
+      "reservation_id": "c2ce2ff0514f48058d5badde660a3bd6",
+      "round_consumed": true,
+      "scope": "impl:fn-189-piped-cli-output-is-truncated-at-exit.1",
+      "superseded_by": null,
+      "task": "fn-189-piped-cli-output-is-truncated-at-exit.1",
+      "timestamp": "2026-09-25T16:46:43.631820Z",
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "impl:fn-189-piped-cli-output-is-truncated-at-exit.1": 1
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-189-piped-cli-output-is-truncated-at-exit.1": 0
+  },
   "spec_path": ".flow/specs/fn-189-piped-cli-output-is-truncated-at-exit.md",
-  "status": "open",
+  "status": "done",
   "title": "Piped CLI output is truncated at exit",
   "tracker": {
     "baseHashFlow": null,
@@ -20,5 +75,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T16:35:02.902052Z"
+  "updated_at": "2026-09-25T16:48:30.555512Z"
 }
