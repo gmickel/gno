@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-09-25
+
 ### Added
 
 - Native agent-session ingestion: `gno sessions` discovers local Codex, Claude Code, OpenClaw, and Hermes session stores and manually imports selected conversations into a dedicated archive (its own config file and named index), with structural human/assistant attribution, a provenance block per turn, best-effort credential redaction, incremental and idempotent reruns, partial-outcome receipts, status, and prune. Available through the CLI, MCP (`gno_sessions_status`, `gno_sessions_import`), REST (`/api/sessions/*`), the SDK (`sessionsStatus`, `discoverSessions`, `importSessions`), and a `/sessions` Web UI page. Nothing is imported, watched, or scheduled by default, and archived turns are never promoted to remembered facts. See [Agent Sessions](docs/SESSIONS.md).
@@ -2796,7 +2798,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.5.1...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.6.0...HEAD
+[2.6.0]: https://github.com/gmickel/gno/compare/v2.5.1...v2.6.0
 [2.5.1]: https://github.com/gmickel/gno/compare/v2.4.0...v2.5.1
 [2.4.0]: https://github.com/gmickel/gno/compare/v2.3.3...v2.4.0
 [2.3.3]: https://github.com/gmickel/gno/compare/v2.3.2...v2.3.3

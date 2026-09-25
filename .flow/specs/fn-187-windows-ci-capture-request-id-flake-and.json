@@ -1,0 +1,24 @@
+{
+  "branch_name": "fn-187-windows-ci-capture-request-id-flake-and",
+  "created_at": "2026-09-25T09:30:23.015321Z",
+  "depends_on_epics": [],
+  "id": "fn-187-windows-ci-capture-request-id-flake-and",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-187-windows-ci-capture-request-id-flake-and.md",
+  "status": "open",
+  "title": "Windows CI capture request-ID flake and job timeout",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-09-25T09:30:23.019285Z"
+}
