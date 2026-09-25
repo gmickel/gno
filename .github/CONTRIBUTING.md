@@ -88,16 +88,9 @@ explicitly asks or when changing retrieval/answer quality behavior.
 excludes immutable `.flow/artifacts/` snapshots and local `notes/` experiments;
 reproduce those only with their recorded commands and pinned inputs.
 
-**Release:**
-
-```bash
-bun run version:patch   # bump version
-# Update CHANGELOG.md (move Unreleased, keep empty header, update compare links)
-# Match README.md current-source-version to package.json
-git add package.json README.md CHANGELOG.md
-git commit -m "chore: bump to vX.Y.Z"
-git tag vX.Y.Z && git push --tags
-```
+**Release:** follow [RELEASING.md](../RELEASING.md): release PR, tag on the
+merge commit, publish checks, gno.sh propagation, and the post-publish site
+deploy.
 
 Tag push triggers full CI + npm publish via OIDC (no token needed).
 
