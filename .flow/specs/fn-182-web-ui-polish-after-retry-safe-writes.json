@@ -9,7 +9,7 @@
   "depends_on_epics": [],
   "id": "fn-182-web-ui-polish-after-retry-safe-writes",
   "impl_review_rounds": {
-    "fn-182-web-ui-polish-after-retry-safe-writes.1": 1
+    "fn-182-web-ui-polish-after-retry-safe-writes.1": 0
   },
   "next_task": 1,
   "no_plan": true,
@@ -76,9 +76,71 @@
       "task": "fn-182-web-ui-polish-after-retry-safe-writes.1",
       "timestamp": "2026-09-25T14:36:07.899707Z",
       "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "80c91671b4a673f7ed70e7a98b876e78ce3758ee99cd7d7e1ba3d6ce2b41cfbf",
+      "backend": "codex",
+      "base_sha": "68a854ffa95f3c47fe3bc303ae7e55f678d24076",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-9bbaafd481402a5d503e92f0bb2c4457",
+            "classification": "introduced",
+            "findingId": "finding-9bbaafd481402a5d503e92f0bb2c4457",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-f5f984a3d5480ab9b98f1430eb320a2f",
+            "classification": "introduced",
+            "findingId": "finding-f5f984a3d5480ab9b98f1430eb320a2f",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-36db0aeb987f24ab311d5fd3721a3838",
+            "classification": "introduced",
+            "findingId": "finding-36db0aeb987f24ab311d5fd3721a3838",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "d0ea92bb938779cf48bce133b493087b548a5558",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 1002,
+      "output_sha256": "789e0d7c7b0b7bb69b7a6dd06ceda1a2fa87412d630faa0d95b67cf0fded4f44",
+      "reservation_id": "614aa112954d4f69a8e26c995f7d3b17",
+      "round_consumed": true,
+      "scope": "impl:fn-182-web-ui-polish-after-retry-safe-writes.1",
+      "superseded_by": null,
+      "task": "fn-182-web-ui-polish-after-retry-safe-writes.1",
+      "timestamp": "2026-09-25T14:37:24.566487Z",
+      "verdict": "SHIP"
     }
   ],
-  "review_hash_epoch": {},
+  "review_hash_epoch": {
+    "impl:fn-182-web-ui-polish-after-retry-safe-writes.1": 1
+  },
   "review_pending_rounds": {},
   "review_reservations": {},
   "review_transport_failures": {
@@ -98,5 +160,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T14:36:07.902334Z"
+  "updated_at": "2026-09-25T14:37:24.568678Z"
 }
