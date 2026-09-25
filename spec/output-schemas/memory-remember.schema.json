@@ -34,13 +34,13 @@
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["outcome", "record", "absPath", "sync", "matching"],
+      "required": ["outcome", "record", "sync", "matching"],
       "properties": {
         "outcome": { "enum": ["added", "superseded"] },
         "record": { "$ref": "#/$defs/fact" },
         "absPath": {
           "type": "string",
-          "description": "Absolute path of the fact file that was written."
+          "description": "Absolute path of the fact file that was written. Host path: local callers only (CLI, stdio MCP, same-host Web UI/REST); omitted for remote REST and HTTP MCP callers, which identify the document by uri + relPath."
         },
         "sync": { "$ref": "#/$defs/sync" },
         "matching": { "$ref": "#/$defs/matching" },

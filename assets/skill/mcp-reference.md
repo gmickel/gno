@@ -156,7 +156,8 @@ CLI-only.
 `GNO_MCP_ENABLE_WRITE=1`. It writes quick notes with structured `source:`
 frontmatter and returns the same provenance receipt shape as CLI, REST, and SDK
 capture, plus legacy MCP fields (`docid`, `absPath`, `overwritten`,
-`serverInstanceId`).
+`serverInstanceId`). `absPath` is stdio-only: HTTP MCP callers never receive
+host paths and address the note by `uri` + `relPath`.
 
 `presetId` accepts `blank`, `project-note`, `research-note`, `decision-note`,
 `prompt-pattern`, `source-summary`, `idea-original`, `person`,
