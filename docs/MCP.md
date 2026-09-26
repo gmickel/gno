@@ -204,8 +204,9 @@ or `SOURCE_AVAILABILITY_*` codes under `local` mode. Distinct from
 
 `gno_audit` returns the same versioned report as CLI `gno audit` for `links`,
 `provenance`, `freshness`, or `all`. Optional `collections`, `paths`, and `tags`
-scope the scan. `maxFindings` is 1–1000; exact totals and truncation remain in
-the report. `maxAgeDays`, `orphanRoots`, and `orphanIgnorePrefixes` are explicit
+scope the scan. `maxFindings` is a number from 1 to 100000, or `"all"` for every
+finding; exact totals and truncation (finding cap, snapshot limit, shortened
+evidence) remain in the report. `maxAgeDays`, `orphanRoots`, and `orphanIgnorePrefixes` are explicit
 run policy, not persisted configuration.
 
 The tool is annotated read-only, destructive-false, and idempotent, and the

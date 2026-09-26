@@ -1080,8 +1080,15 @@ URLs are outside the local-link graph. Age is only a review signal when
 false. Use repeatable `--orphan-root` and `--orphan-ignore-prefix` inputs for an
 explicit orphan policy.
 
-`--max-findings` defaults to 100 and is capped at 1000. Returned findings are
-bounded while `counts.findings.total` remains exact. JSON finding IDs are stable
+`--max-findings` defaults to 100 and accepts a number from 1 to 100000, or
+`all` to export every finding (for example
+`gno audit links --max-findings all --json --output links.json`). Returned
+findings are bounded while `counts.findings.total` remains exact. The audit
+reads a bounded snapshot of up to 50,000 documents and 50,000 links; when a
+large index exceeds it, the report says so (`truncation.snapshotTruncated`, and
+a `Snapshot: truncated` line in terminal output) and its totals cover only that
+snapshot. `truncation.evidenceTruncated` marks findings whose evidence was
+shortened, such as a very long list of tied link candidates. JSON finding IDs are stable
 for identical rule, subject/location, and evidence. Terminal human mode reports
 progress on stderr; JSON, `--quiet`, and `--no-progress` suppress it. `Ctrl-C`
 returns partial evidence rather than a false clean report.

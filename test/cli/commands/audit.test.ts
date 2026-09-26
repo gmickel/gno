@@ -137,6 +137,19 @@ describe("gno audit CLI", () => {
     });
   });
 
+  test("accepts --max-findings all and rejects values outside the range", async () => {
+    const all = await audit({ category: "links", maxFindings: "all" });
+    expect(all.success).toBe(true);
+    if (all.success) expect(all.report.truncation.maxFindings).toBe("all");
+    for (const raw of ["0", "-3", "2.5", "100001", "many"]) {
+      expect(await audit({ category: "links", maxFindings: raw })).toEqual({
+        success: false,
+        invalid: true,
+        error: 'maxFindings must be an integer between 1 and 100000, or "all"',
+      });
+    }
+  });
+
   test("normalizes and validates tag filters", async () => {
     await Bun.write(
       join(notes, "tagged.md"),

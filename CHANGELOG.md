@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `gno audit --max-findings` (and MCP `gno_audit` `maxFindings`) now accepts `all` or any number up to 100000, so a complete finding list can be exported. The report's `truncation` block now also says whether the bounded audit snapshot was cut (`snapshotTruncated`; totals then cover the snapshot, not the whole index) and whether finding evidence was shortened (`evidenceTruncated`).
+
+### Fixed
+
+- Piped CLI output is no longer cut short when `Ctrl-C` arrives while a large result is still being written.
+
 ## [2.7.1] - 2026-09-26
 
 ### Changed

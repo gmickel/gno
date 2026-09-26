@@ -901,8 +901,17 @@ gno audit [links|provenance|freshness|all] [--collection <name>...] \
   [--json] [--output <path>]
 ```
 
-The default category is `all`; `--max-findings` defaults to 100 and is bounded
-to 1–1000. Truncation limits returned findings but preserves exact totals.
+The default category is `all`; `--max-findings` defaults to 100 and accepts an
+integer from 1 to 100000 or `all`. `all` returns every finding of the bounded
+audit snapshot, and per-rule caps follow the same value. Any other value
+(zero, negative, non-integer, above 100000) is a validation error (exit 1)
+that states the accepted range. Truncation limits returned findings but
+preserves exact totals. The report's `truncation` block reports three separate
+conditions: `findingsTruncated` (the finding cap cut the list),
+`snapshotTruncated` (the bounded snapshot of 50,000 documents/links was cut, so
+totals cover the snapshot only and are not complete-index totals), and
+`evidenceTruncated` (evidence items, tied-candidate lists, or evidence detail
+text were shortened).
 `--output` writes only the requested report artifact with local file
 permissions. Human output renders the same report represented by
 `audit-report.schema.json`.

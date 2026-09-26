@@ -9,6 +9,7 @@ import type { DocumentRow } from "../store/types";
 import type {
   AuditCategory,
   AuditFingerprints,
+  AuditMaxFindings,
   AuditRunResult,
   AuditScope,
 } from "./audit";
@@ -26,6 +27,7 @@ import {
   AUDIT_RULE_SET_VERSION,
   canonicalAuditJson,
   hashAuditCanonical,
+  resolveAuditMaxFindings,
   runAudit,
 } from "./audit";
 import { evaluateFreshnessAudit } from "./audit-freshness";
@@ -55,7 +57,7 @@ export interface WorkspaceAuditOptions {
   collectionFilters?: readonly string[];
   pathFilters?: readonly string[];
   tagFilters?: readonly string[];
-  maxFindings?: number;
+  maxFindings?: AuditMaxFindings;
   agePolicy?: AuditFreshnessOptions["agePolicy"];
   orphanRoots?: readonly string[];
   orphanIgnorePrefixes?: readonly string[];
@@ -596,6 +598,12 @@ export const runWorkspaceAudit = async (
     snapshots.set(attempt, pending);
     return pending;
   };
+  // Per-family caps follow the effective report cap; runAudit rejects an
+  // invalid value before any rule runs.
+  const resolvedMaxFindings = resolveAuditMaxFindings(options.maxFindings);
+  const maxFindingsPerRule = resolvedMaxFindings.ok
+    ? resolvedMaxFindings.limit
+    : 0;
   const result = await runAudit({
     scope,
     capabilities: {
@@ -645,6 +653,7 @@ export const runWorkspaceAudit = async (
             ...evaluateLinkAudit(snapshot.links, {
               rootUris: options.orphanRoots ?? [],
               ignorePathPrefixes: options.orphanIgnorePrefixes ?? [],
+              maxFindingsPerRule,
             })
           );
           await options.onProgress?.({
@@ -657,7 +666,7 @@ export const runWorkspaceAudit = async (
           contributions.push(
             ...evaluateProvenanceAudit(
               snapshot.documents.map(({ provenance }) => provenance),
-              { truncated: snapshot.truncated }
+              { truncated: snapshot.truncated, maxFindingsPerRule }
             )
           );
           await options.onProgress?.({
@@ -674,6 +683,7 @@ export const runWorkspaceAudit = async (
                 now: options.now ?? new Date(),
                 agePolicy: options.agePolicy,
                 truncated: snapshot.truncated,
+                maxFindingsPerRule,
               }
             )
           );

@@ -33,6 +33,8 @@ export interface AuditFreshnessOptions {
   now: Date;
   agePolicy?: AuditAgePolicy;
   truncated?: boolean;
+  /** Effective per-rule cap; defaults to FRESHNESS_AUDIT_MAX_FINDINGS_PER_RULE. */
+  maxFindingsPerRule?: number;
 }
 
 const finding = (input: {
@@ -68,6 +70,7 @@ const rule = (input: {
   skipped?: boolean;
   message: string;
   reason?: string;
+  maxFindingsPerRule?: number;
 }): AuditRuleContribution => ({
   ruleId: input.ruleId,
   category: "freshness",
@@ -83,7 +86,10 @@ const rule = (input: {
   message: input.message,
   findings: [...input.findings]
     .sort(compareAuditFindingDrafts)
-    .slice(0, FRESHNESS_AUDIT_MAX_FINDINGS_PER_RULE),
+    .slice(
+      0,
+      input.maxFindingsPerRule ?? FRESHNESS_AUDIT_MAX_FINDINGS_PER_RULE
+    ),
   findingCount: input.findings.length,
   examinedCount: input.examinedCount,
   skipReason: input.reason ?? null,
@@ -186,6 +192,7 @@ export const evaluateFreshnessAudit = (
       : undefined;
   return [
     rule({
+      maxFindingsPerRule: options.maxFindingsPerRule,
       ruleId: "freshness.source-readable",
       findings: unavailable,
       examinedCount: documents.length,
@@ -197,6 +204,7 @@ export const evaluateFreshnessAudit = (
       reason,
     }),
     rule({
+      maxFindingsPerRule: options.maxFindingsPerRule,
       ruleId: "freshness.source-index-drift",
       findings: drift,
       examinedCount: byteComparableCount,
@@ -207,6 +215,7 @@ export const evaluateFreshnessAudit = (
       reason,
     }),
     rule({
+      maxFindingsPerRule: options.maxFindingsPerRule,
       ruleId: "freshness.index-revision",
       findings: staleRevision,
       examinedCount: documents.length,
@@ -217,6 +226,7 @@ export const evaluateFreshnessAudit = (
       reason,
     }),
     rule({
+      maxFindingsPerRule: options.maxFindingsPerRule,
       ruleId: "freshness.configured-age-signal",
       findings: ageSignals,
       examinedCount: documents.length,

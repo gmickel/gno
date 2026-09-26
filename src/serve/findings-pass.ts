@@ -30,7 +30,7 @@ import {
 } from "../core/findings-run-state";
 import { acquireCliWriteLease } from "../core/write-lease";
 
-/** Audit report cap; matches the audit schema ceiling. */
+/** Audit report cap for the daemon findings pass. */
 const FINDINGS_AUDIT_MAX_FINDINGS = 1000;
 const LEASE_HOLDER_COMMAND = "gno daemon (findings pass)";
 const CONTROL_CHARS = /\p{Cc}/gu;

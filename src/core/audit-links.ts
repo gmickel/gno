@@ -9,6 +9,7 @@ import type { AuditFindingDraft, AuditRuleContribution } from "./audit";
 import { compareAuditCodeUnits, compareAuditFindingDrafts } from "./audit";
 
 export const LINK_AUDIT_RULE_VERSION = "1.0" as const;
+/** Default per-rule cap; runs pass the effective `maxFindings` instead. */
 export const LINK_AUDIT_MAX_FINDINGS_PER_RULE = 1000;
 
 export interface AuditOrphanPolicy {
@@ -16,14 +17,15 @@ export interface AuditOrphanPolicy {
   ignorePathPrefixes: readonly string[];
   /** Mirrored duplicate rows are excluded from orphan claims by default. */
   ignoreMirrorDuplicates?: boolean;
+  /** Effective per-rule cap; defaults to LINK_AUDIT_MAX_FINDINGS_PER_RULE. */
+  maxFindingsPerRule?: number;
 }
 
 const boundedFindings = (
-  findings: readonly AuditFindingDraft[]
+  findings: readonly AuditFindingDraft[],
+  maxFindingsPerRule: number
 ): AuditFindingDraft[] =>
-  [...findings]
-    .sort(compareAuditFindingDrafts)
-    .slice(0, LINK_AUDIT_MAX_FINDINGS_PER_RULE);
+  [...findings].sort(compareAuditFindingDrafts).slice(0, maxFindingsPerRule);
 
 const lineLocation = (line: number, column: number): string =>
   `L${line}:C${column}`;
@@ -126,6 +128,8 @@ export const evaluateLinkAudit = (
       ambiguous.push(linkFinding(link));
     }
   }
+  const maxFindingsPerRule =
+    policy.maxFindingsPerRule ?? LINK_AUDIT_MAX_FINDINGS_PER_RULE;
   const roots = new Set(normalizedPrefixes(policy.rootUris));
   const ignorePrefixes = normalizedPrefixes(policy.ignorePathPrefixes);
   const mirroredIds = duplicateMirrorIds(
@@ -179,7 +183,7 @@ export const evaluateLinkAudit = (
       message: partial
         ? "Local target scan was truncated"
         : `${unresolved.length} unresolved or broken local links`,
-      findings: boundedFindings(unresolved),
+      findings: boundedFindings(unresolved, maxFindingsPerRule),
       findingCount: unresolved.length,
       skipReason: partial ? "snapshot_truncated" : null,
     },
@@ -191,7 +195,7 @@ export const evaluateLinkAudit = (
       message: partial
         ? "Ambiguous target scan was truncated"
         : `${ambiguous.length} ambiguous local links`,
-      findings: boundedFindings(ambiguous),
+      findings: boundedFindings(ambiguous, maxFindingsPerRule),
       findingCount: ambiguous.length,
       skipReason: partial ? "snapshot_truncated" : null,
     },
@@ -203,7 +207,7 @@ export const evaluateLinkAudit = (
       message: partial
         ? "Orphan scan was truncated"
         : `${orphanFindings.length} policy-defined orphan documents`,
-      findings: boundedFindings(orphanFindings),
+      findings: boundedFindings(orphanFindings, maxFindingsPerRule),
       findingCount: orphanFindings.length,
       skipReason: partial ? "snapshot_truncated" : null,
     },

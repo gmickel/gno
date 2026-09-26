@@ -260,13 +260,27 @@
     "truncation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["findingsTruncated", "maxFindings"],
+      "required": [
+        "findingsTruncated",
+        "maxFindings",
+        "snapshotTruncated",
+        "evidenceTruncated"
+      ],
       "properties": {
         "findingsTruncated": { "type": "boolean" },
         "maxFindings": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 1000
+          "oneOf": [
+            { "type": "integer", "minimum": 1, "maximum": 100000 },
+            { "const": "all" }
+          ]
+        },
+        "snapshotTruncated": {
+          "type": "boolean",
+          "description": "The bounded audit snapshot was cut; finding totals cover the snapshot only, not the whole index"
+        },
+        "evidenceTruncated": {
+          "type": "boolean",
+          "description": "Evidence items, candidate lists, or evidence detail text were shortened"
         }
       }
     },

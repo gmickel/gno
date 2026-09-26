@@ -1694,7 +1694,10 @@ function wireOnboardingCommands(program: Command): void {
       collectRepeatableValue,
       []
     )
-    .option("--max-findings <count>", "maximum returned findings", Number)
+    .option(
+      "--max-findings <count>",
+      "maximum returned findings (1-100000, or all)"
+    )
     .option("--max-age-days <days>", "explicit age review signal", Number)
     .option(
       "--orphan-root <uri>",
@@ -1736,7 +1739,7 @@ function wireOnboardingCommands(program: Command): void {
             collections: cmdOpts.collection as string[],
             paths: cmdOpts.path as string[],
             tags: cmdOpts.tag as string[],
-            maxFindings: cmdOpts.maxFindings as number | undefined,
+            maxFindings: cmdOpts.maxFindings as string | undefined,
             maxAgeDays: cmdOpts.maxAgeDays as number | undefined,
             orphanRoots: cmdOpts.orphanRoot as string[],
             orphanIgnorePrefixes: cmdOpts.orphanIgnorePrefix as string[],
