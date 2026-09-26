@@ -70,3 +70,18 @@ bun scripts/macos-file-provider-smoke.ts matrix --root "<sharepoint-library-root
 - fn-118-cloud-placeholder-safe-indexing (spec, harness, evidence `research/file-provider/evidence/2026-08-16-*.json`)
 - `src/ingestion/source-availability/darwin-path.ts`, `scripts/macos-file-provider-smoke-lib.ts`
 - Apple TN3150, Getting ready for data-less files
+
+## Resolution (2026-09-26)
+
+Evidence: `research/file-provider/2026-09-26-shared-drives-and-sharepoint.md` and `research/file-provider/evidence/2026-09-26-shared-drives-and-sharepoint.json`.
+
+- **R1:** the harness accepts immediate Shared drive roots and refuses the aggregation root, descendants, symlinked roots, and symlinked `Shared drives`/domain directories. Receipts carry `layout`. Unit tests are in `test/scripts/macos-file-provider-smoke.test.ts`.
+- **R2:** on the Shared drive, local and cached-unpinned PASS, pinned-offline BLOCKED, partial-content NOT AVAILABLE. Google Drive 131.0 would not evict the fixtures on request, so:
+  - cloud-only was observed on real never-downloaded Shared drive items (`EDEADLK`, 0 bytes, still dataless);
+  - the race row is **inferred, not observed**, from the same Google provider domain and process-scope I/O policy that passed the My Drive race (fn-118) and both SharePoint races;
+  - nested-dataless-directory is NOT AVAILABLE, the same as My Drive.
+- **R3:** **two** library roots are installed, not three. They are the same two roots fn-118 tested, and both are re-proven here (cloud-only and race PASS in each). The docs say two.
+- **R4:** the maintainer accepted the gate on the evidence above (inferred race, nested-dataless NOT AVAILABLE). The classifier admits `GoogleDrive-*/Shared drives/<drive>/...`; the aggregation path stays unsupported.
+- **R5:** the branch build under `local` indexed 25 own local files and skipped 3 never-downloaded files as `CLOUD_PLACEHOLDER`; those 3 stayed dataless.
+- **R6:** docs, README, GLOSSARY, `spec/cli.md`, CHANGELOG, and gno.sh are updated.
+- **R7:** all four fixtures were moved to Trash after `cleanup-plan`; their absence was verified.
