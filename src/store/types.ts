@@ -742,6 +742,11 @@ export interface FtsSearchOptions extends DocumentEligibilityOptions {
   snippet?: boolean;
   /** Match documents containing ANY positive term instead of ALL of them. */
   anyTerm?: boolean;
+  /**
+   * Drop rows whose raw BM25 score is below this fraction (0-1) of the best
+   * row's score, so matches carried only by near-zero-IDF terms fall away.
+   */
+  minRelativeScore?: number;
 }
 
 /** Managed-memory eligibility query (unbounded, executed in one SQL query). */

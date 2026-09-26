@@ -319,16 +319,16 @@ class GnoMemoryProvider(MemoryProvider):
         return "\n".join(lines) if self._last_recall_count else ""
 
     def _warn_once_if_lexical_only(self, result: Dict[str, Any]) -> None:
-        # Lexical-only recall needs every query term to match, so question-
-        # shaped turns ("What is the ...?") miss facts the vector leg would
-        # find. Surface it once so the operator runs `gno embed <collection>`.
+        # Lexical-only recall matches a turn's content words, so a paraphrase
+        # that shares no word with the stored fact misses it. Surface it once
+        # so the operator can run `gno embed <collection>` for the vector leg.
         retrieval = result.get("retrieval")
         if self._lexical_warned or not isinstance(retrieval, dict) or retrieval.get("mode") != "lexical":
             return
         self._lexical_warned = True
         logger.warning(
-            "GNO recall is lexical-only (%s); natural-language turns may miss facts. "
-            "Run `gno embed %s` so recall can use the vector leg.",
+            "GNO recall is lexical-only (%s); turns that share no word with a fact miss it. "
+            "Run `gno embed %s` so recall can also match by meaning.",
             retrieval.get("semanticUnavailable") or "no vectors",
             self._config["collection"] or "<collection>",
         )

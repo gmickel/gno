@@ -1459,8 +1459,9 @@ Budgeted, cited, current-state recall from a memory-managed collection
   the vector leg did not run
 - `egressLineage` — strictest source policy across returned facts (absent when
   empty)
-- `hint` — self-teaching line naming `gno remember`, present only when no fact
-  was returned
+- `hint` — present only when no fact was returned; says why: the scope holds
+  no current fact (names `gno remember`), nothing in scope matched the query,
+  or the matches did not fit `maxTokens`
 
 **Identity:** `caller` is the MCP client implementation name from the
 `initialize` handshake (`mcp` when absent); `session` is the Streamable HTTP

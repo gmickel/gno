@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `gno recall` (and MCP `gno_recall`, REST, SDK) now answers question-shaped queries without vectors. Recall used to require every word of the query, so `recall "which branch does the QA canary deploy from?"` found nothing on a collection that was not embedded, even though `recall "canary branch"` found the fact. Recall now drops question words, returns facts that contain every remaining word first, and otherwise returns facts that share any of them, best match first. Facts that match only on a word found in most facts (such as a project name) are left out, and the 8-fact / 512-token budget is now filled in rank order instead of shortest fact first. Embedding the memory collection is no longer needed for questions; it still helps with paraphrases that share no word with a fact.
+- An empty recall no longer says "No memories in scope yet" when the scope has facts. The hint now distinguishes an empty scope, a scope where nothing matched, and matches that did not fit the token budget.
+
 ## [2.8.0] - 2026-09-26
 
 ### Added

@@ -3218,9 +3218,18 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         ...(options.chunkLanguage ? [options.chunkLanguage] : []),
         limit,
       ];
-      const rows = db
+      const allRows = db
         .query<FtsRow, (string | number)[]>(sql)
         .all(...queryParams);
+      // Raw bm25() is negative and rows are best-first.
+      const floor =
+        options.minRelativeScore !== undefined && allRows[0]
+          ? allRows[0].score * options.minRelativeScore
+          : undefined;
+      const rows =
+        floor === undefined
+          ? allRows
+          : allRows.filter((row) => row.score <= floor);
 
       return ok(
         rows.map((r) => ({

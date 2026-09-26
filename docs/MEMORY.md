@@ -234,20 +234,37 @@ graph expansion, and reranking off. It never downloads a model. The response
 runs the lexical leg only, so a resident gateway does not load a model per
 call.
 
+The lexical leg works on the query's content words. Question and function
+words ("which", "does", "the", "what do we know about") are dropped, so
+`gno recall "which branch does the QA canary deploy from?"` searches for
+`branch QA canary deploy`. Facts containing every content word come back
+first. When no fact contains all of them, recall falls back to facts that
+share any content word, ranked by BM25, and drops facts whose score is under
+a tenth of the best match, so a word that appears in most facts (a project
+name, say) does not pull them all in. Quoted phrases and `-term` exclusions
+pass through unchanged. Without vectors, a paraphrase that shares no word
+with the fact still misses it; embed the collection (`gno embed
+<collection>`) when you want recall to match by meaning as well.
+
 - Only current facts come back; superseded records are excluded in the
   query.
 - Budget: at most 8 facts under 512 estimated tokens by default
   (`--max-facts`, `--max-tokens`, `maxFacts`, `maxTokens`). Selection reuses
-  the Context Capsule budget logic; `budget.omitted` counts facts that
-  matched but did not fit.
+  the Context Capsule budget logic and fills the budget in rank order;
+  `budget.omitted` counts facts that matched but did not fit.
 - Each fact carries `uri` (`gno://…`), `text`, `scopes`, `caller`, `session`,
   `createdAt`, `contentHash`, `spanHash`, `supersedes`, `score`, and its
   `egressLineage`. The response-level `egressLineage` is the strictest policy
   across the returned facts; derived output inherits it.
-- With nothing in scope the response has an empty `facts` list and a `hint`
-  (`No memories in scope yet. Store one with: gno remember ...`). Every
-  surface returns that line verbatim, so a fresh agent learns the write path
-  from the empty read.
+- An empty result carries a `hint` that says why, verbatim on every
+  surface:
+  - the scope holds no current fact:
+    `No memories in scope yet. Store one with: gno remember ...`, so a fresh
+    agent learns the write path from the empty read;
+  - the scope holds facts but none matched:
+    `No memories in scope matched this query. Rephrase with words the fact uses, or store one with: gno remember ...`;
+  - facts matched but none fit the token budget:
+    `Matching memories did not fit the token budget. Raise --max-tokens (maxTokens) to return them.`
 
 Cite recalled facts by their `gno://` URI, exactly as for any retrieved
 document.
@@ -436,9 +453,10 @@ contract above without adding a write path:
   (`MEMORY_FENCED_REPLAY`). A session switch drops it. Temporary receipts use
   mode `0600` on POSIX and a protected user-only ACL at creation on Windows;
   permission setup failures prevent the write.
-- Embed the memory collection (`gno embed <collection>`, or a running
-  watcher). Lexical-only recall matches every query term, so question-shaped
-  turns miss facts the vector leg finds; the provider warns once while recall
+- Question-shaped turns recall on the lexical leg alone (see
+  [Recall](#recall)). Embedding the collection (`gno embed <collection>`, or a
+  running watcher) is optional and adds matching by meaning for paraphrases
+  that share no word with a fact; the provider warns once while recall
   reports `mode: lexical`.
 
 Install commands and the config reference are in
@@ -502,3 +520,4 @@ Install commands and the config reference are in
 | Semantic likely-match threshold | cosine 0.83          |
 | Lexical likely-match threshold  | Jaccard 0.5          |
 | Recall budget                   | 8 facts / 512 tokens |
+| Recall any-term score floor     | 0.1 of best BM25     |

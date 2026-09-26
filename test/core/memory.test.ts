@@ -16,6 +16,8 @@ import { evaluateMemoryRecordAudit } from "../../src/core/audit-provenance";
 import { acquireWriteLock } from "../../src/core/file-lock";
 import {
   MEMORY_EMPTY_RECALL_HINT,
+  MEMORY_NO_MATCH_RECALL_HINT,
+  MEMORY_OVER_BUDGET_RECALL_HINT,
   MemoryError,
   MemoryService,
   type RememberInput,
@@ -325,6 +327,45 @@ describe("MemoryService remember/recall contracts", () => {
     expect(recall.egressLineage).toBeUndefined();
   });
 
+  test.each([
+    ["stopword-only padding", "what do we know about the trains?"],
+    ["a content term the fact lacks", "what does Finn think of trains?"],
+  ])(
+    "lexical recall answers a question-shaped query (%s)",
+    async (_label, query) => {
+      const recall = await harness.service.recall({
+        ...IDENTITY,
+        query,
+        collection: "memory",
+        scopes: SCOPE,
+      });
+      expect(recall.retrieval.mode).toBe("lexical");
+      expect(recall.facts.map((fact) => fact.text)).toEqual([
+        "Finn likes trains.",
+      ]);
+      expect(recall.hint).toBeUndefined();
+    }
+  );
+
+  test.each([
+    ["nothing matches in a populated scope", {}, MEMORY_NO_MATCH_RECALL_HINT],
+    [
+      "matches exceed the token budget",
+      { query: "trains", maxTokens: 1 },
+      MEMORY_OVER_BUDGET_RECALL_HINT,
+    ],
+  ])("empty recall hint says why: %s", async (_label, overrides, hint) => {
+    const recall = await harness.service.recall({
+      ...IDENTITY,
+      query: "kubernetes",
+      collection: "memory",
+      scopes: SCOPE,
+      ...overrides,
+    });
+    expect(recall.facts).toEqual([]);
+    expect(recall.hint).toBe(hint);
+  });
+
   test("fence rejects receipted replay and derivedFrom gno:// input", async () => {
     const recall = await harness.service.recall({
       ...IDENTITY,
@@ -503,6 +544,41 @@ describe("MemoryService remember/recall contracts", () => {
     if (bare.outcome !== "added") return;
     expect("source" in bare.record).toBe(false);
     expect(await Bun.file(bare.absPath).text()).not.toContain("source:");
+  });
+});
+
+describe("any-term recall fallback", () => {
+  let harness: Harness;
+
+  beforeAll(async () => {
+    harness = await createHarness("memory-any-term");
+    for (const text of [
+      "Orbit customer data lives in the eu-west-1 region only.",
+      "Orbit backups are encrypted with a per-tenant KMS key.",
+      "Jonas maintains the Orbit Terraform modules.",
+      "Orbit design reviews happen on Thursdays.",
+      "The Orbit mobile team ships a release train every two weeks.",
+    ]) {
+      const added = await remember(harness, { text, decision: "add" });
+      expect(added.outcome).toBe("added");
+    }
+  });
+
+  afterAll(async () => {
+    await harness.store.close();
+    await safeRm(harness.root);
+  });
+
+  test("a term shared by most facts does not flood the result", async () => {
+    const recall = await harness.service.recall({
+      ...IDENTITY,
+      query: "Which region holds Orbit customer data?",
+      collection: "memory",
+      scopes: SCOPE,
+    });
+    expect(recall.facts.map((fact) => fact.text)).toEqual([
+      "Orbit customer data lives in the eu-west-1 region only.",
+    ]);
   });
 });
 

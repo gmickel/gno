@@ -33,11 +33,23 @@ export const MEMORY_RECALL_MAX_TOKENS = 512;
 /** Retrieval depth per leg before fusion and budgeting. */
 export const MEMORY_RECALL_RETRIEVAL_LIMIT = 32;
 export const MEMORY_RRF_K = 60;
+/**
+ * Any-term fallback floor: a fact must score at least this fraction of the
+ * best fact's raw BM25, so a term shared by most facts cannot pull them in.
+ */
+export const MEMORY_RECALL_ANY_TERM_MIN_RELATIVE_SCORE = 0.1;
 export const MEMORY_DEFAULT_LOCK_WAIT_MS = 120_000;
 export const MEMORY_TOKEN_BYTES_ESTIMATE = 4;
 
+/** Recall hint when the scope holds no current fact at all. */
 export const MEMORY_EMPTY_RECALL_HINT =
   'No memories in scope yet. Store one with: gno remember "<fact>" --scope <scope> --decision add';
+/** Recall hint when the scope holds facts but none matched the query. */
+export const MEMORY_NO_MATCH_RECALL_HINT =
+  'No memories in scope matched this query. Rephrase with words the fact uses, or store one with: gno remember "<fact>" --scope <scope> --decision add';
+/** Recall hint when facts matched but none fit the token budget. */
+export const MEMORY_OVER_BUDGET_RECALL_HINT =
+  "Matching memories did not fit the token budget. Raise --max-tokens (maxTokens) to return them.";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Errors

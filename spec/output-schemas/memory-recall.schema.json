@@ -38,7 +38,7 @@
     },
     "hint": {
       "type": "string",
-      "description": "Self-teaching line naming `gno remember`; present only when no fact was returned."
+      "description": "Why nothing was returned (empty scope, no match in scope, or matches over the token budget); present only when no fact was returned."
     }
   },
   "$defs": {

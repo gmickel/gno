@@ -24,7 +24,10 @@ import type { ToolContext } from "../../src/mcp/server";
 import { createDefaultConfig } from "../../src/config/defaults";
 import { classifyDestination } from "../../src/core/destination-classifier";
 import { acquireWriteLock } from "../../src/core/file-lock";
-import { MEMORY_EMPTY_RECALL_HINT } from "../../src/core/memory";
+import {
+  MEMORY_EMPTY_RECALL_HINT,
+  MEMORY_NO_MATCH_RECALL_HINT,
+} from "../../src/core/memory";
 import {
   createMcpServerSurface,
   createToolContext,
@@ -281,6 +284,34 @@ describe("gno_recall / gno_remember live loop", () => {
     });
     expect(derived.isError).toBe(true);
     expect(errorCode(derived)).toBe("MEMORY_FENCED_DERIVED");
+  });
+
+  test("lexical recall answers a question; a miss in a populated scope says so", async () => {
+    const question = await surface.client.callTool({
+      name: "gno_recall",
+      arguments: {
+        query: "Which vehicle does Finn prefer?",
+        collection: "memory",
+        scopes: SCOPES,
+      },
+    });
+    expect(question.isError).not.toBe(true);
+    const answered = structured<RecallResult>(question);
+    expect(answered.retrieval.mode).toBe("lexical");
+    expect(answered.facts.map((fact) => fact.text)).toEqual([
+      "Finn prefers trams over buses.",
+    ]);
+
+    const miss = await surface.client.callTool({
+      name: "gno_recall",
+      arguments: { query: "kubernetes", collection: "memory", scopes: SCOPES },
+    });
+    expect(miss.isError).not.toBe(true);
+    const payload = structured<RecallResult>(miss);
+    expect(payload.facts).toEqual([]);
+    expect(payload.hint).toBe(MEMORY_NO_MATCH_RECALL_HINT);
+    const text = (miss.content as Array<{ text: string }>)[0]?.text ?? "";
+    expect(text).toContain(MEMORY_NO_MATCH_RECALL_HINT);
   });
 
   test("exact duplicate returns the existing record without writing", async () => {
