@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Agent sessions: the MCP tools `gno_sessions_status` and `gno_sessions_import` now pick up sources added or removed with `gno sessions source add/remove` while the server runs, without a restart. This works for `gno mcp` and for the HTTP MCP endpoint of `gno serve` and `gno daemon`. A config file the server cannot read is reported as an error instead of answering from stale sources. Adding or removing a source no longer closes open HTTP MCP sessions unless it changes collection egress policy (for example, a source that adds a new archive collection).
+
 ## [2.7.1] - 2026-09-26
 
 ### Changed

@@ -13,9 +13,11 @@
 
 import { z } from "zod";
 
+import type { Config } from "../../config/types";
 import type { ToolContext } from "../server";
 
 import { runAutomationProfile } from "../../sessions/automation";
+import { refreshServedConfig } from "../../sessions/config-refresh";
 import {
   formatAutomationRunText,
   formatImportReceiptText,
@@ -99,9 +101,36 @@ export const SESSIONS_IMPORT_MCP_ANNOTATIONS = {
   openWorldHint: false,
 } as const;
 
-function service(ctx: ToolContext): SessionsService {
-  return new SessionsService({
+/**
+ * The config file as it is now, adopted when the CLI changed it while this
+ * server runs (same binding checks and errors as the REST routes). Inside a
+ * request `ctx.config` stays the snapshot taken at its start, so callers use
+ * the returned config. An adoption moves the egress policy epoch; this
+ * request advances with it rather than voiding itself.
+ */
+function currentConfig(ctx: ToolContext): Promise<Config> {
+  return refreshServedConfig({
+    configPath: ctx.actualConfigPath,
+    indexName: ctx.indexName,
+    store: ctx.store,
     config: ctx.config,
+    setConfig: (config) => {
+      ctx.config = config;
+    },
+    invalidateEgressPolicy: async () => {
+      const invalidation = await ctx.invalidateEgressPolicy?.();
+      if (invalidation) {
+        ctx.advanceRequestAuthorizationEpoch?.(invalidation.policyEpoch);
+      }
+    },
+    markContentMutation: () => ctx.markContentMutation?.(),
+    markIndexMutation: () => ctx.markIndexMutation?.(),
+  });
+}
+
+async function service(ctx: ToolContext): Promise<SessionsService> {
+  return new SessionsService({
+    config: await currentConfig(ctx),
     configPath: ctx.actualConfigPath,
     indexName: ctx.indexName,
     store: ctx.store,
@@ -120,7 +149,7 @@ export function handleSessionsStatus(ctx: ToolContext): Promise<ToolResult> {
     "gno_sessions_status",
     async () => {
       try {
-        return await service(ctx).status();
+        return await (await service(ctx)).status();
       } catch (error) {
         return rethrowSessionsError(error);
       }
@@ -146,7 +175,7 @@ export function handleSessionsImport(
       try {
         // A child process keeps this server answering during a long import.
         receipt = await importInChildProcess({
-          config: ctx.config,
+          config: await currentConfig(ctx),
           configPath: ctx.actualConfigPath,
           indexName: ctx.indexName,
           sourceId: args.sourceId,
