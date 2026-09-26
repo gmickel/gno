@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-09-26
+
 ### Added
 
 - macOS: `sourceAvailability: local` now works for collections in Google Drive Shared drives (`~/Library/CloudStorage/GoogleDrive-…/Shared drives/<drive>`, or any folder inside one). Files already on the Mac are indexed; files that are still cloud-only are skipped as `CLOUD_PLACEHOLDER` and are not downloaded. The `Shared drives` folder itself is still rejected with `SOURCE_AVAILABILITY_UNSUPPORTED`; create one collection per Shared drive. OneDrive support was re-tested for the two SharePoint library roots on the test Mac, and the docs now state that count. Thanks to the user who reported that Shared drives were rejected.
@@ -2861,7 +2863,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.7.1...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.8.0...HEAD
+[2.8.0]: https://github.com/gmickel/gno/compare/v2.7.1...v2.8.0
 [2.7.1]: https://github.com/gmickel/gno/compare/v2.7.0...v2.7.1
 [2.7.0]: https://github.com/gmickel/gno/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/gmickel/gno/compare/v2.5.1...v2.6.0
