@@ -11,9 +11,10 @@
 
 import type { Database } from "bun:sqlite";
 
-// node:fs/promises readdir: directory enumeration with file types; Bun has no
-// equivalent that can skip an unreadable folder instead of failing the scan.
-import { readdir } from "node:fs/promises";
+// node:fs/promises readdir/realpath/stat: directory enumeration and symlink
+// resolution; Bun has no equivalent that can skip an unreadable folder
+// instead of failing the scan.
+import { readdir, realpath, stat } from "node:fs/promises";
 // node:path join: platform path algebra; no Bun equivalent.
 import { join } from "node:path";
 
@@ -23,7 +24,7 @@ import {
   createWorkspaceFileMatcher,
   loadLinkWorkspaceMemberships,
 } from "../store/sqlite/workspace-link-resolver";
-import { placeDocument } from "./link-workspace";
+import { pathContains, placeDocument } from "./link-workspace";
 
 /** Upper bound of files listed per workspace; beyond it the listing is partial. */
 export const WORKSPACE_FILE_LISTING_MAX_FILES = 200_000;
@@ -35,43 +36,109 @@ export interface WorkspaceFileListing {
   complete: boolean;
 }
 
+interface WorkspaceDirectoryEntry {
+  name: string;
+  isFile(): boolean;
+  isDirectory(): boolean;
+  isSymbolicLink(): boolean;
+}
+
+/** Filesystem reads the listing needs; injectable for tests. */
+export interface WorkspaceFileSystem {
+  readDirectory(path: string): Promise<WorkspaceDirectoryEntry[]>;
+  realPath(path: string): Promise<string>;
+  isRegularFile(path: string): Promise<boolean>;
+}
+
+const nodeWorkspaceFileSystem: WorkspaceFileSystem = {
+  readDirectory: (path) => readdir(path, { withFileTypes: true }),
+  realPath: (path) => realpath(path),
+  isRegularFile: async (path) => (await stat(path)).isFile(),
+};
+
+/** A symlink target that does not exist (or loops) is not a file, not an error. */
+const MISSING_TARGET_CODES = new Set(["ENOENT", "ENOTDIR", "ELOOP"]);
+
+/**
+ * A symlink counts as a file only when it resolves to an existing regular
+ * file inside the workspace. Dangling links, links to folders and links that
+ * leave the workspace are not files. Other errors are reported as such.
+ */
+const symlinkIsWorkspaceFile = async (
+  fs: WorkspaceFileSystem,
+  realRoot: string,
+  path: string
+): Promise<"file" | "not-file" | "error"> => {
+  try {
+    const target = await fs.realPath(path);
+    if (!pathContains(realRoot, target)) return "not-file";
+    return (await fs.isRegularFile(target)) ? "file" : "not-file";
+  } catch (cause) {
+    const code = (cause as NodeJS.ErrnoException | undefined)?.code;
+    return code !== undefined && MISSING_TARGET_CODES.has(code)
+      ? "not-file"
+      : "error";
+  }
+};
+
 /**
  * List every file below a workspace root once. Hidden files and folders
  * (`.obsidian`, `.trash`, `.git`) are skipped, as Obsidian does; symlinked
- * folders are not descended. An unreadable folder is skipped and marks the
- * listing incomplete, so links into it stay unresolved.
+ * folders are not descended. Filesystem calls use the names as stored on
+ * disk; only the returned paths are NFC-normalized for matching. An
+ * unreadable folder is skipped and marks the listing incomplete, so links
+ * into it stay unresolved.
  */
 export const listWorkspaceFiles = async (
   root: string,
-  options: { maxFiles?: number; signal?: AbortSignal } = {}
+  options: {
+    maxFiles?: number;
+    signal?: AbortSignal;
+    fileSystem?: WorkspaceFileSystem;
+  } = {}
 ): Promise<WorkspaceFileListing> => {
   const maxFiles = options.maxFiles ?? WORKSPACE_FILE_LISTING_MAX_FILES;
+  const fs = options.fileSystem ?? nodeWorkspaceFileSystem;
   const files: string[] = [];
   let complete = true;
-  const queue: string[] = [""];
+  let realRoot: string;
+  try {
+    realRoot = await fs.realPath(root);
+  } catch {
+    return { files, complete: false };
+  }
+  // Each folder keeps its on-disk segments; matching uses the NFC path.
+  const queue: string[][] = [[]];
   for (let head = 0; head < queue.length; head += 1) {
     options.signal?.throwIfAborted();
-    const folder = queue[head] as string;
+    const segments = queue[head] as string[];
     let entries;
     try {
-      entries = await readdir(folder ? join(root, folder) : root, {
-        withFileTypes: true,
-      });
+      entries = await fs.readDirectory(join(root, ...segments));
     } catch {
       complete = false;
       continue;
     }
     for (const entry of entries) {
       if (entry.name.startsWith(".")) continue;
-      const path = (folder ? `${folder}/${entry.name}` : entry.name).normalize(
-        "NFC"
-      );
+      const entrySegments = [...segments, entry.name];
+      let isFile = entry.isFile();
       if (entry.isDirectory()) {
-        queue.push(path);
-      } else if (entry.isFile() || entry.isSymbolicLink()) {
-        if (files.length >= maxFiles) return { files, complete: false };
-        files.push(path);
+        queue.push(entrySegments);
+        continue;
       }
+      if (entry.isSymbolicLink()) {
+        const kind = await symlinkIsWorkspaceFile(
+          fs,
+          realRoot,
+          join(root, ...entrySegments)
+        );
+        if (kind === "error") complete = false;
+        isFile = kind === "file";
+      }
+      if (!isFile) continue;
+      if (files.length >= maxFiles) return { files, complete: false };
+      files.push(entrySegments.join("/").normalize("NFC"));
     }
   }
   return { files, complete };
@@ -141,7 +208,7 @@ export const markOutsideIndexLinks = async (
     links,
     ...(incomplete > 0
       ? {
-          outsideIndexDiagnostic: `The file listing of ${incomplete} link workspace${incomplete === 1 ? " was" : "s were"} incomplete (an unreadable folder, or more than ${maxFiles} files); links to files it missed stay unresolved`,
+          outsideIndexDiagnostic: `The file listing of ${incomplete} link workspace${incomplete === 1 ? " was" : "s were"} incomplete (an unreadable folder or link, or more than ${maxFiles} files); links to files it missed stay unresolved`,
         }
       : {}),
   };

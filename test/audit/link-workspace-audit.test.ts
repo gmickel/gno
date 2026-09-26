@@ -3,8 +3,8 @@
  */
 
 import { afterEach, describe, expect, test } from "bun:test";
-// node:fs/promises chmod/mkdir: filesystem structure ops, no Bun equivalent.
-import { chmod, mkdir } from "node:fs/promises";
+// node:fs/promises chmod/mkdir/symlink: filesystem structure ops, no Bun equivalent.
+import { chmod, mkdir, symlink } from "node:fs/promises";
 // node:path join: path algebra, no Bun equivalent.
 import { join } from "node:path";
 
@@ -15,6 +15,7 @@ import { evaluateLinkAudit } from "../../src/core/audit-links";
 import {
   listWorkspaceFiles,
   markOutsideIndexLinks,
+  type WorkspaceFileSystem,
 } from "../../src/core/audit-outside-index";
 import { runWorkspaceAudit } from "../../src/core/audit-workspace";
 import { captureAuditLinkSnapshot } from "../../src/store/sqlite/graph-link-resolver";
@@ -234,6 +235,119 @@ describe("files outside the index (Obsidian parity)", () => {
       )
     ).toBe(true);
   });
+
+  /** In-memory filesystem: folders by exact path, symlink targets, files. */
+  const memoryFileSystem = (spec: {
+    folders: Record<string, Array<[string, "file" | "dir" | "link"]>>;
+    links?: Record<string, string | Error>;
+    regularFiles?: string[];
+  }): WorkspaceFileSystem => {
+    const missing = (path: string) =>
+      Object.assign(new Error(`ENOENT: ${path}`), { code: "ENOENT" });
+    return {
+      readDirectory: async (path) => {
+        const entries = spec.folders[path];
+        if (!entries) throw missing(path);
+        return entries.map(([name, kind]) => ({
+          name,
+          isFile: () => kind === "file",
+          isDirectory: () => kind === "dir",
+          isSymbolicLink: () => kind === "link",
+        }));
+      },
+      realPath: async (path) => {
+        const target = spec.links?.[path] ?? path;
+        if (target instanceof Error) throw target;
+        return target;
+      },
+      isRegularFile: async (path) => spec.regularFiles?.includes(path) ?? false,
+    };
+  };
+
+  test("folders with decomposed names are read by their on-disk name", async () => {
+    const root = join("/", "ws");
+    const decomposed = "Cafe\u0301";
+    const listing = await listWorkspaceFiles(root, {
+      fileSystem: memoryFileSystem({
+        folders: {
+          [root]: [[decomposed, "dir"]],
+          [join(root, decomposed)]: [["Menu.png", "file"]],
+        },
+      }),
+    });
+    expect(listing).toEqual({
+      files: ["Caf\u00e9/Menu.png"],
+      complete: true,
+    });
+  });
+
+  test.each([
+    [false, true],
+    [true, false],
+  ])(
+    "a symlink counts only when it resolves to a regular file inside the workspace (unreadable link: %p)",
+    async (withDenied, complete) => {
+      const root = join("/", "ws");
+      const at = (name: string) => join(root, name);
+      const outside = join("/", "elsewhere", "x.png");
+      const links: Array<[string, string | Error]> = [
+        ["good.png", at("real.png")],
+        [
+          "dangling.png",
+          Object.assign(new Error("ENOENT"), { code: "ENOENT" }),
+        ],
+        ["folder.png", at("dir")],
+        ["outside.png", outside],
+        ...(withDenied
+          ? ([
+              [
+                "denied.png",
+                Object.assign(new Error("EACCES"), { code: "EACCES" }),
+              ],
+            ] as Array<[string, Error]>)
+          : []),
+      ];
+      const listing = await listWorkspaceFiles(root, {
+        fileSystem: memoryFileSystem({
+          folders: {
+            [root]: [
+              ["real.png", "file"],
+              ["dir", "dir"],
+              ...links.map(([name]) => [name, "link"] as [string, "link"]),
+            ],
+            [at("dir")]: [],
+          },
+          links: Object.fromEntries(
+            links.map(([name, target]) => [at(name), target])
+          ),
+          regularFiles: [at("real.png"), outside],
+        }),
+      });
+      expect(listing.files.sort((l, r) => l.localeCompare(r))).toEqual([
+        "good.png",
+        "real.png",
+      ]);
+      // Missing or foreign targets are not files; only a read error makes
+      // the listing incomplete.
+      expect(listing.complete).toBe(complete);
+    }
+  );
+
+  test.skipIf(process.platform === "win32")(
+    "on disk, dangling and folder symlinks are not listed as files",
+    async () => {
+      fixture = await openParityFixture();
+      const at = (relPath: string) => join(fixture!.vault, relPath);
+      await symlink(at("Attachments/diagram.png"), at("Attachments/alias.png"));
+      await symlink(at("Attachments/gone.png"), at("Attachments/dangling.png"));
+      await symlink(at("Archive"), at("Attachments/folder.png"));
+      const listing = await listWorkspaceFiles(fixture.vault);
+      expect(listing.files).toContain("Attachments/alias.png");
+      expect(listing.files).not.toContain("Attachments/dangling.png");
+      expect(listing.files).not.toContain("Attachments/folder.png");
+      expect(listing.complete).toBe(true);
+    }
+  );
 
   test.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
     "the listing skips hidden and unreadable folders and reports itself incomplete",

@@ -968,8 +968,9 @@ finding of `links.outside-index` (evidence kind `outside-index-target`,
 `resolutionStatus: "outside-index"`). That rule stays `pass`, so these
 findings never change the exit code. The check is existence-only: each
 involved workspace root is listed once per run (hidden files and folders
-skipped, symlinked folders not descended, at most 200,000 files), no file is
-opened, and no graph edge is created. Targets match files by the workspace
+skipped, symlinked folders not descended, a symlink counted only when it
+resolves to a regular file inside the workspace, at most 200,000 files), no
+file is opened, and no graph edge is created. Targets match files by the workspace
 link rules; a non-Markdown target needs its extension, `.md` is optional. A
 target missing from the listing stays unresolved; an unreadable folder or the
 file bound makes the listing incomplete, which the `links.outside-index` rule
