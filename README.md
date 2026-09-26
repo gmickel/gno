@@ -139,7 +139,7 @@ See the [guide](docs/COMPILED-CONTEXT.md).
 
 <!-- public-truth:current-version -->
 
-> Current source version: **v2.7.1**. See [CHANGELOG.md](./CHANGELOG.md).
+> Current source version: **v2.8.0**. See [CHANGELOG.md](./CHANGELOG.md).
 
 <!-- /public-truth -->
 
