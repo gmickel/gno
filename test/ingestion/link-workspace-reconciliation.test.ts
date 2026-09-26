@@ -6,14 +6,18 @@
 
 import { afterEach, expect, test } from "bun:test";
 // node:fs/promises rename/unlink: filesystem mutations, no Bun equivalent.
-import { mkdir, rename, unlink } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, mkdtemp, rename, unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 
+import { SyncService } from "../../src/ingestion";
 import { projectGraph } from "../../src/ingestion/graph-reconciliation";
+import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import {
   openLinkWorkspaceFixture,
   type LinkWorkspaceFixture,
 } from "../fixtures/link-workspace/fixture";
+import { safeRm } from "../helpers/cleanup";
 
 let fixture: LinkWorkspaceFixture | undefined;
 
@@ -174,4 +178,61 @@ test("the projection's referrer query finds plain links from other collections",
     },
   ]);
   expect(sources).toContain(fixture.docId("gno://work/Referrer.md"));
+});
+
+test("frontmatter relations resolve like wiki links (projection vs shared resolver parity)", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gno-ws-parity-"));
+  const store = new SqliteAdapter();
+  try {
+    const files: Record<string, string> = {
+      "vault/A/Src.md": [
+        "---",
+        "relations:",
+        '  related_to: ["Folder/Note.md", "Note", "Folder/Note"]',
+        "---",
+        "# Source",
+        "",
+        "[[Folder/Note.md]] [[Note]] [[Folder/Note]]",
+        "",
+      ].join("\n"),
+      "vault/A/Folder/Note.md": "# Note in A\n",
+      "vault/Folder/Note.md": "# Note in B\n",
+    };
+    await mkdir(join(root, "vault", ".obsidian"), { recursive: true });
+    for (const [path, body] of Object.entries(files)) {
+      await mkdir(dirname(join(root, path)), { recursive: true });
+      await Bun.write(join(root, path), body);
+    }
+    const collections = [
+      { name: "a", path: join(root, "vault", "A") },
+      { name: "b", path: join(root, "vault", "Folder") },
+    ].map((collection) => ({
+      ...collection,
+      pattern: "**/*.md",
+      include: [],
+      exclude: [],
+    }));
+    expect((await store.open(":memory:", "porter")).ok).toBe(true);
+    expect((await store.syncCollections(collections)).ok).toBe(true);
+    await new SyncService().syncAll(collections, store);
+    const targets = (edgeSource: string) =>
+      store
+        .getRawDb()
+        .query<{ uri: string }, [string]>(
+          `SELECT DISTINCT d.uri FROM doc_edges e
+           JOIN documents s ON s.id = e.src_doc_id
+           JOIN documents d ON d.id = e.dst_doc_id
+           WHERE s.uri = 'gno://a/Src.md' AND e.source = ?
+           ORDER BY d.uri`
+        )
+        .all(edgeSource)
+        .map(({ uri }) => uri);
+    // Workspace path Folder/Note.md is b:Note.md; it outranks the
+    // collection-relative a:Folder/Note.md for links and relations alike.
+    expect(targets("wikilink")).toEqual(["gno://b/Note.md"]);
+    expect(targets("frontmatter-relation")).toEqual(targets("wikilink"));
+  } finally {
+    await store.close();
+    await safeRm(root);
+  }
 });

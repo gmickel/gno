@@ -31,6 +31,7 @@ import { parseFrontmatter } from "./frontmatter";
  */
 const VERSION = 2;
 const EDGE_TYPE = /^[a-z][a-z0-9_]*$/;
+const RELATIVE_REF = /^\.\.?\//;
 type ProjectionError = { relPath: string; code: string; message: string };
 
 function identity(doc: DocumentRow): GraphReferenceDocument {
@@ -112,16 +113,27 @@ function relationResolver(
         localWiki.get(`${parts.collection}\0${key}`)
       );
     const relativePath = normalizeMarkdownPath(parts.ref, source.relPath);
-    const exactPath =
-      (relativePath
-        ? paths.get(`${source.collection}/${relativePath}`)
-        : undefined) ?? paths.get(parts.ref);
-    if (exactPath) return exactPath;
+    const relativeHit = relativePath
+      ? paths.get(`${source.collection}/${relativePath}`)
+      : undefined;
     const ranked = workspace(source, key);
-    if (ranked !== undefined && ranked !== null) {
-      return ranked.traversable ? byId.get(ranked.target.id) : undefined;
+    if (ranked === undefined) {
+      // Source outside any link workspace: the collection-scoped contract.
+      return (
+        relativeHit ??
+        paths.get(parts.ref) ??
+        localWiki.get(`${source.collection}\0${key}`) ??
+        wiki.get(key)
+      );
     }
-    return localWiki.get(`${source.collection}\0${key}`) ?? wiki.get(key);
+    // Inside a workspace only the preserved contracts bypass the shared
+    // ranking: a collection-qualified path (`collection/relPath`) and an
+    // explicitly relative Markdown path (`./x.md`, `../x.md`). Every other
+    // name or path resolves exactly as the shared link resolver does.
+    const qualified = paths.get(parts.ref);
+    if (qualified) return qualified;
+    if (RELATIVE_REF.test(parts.ref) && relativeHit) return relativeHit;
+    return ranked?.traversable ? byId.get(ranked.target.id) : undefined;
   };
 }
 
