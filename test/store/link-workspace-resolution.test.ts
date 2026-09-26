@@ -26,6 +26,19 @@ import {
 } from "../fixtures/link-workspace/fixture";
 import { safeRm } from "../helpers/cleanup";
 
+// Case-only siblings (Note.md and note.md) exist only on a case-sensitive
+// filesystem; default macOS and Windows volumes fold them into one file.
+async function tmpIsCaseSensitive(): Promise<boolean> {
+  const dir = await mkdtemp(join(tmpdir(), "gno-case-"));
+  try {
+    await Bun.write(join(dir, "probe"), "");
+    return !(await Bun.file(join(dir, "PROBE")).exists());
+  } finally {
+    await safeRm(dir);
+  }
+}
+const caseSensitiveTmp = await tmpIsCaseSensitive();
+
 let fixture: LinkWorkspaceFixture | undefined;
 const cleanups: string[] = [];
 
@@ -405,7 +418,7 @@ describe("filesystem identity (A7, A8, A9)", () => {
     }
   });
 
-  test.each([
+  test.if(caseSensitiveTmp).each([
     ["upper first", ["Notes/Note.md", "Notes/note.md"]],
     ["lower first", ["Notes/note.md", "Notes/Note.md"]],
   ])("case-only siblings are two files and tie (%s)", async (_order, files) => {
