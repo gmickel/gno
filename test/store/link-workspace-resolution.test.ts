@@ -405,6 +405,32 @@ describe("filesystem identity (A7, A8, A9)", () => {
     }
   });
 
+  test.each([
+    ["upper first", ["Notes/Note.md", "Notes/note.md"]],
+    ["lower first", ["Notes/note.md", "Notes/Note.md"]],
+  ])("case-only siblings are two files and tie (%s)", async (_order, files) => {
+    const root = await vaultWith({}, ["."]);
+    for (const file of files) {
+      await Bun.write(join(root, "Spaces", "AI", file), `# ${file}\n`);
+    }
+    await Bun.write(
+      join(root, "Spaces", "Work", "Linker.md"),
+      "# Linker\n\n[[Note]]\n"
+    );
+    const store = await indexCollections([
+      coll("ai", join(root, "Spaces", "AI")),
+      coll("work", join(root, "Spaces", "Work")),
+    ]);
+    try {
+      expect(outcomes(store).get("gno://work/Linker.md Note")).toMatchObject({
+        traversable: false,
+        candidates: ["gno://ai/Notes/Note.md", "gno://ai/Notes/note.md"],
+      });
+    } finally {
+      await store.close();
+    }
+  });
+
   test("one file indexed twice is one source, not an ambiguity", async () => {
     const root = await vaultWith(
       {

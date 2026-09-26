@@ -300,8 +300,11 @@ interface RankedCandidate {
 
 /**
  * Collapse rows of one physical source (the same workspace path indexed by
- * overlapping collections). The representative keeps the best class, then
- * the source's own collection, then the lexicographically first collection.
+ * overlapping collections). Source identity is the exact, case-preserving
+ * workspace path: `Note.md` and `note.md` on a case-sensitive filesystem
+ * are two files and stay two candidates (a tie), never one. The
+ * representative keeps the best class, then the source's own collection,
+ * then the lexicographically first collection.
  */
 const distinctSources = (
   ranked: RankedCandidate[],
@@ -314,7 +317,7 @@ const distinctSources = (
     compareCodeUnits(left.doc.collection, right.doc.collection);
   const bySource = new Map<string, RankedCandidate>();
   for (const candidate of ranked) {
-    const key = `${candidate.doc.wsKey}\0${candidate.doc.wsNorm}`;
+    const key = `${candidate.doc.wsKey}\0${candidate.doc.path}`;
     const existing = bySource.get(key);
     if (!existing || preference(candidate, existing) < 0) {
       bySource.set(key, candidate);
