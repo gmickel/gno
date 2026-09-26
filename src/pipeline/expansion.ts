@@ -15,6 +15,7 @@ import {
   assertInferenceActive,
   assertInferenceResult,
   inferenceOptions,
+  withInferencePage,
 } from "../llm/inference-scope";
 import { ok } from "../store/types";
 
@@ -23,7 +24,6 @@ import { ok } from "../store/types";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const EXPANSION_PROMPT_VERSION = "v3";
-const DEFAULT_TIMEOUT_MS = 5000;
 // Non-greedy to avoid matching from first { to last } across multiple objects
 const JSON_EXTRACT_PATTERN = /\{[\s\S]*?\}/;
 const QUOTED_PHRASE_PATTERN = /"([^"]+)"/g;
@@ -457,8 +457,6 @@ export function parseExpansionOutput(
 export interface ExpansionOptions extends InferenceOptions {
   /** Language hint for prompt selection */
   lang?: string;
-  /** Timeout in milliseconds */
-  timeout?: number;
   /** Optional context that steers expansion for ambiguous queries */
   intent?: string;
   /** Optional bounded context size override for expansion generation */
@@ -467,59 +465,49 @@ export interface ExpansionOptions extends InferenceOptions {
 
 /**
  * Expand query using generation model.
- * Returns null on timeout or parse failure (graceful degradation).
+ * Returns null when generation fails or times out, or its output does not
+ * parse (graceful degradation).
  */
 export async function expandQuery(
   genPort: GenerationPort,
   query: string,
   options: ExpansionOptions = {}
 ): Promise<StoreResult<ExpansionResult | null>> {
-  const timeout = options.timeout ?? DEFAULT_TIMEOUT_MS;
-
   // Build prompt
   const prompt = buildExpansionPrompt(query, options);
 
   assertInferenceActive(options);
   const operational = inferenceOptions(options);
-  const budget = new AbortController();
-  const expiresAt = performance.now() + timeout;
-  const timer = setTimeout(() => budget.abort(), timeout);
   try {
-    const result = await genPort.generate(
-      prompt,
-      {
-        temperature: 0,
-        seed: 42,
-        maxTokens: 512,
-        contextSize: options.contextSize,
-      },
-      {
-        ...operational,
-        signal: operational.signal
-          ? AbortSignal.any([operational.signal, budget.signal])
-          : budget.signal,
-      }
+    // Expansion is best effort but has no budget of its own: slow hardware
+    // (CPU generation takes 15-20s) and a cold model load still expand. A
+    // generation that hits models.inferenceTimeout fails only expansion.
+    const result = await withInferencePage(() =>
+      genPort.generate(
+        prompt,
+        {
+          temperature: 0,
+          seed: 42,
+          maxTokens: 512,
+          contextSize: options.contextSize,
+        },
+        operational
+      )
     );
-    // The independent expansion budget preserves its existing fallback. Caller
-    // cancellation/deadline always wins and cannot become a lexical success.
+    // Caller cancellation/deadline always wins and cannot become a lexical success.
     assertInferenceActive(options);
-    if (budget.signal.aborted || performance.now() >= expiresAt)
-      return ok(null);
+    if (!result) return ok(null);
     assertInferenceResult(result);
     if (!result.ok) return ok(null);
     return ok(parseExpansionOutput(result.value, query));
   } catch (cause) {
     assertInferenceActive(options);
-    if (budget.signal.aborted || performance.now() >= expiresAt)
-      return ok(null);
     if (
       cause instanceof Error &&
       ["AbortError", "TimeoutError"].includes(cause.name)
     )
       throw cause;
     return ok(null);
-  } finally {
-    clearTimeout(timer);
   }
 }
 

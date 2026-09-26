@@ -984,12 +984,12 @@ For local models, evaluation timing starts after loading; an absolute caller
 covers preparation, fetch and response-body consumption, since remote model
 loading cannot be observed. See [Timeouts](CONFIGURATION.md#timeouts).
 
-Cold expanded queries have hit the expansion stage's five-second budget on macOS.
-This pipeline budget is separate from `models.loadTimeout` and
-`models.inferenceTimeout`; raising either model timeout does not extend it. Child
-recovery and successful embedding do not guarantee that cold expansion completes.
-Inspect expansion diagnostics rather than treating a successful hybrid fallback
-as proof that expansion ran.
+Query expansion uses the same timeouts: its model load runs under
+`models.loadTimeout` and its generation under `models.inferenceTimeout`. On CPU,
+expansion generation can take 15 to 20 seconds. If it reaches
+`inferenceTimeout`, the query continues without expansion; raise
+`inferenceTimeout` on slower hardware. Inspect expansion diagnostics rather than
+treating a successful hybrid fallback as proof that expansion ran.
 
 ```bash
 # Increase timeout in config

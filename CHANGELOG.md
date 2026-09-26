@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Query expansion no longer gives up after five seconds. On CPU, where expansion takes 15 to 20 seconds, it never completed, so `query`, `ask`, and hybrid search always ran without it; the first query after starting `gno serve` or the MCP server could also lose it while the model loaded. Expansion now loads under `models.loadTimeout` and generates under `models.inferenceTimeout`, like every other model call, and a generation that hits that timeout still falls back to searching without expansion.
+
 ## [2.7.1] - 2026-09-26
 
 ### Changed

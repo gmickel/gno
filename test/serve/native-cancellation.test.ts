@@ -4,12 +4,14 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import type { GenerationPort } from "../../src/llm/types";
 import type { ResidentRuntime } from "../../src/serve/resident-runtime";
 
 import { HttpGeneration } from "../../src/llm/httpGeneration";
 import {
   assertInferenceActive,
   inferenceOptions,
+  recordInferenceTimeout,
   withInferenceScope,
 } from "../../src/llm/inference-scope";
 import { NativeWorkerClient } from "../../src/llm/native-worker/client";
@@ -230,17 +232,33 @@ test("HTTP generation abort reaches fetch inside nested scope without changing m
   expect(fetchAborted).toBe(true);
 });
 
-test("independent expansion timeout cancels native work but preserves its fallback", async () => {
+test("an expansion inference timeout falls back without failing the request; cancellation still throws", async () => {
+  // A generation that hits the worker's inference deadline, as the native
+  // port reports it.
+  const timedOut: GenerationPort = {
+    modelUri: "file:/synthetic.gguf",
+    generate: async () => {
+      recordInferenceTimeout();
+      return {
+        ok: false,
+        error: { code: "TIMEOUT", message: "deadline", retryable: false },
+      };
+    },
+    dispose: async () => undefined,
+  };
+  const outcome = await withInferenceScope({}, async () => {
+    const expanded = await expandQuery(timedOut, "query");
+    // The request scope is still usable for the rest of the query.
+    assertInferenceActive();
+    return expanded;
+  });
+  expect(outcome).toEqual({ ok: true, value: null });
+
   const port = new NativeGenerationPort(
     client(),
     "gen",
     "file:/synthetic.gguf"
   );
-  // The fake always returns invalid expansion text; caller expiry still wins.
-  expect(await expandQuery(port, "query", { timeout: 1 })).toEqual({
-    ok: true,
-    value: null,
-  });
   expect(
     await withInferenceScope({ signal: AbortSignal.abort() }, () =>
       expandQuery(port, "query")
