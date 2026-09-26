@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-185-session-archive-polish-after-first",
   "spec_path": ".flow/tasks/fn-185-session-archive-polish-after-first.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Session archive polish after first release",
   "updated_at": "2026-09-25T21:59:06.981917Z"
 }

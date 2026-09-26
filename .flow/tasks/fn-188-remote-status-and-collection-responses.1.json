@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-188-remote-status-and-collection-responses",
   "spec_path": ".flow/tasks/fn-188-remote-status-and-collection-responses.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Remote status and collection responses expose owner config paths",
   "updated_at": "2026-09-25T21:59:38.570514Z"
 }

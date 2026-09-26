@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-186-session-import-throughput",
   "spec_path": ".flow/tasks/fn-186-session-import-throughput.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Session import throughput",
   "updated_at": "2026-09-25T21:59:22.755772Z"
 }

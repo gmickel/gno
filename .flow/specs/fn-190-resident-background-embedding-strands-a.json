@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-190-resident-background-embedding-strands-a",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-26T08:25:31.510044Z",
   "created_at": "2026-09-25T16:37:50.900927Z",
   "default_impl": null,
   "default_review": null,
@@ -62,7 +62,7 @@
     "impl:fn-190-resident-background-embedding-strands-a.1": 0
   },
   "spec_path": ".flow/specs/fn-190-resident-background-embedding-strands-a.md",
-  "status": "open",
+  "status": "done",
   "title": "Resident background embedding strands a pending backlog",
   "tracker": {
     "baseHashFlow": null,
@@ -75,5 +75,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T22:18:16.718776Z"
+  "updated_at": "2026-09-26T08:25:31.828042Z"
 }

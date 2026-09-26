@@ -1,0 +1,38 @@
+{
+  "branch": "batch/v2.7.1",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "f86f28b1c91691868b42704c0c1d32ebebc4cd7d",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-f76c21fe794d1eeca0197120742bedb427ffdf9e6262b49f5daabf08e641308f"
+  },
+  "head_sha": "f86f28b1c91691868b42704c0c1d32ebebc4cd7d",
+  "id": "fn-190-resident-background-embedding-strands-a",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 3,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      }
+    ],
+    "total": 3
+  },
+  "timestamp": "2026-09-26T08:25:30Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

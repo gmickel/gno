@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-190-resident-background-embedding-strands-a",
   "spec_path": ".flow/tasks/fn-190-resident-background-embedding-strands-a.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Resident background embedding strands a pending backlog",
   "updated_at": "2026-09-25T21:59:53.764794Z"
 }

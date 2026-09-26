@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-191-windows-request-id-writes-start",
   "spec_path": ".flow/tasks/fn-191-windows-request-id-writes-start.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Windows request-ID writes start PowerShell on every CLI call",
   "updated_at": "2026-09-25T22:00:09.508260Z"
 }

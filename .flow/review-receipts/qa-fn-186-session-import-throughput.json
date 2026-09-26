@@ -1,0 +1,42 @@
+{
+  "branch": "batch/v2.7.1",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "f86f28b1c91691868b42704c0c1d32ebebc4cd7d",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-930178510ad48fd10c53aac230e08a4b478634317e0a912e66d4d5674660848c"
+  },
+  "head_sha": "f86f28b1c91691868b42704c0c1d32ebebc4cd7d",
+  "id": "fn-186-session-import-throughput",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 4,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R4"
+      }
+    ],
+    "total": 4
+  },
+  "timestamp": "2026-09-26T08:25:28Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

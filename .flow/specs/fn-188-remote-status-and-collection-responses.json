@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-188-remote-status-and-collection-responses",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-26T08:25:30.535476Z",
   "created_at": "2026-09-25T14:49:14.353020Z",
   "default_impl": null,
   "default_review": null,
@@ -97,7 +97,7 @@
     "impl:fn-188-remote-status-and-collection-responses.1": 0
   },
   "spec_path": ".flow/specs/fn-188-remote-status-and-collection-responses.md",
-  "status": "open",
+  "status": "done",
   "title": "Remote status and collection responses expose owner config paths",
   "tracker": {
     "baseHashFlow": null,
@@ -110,5 +110,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T22:30:39.224641Z"
+  "updated_at": "2026-09-26T08:25:30.846851Z"
 }
