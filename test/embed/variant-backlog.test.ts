@@ -406,6 +406,47 @@ test("background page past its inference deadline fails only that page", async (
   expect(store.pending().map((owner) => owner.documentId)).toEqual([1]);
 });
 
+test("background model reload past its deadline fails the pass for retry", async () => {
+  const { store, deps, port } = await variantFixture(["Slow", "Beta", "Gamma"]);
+  let identity = true;
+  let inits = 0;
+  port.init = async () => {
+    inits += 1;
+    // The reload after the timed-out page misses its deadline too.
+    if (inits === 2) {
+      recordInferenceTimeout();
+      return {
+        ok: false,
+        error: { code: "TIMEOUT", message: "deadline", retryable: false },
+      };
+    }
+    identity = true;
+    return { ok: true, value: undefined };
+  };
+  port.embedBatch = async (texts) => {
+    if (texts.some((text) => text.includes("Slow"))) {
+      identity = false;
+      recordInferenceTimeout();
+      return {
+        ok: false,
+        error: { code: "TIMEOUT", message: "deadline", retryable: false },
+      };
+    }
+    return { ok: true, value: texts.map(() => [1, 2, 3]) };
+  };
+  const result = await withBackgroundInference(() =>
+    withOwnedInferenceScope({}, () =>
+      embedBacklog({
+        ...deps,
+        batchSize: 1,
+        identityStillCurrent: () => identity,
+      })
+    )
+  );
+  expect(result.ok).toBe(false);
+  expect(store.pending().map((owner) => owner.documentId)).toEqual([1, 2, 3]);
+});
+
 test("interrupted background turns preserve checkpoints and resume each remaining owner once", async () => {
   const { store, deps, port } = await variantFixture(
     Array.from({ length: 70 }, (_, i) => `Unique ${i}`)
