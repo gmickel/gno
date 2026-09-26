@@ -371,8 +371,9 @@ directories refuse descent (`DATALESS_DIRECTORY` or fail-closed codes) while
 preserving previously indexed descendants under unproven prefixes. Unsupported
 platform/filesystem/policy setup fails closed. This is distinct from
 `egressPolicy` (where derived data may travel). Supported setups are Google
-Drive, iCloud Drive, and OneDrive on macOS, with OneDrive limited to SharePoint
-library roots directly under the SharedLibraries domain. Windows and Linux
+Drive (My Drive and individual Shared drives), iCloud Drive, and OneDrive on
+macOS, with OneDrive limited to SharePoint library roots directly under the
+SharedLibraries domain. Windows and Linux
 cloud filesystems are not supported. On a 5,000-file collection with every
 file local, `local` scans about 1% slower than `any`.
 

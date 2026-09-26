@@ -118,17 +118,20 @@ process.
 `egressPolicy`. On the macOS File Provider layouts covered by physical evidence
 it refuses content that would require materialization:
 
-| Receipt code                          | Meaning                                                           |
-| ------------------------------------- | ----------------------------------------------------------------- |
-| `CLOUD_PLACEHOLDER` / `CLOUD_PARTIAL` | File skipped (not a conversion error); content not local          |
-| `DATALESS_DIRECTORY`                  | Directory not descended; previously indexed descendants preserved |
-| `SOURCE_AVAILABILITY_UNSUPPORTED`     | Platform/filesystem outside the evidenced File Provider layouts   |
-| `SOURCE_AVAILABILITY_POLICY_FAILED`   | No-materialization I/O policy could not be established            |
-| `SOURCE_AVAILABILITY_UNKNOWN`         | Availability could not be proven; fail closed                     |
+| Receipt code                          | Meaning                                                                                                                 |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `CLOUD_PLACEHOLDER` / `CLOUD_PARTIAL` | File skipped (not a conversion error); content not local                                                                |
+| `DATALESS_DIRECTORY`                  | Directory not descended; previously indexed descendants preserved                                                       |
+| `SOURCE_AVAILABILITY_UNSUPPORTED`     | Path outside the supported layouts (see below), e.g. the Google `Shared drives` folder itself or a non-macOS filesystem |
+| `SOURCE_AVAILABILITY_POLICY_FAILED`   | No-materialization I/O policy could not be established                                                                  |
+| `SOURCE_AVAILABILITY_UNKNOWN`         | Availability could not be proven; fail closed                                                                           |
 
-Evidence scope: Google Drive, iCloud Drive, and OneDrive only for the tested
-OS/provider configuration; OneDrive only for both installed immediate SharePoint
-library roots. No Windows/Linux cloud-filesystem guarantee. Local mode does not
+Evidence scope: Google Drive (`My Drive` and individual Shared drives under
+`Shared drives/<drive>`), iCloud Drive, and OneDrive only for the tested
+OS/provider configuration; OneDrive only for SharePoint library roots directly
+under the SharedLibraries domain (two tested). If a collection points at the
+`Shared drives` folder itself, create one collection per Shared drive instead.
+No Windows/Linux cloud-filesystem guarantee. Local mode does not
 pin, evict, or download as product behavior; metadata/provider bookkeeping may
 still occur. Use `sourceAvailability: any` (default) for legacy reads, or make
 content available locally in the provider UI before indexing under `local`.

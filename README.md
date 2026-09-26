@@ -216,7 +216,8 @@ See the [guide](docs/COMPILED-CONTEXT.md).
   and traces. Authentication never overrides policy.
 - **Source availability (`any` | `local`)**: opt-in `local` indexes only files
   already on disk and never makes a cloud provider download one. Supported on
-  macOS with Google Drive, iCloud Drive, and OneDrive SharePoint library roots.
+  macOS with Google Drive (My Drive and Shared drives), iCloud Drive, and
+  OneDrive SharePoint library roots.
   Cloud-only files are skipped and reported, not treated as conversion errors,
   and documents under a cloud-only folder stay indexed. Other platforms fail
   with an error. On a 5,000-file all-local collection, `local` scans about 1%

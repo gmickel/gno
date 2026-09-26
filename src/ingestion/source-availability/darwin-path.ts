@@ -1,6 +1,7 @@
 /**
  * Metadata-free recognition of the macOS File Provider layouts covered by the
- * physical fn-118 evidence. This is intentionally narrower than all paths on
+ * physical evidence in research/file-provider/ (fn-118; Google Shared drives in
+ * fn-179). This is intentionally narrower than all paths on
  * Darwin: unknown storage must not inherit a no-materialization guarantee.
  */
 
