@@ -703,8 +703,15 @@ gno recall "kindergarten" --scope family --max-facts 3 --max-tokens 256 --json
 - Retrieval is BM25 plus vectors when the embedding model is already cached
   (`Retrieval: hybrid`); otherwise lexical with the reason. Recall never
   downloads a model.
-- With nothing in scope it prints the self-teaching line
-  (`No memories in scope yet. Store one with: gno remember ...`) and exits 0.
+- The lexical leg drops question words, so a question such as
+  `gno recall "which branch does the canary deploy from?"` matches facts on
+  their content words. Facts with every content word rank first; when none
+  has them all, facts sharing any content word are returned, best match
+  first.
+- An empty result exits 0 with a hint that says why: nothing stored in scope
+  (`No memories in scope yet. Store one with: gno remember ...`), nothing in
+  scope matched (`No memories in scope matched this query. ...`), or the
+  matches did not fit `--max-tokens`.
 
 ## Session Commands
 

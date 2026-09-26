@@ -232,6 +232,10 @@ export interface SearchOptions extends InferenceOptions {
     scopes: string[];
     excludeSuperseded: boolean;
   };
+  /** Internal: match any positive lexical term (OR) instead of all (AND). */
+  anyTerm?: boolean;
+  /** Internal: drop hits below this fraction of the best raw BM25 score. */
+  minRelativeScore?: number;
 }
 
 /** Structured query mode identifier */

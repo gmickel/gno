@@ -2019,6 +2019,12 @@ gno recall <query> --scope <scope> [--scope <scope>...] [--collection <name>] [-
   `retrieval.semanticUnavailable` explaining why). Query expansion, graph
   expansion, and reranking are disabled. Scope and supersession filtering run
   inside the retrieval query; superseded facts are never returned.
+- The lexical leg searches the query's content words (question and function
+  words dropped; quoted phrases and `-term` exclusions kept). Facts containing
+  every content word are returned first; when none does, facts sharing any
+  content word are returned in BM25 order, dropping those scoring below 0.1
+  of the best match.
+- The budget is filled in retrieval-rank order.
 - Budget: at most `--max-facts` facts (default 8) under `--max-tokens`
   (default 512). Both must be positive integers. Recall never downloads a
   model.
@@ -2028,8 +2034,11 @@ gno recall <query> --scope <scope> [--scope <scope>...] [--collection <name>] [-
   (`caller`, `session`, `issuedAt`, `memoryIds`, `spanHashes`, `digest`) plus
   `budget` and `retrieval`. Derived output inherits the strictest source
   egress policy (`egressLineage`).
-- Empty recall prints the self-teaching line naming `gno remember`
-  (`hint` in JSON) and exits 0.
+- Empty recall prints a hint (`hint` in JSON) and exits 0. The hint
+  distinguishes an empty scope (`No memories in scope yet. Store one with:
+gno remember ...`), a populated scope with no match (`No memories in scope
+matched this query. ...`, also naming `gno remember`), and matches that did
+  not fit the token budget.
 
 **Output:** `--json` prints the shared `RecallResult`. Terminal output lists
 numbered facts with URI, text, scopes, hash, and identity, then `Budget:`,

@@ -454,8 +454,10 @@ carries `suite` and `description`; the rest is:
 | `agent-day.json`        | `scope` and `turns[]`: `remember` (`text`, optional `decision`, `label`, `expect`, optional `likely` label), `supersede` (`predecessor` label, `text`, `label`, `expect`), `recall` (`query`, optional `scopes[]`, `expect: {includes, excludes, empty}`), `replay` (`from` recall turn, `expect`). `expect` on a write is an outcome or a memory error code |
 | `agent-day.golden.json` | Path-free end state: `records[]` (`text`, `scopes`, `current`, `supersedes` as predecessor texts, sorted by text) and `recalls` (turn id → texts in rank order)                                                                                                                                                                                              |
 
-Queries are BM25 conjunctions, so every query term must occur in the target
-fact. A new scenario is one fixture edit away: add the case, run
+Queries run through recall's lexical leg: question words are dropped, facts
+containing every remaining content word rank first, and when none does, facts
+sharing any content word are returned in BM25 order (q13-q19 in
+`recall.json` are question-shaped turns that exercise that fallback). A new scenario is one fixture edit away: add the case, run
 `bun run eval:memory:fixtures` to refresh the pins (add `--golden` when the
 agent day changed; review the golden diff before committing, it is the
 expectation), then `bun run eval:memory`. A golden mismatch prints a line diff

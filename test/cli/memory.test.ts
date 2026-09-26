@@ -8,7 +8,10 @@ import { join } from "node:path";
 
 import { resolveMemoryIdentity } from "../../src/cli/commands/memory";
 import { runCli } from "../../src/cli/run";
-import { MEMORY_EMPTY_RECALL_HINT } from "../../src/core/memory";
+import {
+  MEMORY_EMPTY_RECALL_HINT,
+  MEMORY_NO_MATCH_RECALL_HINT,
+} from "../../src/core/memory";
 import { safeRm } from "../helpers/cleanup";
 
 let stdoutData = "";
@@ -297,6 +300,34 @@ describe("gno remember / gno recall", () => {
       "--json"
     );
     expect(JSON.parse(other.stdout).facts).toEqual([]);
+  });
+
+  test("lexical recall answers a question; a miss in a populated scope says so", async () => {
+    const question = await cli(
+      "recall",
+      "Which branch is the release build tagged from?",
+      ...SCOPE,
+      ...IDENTITY,
+      "--json"
+    );
+    expect(question.code).toBe(0);
+    const answered = JSON.parse(question.stdout);
+    expect(answered.retrieval.mode).toBe("lexical");
+    expect(answered.facts[0]?.text).toBe(
+      "The release build is tagged from main."
+    );
+
+    const miss = await cli("recall", "kubernetes", ...SCOPE, ...IDENTITY);
+    expect(miss.code).toBe(0);
+    expect(miss.stdout.split("\n")[0]).toBe(MEMORY_NO_MATCH_RECALL_HINT);
+    const missJson = await cli(
+      "recall",
+      "kubernetes",
+      ...SCOPE,
+      ...IDENTITY,
+      "--json"
+    );
+    expect(JSON.parse(missJson.stdout).hint).toBe(MEMORY_NO_MATCH_RECALL_HINT);
   });
 
   test("exact duplicate is idempotent; receipted replay is fenced", async () => {
