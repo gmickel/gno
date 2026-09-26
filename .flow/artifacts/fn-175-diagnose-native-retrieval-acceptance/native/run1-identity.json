@@ -1,0 +1,166 @@
+{
+  "harnessHashes": {
+    "evidence-native.ts": "c1e2d6075ff7d7e0b3fc30e4eb171cb1e19a0ed9fbeb6c7f852f23077328b3cc",
+    "evidence-capture.ts": "d6afb280e8fbfadccc90538f40ac0080bdd376a0d0174465c8cca2fb678246af",
+    "evidence.ts": "6fc148c51bad71e46021023273505d6bd8d8e0fc12aa802290f9ff0010b0fbf7",
+    "evidence-schema.ts": "856ff3a7f0420e82b305148ace028b5513a89b9450e3fdc210bf248d64c4086f",
+    "evidence-fixtures.ts": "c026e21dd6ddfc162eab7f8fdbb9b51338411940b44d2dc291999230f86a0bfd",
+    "evidence-cli.ts": "27b3cc2823c0b78c0052ce6c82f032797af4e05ce30cb31326de3cd6f079fe39"
+  },
+  "commit": "b8f8aa6ed01c62e340d924b2975863dbcfb0551d",
+  "bun": "1.4.2",
+  "models": [
+    {
+      "role": "embedding",
+      "id": "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
+      "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+      "tokenizerSha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"
+    },
+    {
+      "role": "reranking",
+      "id": "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
+      "sha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48",
+      "tokenizerSha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48"
+    },
+    {
+      "role": "generation",
+      "id": "hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf",
+      "sha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338",
+      "tokenizerSha256": "3b20c99404c2c1d66ad695489bf91cf5b5d3369e8055d5587fc60507ceac3338"
+    },
+    {
+      "role": "generation",
+      "id": "hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf",
+      "sha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897",
+      "tokenizerSha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897"
+    }
+  ],
+  "config": {
+    "version": "1.0",
+    "ftsTokenizer": "snowball english",
+    "busyTimeoutMs": 60000,
+    "collections": [
+      {
+        "name": "notes",
+        "path": "/tmp/claude-1000/-home-gordon-work-gno/8a517924-53e7-4f10-82f4-a47f132c3c24/scratchpad/fn175/run1/corpus/notes",
+        "pattern": "**/*.md",
+        "include": [],
+        "exclude": [
+          ".git",
+          "node_modules",
+          ".venv",
+          ".idea",
+          "dist",
+          "build",
+          "__pycache__",
+          ".DS_Store",
+          "Thumbs.db"
+        ]
+      },
+      {
+        "name": "private",
+        "path": "/tmp/claude-1000/-home-gordon-work-gno/8a517924-53e7-4f10-82f4-a47f132c3c24/scratchpad/fn175/run1/corpus/private",
+        "pattern": "**/*.md",
+        "include": [],
+        "exclude": [
+          ".git",
+          "node_modules",
+          ".venv",
+          ".idea",
+          "dist",
+          "build",
+          "__pycache__",
+          ".DS_Store",
+          "Thumbs.db"
+        ]
+      }
+    ],
+    "contexts": [],
+    "contentTypes": [],
+    "models": {
+      "activePreset": "slim-tuned",
+      "presets": [
+        {
+          "id": "slim-tuned",
+          "name": "GNO Slim Tuned (Default, ~1GB)",
+          "embed": "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "rerank": "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
+          "expand": "hf:guiltylemon/gno-expansion-slim-retrieval-v1/gno-expansion-auto-entity-lock-default-mix-lr95-f16.gguf",
+          "gen": "hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf"
+        },
+        {
+          "id": "slim",
+          "name": "Slim (~1GB)",
+          "embed": "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "rerank": "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
+          "expand": "hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf",
+          "gen": "hf:unsloth/Qwen3-1.7B-GGUF/Qwen3-1.7B-Q4_K_M.gguf"
+        },
+        {
+          "id": "balanced",
+          "name": "Balanced (~2GB)",
+          "embed": "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "rerank": "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
+          "expand": "hf:bartowski/Qwen2.5-3B-Instruct-GGUF/Qwen2.5-3B-Instruct-Q4_K_M.gguf",
+          "gen": "hf:bartowski/Qwen2.5-3B-Instruct-GGUF/Qwen2.5-3B-Instruct-Q4_K_M.gguf"
+        },
+        {
+          "id": "quality",
+          "name": "Quality (Best Answers, ~2.5GB)",
+          "embed": "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
+          "rerank": "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf",
+          "expand": "hf:unsloth/Qwen3-4B-Instruct-2507-GGUF/Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+          "gen": "hf:unsloth/Qwen3-4B-Instruct-2507-GGUF/Qwen3-4B-Instruct-2507-Q4_K_M.gguf"
+        }
+      ],
+      "loadTimeout": 120000,
+      "inferenceTimeout": 120000,
+      "expandContextSize": 2048,
+      "warmModelTtl": 300000
+    },
+    "retrievalTraces": {
+      "enabled": true,
+      "redactionMode": "metadata",
+      "retention": {
+        "maxAgeDays": 30,
+        "maxTraces": 1000,
+        "maxRecordsPerTrace": 10000,
+        "maxBytes": 16777216
+      }
+    }
+  },
+  "fixtureSha256": "32ed84ea253ea2952035f9ff6cd61ce79815e87e2523cbb60fbb089181c08f79",
+  "readerParams": {
+    "temperature": 0,
+    "maxTokens": 256,
+    "jsonSchema": {
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "values"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "retrievalOptions": {
+    "limit": 8,
+    "minScore": 0,
+    "explain": true,
+    "diagnoseTrace": true
+  },
+  "nativeDependencies": {
+    "nodeLlamaCpp": "3.20.0",
+    "sqliteVec": "0.1.9"
+  },
+  "platform": "linux",
+  "architecture": "x64",
+  "backend": "cuda",
+  "timingClaim": "single quality screen; concurrent host load; parent RSS only; no latency acceptance"
+}
