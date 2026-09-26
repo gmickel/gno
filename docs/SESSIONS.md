@@ -874,7 +874,9 @@ the archive. Sources you add or remove with the CLI while the server runs
 show up the next time the page loads its status, without a restart, and
 Remove succeeds on a source the CLI already removed. If the server cannot
 read its config file, the page reports the error instead of showing stale
-sources.
+sources. The MCP tools `gno_sessions_status` and `gno_sessions_import` behave
+the same way, whether the server runs as `gno mcp` or as the HTTP endpoint of
+`gno serve` or `gno daemon`.
 
 ## Supported harnesses
 

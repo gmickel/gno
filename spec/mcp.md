@@ -1841,8 +1841,15 @@ pending), `sourceUnavailable`, `staleParser` and last import time, and the
 switches, pending and running work, last run, last success, next due time,
 recovery action). The result contains no host paths.
 
+Each call (and each `gno_sessions_import` call) first re-reads the server's
+config file and adopts it when it changed, so source changes made by another
+process show without a restart. An unchanged file is a no-op; a source-only
+change keeps open HTTP sessions.
+
 **Errors:** `SESSIONS_NOT_CONFIGURED` when the server's config has no
-`sessions` block.
+`sessions` block; `SESSIONS_RUNTIME_FAILURE` when the config file cannot be
+read (never answered from the stale config); `SESSIONS_BINDING_MISMATCH` when
+the file is now bound to a different index (not adopted).
 
 ### gno_sessions_import
 

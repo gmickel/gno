@@ -1618,6 +1618,14 @@ success, next due time, and recovery action). It contains no host paths. A
 server whose config has no `sessions` block returns
 `SESSIONS_NOT_CONFIGURED`.
 
+Each call reads the config file, so sources you add or remove with
+`gno sessions source add/remove` while the server runs show up without a
+restart, over stdio and HTTP alike; `gno_sessions_import` finds a newly added
+source the same way. If the server cannot read its config file, the call
+fails with `SESSIONS_RUNTIME_FAILURE` instead of answering from stale
+sources, and a config file now bound to a different index fails with
+`SESSIONS_BINDING_MISMATCH`.
+
 ### gno_sessions_import
 
 Manually import one owner-registered session source into the archive and sync
