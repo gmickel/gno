@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-187-windows-ci-capture-request-id-flake-and",
   "spec_path": ".flow/tasks/fn-187-windows-ci-capture-request-id-flake-and.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Windows CI capture request-ID flake and job timeout",
   "updated_at": "2026-09-25T19:50:28.250936Z"
 }
