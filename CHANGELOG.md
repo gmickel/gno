@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+### Changed
+
+- Remote callers no longer receive your configuration paths or the file paths of documents they change. A REST response to a caller that is not on your machine (the same `localClient` rule as document paths) and every Streamable HTTP MCP result now omit the config file and index database locations (`configPath`, `dbPath`) and each collection's root folder (`path`) from `/api/status`, `/api/collections`, and `gno_status`. REST `/api/status` also omits suggested-folder, model cache, and model file paths, and `/api/connectors` omits connector install paths. Document create, editable copy, rename, move, duplicate, trash, save, and create-folder responses also omit the file's host `path` (and the save's `file://` `uri`) for remote callers; they still carry the `gno://` URI and `relPath`. The dashboard's disk check now reports free space for the model cache without naming its folder. Remote callers name collections by `name`. The Collections page, dashboard, and connector list work as before on your machine; a remote Web UI shows them without the path lines. `path`, `configPath`, and `dbPath` are now optional in the `status` and `collection-list` schemas. See [Host Paths and Remote Callers](docs/API.md#host-paths-and-remote-callers).
+
 ### Fixed
 
 - Windows: writes with a request ID (`gno capture --request-id`, `gno remember --request-id`, and the MCP, REST, and SDK equivalents) no longer start PowerShell on every call to check the private ledger directory's permissions. The check runs once and is recorded, and later calls skip it while the directory and its permissions are unchanged. A replaced directory or a permissions change triggers the full check again, and a directory another account can access is still refused before anything is written.

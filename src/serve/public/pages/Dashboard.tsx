@@ -801,12 +801,14 @@ export default function Dashboard({ navigate }: PageProps) {
                         <div className="truncate font-medium text-lg transition-colors group-hover:text-primary">
                           {collection.name}
                         </div>
-                        <div
-                          className="truncate font-mono text-muted-foreground text-sm"
-                          title={collection.path}
-                        >
-                          {collection.path}
-                        </div>
+                        {collection.path && (
+                          <div
+                            className="truncate font-mono text-muted-foreground text-sm"
+                            title={collection.path}
+                          >
+                            {collection.path}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-3 text-right">

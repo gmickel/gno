@@ -13,6 +13,8 @@ export function CollectionsEmptyState({
   suggestedCollections,
   onAddCollection,
 }: CollectionsEmptyStateProps) {
+  // A remote caller's suggestions carry no host path to prefill.
+  const quickPicks = suggestedCollections.filter(({ path }) => path);
   return (
     <div className="mx-auto max-w-3xl py-16 text-center">
       <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-muted">
@@ -29,7 +31,7 @@ export function CollectionsEmptyState({
           <FolderPlusIcon className="mr-2 size-4" />
           Add Folder
         </Button>
-        {suggestedCollections.map((suggestion) => (
+        {quickPicks.map((suggestion) => (
           <Button
             key={suggestion.path}
             onClick={() => onAddCollection(suggestion.path)}
@@ -40,9 +42,9 @@ export function CollectionsEmptyState({
         ))}
       </div>
 
-      {suggestedCollections.length > 0 && (
+      {quickPicks.length > 0 && (
         <div className="grid gap-3 text-left md:grid-cols-2">
-          {suggestedCollections.map((suggestion) => (
+          {quickPicks.map((suggestion) => (
             <div
               className="rounded-xl border border-border/60 bg-background/70 p-4"
               key={`${suggestion.path}-detail`}

@@ -18,9 +18,13 @@ export type HealthActionKind =
 
 export type OnboardingStepStatus = "complete" | "current" | "upcoming";
 
+/**
+ * Host path fields below (`path`, `configPath`, `dbPath`) reach same-host
+ * callers only; a remote caller's response omits them.
+ */
 export interface StatusCollection {
   name: string;
-  path: string;
+  path?: string;
   documentCount: number;
   chunkCount: number;
   embeddedCount: number;
@@ -28,7 +32,7 @@ export interface StatusCollection {
 
 export interface SuggestedCollection {
   label: string;
-  path: string;
+  path?: string;
   reason: string;
 }
 
@@ -167,7 +171,7 @@ export interface BootstrapState {
     summary: string;
   };
   cache: {
-    path: string;
+    path?: string;
     totalSizeBytes: number;
     totalSizeLabel: string;
   };
@@ -183,7 +187,7 @@ export interface BootstrapState {
       role: "embed" | "rerank" | "expand" | "gen";
       uri: string;
       cached: boolean;
-      path: string | null;
+      path?: string | null;
       sizeBytes: number | null;
       statusLabel: string;
     }>;
@@ -194,8 +198,8 @@ export interface AppStatusResponse {
   chunking?: ChunkingStatus;
   resident: ResidentStatus;
   indexName: string;
-  configPath: string;
-  dbPath: string;
+  configPath?: string;
+  dbPath?: string;
   collections: StatusCollection[];
   totalDocuments: number;
   totalChunks: number;

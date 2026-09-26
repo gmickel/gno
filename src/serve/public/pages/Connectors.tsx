@@ -30,7 +30,8 @@ interface ConnectorStatus {
   target: string;
   scope: "user" | "project";
   installed: boolean;
-  path: string;
+  /** Host path; omitted for remote callers. */
+  path?: string;
   summary: string;
   nextAction: string;
   mode: {
@@ -234,9 +235,11 @@ export default function Connectors({ navigate }: PageProps) {
                       <span className="font-medium">Scope:</span>{" "}
                       {connector.scope}
                     </div>
-                    <div className="font-mono text-muted-foreground text-xs">
-                      {connector.path}
-                    </div>
+                    {connector.path && (
+                      <div className="font-mono text-muted-foreground text-xs">
+                        {connector.path}
+                      </div>
+                    )}
                   </div>
                   {connector.error && (
                     <p className="text-destructive text-sm">

@@ -1,11 +1,101 @@
 {
   "branch_name": "fn-188-remote-status-and-collection-responses",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
   "created_at": "2026-09-25T14:49:14.353020Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-188-remote-status-and-collection-responses",
+  "impl_review_rounds": {
+    "fn-188-remote-status-and-collection-responses.1": 0
+  },
   "next_task": 1,
+  "no_plan": true,
+  "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "review_attempts": [
+    {
+      "artifact_sha256": "f1d7ba176b855102658344b5dd412adc5fe455f0b5ea4298c4aec7d45eb667cd",
+      "backend": "codex",
+      "base_sha": "1ae2bd42b1156abef174e6b737d4da5f9414345e",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "57606c014033af141ff401050b521b114c289d81",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 1120,
+      "output_sha256": "cfef95d5e58354110f4ce7048a88890819ccaebf7b476553f44b41510dc5fcc9",
+      "reservation_id": "3dea288b431547a688a5217dbd874c2d",
+      "round_consumed": true,
+      "scope": "impl:fn-188-remote-status-and-collection-responses.1",
+      "superseded_by": null,
+      "task": "fn-188-remote-status-and-collection-responses.1",
+      "timestamp": "2026-09-25T22:14:22.746910Z",
+      "verdict": "SHIP"
+    },
+    {
+      "artifact_sha256": "0da1b9ea4b8f58f625f6de73b8d3b5307209407df7253e96ad2b1f7eff2866a0",
+      "backend": "codex",
+      "base_sha": "637bee4f7b8ba3173b89c3ec813ce6c8c8c9c342",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 1,
+      "head_sha": "ecffdd3f57c49c83bf2a21b3abd694a7b1e558cf",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 752,
+      "output_sha256": "09225c760b0e0fb157a78157614dc74f8dd177480eef96d768f2624d6ffde6f8",
+      "reservation_id": "0c926169066f413d8ac1e483e25132b3",
+      "round_consumed": true,
+      "scope": "impl:fn-188-remote-status-and-collection-responses.1",
+      "superseded_by": null,
+      "task": "fn-188-remote-status-and-collection-responses.1",
+      "timestamp": "2026-09-25T22:30:39.222069Z",
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "impl:fn-188-remote-status-and-collection-responses.1": 2
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-188-remote-status-and-collection-responses.1": 0
+  },
   "spec_path": ".flow/specs/fn-188-remote-status-and-collection-responses.md",
   "status": "open",
   "title": "Remote status and collection responses expose owner config paths",
@@ -20,5 +110,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T14:49:14.355815Z"
+  "updated_at": "2026-09-25T22:30:39.224641Z"
 }

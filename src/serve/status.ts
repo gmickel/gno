@@ -95,11 +95,6 @@ function summarizeCount(
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
-function toDisplayPath(path: string): string {
-  const home = homedir();
-  return path.startsWith(home) ? `~${path.slice(home.length)}` : path;
-}
-
 function extractEstimatedFootprint(name: string): string | null {
   const match = name.match(SIZE_REGEX);
   return match ? match[0] : null;
@@ -432,11 +427,11 @@ async function buildDiskCheck(
       title: "Disk",
       status: "warn",
       summary: "Disk space could not be inspected",
-      detail: `GNO could not read filesystem capacity near ${toDisplayPath(getModelsCachePath())}.`,
+      detail: "GNO could not read filesystem capacity for the model cache.",
     };
   }
 
-  const summary = `${formatBytes(snapshot.freeBytes)} free near ${toDisplayPath(snapshot.path)}`;
+  const summary = `${formatBytes(snapshot.freeBytes)} free for the model cache`;
 
   if (snapshot.freeBytes < DISK_ERROR_BYTES) {
     return {

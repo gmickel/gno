@@ -92,6 +92,7 @@ async function loadAllSchemas(): Promise<void> {
     "retrieval-trace-export",
     "retrieval-trace-delete",
     "retrieval-trace-purge",
+    "collection-list",
     "collection-egress-policy",
     "collection-egress-policy-set",
     "collection-egress-check",

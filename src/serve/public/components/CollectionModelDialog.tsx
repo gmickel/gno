@@ -54,7 +54,8 @@ export interface CollectionModelDetails {
   modelSources?: Record<ModelRole, ModelSource>;
   models?: Partial<Record<ModelRole, string>>;
   name: string;
-  path: string;
+  /** Host path; omitted for remote callers. */
+  path?: string;
   pattern?: string;
   egressPolicy?: {
     schemaVersion: "1.0";
@@ -110,7 +111,7 @@ const CODE_EXT_HINTS = [
 ] as const;
 
 function collectionLooksCodeHeavy(collection: CollectionModelDetails): boolean {
-  const path = collection.path.toLowerCase();
+  const path = (collection.path ?? "").toLowerCase();
   if (
     CODE_PATH_HINTS.some(
       (hint) => path.endsWith(hint) || path.includes(`${hint}/`)
@@ -284,17 +285,19 @@ export function CollectionModelDialog({
                 active preset for the rest of the workspace.
               </DialogDescription>
             </div>
-            <div className="hidden shrink-0 max-w-[200px] space-y-1 border-border/15 border-l pl-4 lg:block">
-              <p className="font-mono text-[10px] text-muted-foreground/50 uppercase tracking-[0.15em]">
-                Path
-              </p>
-              <p
-                className="break-all font-mono text-[10px] leading-relaxed text-muted-foreground/50"
-                title={collection?.path}
-              >
-                {collection?.path}
-              </p>
-            </div>
+            {collection?.path && (
+              <div className="hidden shrink-0 max-w-[200px] space-y-1 border-border/15 border-l pl-4 lg:block">
+                <p className="font-mono text-[10px] text-muted-foreground/50 uppercase tracking-[0.15em]">
+                  Path
+                </p>
+                <p
+                  className="break-all font-mono text-[10px] leading-relaxed text-muted-foreground/50"
+                  title={collection.path}
+                >
+                  {collection.path}
+                </p>
+              </div>
+            )}
           </div>
         </DialogHeader>
 
