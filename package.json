@@ -89,6 +89,7 @@
     "smoke:serve-shutdown": "bun scripts/serve-shutdown-smoke.ts",
     "test:watcher:filesystem": "bun test test/serve/watch-service-filesystem.test.ts test/serve/resident-runtime.test.ts",
     "bench:watcher-reconciliation": "bun scripts/watcher-reconciliation-benchmark.ts",
+    "bench:session-import": "bun scripts/session-import-benchmark.ts",
     "smoke:watcher-reconciliation": "bun scripts/watcher-reconciliation-smoke.ts",
     "bench:code-embeddings": "bun scripts/code-embedding-benchmark.ts",
     "bench:code-embeddings:write": "bun scripts/code-embedding-benchmark.ts --write",

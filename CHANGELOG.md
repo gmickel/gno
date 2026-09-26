@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
 ### Changed
 
 - Remote callers no longer receive your configuration paths or the file paths of documents they change. A REST response to a caller that is not on your machine (the same `localClient` rule as document paths) and every Streamable HTTP MCP result now omit the config file and index database locations (`configPath`, `dbPath`) and each collection's root folder (`path`) from `/api/status`, `/api/collections`, and `gno_status`. REST `/api/status` also omits suggested-folder, model cache, and model file paths, and `/api/connectors` omits connector install paths. Document create, editable copy, rename, move, duplicate, trash, save, and create-folder responses also omit the file's host `path` (and the save's `file://` `uri`) for remote callers; they still carry the `gno://` URI and `relPath`. The dashboard's disk check now reports free space for the model cache without naming its folder. Remote callers name collections by `name`. The Collections page, dashboard, and connector list work as before on your machine; a remote Web UI shows them without the path lines. `path`, `configPath`, and `dbPath` are now optional in the `status` and `collection-list` schemas. See [Host Paths and Remote Callers](docs/API.md#host-paths-and-remote-callers).
@@ -20,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Agent sessions: pressing Enter on "Discover local sources" moves keyboard focus to the discovery results instead of dropping it.
 - URIs from a named index now carry `?index=` in `gno ls --json` and in `gno ask --json` `meta.answerContext`, like the other JSON outputs, so they read back from the right index with `gno get`.
 - The session archive guide explains how the `pending` unit count relates to the other unit counts in `gno sessions status`.
+- Session import and other record-collection syncs (JSONL, mail, calendar exports) now take time in proportion to the number of records. Before, each new record scanned the whole index, so large histories slowed down quadratically. A synthetic history of 90 threads with 200 turns each now imports in about 47 seconds instead of 27 minutes, and 300 threads take about 3 minutes. Index contents, import receipts and checkpoints are unchanged.
 
 ## [2.7.0] - 2026-09-25
 

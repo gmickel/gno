@@ -171,6 +171,7 @@ run, not the global 70. Add a new strict eval to that map and to a dedicated
 | `generate-test-fixtures.ts`       | Generates test fixtures for unit tests.                                                                                                                                            |
 | `sessions-eval-fixtures.ts`       | Re-pins the session eval fixture hashes in `evals/fixtures/sessions/manifest.json` after a reviewed fixture edit (`bun scripts/sessions-eval-fixtures.ts`).                                                                    |
 | `memory-eval-fixtures.ts`         | Refreshes the memory eval fixture pins in `evals/fixtures/memory/manifest.json`; `--golden` also regenerates `agent-day.golden.json` from a fresh run (`bun run eval:memory:fixtures`). |
+| `session-import-benchmark.ts`    | Imports a synthetic Codex session corpus (placeholder text) at several sizes (default 30/90/300 threads of 200 turns) in an isolated temp root and reports import time, per-turn cost and peak RSS (`bun run bench:session-import`). |
 | `og-screenshots.ts`               | Generates PNG screenshots from OG image HTML templates using Playwright.                                                                                                           |
 | `sync-assets.ts`                  | Syncs all website assets: OG images, screenshots, README hero. Run before release.                                                                                                 |
 
