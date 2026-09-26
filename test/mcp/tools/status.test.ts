@@ -24,6 +24,9 @@ test("MCP status passes chunking config and exposes the shared layout state", as
   const original = server.store.getStatus.bind(server.store);
   server.store.getStatus = async (options) => {
     expect(options?.chunking).toEqual(server.config.chunking);
+    expect(options?.configuredCollections).toEqual(
+      server.config.collections.map(({ name }) => name)
+    );
     const result = await original();
     return result.ok
       ? { ok: true, value: { ...result.value, chunking } }

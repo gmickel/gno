@@ -224,6 +224,53 @@ describe("gno status activation output", () => {
   });
 });
 
+test("gno status stops listing a collection after gno collection remove (fn-139)", async () => {
+  const testDir = await mkdtemp(join(tmpdir(), "gno-status-removed-"));
+  const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+  const previousEnv = {
+    config: process.env.GNO_CONFIG_DIR,
+    data: process.env.GNO_DATA_DIR,
+    cache: process.env.GNO_CACHE_DIR,
+  };
+  let output = "";
+  process.env.GNO_CONFIG_DIR = join(testDir, "config");
+  process.env.GNO_DATA_DIR = join(testDir, "data");
+  process.env.GNO_CACHE_DIR = join(testDir, "cache");
+  process.stdout.write = (chunk: string | Uint8Array): boolean => {
+    output += typeof chunk === "string" ? chunk : chunk.toString();
+    return true;
+  };
+
+  try {
+    for (const name of ["keep", "gone"]) {
+      await Bun.write(join(testDir, name, `${name}.md`), `# ${name}\n\nbody\n`);
+    }
+    const cli = (...args: string[]) => runCli(["bun", "gno", ...args]);
+    expect(await cli("init", join(testDir, "keep"), "--name", "keep")).toBe(0);
+    expect(
+      await cli("collection", "add", join(testDir, "gone"), "--name", "gone")
+    ).toBe(0);
+    expect(await cli("update")).toBe(0);
+    // Config-only removal: the rows of "gone" stay active until the next update.
+    expect(await cli("collection", "remove", "gone")).toBe(0);
+
+    output = "";
+    expect(await cli("status", "--json")).toBe(0);
+    const parsed = JSON.parse(output);
+    expect(parsed.collections.map((c: { name: string }) => c.name)).toEqual([
+      "keep",
+    ]);
+    expect(parsed.totalDocuments).toBe(1);
+    expect(parsed.totalChunks).toBe(1);
+  } finally {
+    process.stdout.write = originalStdoutWrite;
+    setOptionalEnv("GNO_CONFIG_DIR", previousEnv.config);
+    setOptionalEnv("GNO_DATA_DIR", previousEnv.data);
+    setOptionalEnv("GNO_CACHE_DIR", previousEnv.cache);
+    await safeRm(testDir);
+  }
+}, 30_000);
+
 function setOptionalEnv(name: string, value: string | undefined): void {
   if (value === undefined) {
     Reflect.deleteProperty(process.env, name);

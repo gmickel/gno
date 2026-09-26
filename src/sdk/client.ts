@@ -1509,6 +1509,7 @@ class GnoClientImpl implements GnoClient {
       await this.store.getStatus({
         embedModel: resolveModelUri(this.config, "embed"),
         chunking: this.config.chunking ?? {},
+        configuredCollections: this.config.collections.map(({ name }) => name),
       })
     );
     return {

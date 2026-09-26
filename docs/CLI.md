@@ -2127,6 +2127,10 @@ gno status
 gno status --json
 ```
 
+Status lists configured collections only. After `gno collection remove`, the
+collection disappears from status at once, even though its documents stay in
+the index until the next `gno update` removes them.
+
 Each collection in a [link workspace](CONFIGURATION.md#link-workspaces) gets a
 `Link workspace:` line with the workspace folder and whether it was detected
 (nearest `.obsidian` folder) or configured (`workspaceRoot`). JSON output

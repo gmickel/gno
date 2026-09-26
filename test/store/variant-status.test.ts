@@ -64,7 +64,8 @@ test("complete activated owners replace missing/stale legacy vectors without sta
   const db = store.getRawDb();
   const expected = {
     backlog: 0,
-    total: 3,
+    // The inactive document's chunk is excluded (fn-139).
+    total: 2,
     collections: [
       { name: "archive", total: 2, embedded: 2 },
       { name: "notes", total: 2, embedded: 2 },

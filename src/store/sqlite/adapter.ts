@@ -6010,9 +6010,15 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     embedModel?: string;
     embedFingerprint?: string;
     chunking?: Partial<ChunkingParams>;
+    configuredCollections?: readonly string[];
   }): Promise<StoreResult<IndexStatus>> {
     try {
       const db = this.ensureOpen();
+      // JSON array of configured names, or null when the caller has no config
+      // (every indexed collection is reported).
+      const configuredJson = options?.configuredCollections
+        ? JSON.stringify(options.configuredCollections)
+        : null;
       const embedModel = options?.embedModel ?? null;
       const embedFingerprint =
         options?.embedFingerprint ??
@@ -6055,7 +6061,16 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }
 
       const collectionStats = db
-        .query<CollectionStat, [string | null, string | null, string | null]>(
+        .query<
+          CollectionStat,
+          [
+            string | null,
+            string | null,
+            string | null,
+            string | null,
+            string | null,
+          ]
+        >(
           `
           WITH document_stats AS (
             SELECT
@@ -6110,29 +6125,51 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           FROM collections c
           LEFT JOIN document_stats ds ON ds.collection = c.name
           LEFT JOIN collection_chunks ch ON ch.collection = c.name
+          WHERE ? IS NULL OR c.name IN (SELECT value FROM json_each(?))
           ORDER BY c.name
         `
         )
-        .all(embedModel, embedModel, embedFingerprint);
+        .all(
+          embedModel,
+          embedModel,
+          embedFingerprint,
+          configuredJson,
+          configuredJson
+        );
 
-      // Get totals
+      // Totals cover the configured collections only, so a collection removed
+      // from config stops counting before the next update prunes its rows.
       const totalsRow = db
-        .query<{ total: number; active: number }, []>(
+        .query<
+          { total: number; active: number },
+          [string | null, string | null]
+        >(
           `
           SELECT
             COUNT(*) as total,
             SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END) as active
           FROM documents
+          WHERE ? IS NULL OR collection IN (SELECT value FROM json_each(?))
         `
         )
-        .get();
+        .get(configuredJson, configuredJson);
 
+      // Chunks of active documents only (deduplicated by canonical chunk);
+      // content_chunks keeps rows of deleted documents until cleanup.
       const chunkCount =
         db
-          .query<{ count: number }, []>(
-            "SELECT COUNT(*) as count FROM content_chunks"
+          .query<{ count: number }, [string | null, string | null]>(
+            `
+            SELECT COUNT(*) as count
+            FROM content_chunks
+            WHERE mirror_hash IN (
+              SELECT mirror_hash FROM documents
+              WHERE active = 1 AND mirror_hash IS NOT NULL
+                AND (? IS NULL OR collection IN (SELECT value FROM json_each(?)))
+            )
+          `
           )
-          .get()?.count ?? 0;
+          .get(configuredJson, configuredJson)?.count ?? 0;
 
       // Embedding backlog: chunks from active docs without vectors
       // Uses EXISTS to avoid duplicates when multiple docs share mirror_hash

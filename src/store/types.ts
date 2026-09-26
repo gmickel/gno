@@ -833,11 +833,11 @@ export interface IndexStatus {
   ftsTokenizer: FtsTokenizer;
   /** Per-collection status */
   collections: CollectionStatus[];
-  /** Total documents across all collections */
+  /** Total documents across the reported collections */
   totalDocuments: number;
   /** Active (non-deleted) documents */
   activeDocuments: number;
-  /** Total chunks across all collections */
+  /** Distinct chunks of active documents across the reported collections */
   totalChunks: number;
   /** Chunks without embeddings */
   embeddingBacklog: number;
@@ -2386,6 +2386,12 @@ export interface StorePort {
     embedModel?: string;
     embedFingerprint?: string;
     chunking?: Partial<ChunkingParams>;
+    /**
+     * Configured collection names. When given, the collection list and the
+     * document/chunk totals cover only these collections, so a collection
+     * removed from config stops being reported before its rows are pruned.
+     */
+    configuredCollections?: readonly string[];
   }): Promise<StoreResult<IndexStatus>>;
 
   // ─────────────────────────────────────────────────────────────────────────

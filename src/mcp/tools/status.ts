@@ -105,6 +105,7 @@ export function handleStatus(
       const result = await ctx.store.getStatus({
         embedModel: resolveModelUri(ctx.config, "embed"),
         chunking: ctx.config.chunking ?? {},
+        configuredCollections: ctx.config.collections.map(({ name }) => name),
       });
       if (!result.ok) {
         throw new Error(result.error.message);

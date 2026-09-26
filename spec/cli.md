@@ -240,7 +240,12 @@ the model with `id`, `model`, `dimensions`, `state` (`active`|`shadow`),
 `provenance` (building runtime, e.g. `CUDA, Bun 1.4.2`),
 `compatibleRuntimes` (runtimes that read it) and `incompatibleRuntimes`.
 Terminal output prints a `Vector partitions:` block
-unless there is exactly one healthy partition. Per-collection chunk totals remain deduplicated by canonical chunk;
+unless there is exactly one healthy partition. `collections`, `totalDocuments`
+and `totalChunks` cover configured collections only: a collection removed from
+config (for example by `gno collection remove`) is not reported even while its
+rows remain in the index until the next `gno update`. `totalChunks` counts the
+distinct chunks of active documents; chunks left by deleted documents do not
+count. Per-collection chunk totals remain deduplicated by canonical chunk;
 embedded counts require matching current inputs for every active owner within
 that collection. Status reads persisted identity and coverage without loading
 models. Legacy storage remains the fallback before variant authority; ambiguous

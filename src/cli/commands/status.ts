@@ -339,6 +339,7 @@ export async function status(
     const statusResult = await store.getStatus({
       embedModel: resolveModelUri(config, "embed"),
       chunking: config.chunking ?? {},
+      configuredCollections: config.collections.map(({ name }) => name),
     });
     if (!statusResult.ok) {
       return { success: false, error: statusResult.error.message };

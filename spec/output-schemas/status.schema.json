@@ -98,7 +98,7 @@
     },
     "collections": {
       "type": "array",
-      "description": "Collection statistics",
+      "description": "Statistics for configured collections; a collection removed from config is omitted even before its index rows are pruned",
       "items": {
         "type": "object",
         "required": ["name", "documentCount", "chunkCount", "embeddedCount"],
@@ -146,12 +146,12 @@
     },
     "totalDocuments": {
       "type": "integer",
-      "description": "Total documents across all collections",
+      "description": "Active documents across configured collections",
       "minimum": 0
     },
     "totalChunks": {
       "type": "integer",
-      "description": "Total chunks across all collections",
+      "description": "Distinct chunks of active documents across configured collections",
       "minimum": 0
     },
     "embeddingBacklog": {
