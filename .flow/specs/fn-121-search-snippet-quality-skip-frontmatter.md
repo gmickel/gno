@@ -41,3 +41,7 @@ re-chunking, NO reindex):
 - `--full` and `--line-numbers` behavior unchanged.
 - Unit tests for the helper + pipeline-level assertion; `bun test` and
   `bun run lint:check` green.
+
+## Resolution (2026-09-27)
+
+Closed as fixed. `63cd2aba` ("fix: strip frontmatter from search snippets, prefer prose", first shipped in v1.36.1) added `src/pipeline/snippet.ts` and wired it into search, vsearch and hybrid, with tests. Re-checked on v2.8.0: a tag-only term (`search storage`) returns a prose snippet, and no search, vsearch or query snippet starts with `---`; `--full` and `--line-numbers` still show raw frontmatter as intended.

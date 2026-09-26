@@ -11,3 +11,7 @@ After a collection is removed from the config while its documents still exist as
 
 - R1: Removing a collection from the config and running `gno status --json` no longer lists it once no active rows remain.
 - R2: Regression test covering the removed-collection case.
+
+## Triage (2026-09-27, v2.8.0)
+
+Still real and wider than filed: `gno status` lists a collection removed with `gno collection remove` until the next `gno update`, whether its rows are inactive (`documentCount: 0`) or still active (`documentCount: 1`), because status reads the DB `collections` table while `collection remove` only edits the config. Also: the text status chunk total counts chunks of deleted documents (`Total: 1 documents, 3 chunks` with one live chunk). Fix both; cover the active-row and inactive-row cases.

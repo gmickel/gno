@@ -40,3 +40,11 @@ The graph command opens its own SQLite connection or adapter path that does not 
 ## Not in scope
 
 Language detection mislabelling short English queries as `nb` (empties the BM25 stage until `--lang en` is passed); file separately.
+
+## Rescope after triage (2026-09-27, v2.8.0)
+
+Two defects, both required:
+1. `getGraph` checks `SELECT vec_version()` on a raw connection that never loaded sqlite-vec (`src/store/sqlite/adapter.ts` getGraph), so `gno graph --include-similar` always reports "sqlite-vec not loaded" and emits no similarity edges.
+2. Regression since the vector storage moved to `vector_variants` / `vec_v1_*`: `content_vectors` is empty after `gno embed`, but similarity still reads it. `gno similar <uri>` fails with "Document has no embeddings. Run: gno embed" on a freshly embedded index. Readers of `content_vectors` to move: CLI similar (`src/cli/commands/links.ts`), graph similarity SQL (`adapter.ts`), MCP (`src/mcp/tools/links.ts`), REST (`src/serve/routes/links.ts`).
+
+Acceptance: on an embedded index, `gno similar`, `gno graph --include-similar`, MCP `gno_similar` and graph tools, and the REST graph and similar routes return similarity results from the active vector partition, with a regression test per surface and a repro that fails on v2.8.0.

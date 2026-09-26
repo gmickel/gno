@@ -12,3 +12,7 @@
 - R1: `bun run docs:verify` public-truth check is green on main at the current tag.
 - R2: Bumping the version updates the README stamp without a manual edit.
 - R3: docs/RELEASING.md describes the stamp step.
+
+## Resolution (2026-09-27)
+
+Closed as not worth building. R1 is met (the `public-truth:current-version` README anchor is checked against package.json by docs:verify, with tests; the retired website config is no longer checked). R3 is met (RELEASING.md sets the README stamp, and `prerelease` runs docs:verify). R2 (rewrite the stamp automatically in `version:*`) would save one hand edit and catch nothing new: drift already fails `prerelease`, and every bump from v2.4.0 to v2.8.0 updated the stamp. If a guard is wanted later, running the public-truth check in CI is the cheaper follow-up.
