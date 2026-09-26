@@ -7,7 +7,12 @@
 import type { SqliteAdapter } from "../../store/sqlite/adapter";
 import type { ServerContext } from "../context";
 
-import { decodeEmbedding } from "../../store/vector/sqlite-vec";
+import {
+  readStoredDocumentVectors,
+  resolveStoredVectorSource,
+  similarityHitDocuments,
+  storedVectorSearchOptions,
+} from "../../store/vector/stored-vectors";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -373,31 +378,27 @@ export async function handleDocSimilar(
     } satisfies SimilarDocResponse);
   }
 
-  // Get embedding model from context
-  const embedModel = ctx.vectorIndex.model;
-
-  // Get document embedding from content_vectors (prefer seq=0)
+  // Stored vector of the document's first chunk, from the active partition
   const db = store.getRawDb();
-
-  interface VectorRow {
-    embedding: Uint8Array;
+  const source = resolveStoredVectorSource(db, ctx.vectorIndex.model);
+  let embedding: Float32Array | undefined;
+  try {
+    [embedding] =
+      readStoredDocumentVectors(
+        db,
+        source,
+        [{ id: doc.id, mirrorHash: doc.mirrorHash }],
+        { firstChunkOnly: true }
+      ).get(doc.id) ?? [];
+  } catch (e) {
+    return errorResponse(
+      "RUNTIME",
+      `Invalid stored embedding data: ${e instanceof Error ? e.message : String(e)}`,
+      500
+    );
   }
 
-  const vectorRow = db
-    .query<VectorRow, [string, string]>(
-      "SELECT embedding FROM content_vectors WHERE mirror_hash = ? AND model = ? AND seq = 0 LIMIT 1"
-    )
-    .get(doc.mirrorHash, embedModel);
-
-  const fallbackRow =
-    vectorRow ??
-    db
-      .query<VectorRow, [string, string]>(
-        "SELECT embedding FROM content_vectors WHERE mirror_hash = ? AND model = ? ORDER BY seq LIMIT 1"
-      )
-      .get(doc.mirrorHash, embedModel);
-
-  if (!fallbackRow) {
+  if (!embedding) {
     return jsonResponse({
       similar: [],
       meta: {
@@ -409,20 +410,7 @@ export async function handleDocSimilar(
       },
     } satisfies SimilarDocResponse);
   }
-
-  let dimensions: number;
-  let embedding: Float32Array;
-
-  try {
-    embedding = decodeEmbedding(fallbackRow.embedding);
-    dimensions = embedding.length;
-  } catch (e) {
-    return errorResponse(
-      "RUNTIME",
-      `Invalid stored embedding data: ${e instanceof Error ? e.message : String(e)}`,
-      500
-    );
-  }
+  const dimensions = embedding.length;
 
   // Normalize embedding for cosine similarity
   let norm = 0;
@@ -442,7 +430,7 @@ export async function handleDocSimilar(
   const searchResult = await ctx.vectorIndex.searchNearest(
     embedding,
     candidateLimit,
-    {}
+    storedVectorSearchOptions(source)
   );
 
   if (!searchResult.ok) {
@@ -457,21 +445,15 @@ export async function handleDocSimilar(
     return errorResponse("RUNTIME", docsResult.error.message, 500);
   }
 
-  const docsByHash = new Map(
-    docsResult.value
-      .filter((d) => d.mirrorHash && d.active)
-      .map((d) => [d.mirrorHash!, d])
-  );
-
-  // Build similar docs list, excluding self
+  // Build similar docs list from each hit's owning documents, excluding self
   const similar: SimilarDocResponse["similar"] = [];
   const seenDocids = new Set<string>();
 
-  for (const vec of searchResult.value) {
+  for (const { document: similarDoc, distance } of similarityHitDocuments(
+    searchResult.value,
+    docsResult.value.filter((d) => d.mirrorHash && d.active)
+  )) {
     if (similar.length >= limit) break;
-
-    const similarDoc = docsByHash.get(vec.mirrorHash);
-    if (!similarDoc) continue;
 
     // Exclude self
     if (similarDoc.docid === doc.docid) continue;
@@ -481,7 +463,7 @@ export async function handleDocSimilar(
 
     // Compute similarity score from cosine distance
     // sqlite-vec with cosine metric returns distance where similarity = 1 - distance
-    const score = Math.max(0, Math.min(1, 1 - vec.distance));
+    const score = Math.max(0, Math.min(1, 1 - distance));
     if (score < threshold) continue;
 
     similar.push({

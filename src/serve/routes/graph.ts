@@ -141,7 +141,8 @@ function parseBoolean(value: string | null, defaultValue: boolean): boolean {
  */
 export async function handleGraph(
   store: SqliteAdapter,
-  url: URL
+  url: URL,
+  embedModel?: string
 ): Promise<Response> {
   // Parse query params
   const collection = url.searchParams.get("collection") || undefined;
@@ -197,6 +198,7 @@ export async function handleGraph(
     threshold: thresholdResult.value,
     linkedOnly,
     similarTopK: similarTopKResult.value,
+    embedModel,
   };
 
   const result = await store.getGraph(options);

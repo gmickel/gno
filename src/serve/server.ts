@@ -3,6 +3,7 @@ import type { RequestPeerServer } from "./request-locality";
 import type { ResidentRuntime } from "./resident-runtime";
 import type { ContextHolder } from "./routes/api";
 
+import { getActivePreset } from "../llm/registry";
 import {
   isHttpGatewayLoopbackBind,
   resolveHttpGatewayConfig,
@@ -1694,7 +1695,7 @@ export async function startServer(
             const url = new URL(req.url);
             return withSecurityHeaders(
               await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleGraph(store, url)
+                handleGraph(store, url, getActivePreset(ctxHolder.config).embed)
               ),
               isDev
             );

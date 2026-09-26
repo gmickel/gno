@@ -25,6 +25,12 @@ import { parseRef } from "../../core/ref-parser";
 import { normalizeCollectionName } from "../../core/validation";
 import { getActivePreset } from "../../llm/registry";
 import { createVectorIndexPort } from "../../store/vector";
+import {
+  readStoredDocumentVectors,
+  resolveStoredVectorSource,
+  similarityHitDocuments,
+  storedVectorSearchOptions,
+} from "../../store/vector/stored-vectors";
 import { runTool, type ToolResult } from "./index";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -409,62 +415,41 @@ export function handleSimilar(
       const preset = getActivePreset(ctx.config);
       const modelUri = preset.embed;
 
-      // Get stored embeddings from content_vectors (NO model loading required)
+      // Stored chunk vectors from the active partition (NO model loading required)
       const db = ctx.store.getRawDb();
+      const source = resolveStoredVectorSource(db, modelUri);
 
-      interface VectorRow {
-        embedding: Uint8Array;
+      let vectors: Float32Array[];
+      try {
+        vectors =
+          readStoredDocumentVectors(db, source, [
+            { id: doc.id, mirrorHash: doc.mirrorHash },
+          ]).get(doc.id) ?? [];
+      } catch (e) {
+        throw new Error(
+          `Invalid stored embedding data: ${e instanceof Error ? e.message : String(e)}`
+        );
       }
-
-      const vectorRows = db
-        .query<VectorRow, [string, string]>(
-          `SELECT embedding FROM content_vectors
-           WHERE mirror_hash = ? AND model = ?
-           ORDER BY seq`
-        )
-        .all(doc.mirrorHash, modelUri);
-
-      if (vectorRows.length === 0) {
+      const first = vectors[0];
+      if (!first) {
         throw new Error(
           `${MCP_ERRORS.NOT_FOUND.code}: Document has no embeddings. Run: gno embed`
         );
       }
 
       // Compute average embedding from all chunks
-      const firstBlob = vectorRows[0]?.embedding;
-      if (!firstBlob) {
-        throw new Error("No embedding data available");
-      }
-
-      let dimensions: number;
-      let avgEmbedding: Float32Array;
-
-      try {
-        dimensions = firstBlob.byteLength / 4;
-        avgEmbedding = new Float32Array(dimensions);
-
-        for (const row of vectorRows) {
-          const blob = new Uint8Array(row.embedding);
-          const embeddingDims = blob.byteLength / 4;
-          if (embeddingDims !== dimensions) {
-            throw new Error(
-              `Inconsistent embedding dimensions: expected ${dimensions}, got ${embeddingDims}`
-            );
-          }
-          const embedding = new Float32Array(
-            blob.buffer,
-            blob.byteOffset,
-            embeddingDims
+      const dimensions = first.length;
+      const avgEmbedding = new Float32Array(dimensions);
+      for (const embedding of vectors) {
+        if (embedding.length !== dimensions) {
+          throw new Error(
+            `Invalid stored embedding data: Inconsistent embedding dimensions: expected ${dimensions}, got ${embedding.length}`
           );
-          for (let i = 0; i < dimensions; i++) {
-            const current = avgEmbedding[i] ?? 0;
-            avgEmbedding[i] = current + (embedding[i] ?? 0) / vectorRows.length;
-          }
         }
-      } catch (e) {
-        throw new Error(
-          `Invalid stored embedding data: ${e instanceof Error ? e.message : String(e)}`
-        );
+        for (let i = 0; i < dimensions; i++) {
+          const current = avgEmbedding[i] ?? 0;
+          avgEmbedding[i] = current + (embedding[i] ?? 0) / vectors.length;
+        }
       }
 
       // Normalize the average embedding for cosine similarity
@@ -513,73 +498,62 @@ export function handleSimilar(
       const searchResult = await vectorIndex.searchNearest(
         avgEmbedding,
         candidateLimit,
-        {}
+        storedVectorSearchOptions(source)
       );
 
       if (!searchResult.ok) {
         throw new Error(searchResult.error.message);
       }
 
-      // Get unique mirrorHashes, excluding self
-      const mirrorHashes = [
-        ...new Set(
-          searchResult.value
-            .filter((r) => r.mirrorHash !== doc.mirrorHash)
-            .map((r) => r.mirrorHash)
-        ),
-      ];
+      // Legacy hits (no owners) exclude the source's content, as before
+      const hits = searchResult.value.filter(
+        (r) => r.documentIds !== undefined || r.mirrorHash !== doc.mirrorHash
+      );
 
-      // Batch query documents by mirrorHash (avoid N+1)
+      // Batch query the hits' documents: exact owners for partition hits,
+      // documents sharing the content for legacy hits (avoid N+1)
       interface DocRow {
+        id: number;
         docid: string;
         uri: string;
         title: string | null;
         collection: string;
         rel_path: string;
-        mirror_hash: string;
+        mirrorHash: string;
       }
 
-      const placeholders = mirrorHashes.map(() => "?").join(",");
-      const docRows =
-        mirrorHashes.length > 0
-          ? (db
-              .query<DocRow, string[]>(
-                `SELECT docid, uri, title, collection, rel_path, mirror_hash
-               FROM documents WHERE mirror_hash IN (${placeholders}) AND active = 1`
-              )
-              .all(...mirrorHashes) as DocRow[])
-          : [];
+      const docRows = db
+        .query<DocRow, [string, string]>(
+          `SELECT id, docid, uri, title, collection, rel_path, mirror_hash AS mirrorHash
+           FROM documents WHERE active = 1
+             AND (id IN (SELECT value FROM json_each(?))
+               OR mirror_hash IN (SELECT value FROM json_each(?)))
+           ORDER BY id`
+        )
+        .all(
+          JSON.stringify([
+            ...new Set(hits.flatMap((r) => r.documentIds ?? [])),
+          ]),
+          JSON.stringify([
+            ...new Set(
+              hits.filter((r) => !r.documentIds).map((r) => r.mirrorHash)
+            ),
+          ])
+        );
 
-      // Build lookup map
-      const docsByHash = new Map<string, DocRow>();
-      for (const row of docRows) {
-        if (!docsByHash.has(row.mirror_hash)) {
-          docsByHash.set(row.mirror_hash, row);
-        }
-      }
-
-      // Build best score per mirrorHash from search results
-      const scoresByHash = new Map<string, number>();
-      for (const r of searchResult.value) {
-        if (r.mirrorHash === doc.mirrorHash) continue;
-        // Compute similarity score from cosine distance
-        // sqlite-vec with cosine metric returns distance where similarity = 1 - distance
-        const score = Math.max(0, Math.min(1, 1 - r.distance));
-        const existing = scoresByHash.get(r.mirrorHash) ?? 0;
-        if (score > existing) {
-          scoresByHash.set(r.mirrorHash, score);
-        }
-      }
-
-      // Build similar docs list
+      // Build similar docs list; hits are nearest first, so a document's
+      // first hit carries its best score
       const similar: SimilarDocOutput[] = [];
+      const seenIds = new Set<number>();
       const docCollection = doc.collection.toLowerCase();
 
-      for (const mirrorHash of mirrorHashes) {
+      for (const { document: docRow, distance } of similarityHitDocuments(
+        hits,
+        docRows
+      )) {
         if (similar.length >= limit) break;
-
-        const docRow = docsByHash.get(mirrorHash);
-        if (!docRow) continue;
+        if (docRow.id === doc.id || seenIds.has(docRow.id)) continue;
+        seenIds.add(docRow.id);
 
         // Filter by collection if not crossCollection (case-insensitive)
         if (
@@ -589,7 +563,9 @@ export function handleSimilar(
           continue;
         }
 
-        const score = scoresByHash.get(mirrorHash) ?? 0;
+        // Compute similarity score from cosine distance
+        // sqlite-vec with cosine metric returns distance where similarity = 1 - distance
+        const score = Math.max(0, Math.min(1, 1 - distance));
         if (score < threshold) continue;
 
         // Get absPath (case-insensitive collection lookup)
@@ -799,6 +775,7 @@ export function handleGraph(
         threshold: args.threshold ?? 0.7,
         linkedOnly: args.linkedOnly ?? true,
         similarTopK: args.similarTopK ?? 5,
+        embedModel: getActivePreset(ctx.config).embed,
       });
 
       if (!result.ok) {
@@ -836,6 +813,7 @@ async function getValidatedGraph(
     threshold: args.threshold ?? 0.7,
     linkedOnly: args.linkedOnly ?? true,
     similarTopK: args.similarTopK ?? 5,
+    embedModel: getActivePreset(ctx.config).embed,
   });
 
   if (!result.ok) {

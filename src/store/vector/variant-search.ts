@@ -103,27 +103,43 @@ function searchVectorVariantsInSnapshot(
     )
     .get(model);
   const identity = options.embeddingIdentity;
-  if (!identity) {
-    if (activated)
-      throw new Error(
-        "Effective embedding identity unavailable after variant activation"
-      );
-    return null;
+  let partitionId: string;
+  if (options.partitionId !== undefined) {
+    const stored = db
+      .query<{ model: string; dimensions: number }, [string]>(
+        "SELECT model, dimensions FROM vector_partitions WHERE partition_id = ?"
+      )
+      .get(options.partitionId);
+    if (
+      stored?.model !== model ||
+      stored.dimensions !== dimensions ||
+      embedding.length !== dimensions
+    )
+      throw new Error("Stored vector partition does not match vector index");
+    partitionId = options.partitionId;
+  } else {
+    if (!identity) {
+      if (activated)
+        throw new Error(
+          "Effective embedding identity unavailable after variant activation"
+        );
+      return null;
+    }
+    if (
+      identity.model !== model ||
+      identity.dimensions !== dimensions ||
+      embedding.length !== dimensions
+    )
+      throw new Error("Query embedding identity does not match vector index");
+    partitionId = identityPartitionId(identity);
   }
-  if (
-    identity.model !== model ||
-    identity.dimensions !== dimensions ||
-    embedding.length !== dimensions
-  )
-    throw new Error("Query embedding identity does not match vector index");
-  const partitionId = identityPartitionId(identity);
   const partition = db
     .query<{ state: string; activated_epoch: number | null }, [string]>(
       "SELECT state, activated_epoch FROM vector_partitions WHERE partition_id = ?"
     )
     .get(partitionId);
   if (partition?.state !== "active" || partition.activated_epoch === null) {
-    if (activated)
+    if (activated || options.partitionId !== undefined)
       throw new Error(
         "Selected embedding variant partition has not activated; run gno embed"
       );

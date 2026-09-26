@@ -43,6 +43,12 @@ export interface VectorRow {
 
 export interface VectorSearchOptions {
   embeddingIdentity?: VectorVariantIdentity;
+  /**
+   * Search this activated stored partition directly. Document-to-document
+   * similarity reuses a stored vector, so no runtime identity applies; the
+   * partition must match the port's model and dimensions.
+   */
+  partitionId?: string;
   minScore?: number;
   allowedMirrorHashes?: string[];
   /** Exact active owner/chunk domain, applied before the nearest-neighbor budget. */

@@ -148,6 +148,33 @@ function retrievalPartition(
     : candidates.find((p) => p.partition_id === selection);
 }
 
+/**
+ * The activated partition that stored-vector readers (document similarity)
+ * use for `model`, chosen as status counts it. Undefined leaves legacy
+ * `content_vectors` authority, exactly as vector search does before any
+ * partition activates.
+ */
+export function storedVectorPartition(
+  db: Database,
+  model: string
+): { partitionId: string; dimensions: number } | undefined {
+  return db.transaction(() => {
+    if (!hasPartitionTable(db)) return undefined;
+    const partition = countedPartition(
+      db,
+      model,
+      readPartitions(db, model),
+      readSelections(db).get(model)
+    );
+    return partition && activated(partition)
+      ? {
+          partitionId: partition.partition_id,
+          dimensions: partition.dimensions,
+        }
+      : undefined;
+  })();
+}
+
 function readPartitions(db: Database, model: string | null): Partition[] {
   return db
     .query<Partition, [string | null, string | null]>(`
