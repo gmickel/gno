@@ -387,35 +387,49 @@ export function resolveGraphLinkTargets(
     legacyTargets,
     strategy
   );
+  // Results are shared per unique resolution (as the resolvers dedupe
+  // targets) so large inventories do not allocate one object per link.
+  const legacyShared = new Map<
+    ResolvedGraphLinkTarget,
+    Map<string, ResolvedGraphLinkTarget>
+  >();
   for (const [position, index] of legacyIndexes.entries()) {
     const resolution = legacyResults[position] ?? null;
+    if (!resolution) continue;
     const target = targets[index]!;
-    results[index] = resolution
-      ? {
-          ...resolution,
-          targetCollection: target.targetCollection,
-          ...(target.source
-            ? {
-                scope: target.source.explicit
-                  ? ("explicit-collection" as const)
-                  : ("same-collection" as const),
-              }
-            : {}),
-        }
-      : null;
+    const scope = target.source
+      ? target.source.explicit
+        ? ("explicit-collection" as const)
+        : ("same-collection" as const)
+      : undefined;
+    const variantKey = `${target.targetCollection}\0${scope ?? ""}`;
+    let variants = legacyShared.get(resolution);
+    if (!variants) {
+      variants = new Map();
+      legacyShared.set(resolution, variants);
+    }
+    let shared = variants.get(variantKey);
+    if (!shared) {
+      shared = {
+        ...resolution,
+        targetCollection: target.targetCollection,
+        ...(scope ? { scope } : {}),
+      };
+      variants.set(variantKey, shared);
+    }
+    results[index] = shared;
   }
 
   if (workspaceInputs.length > 0) {
-    const uniqueCount = new Set(
-      workspaceInputs.map((input) =>
-        JSON.stringify([
-          input.wsKey,
-          input.source.collection,
-          input.source.relPath,
-          input.targetRefNorm,
-        ])
-      )
-    ).size;
+    // Only whether the unique count passes the threshold matters.
+    const unique = new Set<string>();
+    for (const input of workspaceInputs) {
+      unique.add(
+        `${input.wsKey}\0${input.source.collection}\0${input.source.relPath}\0${input.targetRefNorm}`
+      );
+      if (unique.size > BULK_RESOLUTION_THRESHOLD) break;
+    }
+    const uniqueCount = unique.size;
     const bulk =
       strategy === "bulk" ||
       (strategy === "auto" &&
@@ -433,9 +447,17 @@ export function resolveGraphLinkTargets(
       workspaceInputs,
       { bulk }
     );
+    const workspaceShared = new Map<object, ResolvedGraphLinkTarget>();
     for (const [position, index] of workspaceIndexes.entries()) {
       const resolution = workspaceResults[position] ?? null;
       const source = targets[index]!.source!;
+      // One resolution object per (workspace, source collection, folder,
+      // target), so its scope is fixed and the converted result is shared.
+      const cached = resolution ? workspaceShared.get(resolution) : undefined;
+      if (cached) {
+        results[index] = cached;
+        continue;
+      }
       results[index] = resolution
         ? {
             targetId: resolution.target.id,
@@ -458,6 +480,9 @@ export function resolveGraphLinkTargets(
                 }),
           }
         : null;
+      if (resolution && results[index]) {
+        workspaceShared.set(resolution, results[index]!);
+      }
     }
   }
   return results;

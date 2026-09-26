@@ -267,11 +267,13 @@ class WorkspaceCatalog {
   }
 
   byBasename(wsKey: string, keys: readonly string[]): CatalogDoc[] {
+    const lists = keys
+      .map((key) => this.byBase.get(`${wsKey}\0${key}`))
+      .filter((list): list is CatalogDoc[] => list !== undefined);
+    if (lists.length <= 1) return lists[0] ?? [];
     const found = new Map<number, CatalogDoc>();
-    for (const key of keys) {
-      for (const doc of this.byBase.get(`${wsKey}\0${key}`) ?? []) {
-        found.set(doc.id, doc);
-      }
+    for (const list of lists) {
+      for (const doc of list) found.set(doc.id, doc);
     }
     return [...found.values()];
   }
@@ -619,18 +621,23 @@ export const resolveWorkspaceTargets = (
     );
   }
   const cache = new Map<string, WorkspaceTargetResolution | null>();
+  const folders = new Map<string, string>();
   return targets.map((target) => {
-    const placement = placeDocument(
-      memberships.get(target.source.collection),
-      target.source.relPath
-    );
-    const wsFolderNorm = folderOf(asciiLower(placement.path));
-    const cacheKey = JSON.stringify([
-      target.wsKey,
-      target.source.collection,
-      wsFolderNorm,
-      target.targetRefNorm,
-    ]);
+    const sourceKey = `${target.source.collection}\0${target.source.relPath}`;
+    let wsFolderNorm = folders.get(sourceKey);
+    if (wsFolderNorm === undefined) {
+      wsFolderNorm = folderOf(
+        asciiLower(
+          placeDocument(
+            memberships.get(target.source.collection),
+            target.source.relPath
+          ).path
+        )
+      );
+      folders.set(sourceKey, wsFolderNorm);
+    }
+    // Resolution depends on workspace, source collection and folder only.
+    const cacheKey = `${target.wsKey}\0${target.source.collection}\0${wsFolderNorm}\0${target.targetRefNorm}`;
     if (cache.has(cacheKey)) return cache.get(cacheKey) ?? null;
     const result = rankTarget(
       catalog,

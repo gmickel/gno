@@ -273,6 +273,9 @@ export interface DocumentWorkspacePlacement {
   path: string;
 }
 
+/** Collection root relative to its workspace root, per membership object. */
+const workspacePrefixes = new WeakMap<CollectionWorkspaceMembership, string>();
+
 /**
  * Place a document into its workspace: the deepest nested vault containing
  * it, else its collection's workspace. Collection-scoped collections (none,
@@ -309,7 +312,11 @@ export const placeDocument = (
     };
   }
   if (membership.root === null) return { key: null, path: normalized };
-  const prefix = posixRelative(membership.root, membership.realPath);
+  let prefix = workspacePrefixes.get(membership);
+  if (prefix === undefined) {
+    prefix = posixRelative(membership.root, membership.realPath);
+    workspacePrefixes.set(membership, prefix);
+  }
   return {
     key: membership.root,
     path: prefix ? `${prefix}/${normalized}` : normalized,
