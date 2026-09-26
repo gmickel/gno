@@ -17,3 +17,7 @@
 ## Boundaries
 
 - Out: changing the hybrid path or reranking.
+
+## Triage (2026-09-27, v2.8.0)
+
+Still real: with no model (`mode: lexical`), `recall "canary branch"` finds a stored fact but `recall "which branch does the QA canary deploy from?"` and `recall "what do we know about the canary?"` return nothing. `src/core/memory-recall.ts` calls `searchBm25` without `anyTerm`. Also fix: when nothing matches, recall prints "No memories in scope yet" even though the scope has facts; the hint must distinguish an empty scope from no match. Update `docs/MEMORY.md` (the "embed the collection" workaround).

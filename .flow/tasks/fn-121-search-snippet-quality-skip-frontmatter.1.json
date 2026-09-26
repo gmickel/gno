@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-121-search-snippet-quality-skip-frontmatter",
   "spec_path": ".flow/tasks/fn-121-search-snippet-quality-skip-frontmatter.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Strip frontmatter from result snippets, prefer prose fallback",
   "updated_at": "2026-08-29T21:24:28.205760Z"
 }
