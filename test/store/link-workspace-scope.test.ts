@@ -285,6 +285,42 @@ describe("egress boundary is unchanged and applies to graph results (A1)", () =>
   });
 
   test.each([
+    ["gno_backlinks", ""],
+    ["gno_backlinks", "   "],
+    ["gno_graph_neighbors", ""],
+    ["gno_impact", ""],
+    ["gno_search", ""],
+    ["gno_query", "  "],
+  ])(
+    "a remote %s call with a blank collection is treated as unscoped (%j)",
+    async (name, collection) => {
+      fixture = await openLinkWorkspaceFixture();
+      // Handlers treat a blank collection as omitted, so the result spans
+      // every collection, including local_only ones.
+      expect(() =>
+        enforceHttpMcpEgress(
+          {
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/call",
+            params: {
+              name,
+              arguments:
+                name.startsWith("gno_graph") ||
+                name === "gno_backlinks" ||
+                name === "gno_impact"
+                  ? { ref: ROADMAP, collection }
+                  : { query: "roadmap", collection },
+            },
+          },
+          collections(fixture!),
+          remoteCaller
+        )
+      ).toThrow(EgressDeniedError);
+    }
+  );
+
+  test.each([
     ["gno_backlinks", { ref: PRIVATE, collection: "work" }],
     ["gno_impact", { ref: PRIVATE, collections: ["work"] }],
     ["gno_graph_neighbors", { ref: PRIVATE, collection: "work" }],

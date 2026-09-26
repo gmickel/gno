@@ -149,7 +149,10 @@ const requestedCollections = (
 
   const names = new Set<string>();
   const direct = args.collection;
-  if (typeof direct === "string") names.add(direct.trim().toLowerCase());
+  // Handlers treat a blank collection as omitted, so it must not count as a
+  // scope here either (a graph call with one is authorized as unscoped).
+  if (typeof direct === "string" && direct.trim())
+    names.add(direct.trim().toLowerCase());
   if (
     (record?.name === "gno_audit" || record?.name === "gno_impact") &&
     Array.isArray(args.collections)
