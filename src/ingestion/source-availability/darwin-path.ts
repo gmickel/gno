@@ -43,8 +43,13 @@ export function classifyDarwinFileProviderPath(
     return "unsupported";
   }
   const domain = parts[2];
-  if (domain?.startsWith("GoogleDrive-") && parts[3] === "My Drive") {
-    return "google-drive";
+  if (domain?.startsWith("GoogleDrive-")) {
+    const isMyDrive = parts[3] === "My Drive";
+    const isSharedDrive =
+      parts[3] === "Shared drives" &&
+      typeof parts[4] === "string" &&
+      parts[4].length > 0;
+    return isMyDrive || isSharedDrive ? "google-drive" : "unsupported";
   }
   if (
     domain?.startsWith("OneDrive-") &&
