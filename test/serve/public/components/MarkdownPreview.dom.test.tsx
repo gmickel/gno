@@ -39,6 +39,25 @@ describe("MarkdownPreview", () => {
     ).toBe("/doc?uri=gno%3A%2F%2Fai%2FOther%2520Note.md");
   });
 
+  test("resolves a table-escaped wiki alias to its note", async () => {
+    const { MarkdownPreview } =
+      await import("../../../../src/serve/public/components/editor/MarkdownPreview");
+
+    renderWithUser(
+      <MarkdownPreview
+        collection="ai"
+        content={"| Link |\n| --- |\n| [[Other Note\\|alias]] |\n"}
+        wikiLinks={[
+          { targetRef: "Other Note", resolvedUri: "gno://ai/Other%20Note.md" },
+        ]}
+      />
+    );
+
+    expect(
+      screen.getByRole("link", { name: "alias" }).getAttribute("href")
+    ).toBe("/doc?uri=gno%3A%2F%2Fai%2FOther%2520Note.md");
+  });
+
   test("rewrites note-relative image sources through doc asset route", async () => {
     const { MarkdownPreview } =
       await import("../../../../src/serve/public/components/editor/MarkdownPreview");

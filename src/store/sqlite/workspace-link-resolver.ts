@@ -293,6 +293,73 @@ class WorkspaceCatalog {
   }
 }
 
+/** A normalized wiki target, ready to be matched against workspace paths. */
+interface WorkspaceTargetShape {
+  normalized: string;
+  base: string;
+  exact: Set<string>;
+  relative: boolean;
+  hasPath: boolean;
+}
+
+const workspaceTargetShape = (
+  targetRefNorm: string,
+  sourceWsFolderNorm: string
+): WorkspaceTargetShape | null => {
+  const normalized = normalizeWorkspaceTarget(
+    targetRefNorm,
+    sourceWsFolderNorm
+  );
+  if (normalized === null || normalized.length === 0) return null;
+  const base = stripWikiMdExt(normalized);
+  // A relative target stays a path even when it normalizes to a root name.
+  const relative = RELATIVE_TARGET.test(targetRefNorm.trim());
+  return {
+    normalized,
+    base,
+    exact: new Set([base, `${base}.md`]),
+    relative,
+    hasPath: relative || normalized.includes("/"),
+  };
+};
+
+/**
+ * Match class of one same-basename file for a target, or null when it does
+ * not match: 0 exact workspace path, 1 exact path relative to the source's
+ * collection, 2 same folder as the source, 3 any other name or path-suffix
+ * match. Exact path classes apply to path targets only; a plain name ranks
+ * by folder and depth like any other same-named file. A relative target is
+ * already a full workspace path: only the exact workspace path matches.
+ */
+const workspaceMatchClass = (
+  shape: WorkspaceTargetShape,
+  file: {
+    wsNorm: string;
+    wsFolderNorm: string;
+    /** Path relative to the source's collection root, when it is in it. */
+    sourceCollectionRelNorm: string | null;
+    sourceWsFolderNorm: string;
+  }
+): number | null => {
+  if (shape.hasPath && shape.exact.has(file.wsNorm)) return 0;
+  if (shape.relative) return null;
+  if (
+    shape.hasPath &&
+    file.sourceCollectionRelNorm !== null &&
+    shape.exact.has(file.sourceCollectionRelNorm)
+  ) {
+    return 1;
+  }
+  if (
+    !shape.hasPath ||
+    file.wsNorm.endsWith(`/${shape.base}`) ||
+    file.wsNorm.endsWith(`/${shape.base}.md`)
+  ) {
+    return file.wsFolderNorm === file.sourceWsFolderNorm ? 2 : 3;
+  }
+  return null;
+};
+
 interface RankedCandidate {
   doc: CatalogDoc;
   klass: number;
@@ -345,37 +412,17 @@ const rankTarget = (
   source: { collection: string; wsFolderNorm: string },
   targetRefNorm: string
 ): WorkspaceTargetResolution | null => {
-  const normalized = normalizeWorkspaceTarget(
-    targetRefNorm,
-    source.wsFolderNorm
-  );
-  if (normalized === null || normalized.length === 0) return null;
-  const base = stripWikiMdExt(normalized);
-  const exact = new Set([base, `${base}.md`]);
-  // A relative target stays a path even when it normalizes to a root name.
-  const relative = RELATIVE_TARGET.test(targetRefNorm.trim());
-  const hasPath = relative || normalized.includes("/");
+  const shape = workspaceTargetShape(targetRefNorm, source.wsFolderNorm);
+  if (shape === null) return null;
   const matches: RankedCandidate[] = [];
-  for (const doc of catalog.byBasename(wsKey, basenameKeys(normalized))) {
-    let klass: number | null = null;
-    // Exact path classes apply to path targets only; a plain name ranks by
-    // folder and depth like any other same-named file. A relative target is
-    // already a full workspace path: only the exact workspace path matches.
-    if (hasPath && exact.has(doc.wsNorm)) klass = 0;
-    else if (relative) klass = null;
-    else if (
-      hasPath &&
-      doc.collection === source.collection &&
-      exact.has(doc.relNorm)
-    ) {
-      klass = 1;
-    } else if (
-      !hasPath ||
-      doc.wsNorm.endsWith(`/${base}`) ||
-      doc.wsNorm.endsWith(`/${base}.md`)
-    ) {
-      klass = doc.wsFolderNorm === source.wsFolderNorm ? 2 : 3;
-    }
+  for (const doc of catalog.byBasename(wsKey, basenameKeys(shape.normalized))) {
+    const klass = workspaceMatchClass(shape, {
+      wsNorm: doc.wsNorm,
+      wsFolderNorm: doc.wsFolderNorm,
+      sourceCollectionRelNorm:
+        doc.collection === source.collection ? doc.relNorm : null,
+      sourceWsFolderNorm: source.wsFolderNorm,
+    });
     if (klass !== null) matches.push({ doc, klass });
   }
   const distinct = distinctSources(matches, source.collection);
@@ -411,7 +458,7 @@ const rankTarget = (
   }
   // Fallback: frontmatter title inside the source collection only; relative
   // targets are paths and never fall back to titles.
-  if (relative) return null;
+  if (shape.relative) return null;
   for (const [rank, keys] of titleLookups(targetRefNorm)) {
     const docs = catalog
       .byTitleIn(source.collection, wsKey, keys)
@@ -509,6 +556,47 @@ export const createInMemoryWorkspaceResolver = (
         wsFolderNorm: folderOf(asciiLower(placement.path)),
       },
       targetRefNorm
+    );
+  };
+};
+
+/**
+ * Existence matcher over workspace files that are not indexed documents
+ * (attachments, notes in unindexed or excluded folders). A target matches a
+ * file under the same rules as an indexed note: basename with `.md` optional
+ * (so a non-Markdown target needs its extension), exact or suffix path for
+ * path targets, exact workspace path for `./` and `../` targets. The path
+ * relative to the source's collection needs no separate check here: that
+ * file's workspace path equals the target or ends with `/target`. File names
+ * fold case fully, as Obsidian matches link targets case-insensitively.
+ */
+export const createWorkspaceFileMatcher = (
+  workspacePaths: Iterable<string>
+): ((targetRefNorm: string, sourceWsPath: string) => boolean) => {
+  const byBase = new Map<string, Array<{ wsNorm: string; folder: string }>>();
+  for (const path of workspacePaths) {
+    const wsNorm = path.normalize("NFC").toLowerCase();
+    const base = lastSegment(wsNorm);
+    const files = byBase.get(base) ?? [];
+    files.push({ wsNorm, folder: folderOf(wsNorm) });
+    byBase.set(base, files);
+  }
+  return (targetRefNorm, sourceWsPath) => {
+    const sourceWsFolderNorm = folderOf(
+      sourceWsPath.normalize("NFC").toLowerCase()
+    );
+    const shape = workspaceTargetShape(targetRefNorm, sourceWsFolderNorm);
+    if (shape === null) return false;
+    return basenameKeys(shape.normalized).some((key) =>
+      (byBase.get(key) ?? []).some(
+        (file) =>
+          workspaceMatchClass(shape, {
+            wsNorm: file.wsNorm,
+            wsFolderNorm: file.folder,
+            sourceCollectionRelNorm: null,
+            sourceWsFolderNorm,
+          }) !== null
+      )
     );
   };
 };

@@ -629,6 +629,11 @@ GNO extracts and tracks links between documents:
 
 External URLs (https://) are NOT stored—only internal document links.
 
+Inside a Markdown table, Obsidian writes the alias separator as `\|`
+(`[[My Note\|click here]]`); GNO reads it the same way, as target `My Note`
+with display text `click here`. Markdown link text may contain balanced square
+brackets (`[see [1]](note.md)`).
+
 ### Resolution
 
 Links are resolved at query time, not stored with target document IDs. This handles document renames gracefully. Every link consumer (graph neighbors in search, ask and Context Capsules, backlinks, `gno links`, `gno impact`, graph export, `gno audit links`) uses the same resolution.
@@ -639,6 +644,8 @@ Links are resolved at query time, not stored with target document IDs. This hand
 2. A target without `/` matches a file name, case-insensitively, with or without `.md`.
 3. When several files match, the order is: exact workspace path, exact collection path, a file in the same folder as the linking document, then the file with the fewest folders above it. Files that are still tied are ambiguous: the link creates no graph edge, and `gno audit links` lists the candidates.
 4. When no file matches, a document whose title matches the target, inside the linking document's own collection, is used.
+
+A link whose target is not indexed but exists as a file in the workspace (an image or PDF, or a note in a folder no collection indexes or one a collection excludes) still creates no graph edge. `gno audit links` reports it as outside the index instead of unresolved; see [Links to files GNO does not index](CONFIGURATION.md#links-to-files-gno-does-not-index).
 
 **Other links keep their meaning:**
 

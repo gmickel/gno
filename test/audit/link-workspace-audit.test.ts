@@ -3,11 +3,19 @@
  */
 
 import { afterEach, describe, expect, test } from "bun:test";
+// node:fs/promises chmod/mkdir: filesystem structure ops, no Bun equivalent.
+import { chmod, mkdir } from "node:fs/promises";
+// node:path join: path algebra, no Bun equivalent.
+import { join } from "node:path";
 
 import type { AuditReport } from "../../src/core/audit";
 
 import { ConfigSchema } from "../../src/config/types";
 import { evaluateLinkAudit } from "../../src/core/audit-links";
+import {
+  listWorkspaceFiles,
+  markOutsideIndexLinks,
+} from "../../src/core/audit-outside-index";
 import { runWorkspaceAudit } from "../../src/core/audit-workspace";
 import { captureAuditLinkSnapshot } from "../../src/store/sqlite/graph-link-resolver";
 import {
@@ -101,6 +109,148 @@ describe("workspace link audit (R7)", () => {
     });
     expect(JSON.stringify(aiOnly.findings)).not.toContain("gno://work/");
   });
+});
+
+/** Files in the vault that are not indexed documents. */
+const writeVaultFile = async (
+  f: LinkWorkspaceFixture,
+  relPath: string,
+  body = "x"
+): Promise<void> => {
+  const path = join(f.vault, relPath);
+  await mkdir(join(path, ".."), { recursive: true });
+  await Bun.write(path, body);
+};
+
+const PARITY_NOTE = [
+  "# Parity",
+  "",
+  "| Link | Kind |",
+  "| --- | --- |",
+  "| [[Roadmap\\|Plan]] | escaped table alias |",
+  "",
+  "![[diagram.png]] ![[Attachments/report.pdf|200]]",
+  "[[Secret]] [[Old Plan]]",
+  "[Title [draft] (v2](Agents/_index.md)",
+  "[[Nowhere]] [[diagram]]",
+  "",
+].join("\n");
+
+const openParityFixture = async (): Promise<LinkWorkspaceFixture> => {
+  const f = await openLinkWorkspaceFixture();
+  await writeVaultFile(f, "Attachments/diagram.png");
+  await writeVaultFile(f, "Attachments/report.pdf");
+  await writeVaultFile(f, "Archive/Old Plan.md", "# Old plan\n");
+  await writeVaultFile(f, ".trash/Nowhere.md", "# Hidden\n");
+  await f.write("work", "_internal/Secret.md", "# Secret\n");
+  await f.write("ai", "Parity.md", PARITY_NOTE);
+  await f.write("ai", "Gallery.md", "# Gallery\n\n![[diagram.png]]\n");
+  await f.reconfigure(
+    f.collections.map((c) =>
+      c.name === "work" ? { ...c, exclude: ["_internal"] } : c
+    )
+  );
+  await f.sync();
+  return f;
+};
+
+describe("files outside the index (Obsidian parity)", () => {
+  test("only genuinely missing targets stay unresolved; the rest is outside-index", async () => {
+    fixture = await openParityFixture();
+    const report = await audit(fixture);
+    const of = (ruleId: string) =>
+      findings(report, ruleId)
+        .filter(({ subject }) => subject === "gno://ai/Parity.md")
+        .map(({ detail }) => detail);
+    // The escaped alias and the bracketed Markdown link resolve; a
+    // non-Markdown target needs its extension, as in Obsidian.
+    expect(
+      of("links.local-targets")
+        .map((d) => d.normalizedTarget)
+        .sort()
+    ).toEqual(["diagram", "nowhere"]);
+    expect(
+      of("links.outside-index")
+        .map((d) => `${d.normalizedTarget} ${d.resolutionStatus}`)
+        .sort()
+    ).toEqual([
+      "attachments/report.pdf outside-index",
+      "diagram.png outside-index",
+      "old plan outside-index",
+      "secret outside-index",
+    ]);
+    const outsideRule = report.rules.find(
+      ({ ruleId }) => ruleId === "links.outside-index"
+    );
+    expect(outsideRule?.status).toBe("pass");
+    expect(outsideRule?.findingCount).toBe(5);
+    expect(
+      report.findings
+        .filter(({ ruleId }) => ruleId === "links.outside-index")
+        .every(({ severity }) => severity === "info")
+    ).toBe(true);
+    // Existence only: nothing about the excluded note beyond the link.
+    expect(JSON.stringify(report)).not.toContain("_internal");
+    // An outside-index link is no edge: Gallery stays an orphan.
+    expect(
+      findings(report, "links.orphans").map(({ subject }) => subject)
+    ).toContain("gno://ai/Gallery.md");
+    const excluded = fixture.store
+      .getRawDb()
+      .query<{ count: number }, []>(
+        "SELECT COUNT(*) AS count FROM documents WHERE rel_path LIKE '_internal/%' AND active = 1"
+      )
+      .get();
+    expect(excluded?.count).toBe(0);
+  });
+
+  test("an incomplete file listing degrades to unresolved with one diagnostic", async () => {
+    fixture = await openParityFixture();
+    const snapshot = captureAuditLinkSnapshot(fixture.store.getRawDb());
+    const marked = await markOutsideIndexLinks(
+      fixture.store.getRawDb(),
+      snapshot,
+      { maxFiles: 0 }
+    );
+    expect(marked.links.some((link) => link.outsideIndex)).toBe(false);
+    const rules = evaluateLinkAudit(marked, {
+      rootUris: [],
+      ignorePathPrefixes: [],
+    });
+    const outside = rules.find(
+      ({ ruleId }) => ruleId === "links.outside-index"
+    );
+    expect(outside?.status).toBe("pass");
+    expect(outside?.findingCount).toBe(0);
+    expect(outside?.message).toContain(
+      "file listing of 1 link workspace was incomplete"
+    );
+    const local = rules.find(({ ruleId }) => ruleId === "links.local-targets");
+    expect(
+      local?.findings?.some(
+        (finding) => finding.evidence[0]?.summary === "ai:diagram.png"
+      )
+    ).toBe(true);
+  });
+
+  test.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "the listing skips hidden and unreadable folders and reports itself incomplete",
+    async () => {
+      fixture = await openParityFixture();
+      const locked = join(fixture.vault, "Locked");
+      await writeVaultFile(fixture, "Locked/Inside.md");
+      await chmod(locked, 0o000);
+      try {
+        const listing = await listWorkspaceFiles(fixture.vault);
+        expect(listing.complete).toBe(false);
+        expect(listing.files).toContain("Attachments/diagram.png");
+        expect(listing.files.some((path) => path.startsWith("."))).toBe(false);
+        expect(listing.files).not.toContain("Locked/Inside.md");
+      } finally {
+        await chmod(locked, 0o755);
+      }
+    }
+  );
 });
 
 describe("audit bounds (A13)", () => {

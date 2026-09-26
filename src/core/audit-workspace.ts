@@ -32,6 +32,7 @@ import {
 } from "./audit";
 import { evaluateFreshnessAudit } from "./audit-freshness";
 import { evaluateLinkAudit } from "./audit-links";
+import { markOutsideIndexLinks } from "./audit-outside-index";
 import { evaluateProvenanceAudit } from "./audit-provenance";
 import {
   extractCaptureSourceFromFrontmatter,
@@ -429,15 +430,20 @@ const loadWorkspaceSnapshot = async (
       ? captureAuditLinkSnapshot(options.store.getRawDb())
       : emptyLinkSnapshot();
   const selectedIds = new Set(selected.documents.map(({ id }) => id));
+  const links = filterLinkSnapshot(
+    rawLinks,
+    selectedIds,
+    selected.documents,
+    selected.truncated,
+    filters.collections
+  );
   return {
     documents: observed,
-    links: filterLinkSnapshot(
-      rawLinks,
-      selectedIds,
-      selected.documents,
-      selected.truncated,
-      filters.collections
-    ),
+    links: options.categories.includes("links")
+      ? await markOutsideIndexLinks(options.store.getRawDb(), links, {
+          signal: options.signal,
+        })
+      : links,
     truncated: selected.truncated,
   };
 };

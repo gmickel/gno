@@ -1084,6 +1084,14 @@ URLs are outside the local-link graph. Age is only a review signal when
 false. Use repeatable `--orphan-root` and `--orphan-ignore-prefix` inputs for an
 explicit orphan policy.
 
+In a link workspace, a wiki link or embed whose target is not indexed but
+exists as a file in the workspace (an image, a PDF, a note in an unindexed or
+excluded folder) is listed by `links.outside-index` as an `info` finding
+instead of as an unresolved link. That rule always passes, so these links
+never change the exit code; only targets that do not exist stay in
+`links.local-targets`. See
+[Links to files GNO does not index](CONFIGURATION.md#links-to-files-gno-does-not-index).
+
 `--max-findings` defaults to 100 and accepts a number from 1 to 100000, or
 `all` to export every finding (for example
 `gno audit links --max-findings all --json --output links.json`). Returned

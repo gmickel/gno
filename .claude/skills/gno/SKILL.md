@@ -355,8 +355,11 @@ rewrite, persist findings, judge factual truth, or replace retrieval.
 `--max-findings` accepts `all` (MCP `maxFindings: "all"`) to export every
 finding. Link findings carry `referenceKind`, `resolutionStatus`, and
 `resolvedScope` in their evidence detail; ambiguous vault links list the tied
-`candidates`. Report `truncation.snapshotTruncated` as "totals cover the
-bounded snapshot, not the whole index".
+`candidates`. `links.outside-index` `info` findings are link targets that
+exist in the vault but are not indexed (attachments, excluded or unindexed
+folders); Obsidian resolves them, so do not report them as broken links.
+Report `truncation.snapshotTruncated` as "totals cover the bounded snapshot,
+not the whole index".
 
 Treat exit `4` as a complete report with findings. Exit `5` or report status
 `partial`/`changed_during_audit` means evidence is unavailable, inconclusive,

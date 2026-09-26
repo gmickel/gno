@@ -304,6 +304,29 @@ How links resolve inside a workspace, and why resolving a link never widens
 what a search or answer can return, is described under
 [Link resolution](ARCHITECTURE.md#resolution).
 
+### Links to files GNO does not index
+
+Obsidian also resolves links to files that GNO does not index: pasted images
+and PDFs (`![[diagram.png]]`, `[[report.pdf]]`), and notes in folders that no
+collection indexes or that a collection excludes. `gno audit links` checks
+whether such a target exists in the workspace folder. If it does, the link is
+reported as `outside-index`, an informational finding that does not fail the
+audit, instead of an unresolved link. Only genuinely missing targets stay
+unresolved.
+
+This check only asks whether a file with that name exists. GNO does not index,
+open, or return the file, the link does not become part of the link graph,
+and an excluded folder stays excluded. The target must match the way Obsidian
+matches it: a file other than a note needs its extension (`[[diagram]]` does
+not find `diagram.png`), and `.md` is optional for notes. Hidden folders such
+as `.obsidian` and `.trash` are not checked. If a folder cannot be read, links
+into it stay unresolved and the audit says once that the check was incomplete.
+
+Wiki links in Markdown tables use Obsidian's escaped alias,
+`[[Note\|Alias]]`. GNO reads it as a link to `Note` shown as `Alias`. After an
+upgrade, the next `gno update` re-reads existing notes once so these links
+resolve.
+
 ## Memory-managed collections
 
 `collections[].memoryManaged` is optional (`true` | omitted). It declares the

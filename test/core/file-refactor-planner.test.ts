@@ -421,6 +421,19 @@ describe("overlap / dedup", () => {
     expect(inventory.overlapping).toBe(false);
   });
 
+  test("inventories a table-escaped wiki alias without the escape", () => {
+    const keys = buildSourceRelevanceKeys({
+      relPath: "old-note.md",
+      title: "Old Note",
+    });
+    const inventory = inventoryDocumentLinks("| [[Old Note\\|Alias]] |\n", {
+      sourceKeys: keys,
+    });
+    expect(inventory.tokens.map((token) => token.originalDestination)).toEqual([
+      "Old Note",
+    ]);
+  });
+
   test("dedupes identical destination spans across scanner kinds", () => {
     const duplicateA: LinkInventoryToken = {
       kind: "wiki",

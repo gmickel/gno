@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `gno audit links` no longer reports links that Obsidian resolves as broken. A wiki link or embed whose target exists in the vault but is not indexed (a pasted image or PDF, a note in a folder no collection indexes, or a note a collection excludes) is now an informational `links.outside-index` finding that does not fail the audit. GNO only checks that the file exists; it does not index, open or return it. See [Links to files GNO does not index](docs/CONFIGURATION.md#links-to-files-gno-does-not-index).
+- Wiki links in Markdown tables written with Obsidian's escaped alias, `[[Note\|Alias]]`, now link to `Note` in backlinks, `gno links`, `gno impact`, graph neighbours, the reader and the audit. Renaming a note also updates these links.
+- Markdown links whose text contains square brackets, such as `[see [1]](note.md)`, now link to their target. Link text split at an unbalanced bracket is no longer reported as a missing target named after the text.
+- The first `gno update` after upgrading re-reads existing notes once so the corrected links take effect.
+
 ## [2.8.0] - 2026-09-26
 
 ### Added

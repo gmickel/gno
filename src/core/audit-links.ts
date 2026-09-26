@@ -13,8 +13,11 @@ import {
   compareAuditFindingDrafts,
 } from "./audit";
 
-/** 1.1: workspace-wide resolution and reference/resolution/scope evidence. */
-export const LINK_AUDIT_RULE_VERSION = "1.1" as const;
+/**
+ * 1.1: workspace-wide resolution and reference/resolution/scope evidence.
+ * 1.2: `links.outside-index` for workspace files that are not indexed.
+ */
+export const LINK_AUDIT_RULE_VERSION = "1.2" as const;
 /** Default per-rule cap; runs pass the effective `maxFindings` instead. */
 export const LINK_AUDIT_MAX_FINDINGS_PER_RULE = 1000;
 
@@ -70,6 +73,7 @@ const linkFinding = (
   onEvidenceTruncated: () => void
 ): AuditFindingDraft => {
   const ambiguous = (link.resolved?.matchCount ?? 0) > 1;
+  const outsideIndex = !ambiguous && link.outsideIndex === true;
   const target = `${link.targetCollection}:${link.targetRef}`;
   const kind = referenceKind(link);
   const tied = (link.resolved?.candidates ?? []).map((candidate) =>
@@ -101,7 +105,11 @@ const linkFinding = (
     matchRank: link.resolved?.matchRank ?? null,
     normalizedTarget: link.targetRefNorm,
     referenceKind: kind,
-    resolutionStatus: ambiguous ? "ambiguous" : "unresolved",
+    resolutionStatus: ambiguous
+      ? "ambiguous"
+      : outsideIndex
+        ? "outside-index"
+        : "unresolved",
     resolvedScope,
   };
   // Candidate URIs are added while the detail stays within the evidence
@@ -140,6 +148,26 @@ const linkFinding = (
     candidates.uris.pop();
   }
   if (candidates.truncated) onEvidenceTruncated();
+  if (outsideIndex) {
+    return {
+      subject: link.sourceUri,
+      location: lineLocation(link.startLine, link.startCol),
+      severity: "info",
+      message: `Link target exists outside the index: ${target}`,
+      evidence: [
+        {
+          kind: "outside-index-target",
+          summary: target,
+          uri: link.sourceUri,
+          path: link.sourceRelPath,
+          detail: render(),
+        },
+      ],
+      guidance: [
+        "No action needed; index the target's folder to add it to the link graph",
+      ],
+    };
+  }
   return {
     subject: link.sourceUri,
     location: lineLocation(link.startLine, link.startCol),
@@ -210,6 +238,7 @@ export const evaluateLinkAudit = (
   policy: AuditOrphanPolicy
 ): AuditRuleContribution[] => {
   const unresolved: AuditFindingDraft[] = [];
+  const outsideIndex: AuditFindingDraft[] = [];
   const ambiguous: AuditFindingDraft[] = [];
   const connected = new Set<number>();
   const auditedDocumentIds = new Set(
@@ -229,7 +258,11 @@ export const evaluateLinkAudit = (
   for (const link of snapshot.links) {
     const sourceAudited = auditedDocumentIds.has(link.sourceId);
     if (!link.resolved) {
-      if (sourceAudited) unresolved.push(finding(link));
+      if (sourceAudited) {
+        (link.outsideIndex === true ? outsideIndex : unresolved).push(
+          finding(link)
+        );
+      }
       continue;
     }
     // A tied workspace link is not a resolved link: it connects nothing.
@@ -325,6 +358,25 @@ export const evaluateLinkAudit = (
         : `${orphanFindings.length} policy-defined orphan documents`,
       findings: boundedFindings(orphanFindings, maxFindingsPerRule),
       findingCount: orphanFindings.length,
+      skipReason: partial ? "snapshot_truncated" : null,
+    },
+    {
+      // Informational: Obsidian resolves these links, so they never fail
+      // the audit. Info findings keep the rule passing.
+      ...common,
+      ruleId: "links.outside-index",
+      category: "links",
+      status: partial ? ("inconclusive" as const) : ("pass" as const),
+      message: [
+        partial
+          ? "Outside-index scan was truncated"
+          : `${outsideIndex.length} links point to existing files outside the index`,
+        ...(snapshot.outsideIndexDiagnostic
+          ? [snapshot.outsideIndexDiagnostic]
+          : []),
+      ].join("; "),
+      findings: boundedFindings(outsideIndex, maxFindingsPerRule),
+      findingCount: outsideIndex.length,
       skipReason: partial ? "snapshot_truncated" : null,
     },
     {

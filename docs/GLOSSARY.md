@@ -208,6 +208,7 @@ Internal document link using `[[double bracket]]` syntax. GNO supports:
 
 - `[[Target]]` - basic link
 - `[[Target|Display]]` - link with custom display text
+- `[[Target\|Display]]` - the same link inside a Markdown table, where Obsidian escapes the pipe
 - `[[Target#Heading]]` - link to section anchor
 - `[[Folder/Target]]` - path link, relative to the workspace or collection root
 - `[[collection:Target]]` - explicit link into one named collection

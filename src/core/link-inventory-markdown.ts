@@ -23,7 +23,7 @@ import {
   pushInventoryToken,
 } from "./link-inventory-opaque";
 import { isRelevantDestination } from "./link-relevance";
-import { parseTargetParts } from "./links";
+import { parseTargetParts, splitWikiLinkContent } from "./links";
 
 const EXTERNAL_URL_REGEX = /^[a-z][a-z0-9+.-]*:/i;
 
@@ -51,8 +51,7 @@ export function inventoryWikiLinks(
     }
 
     const content = match[1] ?? "";
-    const pipeIndex = content.indexOf("|");
-    const targetPart = pipeIndex >= 0 ? content.slice(0, pipeIndex) : content;
+    const targetPart = splitWikiLinkContent(content).target;
     const trimmedTarget = targetPart.trim();
     if (!trimmedTarget) continue;
     const leadingWs = targetPart.length - targetPart.trimStart().length;
