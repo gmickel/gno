@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-178-workspace-wide-wikilink-resolution",
   "spec_path": ".flow/tasks/fn-178-workspace-wide-wikilink-resolution.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Workspace-wide wikilink resolution across collections sharing a vault root",
   "updated_at": "2026-09-26T11:44:00.159464Z"
 }
