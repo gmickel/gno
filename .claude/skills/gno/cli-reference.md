@@ -594,7 +594,8 @@ gno impact gno://notes/plan.md --max-depth 3 --json
 `changes` accepts an ISO time or opaque cursor and optional collection/limit.
 `diff` reports structural headings, links, and typed-relationship changes for
 one retained change. `impact` follows inbound evidence edges with explicit
-depth/node/edge/frontier/visited bounds. Expired journal history is reported,
+depth/node/edge/frontier/visited bounds; repeat `-c, --collection <name>` to
+keep the traversal (and every path step) inside those collections. Expired journal history is reported,
 not reconstructed.
 
 ## Private Retrieval Traces
@@ -678,6 +679,12 @@ gno backlinks <ref> [options]
 `gno links` and `gno backlinks` also accept `--edge-type <type>` or
 `--relation <type>` to query semantic typed edges instead of positional
 wiki/markdown links. Do not combine `--type` with `--edge-type`.
+
+Plain `[[Note]]` and `[[Folder/Note]]` links resolve across all collections
+that share one vault (the nearest `.obsidian` folder, or `workspaceRoot` in
+the config): exact path, then same folder, then shallowest file; ties stay
+unresolved and are listed by `gno audit links`. JSON names the other
+collection (`resolvedCollection` for links, `sourceCollection` for backlinks).
 
 ### gno graph query
 
