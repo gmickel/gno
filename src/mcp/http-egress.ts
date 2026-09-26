@@ -127,7 +127,8 @@ const collectionFromRef = (value: unknown): string | null => {
 /**
  * Tools whose results follow resolved graph edges. Links resolve across a
  * link workspace, so a ref's own collection does not bound the result: the
- * scope is the explicit collection argument, else every collection.
+ * scope is the explicit collection argument (else every collection) plus the
+ * collection of every referenced document.
  */
 const GRAPH_RESULT_TOOLS = new Set([
   "gno_backlinks",
@@ -159,12 +160,27 @@ const requestedCollections = (
       if (normalized) names.add(normalized);
     }
   }
-  if (typeof record?.name === "string" && GRAPH_RESULT_TOOLS.has(record.name)) {
-    return names.size > 0 ? [...names] : collections.map(({ name }) => name);
+  const graphTool =
+    typeof record?.name === "string" && GRAPH_RESULT_TOOLS.has(record.name);
+  // A graph result spans every collection a link resolves into: without an
+  // explicit scope, authorize them all.
+  // `gno_similar` with crossCollection returns documents from every collection.
+  const crossCollectionSimilar =
+    record?.name === "gno_similar" && args.crossCollection === true;
+  if ((graphTool && names.size === 0) || crossCollectionSimilar) {
+    for (const { name } of collections) names.add(name);
   }
+  // The referenced documents' own collections are always authorized too:
+  // graph tools serialize the target's metadata even when the result scope
+  // is narrower. A graph-tool ref whose collection cannot be read without
+  // the index (a docid) authorizes every collection (fail closed).
   for (const key of ["ref", "target", "from", "to", "root", "uri"]) {
-    const collection = collectionFromRef(args[key]);
+    const value = args[key];
+    const collection = collectionFromRef(value);
     if (collection) names.add(collection);
+    else if (graphTool && typeof value === "string" && value.trim()) {
+      for (const { name } of collections) names.add(name);
+    }
   }
   if (Array.isArray(args.refs)) {
     for (const ref of args.refs) {

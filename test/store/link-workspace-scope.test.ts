@@ -284,6 +284,32 @@ describe("egress boundary is unchanged and applies to graph results (A1)", () =>
     ).not.toThrow();
   });
 
+  test.each([
+    ["gno_backlinks", { ref: PRIVATE, collection: "work" }],
+    ["gno_impact", { ref: PRIVATE, collections: ["work"] }],
+    ["gno_graph_neighbors", { ref: PRIVATE, collection: "work" }],
+    ["gno_graph_path", { from: PRIVATE, to: ROADMAP, collection: "work" }],
+    ["gno_backlinks", { ref: "#abc123", collection: "work" }],
+    ["gno_similar", { ref: ROADMAP, crossCollection: true }],
+  ])(
+    "a remote %s call scoped to an allowed collection cannot reach a local_only ref",
+    async (name, args) => {
+      fixture = await openLinkWorkspaceFixture();
+      expect(() =>
+        enforceHttpMcpEgress(
+          {
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/call",
+            params: { name, arguments: args },
+          },
+          collections(fixture!),
+          remoteCaller
+        )
+      ).toThrow(EgressDeniedError);
+    }
+  );
+
   test("an unscoped remote transfer is denied; explicit partial output omits local_only and discloses it", async () => {
     fixture = await openLinkWorkspaceFixture();
     const input = {
