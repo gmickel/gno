@@ -164,15 +164,17 @@ describe("files outside the index (Obsidian parity)", () => {
         .map(({ detail }) => detail);
     // The escaped alias and the bracketed Markdown link resolve; a
     // non-Markdown target needs its extension, as in Obsidian.
+    const sorted = (values: unknown[]) =>
+      values.map(String).sort((left, right) => left.localeCompare(right));
     expect(
-      of("links.local-targets")
-        .map((d) => d.normalizedTarget)
-        .sort()
+      sorted(of("links.local-targets").map((d) => d.normalizedTarget))
     ).toEqual(["diagram", "nowhere"]);
     expect(
-      of("links.outside-index")
-        .map((d) => `${d.normalizedTarget} ${d.resolutionStatus}`)
-        .sort()
+      sorted(
+        of("links.outside-index").map((d) =>
+          [d.normalizedTarget, d.resolutionStatus].map(String).join(" ")
+        )
+      )
     ).toEqual([
       "attachments/report.pdf outside-index",
       "diagram.png outside-index",
