@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 // node:fs/promises — temp fixture dirs and symlinks for focused tests; no Bun equivalent
-import { mkdir, mkdtemp, symlink } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, symlink } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { join, normalize } from "node:path";
 
@@ -267,7 +267,10 @@ describe("macos-file-provider-smoke refusals", () => {
   });
 
   test("cleanup-plan receipt records the Google layout", async () => {
-    const parent = await mkdtemp(join(tmpdir(), "gno-fn179-cleanup-"));
+    // Callers pass the resolved root; macOS tmpdir is a /var -> /private/var symlink.
+    const parent = await realpath(
+      await mkdtemp(join(tmpdir(), "gno-fn179-cleanup-"))
+    );
     try {
       const id = "GNO-fn118-smoke-layout";
       await mkdir(join(parent, id));
