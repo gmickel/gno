@@ -168,3 +168,11 @@ A source-grounded review raised 2 blockers and 13 major findings; all are accept
 ## Parked unknowns
 
 - None. Direct build (no planning pass). Delivery order: (1) R9 + R10 with A13/A15 as an independent PR; (2) A14 baseline benchmark; (3) resolver and ranking (R1-R4, A5-A9, A11); (4) scope and egress enforcement (R5-R6, A1-A2, A4) with the full security regression matrix; (5) audit (R7, A12) and reconciliation (R8, A10); (6) default-on switch, docs (R12) and release handoff (R13).
+
+## R13 handoff (confirmed 2026-09-27)
+
+Maintainer confirmed after the 2.8.0 rollout to all hosts:
+- (a) Agent instructions and retrieval guidance updated for workspace link resolution.
+- (b) Collection-scoped link-hygiene workarounds retired, except the external link-integrity script, which stays the authority for broken and ambiguous links until fn-194 (audit parity for escaped table aliases, attachments, and out-of-index targets) ships.
+- (c) Full `gno audit links` re-run after the first 2.8.0 `gno update`: 526 unresolved (from 2,535 on 2026-09-23); the remainder is fn-194's scope.
+- (d) Docs site and packaged skill published with 2.8.0; skill eval 100% (47/47).
