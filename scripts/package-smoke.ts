@@ -722,7 +722,7 @@ async function main(): Promise<void> {
     if (embeddingModelPath) {
       // A resident embeds any backlog it starts with. Clear it first so the
       // warm-reuse lease counts measure only the smoke's own calls.
-      runCommand([gnoBin, "embed"], tempRoot, env);
+      runCommand([gnoBin, "embed", "--batch-size", "8"], tempRoot, env);
     }
     await verifyPackedResidentGateway({
       gnoBin,
