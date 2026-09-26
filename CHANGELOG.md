@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Windows: writes with a request ID (`gno capture --request-id`, `gno remember --request-id`, and the MCP, REST, and SDK equivalents) no longer start PowerShell on every call to check the private ledger directory's permissions. The check runs once and is recorded, and later calls skip it while the directory and its permissions are unchanged. A replaced directory or a permissions change triggers the full check again, and a directory another account can access is still refused before anything is written.
+- `gno serve` and `gno daemon` now drain an embedding backlog that already exists when they start (for example after `gno index --no-embed` or an interrupted run) instead of waiting for the next file change; the first pass runs 30 seconds after startup.
+- A background embedding batch that exceeds `models.inferenceTimeout` no longer aborts the whole pass. Only that batch fails and stays pending; later batches still embed, so one slow chunk at the head of the backlog cannot keep every other chunk pending.
 
 ## [2.7.0] - 2026-09-25
 

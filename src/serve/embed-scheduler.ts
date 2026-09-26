@@ -202,8 +202,8 @@ export function createEmbedScheduler(deps: EmbedSchedulerDeps): EmbedScheduler {
     } catch (cause) {
       if (controller.signal.aborted)
         return { result: { embedded: 0, errors: 0 } };
-      // An inference deadline or worker exit aborts the whole pass. It is a
-      // failed pass like any other, never a silently dropped rejection.
+      // A worker exit aborts the whole pass (a deadline fails only its page).
+      // It is a failed pass like any other, never a silently dropped rejection.
       return {
         result: { embedded: 0, errors: 0 },
         failure: cause instanceof Error ? cause.message : String(cause),

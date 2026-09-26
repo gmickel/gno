@@ -80,6 +80,7 @@ function createDeps(config: Config): ResidentRuntimeDeps {
     syncCollections: async () => ({ ok: true as const, value: undefined }),
     syncContexts: async () => ({ ok: true as const, value: undefined }),
     getRawDb: () => ({}),
+    getStatus: async () => ({ ok: true, value: { embeddingBacklog: 0 } }),
     close: async () => undefined,
   };
   return {

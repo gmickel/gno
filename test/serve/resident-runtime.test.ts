@@ -37,6 +37,7 @@ function createDeps(calls: string[] = []): ResidentRuntimeDeps {
     syncCollections: async () => ({ ok: true as const, value: undefined }),
     syncContexts: async () => ({ ok: true as const, value: undefined }),
     getRawDb: () => ({}),
+    getStatus: async () => ({ ok: true, value: { embeddingBacklog: 0 } }),
     close: async () => {
       calls.push("store");
     },
@@ -242,6 +243,34 @@ describe("ResidentRuntime", () => {
     });
     await runtime.dispose();
   });
+
+  test.each([
+    [3, 1],
+    [0, 0],
+  ])(
+    "a startup backlog of %i chunks schedules %i background passes without a file change",
+    async (backlog, passes) => {
+      const deps = createDeps();
+      const baseStore = deps.storeFactory!;
+      deps.storeFactory = () =>
+        Object.assign(baseStore(), {
+          getStatus: async () => ({
+            ok: true as const,
+            value: { embeddingBacklog: backlog },
+          }),
+        });
+      const notified: string[][] = [];
+      const baseScheduler = deps.createEmbedScheduler!;
+      deps.createEmbedScheduler = (options) =>
+        Object.assign(baseScheduler(options), {
+          notifySyncComplete: (docIds: string[]) => notified.push(docIds),
+        });
+      const result = await startResidentRuntime({ mode: "daemon" }, deps);
+      if (!result.success) throw new Error(result.error);
+      expect(notified).toHaveLength(passes);
+      await result.runtime.dispose();
+    }
+  );
 
   test("watcher mutations advance the shared content generation", async () => {
     const deps = createDeps();
