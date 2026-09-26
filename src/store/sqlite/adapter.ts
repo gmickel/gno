@@ -167,6 +167,7 @@ import {
   listVectorPartitions,
   vectorRuntimeStatus,
 } from "../vector/status";
+import { loadSqliteVec } from "../vector/variants";
 import {
   deleteSavedCapsuleRegistration as deleteStoredSavedCapsuleRegistration,
   getSavedCapsuleRegistration as getStoredSavedCapsuleRegistration,
@@ -225,6 +226,7 @@ import {
 } from "./graph-link-resolver";
 import { queryGraphNeighborsForSeeds } from "./graph-neighbors";
 import { createGraphReferenceStore } from "./graph-reference-state";
+import { hasSqliteVec, storedSimilarityEdges } from "./graph-similarity";
 import {
   snapshotLegacyTitles,
   reconcileLegacyTitles,
@@ -5452,13 +5454,11 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
       const warnings: string[] = [];
 
-      // Always probe sqlite-vec availability (not just when similarity requested)
-      let similarAvailable = false;
-      try {
-        db.query("SELECT vec_version()").get();
-        similarAvailable = true;
-      } catch {
-        // sqlite-vec not loaded
+      // Always report sqlite-vec availability (not just when similarity
+      // requested); this connection loads it on first use.
+      let similarAvailable = hasSqliteVec(db);
+      if (!similarAvailable && (await loadSqliteVec(db))) {
+        similarAvailable = hasSqliteVec(db);
       }
 
       interface ResolvedEdgeRow {
@@ -5767,110 +5767,45 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           );
         }
 
-        // Track if any similarity queries fail
-        let similarityFailures = 0;
-
-        const mirrorByDocid = new Map<string, string>();
-        if (nodesForSimilarity.length > 0) {
-          const placeholders = nodesForSimilarity.map(() => "?").join(",");
-          const mirrorRows = db
-            .query<{ docid: string; mirror_hash: string }, string[]>(
-              `SELECT docid, mirror_hash
-               FROM documents
-               WHERE active = 1
-                 AND docid IN (${placeholders})`
-            )
-            .all(...nodesForSimilarity);
-          for (const row of mirrorRows) {
-            if (row.mirror_hash) {
-              mirrorByDocid.set(row.docid, row.mirror_hash);
-            }
-          }
-        }
-        const allowedMirrorHashes = [...mirrorByDocid.values()];
-        if (allowedMirrorHashes.length === 0) {
-          warnings.push("Similarity unavailable: no embedded nodes in graph");
-        }
-        const allowedPlaceholders = allowedMirrorHashes
-          .map(() => "?")
-          .join(",");
-
-        // Get kNN for each node
-        // Query content_vectors for embedded chunks, find similar
-        for (const docid of nodesForSimilarity) {
-          if (allowedMirrorHashes.length === 0) break;
-          const mirrorHash = mirrorByDocid.get(docid);
-          if (!mirrorHash) continue;
-
-          // Find similar docs using vec_distance, aggregate by doc to get max score
-          interface SimilarRow {
-            target_docid: string;
-            score: number;
-          }
-
-          // Use GROUP BY to get one best score per doc (avoids duplicate rows from multi-chunk docs)
-          const similarQuery = `
-            SELECT
-              d.docid as target_docid,
-              MAX(1 - vec_distance_cosine(v1.embedding, v2.embedding)) as score
-            FROM content_vectors v1
-            JOIN content_vectors v2 ON v2.model = v1.model
-              AND v2.mirror_hash != v1.mirror_hash
-              AND v2.seq = 0
-            JOIN documents d ON d.mirror_hash = v2.mirror_hash AND d.active = 1
-            WHERE v1.mirror_hash = ? AND v1.seq = 0
-              AND d.docid != ?
-              AND v2.mirror_hash IN (${allowedPlaceholders})
-            GROUP BY d.docid
-            HAVING score >= ?
-            ORDER BY score DESC
-            LIMIT ?
-          `;
-
-          try {
-            const similarRows = db
-              .query<SimilarRow, (string | number)[]>(similarQuery)
-              .all(
-                mirrorHash,
-                docid,
-                ...allowedMirrorHashes,
-                threshold,
-                similarTopK
-              );
-
-            for (const sim of similarRows) {
-              if (!nodeDocids.has(sim.target_docid)) continue;
-
-              // Clamp score to [0, 1] for schema compliance
-              const clampedScore = Math.max(0, Math.min(1, sim.score));
-
+        const embedModel = options?.embedModel;
+        if (embedModel) {
+          const similarityEdges = storedSimilarityEdges(
+            db,
+            embedModel,
+            nodesForSimilarity,
+            threshold,
+            similarTopK
+          );
+          if (similarityEdges === null) {
+            warnings.push(
+              "Similarity query failed; similarity edges are unavailable"
+            );
+          } else if (similarityEdges.embeddedNodes === 0) {
+            warnings.push("Similarity unavailable: no embedded nodes in graph");
+          } else {
+            for (const edge of similarityEdges.edges) {
               // Canonicalize by lexicographic order (undirected edge)
               const [a, b] =
-                docid < sim.target_docid
-                  ? [docid, sim.target_docid]
-                  : [sim.target_docid, docid];
+                edge.source < edge.target
+                  ? [edge.source, edge.target]
+                  : [edge.target, edge.source];
               const key = `${a}:${b}:similar`;
 
               // Keep max score
               const existing = edgeMap.get(key);
-              if (!existing || clampedScore > existing.weight) {
+              if (!existing || edge.score > existing.weight) {
                 edgeMap.set(key, {
                   type: "similar",
-                  weight: clampedScore,
+                  weight: edge.score,
                   confidence: "similarity",
-                  audit: { resolution: "similarity", score: clampedScore },
+                  audit: { resolution: "similarity", score: edge.score },
                 });
               }
             }
-          } catch {
-            similarityFailures++;
           }
-        }
-
-        // Report partial failures
-        if (similarityFailures > 0) {
+        } else {
           warnings.push(
-            `Similarity query failed for ${similarityFailures} nodes; results may be incomplete`
+            "Similarity unavailable: no embedding model configured"
           );
         }
       } else if (includeSimilar && !similarAvailable) {

@@ -2185,7 +2185,7 @@ Find semantically similar documents using vector embeddings.
 **Algorithm:**
 
 1. Get all chunks for the source document
-2. Retrieve embeddings for each chunk from content_vectors
+2. Retrieve each chunk's stored embedding from the active vector partition (legacy `content_vectors` only before any partition activates); no model is loaded
 3. Compute average embedding across all chunks
 4. Search for nearest neighbors using sqlite-vec
 5. Exclude self and filter by collection if not crossCollection

@@ -592,27 +592,22 @@ export async function similar(
     }
     const db = store.getRawDb();
 
-    // Get document embedding from content_vectors (prefer seq=0)
-    interface VectorRow {
-      embedding: Uint8Array;
-    }
+    // Stored vector of the document's first chunk, from the active partition
+    const {
+      readStoredDocumentVectors,
+      resolveStoredVectorSource,
+      storedVectorSearchOptions,
+    } = await import("../../store/vector/stored-vectors.js");
+    const source = resolveStoredVectorSource(db, modelPreset.embed);
+    const [embedding] =
+      readStoredDocumentVectors(
+        db,
+        source,
+        [{ id: doc.id, mirrorHash: doc.mirrorHash }],
+        { firstChunkOnly: true }
+      ).get(doc.id) ?? [];
 
-    const embedModel = modelPreset.embed;
-    const vectorRow = db
-      .query<VectorRow, [string, string]>(
-        "SELECT embedding FROM content_vectors WHERE mirror_hash = ? AND model = ? AND seq = 0 LIMIT 1"
-      )
-      .get(doc.mirrorHash, embedModel);
-
-    const fallbackRow =
-      vectorRow ??
-      db
-        .query<VectorRow, [string, string]>(
-          "SELECT embedding FROM content_vectors WHERE mirror_hash = ? AND model = ? ORDER BY seq LIMIT 1"
-        )
-        .get(doc.mirrorHash, embedModel);
-
-    if (!fallbackRow) {
+    if (!embedding) {
       return {
         success: false,
         error: "Document has no embeddings. Run: gno embed",
@@ -621,9 +616,6 @@ export async function similar(
     }
 
     // Normalize embedding for cosine similarity
-    const { decodeEmbedding } =
-      await import("../../store/vector/sqlite-vec.js");
-    const embedding = decodeEmbedding(fallbackRow.embedding);
     const dimensions = embedding.length;
     let norm = 0;
     for (let i = 0; i < dimensions; i++) {
@@ -641,7 +633,7 @@ export async function similar(
     const { createVectorIndexPort } =
       await import("../../store/vector/sqlite-vec.js");
     const vecResult = await createVectorIndexPort(db, {
-      model: embedModel,
+      model: modelPreset.embed,
       dimensions,
     });
     if (!vecResult.ok) {
@@ -663,7 +655,7 @@ export async function similar(
     const searchResult = await vectorIndex.searchNearest(
       embedding,
       candidateLimit,
-      {}
+      storedVectorSearchOptions(source)
     );
     if (!searchResult.ok) {
       return { success: false, error: searchResult.error.message };

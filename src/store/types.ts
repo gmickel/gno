@@ -1077,6 +1077,8 @@ export interface GetGraphOptions {
   linkedOnly?: boolean;
   /** Top-K similar docs per node (default 5, clamped 1-20) */
   similarTopK?: number;
+  /** Embedding model whose stored vectors score similarity edges */
+  embedModel?: string;
 }
 
 /** Options for seed-scoped one-hop graph neighbor lookup (query-time expansion). */

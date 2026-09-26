@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `gno similar`, MCP `gno_similar` and REST `/api/doc/:id/similar` failed with "Document has no embeddings. Run: gno embed" on an index that `gno embed` had just finished, and `gno graph --include-similar`, MCP `gno_graph` and `/api/graph?includeSimilar=true` returned no similarity edges. Embeddings are stored in vector partitions, but similarity still read the old vector table, which `gno embed` no longer fills. Similarity now reads the active vector partition (it still reads the old table on indexes that have not been re-embedded), and still loads no model. `gno graph` also no longer reports "Similarity edges unavailable: sqlite-vec not loaded" when sqlite-vec is installed: it checked a database connection that had not loaded the extension.
+
 ## [2.8.0] - 2026-09-26
 
 ### Added

@@ -25,6 +25,11 @@ import { parseRef } from "../../core/ref-parser";
 import { normalizeCollectionName } from "../../core/validation";
 import { getActivePreset } from "../../llm/registry";
 import { createVectorIndexPort } from "../../store/vector";
+import {
+  readStoredDocumentVectors,
+  resolveStoredVectorSource,
+  storedVectorSearchOptions,
+} from "../../store/vector/stored-vectors";
 import { runTool, type ToolResult } from "./index";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -409,62 +414,41 @@ export function handleSimilar(
       const preset = getActivePreset(ctx.config);
       const modelUri = preset.embed;
 
-      // Get stored embeddings from content_vectors (NO model loading required)
+      // Stored chunk vectors from the active partition (NO model loading required)
       const db = ctx.store.getRawDb();
+      const source = resolveStoredVectorSource(db, modelUri);
 
-      interface VectorRow {
-        embedding: Uint8Array;
+      let vectors: Float32Array[];
+      try {
+        vectors =
+          readStoredDocumentVectors(db, source, [
+            { id: doc.id, mirrorHash: doc.mirrorHash },
+          ]).get(doc.id) ?? [];
+      } catch (e) {
+        throw new Error(
+          `Invalid stored embedding data: ${e instanceof Error ? e.message : String(e)}`
+        );
       }
-
-      const vectorRows = db
-        .query<VectorRow, [string, string]>(
-          `SELECT embedding FROM content_vectors
-           WHERE mirror_hash = ? AND model = ?
-           ORDER BY seq`
-        )
-        .all(doc.mirrorHash, modelUri);
-
-      if (vectorRows.length === 0) {
+      const first = vectors[0];
+      if (!first) {
         throw new Error(
           `${MCP_ERRORS.NOT_FOUND.code}: Document has no embeddings. Run: gno embed`
         );
       }
 
       // Compute average embedding from all chunks
-      const firstBlob = vectorRows[0]?.embedding;
-      if (!firstBlob) {
-        throw new Error("No embedding data available");
-      }
-
-      let dimensions: number;
-      let avgEmbedding: Float32Array;
-
-      try {
-        dimensions = firstBlob.byteLength / 4;
-        avgEmbedding = new Float32Array(dimensions);
-
-        for (const row of vectorRows) {
-          const blob = new Uint8Array(row.embedding);
-          const embeddingDims = blob.byteLength / 4;
-          if (embeddingDims !== dimensions) {
-            throw new Error(
-              `Inconsistent embedding dimensions: expected ${dimensions}, got ${embeddingDims}`
-            );
-          }
-          const embedding = new Float32Array(
-            blob.buffer,
-            blob.byteOffset,
-            embeddingDims
+      const dimensions = first.length;
+      const avgEmbedding = new Float32Array(dimensions);
+      for (const embedding of vectors) {
+        if (embedding.length !== dimensions) {
+          throw new Error(
+            `Invalid stored embedding data: Inconsistent embedding dimensions: expected ${dimensions}, got ${embedding.length}`
           );
-          for (let i = 0; i < dimensions; i++) {
-            const current = avgEmbedding[i] ?? 0;
-            avgEmbedding[i] = current + (embedding[i] ?? 0) / vectorRows.length;
-          }
         }
-      } catch (e) {
-        throw new Error(
-          `Invalid stored embedding data: ${e instanceof Error ? e.message : String(e)}`
-        );
+        for (let i = 0; i < dimensions; i++) {
+          const current = avgEmbedding[i] ?? 0;
+          avgEmbedding[i] = current + (embedding[i] ?? 0) / vectors.length;
+        }
       }
 
       // Normalize the average embedding for cosine similarity
@@ -513,7 +497,7 @@ export function handleSimilar(
       const searchResult = await vectorIndex.searchNearest(
         avgEmbedding,
         candidateLimit,
-        {}
+        storedVectorSearchOptions(source)
       );
 
       if (!searchResult.ok) {
@@ -799,6 +783,7 @@ export function handleGraph(
         threshold: args.threshold ?? 0.7,
         linkedOnly: args.linkedOnly ?? true,
         similarTopK: args.similarTopK ?? 5,
+        embedModel: getActivePreset(ctx.config).embed,
       });
 
       if (!result.ok) {
@@ -836,6 +821,7 @@ async function getValidatedGraph(
     threshold: args.threshold ?? 0.7,
     linkedOnly: args.linkedOnly ?? true,
     similarTopK: args.similarTopK ?? 5,
+    embedModel: getActivePreset(ctx.config).embed,
   });
 
   if (!result.ok) {
