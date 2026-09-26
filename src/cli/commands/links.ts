@@ -5,12 +5,7 @@
  * @module src/cli/commands/links
  */
 
-import type {
-  DocEdgeRow,
-  DocLinkRow,
-  DocumentRow,
-  StorePort,
-} from "../../store/types";
+import type { DocEdgeRow, DocLinkRow, StorePort } from "../../store/types";
 
 import { resolveDocRef } from "../../core/ref-parser";
 import { initStore } from "./shared";
@@ -596,6 +591,7 @@ export async function similar(
     const {
       readStoredDocumentVectors,
       resolveStoredVectorSource,
+      similarityHitDocuments,
       storedVectorSearchOptions,
     } = await import("../../store/vector/stored-vectors.js");
     const source = resolveStoredVectorSource(db, modelPreset.embed);
@@ -661,7 +657,7 @@ export async function similar(
       return { success: false, error: searchResult.error.message };
     }
 
-    // Build mirrorHash -> doc map from a single listDocuments call
+    // Candidate documents from a single listDocuments call
     const docsResult = crossCollection
       ? await store.listDocuments()
       : await store.listDocuments(doc.collection);
@@ -670,27 +666,17 @@ export async function similar(
       return { success: false, error: docsResult.error.message };
     }
 
-    const docsByHash = new Map<string, DocumentRow>();
-    for (const d of docsResult.value) {
-      if (d.active && d.mirrorHash) {
-        // Only keep first doc per hash (they have same content)
-        if (!docsByHash.has(d.mirrorHash)) {
-          docsByHash.set(d.mirrorHash, d);
-        }
-      }
-    }
-
-    // Map results to documents, excluding self
+    // Map hits to their owning documents, excluding self
     const similarItems: SimilarItem[] = [];
     const seenDocids = new Set<string>();
 
-    for (const vec of searchResult.value) {
+    for (const { document: d, distance } of similarityHitDocuments(
+      searchResult.value,
+      docsResult.value.filter((d) => d.active && d.mirrorHash)
+    )) {
       if (similarItems.length >= limit) {
         break;
       }
-
-      const d = docsByHash.get(vec.mirrorHash);
-      if (!d) continue;
 
       // Exclude self
       if (d.docid === doc.docid) continue;
@@ -700,7 +686,7 @@ export async function similar(
 
       // Compute similarity score from cosine distance
       // sqlite-vec with cosine metric returns distance where similarity = 1 - distance
-      const score = Math.max(0, Math.min(1, 1 - vec.distance));
+      const score = Math.max(0, Math.min(1, 1 - distance));
 
       if (score < threshold) continue;
 

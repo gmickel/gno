@@ -18,6 +18,7 @@ import { SqliteAdapter } from "../../../src/store/sqlite/adapter";
 import { createVectorIndexPort } from "../../../src/store/vector/sqlite-vec";
 import { safeRm } from "../../helpers/cleanup";
 import {
+  ALPHA_BETA_SCORE,
   embedStoredSimilarityVectors,
   seedSimilarityDocuments,
 } from "../../helpers/stored-similarity-fixture";
@@ -66,8 +67,12 @@ test("GET /api/doc/:id/similar returns neighbours from the partition", async () 
     new URL(`http://localhost/api/doc/${encodeURIComponent(alpha)}/similar`)
   );
   expect(res.status).toBe(200);
-  const body = (await res.json()) as { similar: Array<{ uri: string }> };
+  const body = (await res.json()) as {
+    similar: Array<{ uri: string; score: number }>;
+  };
+  // The unembedded twins share beta's content but never take its hit.
   expect(body.similar.map((item) => item.uri)).toEqual(["gno://notes/beta.md"]);
+  expect(body.similar[0]?.score).toBeCloseTo(ALPHA_BETA_SCORE, 5);
 });
 
 test("GET /api/graph?includeSimilar=true emits similarity edges", async () => {
@@ -80,15 +85,20 @@ test("GET /api/graph?includeSimilar=true emits similarity edges", async () => {
   );
   expect(res.status).toBe(200);
   const body = (await res.json()) as {
-    links: Array<{ source: string; target: string; type: string }>;
+    links: Array<{
+      source: string;
+      target: string;
+      type: string;
+      weight: number;
+    }>;
     meta: { similarAvailable: boolean; warnings: string[] };
   };
   expect(body.meta.similarAvailable).toBe(true);
   expect(body.meta.warnings).toEqual([]);
   const pair = [await docidOf("alpha.md"), await docidOf("beta.md")].sort();
-  expect(
-    body.links
-      .filter((link) => link.type === "similar")
-      .map((link) => [link.source, link.target].sort())
-  ).toEqual([pair]);
+  const similar = body.links.filter((link) => link.type === "similar");
+  expect(similar.map((link) => [link.source, link.target].sort())).toEqual([
+    pair,
+  ]);
+  expect(similar[0]?.weight).toBeCloseTo(ALPHA_BETA_SCORE, 5);
 });

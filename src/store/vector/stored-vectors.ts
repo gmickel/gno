@@ -7,6 +7,8 @@
  */
 import type { Database } from "bun:sqlite";
 
+import type { VectorSearchResult } from "./types";
+
 import { formatDocForEmbedding } from "../../pipeline/contextual";
 import { decodeEmbedding } from "./sqlite-vec";
 import { storedVectorPartition } from "./status";
@@ -123,4 +125,34 @@ export function readStoredDocumentVectors(
       add(id, row.embedding);
   }
   return vectors;
+}
+
+/**
+ * Candidate documents of similarity search hits, in hit order. Partition hits
+ * name their exact owners (a title is part of the embedded input, so documents
+ * sharing content can hold different vectors); only those owners count, and
+ * an owner without its own vector never inherits another's score. Legacy
+ * `content_vectors` hits carry no owners and map to the first document with
+ * that content, as before.
+ */
+export function similarityHitDocuments<
+  T extends { id: number; mirrorHash: string | null },
+>(
+  hits: VectorSearchResult[],
+  documents: T[]
+): Array<{ document: T; distance: number }> {
+  const byId = new Map(documents.map((document) => [document.id, document]));
+  const byHash = new Map<string, T>();
+  for (const document of documents) {
+    if (document.mirrorHash && !byHash.has(document.mirrorHash))
+      byHash.set(document.mirrorHash, document);
+  }
+  return hits.flatMap((hit) => {
+    const owners = hit.documentIds
+      ? hit.documentIds.map((id) => byId.get(id))
+      : [byHash.get(hit.mirrorHash)];
+    return owners.flatMap((document) =>
+      document ? [{ document, distance: hit.distance }] : []
+    );
+  });
 }

@@ -28,6 +28,7 @@ import { createVectorIndexPort } from "../../store/vector";
 import {
   readStoredDocumentVectors,
   resolveStoredVectorSource,
+  similarityHitDocuments,
   storedVectorSearchOptions,
 } from "../../store/vector/stored-vectors";
 import { runTool, type ToolResult } from "./index";
@@ -504,66 +505,55 @@ export function handleSimilar(
         throw new Error(searchResult.error.message);
       }
 
-      // Get unique mirrorHashes, excluding self
-      const mirrorHashes = [
-        ...new Set(
-          searchResult.value
-            .filter((r) => r.mirrorHash !== doc.mirrorHash)
-            .map((r) => r.mirrorHash)
-        ),
-      ];
+      // Legacy hits (no owners) exclude the source's content, as before
+      const hits = searchResult.value.filter(
+        (r) => r.documentIds !== undefined || r.mirrorHash !== doc.mirrorHash
+      );
 
-      // Batch query documents by mirrorHash (avoid N+1)
+      // Batch query the hits' documents: exact owners for partition hits,
+      // documents sharing the content for legacy hits (avoid N+1)
       interface DocRow {
+        id: number;
         docid: string;
         uri: string;
         title: string | null;
         collection: string;
         rel_path: string;
-        mirror_hash: string;
+        mirrorHash: string;
       }
 
-      const placeholders = mirrorHashes.map(() => "?").join(",");
-      const docRows =
-        mirrorHashes.length > 0
-          ? (db
-              .query<DocRow, string[]>(
-                `SELECT docid, uri, title, collection, rel_path, mirror_hash
-               FROM documents WHERE mirror_hash IN (${placeholders}) AND active = 1`
-              )
-              .all(...mirrorHashes) as DocRow[])
-          : [];
+      const docRows = db
+        .query<DocRow, [string, string]>(
+          `SELECT id, docid, uri, title, collection, rel_path, mirror_hash AS mirrorHash
+           FROM documents WHERE active = 1
+             AND (id IN (SELECT value FROM json_each(?))
+               OR mirror_hash IN (SELECT value FROM json_each(?)))
+           ORDER BY id`
+        )
+        .all(
+          JSON.stringify([
+            ...new Set(hits.flatMap((r) => r.documentIds ?? [])),
+          ]),
+          JSON.stringify([
+            ...new Set(
+              hits.filter((r) => !r.documentIds).map((r) => r.mirrorHash)
+            ),
+          ])
+        );
 
-      // Build lookup map
-      const docsByHash = new Map<string, DocRow>();
-      for (const row of docRows) {
-        if (!docsByHash.has(row.mirror_hash)) {
-          docsByHash.set(row.mirror_hash, row);
-        }
-      }
-
-      // Build best score per mirrorHash from search results
-      const scoresByHash = new Map<string, number>();
-      for (const r of searchResult.value) {
-        if (r.mirrorHash === doc.mirrorHash) continue;
-        // Compute similarity score from cosine distance
-        // sqlite-vec with cosine metric returns distance where similarity = 1 - distance
-        const score = Math.max(0, Math.min(1, 1 - r.distance));
-        const existing = scoresByHash.get(r.mirrorHash) ?? 0;
-        if (score > existing) {
-          scoresByHash.set(r.mirrorHash, score);
-        }
-      }
-
-      // Build similar docs list
+      // Build similar docs list; hits are nearest first, so a document's
+      // first hit carries its best score
       const similar: SimilarDocOutput[] = [];
+      const seenIds = new Set<number>();
       const docCollection = doc.collection.toLowerCase();
 
-      for (const mirrorHash of mirrorHashes) {
+      for (const { document: docRow, distance } of similarityHitDocuments(
+        hits,
+        docRows
+      )) {
         if (similar.length >= limit) break;
-
-        const docRow = docsByHash.get(mirrorHash);
-        if (!docRow) continue;
+        if (docRow.id === doc.id || seenIds.has(docRow.id)) continue;
+        seenIds.add(docRow.id);
 
         // Filter by collection if not crossCollection (case-insensitive)
         if (
@@ -573,7 +563,9 @@ export function handleSimilar(
           continue;
         }
 
-        const score = scoresByHash.get(mirrorHash) ?? 0;
+        // Compute similarity score from cosine distance
+        // sqlite-vec with cosine metric returns distance where similarity = 1 - distance
+        const score = Math.max(0, Math.min(1, 1 - distance));
         if (score < threshold) continue;
 
         // Get absPath (case-insensitive collection lookup)

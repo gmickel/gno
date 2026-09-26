@@ -26,6 +26,7 @@ import { handleQueryDiagnose } from "../../src/mcp/tools/query";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
 import {
+  ALPHA_BETA_SCORE,
   embedStoredSimilarityVectors,
   seedSimilarityDocuments,
 } from "../helpers/stored-similarity-fixture";
@@ -554,9 +555,13 @@ describe("MCP link tools integration", () => {
       expect(result.content[0]?.text).not.toContain("no embeddings");
       expect(result.isError).toBeFalsy();
       const similar = (
-        result.structuredContent as { similar: Array<{ uri: string }> }
+        result.structuredContent as {
+          similar: Array<{ uri: string; score: number }>;
+        }
       ).similar;
+      // The unembedded twins share beta's content but never take its hit.
       expect(similar.map((item) => item.uri)).toEqual(["gno://notes/beta.md"]);
+      expect(similar[0]?.score).toBeCloseTo(ALPHA_BETA_SCORE, 5);
     });
 
     test("gno_graph includes similarity edges", async () => {
@@ -568,21 +573,29 @@ describe("MCP link tools integration", () => {
       expect(result.isError).toBeFalsy();
       const graph = result.structuredContent as {
         nodes: Array<{ id: string; uri: string }>;
-        links: Array<{ source: string; target: string; type: string }>;
+        links: Array<{
+          source: string;
+          target: string;
+          type: string;
+          weight: number;
+        }>;
         meta: { similarAvailable: boolean; warnings: string[] };
       };
       expect(graph.meta.similarAvailable).toBe(true);
       expect(graph.meta.warnings).toEqual([]);
       const uriById = new Map(graph.nodes.map((node) => [node.id, node.uri]));
-      expect(
-        graph.links
-          .filter((link) => link.type === "similar")
-          .map((link) =>
-            [uriById.get(link.source) ?? "", uriById.get(link.target) ?? ""]
-              .sort((a, b) => a.localeCompare(b))
-              .join(" ")
-          )
-      ).toEqual(["gno://notes/alpha.md gno://notes/beta.md"]);
+      const similar = graph.links
+        .filter((link) => link.type === "similar")
+        .map((link) => ({
+          pair: [uriById.get(link.source) ?? "", uriById.get(link.target) ?? ""]
+            .sort((a, b) => a.localeCompare(b))
+            .join(" "),
+          weight: link.weight,
+        }));
+      expect(similar.map((edge) => edge.pair)).toEqual([
+        "gno://notes/alpha.md gno://notes/beta.md",
+      ]);
+      expect(similar[0]?.weight).toBeCloseTo(ALPHA_BETA_SCORE, 5);
     });
   });
 

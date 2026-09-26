@@ -10,6 +10,7 @@ import type { ServerContext } from "../context";
 import {
   readStoredDocumentVectors,
   resolveStoredVectorSource,
+  similarityHitDocuments,
   storedVectorSearchOptions,
 } from "../../store/vector/stored-vectors";
 
@@ -444,21 +445,15 @@ export async function handleDocSimilar(
     return errorResponse("RUNTIME", docsResult.error.message, 500);
   }
 
-  const docsByHash = new Map(
-    docsResult.value
-      .filter((d) => d.mirrorHash && d.active)
-      .map((d) => [d.mirrorHash!, d])
-  );
-
-  // Build similar docs list, excluding self
+  // Build similar docs list from each hit's owning documents, excluding self
   const similar: SimilarDocResponse["similar"] = [];
   const seenDocids = new Set<string>();
 
-  for (const vec of searchResult.value) {
+  for (const { document: similarDoc, distance } of similarityHitDocuments(
+    searchResult.value,
+    docsResult.value.filter((d) => d.mirrorHash && d.active)
+  )) {
     if (similar.length >= limit) break;
-
-    const similarDoc = docsByHash.get(vec.mirrorHash);
-    if (!similarDoc) continue;
 
     // Exclude self
     if (similarDoc.docid === doc.docid) continue;
@@ -468,7 +463,7 @@ export async function handleDocSimilar(
 
     // Compute similarity score from cosine distance
     // sqlite-vec with cosine metric returns distance where similarity = 1 - distance
-    const score = Math.max(0, Math.min(1, 1 - vec.distance));
+    const score = Math.max(0, Math.min(1, 1 - distance));
     if (score < threshold) continue;
 
     similar.push({

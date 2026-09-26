@@ -447,15 +447,19 @@ CLI/MCP/Web UI/SDK → new Adapter() → adapter.createPort() → Port interface
 
 ### Storage
 
-| Table           | Purpose                                                                            |
-| --------------- | ---------------------------------------------------------------------------------- |
-| documents       | Source file tracking (path, hash, docid)                                           |
-| content         | Canonical Markdown by mirrorHash                                                   |
-| content_chunks  | Chunked text (default ~800 tokens; structural first-pass for supported code files) |
-| documents_fts   | Document-level FTS5 with Snowball stemmer                                          |
-| content_vectors | Chunk embeddings with title context (optional)                                     |
-| doc_tags        | Document tags (frontmatter and user-added)                                         |
-| doc_links       | Wiki and markdown links between documents                                          |
+| Table             | Purpose                                                                                                  |
+| ----------------- | -------------------------------------------------------------------------------------------------------- |
+| documents         | Source file tracking (path, hash, docid)                                                                 |
+| content           | Canonical Markdown by mirrorHash                                                                         |
+| content_chunks    | Chunked text (default ~800 tokens; structural first-pass for supported code files)                       |
+| documents_fts     | Document-level FTS5 with Snowball stemmer                                                                |
+| vector_partitions | One vector space per embedding identity (model, weights, context size, truncation); searched once active |
+| vector_variants   | Chunk embeddings, one per exact embedded input (chunk text with title context)                           |
+| vector_owners     | Binds each document chunk to its variant within a partition                                              |
+| `vec_v1_*`        | sqlite-vec KNN index of one partition                                                                    |
+| content_vectors   | Legacy chunk embeddings; read only by indexes that have not activated a partition                        |
+| doc_tags          | Document tags (frontmatter and user-added)                                                               |
+| doc_links         | Wiki and markdown links between documents                                                                |
 
 ### Write request ledger
 

@@ -18,6 +18,7 @@ import { getActivePreset } from "../../../src/llm/registry";
 import { SqliteAdapter } from "../../../src/store/sqlite/adapter";
 import { safeRm } from "../../helpers/cleanup";
 import {
+  ALPHA_BETA_SCORE,
   embedStoredSimilarityVectors,
   SIMILARITY_DOCS,
 } from "../../helpers/stored-similarity-fixture";
@@ -110,8 +111,9 @@ test("gno similar returns neighbours from the activated partition", async () => 
   const data = JSON.parse(stdout) as {
     similar: Array<{ uri: string; score: number }>;
   };
+  // The unembedded twins share beta's content but never take its hit.
   expect(data.similar.map((item) => item.uri)).toEqual(["gno://notes/beta.md"]);
-  expect(data.similar[0]?.score).toBeGreaterThan(0.99);
+  expect(data.similar[0]?.score).toBeCloseTo(ALPHA_BETA_SCORE, 5);
 });
 
 test("gno graph --include-similar emits similarity edges", async () => {
@@ -126,7 +128,12 @@ test("gno graph --include-similar emits similarity edges", async () => {
   expect(code).toBe(0);
   const data = JSON.parse(stdout) as {
     nodes: Array<{ id: string; uri: string }>;
-    links: Array<{ source: string; target: string; type: string }>;
+    links: Array<{
+      source: string;
+      target: string;
+      type: string;
+      weight: number;
+    }>;
     meta: {
       includedSimilar: boolean;
       similarAvailable: boolean;
@@ -141,10 +148,14 @@ test("gno graph --include-similar emits similarity edges", async () => {
   const uriById = new Map(data.nodes.map((node) => [node.id, node.uri]));
   const similar = data.links
     .filter((link) => link.type === "similar")
-    .map((link) =>
-      [uriById.get(link.source) ?? "", uriById.get(link.target) ?? ""]
+    .map((link) => ({
+      pair: [uriById.get(link.source) ?? "", uriById.get(link.target) ?? ""]
         .sort((a, b) => a.localeCompare(b))
-        .join(" ")
-    );
-  expect(similar).toEqual(["gno://notes/alpha.md gno://notes/beta.md"]);
+        .join(" "),
+      weight: link.weight,
+    }));
+  expect(similar.map((edge) => edge.pair)).toEqual([
+    "gno://notes/alpha.md gno://notes/beta.md",
+  ]);
+  expect(similar[0]?.weight).toBeCloseTo(ALPHA_BETA_SCORE, 5);
 });
