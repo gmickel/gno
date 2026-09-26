@@ -555,6 +555,22 @@ describe("ledger directory verification", () => {
     expect(state.spawns).toBe(1);
   });
 
+  test("an empty directory left by an interrupted first open is secured, not refused", async () => {
+    const f = await fixture();
+    const dir = join(f.root, "write-receipts");
+    await mkdir(dir);
+    const creates: boolean[] = [];
+    const acl: PrivateDirAcl = {
+      verify: async (_path, create) => {
+        creates.push(create);
+        if (!create) throw new Error("Private ACL permits another principal");
+      },
+      descriptor: () => OWNER_ONLY,
+    };
+    await securePrivateLedgerDir(dir, false, acl);
+    expect(creates).toEqual([true]);
+  });
+
   test.each(["permissions changed", "directory replaced"] as const)(
     "%s: the check runs again and a refusal blocks the open",
     async (change) => {

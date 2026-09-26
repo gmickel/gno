@@ -11,8 +11,8 @@
  */
 
 import { Database } from "bun:sqlite";
-// node:fs/promises chmod/mkdir/lstat: filesystem structure ops, no Bun equivalent
-import { chmod, lstat, mkdir } from "node:fs/promises";
+// node:fs/promises chmod/mkdir/lstat/readdir: filesystem structure ops, no Bun equivalent
+import { chmod, lstat, mkdir, readdir } from "node:fs/promises";
 // node:path has no Bun path utilities
 import { basename, dirname, join } from "node:path";
 
@@ -264,6 +264,10 @@ async function ledgerDirStamp(
  * is the same object and its owner and DACL are byte-identical to the verified
  * ones and still owner-only; reading the marker at all requires access that
  * owner-only DACL grants. Anything else re-runs the authoritative check.
+ *
+ * An existing but empty directory is secured like a new one: a first open
+ * interrupted before its DACL was set leaves exactly that, and nothing inside
+ * it could have been exposed.
  */
 export async function securePrivateLedgerDir(
   dir: string,
@@ -276,7 +280,8 @@ export async function securePrivateLedgerDir(
     if (stamp !== null && stamp === (await marker.text().catch(() => null)))
       return;
   }
-  await acl.verify(dir, created);
+  const secure = created || (await readdir(dir)).length === 0;
+  await acl.verify(dir, secure);
   const stamp = await ledgerDirStamp(dir, acl);
   if (stamp !== null) await Bun.write(marker, stamp);
 }

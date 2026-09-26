@@ -467,10 +467,13 @@ describe("REST document mutation host paths", () => {
         expect(response.status).toBeLessThan(300);
         return response.text();
       };
+      // Response bodies are JSON text: Windows backslashes arrive escaped.
       const local = await call("127.0.0.1");
-      expect(local).toContain(`"path":"${collection.path}`);
+      expect(local).toContain(
+        `"path":${JSON.stringify(collection.path).slice(0, -1)}`
+      );
       const remote = await call("203.0.113.7");
-      expect(remote).not.toContain(root);
+      expect(remote).not.toContain(JSON.stringify(root).slice(1, -1));
       expect(remote).not.toMatch(OWNER_PATH_KEYS);
     }
   });

@@ -68,7 +68,8 @@ export async function windowsPrivatePath(
       // ACL checks return no data; do not allocate an unused stdout pipe.
       stdout: "ignore",
       stderr: "pipe",
-      timeout: 10000,
+      // A cold PowerShell start on a loaded host can take over 10s.
+      timeout: 30000,
     }
   );
   const reader = child.stderr.getReader();
