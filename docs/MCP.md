@@ -1807,7 +1807,7 @@ ref: "notes/target.md"    # Target document reference
 collection: "notes"       # Optional: filter source documents by collection
 ```
 
-Returns all documents that reference the target document. Useful for discovering related content and navigating document graphs. In a link workspace, plain `[[Note]]` links from sibling collections count too; each result names its `sourceCollection`. Over Streamable HTTP, egress policy is checked on `collection`, or on every collection when it is omitted.
+Returns all documents that reference the target document. Useful for discovering related content and navigating document graphs. In a link workspace, plain `[[Note]]` links from sibling collections count too; each result names its `sourceCollection`. Over Streamable HTTP, egress policy is checked on `collection` (every collection when it is omitted) and on the collection of `ref` itself.
 
 ### gno_similar
 
@@ -1933,6 +1933,7 @@ write enablement.
   document. `collections` limits the traversal; without it, results can come
   from any collection a link resolves into, so a remote HTTP client needs every
   collection's egress policy to allow it (pass `collections` to narrow it).
+  The collection of `ref` is always checked as well.
 
 Structured content uses `changes@1.0`, `document-diff@1.0`, and `impact@1.0`,
 identical to CLI JSON, REST, and SDK results.
