@@ -354,100 +354,106 @@ test("capture rejects symlink roots before installing a spawn hook", async () =>
   }
 });
 
-test("resource scope samples validated actual descendants and leaves unrelated processes alive", async () => {
-  const { OwnedResources } =
-    await import("../../../evals/acceptance/resources");
-  const scope = new OwnedResources();
-  const unrelated = Bun.spawn(
-    [process.execPath, "--no-env-file", "-e", "setInterval(()=>{},1000)"],
-    { stdout: "ignore", stderr: "ignore" }
-  );
-  let nativePid = 0;
-  let probePid = 0;
-  const nativeProgram = `
+test(
+  "resource scope samples validated actual descendants and leaves unrelated processes alive",
+  async () => {
+    const { OwnedResources } =
+      await import("../../../evals/acceptance/resources");
+    const scope = new OwnedResources();
+    const unrelated = Bun.spawn(
+      [process.execPath, "--no-env-file", "-e", "setInterval(()=>{},1000)"],
+      { stdout: "ignore", stderr: "ignore" }
+    );
+    let nativePid = 0;
+    let probePid = 0;
+    const nativeProgram = `
     const probe = Bun.spawn([process.execPath, "--no-env-file", "-e", "process.on('disconnect',()=>process.exit(0));process.on('message',()=>process.exit(0));setInterval(()=>{},1000)"], {stdout:"ignore",stderr:"ignore",ipc(){}});
     process.send({probePid:probe.pid});
     process.on("disconnect",async()=>{probe.kill("SIGTERM");await probe.exited;process.exit(0)});
     process.on("message",async()=>{probe.send("stop");await probe.exited;process.exit(0)});
     setInterval(()=>{},1000);
   `;
-  const owner = Bun.spawn(
-    [
-      process.execPath,
-      "--no-env-file",
-      "-e",
-      `
+    const owner = Bun.spawn(
+      [
+        process.execPath,
+        "--no-env-file",
+        "-e",
+        `
     const child = Bun.spawn([process.execPath, '--no-env-file', '-e', ${JSON.stringify(nativeProgram)}], {stdout:'ignore',stderr:'ignore',ipc(message){process.send(message)}});
     process.send({pid:child.pid});
     process.on('message', async () => { child.send('stop'); await child.exited; process.send({exited:true}); });
     process.on('exit',()=>child.kill('SIGTERM'));
   `,
-    ],
-    {
-      stdout: "ignore",
-      stderr: "ignore",
-      ipc(message) {
-        if (message?.pid) nativePid = message.pid;
-        if (message?.probePid) probePid = message.probePid;
-      },
-    }
-  );
-  scope.own(owner);
-  try {
-    const deadline = Date.now() + 3000;
-    while ((!nativePid || !probePid) && Date.now() < deadline)
-      await Bun.sleep(10);
-    expect(nativePid).toBeGreaterThan(0);
-    const nativeIdentity = {
-      ...identity,
-      token: crypto.randomUUID(),
-      parentPid: owner.pid,
-      pid: nativePid,
-    };
-    await expect(
-      scope.observeDescendant(owner, {
-        identity: { ...nativeIdentity, pid: unrelated.pid },
-        event: "birth",
-      })
-    ).rejects.toThrow("ancestry");
-    await scope.observeDescendant(owner, {
-      identity: nativeIdentity,
-      event: "birth",
-    });
-    await expect(
-      scope.observeDescendant(owner, {
-        identity: nativeIdentity,
-        event: "birth",
-      })
-    ).rejects.toThrow("duplicate");
-    await scope.sample();
-    expect(scope.samples[0]!.errors).toEqual([]);
-    expect(scope.samples[0]!.pids.toSorted((a, b) => a - b)).toEqual(
-      [owner.pid, nativePid, probePid].toSorted((a, b) => a - b)
+      ],
+      {
+        stdout: "ignore",
+        stderr: "ignore",
+        ipc(message) {
+          if (message?.pid) nativePid = message.pid;
+          if (message?.probePid) probePid = message.probePid;
+        },
+      }
     );
-    expect(
-      scope.samples[0]!.processes?.find((item) => item.pid === nativePid)
-        ?.nativeIdentity
-    ).toEqual(nativeIdentity);
-    expect(
-      scope.samples[0]!.processes?.find((item) => item.pid === probePid)
-        ?.osDescendant?.parentPid
-    ).toBe(nativePid);
-    await expect(
-      scope.observeDescendant(owner, {
+    scope.own(owner);
+    try {
+      const deadline = Date.now() + 3000;
+      while ((!nativePid || !probePid) && Date.now() < deadline)
+        await Bun.sleep(10);
+      expect(nativePid).toBeGreaterThan(0);
+      const nativeIdentity = {
+        ...identity,
+        token: crypto.randomUUID(),
+        parentPid: owner.pid,
+        pid: nativePid,
+      };
+      await expect(
+        scope.observeDescendant(owner, {
+          identity: { ...nativeIdentity, pid: unrelated.pid },
+          event: "birth",
+        })
+      ).rejects.toThrow("ancestry");
+      await scope.observeDescendant(owner, {
         identity: nativeIdentity,
-        event: "exit",
-      })
-    ).rejects.toThrow("still live");
-    await scope.close();
-    expect(scope.errors).toEqual([]);
-    expect(unrelated.exitCode).toBeNull();
-  } finally {
-    await scope.close();
-    unrelated.kill("SIGKILL");
-    await unrelated.exited;
-  }
-}, 10000);
+        event: "birth",
+      });
+      await expect(
+        scope.observeDescendant(owner, {
+          identity: nativeIdentity,
+          event: "birth",
+        })
+      ).rejects.toThrow("duplicate");
+      await scope.sample();
+      expect(scope.samples[0]!.errors).toEqual([]);
+      expect(scope.samples[0]!.pids.toSorted((a, b) => a - b)).toEqual(
+        [owner.pid, nativePid, probePid].toSorted((a, b) => a - b)
+      );
+      expect(
+        scope.samples[0]!.processes?.find((item) => item.pid === nativePid)
+          ?.nativeIdentity
+      ).toEqual(nativeIdentity);
+      expect(
+        scope.samples[0]!.processes?.find((item) => item.pid === probePid)
+          ?.osDescendant?.parentPid
+      ).toBe(nativePid);
+      await expect(
+        scope.observeDescendant(owner, {
+          identity: nativeIdentity,
+          event: "exit",
+        })
+      ).rejects.toThrow("still live");
+      await scope.close();
+      expect(scope.errors).toEqual([]);
+      expect(unrelated.exitCode).toBeNull();
+    } finally {
+      await scope.close();
+      unrelated.kill("SIGKILL");
+      await unrelated.exited;
+    }
+    // Windows process sampling across three nested Bun processes is slow on a
+    // cold runner.
+  },
+  process.platform === "win32" ? 30_000 : 10_000
+);
 
 test("candidate adapter import and parent capture do not load native leaf modules or bindings", async () => {
   const root = await realpath(
