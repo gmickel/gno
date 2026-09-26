@@ -142,7 +142,12 @@ async function runChild(
     ],
     { stdout: "pipe", stderr: "inherit" }
   );
-  const timer = setTimeout(() => child.kill("SIGTERM"), capSeconds * 1000);
+  const started = performance.now();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    child.kill("SIGTERM");
+  }, capSeconds * 1000);
   const output = await new Response(child.stdout).text();
   const code = await child.exited;
   clearTimeout(timer);
@@ -153,10 +158,14 @@ async function runChild(
     threads,
     turns,
     records: threads * turns * 2,
-    seconds: capSeconds,
+    seconds: timedOut ? capSeconds : (performance.now() - started) / 1000,
     msPerTurn: Number.NaN,
     peakRssMb: Number.NaN,
-    status: code === 0 ? "no-result" : `capped>${capSeconds}s`,
+    status: timedOut
+      ? `capped>${capSeconds}s`
+      : code === 0
+        ? "no-result"
+        : `failed (exit ${code})`,
   };
 }
 
@@ -187,6 +196,13 @@ async function main(): Promise<void> {
     console.log(
       `| ${r.threads} | ${r.turns} | ${r.records} | ${r.seconds.toFixed(1)} | ${r.msPerTurn.toFixed(2)} | ${r.peakRssMb.toFixed(0)} | ${r.status} |`
     );
+  }
+  if (
+    results.some(
+      (r) => r.status.startsWith("failed") || r.status === "no-result"
+    )
+  ) {
+    process.exitCode = 1;
   }
   const first = results[0];
   const last = results.at(-1);
