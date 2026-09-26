@@ -172,7 +172,6 @@ CREATE TABLE IF NOT EXISTS documents (
 );
 
 CREATE INDEX IF NOT EXISTS idx_documents_collection ON documents(collection);
-CREATE INDEX IF NOT EXISTS idx_documents_active ON documents(active);
 CREATE INDEX IF NOT EXISTS idx_documents_mirror_hash ON documents(mirror_hash);
 CREATE INDEX IF NOT EXISTS idx_documents_docid ON documents(docid);
 CREATE INDEX IF NOT EXISTS idx_documents_uri ON documents(uri);

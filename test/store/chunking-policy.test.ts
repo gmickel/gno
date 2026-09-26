@@ -65,7 +65,7 @@ test("opening a pre-feature schema preserves schema identity, chunks and legacy 
   const beforeVectors = old.query("SELECT * FROM content_vectors").all();
   const beforeSchema = old
     .query(
-      "SELECT name, sql FROM sqlite_master WHERE name NOT IN ('documents', 'collections') AND name NOT LIKE '%vector_partitions%' AND name NOT LIKE '%vector_runtime_%' ORDER BY name"
+      "SELECT name, sql FROM sqlite_master WHERE name NOT IN ('documents', 'collections', 'idx_documents_active') AND name NOT LIKE '%vector_partitions%' AND name NOT LIKE '%vector_runtime_%' ORDER BY name"
     )
     .all();
   old.close();
@@ -87,13 +87,14 @@ test("opening a pre-feature schema preserves schema identity, chunks and legacy 
     expect(
       db
         .query(
-          "SELECT name, sql FROM sqlite_master WHERE name NOT IN ('documents', 'collections') AND name NOT LIKE '%vector_partitions%' AND name NOT LIKE '%vector_runtime_%' ORDER BY name"
+          "SELECT name, sql FROM sqlite_master WHERE name NOT IN ('documents', 'collections', 'idx_documents_active') AND name NOT LIKE '%vector_partitions%' AND name NOT LIKE '%vector_runtime_%' ORDER BY name"
         )
         .all()
     ).toEqual(beforeSchema);
     // Migration 30 adds only typed document metadata, migration 31 only
-    // runtime-independent vector partition keys (fn-184) and migration 33
-    // only collection link-workspace columns (fn-178); chunk policy still
+    // runtime-independent vector partition keys (fn-184), migration 33 only
+    // drops idx_documents_active (fn-192) and migration 34 only adds
+    // collection link-workspace columns (fn-178); chunk policy still
     // performs no schema migration or legacy vector rewrite.
     const columns = db
       .query<{ name: string }, []>("PRAGMA table_info(documents)")

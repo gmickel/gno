@@ -24,7 +24,7 @@ const existingColumns = (db: Parameters<Migration["up"]>[0]): Set<string> =>
   );
 
 export const migration: Migration = {
-  version: 33,
+  version: 34,
   name: "collection_link_workspace",
 
   up(db): void {

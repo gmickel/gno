@@ -818,7 +818,7 @@ function getActiveChunkCount(
         `
         SELECT COUNT(*) as count FROM content_chunks c
         WHERE EXISTS (
-          SELECT 1 FROM documents d
+          SELECT 1 FROM documents d INDEXED BY idx_documents_mirror_hash
           WHERE d.mirror_hash = c.mirror_hash AND d.active = 1${collectionClause}
         )
       `
@@ -851,7 +851,7 @@ function getActiveChunks(
           'force' as reason
         FROM content_chunks c
         WHERE EXISTS (
-          SELECT 1 FROM documents d
+          SELECT 1 FROM documents d INDEXED BY idx_documents_mirror_hash
           WHERE d.mirror_hash = c.mirror_hash AND d.active = 1${collectionClause}
         )
         AND (c.mirror_hash > ? OR (c.mirror_hash = ? AND c.seq > ?))
@@ -864,7 +864,7 @@ function getActiveChunks(
           'force' as reason
         FROM content_chunks c
         WHERE EXISTS (
-          SELECT 1 FROM documents d
+          SELECT 1 FROM documents d INDEXED BY idx_documents_mirror_hash
           WHERE d.mirror_hash = c.mirror_hash AND d.active = 1${collectionClause}
         )
         ORDER BY c.mirror_hash, c.seq
