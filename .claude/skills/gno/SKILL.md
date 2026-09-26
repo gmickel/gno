@@ -352,6 +352,12 @@ offline audits inspect parsed local links, explicitly declared capture/logical-
 record provenance, and observable source/index freshness. They never repair,
 rewrite, persist findings, judge factual truth, or replace retrieval.
 
+`--max-findings` accepts `all` (MCP `maxFindings: "all"`) to export every
+finding. Link findings carry `referenceKind`, `resolutionStatus`, and
+`resolvedScope` in their evidence detail; ambiguous vault links list the tied
+`candidates`. Report `truncation.snapshotTruncated` as "totals cover the
+bounded snapshot, not the whole index".
+
 Treat exit `4` as a complete report with findings. Exit `5` or report status
 `partial`/`changed_during_audit` means evidence is unavailable, inconclusive,
 cancelled, truncated, or repeatedly changed—never healthy. Preserve stable
@@ -389,7 +395,7 @@ remaining steps apply under the default `full` profile.
    - MCP text is the compact `gno-context-agent-v1` evidence projection. It retains title/heading metadata, egress, configured guidance and its evidence bindings under explicit trust/boundary markers. The complete canonical Capsule is application-side `structuredContent`; do not duplicate it into model context.
 3. Use `gno_ask` only for explicit local verified synthesis. Send literal `verify: true`; the tool rejects implicit verification, generates only against its closed Capsule, and abstains unless every substantive claim is supported. Preserve exact spans, gaps, semantic capability state, and abstention. This does not guarantee corpus completeness or source truth.
 4. Use `gno_query` for interactive lookup or manual retrieval control. It returns snippets plus `uri`, `docid`, often `line`, and sometimes `context`. Treat `context` as user-configured guidance for interpreting that exact result; cite source content at the returned URI/lines, not the guidance itself. Bounded graph expansion is on by default; set `graph: false` or `noGraph: true` only for an explicit BM25/vector-only path.
-5. Use graph/link expansion for relationship context: `gno_graph_query` for typed relationship traversal, `gno_graph_neighbors` for nearby documents, `gno_graph_path` for "how are X and Y connected?", `gno_links`/`gno_backlinks` for one-document link expansion, and `gno_similar` for semantic neighbors. Prefer explicit or typed edges over inferred, ambiguous, or similarity edges when confidence matters.
+5. Use graph/link expansion for relationship context: `gno_graph_query` for typed relationship traversal, `gno_graph_neighbors` for nearby documents, `gno_graph_path` for "how are X and Y connected?", `gno_links`/`gno_backlinks` for one-document link expansion, and `gno_similar` for semantic neighbors. Prefer explicit or typed edges over inferred, ambiguous, or similarity edges when confidence matters. Plain `[[Note]]` links resolve across collections of the same vault (link workspace), so backlinks and impact can name other collections; pass `collection`/`collections` to keep results inside the user's scope. Never tell users to rewrite links into `[[collection:Note]]` to make them resolve.
 6. Use `gno_query_diagnose` when a known target document should have appeared but did not; it reports BM25/vector/fusion/graph/rerank stage presence and filter state.
 7. Use `gno_get` with `fromLine`/`lineCount` for targeted reads, or `gno_multi_get` to batch top refs.
 8. Use `gno_section` only when you need a durable section locator or must re-resolve one after edits. Prefer search → `gno_get` for ordinary retrieval. `action=create` needs `ref` plus exactly one of `anchor`|`line`; `action=resolve` needs `ref` plus `target`. Cite or open content only for `exact`/`recovered` results, then follow the tool's ready-to-use `gno_get` guidance (`fromLine = lineStart`; `lineCount = lineEnd - lineStart + 1`). Never navigate or cite `ambiguous`/`stale`/`missing`.
@@ -418,6 +424,7 @@ changed source:
 gno changes --since 2026-07-20T00:00:00Z --json
 gno diff gno://notes/plan.md --json
 gno impact gno://notes/plan.md --max-depth 3 --json
+gno impact gno://notes/plan.md --collection notes --json   # stay in scope
 ```
 
 Treat cursors and change IDs as opaque. Journal results are bounded,

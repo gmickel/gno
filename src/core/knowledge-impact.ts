@@ -41,6 +41,12 @@ export interface KnowledgeImpactResult {
 }
 
 export interface KnowledgeImpactInput {
+  /**
+   * Collection scope: only documents in these collections are traversed or
+   * returned, and a document outside them is never used as a bridge.
+   * Omitted or empty means every indexed collection.
+   */
+  collections?: string[];
   maxDepth?: number;
   maxNodes?: number;
   maxEdges?: number;
@@ -118,8 +124,30 @@ export async function analyzeKnowledgeImpact(
       isValidation: true,
     };
   }
+  const scope = [...new Set(input.collections ?? [])].sort();
+  if (scope.length > 0) {
+    const known = await store.getCollections();
+    if (!known.ok) return { success: false, error: known.error.message };
+    const names = new Set(known.value.map((row) => row.name));
+    const missing = scope.find((name) => !names.has(name));
+    if (missing) {
+      return {
+        success: false,
+        error: `Collection not found: ${missing}`,
+        isValidation: true,
+      };
+    }
+    if (!scope.includes(resolved.doc.collection)) {
+      return {
+        success: false,
+        error: `Document is outside the requested collections: ${ref}`,
+        isValidation: true,
+      };
+    }
+  }
   const traversal = await store.queryGraphTraversal(resolved.doc.id, {
     direction: "in",
+    ...(scope.length > 0 ? { collections: scope } : {}),
     maxDepth: values.maxDepth,
     maxNodes: values.maxNodes,
     frontierLimit: values.frontierLimit,

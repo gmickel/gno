@@ -84,6 +84,12 @@ A Markdown or wiki link whose relationship comes from where it appears in source
 
 _Avoid_: untyped edge
 
+## Link Workspace
+
+A set of collections whose roots share one workspace root: the nearest ancestor-or-self folder containing `.obsidian/`, or an explicit per-collection `workspaceRoot`. Plain wiki links resolve across every member with Obsidian ranking; a nested vault is its own workspace. Membership decides how a link resolves, never what a scoped request may return: scope and egress are checked on the resolved identities of every edge.
+
+_Avoid_: collection group, vault collection
+
 ## Typed Edge
 
 A semantic relationship in GNO's derived graph layer with an explicit relation label such as `mentions`, `works_at`, or `decided`. Typed edges are rebuilt from source declarations and graph hints; GNO does not mutate source files to store them.
@@ -112,7 +118,7 @@ _Avoid_: privacy mode
 
 ## Source Availability
 
-A per-collection indexing policy (`any` | `local`) that controls whether source **content may be materialized** during walk, sniff, hash, conversion, targeted sync, and watch-triggered ingestion. Default `any` preserves legacy reads. Opt-in `local` refuses cloud-placeholder materialization on the macOS File Provider layouts covered by physical evidence (Google Drive, iCloud Drive, and OneDrive only for the tested OS/provider configuration and both validated immediate SharePoint library roots). Local mode uses process-scoped no-materialization I/O policy, hierarchical per-directory availability classification, and a guarded content recheck; it does not pin, evict, or download as product behavior. Unsupported platforms/filesystems and policy setup failures fail closed. Metadata or provider bookkeeping may still occur; source availability is not a promise of zero provider-process network activity. Source availability is not egress policy: availability gates source materialization; egress gates where derived data may travel.
+A per-collection indexing policy (`any` | `local`) that controls whether source **content may be materialized** during walk, sniff, hash, conversion, targeted sync, and watch-triggered ingestion. Default `any` preserves legacy reads. Opt-in `local` refuses cloud-placeholder materialization on the macOS File Provider layouts covered by physical evidence (Google Drive My Drive and individual Shared drives, iCloud Drive, and OneDrive only for the tested OS/provider configuration and the two validated immediate SharePoint library roots). Local mode uses process-scoped no-materialization I/O policy, hierarchical per-directory availability classification, and a guarded content recheck; it does not pin, evict, or download as product behavior. Unsupported platforms/filesystems and policy setup failures fail closed. Metadata or provider bookkeeping may still occur; source availability is not a promise of zero provider-process network activity. Source availability is not egress policy: availability gates source materialization; egress gates where derived data may travel.
 
 _Relates to_: [Collection](#collection), [Source](#source), [Egress Policy](#egress-policy)
 

@@ -1,0 +1,78 @@
+{
+  "branch": "batch/v2.8.0",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "a8d922fb27f2313b2bbd081e481d13762530aeb2",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-14ba6a094bb55aa57fe347652560b3d95ec14da34b0020b7c7eecd5be5ad889a"
+  },
+  "head_sha": "a8d922fb27f2313b2bbd081e481d13762530aeb2",
+  "id": "fn-178-workspace-wide-wikilink-resolution",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "PASS",
+  "rid_coverage": {
+    "covered": 12,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      },
+      {
+        "coverage": "live",
+        "id": "R7"
+      },
+      {
+        "coverage": "live",
+        "id": "R8"
+      },
+      {
+        "coverage": "live",
+        "id": "R9"
+      },
+      {
+        "coverage": "live",
+        "id": "R10"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R11"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R12"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R13"
+      }
+    ],
+    "total": 13
+  },
+  "timestamp": "2026-09-26T14:19:35Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

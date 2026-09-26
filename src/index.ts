@@ -18,14 +18,27 @@ import { IMPORT_CHILD_ENV } from "./sessions/import-child-env";
  * is the flush that actually waits. A closed consumer (EPIPE) settles
  * through the callback or the 'error' event.
  */
+const pendingFlushes = new WeakMap<NodeJS.WriteStream, Promise<void>>();
+
+/**
+ * Concurrent exit paths (normal completion racing a SIGINT) share one flush:
+ * a second caller must wait for the drain the first end() started, not treat
+ * the already-ended stream as flushed and exit mid-write.
+ */
 function flushStream(stream: NodeJS.WriteStream): Promise<void> {
+  const pending = pendingFlushes.get(stream);
+  if (pending) {
+    return pending;
+  }
   if (stream.destroyed || stream.writableEnded) {
     return Promise.resolve();
   }
-  return new Promise((resolve) => {
+  const flush = new Promise<void>((resolve) => {
     stream.once("error", () => resolve());
     stream.end(() => resolve());
   });
+  pendingFlushes.set(stream, flush);
+  return flush;
 }
 
 /**

@@ -16,7 +16,6 @@ import type { SqliteAdapter } from "../../store/sqlite/adapter";
 import type { RequestPeerServer } from "../request-locality";
 import type { ContextHolder } from "./api";
 
-import { getIndexDbPath } from "../../app/constants";
 import { getConfigPaths, loadConfig } from "../../config";
 import { withContentTypeRules } from "../../ingestion";
 import {
@@ -28,8 +27,14 @@ import {
   runAutomationProfile,
   setAutomationProfile,
 } from "../../sessions/automation";
-import { assertSessionBinding } from "../../sessions/binding";
 import { SessionSourceSchema, watchedCollections } from "../../sessions/config";
+import {
+  adoptServedConfig,
+  assertInstanceBinding as assertConfigBinding,
+  readInstanceConfig,
+  refreshServedConfig,
+  type ServedSessionsConfig,
+} from "../../sessions/config-refresh";
 import { importInChildProcess } from "../../sessions/import-child";
 import { SessionsService } from "../../sessions/service";
 import {
@@ -186,18 +191,11 @@ function instanceIdentity(ctxHolder: ContextHolder): {
 }
 
 /** Refuse an archive config opened against a different index (and vice versa). */
-async function assertInstanceBinding(
+function assertInstanceBinding(
   ctxHolder: ContextHolder,
   config: Config = ctxHolder.config
 ): Promise<void> {
-  const { configPath, indexName } = instanceIdentity(ctxHolder);
-  if (!config.sessions) return;
-  await assertSessionBinding({
-    config,
-    configPath,
-    indexName,
-    dbPath: getIndexDbPath(indexName),
-  });
+  return assertConfigBinding(instanceIdentity(ctxHolder), config);
 }
 
 /** Service over the instance's own config/index pair, binding checked. */
@@ -215,55 +213,47 @@ async function archiveService(
   });
 }
 
+/** This instance's served config, as the shared config refresh sees it. */
+function servedConfig(
+  ctxHolder: ContextHolder,
+  store: SqliteAdapter
+): ServedSessionsConfig {
+  return {
+    ...instanceIdentity(ctxHolder),
+    store,
+    config: ctxHolder.config,
+    setConfig: (config) => {
+      ctxHolder.config = config;
+      ctxHolder.current = { ...ctxHolder.current, config };
+      ctxHolder.watchService?.updateCollections(
+        watchedCollections(config),
+        withContentTypeRules({}, config)
+      );
+    },
+    invalidateEgressPolicy: async () => {
+      await ctxHolder.invalidateEgressPolicy?.();
+    },
+    markContentMutation: () => ctxHolder.markContentMutation?.(),
+    markIndexMutation: () => ctxHolder.markIndexMutation?.(),
+  };
+}
+
 /**
  * Adopt a config the sessions service already persisted: project collections
  * and contexts into the open store, swap the in-memory context, and refresh
- * the watcher, egress policy and mutation generations (same sequence as the
- * config-sync route helpers).
+ * the watcher, egress policy and mutation generations.
  */
-async function adoptConfig(
+function adoptConfig(
   ctxHolder: ContextHolder,
   store: SqliteAdapter,
   config: Config
 ): Promise<void> {
-  const collections = await store.syncCollections(config.collections);
-  if (!collections.ok) {
-    throw new Error(
-      `Config saved but collection sync failed: ${collections.error.message}`
-    );
-  }
-  const contexts = await store.syncContexts(config.contexts ?? []);
-  if (!contexts.ok) {
-    throw new Error(
-      `Config saved but context sync failed: ${contexts.error.message}`
-    );
-  }
-  ctxHolder.config = config;
-  ctxHolder.current = { ...ctxHolder.current, config };
-  ctxHolder.watchService?.updateCollections(
-    watchedCollections(config),
-    withContentTypeRules({}, config)
-  );
-  await ctxHolder.invalidateEgressPolicy?.();
-  ctxHolder.markContentMutation?.();
-  ctxHolder.markIndexMutation?.();
+  return adoptServedConfig(servedConfig(ctxHolder, store), config);
 }
 
-/**
- * Read this instance's config file, binding checked: unreadable is an error,
- * never served stale, and a config rebound to another index is refused
- * before it can touch this one.
- */
-async function readConfigFile(ctxHolder: ContextHolder): Promise<Config> {
-  const loaded = await loadConfig(instanceIdentity(ctxHolder).configPath);
-  if (!loaded.ok) {
-    throw new SessionsError(
-      "SESSIONS_RUNTIME_FAILURE",
-      "The server could not read its config file; fix the file (gno doctor shows the error) and reload."
-    );
-  }
-  await assertInstanceBinding(ctxHolder, loaded.value);
-  return loaded.value;
+/** Read this instance's config file, binding checked (see readInstanceConfig). */
+function readConfigFile(ctxHolder: ContextHolder): Promise<Config> {
+  return readInstanceConfig(instanceIdentity(ctxHolder));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -282,9 +272,7 @@ export async function refreshSessionsConfig(
   store: SqliteAdapter
 ): Promise<Response | null> {
   try {
-    const config = await readConfigFile(ctxHolder);
-    if (Bun.deepEquals(config, ctxHolder.config)) return null;
-    await adoptConfig(ctxHolder, store, config);
+    await refreshServedConfig(servedConfig(ctxHolder, store));
     return null;
   } catch (error) {
     return sessionsErrorResponse(error);

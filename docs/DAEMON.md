@@ -50,8 +50,9 @@ foreground `gno index` / `gno update`: hierarchical directory classification,
 guarded content rechecks, cloud-placeholder skips, and preservation of indexed
 descendants under unproven prefixes. Default `any` is unchanged. Source
 availability is distinct from `egressPolicy`. Support is evidence-qualified for
-tested macOS File Provider configurations only (Google Drive, iCloud Drive, and
-OneDrive for both validated immediate SharePoint library roots); unsupported
+tested macOS File Provider configurations only (Google Drive My Drive and
+individual Shared drives, iCloud Drive, and OneDrive for the two validated
+immediate SharePoint library roots); unsupported
 platforms/filesystems fail closed under `local`.
 
 It also owns saved Context Capsule reverification. Register a Capsule with

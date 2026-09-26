@@ -167,6 +167,14 @@ export const CollectionSchema = z.object({
   sourceAvailability: SourceAvailabilitySchema.optional(),
 
   /**
+   * Link workspace for plain wiki links. Omitted: auto-detect the nearest
+   * `.obsidian/` ancestor-or-self. An absolute path joins the collection to
+   * that workspace root (it must contain the collection root); `false` keeps
+   * the collection's links collection-scoped.
+   */
+  workspaceRoot: z.union([z.string().min(1), z.literal(false)]).optional(),
+
+  /**
    * Declares the collection as a GNO-managed memory substrate: `remember`
    * writes fact files here and refuses every collection without the flag.
    * Omitted means false; ordinary retrieval is unaffected either way.

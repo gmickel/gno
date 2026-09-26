@@ -5,7 +5,11 @@ import { z } from "zod";
 import type { AuditCategory, AuditReport } from "../../core/audit";
 import type { ToolContext } from "../server";
 
-import { AUDIT_CATEGORIES } from "../../core/audit";
+import {
+  AUDIT_CATEGORIES,
+  AUDIT_MAX_FINDINGS_ALL,
+  AUDIT_MAX_FINDINGS_LIMIT,
+} from "../../core/audit";
 import { runWorkspaceAudit } from "../../core/audit-workspace";
 import { normalizeTag, validateTag } from "../../core/tags";
 import { normalizeCollectionName } from "../../core/validation";
@@ -19,7 +23,12 @@ export const auditInputSchema = z
     collections: z.array(z.string().min(1)).max(256).default([]),
     paths: z.array(z.string().min(1)).max(256).default([]),
     tags: z.array(z.string().min(1)).max(256).default([]),
-    maxFindings: z.number().int().min(1).max(1000).default(100),
+    maxFindings: z
+      .union([
+        z.number().int().min(1).max(AUDIT_MAX_FINDINGS_LIMIT),
+        z.literal(AUDIT_MAX_FINDINGS_ALL),
+      ])
+      .default(100),
     maxAgeDays: z.number().int().min(1).optional(),
     orphanRoots: z.array(z.string().min(1)).max(256).default([]),
     orphanIgnorePrefixes: z.array(z.string().min(1)).max(256).default([]),

@@ -78,6 +78,10 @@
                 "type": "string",
                 "description": "URI of resolved target document"
               },
+              "resolvedCollection": {
+                "type": "string",
+                "description": "Collection of the resolved target (may differ from the source's in a link workspace)"
+              },
               "resolvedTitle": {
                 "type": "string",
                 "description": "Title of resolved target document"

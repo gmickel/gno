@@ -303,6 +303,12 @@ export const runRetrievalReplayCandidate = async (
       retrievalScope
     );
     options.limit = scope.value.fetchLimit;
+    const scopedCollections = scope.value.collections.filter(
+      (name): name is string => name !== undefined
+    );
+    if (scopedCollections.length > 0) {
+      options.graphCollections = scopedCollections;
+    }
     const result = await runCandidateOnce(deps, source, candidate, options);
     if (!result.ok) return result;
     outputs.push(result.value);

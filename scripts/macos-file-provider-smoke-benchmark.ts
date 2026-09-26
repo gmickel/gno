@@ -47,10 +47,17 @@ import {
   type AvailabilityObserver,
   type IoPolicyPort,
   type ProviderLabel,
+  type ProviderLayout,
   redactToken,
   withNoMaterializePolicy,
 } from "./macos-file-provider-smoke-lib";
 import { listFixtureFiles } from "./macos-file-provider-smoke-ops";
+
+export type BenchmarkProvider = {
+  label: ProviderLabel | "local";
+  version: string;
+  layout?: ProviderLayout;
+};
 
 export {
   ANY_REGRESSION_THRESHOLD_PERCENT,
@@ -288,7 +295,7 @@ export async function runShippedDesignBenchmark(options: {
   expectedFileCount: number;
   observer?: AvailabilityObserver | null;
   policy?: IoPolicyPort | null;
-  provider?: { label: ProviderLabel | "local"; version: string };
+  provider?: BenchmarkProvider;
   environment?: Record<string, unknown>;
 }): Promise<Record<string, unknown>> {
   const walker = new FileWalker();
@@ -667,7 +674,7 @@ export async function runAllLocalBenchmark(options: {
   corpusRoot: string;
   observer?: AvailabilityObserver | null;
   policy?: IoPolicyPort | null;
-  provider?: { label: ProviderLabel | "local"; version: string };
+  provider?: BenchmarkProvider;
   environment?: Record<string, unknown>;
 }): Promise<Record<string, unknown>> {
   const files = await listFixtureFiles(options.corpusRoot);

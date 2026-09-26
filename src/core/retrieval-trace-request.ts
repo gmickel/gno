@@ -8,6 +8,7 @@ import type { RetrievalTraceTerminalStatus } from "../store/types";
 
 import { canonicalTraceJson } from "../store/retrieval-trace-codec";
 import { err, ok } from "../store/types";
+import { linkResolutionFingerprintInput } from "./link-workspace";
 import { RetrievalTraceSession } from "./retrieval-trace-session";
 
 export const retrievalTraceFailureStatus = (
@@ -45,6 +46,7 @@ export const buildRetrievalTraceFingerprints = async (input: {
 }): Promise<RetrievalTraceFingerprints> => {
   const collections = await input.store.getCollections();
   if (!collections.ok) throw new Error(collections.error.message);
+  const linkResolution = linkResolutionFingerprintInput(collections.value);
   const snapshots = [];
   for (const collection of [...collections.value].sort((left, right) =>
     left.name.localeCompare(right.name)
@@ -70,6 +72,7 @@ export const buildRetrievalTraceFingerprints = async (input: {
     index: fingerprint({
       indexName: input.indexName ?? "default",
       snapshots,
+      ...(linkResolution ? { linkResolution } : {}),
     }),
   };
 };

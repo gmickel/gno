@@ -39,6 +39,19 @@
       "languageHint": {
         "type": "string",
         "description": "BCP-47 language hint for the collection"
+      },
+      "workspaceRoot": {
+        "description": "Configured link workspace: an absolute path joins the collection to that workspace root; false keeps links inside the collection. Absent means auto-detect. Same-host callers only: omitted for a remote REST caller.",
+        "oneOf": [{ "type": "string" }, { "const": false }]
+      },
+      "effectiveWorkspaceRoot": {
+        "type": "string",
+        "description": "CLI list only: effective link workspace root (nearest .obsidian folder, or the configured root). Absent when links stay inside the collection."
+      },
+      "workspaceSource": {
+        "type": "string",
+        "enum": ["none", "detected", "configured", "disabled", "unavailable"],
+        "description": "CLI list only: how the link workspace was set"
       }
     }
   }

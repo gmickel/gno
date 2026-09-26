@@ -520,7 +520,6 @@ async function searchHybridWithHydration(
       const expandResult = await expandQuery(expandPort, query, {
         // Use queryLanguage for prompt selection, NOT options.lang (retrieval filter)
         lang: queryLanguage,
-        timeout: pipelineConfig.expansionTimeout,
         intent: options.intent,
         contextSize: deps.config.models?.expandContextSize,
       });
@@ -804,6 +803,7 @@ async function searchHybridWithHydration(
     fusedCandidates,
     {
       collection: options.collection,
+      collections: options.graphCollections,
       includeSimilar: vectorAvailable,
       eligibility: vectorEligibility,
       limit,

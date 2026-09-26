@@ -1,0 +1,542 @@
+{
+  "capturedAt": "2026-09-26",
+  "host": {
+    "platform": "darwin",
+    "osVersion": "27.0",
+    "osBuild": "26A5388g",
+    "betaOs": true,
+    "hardware": "Apple M4 Max",
+    "arch": "arm64",
+    "bunVersion": "1.4.2",
+    "gnoVersion": "2.7.1 (branch build)"
+  },
+  "providers": [
+    {
+      "label": "google",
+      "version": "131.0",
+      "layout": "shared-drive",
+      "installedSharedDrives": 3
+    },
+    {
+      "label": "onedrive",
+      "version": "26.163.0823",
+      "layout": "sharepoint-library",
+      "installedSharedLibrariesDomains": 1,
+      "immediateLibraryRoots": 2
+    }
+  ],
+  "privacy": {
+    "rootsFixturesAndFiles": "sha256 only (file ids truncated to 12 hex chars)",
+    "driveAndLibraryNamesRetained": false,
+    "existingSourceBytesRead": false,
+    "productionBehaviorChanged": "classifier admits GoogleDrive-*/Shared drives/<drive>/..."
+  },
+  "validateRoot": [
+    {
+      "target": "google-shared-drive-1",
+      "exitCode": 0,
+      "root": "sha256:bc83cb284fa9d1f22c6bd61444b6be278f6e6dc5aa9941e41bc1fd8f80f276bd",
+      "provider": "google",
+      "layout": "shared-drive"
+    },
+    {
+      "target": "google-shared-drive-2",
+      "exitCode": 0,
+      "root": "sha256:ebb6613682abbb1982335d5d13e772e7fa2df21d43e0d71dd140577c2c33cc9c",
+      "provider": "google",
+      "layout": "shared-drive"
+    },
+    {
+      "target": "google-shared-drive-3",
+      "exitCode": 0,
+      "root": "sha256:1a17e9d87780fdde19e69f6aa0de8abf692c3ee61dd41a3cdec78b723847d2cc",
+      "provider": "google",
+      "layout": "shared-drive"
+    },
+    {
+      "target": "onedrive-library-1",
+      "exitCode": 0,
+      "root": "sha256:27806da074e584c7afb4c20824467da02a088c14d3065f10fa457f6e898d874a",
+      "provider": "onedrive",
+      "layout": "sharepoint-library"
+    },
+    {
+      "target": "onedrive-library-2",
+      "exitCode": 0,
+      "root": "sha256:b5adc6ec655b1b5703bbec7cd139c4de80c569fbe7b6d22a0c4a7532517b8ea1",
+      "provider": "onedrive",
+      "layout": "sharepoint-library"
+    },
+    {
+      "target": "google-my-drive-control",
+      "exitCode": 0,
+      "root": "sha256:dcee15ff632062b8acde2b613be37674a942400d34e435ad76998828753130e3",
+      "provider": "google",
+      "layout": "my-drive"
+    },
+    {
+      "target": "refuse-shared-drives-aggregation-root",
+      "exitCode": 1,
+      "refused": "unsafe root: expected an installed Google My Drive, an immediate Google Shared drive, iCloud Drive, or an immediate OneDrive SharedLibraries library root"
+    },
+    {
+      "target": "refuse-shared-drive-descendant-shape",
+      "exitCode": 1,
+      "refused": "unsafe root: expected an installed Google My Drive, an immediate Google Shared drive, iCloud Drive, or an immediate OneDrive SharedLibraries library root"
+    },
+    {
+      "target": "refuse-google-domain-root",
+      "exitCode": 1,
+      "refused": "unsafe root: expected an installed Google My Drive, an immediate Google Shared drive, iCloud Drive, or an immediate OneDrive SharedLibraries library root"
+    },
+    {
+      "target": "refuse-sharedlibraries-domain-root",
+      "exitCode": 1,
+      "refused": "unsafe root: expected an installed Google My Drive, an immediate Google Shared drive, iCloud Drive, or an immediate OneDrive SharedLibraries library root"
+    }
+  ],
+  "googleSharedDrive": {
+    "fixtureDrive": "sha256:bc83cb284fa9d1f22c6bd61444b6be278f6e6dc5aa9941e41bc1fd8f80f276bd",
+    "fixtures": [
+      "sha256:7c585802b2eb1cebb71cb6acbf16adbb1dc44d43adcc2c9f8c4e932109c717ca",
+      "sha256:991528dfbcfb76b1c890c24727511a5923745ff51e291f3fcb8813dc70c614cb"
+    ],
+    "rows": [
+      {
+        "state": "local",
+        "verdict": "PASS",
+        "metadata": {
+          "status": "PASS",
+          "beforeDataless": false,
+          "afterDataless": false,
+          "materializationSuspected": false
+        },
+        "traversal": {
+          "status": "PASS",
+          "beforeDataless": false,
+          "afterDataless": false,
+          "materializationSuspected": false
+        },
+        "guarded-read": {
+          "status": "PASS",
+          "beforeDataless": false,
+          "afterDataless": false,
+          "materializationSuspected": false,
+          "read": {
+            "classification": "ok",
+            "errno": null,
+            "bytesRead": 43
+          }
+        }
+      },
+      {
+        "state": "cached-unpinned",
+        "verdict": "PASS",
+        "metadata": {
+          "status": "PASS",
+          "beforeDataless": false,
+          "afterDataless": false,
+          "materializationSuspected": false
+        },
+        "traversal": {
+          "status": "PASS",
+          "beforeDataless": false,
+          "afterDataless": false,
+          "materializationSuspected": false
+        },
+        "guarded-read": {
+          "status": "PASS",
+          "beforeDataless": false,
+          "afterDataless": false,
+          "materializationSuspected": false,
+          "read": {
+            "classification": "ok",
+            "errno": null,
+            "bytesRead": 43
+          }
+        }
+      },
+      {
+        "state": "pinned-offline",
+        "verdict": "BLOCKED",
+        "reason": "provider_offline_state_not_safely_induced"
+      },
+      {
+        "state": "partial-content",
+        "verdict": "NOT AVAILABLE",
+        "reason": "no_safe_partial_range_control"
+      },
+      {
+        "state": "cloud-only",
+        "verdict": "PASS",
+        "source": "existing never-downloaded items (substitute; see realDatalessProbe)"
+      },
+      {
+        "state": "nested-dataless-directory",
+        "verdict": "NOT AVAILABLE",
+        "reason": "folders never report SF_DATALESS; same result as Google My Drive and SharePoint"
+      },
+      {
+        "state": "classification-to-read-race",
+        "verdict": "INFERRED",
+        "reason": "Google Drive 131.0 did not evict fixtures on request (file or folder online-only, 20+ min, across a restart), so no transition window could be produced; inferred from the same Google provider domain and process-scope I/O policy that passed the My Drive race (2026-08-16) and both SharePoint races here"
+      }
+    ],
+    "evictionAttempt": {
+      "requested": ["file Make online-only", "folder online-only"],
+      "observed": "content stayed materialized (isDownloaded=1, no SF_DATALESS) for 20+ minutes and across a Drive restart",
+      "cliEviction": "none available (fileproviderctl has no evict; brctl is iCloud-only)"
+    },
+    "realDatalessProbe": {
+      "note": "Metadata + guarded no-materialize read of existing never-downloaded items; no content printed, names hashed",
+      "drive": "sha256:ebb6613682abbb1982335d5d13e772e7fa2df21d43e0d71dd140577c2c33cc9c",
+      "datalessSamples": [
+        {
+          "drive": "sha256:ebb6613682abbb1982335d5d13e772e7fa2df21d43e0d71dd140577c2c33cc9c",
+          "sampled": 300,
+          "dataless": 292
+        },
+        {
+          "drive": "sha256:1a17e9d87780fdde19e69f6aa0de8abf692c3ee61dd41a3cdec78b723847d2cc",
+          "sampled": 171,
+          "dataless": 4
+        },
+        {
+          "drive": "sha256:bc83cb284fa9d1f22c6bd61444b6be278f6e6dc5aa9941e41bc1fd8f80f276bd",
+          "sampled": 6,
+          "dataless": 3
+        }
+      ],
+      "files": [
+        {
+          "file": "b0d1c3a8cfe8",
+          "metadata": {
+            "status": "PASS",
+            "before": true,
+            "after": true,
+            "materializationSuspected": false
+          },
+          "guarded-read": {
+            "status": "PASS",
+            "before": true,
+            "after": true,
+            "read": {
+              "ok": false,
+              "classification": "EDEADLK",
+              "errno": 11,
+              "bytesRead": 0
+            },
+            "materializationSuspected": false
+          }
+        },
+        {
+          "file": "aab5fa7fa439",
+          "metadata": {
+            "status": "PASS",
+            "before": true,
+            "after": true,
+            "materializationSuspected": false
+          },
+          "guarded-read": {
+            "status": "PASS",
+            "before": true,
+            "after": true,
+            "read": {
+              "ok": false,
+              "classification": "EDEADLK",
+              "errno": 11,
+              "bytesRead": 0
+            },
+            "materializationSuspected": false
+          }
+        },
+        {
+          "file": "bb9dfdc9263f",
+          "metadata": {
+            "status": "PASS",
+            "before": true,
+            "after": true,
+            "materializationSuspected": false
+          },
+          "guarded-read": {
+            "status": "PASS",
+            "before": true,
+            "after": true,
+            "read": {
+              "ok": false,
+              "classification": "EDEADLK",
+              "errno": 11,
+              "bytesRead": 0
+            },
+            "materializationSuspected": false
+          }
+        }
+      ]
+    }
+  },
+  "sharePointLibraries": [
+    {
+      "library": "onedrive-library-1",
+      "root": "sha256:27806da074e584c7afb4c20824467da02a088c14d3065f10fa457f6e898d874a",
+      "sameRootAs": "2026-08-16-onedrive-libraries.json onedrive-library-1",
+      "fixtures": [
+        "sha256:6cfadf04b97f77f3be4b999a42e3fdd1f1756cae00e7ee4357eabf99affaa0c8"
+      ],
+      "eviction": "Finder Free Up Space",
+      "rows": [
+        {
+          "state": "local",
+          "verdict": "PASS",
+          "metadata": {
+            "status": "PASS",
+            "beforeDataless": false,
+            "afterDataless": false,
+            "materializationSuspected": false
+          },
+          "traversal": {
+            "status": "PASS",
+            "beforeDataless": false,
+            "afterDataless": false,
+            "materializationSuspected": false
+          },
+          "guarded-read": {
+            "status": "PASS",
+            "beforeDataless": false,
+            "afterDataless": false,
+            "materializationSuspected": false,
+            "read": {
+              "classification": "ok",
+              "errno": null,
+              "bytesRead": 43
+            }
+          }
+        },
+        {
+          "state": "cached-unpinned",
+          "verdict": "PASS",
+          "metadata": {
+            "status": "PASS",
+            "beforeDataless": false,
+            "afterDataless": false,
+            "materializationSuspected": false
+          },
+          "traversal": {
+            "status": "PASS",
+            "beforeDataless": false,
+            "afterDataless": false,
+            "materializationSuspected": false
+          },
+          "guarded-read": {
+            "status": "PASS",
+            "beforeDataless": false,
+            "afterDataless": false,
+            "materializationSuspected": false,
+            "read": {
+              "classification": "ok",
+              "errno": null,
+              "bytesRead": 43
+            }
+          }
+        },
+        {
+          "state": "pinned-offline",
+          "verdict": "BLOCKED",
+          "reason": "provider_offline_state_not_safely_induced"
+        },
+        {
+          "state": "partial-content",
+          "verdict": "NOT AVAILABLE",
+          "reason": "no_safe_partial_range_control"
+        },
+        {
+          "state": "classification-to-read-race",
+          "verdict": "NOT AVAILABLE",
+          "reason": "state_transition_not_reproduced",
+          "raceDelayMs": 60000
+        },
+        {
+          "state": "classification-to-read-race",
+          "verdict": "PASS",
+          "raceDelayMs": 60000
+        },
+        {
+          "state": "cloud-only",
+          "verdict": "PASS",
+          "metadata": {
+            "status": "PASS",
+            "beforeDataless": true,
+            "afterDataless": true,
+            "materializationSuspected": false
+          },
+          "traversal": {
+            "status": "PASS",
+            "beforeDataless": true,
+            "afterDataless": true,
+            "materializationSuspected": false
+          },
+          "guarded-read": {
+            "status": "PASS",
+            "beforeDataless": true,
+            "afterDataless": true,
+            "materializationSuspected": false,
+            "read": {
+              "classification": "EDEADLK",
+              "errno": 11,
+              "bytesRead": 0
+            }
+          }
+        },
+        {
+          "state": "nested-dataless-directory",
+          "verdict": "NOT AVAILABLE",
+          "reason": "host_must_prepare_dataless_nested_directory"
+        }
+      ]
+    },
+    {
+      "library": "onedrive-library-2",
+      "root": "sha256:b5adc6ec655b1b5703bbec7cd139c4de80c569fbe7b6d22a0c4a7532517b8ea1",
+      "sameRootAs": "2026-08-16-onedrive-libraries.json onedrive-library-2",
+      "fixtures": [
+        "sha256:3b8b9438bfa969d71e4ffff2110c2c436a2f0358f9bff2a3e4bb675d0ae2868b"
+      ],
+      "eviction": "Finder Free Up Space",
+      "rows": [
+        {
+          "state": "local",
+          "verdict": "PASS",
+          "metadata": {
+            "status": "PASS",
+            "beforeDataless": false,
+            "afterDataless": false,
+            "materializationSuspected": false
+          },
+          "traversal": {
+            "status": "PASS",
+            "beforeDataless": false,
+            "afterDataless": false,
+            "materializationSuspected": false
+          },
+          "guarded-read": {
+            "status": "PASS",
+            "beforeDataless": false,
+            "afterDataless": false,
+            "materializationSuspected": false,
+            "read": {
+              "classification": "ok",
+              "errno": null,
+              "bytesRead": 43
+            }
+          }
+        },
+        {
+          "state": "cached-unpinned",
+          "verdict": "PASS",
+          "metadata": {
+            "status": "PASS",
+            "beforeDataless": false,
+            "afterDataless": false,
+            "materializationSuspected": false
+          },
+          "traversal": {
+            "status": "PASS",
+            "beforeDataless": false,
+            "afterDataless": false,
+            "materializationSuspected": false
+          },
+          "guarded-read": {
+            "status": "PASS",
+            "beforeDataless": false,
+            "afterDataless": false,
+            "materializationSuspected": false,
+            "read": {
+              "classification": "ok",
+              "errno": null,
+              "bytesRead": 43
+            }
+          }
+        },
+        {
+          "state": "pinned-offline",
+          "verdict": "BLOCKED",
+          "reason": "provider_offline_state_not_safely_induced"
+        },
+        {
+          "state": "partial-content",
+          "verdict": "NOT AVAILABLE",
+          "reason": "no_safe_partial_range_control"
+        },
+        {
+          "state": "cloud-only",
+          "verdict": "PASS",
+          "metadata": {
+            "status": "PASS",
+            "beforeDataless": true,
+            "afterDataless": true,
+            "materializationSuspected": false
+          },
+          "traversal": {
+            "status": "PASS",
+            "beforeDataless": true,
+            "afterDataless": true,
+            "materializationSuspected": false
+          },
+          "guarded-read": {
+            "status": "PASS",
+            "beforeDataless": true,
+            "afterDataless": true,
+            "materializationSuspected": false,
+            "read": {
+              "classification": "EDEADLK",
+              "errno": 11,
+              "bytesRead": 0
+            }
+          }
+        },
+        {
+          "state": "classification-to-read-race",
+          "verdict": "PASS",
+          "raceDelayMs": 60000
+        },
+        {
+          "state": "nested-dataless-directory",
+          "verdict": "NOT AVAILABLE",
+          "reason": "host_must_prepare_dataless_nested_directory"
+        }
+      ]
+    }
+  ],
+  "endToEnd": {
+    "build": "branch at 44ecc42a",
+    "sourceAvailability": "local",
+    "isolatedGnoRoot": true,
+    "runs": [
+      {
+        "drive": "sha256:bc83cb284fa9d1f22c6bd61444b6be278f6e6dc5aa9941e41bc1fd8f80f276bd",
+        "target": "own fixture, 25 local files",
+        "indexed": 25,
+        "skipped": 0,
+        "availabilityAfter": "all still local"
+      },
+      {
+        "drive": "sha256:ebb6613682abbb1982335d5d13e772e7fa2df21d43e0d71dd140577c2c33cc9c",
+        "target": "existing folder, 3 never-downloaded files, no subfolders",
+        "indexed": 0,
+        "skipped": 3,
+        "skipCode": "CLOUD_PLACEHOLDER",
+        "availabilityAfter": "all 3 still dataless",
+        "durationS": 1
+      }
+    ]
+  },
+  "sessionIncident": "Two earlier end-to-end attempts ran with sourceAvailability left at the default any (the config edit had not applied) against a whole Shared drive for 10-14 minutes before being stopped. Reads only: roughly 12 of 300 sampled files were materialized into the local Google Drive cache on the test host; nothing on the drive was modified or deleted. Their throwaway indexes were deleted. This is expected any-mode behavior, not a local-mode failure.",
+  "cleanup": {
+    "method": "cleanup-plan per fixture, then Finder move to Trash with a GNO-fn118-smoke-fn179-* name guard",
+    "fixturesRemoved": 4,
+    "verified": "directory listings confirm no fixture remains"
+  },
+  "claim": {
+    "googleSharedDrives": "admitted: cloud-only observed on real never-downloaded items; race inferred; nested-dataless-directory NOT AVAILABLE (as My Drive)",
+    "sharePointLibraries": "two installed immediate library roots, both proven (cloud-only and race PASS in each)"
+  }
+}

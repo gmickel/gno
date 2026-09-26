@@ -17,6 +17,7 @@ import type { SessionImportReceipt } from "../../src/sessions/types";
 import type { SqliteAdapter } from "../../src/store/sqlite/adapter";
 
 import { initStore } from "../../src/cli/commands/shared";
+import { saveConfigToPath } from "../../src/config";
 import { createMcpServerSurface } from "../../src/mcp/context";
 import {
   handleSessionsAutomationRun,
@@ -183,15 +184,22 @@ describe("MCP session tools", () => {
         path: join(blocker, collection.name),
       })),
     };
-    const result = await handleSessionsImport(
-      { sourceId: "codex-main" },
-      { ...ctxBase, config, enableWrite: true }
-    );
-    expect(result.isError).toBe(true);
-    expect(result.structuredContent).toMatchObject({
-      error: "SESSIONS_RUNTIME_FAILURE",
-    });
-    expect(JSON.stringify(result)).not.toContain(root);
+    // The tools serve the config file, so the broken archive root goes there.
+    await saveConfigToPath(config, configPath);
+    try {
+      const result = await handleSessionsImport(
+        { sourceId: "codex-main" },
+        { ...ctxBase, enableWrite: true }
+      );
+      expect(result.isError).toBe(true);
+      expect(result.structuredContent).toMatchObject({
+        error: "SESSIONS_RUNTIME_FAILURE",
+      });
+      expect(JSON.stringify(result)).not.toContain(root);
+    } finally {
+      await saveConfigToPath(ctxBase.config, configPath);
+      await store.syncCollections(ctxBase.config.collections);
+    }
   });
 
   test("automation run is write-gated, runs a configured profile only, and takes no sources", async () => {

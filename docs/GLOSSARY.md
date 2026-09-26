@@ -209,7 +209,8 @@ Internal document link using `[[double bracket]]` syntax. GNO supports:
 - `[[Target]]` - basic link
 - `[[Target|Display]]` - link with custom display text
 - `[[Target#Heading]]` - link to section anchor
-- `[[collection:Target]]` - cross-collection link
+- `[[Folder/Target]]` - path link, relative to the workspace or collection root
+- `[[collection:Target]]` - explicit link into one named collection
 - `[Display]([[Target]])` - Logseq alias syntax
 - `&#123;&#123;embed [[Target]]&#125;&#125;` / `&#123;&#123;embed ((block-id))&#125;&#125;` - Logseq embeds treated as links
 
@@ -231,11 +232,15 @@ Documents that are semantically related based on vector similarity. Found using 
 
 ### Link Resolution
 
-Process of matching link targets to actual documents. Wiki links match normalized titles with path-style fallbacks (basename/rel_path, optional .md); markdown links use resolved paths. Positional link listings still resolve at query time; typed `doc_edges` are re-derived during sync with the same resolver.
+Process of matching link targets to actual documents. Inside a [link workspace](#link-workspace), plain wiki links match file paths and names across the workspace; elsewhere, wiki links match normalized titles with path-style fallbacks (basename/rel_path, optional .md). Markdown links use resolved paths. Positional link listings still resolve at query time; typed `doc_edges` are re-derived during sync with the same resolver. See [Resolution](ARCHITECTURE.md#resolution).
+
+### Link Workspace
+
+A set of collections whose folders share one workspace root, usually an Obsidian vault (the nearest folder with an `.obsidian` folder) or a root set with `workspaceRoot`. Plain wiki links resolve across all collections of a workspace. Membership decides how links resolve, never what a scoped search may return.
 
 ### Cross-Collection Link
 
-Link between documents in different collections using `[[collection:Target]]` syntax.
+A link whose source and target are in different collections. Inside a link workspace, a plain `[[Note]]` becomes a cross-collection link when its target lives in a sibling collection. `[[collection:Target]]` names the target collection explicitly and works anywhere. Backlinks, `gno links` and `gno impact` name the other collection for such links.
 
 ## Storage Terms
 

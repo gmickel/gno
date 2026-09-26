@@ -351,7 +351,8 @@ Collection names are case-insensitive on input and normalized to lowercase in re
 `gno_audit` is a read-only, offline tool that returns the same
 `gno://schemas/audit-report@1.0` report as `gno audit`. Its closed input accepts
 `category` (`links`, `provenance`, `freshness`, or `all`), collection/path/tag
-filters, and `maxFindings` (1–1000). `maxAgeDays`, `orphanRoots`, and
+filters, and `maxFindings` (an integer from 1 to 100000, or `"all"` for every
+finding of the bounded snapshot; default 100). `maxAgeDays`, `orphanRoots`, and
 `orphanIgnorePrefixes` are optional explicit policy inputs. Request
 cancellation returns a partial report rather than a false clean result. The
 tool is annotated with
@@ -1841,8 +1842,15 @@ pending), `sourceUnavailable`, `staleParser` and last import time, and the
 switches, pending and running work, last run, last success, next due time,
 recovery action). The result contains no host paths.
 
+Each call (and each `gno_sessions_import` call) first re-reads the server's
+config file and adopts it when it changed, so source changes made by another
+process show without a restart. An unchanged file is a no-op; a source-only
+change keeps open HTTP sessions.
+
 **Errors:** `SESSIONS_NOT_CONFIGURED` when the server's config has no
-`sessions` block.
+`sessions` block; `SESSIONS_RUNTIME_FAILURE` when the config file cannot be
+read (never answered from the stale config); `SESSIONS_BINDING_MISMATCH` when
+the file is now bound to a different index (not adopted).
 
 ### gno_sessions_import
 
@@ -2371,7 +2379,14 @@ structure is derived from `structureDelta.truncated`.
 
 ### gno_impact
 
-Read-only inbound dependency traversal for `ref`. Inputs `maxDepth`,
+Read-only inbound dependency traversal for `ref`. Optional `collections`
+(array of collection names) limits the traversal as `gno impact --collection`
+does; omitted means every collection. Over Streamable HTTP, egress policy is
+checked on `collections` (every collection when omitted, because the result
+can reach any collection a link resolves into) and on the collection of `ref`;
+a docid `ref` is checked against every collection. The same rule applies to
+`gno_backlinks` and `gno_graph*` refs, and `gno_similar` with
+`crossCollection: true` is checked against every collection. Inputs `maxDepth`,
 `maxNodes`, `maxEdges`, `frontierLimit`, and `visitedLimit` use the same bounds
 as CLI/REST/SDK. Structured content is `impact.schema.json`; each impacted
 document includes a deterministic evidence path over typed or backlink

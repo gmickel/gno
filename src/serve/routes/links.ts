@@ -34,6 +34,8 @@ export interface LinkResponse {
     resolvedUri?: string;
     /** Resolved target title (if found) */
     resolvedTitle?: string;
+    /** Collection of the resolved target (may differ from the source's) */
+    resolvedCollection?: string;
   }>;
   meta: {
     docid: string;
@@ -49,6 +51,8 @@ export interface BacklinkResponse {
     sourceDocid: string;
     sourceUri: string;
     sourceTitle?: string;
+    /** Collection of the linking document */
+    sourceCollection?: string;
     linkText?: string;
     startLine: number;
     startCol: number;
@@ -189,6 +193,11 @@ export async function handleDocLinks(
       targetRefNorm: l.targetRefNorm,
       targetCollection: l.targetCollection || doc.collection,
       linkType: l.linkType,
+      source: {
+        collection: doc.collection,
+        relPath: doc.relPath,
+        explicit: Boolean(l.targetCollection),
+      },
     }))
   );
   const resolutionAvailable = resolvedResult.ok;
@@ -217,6 +226,9 @@ export async function handleDocLinks(
             resolvedDocid: resolved.docid,
             resolvedUri: resolved.uri,
             resolvedTitle: resolved.title ?? undefined,
+            ...(resolved.collection && {
+              resolvedCollection: resolved.collection,
+            }),
           }),
         }),
       };
@@ -273,6 +285,7 @@ export async function handleDocBacklinks(
     backlinks: backlinks.map((b) => ({
       sourceDocid: b.sourceDocid,
       sourceUri: b.sourceDocUri,
+      ...(b.sourceCollection && { sourceCollection: b.sourceCollection }),
       ...(b.sourceDocTitle && { sourceTitle: b.sourceDocTitle }),
       ...(b.linkText && { linkText: b.linkText }),
       startLine: b.startLine,

@@ -1,0 +1,35 @@
+{
+  "branch": "fn-175-diagnose-native-retrieval-acceptance",
+  "evidence": [
+    ".flow/tmp/qa-fn-175-diagnose-native-retrieval-acceptance/cli-query-main.txt",
+    ".flow/tmp/qa-fn-175-diagnose-native-retrieval-acceptance/cli-query-fn175.txt",
+    ".flow/artifacts/fn-175-diagnose-native-retrieval-acceptance/native/run3-after-fix-report.json"
+  ],
+  "findings": {
+    "backend": "interactive",
+    "headSha": "828cb43423054f81c4be991d353f58ad064eaf39",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-3eb40d555f73ae32da14465eaa81a808230dfc1f8ffb6edd62ac80a9d2bb1b0b"
+  },
+  "head_sha": "828cb43423054f81c4be991d353f58ad064eaf39",
+  "id": "fn-175-diagnose-native-retrieval-acceptance",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "PASS",
+  "rid_coverage": {
+    "covered": 1,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "requirements"
+      }
+    ],
+    "total": 1
+  },
+  "timestamp": "2026-09-26T12:24:57Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

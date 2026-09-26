@@ -76,6 +76,12 @@ export function buildEligibleDocumentQuery(
     params.push(`%${options.author.toLowerCase()}%`);
   }
 
+  // Without planner statistics a collection filter can outrank the hash
+  // index; a hash allowlist is always the selective predicate.
+  const hashPin =
+    options.allowedMirrorHashes === undefined
+      ? ""
+      : " INDEXED BY idx_documents_mirror_hash";
   if (options.allowedMirrorHashes !== undefined) {
     conditions.push("d.mirror_hash IN (SELECT value FROM json_each(?))");
     params.push(JSON.stringify(options.allowedMirrorHashes));
@@ -128,7 +134,7 @@ export function buildEligibleDocumentQuery(
         (string | number)[]
       >(`
       SELECT d.id, d.title, d.author, d.content_type, d.categories, COALESCE(d.record_source_path, d.rel_path) AS path, cc.text
-      FROM documents d LEFT JOIN content_chunks cc ON cc.mirror_hash = d.mirror_hash
+      FROM documents d${hashPin} LEFT JOIN content_chunks cc ON cc.mirror_hash = d.mirror_hash
       WHERE ${conditions.join(" AND ")}
     `)
       .iterate(...params);
@@ -180,7 +186,7 @@ export function buildEligibleDocumentQuery(
     params.push(JSON.stringify([...denied]));
   }
   return {
-    sql: `SELECT d.id, d.mirror_hash FROM documents d WHERE ${conditions.join(" AND ")}`,
+    sql: `SELECT d.id, d.mirror_hash FROM documents d${hashPin} WHERE ${conditions.join(" AND ")}`,
     params,
   };
 }

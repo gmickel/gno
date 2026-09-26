@@ -10,6 +10,7 @@ import type { ToolContext } from "../server";
 import { buildContentTypeBoostStatus } from "../../config/content-types";
 import { formatChunkingStatus } from "../../core/chunking-status";
 import { OWNER_CONFIG_PATH_FIELDS, withoutFields } from "../../core/host-paths";
+import { formatLinkWorkspace } from "../../core/link-workspace";
 import { formatVectorPartitionLines } from "../../core/vector-partition-status";
 import { resolveModelUri } from "../../llm/registry";
 import { createStandaloneResidentStatus } from "../../serve/resident-status";
@@ -55,6 +56,8 @@ function formatStatus(status: StatusView): string {
         `  ${c.name}: ${c.activeDocuments} docs, ${c.totalChunks} chunks` +
           (c.embeddedChunks > 0 ? `, ${c.embeddedChunks} embedded` : "")
       );
+      const workspace = formatLinkWorkspace(c);
+      if (workspace) lines.push(`    Link workspace: ${workspace}`);
     }
   }
 

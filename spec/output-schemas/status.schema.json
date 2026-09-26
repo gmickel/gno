@@ -111,6 +111,21 @@
             "type": "string",
             "description": "Collection root path. Same-host callers only: omitted for a remote REST or HTTP MCP caller."
           },
+          "workspaceRoot": {
+            "type": "string",
+            "description": "Effective link workspace root: plain wiki links resolve across every collection under it. Present only when the collection is in a workspace. Same-host callers only: omitted for a remote REST or HTTP MCP caller."
+          },
+          "workspaceSource": {
+            "type": "string",
+            "enum": [
+              "none",
+              "detected",
+              "configured",
+              "disabled",
+              "unavailable"
+            ],
+            "description": "How the link workspace was set: detected (nearest .obsidian folder), configured (workspaceRoot setting), disabled (workspaceRoot: false), unavailable (root could not be inspected; links stay collection-scoped), none (no workspace)"
+          },
           "documentCount": {
             "type": "integer",
             "description": "Number of active documents",

@@ -41,6 +41,10 @@ collections:
     # Memory substrate flag: only collections with memoryManaged: true accept
     # gno remember writes (omitted = false).
     # memoryManaged: true
+    # Link workspace for [[Note]] links (omitted = auto-detect the nearest
+    # .obsidian folder; an absolute path = join that workspace; false = keep
+    # this collection's links inside the collection).
+    # workspaceRoot: /Users/you/vault
     include: []
     exclude:
       - .git
@@ -252,6 +256,54 @@ Mixed evidence and derived artifacts use the most restrictive participating
 collection. Explicit partial checks disclose every omitted collection and
 reason; normal operations never silently drop restricted evidence.
 
+## Link workspaces
+
+If you index one Obsidian vault as several collections (for example one per
+top-level folder), a plain `[[Note]]` link in one collection finds its target
+in another, the way Obsidian does. Collections whose folders share one
+**link workspace** resolve plain wiki links across each other.
+
+GNO finds the workspace for you: it is the nearest folder, at or above the
+collection folder, that contains an `.obsidian` folder. Collections under the
+same vault join the same workspace with no configuration. A collection outside
+any vault keeps today's behavior: its links resolve only inside itself.
+
+Set `workspaceRoot` on a collection to change this:
+
+```yaml
+collections:
+  # Join a workspace that has no .obsidian folder (Logseq, Foam, Dendron,
+  # plain Markdown folders). Give every member the same root.
+  - name: projects
+    path: /Users/you/notes/projects
+    workspaceRoot: /Users/you/notes
+  - name: people
+    path: /Users/you/notes/people
+    workspaceRoot: /Users/you/notes
+
+  # Keep this collection's links inside the collection, even inside a vault.
+  - name: client-x
+    path: /Users/you/vault/Clients/X
+    workspaceRoot: false
+```
+
+`workspaceRoot` must be an absolute path to an existing folder that contains
+the collection folder. Anything else stops GNO with a configuration error that
+names the collection. Paths are compared after resolving symlinks, so a
+symlinked collection joins the workspace its real folder belongs to. A vault
+nested inside another vault (its own `.obsidian` folder) is its own workspace:
+documents inside it do not resolve into the outer vault, and the outer vault
+does not resolve into it.
+
+`gno status` and `gno collection list` show each collection's link workspace
+and whether it was detected or configured. After you change a workspace (move
+an `.obsidian` folder, add a collection, change `workspaceRoot`), the next
+`gno update` rebuilds the link graph and says so.
+
+How links resolve inside a workspace, and why resolving a link never widens
+what a search or answer can return, is described under
+[Link resolution](ARCHITECTURE.md#resolution).
+
 ## Memory-managed collections
 
 `collections[].memoryManaged` is optional (`true` | omitted). It declares the
@@ -384,9 +436,13 @@ find their default stores; GNO sets none of them.
 **Supported setups:**
 
 - Google Drive, iCloud Drive, and OneDrive on macOS.
+- For Google Drive, point the collection at `My Drive` or at a Shared drive
+  (`Shared drives/<drive>`), or at any folder inside either. The `Shared
+drives` folder itself is not supported; use one collection per Shared
+  drive.
 - For OneDrive, point the collection at a SharePoint library root directly
   under the SharedLibraries domain. The aggregation root, deeper paths, and
-  other library layouts are not supported.
+  other library layouts are not supported. Two library roots have been tested.
 - Windows Cloud Files and Linux/FUSE are not supported.
 - The provider may still update its own metadata. `local` mode does not pin,
   evict, or download files.
@@ -403,7 +459,16 @@ collections:
     pattern: "**/*"
     sourceAvailability: local
     egressPolicy: local_only
+  - name: team-drive
+    path: /Users/you/Library/CloudStorage/GoogleDrive-…/Shared drives/Team
+    pattern: "**/*"
+    sourceAvailability: local
+    egressPolicy: local_only
 ```
+
+In a Shared drive, files you have never opened on this Mac stay cloud-only.
+GNO indexes the files that are already local and reports the rest as
+`CLOUD_PLACEHOLDER`.
 
 Inspect and change one policy with:
 
@@ -683,16 +748,17 @@ Collections define what gets indexed.
 
 ### Collection Fields
 
-| Field          | Type   | Default   | Description                    |
-| -------------- | ------ | --------- | ------------------------------ |
-| `name`         | string | required  | Unique identifier (lowercase)  |
-| `path`         | string | required  | Absolute path to directory     |
-| `pattern`      | glob   | `**/*`    | File matching pattern          |
-| `include`      | array  | see below | Extension allowlist            |
-| `exclude`      | array  | see below | Patterns to skip               |
-| `updateCmd`    | string | -         | Shell command before indexing  |
-| `languageHint` | string | -         | BCP-47 language code           |
-| `models`       | object | -         | Per-collection model overrides |
+| Field           | Type            | Default     | Description                                                            |
+| --------------- | --------------- | ----------- | ---------------------------------------------------------------------- |
+| `name`          | string          | required    | Unique identifier (lowercase)                                          |
+| `path`          | string          | required    | Absolute path to directory                                             |
+| `pattern`       | glob            | `**/*`      | File matching pattern                                                  |
+| `include`       | array           | see below   | Extension allowlist                                                    |
+| `exclude`       | array           | see below   | Patterns to skip                                                       |
+| `updateCmd`     | string          | -           | Shell command before indexing                                          |
+| `languageHint`  | string          | -           | BCP-47 language code                                                   |
+| `models`        | object          | -           | Per-collection model overrides                                         |
+| `workspaceRoot` | path or `false` | auto-detect | Link workspace for wiki links; see [Link workspaces](#link-workspaces) |
 
 ### Default Include Extensions
 

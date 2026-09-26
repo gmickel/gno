@@ -191,6 +191,12 @@ export interface SearchOptions extends InferenceOptions {
   minScore?: number;
   /** Filter by collection */
   collection?: string;
+  /**
+   * Internal graph allowlist for a request partitioned into one retrieval per
+   * collection (Context Capsules, replay): graph neighbours may come from any
+   * of these collections, never from others. Defaults to `[collection]`.
+   */
+  graphCollections?: string[];
   /** Internal exact corpus scope used by deterministic retrieval replay. */
   retrievalScope?: {
     relPathPrefix?: string;
@@ -406,8 +412,6 @@ export type RerankedCandidate = FusionCandidate & {
 
 /** Search pipeline configuration */
 export interface PipelineConfig {
-  /** Expansion timeout in ms */
-  expansionTimeout: number;
   /** Max candidates to rerank */
   rerankCandidates: number;
   /** RRF configuration */
@@ -418,7 +422,6 @@ export interface PipelineConfig {
 
 /** Default pipeline configuration */
 export const DEFAULT_PIPELINE_CONFIG: PipelineConfig = {
-  expansionTimeout: 5000,
   rerankCandidates: 20,
   rrf: DEFAULT_RRF_CONFIG,
   blendingSchedule: DEFAULT_BLENDING_SCHEDULE,

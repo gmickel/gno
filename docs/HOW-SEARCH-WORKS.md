@@ -702,9 +702,11 @@ context creation, so a warm stage time is not a cold-request budget.
 Balanced mode can skip expansion on larger presets. Strong lexical signals can
 also skip expansion, and query expansion is cached by query and model. These
 optimizations do not establish a fixed latency gain or quality equivalence across
-corpora. Cold expansion can still exceed the expansion stage's five-second budget.
-That budget is separate from model load/inference timeouts; raising those timeouts
-does not extend it. Inspect stage outcomes and fallbacks when comparing runs.
+corpora. Expansion has no time budget of its own: a cold model load and slow
+hardware (CPU generation can take 15 to 20 seconds) still expand. Loading runs
+under `models.loadTimeout` and generation under `models.inferenceTimeout`; if
+generation hits that timeout, the query continues without expansion. Inspect
+stage outcomes and fallbacks when comparing runs.
 
 ## Related Documentation
 

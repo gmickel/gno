@@ -12,7 +12,7 @@ import { lstat, realpath } from "node:fs/promises";
 // node:os — Bun has no home-directory helper
 import { homedir } from "node:os";
 // node:path — Bun has no path utilities
-import { basename, dirname, join, resolve, sep } from "node:path";
+import { basename, join, resolve, sep } from "node:path";
 
 export const SF_DATALESS = 0x4000_0000;
 export const IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES = 3;
@@ -63,6 +63,23 @@ export type AvailabilityObserver = {
 };
 
 export type ProviderLabel = "google" | "icloud" | "onedrive";
+
+/**
+ * Evidence layout within a provider. Google My Drive and Shared drives are
+ * distinct layouts so their receipts are never conflated.
+ */
+export type ProviderLayout =
+  | "my-drive"
+  | "shared-drive"
+  | "icloud-drive"
+  | "sharepoint-library";
+
+export type ProviderRootShape = {
+  provider: ProviderLabel;
+  layout: ProviderLayout;
+};
+
+const GOOGLE_SHARED_DRIVES_DIR = "Shared drives";
 
 type LibSymbols = {
   getiopolicy_np: (type: number, scope: number) => number;
@@ -409,29 +426,41 @@ function isErrno(error: unknown, code: string): boolean {
   );
 }
 
+function isImmediateContainerChild(name: string | undefined): boolean {
+  return (
+    name !== undefined && name.length > 0 && !FIXTURE_BASENAME_RE.test(name)
+  );
+}
+
 export function classifyProviderRootShape(
   absPath: string,
   home: string = homedir()
-): ProviderLabel | null {
+): ProviderRootShape | null {
   const cloudStorage = join(home, "Library", "CloudStorage");
   const relativeCloudPath = absPath.startsWith(cloudStorage + sep)
     ? absPath.slice(cloudStorage.length + 1).split(sep)
     : [];
-  if (
-    relativeCloudPath.length === 2 &&
-    relativeCloudPath[0]?.startsWith("GoogleDrive-") &&
-    relativeCloudPath[1] === "My Drive"
-  ) {
-    return "google";
+  const [domain, container, child] = relativeCloudPath;
+  if (domain?.startsWith("GoogleDrive-")) {
+    if (relativeCloudPath.length === 2 && container === "My Drive") {
+      return { provider: "google", layout: "my-drive" };
+    }
+    if (
+      relativeCloudPath.length === 3 &&
+      container === GOOGLE_SHARED_DRIVES_DIR &&
+      isImmediateContainerChild(child)
+    ) {
+      return { provider: "google", layout: "shared-drive" };
+    }
+    return null;
   }
   if (
     relativeCloudPath.length === 2 &&
-    relativeCloudPath[0]?.startsWith("OneDrive-") &&
-    relativeCloudPath[0].includes("SharedLibraries") &&
-    relativeCloudPath[1] !== undefined &&
-    !FIXTURE_BASENAME_RE.test(relativeCloudPath[1])
+    domain?.startsWith("OneDrive-") &&
+    domain.includes("SharedLibraries") &&
+    isImmediateContainerChild(container)
   ) {
-    return "onedrive";
+    return { provider: "onedrive", layout: "sharepoint-library" };
   }
   const iCloudRoot = join(
     home,
@@ -439,21 +468,17 @@ export function classifyProviderRootShape(
     "Mobile Documents",
     "com~apple~CloudDocs"
   );
-  return absPath === iCloudRoot ? "icloud" : null;
+  return absPath === iCloudRoot
+    ? { provider: "icloud", layout: "icloud-drive" }
+    : null;
 }
 
-export async function resolveProviderRoot(rootArg: string): Promise<{
-  realPath: string;
-  provider: ProviderLabel;
-}>;
-export async function resolveProviderRoot(
-  rootArg: string,
-  home: string
-): Promise<{ realPath: string; provider: ProviderLabel }>;
+export type ResolvedProviderRoot = ProviderRootShape & { realPath: string };
+
 export async function resolveProviderRoot(
   rootArg: string,
   home: string = homedir()
-): Promise<{ realPath: string; provider: ProviderLabel }> {
+): Promise<ResolvedProviderRoot> {
   if (!rootArg || rootArg.trim() === "") {
     throw new Error("unsafe root: --root must be explicitly supplied");
   }
@@ -461,10 +486,10 @@ export async function resolveProviderRoot(
     throw new Error("unsafe root: traversal segments are refused");
   }
   const abs = resolve(rootArg);
-  const provider = classifyProviderRootShape(abs, home);
-  if (!provider) {
+  const shape = classifyProviderRootShape(abs, home);
+  if (!shape) {
     throw new Error(
-      "unsafe root: expected an installed Google Drive, iCloud Drive, or immediate OneDrive SharedLibraries library root"
+      "unsafe root: expected an installed Google My Drive, an immediate Google Shared drive, iCloud Drive, or an immediate OneDrive SharedLibraries library root"
     );
   }
   const rootStat = await lstat(abs).catch(() => null);
@@ -483,16 +508,25 @@ export async function resolveProviderRoot(
   if (!(await lstat(real)).isDirectory()) {
     throw new Error("unsafe root: must be a directory");
   }
-  if (provider === "onedrive") {
-    const domain = dirname(abs);
-    const domainReal = await realpath(domain).catch(() => null);
-    if (!domainReal || dirname(real) !== domainReal) {
+  if (
+    shape.layout === "sharepoint-library" ||
+    shape.layout === "shared-drive"
+  ) {
+    const cloudStorage = join(home, "Library", "CloudStorage");
+    const cloudStorageReal = await realpath(cloudStorage).catch(() => null);
+    const expectedReal =
+      cloudStorageReal === null
+        ? null
+        : join(cloudStorageReal, abs.slice(cloudStorage.length + 1));
+    if (real !== expectedReal) {
       throw new Error(
-        "unsafe root: OneDrive library must remain an immediate child of its installed SharedLibraries domain"
+        shape.layout === "shared-drive"
+          ? "unsafe root: Google Shared drive must remain an immediate child of its installed Shared drives directory"
+          : "unsafe root: OneDrive library must remain an immediate child of its installed SharedLibraries domain"
       );
     }
   }
-  return { realPath: real, provider };
+  return { realPath: real, ...shape };
 }
 
 export async function resolveFixtureChild(

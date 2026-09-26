@@ -314,7 +314,8 @@ gno similar gno://notes/auth.md --cross-collection
 # In your documents:
 
 See [[API Design]] for details.
-Check [[work:Project Plan]] for cross-collection link.
+Check [[Projects/Plan]] for a path link (resolves across collections of one vault).
+Check [[work:Project Plan]] to name the target collection explicitly.
 Read [[Security#OAuth]] for specific section.
 ```
 

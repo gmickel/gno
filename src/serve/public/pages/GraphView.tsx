@@ -83,6 +83,8 @@ interface GraphLink {
     resolution:
       | "exact-title"
       | "exact-path"
+      | "exact-name"
+      | "tie-break"
       | "path-fallback"
       | "ambiguous-fallback"
       | "similarity";

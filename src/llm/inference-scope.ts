@@ -169,9 +169,10 @@ export function withOwnedInferenceScope<T>(
 }
 
 /**
- * One page of a background pass: an inference deadline inside it fails only
- * that page (undefined), leaving the pass scope active for later pages.
- * Cancellation, or a deadline of the enclosing scope itself, still throws.
+ * Best-effort inference (one page of a background pass, or query expansion):
+ * an inference deadline inside it fails only this operation (undefined),
+ * leaving the enclosing scope active. Cancellation, or a deadline of the
+ * enclosing scope itself, still throws.
  */
 export async function withInferencePage<T>(
   operation: () => Promise<T>

@@ -144,7 +144,9 @@ lives in `structuredContent`; its text projection is deliberately compact and
 should not be expanded back into duplicate model context.
 
 Use `gno_changes`, `gno_diff`, and `gno_impact` for retained metadata history
-and bounded dependency questions. Use `gno_trace_list` and `gno_trace_show` for
+and bounded dependency questions. `gno_impact` takes optional `collections`
+to keep the traversal in scope; links in a vault can resolve across
+collections, so unscoped graph tools cover every collection. Use `gno_trace_list` and `gno_trace_show` for
 private local diagnostics. Invoke `gno_trace_label` only when the user
 explicitly provides a relevant, irrelevant, or missing-expected judgment.
 Trace export/replay/delete/purge and saved-Capsule watch lifecycle remain

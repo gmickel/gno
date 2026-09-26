@@ -32,6 +32,7 @@ describe("VectorStatsPort", () => {
         collection TEXT,
         active INTEGER DEFAULT 1
       );
+      CREATE INDEX IF NOT EXISTS idx_documents_mirror_hash ON documents(mirror_hash);
 
       CREATE TABLE IF NOT EXISTS content_chunks (
         mirror_hash TEXT NOT NULL,

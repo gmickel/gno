@@ -1,21 +1,78 @@
 {
   "branch_name": "fn-192-document-lookups-that-plan-on-the",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-26T14:19:31.481375Z",
   "created_at": "2026-09-26T11:38:25.451582Z",
   "default_impl": null,
   "default_review": null,
   "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-192-document-lookups-that-plan-on-the",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-192-document-lookups-that-plan-on-the.1": 0
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "review_attempts": [
+    {
+      "artifact_sha256": "3a2bba7d853ce9f9d4e513443e5978caf38908aa41bfec8b805509b3dc02d1a6",
+      "backend": "codex",
+      "base_sha": "b8f8aa6ed01c62e340d924b2975863dbcfb0551d",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-898627cbe713e7a80d85bee3c2a3c5c4",
+            "classification": "pre_existing",
+            "findingId": "finding-898627cbe713e7a80d85bee3c2a3c5c4",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "c934189d3a5599bd834eea153e7df3ec8054a49b",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 150855,
+      "output_sha256": "5df2c7e01591bc59e66d917462abf56d9d8624ea7d7489755942de925ed3d666",
+      "reservation_id": "186116f60e51428887c0742dc51575bb",
+      "round_consumed": true,
+      "scope": "impl:fn-192-document-lookups-that-plan-on-the.1",
+      "superseded_by": null,
+      "task": "fn-192-document-lookups-that-plan-on-the.1",
+      "timestamp": "2026-09-26T13:17:49.390115Z",
+      "tool_calls": 13,
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "impl:fn-192-document-lookups-that-plan-on-the.1": 1
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-192-document-lookups-that-plan-on-the.1": 0
+  },
   "spec_path": ".flow/specs/fn-192-document-lookups-that-plan-on-the.md",
-  "status": "open",
+  "status": "done",
   "title": "Document lookups that plan on the active index",
   "tracker": {
     "baseHashFlow": null,
@@ -28,5 +85,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-26T11:39:02.490073Z"
+  "updated_at": "2026-09-26T14:19:31.893291Z"
 }
