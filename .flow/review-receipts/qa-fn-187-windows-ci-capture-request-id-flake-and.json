@@ -1,0 +1,35 @@
+{
+  "branch": "chore/close-fn-187-file-specs",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "45190e9c1434e1826766ea2b11bc6685f4759982",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-71079bc760103024930e3d3902b56efd680b8658816c82837b5dca4927d2af5c"
+  },
+  "head_sha": "45190e9c1434e1826766ea2b11bc6685f4759982",
+  "id": "fn-187-windows-ci-capture-request-id-flake-and",
+  "mode": "interactive",
+  "na_reason": "CI-only change; evidence is green test-windows on PRs 262 (40964afd), 263 (af2d8d4e) and 264 (53004ff5) after the ledger-directory fix in 8dc87f09, and timeout-minutes on every CI job",
+  "open_p0p1": [],
+  "qa_outcome": "NA",
+  "rid_coverage": {
+    "covered": 2,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      }
+    ],
+    "total": 2
+  },
+  "timestamp": "2026-09-26T11:39:02Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
