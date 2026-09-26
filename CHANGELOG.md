@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
 ### Changed
 
 - Remote callers no longer receive your configuration paths or the file paths of documents they change. A REST response to a caller that is not on your machine (the same `localClient` rule as document paths) and every Streamable HTTP MCP result now omit the config file and index database locations (`configPath`, `dbPath`) and each collection's root folder (`path`) from `/api/status`, `/api/collections`, and `gno_status`. REST `/api/status` also omits suggested-folder, model cache, and model file paths, and `/api/connectors` omits connector install paths. Document create, editable copy, rename, move, duplicate, trash, save, and create-folder responses also omit the file's host `path` (and the save's `file://` `uri`) for remote callers; they still carry the `gno://` URI and `relPath`. The dashboard's disk check now reports free space for the model cache without naming its folder. Remote callers name collections by `name`. The Collections page, dashboard, and connector list work as before on your machine; a remote Web UI shows them without the path lines. `path`, `configPath`, and `dbPath` are now optional in the `status` and `collection-list` schemas. See [Host Paths and Remote Callers](docs/API.md#host-paths-and-remote-callers).
@@ -16,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows: writes with a request ID (`gno capture --request-id`, `gno remember --request-id`, and the MCP, REST, and SDK equivalents) no longer start PowerShell on every call to check the private ledger directory's permissions. The check runs once and is recorded, and later calls skip it while the directory and its permissions are unchanged. A replaced directory or a permissions change triggers the full check again, and a directory another account can access is still refused before anything is written.
 - `gno serve` and `gno daemon` now drain an embedding backlog that already exists when they start (for example after `gno index --no-embed` or an interrupted run) instead of waiting for the next file change; the first pass runs 30 seconds after startup.
 - A background embedding batch that exceeds `models.inferenceTimeout` no longer aborts the whole pass. Only that batch fails and stays pending; later batches still embed, so one slow chunk at the head of the backlog cannot keep every other chunk pending.
+- Agent sessions: a running `gno serve` on a session archive picks up sources added or removed with `gno sessions source add/remove` without a restart, both on the Sessions page and in `/api/sessions/status`. Remove on the page succeeds for a source the CLI already removed, and a config file the server cannot read is reported instead of serving stale sources.
+- Agent sessions: pressing Enter on "Discover local sources" moves keyboard focus to the discovery results instead of dropping it.
+- URIs from a named index now carry `?index=` in `gno ls --json` and in `gno ask --json` `meta.answerContext`, like the other JSON outputs, so they read back from the right index with `gno get`.
+- The session archive guide explains how the `pending` unit count relates to the other unit counts in `gno sessions status`.
 
 ## [2.7.0] - 2026-09-25
 

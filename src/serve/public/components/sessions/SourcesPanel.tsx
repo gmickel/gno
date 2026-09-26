@@ -394,8 +394,12 @@ export function SourcesPanel({
   const [notice, setNotice] = useState<{ text: string } | null>(null);
   const noticeRef = useRef<HTMLParagraphElement>(null);
   useFocusOnChange(notice, noticeRef);
+  // Bumped when the Discover button's run finishes: focus moves to its outcome.
+  const [discoveredCount, setDiscoveredCount] = useState(0);
+  const discoveryRef = useRef<HTMLDivElement>(null);
+  useFocusOnChange(discoveredCount, discoveryRef);
 
-  const discover = async () => {
+  const discover = async (focusOutcome = false) => {
     setDiscovering(true);
     const result = await sessionsApi<SessionsDiscovery>(
       "/api/sessions/discover"
@@ -403,6 +407,7 @@ export function SourcesPanel({
     setDiscovering(false);
     setDiscoverError(result.error);
     setDiscovery(result.data);
+    if (focusOutcome) setDiscoveredCount((count) => count + 1);
   };
 
   const registered = async (sourceId: string, collection: string) => {
@@ -425,7 +430,7 @@ export function SourcesPanel({
         {localClient && (
           <Button
             disabled={discovering}
-            onClick={() => void discover()}
+            onClick={() => void discover(true)}
             size="sm"
             variant="outline"
           >
@@ -473,67 +478,79 @@ export function SourcesPanel({
         </p>
       )}
 
-      {discoverError && (
-        <p className="break-words text-destructive text-sm" role="alert">
-          {discoverError}
-        </p>
-      )}
-      {discovery && (
-        <div className="space-y-3 rounded-lg border border-dashed border-border/70 p-4">
-          <h3 className="font-medium">Discovered on this machine</h3>
-          <p className="text-muted-foreground text-xs">
-            Preview only: discovery reads nothing into the archive. Register a
-            source to permit manual imports from it.
-          </p>
-          {discovery.candidates.length === 0 && (
-            <p className="text-muted-foreground text-sm">
-              No supported session stores were found.
+      {(discoverError || discovery) && (
+        <div
+          aria-label="Discovery results"
+          className={`space-y-3 ${FOCUS_RING}`}
+          ref={discoveryRef}
+          role="region"
+          tabIndex={-1}
+        >
+          {discoverError && (
+            <p className="break-words text-destructive text-sm" role="alert">
+              {discoverError}
             </p>
           )}
-          <ul className="space-y-4">
-            {discovery.candidates.map((candidate) => (
-              <li
-                className="min-w-0 space-y-2"
-                key={`${candidate.harness}:${candidate.path}`}
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="secondary">
-                    {SESSION_HARNESS_LABELS[candidate.harness]}
-                  </Badge>
-                  <span className="min-w-0 break-all font-mono text-xs">
-                    {candidate.path}
-                  </span>
-                </div>
-                <p className="text-muted-foreground text-xs">
-                  {candidate.units}
-                  {candidate.truncated ? "+" : ""} units ·{" "}
-                  {formatBytes(candidate.bytes)}
-                  {candidate.formatVersions.length > 0 &&
-                    ` · format ${candidate.formatVersions.join(", ")}`}
+          {discovery && (
+            <div className="space-y-3 rounded-lg border border-dashed border-border/70 p-4">
+              <h3 className="font-medium">Discovered on this machine</h3>
+              <p className="text-muted-foreground text-xs">
+                Preview only: discovery reads nothing into the archive. Register
+                a source to permit manual imports from it.
+              </p>
+              {discovery.candidates.length === 0 && (
+                <p className="text-muted-foreground text-sm">
+                  No supported session stores were found.
                 </p>
-                {candidate.registeredAs ? (
-                  <p className="text-sm">
-                    Registered as{" "}
-                    <span className="font-mono">{candidate.registeredAs}</span>
-                  </p>
-                ) : (
-                  <RegisterForm
-                    candidate={candidate}
-                    archiveCollections={archiveCollections}
-                    onRegistered={registered}
-                  />
-                )}
-              </li>
-            ))}
-          </ul>
-          {discovery.warnings.map((warning) => (
-            <p
-              className="text-amber-800 text-xs dark:text-amber-200"
-              key={warning}
-            >
-              {warning}
-            </p>
-          ))}
+              )}
+              <ul className="space-y-4">
+                {discovery.candidates.map((candidate) => (
+                  <li
+                    className="min-w-0 space-y-2"
+                    key={`${candidate.harness}:${candidate.path}`}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="secondary">
+                        {SESSION_HARNESS_LABELS[candidate.harness]}
+                      </Badge>
+                      <span className="min-w-0 break-all font-mono text-xs">
+                        {candidate.path}
+                      </span>
+                    </div>
+                    <p className="text-muted-foreground text-xs">
+                      {candidate.units}
+                      {candidate.truncated ? "+" : ""} units ·{" "}
+                      {formatBytes(candidate.bytes)}
+                      {candidate.formatVersions.length > 0 &&
+                        ` · format ${candidate.formatVersions.join(", ")}`}
+                    </p>
+                    {candidate.registeredAs ? (
+                      <p className="text-sm">
+                        Registered as{" "}
+                        <span className="font-mono">
+                          {candidate.registeredAs}
+                        </span>
+                      </p>
+                    ) : (
+                      <RegisterForm
+                        candidate={candidate}
+                        archiveCollections={archiveCollections}
+                        onRegistered={registered}
+                      />
+                    )}
+                  </li>
+                ))}
+              </ul>
+              {discovery.warnings.map((warning) => (
+                <p
+                  className="text-amber-800 text-xs dark:text-amber-200"
+                  key={warning}
+                >
+                  {warning}
+                </p>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </section>

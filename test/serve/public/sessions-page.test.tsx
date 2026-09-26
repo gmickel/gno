@@ -652,6 +652,20 @@ describe("sessions page", () => {
     await waitFor(() => expect(document.activeElement).toBe(alert));
   });
 
+  test("Enter on Discover local sources moves focus to the results", async () => {
+    const { user } = await renderPage();
+    const button = await screen.findByRole("button", {
+      name: "Discover local sources",
+    });
+    button.focus();
+    await user.keyboard("{Enter}");
+    const results = await screen.findByRole("region", {
+      name: "Discovery results",
+    });
+    expect(results.getAttribute("tabindex")).toBe("-1");
+    await waitFor(() => expect(document.activeElement).toBe(results));
+  });
+
   test("preview moves focus to the receipt region", async () => {
     const { user } = await renderPage();
     await user.click(

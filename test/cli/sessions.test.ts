@@ -232,7 +232,13 @@ describe("gno sessions CLI", () => {
       "ls",
       "--json"
     );
-    expect(JSON.parse(listed.stdout).documents.length).toBeGreaterThan(0);
+    const documents = (
+      JSON.parse(listed.stdout) as { documents: Array<{ uri: string }> }
+    ).documents;
+    expect(documents.length).toBeGreaterThan(0);
+    for (const doc of documents) {
+      expect(doc.uri).toEndWith("?index=sessions");
+    }
   });
 
   test("ask --json result URIs on the archive carry ?index=", async () => {
