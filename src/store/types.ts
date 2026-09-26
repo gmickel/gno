@@ -20,6 +20,7 @@ import type {
   FileRefactorRecoveryReceipt,
   FileRefactorRecoveryReceiptDraft,
 } from "../core/file-refactor-journal";
+import type { LinkWorkspaceSource } from "../core/link-workspace";
 import type { MetadataPredicate, TypedMetadata } from "../core/typed-metadata";
 import type {
   ChunkingPolicyToken,
@@ -113,6 +114,14 @@ export interface CollectionRow {
   egressPolicy: EgressPolicy;
   /** Whether policy was explicit or supplied by a safe default. */
   egressPolicySource: EgressPolicySource;
+  /** Canonical collection root (real path), when resolvable. */
+  realPath?: string | null;
+  /** Effective link workspace root; null means collection-scoped links. */
+  workspaceRoot?: string | null;
+  /** How the workspace root was established. */
+  workspaceSource?: LinkWorkspaceSource;
+  /** Collection-relative prefixes of nested vaults with their own workspace. */
+  workspaceNested?: string[];
   syncedAt: string;
 }
 
@@ -351,6 +360,8 @@ export interface BacklinkRow {
   sourceDocUri: string;
   /** Source document title */
   sourceDocTitle: string | null;
+  /** Collection of the source document */
+  sourceCollection?: string;
   /** Link display text */
   linkText: string | null;
   /** 1-based line number in source */
@@ -876,6 +887,10 @@ export interface GraphEdgeAudit {
   resolution:
     | "exact-title"
     | "exact-path"
+    /** Only file with that name (or path suffix) in its link workspace. */
+    | "exact-name"
+    /** Won over same-named files by the same-folder / shallower tie-break. */
+    | "tie-break"
     | "path-fallback"
     | "ambiguous-fallback"
     | "similarity";
@@ -1066,6 +1081,12 @@ export interface GetGraphNeighborsOptions {
   seedDocumentIds: number[];
   /** Filter neighbors to a single collection */
   collection?: string;
+  /**
+   * Graph allowlist: every edge's resolved source and target must be in one
+   * of these collections. Takes precedence over `collection`; empty denies
+   * all. Undefined (with no `collection`) is unrestricted.
+   */
+  collections?: string[];
   /** Max edges to return (default 10000) */
   limitEdges?: number;
 }
@@ -1598,6 +1619,14 @@ export interface StorePort {
    * Get all collections from DB.
    */
   getCollections(): Promise<StoreResult<CollectionRow[]>>;
+
+  /**
+   * Re-detect nested vaults below a collection root from its indexed
+   * document directories; returns whether stored membership changed.
+   */
+  refreshCollectionNestedWorkspaces?(
+    collection: string
+  ): Promise<StoreResult<boolean>>;
 
   /**
    * Get all contexts from DB.

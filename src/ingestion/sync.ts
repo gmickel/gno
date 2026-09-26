@@ -2069,6 +2069,19 @@ export class SyncService {
       }
     }
 
+    // Nested vaults (their own `.obsidian/`) are discovered from the synced
+    // document directories; a change re-fingerprints the graph projection.
+    const nestedRefresh = await store.refreshCollectionNestedWorkspaces?.(
+      collection.name
+    );
+    if (nestedRefresh && !nestedRefresh.ok) {
+      errors.push({
+        relPath: "(link workspace)",
+        code: nestedRefresh.error.code,
+        message: nestedRefresh.error.message,
+      });
+    }
+
     if (syncOptions.projectTypedEdges !== false) {
       errors.push(...(await this.projectTypedEdges(store, syncOptions)));
     }

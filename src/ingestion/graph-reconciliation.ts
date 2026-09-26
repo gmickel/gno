@@ -13,14 +13,23 @@ import {
   normalizeRelationEdgeType,
   normalizeRelationTarget,
 } from "../core/change-diff";
+import { LINK_RESOLVER_VERSION } from "../core/link-workspace";
 import {
   normalizeMarkdownPath,
   normalizeWikiName,
   parseTargetParts,
 } from "../core/links";
+import {
+  createInMemoryWorkspaceResolver,
+  membershipsFromCollectionRows,
+} from "../store/sqlite/workspace-link-resolver";
 import { parseFrontmatter } from "./frontmatter";
 
-const VERSION = 1;
+/**
+ * Projection version. 2: workspace-wide wiki resolution; a stored version
+ * mismatch forces one full projection on the first sync after upgrade.
+ */
+const VERSION = 2;
 const EDGE_TYPE = /^[a-z][a-z0-9_]*$/;
 type ProjectionError = { relPath: string; code: string; message: string };
 
@@ -38,8 +47,27 @@ function identity(doc: DocumentRow): GraphReferenceDocument {
   };
 }
 
-/** Insert once in catalog order: preserves legacy Array.find ambiguity precedence. */
-function relationResolver(docs: GraphReferenceDocument[]) {
+/**
+ * Insert once in catalog order: preserves legacy Array.find ambiguity precedence.
+ * Plain wiki-style targets from a document inside a link workspace use the
+ * shared workspace ranking (a tie resolves to nothing); URIs, docids,
+ * collection-qualified paths and relative markdown keep their contracts.
+ */
+function relationResolver(
+  docs: GraphReferenceDocument[],
+  memberships: ReturnType<typeof membershipsFromCollectionRows>
+) {
+  const workspace = createInMemoryWorkspaceResolver(
+    memberships,
+    docs.map((doc) => ({
+      id: doc.documentId,
+      docid: doc.docid,
+      collection: doc.collection,
+      relPath: doc.relPath,
+      title: doc.title,
+    }))
+  );
+  const byId = new Map(docs.map((doc) => [doc.documentId, doc]));
   const docids = new Map<string, GraphReferenceDocument>();
   const uris = new Map<string, GraphReferenceDocument>();
   const paths = new Map<string, GraphReferenceDocument>();
@@ -84,14 +112,16 @@ function relationResolver(docs: GraphReferenceDocument[]) {
         localWiki.get(`${parts.collection}\0${key}`)
       );
     const relativePath = normalizeMarkdownPath(parts.ref, source.relPath);
-    return (
+    const exactPath =
       (relativePath
         ? paths.get(`${source.collection}/${relativePath}`)
-        : undefined) ??
-      paths.get(parts.ref) ??
-      localWiki.get(`${source.collection}\0${key}`) ??
-      wiki.get(key)
-    );
+        : undefined) ?? paths.get(parts.ref);
+    if (exactPath) return exactPath;
+    const ranked = workspace(source, key);
+    if (ranked !== undefined && ranked !== null) {
+      return ranked.traversable ? byId.get(ranked.target.id) : undefined;
+    }
+    return localWiki.get(`${source.collection}\0${key}`) ?? wiki.get(key);
   };
 }
 
@@ -105,12 +135,23 @@ export async function projectGraph(
   try {
     const graph = store.graphReferenceStore?.();
     let fingerprint = "";
+    // Partial ports (tests, adapters without collections) resolve links
+    // collection-scoped; the SQLite store always reports memberships.
+    const collections =
+      typeof store.getCollections === "function"
+        ? await store.getCollections()
+        : undefined;
+    if (collections && !collections.ok)
+      throw new Error(collections.error.message);
+    const memberships = membershipsFromCollectionRows(collections?.value ?? []);
     if (graph) {
-      const collections = await store.getCollections();
-      if (!collections.ok) throw new Error(collections.error.message);
+      if (!collections) throw new Error("Graph projection needs collections");
+      // Effective workspace membership (roots, nested vaults, real paths) is
+      // part of each collection row, so a membership change re-projects.
       fingerprint = new Bun.CryptoHasher("sha256")
         .update(
           JSON.stringify({
+            resolver: LINK_RESOLVER_VERSION,
             rules: options.contentTypeRules ?? [],
             collections: collections.value
               .map(({ syncedAt: _syncedAt, ...config }) => config)
@@ -138,7 +179,7 @@ export async function projectGraph(
       state.inProgress ||
       state.version !== VERSION ||
       state.configFingerprint !== fingerprint;
-    const resolve = relationResolver(current);
+    const resolve = relationResolver(current, memberships);
     let selected: Set<number> | undefined;
     if (!full && graph) {
       selected = new Set(requestedSources);
@@ -165,7 +206,8 @@ export async function projectGraph(
         ))
           selected.add(id);
         const resolveOld = relationResolver(
-          previous.map((row) => row.document)
+          previous.map((row) => row.document),
+          memberships
         );
         for (const row of previous) {
           const source = currentById.get(row.document.documentId);

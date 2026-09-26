@@ -46,6 +46,7 @@ import { migration as m029 } from "./029-graph-reference-state";
 import { migration as m030 } from "./030-typed-metadata";
 import { migration as m031 } from "./031-runtime-independent-vectors";
 import { migration as m032 } from "./032-vector-runtime-callers";
+import { migration as m033 } from "./033-collection-link-workspace";
 
 /** All migrations in order */
 export const migrations = [
@@ -81,4 +82,5 @@ export const migrations = [
   m030,
   m031,
   m032,
+  m033,
 ];

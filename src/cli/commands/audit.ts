@@ -6,7 +6,6 @@ import { basename, dirname, join } from "node:path";
 
 import type {
   AuditCategory,
-  AuditMaxFindings,
   AuditReport,
   AuditRunResult,
 } from "../../core/audit";
@@ -36,7 +35,7 @@ export interface AuditCommandOptions {
   paths?: string[];
   tags?: string[];
   /** Positive integer, `all`, or the raw CLI string for either. */
-  maxFindings?: AuditMaxFindings | string;
+  maxFindings?: number | string;
   maxAgeDays?: number;
   orphanRoots?: string[];
   orphanIgnorePrefixes?: string[];

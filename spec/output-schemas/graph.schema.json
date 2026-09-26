@@ -92,6 +92,8 @@
                 "enum": [
                   "exact-title",
                   "exact-path",
+                  "exact-name",
+                  "tie-break",
                   "path-fallback",
                   "ambiguous-fallback",
                   "similarity"
