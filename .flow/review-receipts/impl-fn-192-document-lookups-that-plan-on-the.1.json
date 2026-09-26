@@ -1,0 +1,52 @@
+{
+  "base": "b8f8aa6ed01c62e340d924b2975863dbcfb0551d",
+  "effort": "medium",
+  "findings": {
+    "backend": "codex",
+    "baseSha": "b8f8aa6ed01c62e340d924b2975863dbcfb0551d",
+    "headSha": "c934189d3a5599bd834eea153e7df3ec8054a49b",
+    "items": [
+      {
+        "anchor": {
+          "baseSha": "b8f8aa6ed01c62e340d924b2975863dbcfb0551d",
+          "headSha": "c934189d3a5599bd834eea153e7df3ec8054a49b",
+          "path": "src/store/sqlite/eligibility.ts",
+          "side": "head",
+          "startLine": 131
+        },
+        "body": "With `allowedMirrorHashes`, `collection`, and `exclude`, the preliminary metadata query still plans on `idx_docs_wiki_relpath_resolve (collection=?)`. The new hash-index pin applies only to the returned query. Reproduced against the migrated in-memory schema; this preliminary query is unchanged from base.",
+        "classification": "pre_existing",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-9d0b315379131d988197b6cd72ff62dfe03912e8a492e61381157146629a1a8b",
+        "id": "finding-898627cbe713e7a80d85bee3c2a3c5c4",
+        "lastSeenReceiptId": "review-9d0b315379131d988197b6cd72ff62dfe03912e8a492e61381157146629a1a8b",
+        "ordinal": 1,
+        "rIds": [
+          "R1"
+        ],
+        "severity": "P2",
+        "status": "open",
+        "suggestion": "Apply the conditional hash-index pin to the preliminary query and cover this option combination in the plan test.",
+        "title": "With `allowedMirrorHashes`, `collection`, and `exclude`, the preliminary metadata query still plans on `idx_docs_wiki_relpath_resolve (collection=?)`"
+      }
+    ],
+    "reviewKind": "implementation",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-9d0b315379131d988197b6cd72ff62dfe03912e8a492e61381157146629a1a8b"
+  },
+  "focus": "migration 033 drops idx_documents_active: any query that needs it (active=0 scans, cleanup, counts), migration down/idempotency, INDEXED BY pins failing if index missing on older DBs",
+  "id": "fn-192-document-lookups-that-plan-on-the.1",
+  "introduced_count": 0,
+  "mode": "codex",
+  "model": "gpt-6-astra",
+  "pre_existing_count": 1,
+  "review": "I\u2019ll read the task contract, inspect the diff and affected callers, then run the focused checks.\n\nThe focused tests cannot create temporary databases in this read-only sandbox (`EROFS`). I\u2019m checking the retained audit evidence and using in-memory SQLite to verify the migration and query plans.\n\nNo blocking introduced findings. In-memory verification passed migration 033 and all five literal query-plan shapes. Focused suites were blocked by the sandbox\u2019s read-only filesystem (`EROFS`).\n\n## Pre-existing issues (not blocking this verdict)\n\n### [P2, confidence 75, introduced=false] src/store/sqlite/eligibility.ts:131 \u2014 Exclusion prequery still scans the collection\n\n- **Severity:** P2\n- **Confidence:** 75\n- **Classification:** pre_existing\n- **File:Line:** `src/store/sqlite/eligibility.ts:131`\n- **R-IDs:** [R1]\n- **Problem:** With `allowedMirrorHashes`, `collection`, and `exclude`, the preliminary metadata query still plans on `idx_docs_wiki_relpath_resolve (collection=?)`. The new hash-index pin applies only to the returned query. Reproduced against the migrated in-memory schema; this preliminary query is unchanged from base.\n- **Suggestion:** Apply the conditional hash-index pin to the preliminary query and cover this option combination in the plan test.\n\n## Requirements coverage\n\n| R-ID | Status | Evidence |\n|---|---|---|\n| R1 | partial | Listed shapes use the hash index; exclusion prequery remains collection-scoped. |\n| R2 | met | Retained 20k-document benchmark records before/after timings and identical results. |\n| R3 | met | Migration drops the active index; remaining pins and rationale are documented. |\n\nUnaddressed R-IDs: []\nClassification counts: 0 introduced, 1 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":0,\"pre_existing\":1},\"unaddressed\":[]}\n```\n\n<verdict>SHIP</verdict>",
+  "review_reservation_id": "186116f60e51428887c0742dc51575bb",
+  "session_id": "01a0dddc-2e5b-7151-8836-4c449a6bd9ae",
+  "spec": "codex:gpt-6-astra:medium",
+  "timestamp": "2026-09-26T13:17:49.388913Z",
+  "type": "impl_review",
+  "unaddressed": [],
+  "verdict": "SHIP"
+}

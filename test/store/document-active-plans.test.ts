@@ -141,6 +141,21 @@ const pinned: { name: string; run: () => Promise<unknown> }[] = [
       return Promise.resolve(db.query(eligible.sql));
     },
   },
+  {
+    // The exclusion pre-read runs its own documents query before the result.
+    name: "eligibility with allowed mirror hashes, collection and exclude",
+    run: () => {
+      const eligible = buildEligibleDocumentQuery(
+        {
+          allowedMirrorHashes: ["a", "b"],
+          collection: "notes",
+          exclude: ["draft"],
+        },
+        db
+      );
+      return Promise.resolve(db.query(eligible.sql));
+    },
+  },
 ];
 
 test.each(pinned)("$name plans on the mirror_hash index", async ({ run }) => {
