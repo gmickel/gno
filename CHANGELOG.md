@@ -7,7 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-
 ### Added
 
 - macOS: `sourceAvailability: local` now works for collections in Google Drive Shared drives (`~/Library/CloudStorage/GoogleDrive-…/Shared drives/<drive>`, or any folder inside one). Files already on the Mac are indexed; files that are still cloud-only are skipped as `CLOUD_PLACEHOLDER` and are not downloaded. The `Shared drives` folder itself is still rejected with `SOURCE_AVAILABILITY_UNSUPPORTED`; create one collection per Shared drive. OneDrive support was re-tested for the two SharePoint library roots on the test Mac, and the docs now state that count. Thanks to the user who reported that Shared drives were rejected.
