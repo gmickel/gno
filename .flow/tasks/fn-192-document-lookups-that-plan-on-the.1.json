@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-192-document-lookups-that-plan-on-the",
   "spec_path": ".flow/tasks/fn-192-document-lookups-that-plan-on-the.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Document lookups that plan on the active index",
   "updated_at": "2026-09-26T11:43:22.080146Z"
 }

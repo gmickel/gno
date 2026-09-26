@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-179-google-shared-drives-and-sharepoint",
   "spec_path": ".flow/tasks/fn-179-google-shared-drives-and-sharepoint.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Google Shared Drives and SharePoint library source availability",
   "updated_at": "2026-09-26T11:44:18.180285Z"
 }

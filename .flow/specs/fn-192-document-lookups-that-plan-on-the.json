@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-192-document-lookups-that-plan-on-the",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-26T14:19:31.481375Z",
   "created_at": "2026-09-26T11:38:25.451582Z",
   "default_impl": null,
   "default_review": null,
@@ -72,7 +72,7 @@
     "impl:fn-192-document-lookups-that-plan-on-the.1": 0
   },
   "spec_path": ".flow/specs/fn-192-document-lookups-that-plan-on-the.md",
-  "status": "open",
+  "status": "done",
   "title": "Document lookups that plan on the active index",
   "tracker": {
     "baseHashFlow": null,
@@ -85,5 +85,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-26T13:17:49.395052Z"
+  "updated_at": "2026-09-26T14:19:31.893291Z"
 }
