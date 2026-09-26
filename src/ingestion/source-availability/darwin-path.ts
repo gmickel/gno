@@ -1,6 +1,7 @@
 /**
  * Metadata-free recognition of the macOS File Provider layouts covered by the
- * physical fn-118 evidence. This is intentionally narrower than all paths on
+ * physical evidence in research/file-provider/ (fn-118; Google Shared drives in
+ * fn-179). This is intentionally narrower than all paths on
  * Darwin: unknown storage must not inherit a no-materialization guarantee.
  */
 
@@ -43,8 +44,13 @@ export function classifyDarwinFileProviderPath(
     return "unsupported";
   }
   const domain = parts[2];
-  if (domain?.startsWith("GoogleDrive-") && parts[3] === "My Drive") {
-    return "google-drive";
+  if (domain?.startsWith("GoogleDrive-")) {
+    const isMyDrive = parts[3] === "My Drive";
+    const isSharedDrive =
+      parts[3] === "Shared drives" &&
+      typeof parts[4] === "string" &&
+      parts[4].length > 0;
+    return isMyDrive || isSharedDrive ? "google-drive" : "unsupported";
   }
   if (
     domain?.startsWith("OneDrive-") &&

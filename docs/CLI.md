@@ -1038,9 +1038,9 @@ flag). Exact values: `any` (default) | `local`.
 
 - **`any`**: GNO reads every matching file (the default).
 - **`local`**: GNO indexes only files already on disk and never makes a cloud
-  provider download one. Supported on macOS with Google Drive, iCloud Drive,
-  and OneDrive SharePoint library roots directly under the SharedLibraries
-  domain. Cloud-only files are skipped and reported; documents already indexed
+  provider download one. Supported on macOS with Google Drive (My Drive and
+  individual Shared drives), iCloud Drive, and OneDrive SharePoint library
+  roots directly under the SharedLibraries domain. Cloud-only files are skipped and reported; documents already indexed
   under a cloud-only folder stay in the index. Other platforms and filesystems
   fail with an error. Independent of `egressPolicy`. See
   [Configuration → Source availability](CONFIGURATION.md#source-availability).

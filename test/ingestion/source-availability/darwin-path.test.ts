@@ -11,6 +11,18 @@ describe("Darwin File Provider path support", () => {
       expected: "google-drive",
     },
     {
+      path: `${home}/Library/CloudStorage/GoogleDrive-user/My Drive`,
+      expected: "google-drive",
+    },
+    {
+      path: `${home}/Library/CloudStorage/GoogleDrive-user/Shared drives/Team`,
+      expected: "google-drive",
+    },
+    {
+      path: `${home}/Library/CloudStorage/GoogleDrive-user/Shared drives/Team/docs/a.md`,
+      expected: "google-drive",
+    },
+    {
       path: `${home}/Library/Mobile Documents/com~apple~CloudDocs/a.md`,
       expected: "icloud-drive",
     },
@@ -26,6 +38,10 @@ describe("Darwin File Provider path support", () => {
     `${home}/Documents/a.md`,
     `${home}/Library/CloudStorage/Dropbox/a.md`,
     `${home}/Library/CloudStorage/OneDrive-org/a.md`,
+    `${home}/Library/CloudStorage/GoogleDrive-user/Shared drives`,
+    `${home}/Library/CloudStorage/GoogleDrive-user/Shared drives/`,
+    `${home}/Library/CloudStorage/GoogleDrive-user`,
+    `${home}/Library/CloudStorage/GoogleDrive-user/Other/Team/a.md`,
     "/Volumes/remote/a.md",
   ])("unsupported storage fails closed: %s", (path) => {
     expect(classifyDarwinFileProviderPath(path, home)).toBe("unsupported");

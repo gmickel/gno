@@ -384,9 +384,13 @@ find their default stores; GNO sets none of them.
 **Supported setups:**
 
 - Google Drive, iCloud Drive, and OneDrive on macOS.
+- For Google Drive, point the collection at `My Drive` or at a Shared drive
+  (`Shared drives/<drive>`), or at any folder inside either. The `Shared
+drives` folder itself is not supported; use one collection per Shared
+  drive.
 - For OneDrive, point the collection at a SharePoint library root directly
   under the SharedLibraries domain. The aggregation root, deeper paths, and
-  other library layouts are not supported.
+  other library layouts are not supported. Two library roots have been tested.
 - Windows Cloud Files and Linux/FUSE are not supported.
 - The provider may still update its own metadata. `local` mode does not pin,
   evict, or download files.
@@ -403,7 +407,16 @@ collections:
     pattern: "**/*"
     sourceAvailability: local
     egressPolicy: local_only
+  - name: team-drive
+    path: /Users/you/Library/CloudStorage/GoogleDrive-…/Shared drives/Team
+    pattern: "**/*"
+    sourceAvailability: local
+    egressPolicy: local_only
 ```
+
+In a Shared drive, files you have never opened on this Mac stay cloud-only.
+GNO indexes the files that are already local and reports the rest as
+`CLOUD_PLACEHOLDER`.
 
 Inspect and change one policy with:
 

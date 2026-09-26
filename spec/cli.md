@@ -624,9 +624,11 @@ refuses descent into dataless or availability-unknown directories
 (`DATALESS_DIRECTORY` skip, or the fail-closed codes above) and preserves
 previously indexed descendants under those unproven prefixes rather than
 marking them inactive. Eligible files have no availability `errorCode`.
-Evidence-qualified scope: Google Drive, iCloud Drive, and OneDrive only for the
-tested OS/provider configuration; OneDrive only for both validated immediate
-SharePoint library roots. No Windows/Linux guarantee; metadata/provider
+Evidence-qualified scope: Google Drive (`My Drive` and immediate Shared drives
+under `Shared drives/<drive>`; the `Shared drives` folder itself is
+unsupported), iCloud Drive, and OneDrive only for the tested OS/provider
+configuration; OneDrive only for the two validated immediate SharePoint library
+roots. No Windows/Linux guarantee; metadata/provider
 bookkeeping may occur; GNO does not pin/evict/download as product behavior.
 Source availability is distinct from `egressPolicy` (where derived content may
 travel).

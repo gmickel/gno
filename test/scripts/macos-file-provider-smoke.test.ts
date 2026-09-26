@@ -7,6 +7,7 @@ import { join, normalize } from "node:path";
 import {
   ANY_REGRESSION_THRESHOLD_PERCENT,
   assertFixtureBasename,
+  buildCleanupPlan,
   classifyGuardedReadErrno,
   classifyProviderRootShape,
   compareAgainstThreshold,
@@ -144,38 +145,138 @@ describe("macos-file-provider-smoke refusals", () => {
   test.each([
     {
       path: "/home/Library/CloudStorage/GoogleDrive-account/My Drive",
-      provider: "google",
+      shape: { provider: "google", layout: "my-drive" },
+    },
+    {
+      path: "/home/Library/CloudStorage/GoogleDrive-account/Shared drives/Team",
+      shape: { provider: "google", layout: "shared-drive" },
     },
     {
       path: "/home/Library/CloudStorage/OneDrive-SharedLibraries-tenant/library-a",
-      provider: "onedrive",
+      shape: { provider: "onedrive", layout: "sharepoint-library" },
     },
     {
       path: "/home/Library/Mobile Documents/com~apple~CloudDocs",
-      provider: "icloud",
+      shape: { provider: "icloud", layout: "icloud-drive" },
     },
-    { path: "/", provider: null },
-    { path: "/home/Library/CloudStorage/GoogleDrive-account", provider: null },
+    { path: "/", shape: null },
+    { path: "/home/Library/CloudStorage/GoogleDrive-account", shape: null },
+    {
+      path: "/home/Library/CloudStorage/GoogleDrive-account/My Drive/docs",
+      shape: null,
+    },
+    {
+      path: "/home/Library/CloudStorage/GoogleDrive-account/Shared drives",
+      shape: null,
+    },
+    {
+      path: "/home/Library/CloudStorage/GoogleDrive-account/Shared drives/Team/docs",
+      shape: null,
+    },
+    {
+      path: "/home/Library/CloudStorage/GoogleDrive-account/Shared drives/GNO-fn118-smoke-fake-root",
+      shape: null,
+    },
+    {
+      path: "/home/Library/CloudStorage/GoogleDrive-account/Other/Team",
+      shape: null,
+    },
     {
       path: "/home/Library/CloudStorage/OneDrive-SharedLibraries-tenant",
-      provider: null,
+      shape: null,
     },
     {
       path: "/home/Library/CloudStorage/OneDrive-SharedLibraries-tenant/library-a/descendant",
-      provider: null,
+      shape: null,
     },
     {
       path: "/home/Library/CloudStorage/OneDrive-tenant/library-a",
-      provider: null,
+      shape: null,
     },
     {
       path: "/home/Library/CloudStorage/OneDrive-SharedLibraries-tenant/GNO-fn118-smoke-fake-root",
-      provider: null,
+      shape: null,
     },
-  ])("classifies only exact provider-root shapes %#", ({ path, provider }) => {
-    expect(classifyProviderRootShape(normalize(path), normalize("/home"))).toBe(
-      provider
-    );
+  ])("classifies only exact provider-root shapes %#", ({ path, shape }) => {
+    expect(
+      classifyProviderRootShape(normalize(path), normalize("/home"))
+    ).toEqual(shape);
+  });
+
+  test("validates an immediate Google Shared drive and refuses its aggregation root, descendants, and symlink siblings", async () => {
+    const home = await mkdtemp(join(tmpdir(), "gno-fn179-home-"));
+    try {
+      const account = join(
+        home,
+        "Library",
+        "CloudStorage",
+        "GoogleDrive-account"
+      );
+      const myDrive = join(account, "My Drive");
+      const sharedDrives = join(account, "Shared drives");
+      const drive = join(sharedDrives, "Team");
+      const outside = join(home, "outside");
+      await mkdir(myDrive, { recursive: true });
+      await mkdir(join(drive, "docs"), { recursive: true });
+      await mkdir(outside);
+
+      expect(await resolveProviderRoot(myDrive, home)).toMatchObject({
+        provider: "google",
+        layout: "my-drive",
+      });
+      expect(await resolveProviderRoot(drive, home)).toMatchObject({
+        provider: "google",
+        layout: "shared-drive",
+      });
+      expect(resolveProviderRoot(sharedDrives, home)).rejects.toThrow(
+        "expected an installed"
+      );
+      expect(resolveProviderRoot(join(drive, "docs"), home)).rejects.toThrow(
+        "expected an installed"
+      );
+
+      const escaped = join(sharedDrives, "Escape");
+      await symlink(outside, escaped);
+      expect(resolveProviderRoot(escaped, home)).rejects.toThrow(
+        "symlink roots are refused"
+      );
+    } finally {
+      await safeRm(home);
+    }
+  });
+
+  test("refuses a Shared drive whose Shared drives directory is a symlink", async () => {
+    const home = await mkdtemp(join(tmpdir(), "gno-fn179-home-"));
+    try {
+      const account = join(
+        home,
+        "Library",
+        "CloudStorage",
+        "GoogleDrive-account"
+      );
+      const elsewhere = join(home, "elsewhere");
+      await mkdir(join(elsewhere, "Team"), { recursive: true });
+      await mkdir(account, { recursive: true });
+      await symlink(elsewhere, join(account, "Shared drives"));
+      expect(
+        resolveProviderRoot(join(account, "Shared drives", "Team"), home)
+      ).rejects.toThrow("immediate child of its installed Shared drives");
+    } finally {
+      await safeRm(home);
+    }
+  });
+
+  test("cleanup-plan receipt records the Google layout", async () => {
+    const parent = await mkdtemp(join(tmpdir(), "gno-fn179-cleanup-"));
+    try {
+      const id = "GNO-fn118-smoke-layout";
+      await mkdir(join(parent, id));
+      const plan = await buildCleanupPlan(parent, id, "shared-drive");
+      expect(plan).toMatchObject({ layout: "shared-drive", dryRun: true });
+      expect(JSON.stringify(plan)).not.toContain(parent);
+    } finally {
+      await safeRm(parent);
+    }
   });
 
   test("validates an immediate OneDrive library and rejects its symlink sibling", async () => {

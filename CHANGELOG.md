@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+### Added
+
+- macOS: `sourceAvailability: local` now works for collections in Google Drive Shared drives (`~/Library/CloudStorage/GoogleDrive-…/Shared drives/<drive>`, or any folder inside one). Files already on the Mac are indexed; files that are still cloud-only are skipped as `CLOUD_PLACEHOLDER` and are not downloaded. The `Shared drives` folder itself is still rejected with `SOURCE_AVAILABILITY_UNSUPPORTED`; create one collection per Shared drive. OneDrive support was re-tested for the two SharePoint library roots on the test Mac, and the docs now state that count. Thanks to the user who reported that Shared drives were rejected.
+
 ### Fixed
 
 - Query expansion no longer gives up after five seconds. On CPU, where expansion takes 15 to 20 seconds, it never completed, so `query`, `ask`, and hybrid search always ran without it; the first query after starting `gno serve` or the MCP server could also lose it while the model loaded. Expansion now loads under `models.loadTimeout` and generates under `models.inferenceTimeout`, like every other model call, and a generation that hits that timeout still falls back to searching without expansion.

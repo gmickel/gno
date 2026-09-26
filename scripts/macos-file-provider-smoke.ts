@@ -19,6 +19,7 @@ import {
   type MatrixRow,
   type ProbeKind,
   type ProviderLabel,
+  type ProviderLayout,
   redactToken,
   requireDarwin,
   resolveFixtureChild,
@@ -49,7 +50,11 @@ export {
   SF_DATALESS,
   withNoMaterializePolicy,
 } from "./macos-file-provider-smoke-lib";
-export type { IoPolicyPort } from "./macos-file-provider-smoke-lib";
+export type {
+  IoPolicyPort,
+  ProviderLayout,
+  ProviderRootShape,
+} from "./macos-file-provider-smoke-lib";
 export {
   ANY_REGRESSION_THRESHOLD_PERCENT,
   compareAgainstThreshold,
@@ -72,7 +77,8 @@ export {
 
 export async function buildCleanupPlan(
   rootReal: string,
-  fixtureId: string
+  fixtureId: string,
+  layout: ProviderLayout
 ): Promise<Record<string, unknown>> {
   await resolveFixtureChild(rootReal, fixtureId, { mustExist: true });
   const trash = join(homedir(), ".Trash");
@@ -80,6 +86,7 @@ export async function buildCleanupPlan(
     action: "cleanup-plan",
     dryRun: true,
     root: redactToken(rootReal),
+    layout,
     fixtureId: redactToken(fixtureId),
     validatedChildOnly: true,
     preferTrash: true,
@@ -115,9 +122,12 @@ Usage:
 
 Safety:
   Darwin-only for all commands except --help. Unknown flags → nonzero exit.
-  Root must be the exact installed Google My Drive, iCloud Drive, or an immediate
-  library root inside a OneDrive SharedLibraries domain. Aggregation roots,
-  arbitrary descendants, symlink roots, and arbitrary writable directories are refused.
+  Root must be the exact installed Google My Drive, an immediate Google Shared drive
+  (GoogleDrive-*/Shared drives/<drive>), iCloud Drive, or an immediate library root
+  inside a OneDrive SharedLibraries domain. Aggregation roots (including
+  "Shared drives" itself), arbitrary descendants, symlink roots, and arbitrary
+  writable directories are refused. Receipts record the layout
+  (my-drive | shared-drive | icloud-drive | sharepoint-library).
   Fixture basename must match GNO-fn118-smoke-* (no separators/traversal).
   Mutating create refuses pre-existing fixture paths; operates only inside the new child.
   JSON redacts fixture IDs and provider roots as SHA-256; no source bytes or user names.
@@ -307,6 +317,7 @@ export async function main(argv: string[]): Promise<number> {
         ok: true,
         root: redactToken(rootReal),
         provider: resolvedRoot.provider,
+        layout: resolvedRoot.layout,
         platform: process.platform,
       });
       return 0;
@@ -330,7 +341,9 @@ export async function main(argv: string[]): Promise<number> {
     }
 
     if (parsed.command === "cleanup-plan") {
-      printJson(await buildCleanupPlan(rootReal, fixtureId));
+      printJson(
+        await buildCleanupPlan(rootReal, fixtureId, resolvedRoot.layout)
+      );
       return 0;
     }
 
@@ -374,6 +387,7 @@ export async function main(argv: string[]): Promise<number> {
         root: redactToken(rootReal),
         fixtureId: redactToken(fixtureId),
         provider,
+        layout: resolvedRoot.layout,
         results,
       });
       return 0;
@@ -389,7 +403,11 @@ export async function main(argv: string[]): Promise<number> {
     printJson(
       await runAllLocalBenchmark({
         corpusRoot: fixtureRoot,
-        provider: { label: provider, version: providerVersion },
+        provider: {
+          label: provider,
+          version: providerVersion,
+          layout: resolvedRoot.layout,
+        },
         environment: await collectEnvironment(),
       })
     );
