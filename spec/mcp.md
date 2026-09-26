@@ -2372,7 +2372,11 @@ structure is derived from `structureDelta.truncated`.
 
 ### gno_impact
 
-Read-only inbound dependency traversal for `ref`. Inputs `maxDepth`,
+Read-only inbound dependency traversal for `ref`. Optional `collections`
+(array of collection names) limits the traversal as `gno impact --collection`
+does; omitted means every collection. Over Streamable HTTP, egress policy is
+checked on `collections`, or on every collection when omitted, because the
+result can reach any collection a link resolves into. Inputs `maxDepth`,
 `maxNodes`, `maxEdges`, `frontierLimit`, and `visitedLimit` use the same bounds
 as CLI/REST/SDK. Structured content is `impact.schema.json`; each impacted
 document includes a deterministic evidence path over typed or backlink

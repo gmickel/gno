@@ -1914,17 +1914,18 @@ Get outgoing links from a document (wiki links and markdown links).
 }
 ```
 
-| Field           | Description                                |
-| :-------------- | :----------------------------------------- |
-| `targetRef`     | Target path or wiki name                   |
-| `linkType`      | `wiki` ([[Name]]) or `markdown` ([](path)) |
-| `targetAnchor`  | Fragment/anchor without #                  |
-| `linkText`      | Display text of the link                   |
-| `source`        | `parsed`, `user`, or `suggested`           |
-| `resolved`      | Whether target doc exists in index         |
-| `resolvedDocid` | Docid of resolved target (if found)        |
-| `resolvedUri`   | URI of resolved target (if found)          |
-| `resolvedTitle` | Title of resolved target (if found)        |
+| Field                | Description                                                                                          |
+| :------------------- | :--------------------------------------------------------------------------------------------------- |
+| `targetRef`          | Target path or wiki name                                                                             |
+| `linkType`           | `wiki` ([[Name]]) or `markdown` ([](path))                                                           |
+| `targetAnchor`       | Fragment/anchor without #                                                                            |
+| `linkText`           | Display text of the link                                                                             |
+| `source`             | `parsed`, `user`, or `suggested`                                                                     |
+| `resolved`           | Whether target doc exists in index                                                                   |
+| `resolvedDocid`      | Docid of resolved target (if found)                                                                  |
+| `resolvedUri`        | URI of resolved target (if found)                                                                    |
+| `resolvedTitle`      | Title of resolved target (if found)                                                                  |
+| `resolvedCollection` | Collection of resolved target (if found); can differ from the linking document's in a link workspace |
 
 Resolution fields are only included when `meta.resolutionAvailable` is true.
 
@@ -1980,13 +1981,14 @@ Get documents that link TO this document.
 }
 ```
 
-| Field         | Description                    |
-| :------------ | :----------------------------- |
-| `sourceDocid` | Docid of the linking document  |
-| `sourceUri`   | URI of the linking document    |
-| `sourceTitle` | Title of the linking document  |
-| `linkText`    | Display text of the link       |
-| `startLine`   | Line number where link appears |
+| Field              | Description                                                                          |
+| :----------------- | :----------------------------------------------------------------------------------- |
+| `sourceDocid`      | Docid of the linking document                                                        |
+| `sourceUri`        | URI of the linking document                                                          |
+| `sourceTitle`      | Title of the linking document                                                        |
+| `sourceCollection` | Collection of the linking document; can differ from the target's in a link workspace |
+| `linkText`         | Display text of the link                                                             |
+| `startLine`        | Line number where link appears                                                       |
 
 **Example**:
 
@@ -2285,7 +2287,7 @@ curl -X POST http://localhost:3000/api/graph/query \
 ```http
 GET /api/changes?since=<ISO-8601-or-cursor>&collection=<name>&limit=100
 GET /api/diff?ref=<document-ref>&change=<opaque-change-id>
-GET /api/impact?ref=<document-ref>&maxDepth=3&maxNodes=100&maxEdges=250&frontierLimit=100&visitedLimit=500
+GET /api/impact?ref=<document-ref>&collection=<name>&maxDepth=3&maxNodes=100&maxEdges=250&frontierLimit=100&visitedLimit=500
 ```
 
 All three endpoints are read-only and share their exact structured contracts
@@ -2298,7 +2300,8 @@ with CLI, MCP, and SDK:
   from `structureDelta.truncated`.
 - `/api/impact` returns `impact.schema.json`. Inbound typed/wiki/Markdown
   traversal is cycle-safe and bounded by every supplied cap. Each impacted
-  document contains a deterministic dependency-to-root evidence path.
+  document contains a deterministic dependency-to-root evidence path. Repeat
+  `collection=` to limit the traversal to those collections (omitted: all).
 
 ---
 

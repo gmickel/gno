@@ -1807,7 +1807,7 @@ ref: "notes/target.md"    # Target document reference
 collection: "notes"       # Optional: filter source documents by collection
 ```
 
-Returns all documents that reference the target document. Useful for discovering related content and navigating document graphs.
+Returns all documents that reference the target document. Useful for discovering related content and navigating document graphs. In a link workspace, plain `[[Note]]` links from sibling collections count too; each result names its `sourceCollection`. Over Streamable HTTP, egress policy is checked on `collection`, or on every collection when it is omitted.
 
 ### gno_similar
 
@@ -1927,9 +1927,12 @@ write enablement.
   retained metadata-only changes with opaque cursor and retention disclosure.
 - `gno_diff` accepts `ref` and optional opaque `change`. It reports structural
   history availability without returning or reconstructing source bodies.
-- `gno_impact` accepts `ref` plus depth/node/edge/frontier/visited caps. It
-  follows inbound typed, wiki, and Markdown dependencies and returns one
-  explainable evidence path per impacted document.
+- `gno_impact` accepts `ref`, optional `collections`, plus
+  depth/node/edge/frontier/visited caps. It follows inbound typed, wiki, and
+  Markdown dependencies and returns one explainable evidence path per impacted
+  document. `collections` limits the traversal; without it, results can come
+  from any collection a link resolves into, so a remote HTTP client needs every
+  collection's egress policy to allow it (pass `collections` to narrow it).
 
 Structured content uses `changes@1.0`, `document-diff@1.0`, and `impact@1.0`,
 identical to CLI JSON, REST, and SDK results.
