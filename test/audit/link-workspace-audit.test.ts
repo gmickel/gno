@@ -94,6 +94,7 @@ describe("workspace link audit (R7)", () => {
     const aiOnly = await audit(fixture, ["ai"]);
     const [tie] = findings(aiOnly, "links.ambiguous-targets");
     expect(tie?.detail).toMatchObject({
+      resolvedScope: "cross-collection",
       candidateCount: 2,
       candidates: [],
       candidatesWithheld: 2,

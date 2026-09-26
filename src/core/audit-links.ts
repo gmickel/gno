@@ -80,12 +80,15 @@ const linkFinding = (
       document !== undefined &&
       (context.scope === null || context.scope.has(document.collection))
   );
+  // Scope describes every tied candidate; withheld ones are only counted.
   const resolvedScope = !ambiguous
     ? null
     : link.explicitCollection === true
       ? "explicit-collection"
-      : visible.some(
-            (document) => document.collection !== link.sourceCollection
+      : tied.some(
+            (document) =>
+              document !== undefined &&
+              document.collection !== link.sourceCollection
           )
         ? "cross-collection"
         : "same-collection";
