@@ -73,10 +73,10 @@ describe("browser clipper security store", () => {
       expect(result.ok).toBeTrue();
       if (result.ok) {
         expect(result.value.applied).toEqual([
-          20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+          20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33,
         ]);
       }
-      expect(getSchemaVersion(upgradeDb)).toBe(32);
+      expect(getSchemaVersion(upgradeDb)).toBe(33);
       expect(
         upgradeDb
           .query<{ name: string }, []>(

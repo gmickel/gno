@@ -34,7 +34,7 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
       return {
         sql: `
           EXISTS (
-            SELECT 1 FROM documents d
+            SELECT 1 FROM documents d INDEXED BY idx_documents_mirror_hash
             WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 AND d.collection = ?
           )
         `,

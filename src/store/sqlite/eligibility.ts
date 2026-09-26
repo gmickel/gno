@@ -180,7 +180,11 @@ export function buildEligibleDocumentQuery(
     params.push(JSON.stringify([...denied]));
   }
   return {
-    sql: `SELECT d.id, d.mirror_hash FROM documents d WHERE ${conditions.join(" AND ")}`,
+    sql: `SELECT d.id, d.mirror_hash FROM documents d${
+      options.allowedMirrorHashes === undefined
+        ? ""
+        : " INDEXED BY idx_documents_mirror_hash"
+    } WHERE ${conditions.join(" AND ")}`,
     params,
   };
 }

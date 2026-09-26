@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Finding what still needs embedding no longer slows down quadratically as an index grows. Counting and listing the embedding backlog (`gno embed`, `gno vec`, background embedding in `gno serve`, and the MCP embed and index tools) and the `gno embed --force` chunk count checked each chunk against every active document instead of looking up its own. On a synthetic index of 20,000 documents the backlog count drops from about 10 seconds to 12 milliseconds and the `--force` count from about 22 seconds to 7 milliseconds. Document lookups by content hash (vector and hybrid search results, `gno_similar`, memory recall scopes) no longer walk the whole index either. Results are unchanged. The index upgrade runs automatically the next time GNO opens it.
+
 ## [2.7.1] - 2026-09-26
 
 ### Changed
