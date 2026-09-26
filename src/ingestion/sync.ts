@@ -2069,6 +2069,19 @@ export class SyncService {
       }
     }
 
+    // Nested vaults (their own `.obsidian/`) are discovered from the synced
+    // document directories; a change re-fingerprints the graph projection.
+    const nestedRefresh = await store.refreshCollectionNestedWorkspaces?.(
+      collection.name
+    );
+    if (nestedRefresh && !nestedRefresh.ok) {
+      errors.push({
+        relPath: "(link workspace)",
+        code: nestedRefresh.error.code,
+        message: nestedRefresh.error.message,
+      });
+    }
+
     if (syncOptions.projectTypedEdges !== false) {
       errors.push(...(await this.projectTypedEdges(store, syncOptions)));
     }
@@ -2123,8 +2136,15 @@ export class SyncService {
       results.push(result);
     }
 
+    let graphRebuild: SyncResult["graphRebuild"];
     if (results.length > 0) {
-      const projectionErrors = await this.projectTypedEdges(store, options);
+      const projectionErrors = await this.projectTypedEdges(store, {
+        ...options,
+        onGraphRebuild: (reason) => {
+          graphRebuild = reason;
+          options.onGraphRebuild?.(reason);
+        },
+      });
       results.at(-1)?.errors.push(...projectionErrors);
     }
 
@@ -2145,6 +2165,7 @@ export class SyncService {
       ...(prepared.rechunkedMirrors
         ? { rechunkedMirrors: prepared.rechunkedMirrors }
         : {}),
+      ...(graphRebuild ? { graphRebuild } : {}),
       totalDurationMs: Date.now() - startTime,
       totalFilesProcessed: totals.processed,
       totalFilesAdded: totals.added,

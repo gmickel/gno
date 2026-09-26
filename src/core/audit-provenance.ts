@@ -11,6 +11,7 @@ import {
   validateDeclaredRecordProvenance,
 } from "./record-metadata";
 
+/** Default per-rule cap; runs pass the effective `maxFindings` instead. */
 export const PROVENANCE_AUDIT_MAX_FINDINGS_PER_RULE = 1000;
 
 export interface AuditProvenanceDocument {
@@ -87,7 +88,7 @@ const memoryFinding = (
  */
 export const evaluateMemoryRecordAudit = (
   documents: readonly AuditProvenanceDocument[],
-  options: { truncated?: boolean } = {}
+  options: { truncated?: boolean; maxFindingsPerRule?: number } = {}
 ): AuditRuleContribution => {
   const findings: AuditFindingDraft[] = [];
   let managedDocuments = 0;
@@ -129,7 +130,10 @@ export const evaluateMemoryRecordAudit = (
           : managedDocuments === 0
             ? "No memory-managed collections in scope"
             : `${managedDocuments} managed memory record(s) satisfy the contract`,
-    findings: findings.slice(0, PROVENANCE_AUDIT_MAX_FINDINGS_PER_RULE),
+    findings: findings.slice(
+      0,
+      options.maxFindingsPerRule ?? PROVENANCE_AUDIT_MAX_FINDINGS_PER_RULE
+    ),
     findingCount: findings.length,
     examinedCount: managedDocuments,
     skipReason: truncated
@@ -145,7 +149,7 @@ export const evaluateMemoryRecordAudit = (
 /** Missing provenance is completeness evidence, never a truth judgment. */
 export const evaluateProvenanceAudit = (
   documents: readonly AuditProvenanceDocument[],
-  options: { truncated?: boolean } = {}
+  options: { truncated?: boolean; maxFindingsPerRule?: number } = {}
 ): AuditRuleContribution[] => {
   const captureFindings: AuditFindingDraft[] = [];
   const recordFindings: AuditFindingDraft[] = [];
@@ -217,7 +221,10 @@ export const evaluateProvenanceAudit = (
           : `${findings.length} declared provenance completeness issues`,
     findings: [...findings]
       .sort(compareAuditFindingDrafts)
-      .slice(0, PROVENANCE_AUDIT_MAX_FINDINGS_PER_RULE),
+      .slice(
+        0,
+        options.maxFindingsPerRule ?? PROVENANCE_AUDIT_MAX_FINDINGS_PER_RULE
+      ),
     findingCount: findings.length,
     examinedCount: documents.length,
     skipReason: truncated

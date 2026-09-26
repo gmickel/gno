@@ -973,6 +973,10 @@ gno collection list
 gno collection list --json
 ```
 
+Each collection shows its link workspace, if any (`Links: workspace <folder>
+(detected|configured)`, or `off` when `workspaceRoot: false`). JSON adds
+`effectiveWorkspaceRoot` and `workspaceSource` next to the configured fields.
+
 ### gno collection remove
 
 Remove a collection.
@@ -1080,8 +1084,15 @@ URLs are outside the local-link graph. Age is only a review signal when
 false. Use repeatable `--orphan-root` and `--orphan-ignore-prefix` inputs for an
 explicit orphan policy.
 
-`--max-findings` defaults to 100 and is capped at 1000. Returned findings are
-bounded while `counts.findings.total` remains exact. JSON finding IDs are stable
+`--max-findings` defaults to 100 and accepts a number from 1 to 100000, or
+`all` to export every finding (for example
+`gno audit links --max-findings all --json --output links.json`). Returned
+findings are bounded while `counts.findings.total` remains exact. The audit
+reads a bounded snapshot of up to 50,000 documents and 50,000 links; when a
+large index exceeds it, the report says so (`truncation.snapshotTruncated`, and
+a `Snapshot: truncated` line in terminal output) and its totals cover only that
+snapshot. `truncation.evidenceTruncated` marks findings whose evidence was
+shortened, such as a very long list of tied link candidates. JSON finding IDs are stable
 for identical rule, subject/location, and evidence. Terminal human mode reports
 progress on stderr; JSON, `--quiet`, and `--no-progress` suppress it. `Ctrl-C`
 returns partial evidence rather than a false clean report.
@@ -1927,7 +1938,7 @@ Options:
 - `--edge-type <type>`, `--relation <type>` - Filter semantic relationship edges
 - `--json`, `--md` - Output format
 
-Default output shows positional link type, target, display text, line/column, and whether the target resolves to an indexed document. `--edge-type`/`--relation` are aliases for the same semantic edge type filter; either switches to the semantic edge layer and returns `edgeType`, `relationType`, `confidence`, and `edgeSource`. They cannot be combined with `--type`, and if both aliases are supplied they must match.
+Default output shows positional link type, target, display text, line/column, and whether the target resolves to an indexed document. Links resolve the same way as everywhere else in GNO, including across the collections of a [link workspace](CONFIGURATION.md#link-workspaces); JSON output names the resolved document's collection (`resolvedCollection`). A link that matches several equally good files is shown unresolved; `gno audit links` lists the candidates. `--edge-type`/`--relation` are aliases for the same semantic edge type filter; either switches to the semantic edge layer and returns `edgeType`, `relationType`, `confidence`, and `edgeSource`. They cannot be combined with `--type`, and if both aliases are supplied they must match.
 
 ### gno backlinks
 
@@ -1945,6 +1956,8 @@ Options:
 - `-c, --collection <name>` - Filter by source collection
 - `--edge-type <type>`, `--relation <type>` - Filter semantic relationship backlinks
 - `--json`, `--md` - Output format
+
+Without `--collection`, backlinks come from every collection. In a [link workspace](CONFIGURATION.md#link-workspaces), a plain `[[Note]]` in a sibling collection counts as a backlink when it resolves to this document; JSON output names each linking document's collection (`sourceCollection`).
 
 ### gno similar
 
@@ -2040,6 +2053,7 @@ gno changes --follow --jsonl
 gno changes --follow --jsonl --cursor "$(cat ~/.gno-changes.cursor)"
 gno diff gno://notes/plan.md --json
 gno impact gno://notes/plan.md --max-depth 3 --max-edges 250 --json
+gno impact gno://notes/plan.md --collection notes --collection work --json
 ```
 
 - `gno changes` lists retained metadata-only lifecycle entries. `--since`
@@ -2064,7 +2078,11 @@ gno impact gno://notes/plan.md --max-depth 3 --max-edges 250 --json
   `structureDelta.truncated`.
 - `gno impact` follows inbound typed, wiki, and Markdown dependencies. Depth,
   node, edge, frontier, and visited-row caps are always enforced, and every result
-  includes an evidence path back to the changed document.
+  includes an evidence path back to the changed document. Without `--collection`
+  it covers every collection; repeat `-c, --collection <name>` to limit it.
+  A scoped run only visits documents in those collections, so a dependency that
+  only reaches your document through another collection is not reported. Each
+  impacted document names its collection.
 - Journal entries retain metadata and bounded structural summaries, not source
   bodies. Retention may expire an opaque cursor; that response returns no
   fabricated history and directs the caller to restart from the disclosed
@@ -2108,6 +2126,12 @@ Show index status plus the shared retrieval activation contract.
 gno status
 gno status --json
 ```
+
+Each collection in a [link workspace](CONFIGURATION.md#link-workspaces) gets a
+`Link workspace:` line with the workspace folder and whether it was detected
+(nearest `.obsidian` folder) or configured (`workspaceRoot`). JSON output
+carries `workspaceRoot` and `workspaceSource` per collection; `workspaceRoot`
+is omitted for remote callers, like other folder paths.
 
 `chunking` in JSON reports configured and applied size/overlap, an
 `empty`, `legacy-default`, `current`, `pending`, or `mixed` state, and pending

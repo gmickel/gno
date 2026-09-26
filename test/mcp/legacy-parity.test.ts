@@ -34,7 +34,9 @@
  *    `gno_remember` and adds one read-only write-gated `gno_request_status`
  *    tool; fn-171 adds exactly two session-archive tools
  *    (`gno_sessions_status` read, `gno_sessions_import` write) and fn-172 adds
- *    the `gno_sessions_automation_run` write tool. All are
+ *    the `gno_sessions_automation_run` write tool. fn-178 widens
+ *    `gno_audit.maxFindings` to 1-100000 or "all" and adds the optional
+ *    `gno_impact.collections` scope. All are
  *    pinned by the current golden and removed only for the historical
  *    comparison.
  */
@@ -334,6 +336,39 @@ function withoutTypedFilterExtension(tool: WireTool): Record<string, unknown> {
   };
 }
 
+/**
+ * fn-178 widened `gno_audit.maxFindings` (1-100000 or "all") and added the
+ * optional `gno_impact.collections` scope; restore the historical schemas
+ * for the frozen comparison only.
+ */
+function withoutAuditCapExtension(tool: WireTool): WireTool {
+  if (tool.name === "gno_impact") {
+    const { collections: _collections, ...oldProperties } = tool.inputSchema
+      .properties as Record<string, unknown>;
+    return {
+      ...tool,
+      inputSchema: { ...tool.inputSchema, properties: oldProperties },
+    };
+  }
+  if (tool.name !== "gno_audit") return tool;
+  const properties = tool.inputSchema.properties as Record<string, unknown>;
+  return {
+    ...tool,
+    inputSchema: {
+      ...tool.inputSchema,
+      properties: {
+        ...properties,
+        maxFindings: {
+          default: 100,
+          type: "integer",
+          minimum: 1,
+          maximum: 1000,
+        },
+      },
+    },
+  };
+}
+
 function normalizeToolsList(line: string): string {
   const envelope = parseJsonRpc<ToolsListEnvelope>(line);
   const tools = envelope.result.tools
@@ -350,7 +385,9 @@ function normalizeToolsList(line: string): string {
         inputSchema: SDK_V1_UNION_PLACEHOLDER_TOOLS.has(tool.name)
           ? "<sdk-v1 union placeholder>"
           : withoutSdkDeltas(
-              withoutTypedFilterExtension(withoutRequestIdExtension(tool))
+              withoutTypedFilterExtension(
+                withoutRequestIdExtension(withoutAuditCapExtension(tool))
+              )
             ),
         ...(outputSchema
           ? { outputSchema: withoutSdkDeltas(outputSchema) }

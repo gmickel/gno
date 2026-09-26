@@ -1,0 +1,100 @@
+{
+  "base": "b8f8aa6ed01c62e340d924b2975863dbcfb0551d",
+  "effort": "medium",
+  "findings": {
+    "backend": "codex",
+    "baseSha": "b8f8aa6ed01c62e340d924b2975863dbcfb0551d",
+    "headSha": "76ac810879c36dff83bc6300598865df0b42d4d8",
+    "items": [
+      {
+        "anchor": {
+          "baseSha": "b8f8aa6ed01c62e340d924b2975863dbcfb0551d",
+          "headSha": "76ac810879c36dff83bc6300598865df0b42d4d8",
+          "path": "src/mcp/http-egress.ts",
+          "side": "head",
+          "startLine": 162
+        },
+        "body": "The new early return authorizes only the supplied collection and skips the reference\u2019s collection. For `gno_backlinks({ref: \"gno://private/Secret.md\", collection: \"public\"})`, the filter restricts backlink sources, but the handler still returns the private target\u2019s metadata. An in-memory reproduction passed remote egress enforcement and returned its confidential title in `structuredContent.meta`. Previously, reference collections were included in authorization.",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-cd371d49c9df86e354b0418b874c2d03e6b1103fa86c897eb5493326b3d199c4",
+        "id": "finding-25cfd68b4129766be98c385383070cf0",
+        "lastSeenReceiptId": "review-cd371d49c9df86e354b0418b874c2d03e6b1103fa86c897eb5493326b3d199c4",
+        "ordinal": 1,
+        "rIds": [
+          "R5",
+          "R6"
+        ],
+        "severity": "P1",
+        "status": "open",
+        "suggestion": "Authorize the referenced document\u2019s resolved collection as well as the result scope. Reject forbidden targets before serializing their metadata. Add the private-target/public-source-filter regression case.",
+        "title": "The new early return authorizes only the supplied collection and skips the reference\u2019s collection"
+      },
+      {
+        "anchor": {
+          "baseSha": "b8f8aa6ed01c62e340d924b2975863dbcfb0551d",
+          "headSha": "76ac810879c36dff83bc6300598865df0b42d4d8",
+          "path": "src/store/sqlite/workspace-link-resolver.ts",
+          "side": "head",
+          "startLine": 317
+        },
+        "body": "`distinctSources` identifies physical sources using the lowercased workspace path:",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-cd371d49c9df86e354b0418b874c2d03e6b1103fa86c897eb5493326b3d199c4",
+        "id": "finding-b1b7db33953f4199322c20ddda0c85c2",
+        "lastSeenReceiptId": "review-cd371d49c9df86e354b0418b874c2d03e6b1103fa86c897eb5493326b3d199c4",
+        "ordinal": 2,
+        "rIds": [
+          "R3"
+        ],
+        "severity": "P2",
+        "status": "open",
+        "suggestion": "Separate canonical source identity from case-insensitive matching keys. Deduplicate only actual duplicate sources, then rank distinct files deterministically. Test both insertion orders with case-distinct filenames.",
+        "title": "`distinctSources` identifies physical sources using the lowercased workspace path:"
+      },
+      {
+        "anchor": {
+          "baseSha": "b8f8aa6ed01c62e340d924b2975863dbcfb0551d",
+          "headSha": "76ac810879c36dff83bc6300598865df0b42d4d8",
+          "path": "src/ingestion/graph-reconciliation.ts",
+          "side": "head",
+          "startLine": 119
+        },
+        "body": "The workspace integration retains a competing path resolver:",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-cd371d49c9df86e354b0418b874c2d03e6b1103fa86c897eb5493326b3d199c4",
+        "id": "finding-098426601c78509a10e6b6007a123c03",
+        "lastSeenReceiptId": "review-cd371d49c9df86e354b0418b874c2d03e6b1103fa86c897eb5493326b3d199c4",
+        "ordinal": 3,
+        "rIds": [
+          "R2",
+          "R3"
+        ],
+        "severity": "P2",
+        "status": "open",
+        "suggestion": "Classify reference kinds before resolution. Route wiki-style names and paths through the workspace resolver first; retain separate handling only for the explicitly preserved URI, docid, collection-qualified and relative-Markdown contracts.",
+        "title": "The workspace integration retains a competing path resolver:"
+      }
+    ],
+    "reviewKind": "implementation",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-cd371d49c9df86e354b0418b874c2d03e6b1103fa86c897eb5493326b3d199c4"
+  },
+  "focus": "scope never widened (R5/R6), HTTP MCP egress for graph tools, incremental reconciliation correctness (R8), migration 033 safety, A14 performance budget misses (graph export 1.32x, 330ms stalls): acceptable or must fix",
+  "id": "fn-178-workspace-wide-wikilink-resolution.1",
+  "introduced_count": 3,
+  "mode": "codex",
+  "model": "gpt-6-astra",
+  "pre_existing_count": 0,
+  "review": "I\u2019ll read the task contract, inspect the diff, and trace the changed resolution paths and their callers.\nThe main resolver applies scope after choosing the target, which matches the contract. I\u2019m checking frontmatter relation projection and duplicate-source handling next; both can diverge from normal wikilink resolution.\nTwo issues reproduce: the HTTP MCP guard allows a private target when `gno_backlinks` supplies a public source filter, and case-distinct files collapse into one target whose identity changes with insertion order. I\u2019m tracing their callers and checking the remaining contract coverage.\nThe egress bypass reaches the normal handler and returns the private document\u2019s title. I also reproduced a projection mismatch: a frontmatter path relation chooses the collection-relative file before checking the higher-priority workspace path.\n\nThe 13 audit-report tests pass. CLI fixture tests are blocked by the read-only filesystem (`EROFS` creating `/tmp` fixtures); the reproductions above ran in memory.\n## Findings\n\n### 1. Public source filter bypasses private-target egress checks\n\n- **Severity:** P1\n- **Confidence:** 75\n- **Classification:** introduced\n- **File:Line:** `src/mcp/http-egress.ts:162`\n- **R-IDs:** [R5, R6]\n- **Problem:** The new early return authorizes only the supplied collection and skips the reference\u2019s collection. For `gno_backlinks({ref: \"gno://private/Secret.md\", collection: \"public\"})`, the filter restricts backlink sources, but the handler still returns the private target\u2019s metadata. An in-memory reproduction passed remote egress enforcement and returned its confidential title in `structuredContent.meta`. Previously, reference collections were included in authorization.\n- **Suggestion:** Authorize the referenced document\u2019s resolved collection as well as the result scope. Reject forbidden targets before serializing their metadata. Add the private-target/public-source-filter regression case.\n\n### 2. Case-distinct files collapse into an insertion-dependent target\n\n- **Severity:** P2\n- **Confidence:** 75\n- **Classification:** introduced\n- **File:Line:** `src/store/sqlite/workspace-link-resolver.ts:317`\n- **R-IDs:** [R3]\n- **Problem:** `distinctSources` identifies physical sources using the lowercased workspace path:\n  ```ts\n  const key = `${candidate.doc.wsKey}\\0${candidate.doc.wsNorm}`;\n  ```\n  On a case-sensitive filesystem, `Note.md` and `note.md` are distinct files. They collapse into one candidate before ranking, suppressing ambiguity. Reversing the input rows changed the selected document while both results claimed `traversable: true` and `reason: \"exact-name\"`.\n- **Suggestion:** Separate canonical source identity from case-insensitive matching keys. Deduplicate only actual duplicate sources, then rank distinct files deterministically. Test both insertion orders with case-distinct filenames.\n\n### 3. Typed projection bypasses workspace path precedence\n\n- **Severity:** P2\n- **Confidence:** 75\n- **Classification:** introduced\n- **File:Line:** `src/ingestion/graph-reconciliation.ts:119`\n- **R-IDs:** [R2, R3]\n- **Problem:** The workspace integration retains a competing path resolver:\n  ```ts\n  if (exactPath) return exactPath;\n  const ranked = workspace(source, key);\n  ```\n  With collection `a` rooted at `/v/A` and `b` at `/v/Folder`, a relation targeting `Folder/Note.md` selects `a:Folder/Note.md` before considering `b:Note.md`, whose workspace path is the higher-priority exact match. Reproduction through `projectGraph` selected document 2; the shared resolver selected document 3. Configured graph-hint links use this same projection path. This is duplicated resolution logic producing inconsistent edges across consumers.\n- **Suggestion:** Classify reference kinds before resolution. Route wiki-style names and paths through the workspace resolver first; retain separate handling only for the explicitly preserved URI, docid, collection-qualified and relative-Markdown contracts.\n\n## Verification\n\n`test/audit/report.test.ts`: **13 passed**. CLI fixture tests were blocked by `EROFS` when creating temporary directories. The three reproductions ran in memory; no files were changed.\n\n## Requirements coverage\n\n| R-ID | Status | Evidence |\n|---|---|---|\n| R1 | met | Workspace detection, configuration validation, opt-out and nested placement implemented. |\n| R2 | partial | Shared path resolution implemented; projection precedence differs (finding 3). |\n| R3 | partial | Ranking and parity coverage added; source deduplication violates insertion independence (finding 2). |\n| R4 | met | Explicit-prefix and non-workspace paths retain legacy resolution. |\n| R5 | partial | Resolved-edge allowlists implemented; HTTP egress bypass remains (finding 1). |\n| R6 | partial | Impact scope and cross-collection output implemented; backlink target authorization incomplete. |\n| R7 | met | Workspace connectivity, ambiguity evidence and scoped candidate withholding implemented. |\n| R8 | met | Cross-collection referrer invalidation and reported full rebuild covered by focused tests. |\n| R9 | met | Shared concurrent flush implemented; pipe, close and SIGINT regression tests added. |\n| R10 | met | `all`, raised numeric cap and separate truncation fields implemented; report tests pass. |\n| R11 | met | Synthetic multi-collection workspace fixture and scope cases added. |\n| R12 | met | Configuration, resolution, scope, CLI/API and skill documentation updated. |\n| R13 | deferred | Maintainer handoff checklist remains explicitly pending; nonblocking ceremony. |\n\nUnaddressed R-IDs: []\n\nClassification counts: 3 introduced, 0 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":3,\"pre_existing\":0},\"unaddressed\":[]}\n```\n\n<verdict>NEEDS_WORK</verdict>",
+  "review_reservation_id": "c34c285de83c4bb9b5fbe64d99573107",
+  "session_id": "01a0ddf3-6902-7931-85e8-481b93204099",
+  "spec": "codex:gpt-6-astra:medium",
+  "timestamp": "2026-09-26T13:45:26.947118Z",
+  "type": "impl_review",
+  "unaddressed": [],
+  "verdict": "NEEDS_WORK"
+}

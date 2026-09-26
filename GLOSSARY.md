@@ -84,6 +84,12 @@ A Markdown or wiki link whose relationship comes from where it appears in source
 
 _Avoid_: untyped edge
 
+## Link Workspace
+
+A set of collections whose roots share one workspace root: the nearest ancestor-or-self folder containing `.obsidian/`, or an explicit per-collection `workspaceRoot`. Plain wiki links resolve across every member with Obsidian ranking; a nested vault is its own workspace. Membership decides how a link resolves, never what a scoped request may return: scope and egress are checked on the resolved identities of every edge.
+
+_Avoid_: collection group, vault collection
+
 ## Typed Edge
 
 A semantic relationship in GNO's derived graph layer with an explicit relation label such as `mentions`, `works_at`, or `decided`. Typed edges are rebuilt from source declarations and graph hints; GNO does not mutate source files to store them.

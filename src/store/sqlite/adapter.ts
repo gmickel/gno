@@ -138,8 +138,12 @@ import {
   classifyResolvedGraphEdge,
   mergeGraphEdgeAudit,
 } from "../../core/graph-edge-confidence";
-import { buildWikiBestMatchSubquery } from "../../core/graph-resolver";
 import { buildContentPrefilterNeedles } from "../../core/link-relevance";
+import {
+  detectCollectionWorkspace,
+  detectNestedWorkspacePrefixes,
+  type LinkWorkspaceSource,
+} from "../../core/link-workspace";
 import { normalizeWikiName, stripWikiMdExt } from "../../core/links";
 import {
   TYPED_METADATA_INGEST_VERSION,
@@ -213,7 +217,12 @@ import {
   applyGraphEdges,
   type DesiredGraphEdge,
 } from "./graph-edge-application";
-import { resolveGraphLinkTargets } from "./graph-link-resolver";
+import {
+  type GraphLinkSourceIdentity,
+  isTraversableResolution,
+  linkSourceIdentity,
+  resolveGraphLinkTargets,
+} from "./graph-link-resolver";
 import { queryGraphNeighborsForSeeds } from "./graph-neighbors";
 import { createGraphReferenceStore } from "./graph-reference-state";
 import {
@@ -243,6 +252,11 @@ import {
   listTraces as listStoredTraces,
   mergeTraceEgressLineage as mergeStoredTraceEgressLineage,
 } from "./retrieval-trace-store";
+import {
+  loadLinkWorkspaceMemberships,
+  workspaceKeyForDocument,
+  workspaceMemberCollections,
+} from "./workspace-link-resolver";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FTS5 Query Escaping
@@ -903,11 +917,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           INSERT INTO collections (
             name, path, pattern, include, exclude, update_cmd, language_hint,
             egress_policy, egress_policy_source, egress_policy_revision,
+            real_path, workspace_root, workspace_source,
             synced_at
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
           ON CONFLICT(name) DO UPDATE SET
             path = excluded.path,
+            ${COLLECTION_WORKSPACE_UPSERT_SET}
             pattern = excluded.pattern,
             include = excluded.include,
             exclude = excluded.exclude,
@@ -936,6 +952,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
         for (const c of collections) {
           const egress = resolveConfiguredEgressPolicy(c);
+          const workspace = detectCollectionWorkspace(c);
           stmt.run(
             c.name,
             c.path,
@@ -946,7 +963,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             c.languageHint ?? null,
             egress.policy,
             egress.source,
-            c.egressPolicyRevision ?? 0
+            c.egressPolicyRevision ?? 0,
+            workspace.realPath,
+            workspace.root,
+            workspace.source
           );
         }
       });
@@ -971,11 +991,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         INSERT INTO collections (
           name, path, pattern, include, exclude, update_cmd, language_hint,
           egress_policy, egress_policy_source, egress_policy_revision,
+          real_path, workspace_root, workspace_source,
           synced_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
         ON CONFLICT(name) DO UPDATE SET
           path = excluded.path,
+          ${COLLECTION_WORKSPACE_UPSERT_SET}
           pattern = excluded.pattern,
           include = excluded.include,
           exclude = excluded.exclude,
@@ -1001,6 +1023,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           END,
           synced_at = datetime('now')
         WHERE collections.path IS NOT excluded.path
+          OR collections.real_path IS NOT excluded.real_path
+          OR collections.workspace_root IS NOT excluded.workspace_root
+          OR collections.workspace_source IS NOT excluded.workspace_source
           OR collections.pattern IS NOT excluded.pattern
           OR collections.include IS NOT excluded.include
           OR collections.exclude IS NOT excluded.exclude
@@ -1021,6 +1046,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const transaction = db.transaction(() => {
         for (const collection of collections) {
           const egress = resolveConfiguredEgressPolicy(collection);
+          const workspace = detectCollectionWorkspace(collection);
           stmt.run(
             collection.name,
             collection.path,
@@ -1035,7 +1061,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             collection.languageHint ?? null,
             egress.policy,
             egress.source,
-            collection.egressPolicyRevision ?? 0
+            collection.egressPolicyRevision ?? 0,
+            workspace.realPath,
+            workspace.root,
+            workspace.source
           );
         }
       });
@@ -1124,6 +1153,62 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return err(
         "QUERY_FAILED",
         cause instanceof Error ? cause.message : "Failed to get collections",
+        cause
+      );
+    }
+  }
+
+  /**
+   * Re-detect nested vaults (`.obsidian/` below the collection root) from the
+   * directories of the collection's active documents. Returns whether the
+   * stored membership changed.
+   */
+  async refreshCollectionNestedWorkspaces(
+    collection: string
+  ): Promise<StoreResult<boolean>> {
+    try {
+      const db = this.ensureOpen();
+      const row = db
+        .query<
+          {
+            real_path: string | null;
+            workspace_source: LinkWorkspaceSource | null;
+            workspace_nested: string | null;
+          },
+          [string]
+        >(
+          "SELECT real_path, workspace_source, workspace_nested FROM collections WHERE name = ?"
+        )
+        .get(collection);
+      if (!row) return ok(false);
+      const eligible =
+        row.real_path !== null &&
+        row.workspace_source !== "disabled" &&
+        row.workspace_source !== "unavailable";
+      const nested = eligible
+        ? detectNestedWorkspacePrefixes(
+            row.real_path as string,
+            db
+              .query<{ rel_path: string }, [string]>(
+                "SELECT rel_path FROM documents WHERE collection = ? AND active = 1"
+              )
+              .all(collection)
+              .map((document) => document.rel_path)
+          )
+        : [];
+      const next = nested.length > 0 ? JSON.stringify(nested) : null;
+      if (next === row.workspace_nested) return ok(false);
+      db.run("UPDATE collections SET workspace_nested = ? WHERE name = ?", [
+        next,
+        collection,
+      ]);
+      return ok(true);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to refresh nested link workspaces",
         cause
       );
     }
@@ -3786,12 +3871,16 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
   /**
    * Get backlinks pointing to a document.
-   * Uses target_ref_norm for matching (wiki=normalized title with path fallbacks, markdown=rel_path).
+   * Collection-scoped links match target_ref_norm (wiki=normalized title with
+   * path fallbacks, markdown=rel_path). Plain wiki links from a document in a
+   * link workspace count only when the shared resolver lands them on this
+   * document (tied links never count). `collection` / `collections` restrict
+   * the SOURCE collections; unset means every collection.
    * Only returns links from active source documents.
    */
   async getBacklinksForDoc(
     documentId: number,
-    options?: { collection?: string }
+    options?: { collection?: string; collections?: string[] }
   ): Promise<StoreResult<BacklinkRow[]>> {
     try {
       const db = this.ensureOpen();
@@ -3841,17 +3930,34 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       addVariantsWithBasename(relPathKey);
 
       interface DbBacklinkRow {
+        link_id: number;
         source_doc_id: number;
         docid: string;
         uri: string;
         title: string | null;
+        source_collection: string;
+        source_rel_path: string;
+        target_ref_norm: string;
+        target_collection: string | null;
         link_text: string | null;
         start_line: number;
         start_col: number;
       }
 
       const targetCollection = target.collection;
-      const sourceCollectionFilter = options?.collection;
+      const sourceAllowlist =
+        options?.collections ??
+        (options?.collection ? [options.collection] : undefined);
+      const sourceScopeSql = sourceAllowlist
+        ? sourceAllowlist.length === 0
+          ? "AND 0"
+          : `AND src.collection IN (${sourceAllowlist.map(() => "?").join(",")})`
+        : "";
+      const sourceScopeParams = sourceAllowlist ?? [];
+      const backlinkColumns = `dl.id AS link_id, dl.source_doc_id, src.docid,
+        src.uri, src.title, src.collection AS source_collection,
+        src.rel_path AS source_rel_path, dl.target_ref_norm,
+        dl.target_collection, dl.link_text, dl.start_line, dl.start_col`;
 
       // Query wiki backlinks (link_type='wiki') with path-style fallbacks
       // NULL target_collection means "same collection as source" - enforce this in SQL
@@ -3881,7 +3987,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         wikiConditions.length > 0
           ? db
               .query<DbBacklinkRow, string[]>(
-                `SELECT dl.source_doc_id, src.docid, src.uri, src.title, dl.link_text, dl.start_line, dl.start_col
+                `SELECT ${backlinkColumns}
                  FROM doc_links dl
                  JOIN documents src ON src.id = dl.source_doc_id AND src.active = 1
                  WHERE dl.link_type = 'wiki'
@@ -3890,22 +3996,112 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                      (dl.target_collection IS NULL AND src.collection = ?)
                      OR dl.target_collection = ?
                    )
-                   ${sourceCollectionFilter ? "AND src.collection = ?" : ""}
+                   ${sourceScopeSql}
                  ORDER BY src.uri, dl.start_line, dl.start_col`
               )
               .all(
                 ...wikiParams,
                 targetCollection,
                 targetCollection,
-                ...(sourceCollectionFilter ? [sourceCollectionFilter] : [])
+                ...sourceScopeParams
               )
           : [];
+
+      // Workspace candidates: plain links from any member collection whose
+      // last segment names this file. Resolution decides which count.
+      const memberships = loadLinkWorkspaceMemberships(db);
+      const targetWsKey = workspaceKeyForDocument(
+        memberships,
+        target.collection,
+        target.rel_path
+      );
+      const workspaceBacklinks: DbBacklinkRow[] = [];
+      if (targetWsKey !== null) {
+        const members = workspaceMemberCollections(
+          memberships,
+          new Set([targetWsKey])
+        );
+        const base = stripWikiMdExt(
+          normalizeWikiName(target.rel_path.split("/").pop() ?? target.rel_path)
+        );
+        const escapeLike = (value: string): string =>
+          value
+            .replaceAll("\\", "\\\\")
+            .replaceAll("%", "\\%")
+            .replaceAll("_", "\\_");
+        if (members.length > 0) {
+          workspaceBacklinks.push(
+            ...db
+              .query<DbBacklinkRow, string[]>(
+                `SELECT ${backlinkColumns}
+                 FROM doc_links dl
+                 JOIN documents src ON src.id = dl.source_doc_id AND src.active = 1
+                 WHERE dl.link_type = 'wiki'
+                   AND dl.target_collection IS NULL
+                   AND src.collection IN (${members.map(() => "?").join(",")})
+                   AND (dl.target_ref_norm IN (?, ?)
+                     OR dl.target_ref_norm LIKE ? ESCAPE '\\'
+                     OR dl.target_ref_norm LIKE ? ESCAPE '\\'
+                     OR dl.target_ref_norm IN (${[...keySet].map(() => "?").join(",") || "NULL"}))
+                   ${sourceScopeSql}
+                 ORDER BY src.uri, dl.start_line, dl.start_col`
+              )
+              .all(
+                ...members,
+                base,
+                `${base}.md`,
+                `%/${escapeLike(base)}`,
+                `%/${escapeLike(`${base}.md`)}`,
+                ...keySet,
+                ...sourceScopeParams
+              )
+          );
+        }
+      }
+      const candidates = new Map<number, DbBacklinkRow>();
+      for (const row of [...wikiBacklinks, ...workspaceBacklinks]) {
+        candidates.set(row.link_id, row);
+      }
+      const candidateRows = [...candidates.values()];
+      const resolutions = resolveGraphLinkTargets(
+        db,
+        candidateRows.map((row) => ({
+          targetRefNorm: row.target_ref_norm,
+          targetCollection: row.target_collection ?? row.source_collection,
+          linkType: "wiki" as const,
+          source: linkSourceIdentity(row),
+        }))
+      );
+      const legacyLinkIds = new Set(wikiBacklinks.map((row) => row.link_id));
+      const resolvedWikiBacklinks = candidateRows
+        .filter((row, index) => {
+          const workspaceLink =
+            !row.target_collection &&
+            workspaceKeyForDocument(
+              memberships,
+              row.source_collection,
+              row.source_rel_path
+            ) !== null;
+          // Collection-scoped links keep their key-match semantics.
+          if (!workspaceLink) return legacyLinkIds.has(row.link_id);
+          const resolution = resolutions[index];
+          return (
+            isTraversableResolution(resolution) &&
+            resolution.targetId === documentId
+          );
+        })
+        .sort(
+          (left, right) =>
+            (left.uri < right.uri ? -1 : left.uri > right.uri ? 1 : 0) ||
+            left.start_line - right.start_line ||
+            left.start_col - right.start_col
+        );
 
       // Query markdown backlinks (link_type='markdown')
       // NULL target_collection means "same collection as source" - enforce this in SQL
       const mdBacklinks = db
         .query<DbBacklinkRow, string[]>(
-          `SELECT dl.source_doc_id, src.docid, src.uri, src.title, dl.link_text, dl.start_line, dl.start_col
+          `SELECT ${backlinkColumns}
            FROM doc_links dl
            JOIN documents src ON src.id = dl.source_doc_id AND src.active = 1
            WHERE dl.link_type = 'markdown'
@@ -3914,25 +4110,28 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                (dl.target_collection IS NULL AND src.collection = ?)
                OR dl.target_collection = ?
              )
-             ${sourceCollectionFilter ? "AND src.collection = ?" : ""}
+             ${sourceScopeSql}
            ORDER BY src.uri, dl.start_line, dl.start_col`
         )
         .all(
           target.rel_path,
           targetCollection,
           targetCollection,
-          ...(sourceCollectionFilter ? [sourceCollectionFilter] : [])
+          ...sourceScopeParams
         );
 
-      const allBacklinks = [...wikiBacklinks, ...mdBacklinks].map((r) => ({
-        sourceDocId: r.source_doc_id,
-        sourceDocid: r.docid,
-        sourceDocUri: r.uri,
-        sourceDocTitle: r.title,
-        linkText: r.link_text,
-        startLine: r.start_line,
-        startCol: r.start_col,
-      }));
+      const allBacklinks = [...resolvedWikiBacklinks, ...mdBacklinks].map(
+        (r) => ({
+          sourceDocId: r.source_doc_id,
+          sourceDocid: r.docid,
+          sourceDocUri: r.uri,
+          sourceDocTitle: r.title,
+          sourceCollection: r.source_collection,
+          linkText: r.link_text,
+          startLine: r.start_line,
+          startCol: r.start_col,
+        })
+      );
 
       return ok(allBacklinks);
     } catch (cause) {
@@ -3951,206 +4150,64 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       targetRefNorm: string;
       targetCollection: string;
       linkType: "wiki" | "markdown";
+      source?: GraphLinkSourceIdentity;
     }>
   ): Promise<
     StoreResult<
-      Array<{ docid: string; uri: string; title: string | null } | null>
+      Array<{
+        docid: string;
+        uri: string;
+        title: string | null;
+        collection: string;
+      } | null>
     >
   > {
     try {
       const db = this.ensureOpen();
-
-      const results: Array<{
-        docid: string;
-        uri: string;
-        title: string | null;
-      } | null> = Array.from({ length: targets.length }, () => null);
-
-      const wikiTargets: Array<{
-        idx: number;
-        collection: string;
-        baseRef: string;
-        baseRefMd: string;
-      }> = [];
-      const mdTargets: Array<{
-        idx: number;
-        collection: string;
-        relPath: string;
-      }> = [];
-
-      for (const [idx, target] of targets.entries()) {
-        if (target.linkType === "wiki") {
-          const baseRef = stripWikiMdExt(target.targetRefNorm);
-          wikiTargets.push({
-            idx,
-            collection: target.targetCollection,
-            baseRef,
-            baseRefMd: `${baseRef}.md`,
+      const resolutions = resolveGraphLinkTargets(db, targets);
+      const ids = [
+        ...new Set(
+          resolutions
+            .filter(isTraversableResolution)
+            .map((resolution) => resolution.targetId)
+        ),
+      ];
+      const byId = new Map<
+        number,
+        { docid: string; uri: string; title: string | null; collection: string }
+      >();
+      for (let offset = 0; offset < ids.length; offset += 900) {
+        const batch = ids.slice(offset, offset + 900);
+        for (const row of db
+          .query<
+            {
+              id: number;
+              docid: string;
+              uri: string;
+              title: string | null;
+              collection: string;
+            },
+            number[]
+          >(
+            `SELECT id, docid, uri, title, collection FROM documents WHERE id IN (${batch.map(() => "?").join(",")})`
+          )
+          .all(...batch)) {
+          byId.set(row.id, {
+            docid: row.docid,
+            uri: row.uri,
+            title: row.title,
+            collection: row.collection,
           });
-        } else {
-          mdTargets.push({
-            idx,
-            collection: target.targetCollection,
-            relPath: target.targetRefNorm,
-          });
         }
       }
-
-      const chunkArray = <T>(items: T[], chunkSize: number): T[][] => {
-        const chunks: T[][] = [];
-        for (let i = 0; i < items.length; i += chunkSize) {
-          chunks.push(items.slice(i, i + chunkSize));
-        }
-        return chunks;
-      };
-
-      const MAX_SQL_PARAMS = 900;
-      const wikiBatchSize = Math.max(1, Math.floor(MAX_SQL_PARAMS / 4));
-      const mdBatchSize = Math.max(1, Math.floor(MAX_SQL_PARAMS / 3));
-
-      const titleExpr = "lower(trim(d.title))";
-      const relExpr = "lower(d.rel_path)";
-      const suffixMatchExprExpr = (
-        targetExpr: string,
-        valueExpr: string
-      ): string =>
-        `(substr(${targetExpr}, -length(${valueExpr})) = ${valueExpr}
-          AND (length(${targetExpr}) = length(${valueExpr})
-            OR substr(${targetExpr}, -length(${valueExpr}) - 1, 1) = '/'))`;
-
-      if (wikiTargets.length > 0) {
-        for (const batch of chunkArray(wikiTargets, wikiBatchSize)) {
-          const valuesClause = batch.map(() => "(?, ?, ?, ?)").join(", ");
-          const wikiParams = batch.flatMap((t) => [
-            t.idx,
-            t.collection,
-            t.baseRef,
-            t.baseRefMd,
-          ]);
-
-          const baseRefExpr = "t.base_ref";
-          const baseRefMdExpr = "t.base_ref_md";
-          const wikiWhere = `
-            ${titleExpr} = ${baseRefExpr}
-            OR ${titleExpr} = ${baseRefMdExpr}
-            OR ${suffixMatchExprExpr(baseRefExpr, titleExpr)}
-            OR ${suffixMatchExprExpr(baseRefMdExpr, `${titleExpr} || '.md'`)}
-            OR ${relExpr} = ${baseRefExpr}
-            OR ${relExpr} = ${baseRefMdExpr}
-            OR ${suffixMatchExprExpr(relExpr, baseRefMdExpr)}
-            OR ${suffixMatchExprExpr(relExpr, baseRefExpr)}
-            OR ${suffixMatchExprExpr(baseRefMdExpr, relExpr)}
-            OR ${suffixMatchExprExpr(baseRefExpr, relExpr)}
-          `;
-
-          const wikiRank = `CASE
-            WHEN ${titleExpr} = ${baseRefExpr} THEN 1
-            WHEN ${titleExpr} = ${baseRefMdExpr} THEN 2
-            WHEN ${suffixMatchExprExpr(baseRefExpr, titleExpr)} THEN 3
-            WHEN ${suffixMatchExprExpr(
-              baseRefMdExpr,
-              `${titleExpr} || '.md'`
-            )} THEN 4
-            WHEN ${relExpr} = ${baseRefExpr} THEN 5
-            WHEN ${relExpr} = ${baseRefMdExpr} THEN 6
-            WHEN ${suffixMatchExprExpr(relExpr, baseRefMdExpr)} THEN 7
-            WHEN ${suffixMatchExprExpr(relExpr, baseRefExpr)} THEN 8
-            WHEN ${suffixMatchExprExpr(baseRefMdExpr, relExpr)} THEN 9
-            WHEN ${suffixMatchExprExpr(baseRefExpr, relExpr)} THEN 10
-            ELSE 99
-          END`;
-
-          const wikiQuery = `
-            WITH targets(idx, collection, base_ref, base_ref_md) AS (
-              VALUES ${valuesClause}
-            ),
-            candidates AS (
-              SELECT
-                t.idx,
-                d.docid,
-                d.uri,
-                d.title,
-                d.id as doc_id,
-                ${wikiRank} as rank
-              FROM targets t
-              JOIN documents d ON d.active = 1 AND d.collection = t.collection
-              WHERE ${wikiWhere}
-            ),
-            ranked AS (
-              SELECT *,
-                ROW_NUMBER() OVER (PARTITION BY idx ORDER BY rank, doc_id) as rn
-              FROM candidates
-            )
-            SELECT idx, docid, uri, title
-            FROM ranked
-            WHERE rn = 1
-          `;
-
-          const wikiRows = db
-            .query<
-              { idx: number; docid: string; uri: string; title: string | null },
-              (string | number)[]
-            >(wikiQuery)
-            .all(...wikiParams);
-
-          for (const row of wikiRows) {
-            results[row.idx] = {
-              docid: row.docid,
-              uri: row.uri,
-              title: row.title,
-            };
-          }
-        }
-      }
-
-      if (mdTargets.length > 0) {
-        for (const batch of chunkArray(mdTargets, mdBatchSize)) {
-          const valuesClause = batch.map(() => "(?, ?, ?)").join(", ");
-          const mdParams = batch.flatMap((t) => [
-            t.idx,
-            t.collection,
-            t.relPath,
-          ]);
-          const mdQuery = `
-            WITH targets(idx, collection, rel_path) AS (
-              VALUES ${valuesClause}
-            ),
-            ranked AS (
-              SELECT
-                t.idx,
-                d.docid,
-                d.uri,
-                d.title,
-                d.id as doc_id,
-                ROW_NUMBER() OVER (PARTITION BY t.idx ORDER BY d.id) as rn
-              FROM targets t
-              JOIN documents d ON d.active = 1
-                AND d.collection = t.collection
-                AND d.rel_path = t.rel_path
-            )
-            SELECT idx, docid, uri, title
-            FROM ranked
-            WHERE rn = 1
-          `;
-
-          const mdRows = db
-            .query<
-              { idx: number; docid: string; uri: string; title: string | null },
-              (string | number)[]
-            >(mdQuery)
-            .all(...mdParams);
-
-          for (const row of mdRows) {
-            results[row.idx] = {
-              docid: row.docid,
-              uri: row.uri,
-              title: row.title,
-            };
-          }
-        }
-      }
-
-      return ok(results);
+      // Tied workspace links are ambiguous: reported unresolved, never guessed.
+      return ok(
+        resolutions.map((resolution) =>
+          isTraversableResolution(resolution)
+            ? (byId.get(resolution.targetId) ?? null)
+            : null
+        )
+      );
     } catch (cause) {
       return err(
         "QUERY_FAILED",
@@ -4757,6 +4814,22 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         ? normalizeDocEdgeType(options.edgeType)
         : undefined;
 
+      // Collection allowlist: every visited node must be in scope, so a
+      // forbidden collection can never act as a traversal bridge. Names are
+      // validated collection identifiers, inlined as quoted literals.
+      const scopeCollections = options.collections
+        ? [...new Set(options.collections)].filter((name) =>
+            COLLECTION_IDENTIFIER.test(name)
+          )
+        : undefined;
+      const nextDocScope = scopeCollections
+        ? scopeCollections.length === 0
+          ? " AND 0"
+          : ` AND next_doc.collection IN (${scopeCollections
+              .map((name) => `'${name}'`)
+              .join(",")})`
+        : "";
+
       const nodeLimit = Math.min(maxNodes, visitedLimit);
       const edgeTypeFilter = edgeType ? "AND e.edge_type = ?" : "";
       const edgeTypeFilterFor = (alias: string): string =>
@@ -4795,7 +4868,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                       ORDER BY e2.edge_type ASC, e2.id ASC
                     ) AS next_rank
                   FROM doc_edges e2
-                  JOIN documents next_doc ON next_doc.id = e2.dst_doc_id AND next_doc.active = 1
+                  JOIN documents next_doc ON next_doc.id = e2.dst_doc_id AND next_doc.active = 1${nextDocScope}
                   WHERE e2.src_doc_id = ${frontierName}.doc_id
                     ${edgeTypeFilterFor("e2")}
                     AND instr(${frontierName}.path, printf(',%d,', e2.dst_doc_id)) = 0
@@ -4826,7 +4899,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                       ORDER BY e2.edge_type ASC, e2.id ASC
                     ) AS next_rank
                   FROM doc_edges e2
-                  JOIN documents next_doc ON next_doc.id = e2.src_doc_id AND next_doc.active = 1
+                  JOIN documents next_doc ON next_doc.id = e2.src_doc_id AND next_doc.active = 1${nextDocScope}
                   WHERE e2.dst_doc_id = ${frontierName}.doc_id
                     ${edgeTypeFilterFor("e2")}
                     AND instr(${frontierName}.path, printf(',%d,', e2.src_doc_id)) = 0
@@ -4857,7 +4930,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                       ORDER BY e2.edge_type ASC, e2.id ASC
                     ) AS next_rank
                   FROM doc_edges e2
-                  JOIN documents next_doc ON next_doc.id = e2.dst_doc_id AND next_doc.active = 1
+                  JOIN documents next_doc ON next_doc.id = e2.dst_doc_id AND next_doc.active = 1${nextDocScope}
                   WHERE e2.src_doc_id = ${frontierName}.doc_id
                     ${edgeTypeFilterFor("e2")}
                     AND instr(${frontierName}.path, printf(',%d,', e2.dst_doc_id)) = 0
@@ -4885,7 +4958,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                       ORDER BY e3.edge_type ASC, e3.id ASC
                     ) AS next_rank
                   FROM doc_edges e3
-                  JOIN documents next_doc ON next_doc.id = e3.src_doc_id AND next_doc.active = 1
+                  JOIN documents next_doc ON next_doc.id = e3.src_doc_id AND next_doc.active = 1${nextDocScope}
                   WHERE e3.dst_doc_id = ${frontierName}.doc_id
                     ${edgeTypeFilterFor("e3")}
                     AND instr(${frontierName}.path, printf(',%d,', e3.src_doc_id)) = 0
@@ -5255,19 +5328,53 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         : "";
       const params = sourceIds ? [JSON.stringify(sourceIds)] : [];
       const inserted = db.transaction(() => {
-        const wiki = db
-          .query<DesiredGraphEdge, string[]>(`
-          SELECT DISTINCT src.id AS sourceId, tgt.id AS targetId,
-            'mentions' AS edgeType, 'parsed' AS confidence, 'wikilink' AS source
+        // Wiki edges use the shared (workspace-aware) resolver in batches;
+        // tied workspace links are audit-only and never become edges.
+        const wikiRows = db
+          .query<
+            {
+              source_id: number;
+              source_collection: string;
+              source_rel_path: string;
+              target_ref_norm: string;
+              target_collection: string | null;
+            },
+            string[]
+          >(`
+          SELECT src.id AS source_id, src.collection AS source_collection,
+            src.rel_path AS source_rel_path, dl.target_ref_norm,
+            dl.target_collection
           FROM documents src JOIN doc_links dl ON dl.source_doc_id = src.id
-          JOIN documents tgt ON tgt.id = (${buildWikiBestMatchSubquery(
-            "COALESCE(dl.target_collection, src.collection)",
-            "dl.target_ref_norm"
-          )})
-          WHERE src.active = 1 AND tgt.active = 1 AND dl.link_type = 'wiki'
+          WHERE src.active = 1 AND dl.link_type = 'wiki'
           ${sourceFilter}
+          ORDER BY src.id, dl.id
         `)
           .all(...params);
+        const wikiResolutions = resolveGraphLinkTargets(
+          db,
+          wikiRows.map((row) => ({
+            targetRefNorm: row.target_ref_norm,
+            targetCollection: row.target_collection ?? row.source_collection,
+            linkType: "wiki" as const,
+            source: linkSourceIdentity(row),
+          }))
+        );
+        const wikiKeys = new Set<string>();
+        const wiki: DesiredGraphEdge[] = [];
+        for (const [index, row] of wikiRows.entries()) {
+          const resolution = wikiResolutions[index];
+          if (!isTraversableResolution(resolution)) continue;
+          const key = `${row.source_id}:${resolution.targetId}`;
+          if (wikiKeys.has(key)) continue;
+          wikiKeys.add(key);
+          wiki.push({
+            sourceId: row.source_id,
+            targetId: resolution.targetId,
+            edgeType: "mentions",
+            confidence: "parsed",
+            source: "wikilink",
+          });
+        }
         const markdown = db
           .query<DesiredGraphEdge, string[]>(`
           SELECT DISTINCT src.id AS sourceId, tgt.id AS targetId,
@@ -5362,12 +5469,14 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         link_type: "wiki" | "markdown";
         match_rank: number | null;
         match_count: number | null;
+        reason?: string;
       }
 
       interface GraphLinkResolutionRow {
         source_id: number;
         source_docid: string;
         source_collection: string;
+        source_rel_path: string;
         target_ref_norm: string;
         target_collection: string | null;
         link_type: "wiki" | "markdown";
@@ -5396,6 +5505,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           src.id as source_id,
           src.docid as source_docid,
           src.collection as source_collection,
+          src.rel_path as source_rel_path,
           dl.target_ref_norm,
           dl.target_collection,
           dl.link_type
@@ -5413,6 +5523,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           targetRefNorm: row.target_ref_norm,
           targetCollection: row.target_collection ?? row.source_collection,
           linkType: row.link_type,
+          source: linkSourceIdentity(row),
         }))
       );
       const resolvedEdgeRows: ResolvedEdgeRow[] = [];
@@ -5422,11 +5533,15 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       };
       for (const [index, row] of graphLinkRows.entries()) {
         const resolution = resolutions[index];
-        if (!resolution) {
+        if (!isTraversableResolution(resolution)) {
           unresolvedByType[row.link_type] += 1;
           continue;
         }
-        const targetCollection = row.target_collection ?? row.source_collection;
+        // Scope uses the resolved target identity, not the declared prefix.
+        const targetCollection =
+          resolution.targetCollection ??
+          row.target_collection ??
+          row.source_collection;
         if (collection && targetCollection !== collection) continue;
         resolvedEdgeRows.push({
           source_id: row.source_id,
@@ -5436,6 +5551,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           link_type: row.link_type,
           match_rank: resolution.matchRank,
           match_count: resolution.matchCount,
+          reason: resolution.reason,
         });
       }
       resolvedEdgeRows.sort(
@@ -5617,7 +5733,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         const { confidence, audit } = classifyResolvedGraphEdge(
           row.link_type,
           row.match_rank,
-          row.match_count
+          row.match_count,
+          row.reason
         );
         const existing = edgeMap.get(key);
         if (existing) {
@@ -5927,6 +6044,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         path: string;
         egress_policy: EgressPolicy;
         egress_policy_source: EgressPolicySource;
+        workspace_root: string | null;
+        workspace_source: LinkWorkspaceSource | null;
         total: number;
         active: number;
         errored: number;
@@ -5980,6 +6099,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             c.path,
             c.egress_policy,
             c.egress_policy_source,
+            c.workspace_root,
+            c.workspace_source,
             COALESCE(ds.total, 0) AS total,
             COALESCE(ds.active, 0) AS active,
             COALESCE(ds.errored, 0) AS errored,
@@ -6081,6 +6202,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           path: s.path,
           egressPolicy: s.egress_policy,
           egressPolicySource: s.egress_policy_source,
+          workspaceRoot: s.workspace_root,
+          workspaceSource: s.workspace_source ?? "none",
           totalDocuments: s.total,
           activeDocuments: s.active,
           errorDocuments: s.errored,
@@ -6357,6 +6480,22 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   }
 }
 
+/** Collection names as the config schema admits them (safe to inline). */
+const COLLECTION_IDENTIFIER = /^[a-z0-9][a-z0-9_-]{0,63}$/;
+
+/**
+ * Workspace columns on collection upsert. Nested vault prefixes are refreshed
+ * by ingestion; they stay valid only while the collection's real root does.
+ */
+const COLLECTION_WORKSPACE_UPSERT_SET = `real_path = excluded.real_path,
+  workspace_root = excluded.workspace_root,
+  workspace_source = excluded.workspace_source,
+  workspace_nested = CASE
+    WHEN collections.real_path IS excluded.real_path
+    THEN collections.workspace_nested
+    ELSE NULL
+  END,`;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // DB Row Types (snake_case from SQLite)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -6371,6 +6510,10 @@ interface DbCollectionRow {
   language_hint: string | null;
   egress_policy: EgressPolicy;
   egress_policy_source: EgressPolicySource;
+  real_path?: string | null;
+  workspace_root?: string | null;
+  workspace_source?: LinkWorkspaceSource | null;
+  workspace_nested?: string | null;
   synced_at: string;
 }
 
@@ -6462,6 +6605,18 @@ interface DbIngestErrorRow {
 // Row Mappers (snake_case -> camelCase)
 // ─────────────────────────────────────────────────────────────────────────────
 
+function parseWorkspaceNested(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((value): value is string => typeof value === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
 function mapCollectionRow(row: DbCollectionRow): CollectionRow {
   return {
     name: row.name,
@@ -6473,6 +6628,10 @@ function mapCollectionRow(row: DbCollectionRow): CollectionRow {
     languageHint: row.language_hint,
     egressPolicy: row.egress_policy,
     egressPolicySource: row.egress_policy_source,
+    realPath: row.real_path ?? null,
+    workspaceRoot: row.workspace_root ?? null,
+    workspaceSource: row.workspace_source ?? "none",
+    workspaceNested: parseWorkspaceNested(row.workspace_nested ?? null),
     syncedAt: row.synced_at,
   };
 }

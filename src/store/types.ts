@@ -20,6 +20,7 @@ import type {
   FileRefactorRecoveryReceipt,
   FileRefactorRecoveryReceiptDraft,
 } from "../core/file-refactor-journal";
+import type { LinkWorkspaceSource } from "../core/link-workspace";
 import type { MetadataPredicate, TypedMetadata } from "../core/typed-metadata";
 import type {
   ChunkingPolicyToken,
@@ -113,6 +114,14 @@ export interface CollectionRow {
   egressPolicy: EgressPolicy;
   /** Whether policy was explicit or supplied by a safe default. */
   egressPolicySource: EgressPolicySource;
+  /** Canonical collection root (real path), when resolvable. */
+  realPath?: string | null;
+  /** Effective link workspace root; null means collection-scoped links. */
+  workspaceRoot?: string | null;
+  /** How the workspace root was established. */
+  workspaceSource?: LinkWorkspaceSource;
+  /** Collection-relative prefixes of nested vaults with their own workspace. */
+  workspaceNested?: string[];
   syncedAt: string;
 }
 
@@ -351,6 +360,8 @@ export interface BacklinkRow {
   sourceDocUri: string;
   /** Source document title */
   sourceDocTitle: string | null;
+  /** Collection of the source document */
+  sourceCollection?: string;
   /** Link display text */
   linkText: string | null;
   /** 1-based line number in source */
@@ -793,6 +804,10 @@ export interface CollectionStatus {
   egressPolicy: EgressPolicy;
   /** Whether policy was explicit or supplied by a safe default. */
   egressPolicySource: EgressPolicySource;
+  /** Effective link workspace root (host path); null when collection-scoped. */
+  workspaceRoot?: string | null;
+  /** How the link workspace was established. */
+  workspaceSource?: LinkWorkspaceSource;
   totalDocuments: number;
   activeDocuments: number;
   errorDocuments: number;
@@ -876,6 +891,10 @@ export interface GraphEdgeAudit {
   resolution:
     | "exact-title"
     | "exact-path"
+    /** Only file with that name (or path suffix) in its link workspace. */
+    | "exact-name"
+    /** Won over same-named files by the same-folder / shallower tie-break. */
+    | "tie-break"
     | "path-fallback"
     | "ambiguous-fallback"
     | "similarity";
@@ -1066,6 +1085,12 @@ export interface GetGraphNeighborsOptions {
   seedDocumentIds: number[];
   /** Filter neighbors to a single collection */
   collection?: string;
+  /**
+   * Graph allowlist: every edge's resolved source and target must be in one
+   * of these collections. Takes precedence over `collection`; empty denies
+   * all. Undefined (with no `collection`) is unrestricted.
+   */
+  collections?: string[];
   /** Max edges to return (default 10000) */
   limitEdges?: number;
 }
@@ -1113,6 +1138,11 @@ export interface GraphQueryEdge {
 export interface GraphQueryOptions {
   direction?: GraphQueryDirection;
   edgeType?: DocEdgeType;
+  /**
+   * Collection allowlist: only documents in these collections are visited
+   * (the root must be in scope too). Undefined means every collection.
+   */
+  collections?: string[];
   maxDepth?: number;
   maxNodes?: number;
   frontierLimit?: number;
@@ -1598,6 +1628,14 @@ export interface StorePort {
    * Get all collections from DB.
    */
   getCollections(): Promise<StoreResult<CollectionRow[]>>;
+
+  /**
+   * Re-detect nested vaults below a collection root from its indexed
+   * document directories; returns whether stored membership changed.
+   */
+  refreshCollectionNestedWorkspaces?(
+    collection: string
+  ): Promise<StoreResult<boolean>>;
 
   /**
    * Get all contexts from DB.
@@ -2242,18 +2280,26 @@ export interface StorePort {
   ): Promise<StoreResult<BacklinkRow[]>>;
 
   /**
-   * Resolve link targets to their documents.
-   * Returns array of resolved docs (or null for unresolved) matching input order.
+   * Resolve link targets to their documents with the shared link resolver.
+   * With `source`, plain wiki links from a document inside a link workspace
+   * resolve across the workspace. Returns resolved docs (or null for
+   * unresolved and tied links) matching input order.
    */
   resolveLinks(
     targets: Array<{
       targetRefNorm: string;
       targetCollection: string;
       linkType: "wiki" | "markdown";
+      source?: { collection: string; relPath: string; explicit: boolean };
     }>
   ): Promise<
     StoreResult<
-      Array<{ docid: string; uri: string; title: string | null } | null>
+      Array<{
+        docid: string;
+        uri: string;
+        title: string | null;
+        collection?: string;
+      } | null>
     >
   >;
 

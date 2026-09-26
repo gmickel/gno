@@ -8,7 +8,7 @@ import type {
 } from "../types";
 
 import { buildWikiMatchExpression } from "../../core/graph-resolver";
-import { normalizeWikiName } from "../../core/links";
+import { normalizeWikiName, stripWikiMdExt } from "../../core/links";
 
 const SNAPSHOT_COLUMNS = `document_id AS documentId, collection, rel_path AS relPath,
   docid, uri, title, mirror_hash AS mirrorHash, source_hash AS sourceHash,
@@ -101,6 +101,11 @@ export function createGraphReferenceStore(db: Database): GraphReferenceStore {
         ),
         wiki_rel: normalizeWikiName(d.relPath),
         wiki_stem: normalizeWikiName(d.relPath.replace(/\.[^/.]+$/, "")),
+        // Workspace links name a file by its last path segment from any
+        // collection; every such referrer may re-resolve after this change.
+        wiki_base: stripWikiMdExt(
+          normalizeWikiName(d.relPath.split("/").pop() ?? d.relPath)
+        ),
       }));
       return db
         .query<{ sourceId: number }, [string]>(`
@@ -110,7 +115,8 @@ export function createGraphReferenceStore(db: Database): GraphReferenceStore {
             json_extract(value, '$.title') AS title,
             json_extract(value, '$.wiki_title') AS wiki_title,
             json_extract(value, '$.wiki_rel') AS wiki_rel,
-            json_extract(value, '$.wiki_stem') AS wiki_stem
+            json_extract(value, '$.wiki_stem') AS wiki_stem,
+            json_extract(value, '$.wiki_base') AS wiki_base
           FROM json_each(?)
         )
         SELECT DISTINCT dl.source_doc_id AS sourceId
@@ -121,6 +127,11 @@ export function createGraphReferenceStore(db: Database): GraphReferenceStore {
             (dl.link_type = 'wiki' AND ${buildWikiMatchExpression("t", "dl.target_ref_norm")})
           )) OR
           (dl.link_type = 'wiki' AND dl.target_ref_norm IN (t.wiki_title, t.wiki_rel, t.wiki_stem))
+          OR (dl.link_type = 'wiki' AND dl.target_collection IS NULL AND (
+            dl.target_ref_norm IN (t.wiki_base, t.wiki_base || '.md')
+            OR substr(dl.target_ref_norm, -length(t.wiki_base) - 1) = '/' || t.wiki_base
+            OR substr(dl.target_ref_norm, -length(t.wiki_base) - 4) = '/' || t.wiki_base || '.md'
+          ))
           OR (dl.link_type = 'markdown' AND t.collection = src.collection AND dl.target_ref_norm = t.rel_path)
         )
         ORDER BY dl.source_doc_id

@@ -1694,7 +1694,10 @@ function wireOnboardingCommands(program: Command): void {
       collectRepeatableValue,
       []
     )
-    .option("--max-findings <count>", "maximum returned findings", Number)
+    .option(
+      "--max-findings <count>",
+      "maximum returned findings (1-100000, or all)"
+    )
     .option("--max-age-days <days>", "explicit age review signal", Number)
     .option(
       "--orphan-root <uri>",
@@ -1736,7 +1739,7 @@ function wireOnboardingCommands(program: Command): void {
             collections: cmdOpts.collection as string[],
             paths: cmdOpts.path as string[],
             tags: cmdOpts.tag as string[],
-            maxFindings: cmdOpts.maxFindings as number | undefined,
+            maxFindings: cmdOpts.maxFindings as string | undefined,
             maxAgeDays: cmdOpts.maxAgeDays as number | undefined,
             orphanRoots: cmdOpts.orphanRoot as string[],
             orphanIgnorePrefixes: cmdOpts.orphanIgnorePrefix as string[],
@@ -4749,6 +4752,12 @@ function wireKnowledgeDeltaCommands(program: Command): void {
   program
     .command("impact <doc>")
     .description("Find bounded inbound knowledge dependencies")
+    .option(
+      "-c, --collection <name>",
+      "only traverse these collections (repeatable; default all)",
+      collectRepeatableValue,
+      []
+    )
     .option("--max-depth <n>", "maximum dependency depth", "3")
     .option("--max-nodes <n>", "maximum returned nodes", "100")
     .option("--max-edges <n>", "maximum traversed evidence edges", "250")
@@ -4764,6 +4773,7 @@ function wireKnowledgeDeltaCommands(program: Command): void {
       const result = await impact(
         doc,
         {
+          collections: cmdOpts.collection as string[],
           maxDepth: parsePositiveInt("max-depth", cmdOpts.maxDepth),
           maxNodes: parsePositiveInt("max-nodes", cmdOpts.maxNodes),
           maxEdges: parsePositiveInt("max-edges", cmdOpts.maxEdges),

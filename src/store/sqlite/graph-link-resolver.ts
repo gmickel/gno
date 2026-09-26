@@ -6,21 +6,81 @@
 
 import type { Database } from "bun:sqlite";
 
+import type { WorkspaceResolutionReason } from "./workspace-link-resolver";
+
 import { stripWikiMdExt } from "../../core/links";
-import { resolveGraphLinkTargetsBulk } from "./graph-link-bulk-resolver";
+import {
+  GRAPH_LINK_BULK_MAX_DOCUMENTS,
+  resolveGraphLinkTargetsBulk,
+} from "./graph-link-bulk-resolver";
+import {
+  loadLinkWorkspaceMemberships,
+  resolveWorkspaceTargets,
+  workspaceKeyForDocument,
+  workspaceMemberCollections,
+  type WorkspaceTargetInput,
+} from "./workspace-link-resolver";
+
+export interface GraphLinkSourceIdentity {
+  collection: string;
+  relPath: string;
+  /** The link carried an explicit `collection:` prefix. */
+  explicit: boolean;
+}
 
 export interface GraphLinkTarget {
   targetRefNorm: string;
+  /** Explicit prefix collection, else the source collection. */
   targetCollection: string;
   linkType: "wiki" | "markdown";
+  /**
+   * Source document identity. Plain wiki links from a document inside a link
+   * workspace resolve across the workspace; without it (or for explicit,
+   * markdown and non-workspace links) resolution stays collection-scoped.
+   */
+  source?: GraphLinkSourceIdentity;
 }
+
+/** Where a resolved link landed relative to its source collection. */
+export type LinkResolutionScope =
+  | "same-collection"
+  | "cross-collection"
+  | "explicit-collection";
 
 export interface ResolvedGraphLinkTarget {
   targetId: number;
   targetDocid: string;
   matchRank: number;
   matchCount: number;
+  /** Collection of the resolved target document. */
+  targetCollection?: string;
+  scope?: LinkResolutionScope;
+  /** Workspace resolution reason; absent for collection-scoped resolution. */
+  reason?: WorkspaceResolutionReason;
+  /** False for a tied workspace link: audit evidence only, never an edge. */
+  traversable?: boolean;
+  /** Tied candidates of a non-traversable link, canonical path order. */
+  candidates?: Array<{ id: number; docid: string; collection: string }>;
 }
+
+/** Resolved and allowed to become a graph edge. */
+export const isTraversableResolution = (
+  resolution: ResolvedGraphLinkTarget | null | undefined
+): resolution is ResolvedGraphLinkTarget =>
+  resolution !== null &&
+  resolution !== undefined &&
+  resolution.traversable !== false;
+
+/** Source identity for a raw doc_links row. */
+export const linkSourceIdentity = (row: {
+  source_collection: string;
+  source_rel_path: string;
+  target_collection: string | null;
+}): GraphLinkSourceIdentity => ({
+  collection: row.source_collection,
+  relPath: row.source_rel_path,
+  explicit: row.target_collection !== null && row.target_collection !== "",
+});
 
 const MAX_SQL_PARAMS = 900;
 const BULK_RESOLUTION_THRESHOLD = 128;
@@ -48,6 +108,8 @@ export interface AuditLinkSnapshotLink {
   targetRefNorm: string;
   targetAnchor: string | null;
   targetCollection: string;
+  /** The link carried an explicit `collection:` prefix. */
+  explicitCollection?: boolean;
   linkType: "wiki" | "markdown";
   startLine: number;
   startCol: number;
@@ -60,6 +122,11 @@ export interface AuditLinkSnapshot {
   documents: AuditLinkSnapshotDocument[];
   /** Optional finding scope when documents also include graph-wide evidence. */
   auditedDocumentIds?: number[];
+  /**
+   * Requested collection scope of a scoped audit. Connectivity still uses
+   * the whole graph, but candidate identities outside it are withheld.
+   */
+  scopeCollections?: string[];
   links: AuditLinkSnapshotLink[];
   totals: { documents: number; links: number };
   truncated: { documents: boolean; links: boolean };
@@ -265,10 +332,179 @@ export const resolveGraphLinkTargetsSql = (
   return results;
 };
 
-/** Resolve all targets in bounded SQL batches while retaining confidence inputs. */
+export type GraphLinkResolutionStrategy = "auto" | "sql" | "bulk";
+
+/**
+ * Resolve all targets with one contract for every graph consumer: plain wiki
+ * links inside a link workspace use workspace ranking; explicit, markdown and
+ * non-workspace links keep collection-scoped resolution. `strategy` forces
+ * the SQL or bulk candidate path (parity tests); results are identical.
+ */
 export function resolveGraphLinkTargets(
   db: Database,
-  targets: GraphLinkTarget[]
+  targets: GraphLinkTarget[],
+  strategy: GraphLinkResolutionStrategy = "auto"
+): Array<ResolvedGraphLinkTarget | null> {
+  const results: Array<ResolvedGraphLinkTarget | null> = Array.from(
+    { length: targets.length },
+    () => null
+  );
+  const memberships = targets.some(
+    (target) =>
+      target.linkType === "wiki" && target.source && !target.source.explicit
+  )
+    ? loadLinkWorkspaceMemberships(db)
+    : new Map();
+  const workspaceInputs: WorkspaceTargetInput[] = [];
+  const workspaceIndexes: number[] = [];
+  const legacyTargets: GraphLinkTarget[] = [];
+  const legacyIndexes: number[] = [];
+  for (const [index, target] of targets.entries()) {
+    const source = target.source;
+    const wsKey =
+      target.linkType === "wiki" && source && !source.explicit
+        ? workspaceKeyForDocument(
+            memberships,
+            source.collection,
+            source.relPath
+          )
+        : null;
+    if (wsKey !== null && source) {
+      workspaceInputs.push({
+        targetRefNorm: target.targetRefNorm,
+        source: { collection: source.collection, relPath: source.relPath },
+        wsKey,
+      });
+      workspaceIndexes.push(index);
+    } else {
+      legacyTargets.push(target);
+      legacyIndexes.push(index);
+    }
+  }
+
+  const legacyResults = resolveCollectionScopedTargets(
+    db,
+    legacyTargets,
+    strategy
+  );
+  // Results are shared per unique resolution (as the resolvers dedupe
+  // targets) so large inventories do not allocate one object per link.
+  const legacyShared = new Map<
+    ResolvedGraphLinkTarget,
+    Map<string, ResolvedGraphLinkTarget>
+  >();
+  for (const [position, index] of legacyIndexes.entries()) {
+    const resolution = legacyResults[position] ?? null;
+    if (!resolution) continue;
+    const target = targets[index]!;
+    const scope = target.source
+      ? target.source.explicit
+        ? ("explicit-collection" as const)
+        : ("same-collection" as const)
+      : undefined;
+    const variantKey = `${target.targetCollection}\0${scope ?? ""}`;
+    let variants = legacyShared.get(resolution);
+    if (!variants) {
+      variants = new Map();
+      legacyShared.set(resolution, variants);
+    }
+    let shared = variants.get(variantKey);
+    if (!shared) {
+      shared = {
+        ...resolution,
+        targetCollection: target.targetCollection,
+        ...(scope ? { scope } : {}),
+      };
+      variants.set(variantKey, shared);
+    }
+    results[index] = shared;
+  }
+
+  if (workspaceInputs.length > 0) {
+    // Only whether the unique count passes the threshold matters.
+    const unique = new Set<string>();
+    for (const input of workspaceInputs) {
+      unique.add(
+        `${input.wsKey}\0${input.source.collection}\0${input.source.relPath}\0${input.targetRefNorm}`
+      );
+      if (unique.size > BULK_RESOLUTION_THRESHOLD) break;
+    }
+    const uniqueCount = unique.size;
+    const bulk =
+      strategy === "bulk" ||
+      (strategy === "auto" &&
+        uniqueCount > BULK_RESOLUTION_THRESHOLD &&
+        countActiveDocuments(
+          db,
+          workspaceMemberCollections(
+            memberships,
+            new Set(workspaceInputs.map((input) => input.wsKey))
+          )
+        ) <= GRAPH_LINK_BULK_MAX_DOCUMENTS);
+    const workspaceResults = resolveWorkspaceTargets(
+      db,
+      memberships,
+      workspaceInputs,
+      { bulk }
+    );
+    const workspaceShared = new Map<object, ResolvedGraphLinkTarget>();
+    for (const [position, index] of workspaceIndexes.entries()) {
+      const resolution = workspaceResults[position] ?? null;
+      const source = targets[index]!.source!;
+      // One resolution object per (workspace, source collection, folder,
+      // target), so its scope is fixed and the converted result is shared.
+      const cached = resolution ? workspaceShared.get(resolution) : undefined;
+      if (cached) {
+        results[index] = cached;
+        continue;
+      }
+      results[index] = resolution
+        ? {
+            targetId: resolution.target.id,
+            targetDocid: resolution.target.docid,
+            matchRank: resolution.titleRank ?? 0,
+            matchCount: resolution.traversable ? 1 : resolution.tied.length,
+            targetCollection: resolution.target.collection,
+            scope:
+              resolution.target.collection === source.collection
+                ? "same-collection"
+                : "cross-collection",
+            reason: resolution.reason,
+            traversable: resolution.traversable,
+            ...(resolution.traversable
+              ? {}
+              : {
+                  candidates: resolution.tied.map(
+                    ({ id, docid, collection }) => ({ id, docid, collection })
+                  ),
+                }),
+          }
+        : null;
+      if (resolution && results[index]) {
+        workspaceShared.set(resolution, results[index]!);
+      }
+    }
+  }
+  return results;
+}
+
+const countActiveDocuments = (
+  db: Database,
+  collections: readonly string[]
+): number =>
+  collections.length === 0
+    ? 0
+    : (db
+        .query<{ count: number }, string[]>(
+          `SELECT COUNT(*) AS count FROM documents WHERE active = 1 AND collection IN (${collections.map(() => "?").join(",")})`
+        )
+        .get(...collections)?.count ?? 0);
+
+/** Collection-scoped (pre-workspace) resolution, deduplicated per target. */
+function resolveCollectionScopedTargets(
+  db: Database,
+  targets: GraphLinkTarget[],
+  strategy: GraphLinkResolutionStrategy
 ): Array<ResolvedGraphLinkTarget | null> {
   const uniqueTargets: GraphLinkTarget[] = [];
   const uniqueIndexByKey = new Map<string, number>();
@@ -289,7 +525,10 @@ export function resolveGraphLinkTargets(
     originalToUniqueIndex.push(uniqueIndex);
   }
 
-  if (uniqueTargets.length > BULK_RESOLUTION_THRESHOLD) {
+  if (
+    strategy === "bulk" ||
+    (strategy === "auto" && uniqueTargets.length > BULK_RESOLUTION_THRESHOLD)
+  ) {
     const bulkResults = resolveGraphLinkTargetsBulk(db, uniqueTargets);
     if (bulkResults) {
       return originalToUniqueIndex.map(
@@ -396,6 +635,7 @@ export function captureAuditLinkSnapshot(
         source_uri: string;
         source_collection: string;
         source_rel_path: string;
+        source_doc_rel_path: string;
         target_ref: string;
         target_ref_norm: string;
         target_anchor: string | null;
@@ -410,7 +650,8 @@ export function captureAuditLinkSnapshot(
     >(
       `SELECT d.id AS source_id, d.docid AS source_docid,
               d.uri AS source_uri, d.collection AS source_collection,
-              COALESCE(NULLIF(d.record_source_path, ''), d.rel_path) AS source_rel_path, dl.target_ref,
+              COALESCE(NULLIF(d.record_source_path, ''), d.rel_path) AS source_rel_path,
+              d.rel_path AS source_doc_rel_path, dl.target_ref,
               dl.target_ref_norm, dl.target_anchor, dl.target_collection,
               dl.link_type, dl.start_line, dl.start_col,
               dl.end_line, dl.end_col
@@ -425,6 +666,11 @@ export function captureAuditLinkSnapshot(
     targetRefNorm: row.target_ref_norm,
     targetCollection: row.target_collection ?? row.source_collection,
     linkType: row.link_type,
+    source: linkSourceIdentity({
+      source_collection: row.source_collection,
+      source_rel_path: row.source_doc_rel_path,
+      target_collection: row.target_collection,
+    }),
   }));
   const resolutions = resolveGraphLinkTargets(db, targets);
   const uniqueTargetsResolved = new Set(
@@ -458,6 +704,7 @@ export function captureAuditLinkSnapshot(
       targetRefNorm: row.target_ref_norm,
       targetAnchor: row.target_anchor,
       targetCollection: row.target_collection ?? row.source_collection,
+      explicitCollection: row.target_collection !== null,
       linkType: row.link_type,
       startLine: row.start_line,
       startCol: row.start_col,

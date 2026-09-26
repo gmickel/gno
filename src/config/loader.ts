@@ -8,6 +8,10 @@
 import type { ZodError } from "zod";
 
 import {
+  validateWorkspaceRootSetting,
+  workspaceRootSettingMessage,
+} from "../core/link-workspace";
+import {
   normalizeConfigContentTypes,
   type ConfigWarning,
 } from "./content-types";
@@ -132,12 +136,51 @@ export async function loadConfigFromPath(
     };
   }
 
+  const workspaceIssues = validateCollectionWorkspaceRoots(result.data);
+  if (workspaceIssues.length > 0) {
+    return {
+      ok: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: `Config validation failed: ${workspaceIssues.map((issue) => issue.message).join("; ")}`,
+        issues: workspaceIssues,
+      },
+    };
+  }
+
   const normalized = normalizeConfigContentTypes(result.data);
   return {
     ok: true,
     value: normalized.config,
     warnings: normalized.warnings,
   };
+}
+
+/**
+ * Validate explicit `workspaceRoot` settings against the filesystem: each must
+ * be absolute, exist, and contain its collection root. Messages name the
+ * collection so the error is actionable.
+ */
+export function validateCollectionWorkspaceRoots(
+  config: Config
+): ZodError["issues"] {
+  const issues: ZodError["issues"] = [];
+  for (const [index, collection] of config.collections.entries()) {
+    if (typeof collection.workspaceRoot !== "string") continue;
+    const error = validateWorkspaceRootSetting(
+      collection.path,
+      collection.workspaceRoot
+    );
+    if (error) {
+      issues.push({
+        code: "custom",
+        message: workspaceRootSettingMessage(collection.name, error),
+        path: ["collections", index, "workspaceRoot"],
+        input: collection.workspaceRoot,
+      });
+    }
+  }
+  return issues;
 }
 
 /**

@@ -14,8 +14,11 @@ import type { WorkspaceAuditProgress } from "../../core/audit-workspace";
 import { getIndexDbPath } from "../../app/constants";
 import { loadConfig } from "../../config";
 import {
+  AUDIT_MAX_FINDINGS_RANGE_MESSAGE,
   auditExitCode,
   AUDIT_CATEGORIES,
+  parseAuditMaxFindingsInput,
+  resolveAuditMaxFindings,
   serializeAuditReportCanonical,
 } from "../../core/audit";
 import { runWorkspaceAudit } from "../../core/audit-workspace";
@@ -31,7 +34,8 @@ export interface AuditCommandOptions {
   collections?: string[];
   paths?: string[];
   tags?: string[];
-  maxFindings?: number;
+  /** Positive integer, `all`, or the raw CLI string for either. */
+  maxFindings?: number | string;
   maxAgeDays?: number;
   orphanRoots?: string[];
   orphanIgnorePrefixes?: string[];
@@ -80,11 +84,18 @@ export const audit = async (
       error: "category must be links, provenance, freshness, or all",
     };
   }
-  if (invalidPositiveInteger(options.maxFindings)) {
+  const maxFindings =
+    typeof options.maxFindings === "string"
+      ? parseAuditMaxFindingsInput(options.maxFindings)
+      : options.maxFindings;
+  if (
+    (options.maxFindings !== undefined && maxFindings === undefined) ||
+    !resolveAuditMaxFindings(maxFindings).ok
+  ) {
     return {
       success: false,
       invalid: true,
-      error: "maxFindings must be a positive integer",
+      error: AUDIT_MAX_FINDINGS_RANGE_MESSAGE,
     };
   }
   if (invalidPositiveInteger(options.maxAgeDays)) {
@@ -155,7 +166,7 @@ export const audit = async (
       collectionFilters: requestedCollections,
       pathFilters: options.paths,
       tagFilters: requestedTags,
-      maxFindings: options.maxFindings,
+      maxFindings,
       agePolicy:
         options.maxAgeDays === undefined
           ? undefined
@@ -188,6 +199,14 @@ export const formatAuditReport = (
     `Categories: ${report.scope.categories.join(", ")}`,
     `Rules: ${report.counts.rules.total} (${report.counts.rules.fail} failed, ${report.counts.rules.unavailable} unavailable, ${report.counts.rules.inconclusive} inconclusive)`,
     `Findings: ${report.counts.findings.total}${report.counts.findings.truncated ? ` (${report.counts.findings.returned} shown)` : ""}`,
+    ...(report.truncation.snapshotTruncated
+      ? [
+          "Snapshot: truncated; totals cover the bounded audit snapshot, not the whole index",
+        ]
+      : []),
+    ...(report.truncation.evidenceTruncated
+      ? ["Evidence: some finding evidence was shortened"]
+      : []),
     `Examined: ${report.counts.examined.documents} document/rule observations`,
     `Duration: ${report.durationMs}ms`,
   ];

@@ -621,6 +621,7 @@ GNO extracts and tracks links between documents:
 | Wiki     | `[[Target]]`                                 | `[[My Note]]`                                |
 | Wiki     | `[[Target\|Display]]`                        | `[[My Note\|click here]]`                    |
 | Wiki     | `[[Target#Heading]]`                         | `[[My Note#Section]]`                        |
+| Wiki     | `[[Folder/Target]]`                          | `[[Spaces/AI/Agents/_index]]`                |
 | Wiki     | `[[collection:Target]]`                      | `[[work:Project Plan]]`                      |
 | Wiki     | `[Display]([[Target]])`                      | `[Plan]([[Project Plan]])`                   |
 | Wiki     | `&#123;&#123;embed ((block-id))&#125;&#125;` | `&#123;&#123;embed ((63f1d1a8))&#125;&#125;` |
@@ -630,11 +631,23 @@ External URLs (https://) are NOT stored—only internal document links.
 
 ### Resolution
 
-Links are resolved at query time, not stored with target document IDs. This handles document renames gracefully:
+Links are resolved at query time, not stored with target document IDs. This handles document renames gracefully. Every link consumer (graph neighbors in search, ask and Context Capsules, backlinks, `gno links`, `gno impact`, graph export, `gno audit links`) uses the same resolution.
 
-- **Wiki links**: Normalized title match with path-style fallbacks (basename/rel_path, optional .md)
-- **Cross-collection**: `[[collection:Note]]` syntax with explicit collection prefix
-- **Markdown links**: Resolved path stored for matching
+**Plain wiki links in a link workspace** (`[[Note]]`, `[[Folder/Note]]`) resolve across every collection of the workspace, the way Obsidian resolves links in a vault (see [Link workspaces](CONFIGURATION.md#link-workspaces)):
+
+1. A target containing `/` matches a file by its path relative to the workspace root (for example `[[Spaces/AI/Agents/_index]]`), then by its path relative to the linking document's collection, then by path suffix. `./` and `../` are relative to the linking document's folder and never reach outside the workspace.
+2. A target without `/` matches a file name, case-insensitively, with or without `.md`.
+3. When several files match, the order is: exact workspace path, exact collection path, a file in the same folder as the linking document, then the file with the fewest folders above it. Files that are still tied are ambiguous: the link creates no graph edge, and `gno audit links` lists the candidates.
+4. When no file matches, a document whose title matches the target, inside the linking document's own collection, is used.
+
+**Other links keep their meaning:**
+
+- `[[collection:Note]]` resolves only inside the named collection (an unknown collection leaves the link unresolved).
+- Wiki links in a collection outside any workspace match a normalized title first, then path-style fallbacks (basename/relative path, optional `.md`), inside the same collection.
+- Markdown links (`[text](../Other/Note.md)`) resolve to a path inside the same collection.
+- `gno://` URIs and document IDs in frontmatter relations resolve exactly.
+
+**Resolving a link never widens scope.** A link can point into another collection, but a search, answer, Context Capsule, replay, backlink list, impact analysis or graph export scoped to some collections only returns documents from those collections. Scope is checked on both ends of every link before anything is ranked, limited or returned, and a document outside the scope is never used as a stepping stone to reach another in-scope document. Collection egress policies apply unchanged: a request that would send `local_only` material to a remote destination is refused, whether the material was found directly or through a link.
 
 Note: Case-insensitive matching relies on SQLite `lower()` (ASCII-only unless ICU).
 

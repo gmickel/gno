@@ -196,6 +196,7 @@ const loadGraphLinks = async (
   seedDocumentIds: number[],
   options: {
     collection?: string;
+    collections?: string[];
     includeSimilar?: boolean;
   }
 ): Promise<
@@ -205,6 +206,7 @@ const loadGraphLinks = async (
     const neighborsResult = await store.getGraphNeighborsForSeeds({
       seedDocumentIds,
       collection: options.collection,
+      collections: options.collections,
       limitEdges: GRAPH_EDGE_LIMIT,
     });
     if (!neighborsResult.ok) {
@@ -239,6 +241,11 @@ export async function expandGraphCandidates(
   fusedCandidates: FusionCandidate[],
   options: {
     collection?: string;
+    /**
+     * Graph allowlist (plural request scope). Neighbours must belong to one of
+     * these collections; defaults to `[collection]` when unset.
+     */
+    collections?: string[];
     includeSimilar?: boolean;
     eligibility?: DocumentEligibilityOptions;
     limit?: number;
@@ -353,8 +360,14 @@ export async function expandGraphCandidates(
   }
 
   const seedDocumentIds = [...seedByDocid.values()].map(({ doc }) => doc.id);
+  const graphAllowlist = options.collections
+    ? new Set(options.collections)
+    : options.collection
+      ? new Set([options.collection])
+      : undefined;
   const linksResult = await loadGraphLinks(store, seedDocumentIds, {
     collection: options.collection,
+    collections: options.collections,
     includeSimilar: options.includeSimilar,
   });
   if (!linksResult.ok) {
@@ -400,9 +413,15 @@ export async function expandGraphCandidates(
     return { candidates: [], meta };
   }
 
+  // A plural allowlist hydrates across its collections; scope is enforced on
+  // each neighbour's own collection below, never widened past the allowlist.
+  const plural = options.collections !== undefined;
   const docsResult = await store.getDocumentsByDocids(rankedNeighborDocids, {
-    eligibility: options.eligibility,
-    collection: options.collection,
+    eligibility:
+      plural && options.eligibility
+        ? { ...options.eligibility, collection: undefined }
+        : options.eligibility,
+    collection: plural ? undefined : options.collection,
     activeOnly: true,
   });
   if (!docsResult.ok) {
@@ -413,6 +432,7 @@ export async function expandGraphCandidates(
   const metadataFilteredDocs = docsResult.value.filter(
     (doc) =>
       doc.mirrorHash &&
+      (!graphAllowlist || graphAllowlist.has(doc.collection)) &&
       (options.relPathPrefix === undefined ||
         sourceRelPath(doc) === options.relPathPrefix ||
         sourceRelPath(doc).startsWith(`${options.relPathPrefix}/`)) &&

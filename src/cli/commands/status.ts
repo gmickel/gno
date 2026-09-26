@@ -21,6 +21,7 @@ import {
 import { isConnectorActivationComplete } from "../../core/activation-connector-health";
 import { buildActivationStatus } from "../../core/activation-status";
 import { formatChunkingStatus } from "../../core/chunking-status";
+import { formatLinkWorkspace } from "../../core/link-workspace";
 import {
   buildMemoryStatus,
   formatMemoryStatusLines,
@@ -140,6 +141,8 @@ function formatTerminal(
         `  ${c.name}: ${c.activeDocuments} docs, ${c.totalChunks} chunks` +
           (c.embeddedChunks > 0 ? `, ${c.embeddedChunks} embedded` : "")
       );
+      const workspace = formatLinkWorkspace(c);
+      if (workspace) lines.push(`    Link workspace: ${workspace}`);
     }
   }
 
@@ -395,6 +398,8 @@ export function formatStatus(
         collections: s.collections.map((c) => ({
           name: c.name,
           path: c.path,
+          ...(c.workspaceRoot ? { workspaceRoot: c.workspaceRoot } : {}),
+          workspaceSource: c.workspaceSource ?? "none",
           documentCount: c.activeDocuments,
           chunkCount: c.totalChunks,
           embeddedCount: c.embeddedChunks,

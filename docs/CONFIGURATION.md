@@ -41,6 +41,10 @@ collections:
     # Memory substrate flag: only collections with memoryManaged: true accept
     # gno remember writes (omitted = false).
     # memoryManaged: true
+    # Link workspace for [[Note]] links (omitted = auto-detect the nearest
+    # .obsidian folder; an absolute path = join that workspace; false = keep
+    # this collection's links inside the collection).
+    # workspaceRoot: /Users/you/vault
     include: []
     exclude:
       - .git
@@ -251,6 +255,54 @@ relax collection policy; `gateway.enableWrite` does not relax it either.
 Mixed evidence and derived artifacts use the most restrictive participating
 collection. Explicit partial checks disclose every omitted collection and
 reason; normal operations never silently drop restricted evidence.
+
+## Link workspaces
+
+If you index one Obsidian vault as several collections (for example one per
+top-level folder), a plain `[[Note]]` link in one collection finds its target
+in another, the way Obsidian does. Collections whose folders share one
+**link workspace** resolve plain wiki links across each other.
+
+GNO finds the workspace for you: it is the nearest folder, at or above the
+collection folder, that contains an `.obsidian` folder. Collections under the
+same vault join the same workspace with no configuration. A collection outside
+any vault keeps today's behavior: its links resolve only inside itself.
+
+Set `workspaceRoot` on a collection to change this:
+
+```yaml
+collections:
+  # Join a workspace that has no .obsidian folder (Logseq, Foam, Dendron,
+  # plain Markdown folders). Give every member the same root.
+  - name: projects
+    path: /Users/you/notes/projects
+    workspaceRoot: /Users/you/notes
+  - name: people
+    path: /Users/you/notes/people
+    workspaceRoot: /Users/you/notes
+
+  # Keep this collection's links inside the collection, even inside a vault.
+  - name: client-x
+    path: /Users/you/vault/Clients/X
+    workspaceRoot: false
+```
+
+`workspaceRoot` must be an absolute path to an existing folder that contains
+the collection folder. Anything else stops GNO with a configuration error that
+names the collection. Paths are compared after resolving symlinks, so a
+symlinked collection joins the workspace its real folder belongs to. A vault
+nested inside another vault (its own `.obsidian` folder) is its own workspace:
+documents inside it do not resolve into the outer vault, and the outer vault
+does not resolve into it.
+
+`gno status` and `gno collection list` show each collection's link workspace
+and whether it was detected or configured. After you change a workspace (move
+an `.obsidian` folder, add a collection, change `workspaceRoot`), the next
+`gno update` rebuilds the link graph and says so.
+
+How links resolve inside a workspace, and why resolving a link never widens
+what a search or answer can return, is described under
+[Link resolution](ARCHITECTURE.md#resolution).
 
 ## Memory-managed collections
 
@@ -696,16 +748,17 @@ Collections define what gets indexed.
 
 ### Collection Fields
 
-| Field          | Type   | Default   | Description                    |
-| -------------- | ------ | --------- | ------------------------------ |
-| `name`         | string | required  | Unique identifier (lowercase)  |
-| `path`         | string | required  | Absolute path to directory     |
-| `pattern`      | glob   | `**/*`    | File matching pattern          |
-| `include`      | array  | see below | Extension allowlist            |
-| `exclude`      | array  | see below | Patterns to skip               |
-| `updateCmd`    | string | -         | Shell command before indexing  |
-| `languageHint` | string | -         | BCP-47 language code           |
-| `models`       | object | -         | Per-collection model overrides |
+| Field           | Type            | Default     | Description                                                            |
+| --------------- | --------------- | ----------- | ---------------------------------------------------------------------- |
+| `name`          | string          | required    | Unique identifier (lowercase)                                          |
+| `path`          | string          | required    | Absolute path to directory                                             |
+| `pattern`       | glob            | `**/*`      | File matching pattern                                                  |
+| `include`       | array           | see below   | Extension allowlist                                                    |
+| `exclude`       | array           | see below   | Patterns to skip                                                       |
+| `updateCmd`     | string          | -           | Shell command before indexing                                          |
+| `languageHint`  | string          | -           | BCP-47 language code                                                   |
+| `models`        | object          | -           | Per-collection model overrides                                         |
+| `workspaceRoot` | path or `false` | auto-detect | Link workspace for wiki links; see [Link workspaces](#link-workspaces) |
 
 ### Default Include Extensions
 

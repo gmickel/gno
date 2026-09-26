@@ -288,26 +288,68 @@ describe("knowledge integrity audit contract", () => {
     expect(auditExitCode(result.exit)).toBe(2);
   });
 
-  test("rejects invalid limits before evaluating rules", async () => {
-    let evaluated = false;
-    const result = await runAudit({
-      scope,
-      capabilities,
-      captureFingerprints: () => fingerprints,
-      rules: [
-        () => {
-          evaluated = true;
-          return finding("gno://work/a.md");
-        },
-      ],
-      maxFindings: 0,
+  test.each([0, -1, 1.5, 100_001])(
+    "rejects invalid limit %p before evaluating rules",
+    async (maxFindings) => {
+      let evaluated = false;
+      const result = await runAudit({
+        scope,
+        capabilities,
+        captureFingerprints: () => fingerprints,
+        rules: [
+          () => {
+            evaluated = true;
+            return finding("gno://work/a.md");
+          },
+        ],
+        maxFindings,
+      });
+      expect(result).toEqual({
+        ok: false,
+        exit: "invalid",
+        error: 'maxFindings must be an integer between 1 and 100000, or "all"',
+      });
+      expect(evaluated).toBe(false);
+    }
+  );
+
+  test("accepts all and caps above 1000, reporting each truncation kind separately", async () => {
+    const manyFindings = (count: number): AuditRuleContribution => ({
+      ruleId: "links.local-targets",
+      category: "links",
+      status: "inconclusive",
+      message: "Local target scan was truncated",
+      skipReason: "snapshot_truncated",
+      evidenceTruncated: true,
+      findings: Array.from({ length: count }, (_, index) => ({
+        subject: `gno://work/${String(index).padStart(5, "0")}.md`,
+        severity: "warning" as const,
+        message: "Unresolved",
+        evidence: [{ kind: "unresolved-target", summary: "x" }],
+      })),
     });
-    expect(result).toEqual({
-      ok: false,
-      exit: "invalid",
-      error: "maxFindings must be an integer between 1 and 1000",
+    const run = (maxFindings: number | "all") =>
+      runAudit({
+        scope,
+        capabilities,
+        captureFingerprints: () => fingerprints,
+        rules: [() => manyFindings(1500)],
+        maxFindings,
+      });
+    const all = await run("all");
+    const capped = await run(1200);
+    if (!all.ok || !capped.ok) throw new Error("audit failed");
+    expect(all.report.findings).toHaveLength(1500);
+    expect(all.report.truncation).toEqual({
+      findingsTruncated: false,
+      maxFindings: "all",
+      snapshotTruncated: true,
+      evidenceTruncated: true,
     });
-    expect(evaluated).toBe(false);
+    expect(capped.report.findings).toHaveLength(1200);
+    expect(capped.report.counts.findings.total).toBe(1500);
+    expect(capped.report.truncation.findingsTruncated).toBe(true);
+    expect(capped.report.truncation.maxFindings).toBe(1200);
   });
 
   test("matches the closed JSON schema and proves no write attempt", async () => {

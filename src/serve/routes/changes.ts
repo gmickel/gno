@@ -79,7 +79,12 @@ export async function handleImpact(
 ): Promise<Response> {
   const ref = url.searchParams.get("ref")?.trim();
   if (!ref) return errorResponse("VALIDATION", "ref is required");
-  const input: KnowledgeImpactInput = {};
+  const collections = url.searchParams
+    .getAll("collection")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const input: KnowledgeImpactInput =
+    collections.length > 0 ? { collections } : {};
   for (const [queryName, inputName] of [
     ["maxDepth", "maxDepth"],
     ["maxNodes", "maxNodes"],

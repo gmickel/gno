@@ -17,8 +17,30 @@ export const GRAPH_EDGE_CONFIDENCE_RANK: Record<GraphEdgeConfidence, number> = {
 export function classifyResolvedGraphEdge(
   linkType: "wiki" | "markdown",
   matchRank: number | null,
-  matchCount: number | null
+  matchCount: number | null,
+  /** Workspace resolution reason; semantic, independent of legacy ranks. */
+  reason?: string
 ): { confidence: GraphEdgeConfidence; audit: GraphEdgeAudit } {
+  if (linkType === "wiki" && reason !== undefined && reason !== "title") {
+    switch (reason) {
+      case "workspace-path":
+      case "collection-path":
+        return {
+          confidence: "explicit",
+          audit: { resolution: "exact-path", matchCount: 1 },
+        };
+      case "exact-name":
+        return {
+          confidence: "explicit",
+          audit: { resolution: "exact-name", matchCount: 1 },
+        };
+      default:
+        return {
+          confidence: "inferred",
+          audit: { resolution: "tie-break", matchCount: 1 },
+        };
+    }
+  }
   if (linkType === "markdown") {
     return {
       confidence: "explicit",

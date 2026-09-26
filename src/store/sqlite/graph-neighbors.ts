@@ -2,6 +2,11 @@
  * Seed-scoped one-hop graph neighbor resolution for query-time expansion.
  * Avoids collection-wide getGraph correlated link resolution.
  *
+ * Resolution and scope are separate steps: links resolve with the shared
+ * workspace-aware resolver, then the collection allowlist is applied to the
+ * resolved source AND target of every edge before scoring or limits, so a
+ * cross-collection edge never widens the caller's scope.
+ *
  * @module src/store/sqlite/graph-neighbors
  */
 
@@ -21,7 +26,16 @@ import {
   mergeGraphEdgeAudit,
 } from "../../core/graph-edge-confidence";
 import { normalizeWikiName, stripWikiMdExt } from "../../core/links";
-import { resolveGraphLinkTargets } from "./graph-link-resolver";
+import {
+  isTraversableResolution,
+  linkSourceIdentity,
+  resolveGraphLinkTargets,
+} from "./graph-link-resolver";
+import {
+  loadLinkWorkspaceMemberships,
+  workspaceKeyForDocument,
+  workspaceMemberCollections,
+} from "./workspace-link-resolver";
 
 const MAX_SEED_DOCUMENTS = 5;
 const DEFAULT_EDGE_LIMIT = 10_000;
@@ -40,16 +54,22 @@ interface ResolvedEdgeRow {
   link_type: "wiki" | "markdown";
   match_rank: number | null;
   match_count: number | null;
+  reason?: string;
 }
 
 interface RawLinkRow {
   id: number;
   source_docid: string;
   source_collection: string;
+  source_rel_path: string;
   target_ref_norm: string;
   target_collection: string | null;
   link_type: "wiki" | "markdown";
 }
+
+const RAW_LINK_COLUMNS = `dl.id, src.docid AS source_docid,
+  src.collection AS source_collection, src.rel_path AS source_rel_path,
+  dl.target_ref_norm, dl.target_collection, dl.link_type`;
 
 const addWikiKeyVariants = (keySet: Set<string>, value: string): void => {
   if (!value) {
@@ -83,6 +103,33 @@ const matchesWikiKey = (targetRefNorm: string, keys: Set<string>): boolean => {
   return false;
 };
 
+const escapeLike = (value: string): string =>
+  value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
+
+/** Effective graph allowlist; undefined means unrestricted. */
+export const graphCollectionAllowlist = (options: {
+  collection?: string;
+  collections?: string[];
+}): Set<string> | undefined => {
+  if (options.collections) return new Set(options.collections);
+  if (options.collection) return new Set([options.collection]);
+  return undefined;
+};
+
+const inScopeClause = (
+  allowlist: Set<string> | undefined,
+  column: string
+): { sql: string; params: string[] } =>
+  allowlist
+    ? {
+        sql:
+          allowlist.size === 0
+            ? "AND 0"
+            : `AND ${column} IN (${[...allowlist].map(() => "?").join(",")})`,
+        params: [...allowlist],
+      }
+    : { sql: "", params: [] };
+
 const loadSeeds = (db: Database, seedDocumentIds: number[]): SeedDocRow[] => {
   const uniqueIds = [...new Set(seedDocumentIds)]
     .filter((id) => Number.isInteger(id) && id > 0)
@@ -104,11 +151,12 @@ const loadSeeds = (db: Database, seedDocumentIds: number[]): SeedDocRow[] => {
 const collectIncomingCandidateLinks = (
   db: Database,
   seeds: SeedDocRow[],
-  collection: string | undefined
+  allowlist: Set<string> | undefined
 ): { links: RawLinkRow[]; examinedLinkRows: number } => {
   const linksById = new Map<number, RawLinkRow>();
   let examinedLinkRows = 0;
   const seedIdSet = new Set(seeds.map((seed) => seed.id));
+  const sourceScope = inScopeClause(allowlist, "src.collection");
 
   const wikiKeysByCollection = new Map<string, Set<string>>();
   for (const seed of seeds) {
@@ -124,9 +172,7 @@ const collectIncomingCandidateLinks = (
     const collectionPlaceholders = targetCollections.map(() => "?").join(",");
     const wikiRows = db
       .query<RawLinkRow & { source_doc_id: number }, string[]>(
-        `SELECT dl.id, dl.source_doc_id, src.docid AS source_docid,
-           src.collection AS source_collection, dl.target_ref_norm,
-           dl.target_collection, dl.link_type
+        `SELECT dl.source_doc_id, ${RAW_LINK_COLUMNS}
          FROM doc_links dl
          JOIN documents src ON src.id = dl.source_doc_id AND src.active = 1
          WHERE dl.link_type = 'wiki'
@@ -135,13 +181,9 @@ const collectIncomingCandidateLinks = (
                AND src.collection IN (${collectionPlaceholders}))
              OR dl.target_collection IN (${collectionPlaceholders})
            )
-           ${collection ? "AND src.collection = ?" : ""}`
+           ${sourceScope.sql}`
       )
-      .all(
-        ...targetCollections,
-        ...targetCollections,
-        ...(collection ? [collection] : [])
-      );
+      .all(...targetCollections, ...targetCollections, ...sourceScope.params);
     examinedLinkRows += wikiRows.length;
 
     for (const row of wikiRows) {
@@ -157,12 +199,69 @@ const collectIncomingCandidateLinks = (
     }
   }
 
+  // Workspace seeds: plain links from any member collection whose last path
+  // segment names the seed file. The resolver decides which really land on
+  // the seed; this only bounds the candidate rows.
+  const memberships = loadLinkWorkspaceMemberships(db);
+  const workspaceSeeds = seeds
+    .map((seed) => ({
+      seed,
+      wsKey: workspaceKeyForDocument(
+        memberships,
+        seed.collection,
+        seed.rel_path
+      ),
+    }))
+    .filter(
+      (entry): entry is { seed: SeedDocRow; wsKey: string } =>
+        entry.wsKey !== null
+    );
+  if (workspaceSeeds.length > 0) {
+    const members = workspaceMemberCollections(
+      memberships,
+      new Set(workspaceSeeds.map(({ wsKey }) => wsKey))
+    );
+    const conditions: string[] = [];
+    const params: string[] = [];
+    for (const { seed } of workspaceSeeds) {
+      const base = stripWikiMdExt(
+        normalizeWikiName(seed.rel_path.split("/").pop() ?? seed.rel_path)
+      );
+      for (const value of [base, `${base}.md`]) {
+        conditions.push(
+          "dl.target_ref_norm = ? OR dl.target_ref_norm LIKE ? ESCAPE '\\'"
+        );
+        params.push(value, `%/${escapeLike(value)}`);
+      }
+      for (const key of wikiKeysForSeed(seed)) {
+        conditions.push("dl.target_ref_norm = ?");
+        params.push(key);
+      }
+    }
+    if (members.length > 0 && conditions.length > 0) {
+      const rows = db
+        .query<RawLinkRow & { source_doc_id: number }, string[]>(
+          `SELECT dl.source_doc_id, ${RAW_LINK_COLUMNS}
+           FROM doc_links dl
+           JOIN documents src ON src.id = dl.source_doc_id AND src.active = 1
+           WHERE dl.link_type = 'wiki'
+             AND dl.target_collection IS NULL
+             AND src.collection IN (${members.map(() => "?").join(",")})
+             AND (${conditions.join(" OR ")})
+             ${sourceScope.sql}`
+        )
+        .all(...members, ...params, ...sourceScope.params);
+      examinedLinkRows += rows.length;
+      for (const row of rows) {
+        if (!seedIdSet.has(row.source_doc_id)) linksById.set(row.id, row);
+      }
+    }
+  }
+
   for (const seed of seeds) {
     const mdRows = db
       .query<RawLinkRow & { source_doc_id: number }, string[]>(
-        `SELECT dl.id, dl.source_doc_id, src.docid AS source_docid,
-           src.collection AS source_collection, dl.target_ref_norm,
-           dl.target_collection, dl.link_type
+        `SELECT dl.source_doc_id, ${RAW_LINK_COLUMNS}
          FROM doc_links dl
          JOIN documents src ON src.id = dl.source_doc_id AND src.active = 1
          WHERE dl.link_type = 'markdown'
@@ -171,13 +270,13 @@ const collectIncomingCandidateLinks = (
              (dl.target_collection IS NULL AND src.collection = ?)
              OR dl.target_collection = ?
            )
-           ${collection ? "AND src.collection = ?" : ""}`
+           ${sourceScope.sql}`
       )
       .all(
         seed.rel_path,
         seed.collection,
         seed.collection,
-        ...(collection ? [collection] : [])
+        ...sourceScope.params
       );
     examinedLinkRows += mdRows.length;
     for (const row of mdRows) {
@@ -193,29 +292,24 @@ const collectIncomingCandidateLinks = (
 const loadRawLinksForSources = (
   db: Database,
   sourceIds: number[],
-  collection: string | undefined
+  allowlist: Set<string> | undefined
 ): RawLinkRow[] => {
   if (sourceIds.length === 0) {
     return [];
   }
   const sourcePlaceholders = sourceIds.map(() => "?").join(",");
-  const params: (string | number)[] = [...sourceIds];
-  if (collection) {
-    params.push(collection);
-  }
+  const sourceScope = inScopeClause(allowlist, "src.collection");
   return db
     .query<RawLinkRow, (string | number)[]>(
-      `SELECT dl.id, src.docid AS source_docid,
-         src.collection AS source_collection,
-         dl.target_ref_norm, dl.target_collection, dl.link_type
+      `SELECT ${RAW_LINK_COLUMNS}
        FROM documents src
        JOIN doc_links dl ON dl.source_doc_id = src.id
        WHERE src.active = 1
          AND src.id IN (${sourcePlaceholders})
-         ${collection ? "AND src.collection = ?" : ""}
+         ${sourceScope.sql}
        ORDER BY src.id ASC, dl.id ASC`
     )
-    .all(...params);
+    .all(...sourceIds, ...sourceScope.params);
 };
 
 const resolveRawEdges = (
@@ -223,27 +317,35 @@ const resolveRawEdges = (
   rawRows: RawLinkRow[],
   incomingLinkIds: Set<number>,
   seedIds: Set<number>,
-  collection: string | undefined
+  allowlist: Set<string> | undefined
 ): ResolvedEdgeRow[] => {
-  const inScopeRows = rawRows.filter(
-    (row) =>
-      !collection ||
-      (row.target_collection ?? row.source_collection) === collection
-  );
   const resolvedTargets = resolveGraphLinkTargets(
     db,
-    inScopeRows.map((row) => ({
+    rawRows.map((row) => ({
       targetRefNorm: row.target_ref_norm,
       targetCollection: row.target_collection ?? row.source_collection,
       linkType: row.link_type,
+      source: linkSourceIdentity(row),
     }))
   );
   const rows: ResolvedEdgeRow[] = [];
-  for (const [index, rawRow] of inScopeRows.entries()) {
+  for (const [index, rawRow] of rawRows.entries()) {
     const target = resolvedTargets[index];
     if (
-      !target ||
+      !isTraversableResolution(target) ||
       (incomingLinkIds.has(rawRow.id) && !seedIds.has(target.targetId))
+    ) {
+      continue;
+    }
+    // Scope applies to the resolved identities, never the declared prefix.
+    if (
+      allowlist &&
+      (!allowlist.has(rawRow.source_collection) ||
+        !allowlist.has(
+          target.targetCollection ??
+            rawRow.target_collection ??
+            rawRow.source_collection
+        ))
     ) {
       continue;
     }
@@ -253,6 +355,7 @@ const resolveRawEdges = (
       link_type: rawRow.link_type,
       match_rank: target.matchRank,
       match_count: target.matchCount,
+      reason: target.reason,
     });
   }
   return rows;
@@ -277,7 +380,8 @@ const toGraphLinks = (
     const { confidence, audit } = classifyResolvedGraphEdge(
       row.link_type,
       row.match_rank,
-      row.match_count
+      row.match_count,
+      row.reason
     );
     const existing = edgeMap.get(key);
     if (existing) {
@@ -326,7 +430,10 @@ export function queryGraphNeighborsForSeeds(
     1,
     Math.min(50_000, options.limitEdges ?? DEFAULT_EDGE_LIMIT)
   );
-  const seeds = loadSeeds(db, options.seedDocumentIds);
+  const allowlist = graphCollectionAllowlist(options);
+  const seeds = loadSeeds(db, options.seedDocumentIds).filter(
+    (seed) => !allowlist || allowlist.has(seed.collection)
+  );
   if (seeds.length === 0) {
     return {
       links: [],
@@ -339,9 +446,9 @@ export function queryGraphNeighborsForSeeds(
   }
 
   const seedIds = seeds.map((seed) => seed.id);
-  const outgoingLinks = loadRawLinksForSources(db, seedIds, options.collection);
+  const outgoingLinks = loadRawLinksForSources(db, seedIds, allowlist);
   const { links: incomingLinks, examinedLinkRows: incomingCandidates } =
-    collectIncomingCandidateLinks(db, seeds, options.collection);
+    collectIncomingCandidateLinks(db, seeds, allowlist);
   const incomingLinkIds = new Set(incomingLinks.map((link) => link.id));
   const rawLinksById = new Map(
     [...outgoingLinks, ...incomingLinks].map((link) => [link.id, link])
@@ -351,7 +458,7 @@ export function queryGraphNeighborsForSeeds(
     [...rawLinksById.values()],
     incomingLinkIds,
     new Set(seedIds),
-    options.collection
+    allowlist
   );
 
   const examinedLinkRows = outgoingLinks.length + incomingCandidates;

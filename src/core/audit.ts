@@ -6,6 +6,7 @@ import type {
   AuditFinding,
   AuditFingerprints,
   AuditForbiddenStoreMethod,
+  AuditMaxFindings,
   AuditReport,
   AuditReportStatus,
   AuditRuleContribution,
@@ -24,6 +25,9 @@ import {
   AUDIT_DEFAULT_MAX_FINDINGS,
   AUDIT_FORBIDDEN_STORE_METHODS,
   AUDIT_MAX_CODE_CHARS,
+  AUDIT_MAX_EVIDENCE_DETAIL_CHARS,
+  AUDIT_MAX_EVIDENCE_PER_FINDING,
+  AUDIT_MAX_FINDINGS_ALL,
   AUDIT_MAX_FINDINGS_LIMIT,
   AUDIT_MAX_IDENTIFIER_CHARS,
   AUDIT_MAX_MESSAGE_CHARS,
@@ -127,22 +131,60 @@ export const normalizeAuditScope = (
   };
 };
 
-const resolveMaxFindings = (
-  value: number | undefined
-): { ok: true; maxFindings: number } | { ok: false; error: string } => {
+export const AUDIT_MAX_FINDINGS_RANGE_MESSAGE = `maxFindings must be an integer between 1 and ${AUDIT_MAX_FINDINGS_LIMIT}, or "${AUDIT_MAX_FINDINGS_ALL}"`;
+
+/**
+ * Validate `maxFindings`. `limit` is the effective numeric cap (Infinity for
+ * `all`); `reported` is the value echoed in the report's truncation block.
+ */
+export const resolveAuditMaxFindings = (
+  value: AuditMaxFindings | undefined
+):
+  | { ok: true; limit: number; reported: AuditMaxFindings }
+  | { ok: false; error: string } => {
+  if (value === AUDIT_MAX_FINDINGS_ALL) {
+    return {
+      ok: true,
+      limit: Number.POSITIVE_INFINITY,
+      reported: AUDIT_MAX_FINDINGS_ALL,
+    };
+  }
   const maxFindings = value ?? AUDIT_DEFAULT_MAX_FINDINGS;
   if (
     !Number.isSafeInteger(maxFindings) ||
     maxFindings < 1 ||
     maxFindings > AUDIT_MAX_FINDINGS_LIMIT
   ) {
-    return {
-      ok: false,
-      error: `maxFindings must be an integer between 1 and ${AUDIT_MAX_FINDINGS_LIMIT}`,
-    };
+    return { ok: false, error: AUDIT_MAX_FINDINGS_RANGE_MESSAGE };
   }
-  return { ok: true, maxFindings };
+  return { ok: true, limit: maxFindings, reported: maxFindings };
 };
+
+/** Parse a CLI `--max-findings` value: a positive integer or `all`. */
+export const parseAuditMaxFindingsInput = (
+  raw: string
+): AuditMaxFindings | undefined => {
+  const value = raw.trim();
+  if (value.toLowerCase() === AUDIT_MAX_FINDINGS_ALL) {
+    return AUDIT_MAX_FINDINGS_ALL;
+  }
+  if (!/^\d+$/.test(value)) return undefined;
+  const parsed = Number(value);
+  return resolveAuditMaxFindings(parsed).ok ? parsed : undefined;
+};
+
+const draftEvidenceTruncated = (contribution: AuditRuleContribution): boolean =>
+  contribution.evidenceTruncated === true ||
+  (contribution.findings ?? []).some(
+    (draft) =>
+      draft.evidence.length > AUDIT_MAX_EVIDENCE_PER_FINDING ||
+      draft.evidence.some(
+        (item) =>
+          item.detail !== undefined &&
+          Array.from(normalizeAuditText(item.detail)).length >
+            AUDIT_MAX_EVIDENCE_DETAIL_CHARS
+      )
+  );
 
 const fingerprintsEqual = (
   left: AuditFingerprints,
@@ -231,7 +273,8 @@ const buildReportFromRules = (input: {
   versions: AuditVersions;
   rules: AuditRuleResult[];
   status: AuditReportStatus;
-  maxFindings: number;
+  maxFindings: { limit: number; reported: AuditMaxFindings };
+  evidenceTruncated: boolean;
   startedAt: string;
   completedAt: string;
   snapshotMs: number;
@@ -261,9 +304,9 @@ const buildReportFromRules = (input: {
     (sum, rule) => sum + rule.findingCount,
     0
   );
-  const truncated = exactFindingCount > input.maxFindings;
+  const truncated = exactFindingCount > input.maxFindings.limit;
   const returnedFindings = truncated
-    ? uniqueFindings.slice(0, input.maxFindings)
+    ? uniqueFindings.slice(0, input.maxFindings.limit)
     : uniqueFindings;
   const returnedFindingIds = new Set(
     returnedFindings.map((finding) => finding.id)
@@ -308,7 +351,11 @@ const buildReportFromRules = (input: {
     },
     truncation: {
       findingsTruncated: truncated,
-      maxFindings: input.maxFindings,
+      maxFindings: input.maxFindings.reported,
+      snapshotTruncated: rules.some(
+        (rule) => rule.skipReason === "snapshot_truncated"
+      ),
+      evidenceTruncated: input.evidenceTruncated,
     },
     timing: {
       snapshotMs: Math.max(0, Math.round(input.snapshotMs)),
@@ -329,7 +376,7 @@ export async function runAudit(input: AuditRunInput): Promise<AuditRunResult> {
   if (!scopeResult.ok) {
     return { ok: false, exit: "invalid", error: scopeResult.error };
   }
-  const maxFindingsResult = resolveMaxFindings(input.maxFindings);
+  const maxFindingsResult = resolveAuditMaxFindings(input.maxFindings);
   if (!maxFindingsResult.ok) {
     return { ok: false, exit: "invalid", error: maxFindingsResult.error };
   }
@@ -355,6 +402,7 @@ export async function runAudit(input: AuditRunInput): Promise<AuditRunResult> {
   let snapshotMs = 0;
   let rulesMs = 0;
   let lastRules: AuditRuleResult[] = [];
+  let lastEvidenceTruncated = false;
   let lastFingerprints: AuditFingerprints | null = null;
   let snapshotChanged = false;
   let failed = false;
@@ -405,6 +453,7 @@ export async function runAudit(input: AuditRunInput): Promise<AuditRunResult> {
     try {
       const contributions = await collectContributions(input.rules, ruleCtx);
       lastRules = contributions.map(materializeRule);
+      lastEvidenceTruncated = contributions.some(draftEvidenceTruncated);
     } catch (cause) {
       if (input.signal?.aborted) {
         lastRules = [cancellationRule()];
@@ -453,6 +502,7 @@ export async function runAudit(input: AuditRunInput): Promise<AuditRunResult> {
     }
     // Discard rule results from a drifted attempt; retry with a fresh snapshot.
     lastRules = [];
+    lastEvidenceTruncated = false;
   }
 
   const completedAt = clock();
@@ -484,7 +534,8 @@ export async function runAudit(input: AuditRunInput): Promise<AuditRunResult> {
         },
       ],
       status: "failed",
-      maxFindings: maxFindingsResult.maxFindings,
+      maxFindings: maxFindingsResult,
+      evidenceTruncated: false,
       startedAt: runStartedAt.toISOString(),
       completedAt: completedAt.toISOString(),
       snapshotMs,
@@ -531,7 +582,8 @@ export async function runAudit(input: AuditRunInput): Promise<AuditRunResult> {
             rules: rulesForReport,
             snapshotChanged: false,
           }),
-    maxFindings: maxFindingsResult.maxFindings,
+    maxFindings: maxFindingsResult,
+    evidenceTruncated: lastEvidenceTruncated,
     startedAt: runStartedAt.toISOString(),
     completedAt: completedAt.toISOString(),
     snapshotMs,

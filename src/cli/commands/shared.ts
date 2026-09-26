@@ -178,6 +178,13 @@ export function formatSyncResultLines(
       `Rechunked ${syncResult.rechunkedMirrors} cached mirrors. Run gno embed if embedding was skipped.`
     );
   }
+  if (syncResult.graphRebuild) {
+    lines.push(
+      syncResult.graphRebuild === "resolver-upgrade"
+        ? "Link graph rebuilt: link resolution was upgraded."
+        : "Link graph rebuilt: collection settings or link workspace membership changed."
+    );
+  }
 
   for (const c of syncResult.collections) {
     lines.push(`${c.collection}:`);

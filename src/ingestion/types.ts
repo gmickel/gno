@@ -161,7 +161,19 @@ export interface ChunkerPort {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Sync options */
+/** Why a sync rebuilt the whole link graph instead of reconciling it. */
+export type GraphRebuildReason =
+  /** Link resolution semantics changed (first sync after an upgrade). */
+  | "resolver-upgrade"
+  /** Collection settings changed, including link workspace membership. */
+  | "collections-changed";
+
 export interface SyncOptions {
+  /**
+   * Internal: called when graph reconciliation cannot proceed incrementally
+   * and falls back to a full projection of an existing graph.
+   */
+  onGraphRebuild?: (reason: GraphRebuildReason) => void;
   /** Index-wide configured policy; omitted means the existing defaults. */
   chunking?: Partial<ChunkingParams>;
   /** Internal token passed from an outer sync; never a public CLI override. */
@@ -298,6 +310,8 @@ export interface CollectionSyncResult {
 export interface SyncResult {
   /** Cached layouts updated independently of source-refresh file counters. */
   rechunkedMirrors?: number;
+  /** Present when the link graph was rebuilt in full rather than reconciled. */
+  graphRebuild?: GraphRebuildReason;
   collections: CollectionSyncResult[];
   totalDurationMs: number;
   totalFilesProcessed: number;

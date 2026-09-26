@@ -11,8 +11,11 @@ export const AUDIT_RULE_SET_VERSION = "1.0" as const;
 
 /** Default returned finding cap; totals remain exact when truncated. */
 export const AUDIT_DEFAULT_MAX_FINDINGS = 100;
-/** Hard upper bound for `--max-findings` / MCP maxFindings. */
-export const AUDIT_MAX_FINDINGS_LIMIT = 1000;
+/** Hard numeric upper bound for `--max-findings` / MCP maxFindings. */
+export const AUDIT_MAX_FINDINGS_LIMIT = 100_000;
+/** Returns every finding of the bounded audit snapshot. */
+export const AUDIT_MAX_FINDINGS_ALL = "all" as const;
+export type AuditMaxFindings = number | typeof AUDIT_MAX_FINDINGS_ALL;
 export const AUDIT_MAX_EVIDENCE_PER_FINDING = 8;
 export const AUDIT_MAX_GUIDANCE_PER_FINDING = 4;
 export const AUDIT_MAX_EVIDENCE_DETAIL_CHARS = 512;
@@ -201,7 +204,14 @@ export interface AuditCounts {
 
 export interface AuditTruncation {
   findingsTruncated: boolean;
-  maxFindings: number;
+  maxFindings: AuditMaxFindings;
+  /**
+   * The bounded audit snapshot (documents or links) was cut; finding totals
+   * cover the snapshot only and are not complete-index totals.
+   */
+  snapshotTruncated: boolean;
+  /** Evidence items, candidate lists or evidence detail text were clipped. */
+  evidenceTruncated: boolean;
 }
 
 export interface AuditTiming {
@@ -255,6 +265,8 @@ export interface AuditRuleContribution {
   findings?: AuditFindingDraft[];
   /** Exact findings before any evaluator-side payload cap. */
   findingCount?: number;
+  /** Evaluator clipped evidence (for example a long tied-candidate list). */
+  evidenceTruncated?: boolean;
   examinedCount?: number;
   durationMs?: number;
   skipReason?: string | null;
@@ -283,7 +295,7 @@ export interface AuditRunInput {
   capabilities: AuditCapabilitySnapshot;
   captureFingerprints: AuditFingerprintCapture;
   rules: readonly AuditRuleEvaluator[];
-  maxFindings?: number;
+  maxFindings?: AuditMaxFindings;
   maxAttempts?: number;
   gnoVersion?: string;
   clock?: () => Date;

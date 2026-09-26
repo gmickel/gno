@@ -263,6 +263,8 @@ gno status [--json|--md]
     {
       "name": "work",
       "path": "/path",
+      "workspaceRoot": "/vault",
+      "workspaceSource": "detected",
       "documentCount": 100,
       "chunkCount": 500,
       "embeddedCount": 500
@@ -888,6 +890,15 @@ projection.
 content-free decision, lineage, partial disclosure, audit metadata, and
 remediation contract.
 
+`workspaceSource` is `detected` (nearest `.obsidian/` ancestor-or-self of the
+collection root), `configured` (`workspaceRoot` setting), `disabled`
+(`workspaceRoot: false`), `unavailable` (the root or an ancestor could not be
+inspected; links stay collection-scoped) or `none`. `workspaceRoot` is the
+effective workspace root, present only for `detected`/`configured`, and is a
+same-host-only field like `path`. Terminal output adds a `Link workspace:` line
+per workspace collection. `gno collection list` reports the same per
+collection as `effectiveWorkspaceRoot` and `workspaceSource`.
+
 ### gno audit
 
 Read-only, offline knowledge-integrity audits. This command is distinct from
@@ -903,8 +914,17 @@ gno audit [links|provenance|freshness|all] [--collection <name>...] \
   [--json] [--output <path>]
 ```
 
-The default category is `all`; `--max-findings` defaults to 100 and is bounded
-to 1–1000. Truncation limits returned findings but preserves exact totals.
+The default category is `all`; `--max-findings` defaults to 100 and accepts an
+integer from 1 to 100000 or `all`. `all` returns every finding of the bounded
+audit snapshot, and per-rule caps follow the same value. Any other value
+(zero, negative, non-integer, above 100000) is a validation error (exit 1)
+that states the accepted range. Truncation limits returned findings but
+preserves exact totals. The report's `truncation` block reports three separate
+conditions: `findingsTruncated` (the finding cap cut the list),
+`snapshotTruncated` (the bounded snapshot of 50,000 documents/links was cut, so
+totals cover the snapshot only and are not complete-index totals), and
+`evidenceTruncated` (evidence items, tied-candidate lists, or evidence detail
+text were shortened).
 `--output` writes only the requested report artifact with local file
 permissions. Human output renders the same report represented by
 `audit-report.schema.json`.
@@ -925,6 +945,20 @@ healthy.
 - `2` — runtime failure
 - `4` — complete report with findings
 - `5` — partial, inconclusive, unavailable, or changed-during-audit evidence
+
+Link findings resolve with the workspace-aware resolver (see
+docs/ARCHITECTURE.md "Resolution"). Their evidence `detail` JSON carries
+separate `referenceKind` (`wiki-name`, `wiki-path`, `explicit-collection`,
+`markdown`), `resolutionStatus` (`unresolved`, `ambiguous`) and
+`resolvedScope` (`same-collection`, `cross-collection`, `explicit-collection`,
+or null when unresolved). Ambiguous workspace links add `candidateCount` and
+`candidates` (tied candidate URIs in canonical path order); in a
+collection-scoped audit, candidates outside the requested collections are
+counted in `candidatesWithheld` and never named, and a list longer than the
+detail bound sets `candidatesTruncated` (and `truncation.evidenceTruncated`).
+Orphans stay "no incoming or outgoing resolved links", with connectivity drawn
+from the whole index even when the audited documents are scoped; a tied link
+connects nothing.
 
 The JSON contract is versioned as `gno://schemas/audit-report@1.0`. Finding IDs
 are stable SHA-256 identities derived from rule, normalized subject/location,
@@ -4181,12 +4215,18 @@ Find active documents that depend on one document through inbound typed,
 wiki-link, or Markdown-link edges.
 
 ```bash
-gno impact <doc> [--max-depth <n>] [--max-nodes <n>] [--max-edges <n>] [--frontier-limit <n>] [--visited-limit <n>] [--json]
+gno impact <doc> [-c, --collection <name>...] [--max-depth <n>] [--max-nodes <n>] [--max-edges <n>] [--frontier-limit <n>] [--visited-limit <n>] [--json]
 ```
 
 The traversal is cycle-safe and enforces depth, node, edge, frontier, and
 visited-row caps. Every impacted document includes one deterministic
 dependency-to-root evidence path. JSON output uses `impact.schema.json`.
+
+`--collection` (repeatable) limits the traversal to those collections: only
+their documents are visited, returned, or used as a path step, so a document
+outside the scope never bridges two in-scope documents. Omitted means every
+indexed collection. An unknown collection, or a `<doc>` outside the requested
+collections, is a validation error (exit 1).
 
 **Exit Codes:**
 

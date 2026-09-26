@@ -219,6 +219,8 @@ interface BacklinksInput {
 interface BacklinkOutput {
   sourceDocUri: string;
   sourceDocTitle?: string;
+  /** Collection of the linking document. */
+  sourceCollection?: string;
   linkText?: string;
   position: { startLine: number; startCol: number };
 }
@@ -308,6 +310,7 @@ export function handleBacklinks(
         (b: BacklinkRow) => ({
           sourceDocUri: b.sourceDocUri,
           ...(b.sourceDocTitle && { sourceDocTitle: b.sourceDocTitle }),
+          ...(b.sourceCollection && { sourceCollection: b.sourceCollection }),
           ...(b.linkText && { linkText: b.linkText }),
           position: { startLine: b.startLine, startCol: b.startCol },
         })

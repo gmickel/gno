@@ -5,6 +5,10 @@
 import type { Collection } from "../../../config";
 
 import { loadConfig } from "../../../config";
+import {
+  detectCollectionWorkspace,
+  formatLinkWorkspace,
+} from "../../../core/link-workspace";
 import { bold, cyan, dim } from "../../colors";
 import { CliError } from "../../errors";
 
@@ -23,7 +27,30 @@ interface ListOptions {
   md?: boolean;
 }
 
-function formatMarkdown(collections: Collection[]): string {
+type ListedCollection = Collection & {
+  /** Effective link workspace root (detected or configured). */
+  effectiveWorkspaceRoot?: string;
+  workspaceSource: ReturnType<typeof detectCollectionWorkspace>["source"];
+};
+
+/** Resolve each collection's effective link workspace from the filesystem. */
+const withLinkWorkspaces = (collections: Collection[]): ListedCollection[] =>
+  collections.map((collection) => {
+    const workspace = detectCollectionWorkspace(collection);
+    return {
+      ...collection,
+      ...(workspace.root ? { effectiveWorkspaceRoot: workspace.root } : {}),
+      workspaceSource: workspace.source,
+    };
+  });
+
+const linkWorkspaceLine = (collection: ListedCollection): string | null =>
+  formatLinkWorkspace({
+    workspaceRoot: collection.effectiveWorkspaceRoot,
+    workspaceSource: collection.workspaceSource,
+  });
+
+function formatMarkdown(collections: ListedCollection[]): string {
   const lines: string[] = ["# Collections", ""];
   if (collections.length === 0) {
     lines.push("No collections configured.");
@@ -43,12 +70,14 @@ function formatMarkdown(collections: Collection[]): string {
     if (coll.updateCmd) {
       lines.push(`- **Update Command:** \`${coll.updateCmd}\``);
     }
+    const workspace = linkWorkspaceLine(coll);
+    if (workspace) lines.push(`- **Link workspace:** ${workspace}`);
     lines.push("");
   }
   return lines.join("\n");
 }
 
-function formatTerminal(collections: Collection[]): string {
+function formatTerminal(collections: ListedCollection[]): string {
   if (collections.length === 0) {
     return dim("No collections configured.");
   }
@@ -78,6 +107,10 @@ function formatTerminal(collections: Collection[]): string {
     if (updateCmd) {
       lines.push(`    ${dim("Update:")}  ${updateCmd}`);
     }
+    const workspace = linkWorkspaceLine(coll);
+    if (workspace) {
+      lines.push(`    ${dim("Links:")}   workspace ${sanitize(workspace)}`);
+    }
     lines.push("");
   }
   return lines.join("\n");
@@ -96,13 +129,14 @@ export async function collectionList(options: ListOptions): Promise<void> {
   const config = result.value;
 
   // Format and output
+  const collections = withLinkWorkspaces(config.collections);
   let output: string;
   if (options.json) {
-    output = JSON.stringify(config.collections, null, 2);
+    output = JSON.stringify(collections, null, 2);
   } else if (options.md) {
-    output = formatMarkdown(config.collections);
+    output = formatMarkdown(collections);
   } else {
-    output = formatTerminal(config.collections);
+    output = formatTerminal(collections);
   }
 
   process.stdout.write(`${output}\n`);

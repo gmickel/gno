@@ -803,6 +803,7 @@ async function searchHybridWithHydration(
     fusedCandidates,
     {
       collection: options.collection,
+      collections: options.graphCollections,
       includeSimilar: vectorAvailable,
       eligibility: vectorEligibility,
       limit,
