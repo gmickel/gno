@@ -1071,7 +1071,8 @@ Check `gno status` (or `gno serve --status` / `gno daemon --status`) for
 
 - `background embed failing` / `parked`: every background embed pass failed.
   Common causes are an inference deadline on a slow CPU batch or a crashing
-  native worker. The log (`serve.log` / `daemon.log`) has one line per retry
+  native worker. A batch past its deadline fails only itself: later batches
+  still embed, and the pass counts as failed while that batch stays pending. The log (`serve.log` / `daemon.log`) has one line per retry
   step with the error. Run `gno embed` in the foreground to see per-chunk
   errors; a parked resident does not retry by itself until files change.
 - `overrunning`: a single background pass has run for over 15 minutes.

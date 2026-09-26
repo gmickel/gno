@@ -90,24 +90,18 @@
     },
     "configPath": {
       "type": "string",
-      "description": "Path to config file"
+      "description": "Path to config file. Same-host callers only: omitted for a remote REST or HTTP MCP caller."
     },
     "dbPath": {
       "type": "string",
-      "description": "Path to SQLite database"
+      "description": "Path to SQLite database. Same-host callers only: omitted for a remote REST or HTTP MCP caller."
     },
     "collections": {
       "type": "array",
       "description": "Collection statistics",
       "items": {
         "type": "object",
-        "required": [
-          "name",
-          "path",
-          "documentCount",
-          "chunkCount",
-          "embeddedCount"
-        ],
+        "required": ["name", "documentCount", "chunkCount", "embeddedCount"],
         "properties": {
           "name": {
             "type": "string",
@@ -115,7 +109,7 @@
           },
           "path": {
             "type": "string",
-            "description": "Collection root path"
+            "description": "Collection root path. Same-host callers only: omitted for a remote REST or HTTP MCP caller."
           },
           "documentCount": {
             "type": "integer",
@@ -595,13 +589,14 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["label", "path", "reason"],
+            "required": ["label", "reason"],
             "properties": {
               "label": {
                 "type": "string"
               },
               "path": {
-                "type": "string"
+                "type": "string",
+                "description": "Suggested folder path. Same-host callers only: omitted for a remote REST or HTTP MCP caller."
               },
               "reason": {
                 "type": "string"
@@ -883,10 +878,11 @@
         },
         "cache": {
           "type": "object",
-          "required": ["path", "totalSizeBytes", "totalSizeLabel"],
+          "required": ["totalSizeBytes", "totalSizeLabel"],
           "properties": {
             "path": {
-              "type": "string"
+              "type": "string",
+              "description": "Model cache directory. Same-host callers only: omitted for a remote REST or HTTP MCP caller."
             },
             "totalSizeBytes": {
               "type": "integer",
@@ -941,7 +937,6 @@
                   "role",
                   "uri",
                   "cached",
-                  "path",
                   "sizeBytes",
                   "statusLabel"
                 ],
@@ -957,7 +952,8 @@
                     "type": "boolean"
                   },
                   "path": {
-                    "type": ["string", "null"]
+                    "type": ["string", "null"],
+                    "description": "Cached model file, or null when not cached. Same-host callers only: omitted for a remote REST or HTTP MCP caller."
                   },
                   "sizeBytes": {
                     "type": ["integer", "null"],

@@ -56,7 +56,7 @@ async function cli(
 // A request ID makes each test open a fresh ledger directory, which on Windows
 // runs the PowerShell DACL helper: ~0.4 s warm, 2.5 s to over 5 s when it is
 // the first PowerShell start of a CI run (bun's default test timeout is 5 s).
-const LEDGER_TEST_TIMEOUT_MS = process.platform === "win32" ? 30_000 : 5000;
+const LEDGER_TEST_TIMEOUT_MS = process.platform === "win32" ? 60_000 : 5000;
 
 describe("gno capture", () => {
   let testDir: string;

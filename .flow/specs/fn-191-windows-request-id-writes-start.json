@@ -1,13 +1,68 @@
 {
   "branch_name": "fn-191-windows-request-id-writes-start",
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-26T08:25:32.476245Z",
   "created_at": "2026-09-25T20:23:54.602276Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-191-windows-request-id-writes-start",
+  "impl_review_rounds": {
+    "fn-191-windows-request-id-writes-start.1": 0
+  },
   "next_task": 1,
+  "no_plan": true,
+  "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "review_attempts": [
+    {
+      "artifact_sha256": "8598bf60a4e1a7c23ba77c3d563dff3c251d9ee3437e4feb57f3349e7c404647",
+      "backend": "codex",
+      "base_sha": "ff2529d580fa88ace48053e9e675599ce44f79cf",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "44d26e472e4114f5c3ffc0105240f426f121f50e",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 1171,
+      "output_sha256": "0ff3cd5d596e73d8f805daab50ec38777a7181be89f1441fbc61fc365154f080",
+      "reservation_id": "c298171333244e7e995c9fa24ff0e19e",
+      "round_consumed": true,
+      "scope": "impl:fn-191-windows-request-id-writes-start.1",
+      "superseded_by": null,
+      "task": "fn-191-windows-request-id-writes-start.1",
+      "timestamp": "2026-09-25T22:10:21.085338Z",
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "impl:fn-191-windows-request-id-writes-start.1": 1
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-191-windows-request-id-writes-start.1": 0
+  },
   "spec_path": ".flow/specs/fn-191-windows-request-id-writes-start.md",
-  "status": "open",
+  "status": "done",
   "title": "Windows request-ID writes start PowerShell on every CLI call",
   "tracker": {
     "baseHashFlow": null,
@@ -20,5 +75,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-25T20:23:54.604377Z"
+  "updated_at": "2026-09-26T08:25:32.797060Z"
 }

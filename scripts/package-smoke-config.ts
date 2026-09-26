@@ -13,6 +13,8 @@ export async function configurePackedEmbeddingModel(
   >;
   const modelUri = pathToFileURL(modelPath).href;
   config.models = {
+    // Hosted runners can fall back to CPU; the 30s default is too tight there.
+    inferenceTimeout: 180_000,
     activePreset: "package-smoke-local",
     presets: [
       {

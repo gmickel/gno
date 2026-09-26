@@ -11,14 +11,18 @@
  */
 
 import { Database } from "bun:sqlite";
-// node:fs/promises chmod/mkdir: filesystem structure ops, no Bun equivalent
-import { chmod, mkdir } from "node:fs/promises";
+// node:fs/promises chmod/mkdir/lstat/readdir: filesystem structure ops, no Bun equivalent
+import { chmod, lstat, mkdir, readdir } from "node:fs/promises";
 // node:path has no Bun path utilities
 import { basename, dirname, join } from "node:path";
 
 import { MCP_ERRORS } from "./errors";
 import { withWriteLock } from "./file-lock";
-import { windowsPrivatePath } from "./windows-private-path";
+import {
+  isOwnerOnlyDescriptor,
+  windowsDirectoryDescriptor,
+  windowsPrivatePath,
+} from "./windows-private-path";
 import { writeLeasePath } from "./write-lease";
 
 /** Committed receipts keep their full outcome this long, then become tombstones. */
@@ -221,25 +225,75 @@ CREATE TABLE IF NOT EXISTS request_receipts (
 /** Ledger directories whose owner-only Windows DACL this process verified. */
 const privateLedgerDirs = new Set<string>();
 
+/** Inside the ledger directory: what the last authoritative check verified. */
+const LEDGER_DIR_MARKER = ".owner-only-verified";
+
+export interface PrivateDirAcl {
+  /** Authoritative check (spawns PowerShell); `create` sets the owner-only DACL first. */
+  verify: (dir: string, create: boolean) => Promise<void>;
+  /** In-process owner and DACL bytes, or null when they cannot be read. */
+  descriptor: (dir: string) => Uint8Array | null;
+}
+
+const WINDOWS_ACL: PrivateDirAcl = {
+  verify: windowsPrivatePath,
+  descriptor: windowsDirectoryDescriptor,
+};
+
+/** Directory identity plus descriptor digest; null unless owner-only. */
+async function ledgerDirStamp(
+  dir: string,
+  acl: PrivateDirAcl
+): Promise<string | null> {
+  const { dev, ino } = await lstat(dir, { bigint: true });
+  const descriptor = acl.descriptor(dir);
+  if (!descriptor || !isOwnerOnlyDescriptor(descriptor)) return null;
+  const digest = new Bun.CryptoHasher("sha256")
+    .update(descriptor)
+    .digest("hex");
+  return `${dev}:${ino}:${digest}`;
+}
+
 /**
  * Windows ignores POSIX modes: give a new ledger directory the current-user
  * DACL before SQLite creates the database or its WAL/SHM (they inherit it),
  * and refuse an existing one that grants another principal access.
+ *
+ * The PowerShell check costs a process start, so its success is recorded in a
+ * marker inside the directory. A later open skips it only when the directory
+ * is the same object and its owner and DACL are byte-identical to the verified
+ * ones and still owner-only; reading the marker at all requires access that
+ * owner-only DACL grants. Anything else re-runs the authoritative check.
+ *
+ * An existing but empty directory is secured like a new one: a first open
+ * interrupted before its DACL was set leaves exactly that, and nothing inside
+ * it could have been exposed.
  */
-async function secureLedgerDir(
+export async function securePrivateLedgerDir(
   dir: string,
-  created: string | undefined
+  created: boolean,
+  acl: PrivateDirAcl = WINDOWS_ACL
 ): Promise<void> {
-  if (process.platform !== "win32" || privateLedgerDirs.has(dir)) return;
-  await windowsPrivatePath(dir, created !== undefined);
-  privateLedgerDirs.add(dir);
+  const marker = Bun.file(join(dir, LEDGER_DIR_MARKER));
+  if (!created) {
+    const stamp = await ledgerDirStamp(dir, acl);
+    if (stamp !== null && stamp === (await marker.text().catch(() => null)))
+      return;
+  }
+  const secure = created || (await readdir(dir)).length === 0;
+  await acl.verify(dir, secure);
+  const stamp = await ledgerDirStamp(dir, acl);
+  if (stamp !== null) await Bun.write(marker, stamp);
 }
 
 async function openLedger(path: string): Promise<Database> {
   try {
     const dir = dirname(path);
     const created = await mkdir(dir, { recursive: true, mode: 0o700 });
-    await secureLedgerDir(dir, created);
+    if (process.platform === "win32" && !privateLedgerDirs.has(dir)) {
+      await securePrivateLedgerDir(dir, created !== undefined);
+      privateLedgerDirs.add(dir);
+    }
     const db = new Database(path, { create: true, strict: true });
     try {
       // POSIX: private before any journal file exists (they inherit this mode).

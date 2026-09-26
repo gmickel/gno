@@ -6,7 +6,7 @@
   "type": "array",
   "items": {
     "type": "object",
-    "required": ["name", "path", "pattern", "include", "exclude"],
+    "required": ["name", "pattern", "include", "exclude"],
     "properties": {
       "name": {
         "type": "string",
@@ -15,7 +15,7 @@
       },
       "path": {
         "type": "string",
-        "description": "Absolute path to collection root directory"
+        "description": "Absolute path to collection root directory. Same-host callers only: omitted for a remote REST caller."
       },
       "pattern": {
         "type": "string",

@@ -1946,7 +1946,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const db = this.ensureOpen();
       const rows = db
         .query<DbDocumentRow, [string, string]>(
-          `SELECT * FROM documents
+          `SELECT * FROM documents INDEXED BY idx_documents_record_source_path
            WHERE collection = ? AND record_source_path = ?
            ORDER BY rel_path ASC, id ASC`
         )
@@ -3326,7 +3326,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
         const docs = db
           .query<DocInfo, [string]>(
-            "SELECT id, rel_path, title FROM documents WHERE mirror_hash = ? AND active = 1"
+            "SELECT id, rel_path, title FROM documents INDEXED BY idx_documents_mirror_hash WHERE mirror_hash = ? AND active = 1"
           )
           .all(mirrorHash);
 

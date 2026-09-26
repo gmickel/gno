@@ -7,7 +7,7 @@
 import { Database } from "bun:sqlite";
 import { afterEach, describe, expect, test } from "bun:test";
 // node:fs/promises temp fixtures and mode checks: no Bun equivalent
-import { mkdir, mkdtemp, readdir, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rename, stat } from "node:fs/promises";
 // node:os tmpdir: no Bun equivalent
 import { tmpdir } from "node:os";
 // node:path has no Bun path utilities
@@ -16,15 +16,21 @@ import { join } from "node:path";
 import { acquireWriteLock } from "../../src/core/file-lock";
 import { atomicCreate } from "../../src/core/file-ops";
 import {
+  type PrivateDirAcl,
   readRequestStatus,
   REQUEST_LEDGER_MAX_ROWS,
   REQUEST_RECEIPT_RETENTION_MS,
   type RequestCheckpoint,
   requestDigest,
   runRequestedWrite,
+  securePrivateLedgerDir,
   validateRequestId,
 } from "../../src/core/request-receipts";
-import { windowsPrivatePath } from "../../src/core/windows-private-path";
+import {
+  isOwnerOnlyDescriptor,
+  windowsDirectoryDescriptor,
+  windowsPrivatePath,
+} from "../../src/core/windows-private-path";
 import { safeRm } from "../helpers/cleanup";
 
 const roots: string[] = [];
@@ -413,4 +419,216 @@ describe("retention and capacity", () => {
     );
     expect(await files(f)).toEqual([]);
   });
+});
+
+// ─── Windows ledger directory verification (fn-191) ─────────────────────────
+
+/** S-1-5-<rid> as SID bytes. */
+const sid = (rid: number): number[] => [1, 1, 0, 0, 0, 0, 0, 5, rid, 0, 0, 0];
+const USER = sid(1001);
+const OTHER = sid(11); // Authenticated Users
+const FULL = 0x1f_01_ff;
+
+interface Ace {
+  type: number;
+  mask: number;
+  sid: number[];
+}
+
+/** Self-relative security descriptor: owner, then a DACL (or none). */
+function descriptor(owner: number[], aces: Ace[] | null): Uint8Array {
+  const ace = (a: Ace): number[] => {
+    const size = 8 + a.sid.length;
+    return [
+      a.type,
+      0,
+      size & 0xff,
+      size >> 8,
+      ...new Uint8Array(new Uint32Array([a.mask]).buffer),
+      ...a.sid,
+    ];
+  };
+  const body = (aces ?? []).flatMap(ace);
+  const acl = aces
+    ? [
+        2,
+        0,
+        (8 + body.length) & 0xff,
+        (8 + body.length) >> 8,
+        aces.length,
+        0,
+        0,
+        0,
+        ...body,
+      ]
+    : [];
+  const u32 = (n: number): number[] => [
+    ...new Uint8Array(new Uint32Array([n]).buffer),
+  ];
+  const daclOffset = aces ? 20 + owner.length : 0;
+  return new Uint8Array([
+    1,
+    0,
+    0x04, // SE_DACL_PRESENT
+    0x80, // SE_SELF_RELATIVE
+    ...u32(20),
+    ...u32(0),
+    ...u32(0),
+    ...u32(daclOffset),
+    ...owner,
+    ...acl,
+  ]);
+}
+
+const OWNER_ONLY = descriptor(USER, [{ type: 0, mask: FULL, sid: USER }]);
+
+/** Injected PowerShell check: counts spawns; `refuse` simulates a failed check. */
+function fakeAcl(): {
+  acl: PrivateDirAcl;
+  state: { descriptor: Uint8Array; spawns: number; refuse: boolean };
+} {
+  const state = { descriptor: OWNER_ONLY, spawns: 0, refuse: false };
+  return {
+    state,
+    acl: {
+      verify: async () => {
+        state.spawns += 1;
+        if (state.refuse)
+          throw new Error("Private ACL permits another principal");
+      },
+      descriptor: () => state.descriptor,
+    },
+  };
+}
+
+describe("ledger directory verification", () => {
+  test.each([
+    ["owner-only full control", OWNER_ONLY, true],
+    [
+      "owner-only plus a deny entry",
+      descriptor(USER, [
+        { type: 1, mask: FULL, sid: OTHER },
+        { type: 0, mask: FULL, sid: USER },
+      ]),
+      true,
+    ],
+    [
+      "another principal allowed",
+      descriptor(USER, [
+        { type: 0, mask: FULL, sid: USER },
+        { type: 0, mask: 0x1_20_89, sid: OTHER },
+      ]),
+      false,
+    ],
+    [
+      "owner is not the allowed principal",
+      descriptor(OTHER, [{ type: 0, mask: FULL, sid: USER }]),
+      false,
+    ],
+    [
+      "no full control",
+      descriptor(USER, [{ type: 0, mask: 0x1_20_89, sid: USER }]),
+      false,
+    ],
+    [
+      "unknown entry type",
+      descriptor(USER, [
+        { type: 0, mask: FULL, sid: USER },
+        { type: 5, mask: FULL, sid: USER },
+      ]),
+      false,
+    ],
+    ["null DACL (everyone)", descriptor(USER, null), false],
+    ["truncated", OWNER_ONLY.slice(0, OWNER_ONLY.length - 1), false],
+  ])("owner-only descriptor: %s", (_name, bytes, expected) => {
+    expect(isOwnerOnlyDescriptor(bytes)).toBe(expected);
+  });
+
+  test("first open verifies and records; later opens skip the process", async () => {
+    const f = await fixture();
+    const dir = join(f.root, "write-receipts");
+    await mkdir(dir);
+    const { acl, state } = fakeAcl();
+    await securePrivateLedgerDir(dir, true, acl);
+    await securePrivateLedgerDir(dir, false, acl);
+    await securePrivateLedgerDir(dir, false, acl);
+    expect(state.spawns).toBe(1);
+  });
+
+  test("an empty directory left by an interrupted first open is secured, not refused", async () => {
+    const f = await fixture();
+    const dir = join(f.root, "write-receipts");
+    await mkdir(dir);
+    const creates: boolean[] = [];
+    const acl: PrivateDirAcl = {
+      verify: async (_path, create) => {
+        creates.push(create);
+        if (!create) throw new Error("Private ACL permits another principal");
+      },
+      descriptor: () => OWNER_ONLY,
+    };
+    await securePrivateLedgerDir(dir, false, acl);
+    expect(creates).toEqual([true]);
+  });
+
+  test.each(["permissions changed", "directory replaced"] as const)(
+    "%s: the check runs again and a refusal blocks the open",
+    async (change) => {
+      const f = await fixture();
+      const dir = join(f.root, "write-receipts");
+      await mkdir(dir);
+      const { acl, state } = fakeAcl();
+      await securePrivateLedgerDir(dir, true, acl);
+      if (change === "permissions changed") {
+        // Still owner-only by the parser, so only the recorded digest differs.
+        state.descriptor = descriptor(USER, [
+          { type: 1, mask: FULL, sid: OTHER },
+          { type: 0, mask: FULL, sid: USER },
+        ]);
+      } else {
+        // Same descriptor bytes and a copied marker, but a different directory.
+        const marker = await Bun.file(join(dir, ".owner-only-verified")).text();
+        await rename(dir, `${dir}.old`);
+        await mkdir(dir);
+        await Bun.write(join(dir, ".owner-only-verified"), marker);
+      }
+      state.refuse = true;
+      await expect(securePrivateLedgerDir(dir, false, acl)).rejects.toThrow(
+        "another principal"
+      );
+      expect(state.spawns).toBe(2);
+    }
+  );
+
+  test.if(process.platform === "win32")(
+    "Windows: real DACL is recorded, reused, and a grant is refused",
+    async () => {
+      const f = await fixture();
+      const dir = join(f.root, "write-receipts");
+      await mkdir(dir);
+      let spawns = 0;
+      const acl: PrivateDirAcl = {
+        verify: async (path, create) => {
+          spawns += 1;
+          await windowsPrivatePath(path, create);
+        },
+        descriptor: windowsDirectoryDescriptor,
+      };
+      await securePrivateLedgerDir(dir, true, acl);
+      await securePrivateLedgerDir(dir, false, acl);
+      expect(spawns).toBe(1);
+      const grant = Bun.spawnSync([
+        "icacls",
+        dir,
+        "/grant",
+        "*S-1-5-11:(OI)(CI)R",
+      ]);
+      expect(grant.exitCode).toBe(0);
+      await expect(securePrivateLedgerDir(dir, false, acl)).rejects.toThrow(
+        "another principal"
+      );
+      expect(spawns).toBe(2);
+    },
+    30_000
+  );
 });

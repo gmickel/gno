@@ -1,6 +1,9 @@
 /** Windows owner-only evidence storage. Paths are data, never interpolated script.
  * Fresh Windows objects may use the token default Owner instead of its User.
  * Only those exact owner SIDs are accepted; allowed DACL entries remain User-only. */
+// bun:ffi — reading a security descriptor in-process needs advapi32; Bun has no ACL API
+import { dlopen, FFIType } from "bun:ffi";
+
 // Use framework APIs directly: module auto-discovery depends on profile paths
 // deliberately absent from isolated native workers.
 const ACL = `
@@ -65,7 +68,8 @@ export async function windowsPrivatePath(
       // ACL checks return no data; do not allocate an unused stdout pipe.
       stdout: "ignore",
       stderr: "pipe",
-      timeout: 10000,
+      // A cold PowerShell start on a loaded host can take over 10s.
+      timeout: 30000,
     }
   );
   const reader = child.stderr.getReader();
@@ -93,4 +97,135 @@ export async function windowsPrivatePath(
       child.kill("SIGKILL");
     await child.exited;
   }
+}
+
+const OWNER_AND_DACL = 0x1 | 0x4; // OWNER_ | DACL_SECURITY_INFORMATION
+const FILE_ATTRIBUTE_DIRECTORY = 0x10;
+const FILE_ATTRIBUTE_REPARSE_POINT = 0x4_00;
+const INVALID_FILE_ATTRIBUTES = 0xff_ff_ff_ff;
+const SECURITY_DESCRIPTOR_MAX_BYTES = 65_536;
+
+interface Win32Security {
+  getFileAttributes: (path: Uint8Array) => number;
+  getFileSecurity: (
+    path: Uint8Array,
+    info: number,
+    descriptor: Uint8Array,
+    length: number,
+    needed: Uint32Array
+  ) => number;
+}
+
+let win32Security: Win32Security | null | undefined;
+
+function loadWin32Security(): Win32Security | null {
+  if (win32Security !== undefined) return win32Security;
+  try {
+    const kernel32 = dlopen("kernel32.dll", {
+      GetFileAttributesW: { args: [FFIType.ptr], returns: FFIType.u32 },
+    });
+    const advapi32 = dlopen("advapi32.dll", {
+      GetFileSecurityW: {
+        args: [FFIType.ptr, FFIType.u32, FFIType.ptr, FFIType.u32, FFIType.ptr],
+        returns: FFIType.i32,
+      },
+    });
+    win32Security = {
+      getFileAttributes: kernel32.symbols.GetFileAttributesW,
+      getFileSecurity: advapi32.symbols.GetFileSecurityW,
+    };
+  } catch {
+    win32Security = null;
+  }
+  return win32Security;
+}
+
+/**
+ * Owner and DACL of a directory that is not a reparse point, read in-process
+ * (no PowerShell). Null when unavailable: callers treat that as unverified.
+ */
+export function windowsDirectoryDescriptor(path: string): Uint8Array | null {
+  if (process.platform !== "win32") return null;
+  const win32 = loadWin32Security();
+  if (!win32) return null;
+  const widePath = Buffer.from(`${path}\0`, "utf16le");
+  const attributes = win32.getFileAttributes(widePath);
+  if (
+    attributes === INVALID_FILE_ATTRIBUTES ||
+    (attributes & FILE_ATTRIBUTE_DIRECTORY) === 0 ||
+    (attributes & FILE_ATTRIBUTE_REPARSE_POINT) !== 0
+  ) {
+    return null;
+  }
+  const descriptor = new Uint8Array(SECURITY_DESCRIPTOR_MAX_BYTES);
+  const needed = new Uint32Array(1);
+  const ok = win32.getFileSecurity(
+    widePath,
+    OWNER_AND_DACL,
+    descriptor,
+    descriptor.length,
+    needed
+  );
+  const length = needed[0] ?? 0;
+  if (ok === 0 || length === 0 || length > descriptor.length) return null;
+  return descriptor.slice(0, length);
+}
+
+const SE_DACL_PRESENT = 0x4;
+const SE_SELF_RELATIVE = 0x80_00;
+const ACCESS_ALLOWED_ACE_TYPE = 0;
+const ACCESS_DENIED_ACE_TYPE = 1;
+const FILE_ALL_ACCESS = 0x1f_01_ff;
+
+function sidAt(view: DataView, offset: number): Uint8Array | null {
+  if (offset === 0 || offset + 8 > view.byteLength) return null;
+  const end = offset + 8 + 4 * view.getUint8(offset + 1);
+  if (end > view.byteLength) return null;
+  return new Uint8Array(view.buffer, view.byteOffset + offset, end - offset);
+}
+
+function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
+  return left.length === right.length && left.every((b, i) => b === right[i]);
+}
+
+/**
+ * Self-relative descriptor whose owner is the only principal any allow entry
+ * names, with full control among them. Stricter than the PowerShell policy
+ * (which also accepts a token default owner): a false here only means the
+ * authoritative check runs.
+ */
+export function isOwnerOnlyDescriptor(descriptor: Uint8Array): boolean {
+  const view = new DataView(
+    descriptor.buffer,
+    descriptor.byteOffset,
+    descriptor.byteLength
+  );
+  if (view.byteLength < 20 || view.getUint8(0) !== 1) return false;
+  const control = view.getUint16(2, true);
+  if ((control & SE_SELF_RELATIVE) === 0 || (control & SE_DACL_PRESENT) === 0)
+    return false;
+  const owner = sidAt(view, view.getUint32(4, true));
+  const dacl = view.getUint32(16, true);
+  if (!owner || dacl === 0 || dacl + 8 > view.byteLength) return false;
+  const aclEnd = dacl + view.getUint16(dacl + 2, true);
+  if (aclEnd > view.byteLength) return false;
+  let offset = dacl + 8;
+  let fullControl = false;
+  for (let ace = view.getUint16(dacl + 4, true); ace > 0; ace--) {
+    if (offset + 8 > aclEnd) return false;
+    const type = view.getUint8(offset);
+    const size = view.getUint16(offset + 2, true);
+    if (size < 8 || offset + size > aclEnd) return false;
+    if (type === ACCESS_ALLOWED_ACE_TYPE) {
+      const sid = sidAt(view, offset + 8);
+      if (!sid || offset + 8 + sid.length > offset + size) return false;
+      if (!sameBytes(sid, owner)) return false;
+      const mask = view.getUint32(offset + 4, true);
+      if ((mask & FILE_ALL_ACCESS) === FILE_ALL_ACCESS) fullControl = true;
+    } else if (type !== ACCESS_DENIED_ACE_TYPE) {
+      return false;
+    }
+    offset += size;
+  }
+  return fullControl;
 }

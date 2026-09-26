@@ -116,6 +116,7 @@ import {
   handleSessionsInit,
   handleSessionsRemoveSource,
   handleSessionsStatus,
+  refreshSessionsConfig,
 } from "./routes/sessions";
 
 /** `/api/sessions/automation/:id[/...]` path parameter. */
@@ -861,9 +862,10 @@ export async function startServer(
         "/api/sessions/status": {
           GET: async (req: Request) =>
             withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleSessionsStatus(ctxHolder)
-              ),
+              (await refreshSessionsConfig(ctxHolder, store)) ??
+                (await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleSessionsStatus(ctxHolder)
+                )),
               isDev
             ),
         },

@@ -665,6 +665,12 @@ For the default index that is
 `~/Library/Application Support/gno/data/write-receipts/index-default.sqlite`
 on macOS, and `%LOCALAPPDATA%\gno\data\write-receipts\index-default.sqlite`
 on Windows. On POSIX the directory is created `0700` and the file `0600`.
+On Windows the directory is restricted to the current user and checked with
+built-in Windows PowerShell. The first write with a request ID runs that check
+and records it in `write-receipts/.owner-only-verified`; later writes skip it
+until the directory is replaced or its permissions change, and then check
+again. A directory another account can access is refused before anything is
+written.
 
 GNO never removes the ledger: index maintenance and `gno reset` keep it.
 Include it when you back up private GNO state. Retention, the row cap, and what
@@ -1230,9 +1236,11 @@ generation or rerank model loaded. Remote HTTP models are not affected.
 **Background embedding.** The daemon and `gno serve` embed in batches of up to
 32 chunks and let searches go first: after at most eight search-side model
 calls, one background batch runs. None of this is configurable. A chunk that
-fails to embed stays pending and is retried on the next pass. A pass starts
-30 seconds after new chunks stop arriving, and no later than five minutes
-after the first one.
+fails to embed stays pending and is retried on the next pass; a batch that
+exceeds `inferenceTimeout` fails only itself, and later batches still embed in
+the same pass. A pass starts 30 seconds after new chunks stop arriving, and no
+later than five minutes after the first one. Chunks already pending when the
+daemon or `gno serve` starts get a pass 30 seconds after startup.
 
 **Shutdown.** `gno daemon` and `gno serve` take at most about 11 seconds to
 stop: up to five seconds to finish in-flight work, five seconds for canceled

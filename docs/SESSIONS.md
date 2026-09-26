@@ -261,8 +261,10 @@ to one row so bounded context delivery (Capsules, `--budget`) spends its budget
 on dialogue rather than metadata.
 
 Cite session evidence by the record's `gno://` URI. URIs from the archive
-index carry `?index=sessions`; keep that query string when you pass the URI
-to `gno get`, `client.get()`, or MCP `gno_get`:
+index carry `?index=sessions` in every CLI JSON output, including `gno ls`
+and the results, citations, and `meta.answerContext` of `gno ask`; keep that
+query string when you pass the URI to `gno get`, `client.get()`, or MCP
+`gno_get`:
 
 ```bash
 gno --config ~/gno-sessions/archive.yml --index sessions get "gno://sessions-work/.gno/records/…/….md?index=sessions"
@@ -439,6 +441,15 @@ gno --config ~/gno-sessions/archive.yml --index sessions sessions source remove 
 - `status` lists archive collections with thread counts and, per source, its
   availability (`false` when the root is missing or cannot be read), unit counts (complete, incomplete, failed, pending),
   `sourceUnavailable`, `staleParser`, and last import time.
+- The unit counts cover units present in the source now. `total` counts
+  them all; `complete`, `incomplete`, and `failed` give the outcome of each
+  one's last import (`failed` includes unsupported units), and units never
+  imported are in none of the three. `pending` is not a separate outcome: it
+  counts units never imported, every `incomplete` and `failed` unit, and
+  `complete` units whose file or destination collection changed since their
+  import. So `pending` overlaps the other counts. An import can also re-read
+  `complete` units that `pending` does not count, after an upgrade changes
+  the session parser, the archive format, or the redaction rules.
 - Deleting or rotating a source file never deletes its archive. `status`
   counts such units under `sourceUnavailable`.
 - `prune` previews the archive files whose source is gone. It needs a
@@ -859,7 +870,11 @@ profile off by default, separate hook and schedule switches (each confirmed
 after a preview of sources, destinations, the settings file and the daemon
 prerequisite), daemon availability, pending/running/partial/failed state,
 last success, Run now, Pause, and Remove. A curated server does not attach
-the archive.
+the archive. Sources you add or remove with the CLI while the server runs
+show up the next time the page loads its status, without a restart, and
+Remove succeeds on a source the CLI already removed. If the server cannot
+read its config file, the page reports the error instead of showing stale
+sources.
 
 ## Supported harnesses
 

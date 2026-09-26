@@ -20,6 +20,7 @@ import { initStore } from "../../src/cli/commands/shared";
 import { getConfigPaths, loadConfig, saveConfigToPath } from "../../src/config";
 import { acquireWriteLock } from "../../src/core/file-lock";
 import { searchBm25 } from "../../src/pipeline/search";
+import { ReaderGate } from "../../src/serve/resident-admission";
 import {
   handleSessionsAddSource,
   handleSessionsAutomationDisable,
@@ -33,11 +34,16 @@ import {
   handleSessionsInit,
   handleSessionsRemoveSource,
   handleSessionsStatus,
+  refreshSessionsConfig,
   sessionsErrorResponse,
 } from "../../src/serve/routes/sessions";
 import { startServer } from "../../src/serve/server";
 import { setAutomationProfile } from "../../src/sessions/automation";
-import { addSessionSource, initSessionArchive } from "../../src/sessions/setup";
+import {
+  addSessionSource,
+  initSessionArchive,
+  removeSessionSource,
+} from "../../src/sessions/setup";
 import { importLockPath } from "../../src/sessions/state";
 import { safeRm } from "../helpers/cleanup";
 import {
@@ -179,12 +185,80 @@ describe("GET /api/sessions/status", () => {
 
   test("an instance without a sessions block is not configured", async () => {
     const curated = { ...ctxHolder.config, sessions: undefined } as Config;
-    ctxHolder.config = curated;
+    await saveConfigToPath(curated, configPath);
+    expect(await refreshSessionsConfig(ctxHolder, store)).toBeNull();
     await expectError(
       await handleSessionsStatus(ctxHolder),
       400,
       "SESSIONS_NOT_CONFIGURED"
     );
+  });
+
+  test("CLI source changes show without a restart and Remove still succeeds", async () => {
+    const sourceIds = async (): Promise<string[]> => {
+      expect(await refreshSessionsConfig(ctxHolder, store)).toBeNull();
+      const response = await handleSessionsStatus(ctxHolder);
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as {
+        sources: Array<{ id: string }>;
+      };
+      return body.sources.map((source) => source.id);
+    };
+    expect(await sourceIds()).toEqual(["codex-main"]);
+
+    // Same config file, changed by another process (the CLI).
+    await addSessionSource({
+      configPath,
+      id: "codex-two",
+      harness: "codex",
+      path: codexRoot,
+      collection: "second",
+    });
+    expect(await sourceIds()).toEqual(["codex-main", "codex-two"]);
+    const stored = await store.getCollections();
+    expect(stored.ok && stored.value.map((c) => c.name)).toContain("second");
+
+    // The page still lists codex-main after the CLI removed it.
+    await removeSessionSource({ configPath, id: "codex-main" });
+    const removed = await handleSessionsRemoveSource(
+      ctxHolder,
+      store,
+      "codex-main",
+      post("/api/sessions/sources/codex-main", undefined, "DELETE"),
+      { server: localServer }
+    );
+    expect(removed.status).toBe(200);
+    expect(await removed.json()).toEqual({
+      id: "codex-main",
+      removed: true,
+      archiveRetained: true,
+    });
+    expect(await sourceIds()).toEqual(["codex-two"]);
+  });
+
+  test("an unreadable config is reported, not served stale", async () => {
+    await Bun.write(configPath, "version: [not valid\n");
+    const failed = await refreshSessionsConfig(ctxHolder, store);
+    if (!failed) throw new Error("expected an error response");
+    const body = await expectError(failed, 500, "SESSIONS_RUNTIME_FAILURE");
+    expect(body.error.message).toContain("could not read its config file");
+    expect(body.error.message).not.toContain(root);
+  });
+
+  test("a config rebound to another index is refused before it touches this one", async () => {
+    const served = ctxHolder.config;
+    const rebound = {
+      ...served,
+      collections: [],
+      sessions: { ...served.sessions!, index: "other" },
+    } as Config;
+    await saveConfigToPath(rebound, configPath);
+    const failed = await refreshSessionsConfig(ctxHolder, store);
+    if (!failed) throw new Error("expected an error response");
+    await expectError(failed, 400, "SESSIONS_BINDING_MISMATCH");
+    expect(ctxHolder.config).toBe(served);
+    const stored = await store.getCollections();
+    expect(stored.ok && stored.value.map((c) => c.name)).toEqual(["work"]);
   });
 });
 
@@ -675,6 +749,81 @@ describe("server wiring", () => {
     );
     expect(result).toEqual({ success: true });
   });
+});
+
+test("the status route adopts a CLI-added collection without voiding the read", async () => {
+  let epoch = 1;
+  ctxHolder.invalidateEgressPolicy = async () => {
+    epoch += 1;
+    return {
+      policyEpoch: String(epoch),
+      queuedJobsInvalidated: 0,
+      sessionsInvalidated: 0,
+      staleWorkMustRetry: true,
+    };
+  };
+  const runtime = {
+    actualConfigPath: configPath,
+    config: ctxHolder.config,
+    store,
+    ctxHolder,
+    readerGate: new ReaderGate(1, 1),
+    admitRequest: () => {
+      const admittedEpoch = epoch;
+      return {
+        id: crypto.randomUUID(),
+        signal: new AbortController().signal,
+        isAuthorizationEpochCurrent: () => admittedEpoch === epoch,
+        finish: () => undefined,
+      };
+    },
+    dispose: async () => undefined,
+  };
+  let routes: Record<
+    string,
+    Record<string, (req: Request) => Promise<Response>>
+  > = {};
+  const result = await startServer(
+    { index: INDEX, port: 3000 },
+    {
+      startBackgroundRuntime: (async () => ({
+        success: true as const,
+        runtime,
+      })) as never,
+      createMcpHttpGateway: (async () => ({
+        route: async () => new Response("ok"),
+        close: async () => undefined,
+        security: {},
+        transport: {},
+      })) as never,
+      serve: ((options: { routes: typeof routes }) => {
+        routes = options.routes;
+        return { port: 3000, stop: async () => undefined } as never;
+      }) as never,
+      waitForShutdown: async () => {
+        await addSessionSource({
+          configPath,
+          id: "codex-two",
+          harness: "codex",
+          path: codexRoot,
+          collection: "second",
+        });
+        const response = await routes["/api/sessions/status"]?.GET?.(
+          new Request(`${ORIGIN}/api/sessions/status`)
+        );
+        expect(response?.status).toBe(200);
+        const body = (await response?.json()) as {
+          sources: Array<{ id: string }>;
+        };
+        expect(body.sources.map((source) => source.id)).toEqual([
+          "codex-main",
+          "codex-two",
+        ]);
+        expect(epoch).toBe(2);
+      },
+    }
+  );
+  expect(result).toEqual({ success: true });
 });
 
 test("non-session failures map to a typed, path-free REST error", async () => {

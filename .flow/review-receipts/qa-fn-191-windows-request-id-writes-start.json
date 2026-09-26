@@ -1,0 +1,35 @@
+{
+  "branch": "batch/v2.7.1",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "f86f28b1c91691868b42704c0c1d32ebebc4cd7d",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-55fa34ea99fe0b3059e7f8c1747f059fb3bcbea9ce51b4d8acb21029463a7b6b"
+  },
+  "head_sha": "f86f28b1c91691868b42704c0c1d32ebebc4cd7d",
+  "id": "fn-191-windows-request-id-writes-start",
+  "mode": "interactive",
+  "na_reason": "Windows-only behaviour; verified by unit tests with an injected check and the Windows CI job's real-ACL test",
+  "open_p0p1": [],
+  "qa_outcome": "NA",
+  "rid_coverage": {
+    "covered": 2,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R2"
+      }
+    ],
+    "total": 2
+  },
+  "timestamp": "2026-09-26T08:25:31Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

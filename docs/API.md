@@ -182,29 +182,48 @@ and MCP `gno_get` need to fetch or open it.
   (loopback peer, loopback `Host`, no forwarding headers) has every `absPath`
   field removed. The same-host Web UI keeps it for Reveal and the `file://`
   "Open original"; a remote Web UI opens originals through
-  `/api/doc-asset?uri=`.
+  `/api/doc-asset?uri=`. The status, collection, and connector routes also
+  drop their owner configuration paths for that caller (table below).
 - **MCP**: stdio callers keep host paths. Every Streamable HTTP caller
   (`gno serve` or `gno daemon` `/mcp`, loopback or not) gets none.
 - **CLI** and the **SDK** run on the owner's machine and are unchanged.
 
 Inventory of result fields that carry a host absolute path:
 
-| Field                                 | Carried by                                                                        | Remote-reachable surfaces                                                                                                                          | Remote caller gets       |
-| :------------------------------------ | :-------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------- |
-| `source.absPath`                      | search, vsearch, query, and ask results; get, multi-get, and `/api/doc` documents | REST `/api/search`, `/api/query`, `/api/ask`, `/api/doc`; HTTP MCP `gno_search`, `gno_vsearch`, `gno_query`, `gno_ask`, `gno_get`, `gno_multi_get` | field omitted            |
-| `absPath`                             | capture and remember receipts                                                     | REST `/api/capture`, `/api/memory/remember`; HTTP MCP `gno_capture`, `gno_remember`                                                                | field omitted            |
-| `error.details.absPath`               | `CAPTURE_SYNC_FAILED` capture error                                               | REST `/api/capture`                                                                                                                                | field omitted            |
-| `similar[].absPath`                   | similar-document results                                                          | HTTP MCP `gno_similar`                                                                                                                             | field omitted            |
-| `recent[].absPath`                    | peek snapshot                                                                     | HTTP MCP `gno_peek`                                                                                                                                | field omitted            |
-| `source:` line of a `gno://` resource | MCP resource read header                                                          | HTTP MCP resource reads                                                                                                                            | collection-relative path |
+| Field                                 | Carried by                                                                                  | Remote-reachable surfaces                                                                                                                                                 | Remote caller gets       |
+| :------------------------------------ | :------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :----------------------- |
+| `source.absPath`                      | search, vsearch, query, and ask results; get, multi-get, and `/api/doc` documents           | REST `/api/search`, `/api/query`, `/api/ask`, `/api/doc`; HTTP MCP `gno_search`, `gno_vsearch`, `gno_query`, `gno_ask`, `gno_get`, `gno_multi_get`                        | field omitted            |
+| `absPath`                             | capture and remember receipts                                                               | REST `/api/capture`, `/api/memory/remember`; HTTP MCP `gno_capture`, `gno_remember`                                                                                       | field omitted            |
+| `error.details.absPath`               | `CAPTURE_SYNC_FAILED` capture error                                                         | REST `/api/capture`                                                                                                                                                       | field omitted            |
+| `similar[].absPath`                   | similar-document results                                                                    | HTTP MCP `gno_similar`                                                                                                                                                    | field omitted            |
+| `recent[].absPath`                    | peek snapshot                                                                               | HTTP MCP `gno_peek`                                                                                                                                                       | field omitted            |
+| `source:` line of a `gno://` resource | MCP resource read header                                                                    | HTTP MCP resource reads                                                                                                                                                   | collection-relative path |
+| `path`                                | document create, editable copy, rename, move, duplicate, trash, and create-folder responses | REST `POST /api/docs`, `/api/docs/:id/editable-copy`, `/api/docs/:id/rename`, `/api/docs/:id/move`, `/api/docs/:id/duplicate`, `/api/docs/:id/trash`, `POST /api/folders` | field omitted            |
+| `path`, `file://` `uri`               | document save response                                                                      | REST `PUT /api/docs/:id`                                                                                                                                                  | fields omitted           |
+
+Owner configuration paths reveal the same layout and follow the same rule. A
+remote caller identifies a collection by its `name`:
+
+| Field                                                     | Carried by                                 | Remote-reachable surfaces                                        | Remote caller gets |
+| :-------------------------------------------------------- | :----------------------------------------- | :--------------------------------------------------------------- | :----------------- |
+| `configPath`, `dbPath`                                    | index status                               | REST `/api/status`; HTTP MCP `gno_status` (and its text summary) | field omitted      |
+| `collections[].path`                                      | collection root in index status            | REST `/api/status`; HTTP MCP `gno_status`                        | field omitted      |
+| `path`, `collection.path`                                 | collection list, create, and update        | REST `/api/collections`, `/api/collections/:name`                | field omitted      |
+| `onboarding.suggestedCollections[].path`                  | suggested folders to add                   | REST `/api/status`                                               | field omitted      |
+| `bootstrap.cache.path`, `bootstrap.models.entries[].path` | model cache directory and model files      | REST `/api/status`                                               | field omitted      |
+| `connectors[].path`, `connector.path`                     | connector skill directory or client config | REST `/api/connectors`, `/api/connectors/install`                | field omitted      |
+
+The same-host Web UI keeps these fields for the Collections page, the
+dashboard, and the connector list. A remote Web UI shows the same pages without
+the path lines and offers no suggested-folder quick picks, because it has no
+host path to prefill. The disk health check reports free space for the model
+cache without naming its location, for every caller. The CLI, stdio MCP, and
+the SDK are unchanged.
 
 Context Capsules, retrieval traces, and publish exports carry no host paths.
 A capture or remember whose file was written but not indexed names the file by
 its `gno://` URI in the error message. `/api/doc-asset` streams the original
-file's bytes unchanged. Owner configuration fields are outside this rule and
-still reach a remote REST or HTTP MCP caller: collection root `path` in
-`/api/collections`, `/api/status`, and `gno_status`, plus status `configPath`
-and `dbPath`.
+file's bytes unchanged.
 
 ### Browser Clipper Boundary
 
@@ -441,6 +460,11 @@ GET /api/status
 ```
 
 Returns index statistics plus first-run onboarding, health-center state, background-service telemetry, and bootstrap/runtime-model provisioning state for the dashboard.
+
+`configPath`, `dbPath`, and every `path` field (collection roots, suggested
+folders, model cache and model files) reach same-host callers only; a remote
+caller's response omits them (see
+[Host Paths and Remote Callers](#host-paths-and-remote-callers)).
 
 **Response**:
 
@@ -838,6 +862,10 @@ The web UI uses this field to decide whether host-local actions (Reveal,
 ```http
 GET /api/collections
 ```
+
+Each collection's root `path` reaches same-host callers only; a remote
+caller's response omits it (see
+[Host Paths and Remote Callers](#host-paths-and-remote-callers)).
 
 **Response**:
 
@@ -2776,14 +2804,18 @@ POST /api/sessions/init
   where `projects` is `[{ "prefix": "/abs/dir", "collection": "name" }]`, and
   answers `{ "id": "codex", "registered": true }`. Registration never imports.
 - `DELETE /api/sessions/sources/:id` answers
-  `{ "id": "codex", "removed": true, "archiveRetained": true }`.
+  `{ "id": "codex", "removed": true, "archiveRetained": true }`, also when
+  the source is no longer registered (for example removed with the CLI).
 - `init` takes `{ "archive": "/abs/archive/root", "collection": "sessions-work" }`
   and binds this instance's own config/index pair. It answers
   `{ "schemaVersion": "1", "index", "collection", "archiveRoot", "created" }`.
   The default config file and the `default` index are refused.
 
 Registration and init persist the archive config and apply it to the running
-server (collections, watcher, egress policy) without a restart.
+server (collections, watcher, egress policy) without a restart. `status` also
+applies changes the CLI made to the config file (`gno sessions source
+add/remove`); a config file the server cannot read answers `500` with
+`SESSIONS_RUNTIME_FAILURE` rather than stale sources.
 
 #### Automation
 
@@ -2846,6 +2878,9 @@ POST /api/docs
 ```
 
 Create a new document file in a collection. Triggers background sync to index it.
+
+The response's host `path` reaches same-host callers only, as for the other
+document mutations (see [Host Paths and Remote Callers](#host-paths-and-remote-callers)).
 
 **Request Body**:
 
@@ -2912,6 +2947,10 @@ PUT /api/docs/:id
 
 Update an existing document's content or tags. The Web UI editor and tag
 editor use this endpoint. Triggers background sync to re-index.
+
+The response's host `path` and `file://` `uri` reach same-host callers only; a
+remote caller's response omits both (see
+[Host Paths and Remote Callers](#host-paths-and-remote-callers)).
 
 The revision check and the file write run under the shared write lease
 (`.mcp-write.lock`), so two saves from the same revision cannot both win: one

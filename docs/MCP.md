@@ -374,8 +374,11 @@ multi-get results; top-level `absPath` on `gno_capture` and `gno_remember`
 receipts; `similar[].absPath`; peek `recent[].absPath`), and a `gno://`
 resource header names the collection-relative path on its `source:` line.
 Identify and open a document by its `uri` and `relPath` instead: `gno_get`,
-`gno_multi_get`, and resource reads all take the URI. The full field inventory
-is in [REST API: Host Paths and Remote Callers](API.md#host-paths-and-remote-callers).
+`gno_multi_get`, and resource reads all take the URI. `gno_status` over HTTP
+also omits the owner configuration paths `configPath`, `dbPath`, and each
+collection's root `path`, and its text summary drops the `Config:` and
+`Database:` lines; name a collection by `name`. The full field inventory is in
+[REST API: Host Paths and Remote Callers](API.md#host-paths-and-remote-callers).
 
 ### Client Approval
 
@@ -1441,6 +1444,10 @@ URI tail and do not offer file-open for that row.
 Check index health.
 
 Returns collection counts, document totals, and health status.
+
+Over stdio the response names the config file (`configPath`), the index
+database (`dbPath`), and each collection's root `path`. HTTP callers get none
+of the three (see [Host Paths over HTTP](#host-paths-over-http)).
 
 The structured response also includes `resident-status@1.0`. HTTP clients see
 the shared serve/daemon lifecycle. Stdio reports `mode:"stdio"`,

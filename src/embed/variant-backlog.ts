@@ -5,6 +5,7 @@ import type { EmbedBacklogDeps, EmbedBacklogResult } from "./backlog";
 import {
   assertInferenceActive,
   isBackgroundInference,
+  withInferencePage,
 } from "../llm/inference-scope";
 import { err, ok } from "../store/types";
 import { getVectorStatsDatabase } from "../store/vector/stats";
@@ -38,7 +39,11 @@ export async function embedVariantBacklog(
   const total = { embedded: 0, errors: 0, contentionErrors: 0 };
   let after: { documentId: number; seq: number } | undefined;
   try {
-    while (identityStillCurrent()) {
+    while (true) {
+      // A failed request drops the port's cached identity (a timed-out native
+      // worker is retired); reload it so one failed page cannot end the pass.
+      if (background) await withInferencePage(() => deps.embedPort.init());
+      if (!identityStillCurrent()) break;
       assertInferenceActive();
       const pending = variantBacklogPage(deps, store, batchSize, after);
       if (!pending.length) break;
@@ -54,14 +59,25 @@ export async function embedVariantBacklog(
                 .get(owner.documentId, deps.collection!)
           )
         : pending;
-      let result = await embedVariantBatch({
-        store,
-        embedPort: deps.embedPort,
-        owners,
-        identityStillCurrent,
-        force: deps.force,
-        acquireWriteTurn: deps.acquireWriteTurn,
-      });
+      const embedPage = () =>
+        embedVariantBatch({
+          store,
+          embedPort: deps.embedPort,
+          owners,
+          identityStillCurrent,
+          force: deps.force,
+          acquireWriteTurn: deps.acquireWriteTurn,
+        });
+      let result = background
+        ? await withInferencePage(embedPage)
+        : await embedPage();
+      if (!result) {
+        // Past its deadline: this page stays pending for the next pass.
+        total.errors += owners.length;
+        deps.onProgress?.(total.embedded, total.errors);
+        await Bun.sleep(0);
+        continue;
+      }
       if (result.deferred) return ok({ ...total, deferred: true });
       total.embedded += result.embedded;
       total.errors += result.errors;

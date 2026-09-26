@@ -58,6 +58,7 @@ describe("startBackgroundRuntime", () => {
       syncCollections,
       syncContexts,
       getRawDb,
+      getStatus: async () => ({ ok: true, value: { embeddingBacklog: 0 } }),
       close,
     } as never;
     const disposeContext = mock(async () => undefined);
@@ -251,6 +252,10 @@ describe("startBackgroundRuntime", () => {
             syncCollections: async () => ({ ok: true, value: undefined }),
             syncContexts: async () => ({ ok: true, value: undefined }),
             getRawDb: () => ({}) as never,
+            getStatus: async () => ({
+              ok: true,
+              value: { embeddingBacklog: 0 },
+            }),
             close: async () => undefined,
           }) as never,
         createServerContext,

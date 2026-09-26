@@ -105,9 +105,11 @@ export function BootstrapStatus({
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <p>Total cache: {bootstrap.cache.totalSizeLabel}</p>
-            <p className="font-mono text-muted-foreground text-xs">
-              {bootstrap.cache.path}
-            </p>
+            {bootstrap.cache.path && (
+              <p className="font-mono text-muted-foreground text-xs">
+                {bootstrap.cache.path}
+              </p>
+            )}
           </CardContent>
         </Card>
 
