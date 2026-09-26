@@ -218,6 +218,7 @@ import {
   type DesiredGraphEdge,
 } from "./graph-edge-application";
 import {
+  type GraphLinkSourceIdentity,
   isTraversableResolution,
   linkSourceIdentity,
   resolveGraphLinkTargets,
@@ -4149,206 +4150,64 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       targetRefNorm: string;
       targetCollection: string;
       linkType: "wiki" | "markdown";
+      source?: GraphLinkSourceIdentity;
     }>
   ): Promise<
     StoreResult<
-      Array<{ docid: string; uri: string; title: string | null } | null>
+      Array<{
+        docid: string;
+        uri: string;
+        title: string | null;
+        collection: string;
+      } | null>
     >
   > {
     try {
       const db = this.ensureOpen();
-
-      const results: Array<{
-        docid: string;
-        uri: string;
-        title: string | null;
-      } | null> = Array.from({ length: targets.length }, () => null);
-
-      const wikiTargets: Array<{
-        idx: number;
-        collection: string;
-        baseRef: string;
-        baseRefMd: string;
-      }> = [];
-      const mdTargets: Array<{
-        idx: number;
-        collection: string;
-        relPath: string;
-      }> = [];
-
-      for (const [idx, target] of targets.entries()) {
-        if (target.linkType === "wiki") {
-          const baseRef = stripWikiMdExt(target.targetRefNorm);
-          wikiTargets.push({
-            idx,
-            collection: target.targetCollection,
-            baseRef,
-            baseRefMd: `${baseRef}.md`,
+      const resolutions = resolveGraphLinkTargets(db, targets);
+      const ids = [
+        ...new Set(
+          resolutions
+            .filter(isTraversableResolution)
+            .map((resolution) => resolution.targetId)
+        ),
+      ];
+      const byId = new Map<
+        number,
+        { docid: string; uri: string; title: string | null; collection: string }
+      >();
+      for (let offset = 0; offset < ids.length; offset += 900) {
+        const batch = ids.slice(offset, offset + 900);
+        for (const row of db
+          .query<
+            {
+              id: number;
+              docid: string;
+              uri: string;
+              title: string | null;
+              collection: string;
+            },
+            number[]
+          >(
+            `SELECT id, docid, uri, title, collection FROM documents WHERE id IN (${batch.map(() => "?").join(",")})`
+          )
+          .all(...batch)) {
+          byId.set(row.id, {
+            docid: row.docid,
+            uri: row.uri,
+            title: row.title,
+            collection: row.collection,
           });
-        } else {
-          mdTargets.push({
-            idx,
-            collection: target.targetCollection,
-            relPath: target.targetRefNorm,
-          });
         }
       }
-
-      const chunkArray = <T>(items: T[], chunkSize: number): T[][] => {
-        const chunks: T[][] = [];
-        for (let i = 0; i < items.length; i += chunkSize) {
-          chunks.push(items.slice(i, i + chunkSize));
-        }
-        return chunks;
-      };
-
-      const MAX_SQL_PARAMS = 900;
-      const wikiBatchSize = Math.max(1, Math.floor(MAX_SQL_PARAMS / 4));
-      const mdBatchSize = Math.max(1, Math.floor(MAX_SQL_PARAMS / 3));
-
-      const titleExpr = "lower(trim(d.title))";
-      const relExpr = "lower(d.rel_path)";
-      const suffixMatchExprExpr = (
-        targetExpr: string,
-        valueExpr: string
-      ): string =>
-        `(substr(${targetExpr}, -length(${valueExpr})) = ${valueExpr}
-          AND (length(${targetExpr}) = length(${valueExpr})
-            OR substr(${targetExpr}, -length(${valueExpr}) - 1, 1) = '/'))`;
-
-      if (wikiTargets.length > 0) {
-        for (const batch of chunkArray(wikiTargets, wikiBatchSize)) {
-          const valuesClause = batch.map(() => "(?, ?, ?, ?)").join(", ");
-          const wikiParams = batch.flatMap((t) => [
-            t.idx,
-            t.collection,
-            t.baseRef,
-            t.baseRefMd,
-          ]);
-
-          const baseRefExpr = "t.base_ref";
-          const baseRefMdExpr = "t.base_ref_md";
-          const wikiWhere = `
-            ${titleExpr} = ${baseRefExpr}
-            OR ${titleExpr} = ${baseRefMdExpr}
-            OR ${suffixMatchExprExpr(baseRefExpr, titleExpr)}
-            OR ${suffixMatchExprExpr(baseRefMdExpr, `${titleExpr} || '.md'`)}
-            OR ${relExpr} = ${baseRefExpr}
-            OR ${relExpr} = ${baseRefMdExpr}
-            OR ${suffixMatchExprExpr(relExpr, baseRefMdExpr)}
-            OR ${suffixMatchExprExpr(relExpr, baseRefExpr)}
-            OR ${suffixMatchExprExpr(baseRefMdExpr, relExpr)}
-            OR ${suffixMatchExprExpr(baseRefExpr, relExpr)}
-          `;
-
-          const wikiRank = `CASE
-            WHEN ${titleExpr} = ${baseRefExpr} THEN 1
-            WHEN ${titleExpr} = ${baseRefMdExpr} THEN 2
-            WHEN ${suffixMatchExprExpr(baseRefExpr, titleExpr)} THEN 3
-            WHEN ${suffixMatchExprExpr(
-              baseRefMdExpr,
-              `${titleExpr} || '.md'`
-            )} THEN 4
-            WHEN ${relExpr} = ${baseRefExpr} THEN 5
-            WHEN ${relExpr} = ${baseRefMdExpr} THEN 6
-            WHEN ${suffixMatchExprExpr(relExpr, baseRefMdExpr)} THEN 7
-            WHEN ${suffixMatchExprExpr(relExpr, baseRefExpr)} THEN 8
-            WHEN ${suffixMatchExprExpr(baseRefMdExpr, relExpr)} THEN 9
-            WHEN ${suffixMatchExprExpr(baseRefExpr, relExpr)} THEN 10
-            ELSE 99
-          END`;
-
-          const wikiQuery = `
-            WITH targets(idx, collection, base_ref, base_ref_md) AS (
-              VALUES ${valuesClause}
-            ),
-            candidates AS (
-              SELECT
-                t.idx,
-                d.docid,
-                d.uri,
-                d.title,
-                d.id as doc_id,
-                ${wikiRank} as rank
-              FROM targets t
-              JOIN documents d ON d.active = 1 AND d.collection = t.collection
-              WHERE ${wikiWhere}
-            ),
-            ranked AS (
-              SELECT *,
-                ROW_NUMBER() OVER (PARTITION BY idx ORDER BY rank, doc_id) as rn
-              FROM candidates
-            )
-            SELECT idx, docid, uri, title
-            FROM ranked
-            WHERE rn = 1
-          `;
-
-          const wikiRows = db
-            .query<
-              { idx: number; docid: string; uri: string; title: string | null },
-              (string | number)[]
-            >(wikiQuery)
-            .all(...wikiParams);
-
-          for (const row of wikiRows) {
-            results[row.idx] = {
-              docid: row.docid,
-              uri: row.uri,
-              title: row.title,
-            };
-          }
-        }
-      }
-
-      if (mdTargets.length > 0) {
-        for (const batch of chunkArray(mdTargets, mdBatchSize)) {
-          const valuesClause = batch.map(() => "(?, ?, ?)").join(", ");
-          const mdParams = batch.flatMap((t) => [
-            t.idx,
-            t.collection,
-            t.relPath,
-          ]);
-          const mdQuery = `
-            WITH targets(idx, collection, rel_path) AS (
-              VALUES ${valuesClause}
-            ),
-            ranked AS (
-              SELECT
-                t.idx,
-                d.docid,
-                d.uri,
-                d.title,
-                d.id as doc_id,
-                ROW_NUMBER() OVER (PARTITION BY t.idx ORDER BY d.id) as rn
-              FROM targets t
-              JOIN documents d ON d.active = 1
-                AND d.collection = t.collection
-                AND d.rel_path = t.rel_path
-            )
-            SELECT idx, docid, uri, title
-            FROM ranked
-            WHERE rn = 1
-          `;
-
-          const mdRows = db
-            .query<
-              { idx: number; docid: string; uri: string; title: string | null },
-              (string | number)[]
-            >(mdQuery)
-            .all(...mdParams);
-
-          for (const row of mdRows) {
-            results[row.idx] = {
-              docid: row.docid,
-              uri: row.uri,
-              title: row.title,
-            };
-          }
-        }
-      }
-
-      return ok(results);
+      // Tied workspace links are ambiguous: reported unresolved, never guessed.
+      return ok(
+        resolutions.map((resolution) =>
+          isTraversableResolution(resolution)
+            ? (byId.get(resolution.targetId) ?? null)
+            : null
+        )
+      );
     } catch (cause) {
       return err(
         "QUERY_FAILED",
@@ -4955,6 +4814,22 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         ? normalizeDocEdgeType(options.edgeType)
         : undefined;
 
+      // Collection allowlist: every visited node must be in scope, so a
+      // forbidden collection can never act as a traversal bridge. Names are
+      // validated collection identifiers, inlined as quoted literals.
+      const scopeCollections = options.collections
+        ? [...new Set(options.collections)].filter((name) =>
+            COLLECTION_IDENTIFIER.test(name)
+          )
+        : undefined;
+      const nextDocScope = scopeCollections
+        ? scopeCollections.length === 0
+          ? " AND 0"
+          : ` AND next_doc.collection IN (${scopeCollections
+              .map((name) => `'${name}'`)
+              .join(",")})`
+        : "";
+
       const nodeLimit = Math.min(maxNodes, visitedLimit);
       const edgeTypeFilter = edgeType ? "AND e.edge_type = ?" : "";
       const edgeTypeFilterFor = (alias: string): string =>
@@ -4993,7 +4868,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                       ORDER BY e2.edge_type ASC, e2.id ASC
                     ) AS next_rank
                   FROM doc_edges e2
-                  JOIN documents next_doc ON next_doc.id = e2.dst_doc_id AND next_doc.active = 1
+                  JOIN documents next_doc ON next_doc.id = e2.dst_doc_id AND next_doc.active = 1${nextDocScope}
                   WHERE e2.src_doc_id = ${frontierName}.doc_id
                     ${edgeTypeFilterFor("e2")}
                     AND instr(${frontierName}.path, printf(',%d,', e2.dst_doc_id)) = 0
@@ -5024,7 +4899,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                       ORDER BY e2.edge_type ASC, e2.id ASC
                     ) AS next_rank
                   FROM doc_edges e2
-                  JOIN documents next_doc ON next_doc.id = e2.src_doc_id AND next_doc.active = 1
+                  JOIN documents next_doc ON next_doc.id = e2.src_doc_id AND next_doc.active = 1${nextDocScope}
                   WHERE e2.dst_doc_id = ${frontierName}.doc_id
                     ${edgeTypeFilterFor("e2")}
                     AND instr(${frontierName}.path, printf(',%d,', e2.src_doc_id)) = 0
@@ -5055,7 +4930,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                       ORDER BY e2.edge_type ASC, e2.id ASC
                     ) AS next_rank
                   FROM doc_edges e2
-                  JOIN documents next_doc ON next_doc.id = e2.dst_doc_id AND next_doc.active = 1
+                  JOIN documents next_doc ON next_doc.id = e2.dst_doc_id AND next_doc.active = 1${nextDocScope}
                   WHERE e2.src_doc_id = ${frontierName}.doc_id
                     ${edgeTypeFilterFor("e2")}
                     AND instr(${frontierName}.path, printf(',%d,', e2.dst_doc_id)) = 0
@@ -5083,7 +4958,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                       ORDER BY e3.edge_type ASC, e3.id ASC
                     ) AS next_rank
                   FROM doc_edges e3
-                  JOIN documents next_doc ON next_doc.id = e3.src_doc_id AND next_doc.active = 1
+                  JOIN documents next_doc ON next_doc.id = e3.src_doc_id AND next_doc.active = 1${nextDocScope}
                   WHERE e3.dst_doc_id = ${frontierName}.doc_id
                     ${edgeTypeFilterFor("e3")}
                     AND instr(${frontierName}.path, printf(',%d,', e3.src_doc_id)) = 0
@@ -6169,6 +6044,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         path: string;
         egress_policy: EgressPolicy;
         egress_policy_source: EgressPolicySource;
+        workspace_root: string | null;
+        workspace_source: LinkWorkspaceSource | null;
         total: number;
         active: number;
         errored: number;
@@ -6222,6 +6099,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             c.path,
             c.egress_policy,
             c.egress_policy_source,
+            c.workspace_root,
+            c.workspace_source,
             COALESCE(ds.total, 0) AS total,
             COALESCE(ds.active, 0) AS active,
             COALESCE(ds.errored, 0) AS errored,
@@ -6323,6 +6202,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           path: s.path,
           egressPolicy: s.egress_policy,
           egressPolicySource: s.egress_policy_source,
+          workspaceRoot: s.workspace_root,
+          workspaceSource: s.workspace_source ?? "none",
           totalDocuments: s.total,
           activeDocuments: s.active,
           errorDocuments: s.errored,
@@ -6598,6 +6479,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 }
+
+/** Collection names as the config schema admits them (safe to inline). */
+const COLLECTION_IDENTIFIER = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 
 /**
  * Workspace columns on collection upsert. Nested vault prefixes are refreshed

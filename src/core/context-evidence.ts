@@ -40,6 +40,7 @@ import {
 import { planContextEvidence } from "./context-compiler";
 import { projectContextEvidenceMetadata } from "./context-evidence-metadata";
 import { createEgressLineage, resolveEgressLineage } from "./egress-provenance";
+import { linkResolutionFingerprintInput } from "./link-workspace";
 import { projectRecordEvidenceMetadata } from "./record-metadata";
 import {
   extractInclusiveLines,
@@ -205,6 +206,13 @@ const canonicalIndexSnapshot = (
     ),
 });
 
+const linkResolutionEntry = (
+  rows: Parameters<typeof linkResolutionFingerprintInput>[0]
+): { linkResolution?: ReturnType<typeof linkResolutionFingerprintInput> } => {
+  const linkResolution = linkResolutionFingerprintInput(rows);
+  return linkResolution ? { linkResolution } : {};
+};
+
 /** Capture one strict, content-free index/context snapshot before or after work. */
 export const captureContextEvidenceSnapshot = async (
   store: ContextEvidenceStore,
@@ -284,6 +292,9 @@ export const captureContextEvidenceSnapshot = async (
     indexFingerprint: hashJson({
       snapshots: indexSnapshots,
       egressLineage,
+      // Link workspace membership decides graph neighbours; a membership or
+      // resolver change is index drift. Absent without any workspace.
+      ...linkResolutionEntry(collectionRows),
     }),
   };
 };

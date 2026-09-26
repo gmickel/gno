@@ -804,6 +804,10 @@ export interface CollectionStatus {
   egressPolicy: EgressPolicy;
   /** Whether policy was explicit or supplied by a safe default. */
   egressPolicySource: EgressPolicySource;
+  /** Effective link workspace root (host path); null when collection-scoped. */
+  workspaceRoot?: string | null;
+  /** How the link workspace was established. */
+  workspaceSource?: LinkWorkspaceSource;
   totalDocuments: number;
   activeDocuments: number;
   errorDocuments: number;
@@ -1134,6 +1138,11 @@ export interface GraphQueryEdge {
 export interface GraphQueryOptions {
   direction?: GraphQueryDirection;
   edgeType?: DocEdgeType;
+  /**
+   * Collection allowlist: only documents in these collections are visited
+   * (the root must be in scope too). Undefined means every collection.
+   */
+  collections?: string[];
   maxDepth?: number;
   maxNodes?: number;
   frontierLimit?: number;
@@ -2271,18 +2280,26 @@ export interface StorePort {
   ): Promise<StoreResult<BacklinkRow[]>>;
 
   /**
-   * Resolve link targets to their documents.
-   * Returns array of resolved docs (or null for unresolved) matching input order.
+   * Resolve link targets to their documents with the shared link resolver.
+   * With `source`, plain wiki links from a document inside a link workspace
+   * resolve across the workspace. Returns resolved docs (or null for
+   * unresolved and tied links) matching input order.
    */
   resolveLinks(
     targets: Array<{
       targetRefNorm: string;
       targetCollection: string;
       linkType: "wiki" | "markdown";
+      source?: { collection: string; relPath: string; explicit: boolean };
     }>
   ): Promise<
     StoreResult<
-      Array<{ docid: string; uri: string; title: string | null } | null>
+      Array<{
+        docid: string;
+        uri: string;
+        title: string | null;
+        collection?: string;
+      } | null>
     >
   >;
 

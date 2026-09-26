@@ -355,6 +355,9 @@ export const planContextEvidence = async <T, P>(
       await deps.retrieve({
         query,
         collection,
+        // The primary search is partitioned per collection; graph expansion
+        // may bridge between the requested collections, never beyond them.
+        ...(collections.length > 0 ? { graphCollections: collections } : {}),
         noExpand: true,
         queryModes,
         tagsAll: input.tagsAll,

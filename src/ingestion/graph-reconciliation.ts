@@ -179,6 +179,14 @@ export async function projectGraph(
       state.inProgress ||
       state.version !== VERSION ||
       state.configFingerprint !== fingerprint;
+    // An existing graph whose resolver or collection membership changed is
+    // rebuilt in full; report it so the fallback is never silent.
+    if (!forceFull && state && state.version !== null) {
+      if (state.version !== VERSION)
+        options.onGraphRebuild?.("resolver-upgrade");
+      else if (state.configFingerprint !== fingerprint)
+        options.onGraphRebuild?.("collections-changed");
+    }
     const resolve = relationResolver(current, memberships);
     let selected: Set<number> | undefined;
     if (!full && graph) {

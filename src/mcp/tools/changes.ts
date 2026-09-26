@@ -24,6 +24,7 @@ export const diffInputSchema = z.object({
 
 export const impactInputSchema = z.object({
   ref: z.string().trim().min(1).max(4096),
+  collections: z.array(z.string().trim().min(1)).max(256).optional(),
   maxDepth: z.number().int().min(1).max(6).default(3),
   maxNodes: z.number().int().min(1).max(1000).default(100),
   maxEdges: z.number().int().min(1).max(5000).default(250),

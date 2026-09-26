@@ -124,6 +124,20 @@ const collectionFromRef = (value: unknown): string | null => {
   return value.slice(0, slash).trim().toLowerCase() || null;
 };
 
+/**
+ * Tools whose results follow resolved graph edges. Links resolve across a
+ * link workspace, so a ref's own collection does not bound the result: the
+ * scope is the explicit collection argument, else every collection.
+ */
+const GRAPH_RESULT_TOOLS = new Set([
+  "gno_backlinks",
+  "gno_graph",
+  "gno_graph_neighbors",
+  "gno_graph_path",
+  "gno_graph_query",
+  "gno_impact",
+]);
+
 const requestedCollections = (
   params: unknown,
   collections: readonly Collection[]
@@ -135,12 +149,18 @@ const requestedCollections = (
   const names = new Set<string>();
   const direct = args.collection;
   if (typeof direct === "string") names.add(direct.trim().toLowerCase());
-  if (record?.name === "gno_audit" && Array.isArray(args.collections)) {
+  if (
+    (record?.name === "gno_audit" || record?.name === "gno_impact") &&
+    Array.isArray(args.collections)
+  ) {
     for (const value of args.collections) {
       if (typeof value !== "string") continue;
       const normalized = value.trim().toLowerCase();
       if (normalized) names.add(normalized);
     }
+  }
+  if (typeof record?.name === "string" && GRAPH_RESULT_TOOLS.has(record.name)) {
+    return names.size > 0 ? [...names] : collections.map(({ name }) => name);
   }
   for (const key of ["ref", "target", "from", "to", "root", "uri"]) {
     const collection = collectionFromRef(args[key]);

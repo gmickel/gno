@@ -108,6 +108,8 @@ export interface AuditLinkSnapshotLink {
   targetRefNorm: string;
   targetAnchor: string | null;
   targetCollection: string;
+  /** The link carried an explicit `collection:` prefix. */
+  explicitCollection?: boolean;
   linkType: "wiki" | "markdown";
   startLine: number;
   startCol: number;
@@ -120,6 +122,11 @@ export interface AuditLinkSnapshot {
   documents: AuditLinkSnapshotDocument[];
   /** Optional finding scope when documents also include graph-wide evidence. */
   auditedDocumentIds?: number[];
+  /**
+   * Requested collection scope of a scoped audit. Connectivity still uses
+   * the whole graph, but candidate identities outside it are withheld.
+   */
+  scopeCollections?: string[];
   links: AuditLinkSnapshotLink[];
   totals: { documents: number; links: number };
   truncated: { documents: boolean; links: boolean };
@@ -672,6 +679,7 @@ export function captureAuditLinkSnapshot(
       targetRefNorm: row.target_ref_norm,
       targetAnchor: row.target_anchor,
       targetCollection: row.target_collection ?? row.source_collection,
+      explicitCollection: row.target_collection !== null,
       linkType: row.link_type,
       startLine: row.start_line,
       startCol: row.start_col,

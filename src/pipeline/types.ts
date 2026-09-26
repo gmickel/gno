@@ -191,6 +191,12 @@ export interface SearchOptions extends InferenceOptions {
   minScore?: number;
   /** Filter by collection */
   collection?: string;
+  /**
+   * Internal graph allowlist for a request partitioned into one retrieval per
+   * collection (Context Capsules, replay): graph neighbours may come from any
+   * of these collections, never from others. Defaults to `[collection]`.
+   */
+  graphCollections?: string[];
   /** Internal exact corpus scope used by deterministic retrieval replay. */
   retrievalScope?: {
     relPathPrefix?: string;

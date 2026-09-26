@@ -5,8 +5,6 @@
  * @module src/cli/commands/links
  */
 
-import { basename } from "node:path";
-
 import type {
   DocEdgeRow,
   DocLinkRow,
@@ -14,7 +12,6 @@ import type {
   StorePort,
 } from "../../store/types";
 
-import { normalizeWikiName } from "../../core/links";
 import { resolveDocRef } from "../../core/ref-parser";
 import { initStore } from "./shared";
 
@@ -51,6 +48,8 @@ export interface LinkWithResolution {
   resolved: boolean;
   resolvedDocid?: string;
   resolvedUri?: string;
+  /** Collection of the resolved target (may differ from the source's). */
+  resolvedCollection?: string;
 }
 
 export interface SemanticLinkItem {
@@ -155,6 +154,8 @@ export interface BacklinkItem {
   sourceDocid: string;
   sourceUri: string;
   sourceTitle?: string;
+  /** Collection of the linking document. */
+  sourceCollection?: string;
   linkText?: string;
   startLine: number;
   startCol: number;
@@ -234,95 +235,12 @@ export type SimilarResult =
   | { success: false; error: string; isValidation?: boolean };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Helper: Build resolution indexes (cached per collection)
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface ResolutionIndexes {
-  // Map: normalized wiki name -> DocumentRow
-  wikiIndex: Map<string, DocumentRow>;
-  // Map: relPath -> DocumentRow
-  pathIndex: Map<string, DocumentRow>;
-}
-
-/** Normalize markdown link path for matching (strip ./, collapse ..) */
-function normalizeMarkdownPath(path: string): string {
-  // Strip leading ./
-  let normalized = path.replace(/^\.\//, "");
-  // Collapse simple parent refs (a/b/../c -> a/c)
-  while (normalized.includes("/../")) {
-    normalized = normalized.replace(/[^/]+\/\.\.\//, "");
-  }
-  return normalized;
-}
-
-async function buildResolutionIndexes(
-  store: StorePort,
-  collection: string,
-  cache: Map<string, ResolutionIndexes>
-): Promise<ResolutionIndexes> {
-  const cached = cache.get(collection);
-  if (cached) {
-    return cached;
-  }
-
-  const indexes: ResolutionIndexes = {
-    wikiIndex: new Map(),
-    pathIndex: new Map(),
-  };
-
-  const docsResult = await store.listDocuments(collection);
-  if (!docsResult.ok) {
-    // Collection may not exist or store error - return empty indexes
-    // Links to this collection will show as unresolved
-    cache.set(collection, indexes);
-    return indexes;
-  }
-
-  for (const d of docsResult.value) {
-    if (!d.active) continue;
-
-    // Index by relPath for markdown links (exact match)
-    indexes.pathIndex.set(d.relPath, d);
-
-    // Also index by normalized path (without ./) for common variants
-    const normalizedPath = normalizeMarkdownPath(d.relPath);
-    if (
-      normalizedPath !== d.relPath &&
-      !indexes.pathIndex.has(normalizedPath)
-    ) {
-      indexes.pathIndex.set(normalizedPath, d);
-    }
-
-    // Index by normalized title for wiki links
-    if (d.title) {
-      const wikiKey = normalizeWikiName(d.title);
-      indexes.wikiIndex.set(wikiKey, d);
-    }
-
-    // Also index by filename stem as fallback for wiki links
-    const stem = basename(d.relPath).replace(/\.[^.]+$/, "");
-    if (stem) {
-      const stemKey = normalizeWikiName(stem);
-      // Don't overwrite title match
-      if (!indexes.wikiIndex.has(stemKey)) {
-        indexes.wikiIndex.set(stemKey, d);
-      }
-    }
-  }
-
-  cache.set(collection, indexes);
-  return indexes;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Helper: Map DocLinkRow to output format (avoids null leakage)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function mapLinkToOutput(
   link: DocLinkRow,
-  resolved: boolean,
-  resolvedDocid?: string,
-  resolvedUri?: string
+  resolved: { docid: string; uri: string; collection?: string } | null
 ): LinkWithResolution {
   return {
     targetRef: link.targetRef,
@@ -336,9 +254,12 @@ function mapLinkToOutput(
     startCol: link.startCol,
     endLine: link.endLine,
     endCol: link.endCol,
-    resolved,
-    ...(resolvedDocid && { resolvedDocid }),
-    ...(resolvedUri && { resolvedUri }),
+    resolved: resolved !== null,
+    ...(resolved && {
+      resolvedDocid: resolved.docid,
+      resolvedUri: resolved.uri,
+      ...(resolved.collection && { resolvedCollection: resolved.collection }),
+    }),
   };
 }
 
@@ -443,48 +364,29 @@ export async function linksList(
       return a.startCol - b.startCol;
     });
 
-    // Build resolution indexes (cached per collection)
-    const indexCache = new Map<string, ResolutionIndexes>();
-    const linksWithResolution: LinkWithResolution[] = [];
-
-    for (const link of links) {
-      let resolvedDoc: DocumentRow | undefined;
-
-      // Determine target collection (explicit or same as source)
-      const targetCollection = link.targetCollection ?? doc.collection;
-
-      // Get or build index for target collection
-      const indexes = await buildResolutionIndexes(
-        store,
-        targetCollection,
-        indexCache
-      );
-
-      // Safe fallback for targetRefNorm
-      const targetNorm = link.targetRefNorm || link.targetRef;
-
-      if (link.linkType === "wiki") {
-        // Wiki links: match by normalized title or filename
-        const wikiKey = normalizeWikiName(targetNorm);
-        resolvedDoc = indexes.wikiIndex.get(wikiKey);
-      } else {
-        // Markdown links: match by relPath (try exact, then normalized)
-        resolvedDoc = indexes.pathIndex.get(targetNorm);
-        if (!resolvedDoc) {
-          const normalizedTarget = normalizeMarkdownPath(targetNorm);
-          resolvedDoc = indexes.pathIndex.get(normalizedTarget);
-        }
-      }
-
-      linksWithResolution.push(
-        mapLinkToOutput(
-          link,
-          !!resolvedDoc,
-          resolvedDoc?.docid,
-          resolvedDoc?.uri
-        )
-      );
+    // Resolve with the shared link resolver (workspace-aware for plain wiki
+    // links whose source sits in a link workspace).
+    const resolvedResult = await store.resolveLinks(
+      links.map((link) => ({
+        targetRefNorm: link.targetRefNorm || link.targetRef,
+        targetCollection: link.targetCollection ?? doc.collection,
+        linkType: link.linkType,
+        source: {
+          collection: doc.collection,
+          relPath: doc.relPath,
+          explicit: Boolean(link.targetCollection),
+        },
+      }))
+    );
+    if (!resolvedResult.ok) {
+      return { success: false, error: resolvedResult.error.message };
     }
+    const linksWithResolution: LinkWithResolution[] = links.map(
+      (link, index) => {
+        const resolved = resolvedResult.value[index] ?? null;
+        return mapLinkToOutput(link, resolved);
+      }
+    );
 
     const resolvedCount = linksWithResolution.filter((l) => l.resolved).length;
 
@@ -606,6 +508,7 @@ export async function backlinks(
       sourceDocid: bl.sourceDocid,
       sourceUri: bl.sourceDocUri,
       ...(bl.sourceDocTitle && { sourceTitle: bl.sourceDocTitle }),
+      ...(bl.sourceCollection && { sourceCollection: bl.sourceCollection }),
       ...(bl.linkText && { linkText: bl.linkText }),
       startLine: bl.startLine,
       startCol: bl.startCol,

@@ -191,6 +191,80 @@ export const detectNestedWorkspacePrefixes = (
   return nested.sort();
 };
 
+/**
+ * Fingerprint input for effective link resolution: resolver version plus the
+ * membership of every collection that belongs to (or contains) a workspace.
+ * Undefined when no collection is in a workspace, so collection-scoped
+ * indexes keep their existing fingerprints.
+ */
+export const linkResolutionFingerprintInput = (
+  rows: ReadonlyArray<{
+    name: string;
+    realPath?: string | null;
+    workspaceRoot?: string | null;
+    workspaceSource?: LinkWorkspaceSource;
+    workspaceNested?: string[];
+  }>
+):
+  | {
+      version: number;
+      workspaces: Array<{
+        collection: string;
+        realPath: string | null;
+        root: string | null;
+        source: LinkWorkspaceSource;
+        nested: string[];
+      }>;
+    }
+  | undefined => {
+  const workspaces = rows
+    .filter(
+      (row) =>
+        (row.workspaceRoot ?? null) !== null ||
+        (row.workspaceNested?.length ?? 0) > 0
+    )
+    .map((row) => ({
+      collection: row.name,
+      realPath: row.realPath ?? null,
+      root: row.workspaceRoot ?? null,
+      source: row.workspaceSource ?? "none",
+      nested: [...(row.workspaceNested ?? [])].sort(),
+    }))
+    .sort((left, right) =>
+      left.collection < right.collection
+        ? -1
+        : left.collection > right.collection
+          ? 1
+          : 0
+    );
+  return workspaces.length > 0
+    ? { version: LINK_RESOLVER_VERSION, workspaces }
+    : undefined;
+};
+
+/**
+ * One-line link workspace description for status output, or null for a
+ * collection that is not in a workspace. A redacted root prints no path.
+ */
+export const formatLinkWorkspace = (collection: {
+  workspaceRoot?: string | null;
+  workspaceSource?: string;
+}): string | null => {
+  switch (collection.workspaceSource) {
+    case "detected":
+    case "configured":
+      return collection.workspaceRoot
+        ? `${collection.workspaceRoot} (${collection.workspaceSource})`
+        : collection.workspaceSource;
+    case "disabled":
+      return "off (links stay inside this collection)";
+    case "unavailable":
+      return "unavailable (links stay inside this collection)";
+    default:
+      return null;
+  }
+};
+
 /** Workspace identity and workspace-relative path of one document. */
 export interface DocumentWorkspacePlacement {
   /** Canonical workspace root (the workspace identity), or null. */

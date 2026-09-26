@@ -22,6 +22,7 @@ export const OWNER_CONFIG_PATH_FIELDS: ReadonlySet<string> = new Set([
   "configPath",
   "dbPath",
   "path",
+  "workspaceRoot",
 ]);
 
 const isPlainObject = (value: object): boolean => {

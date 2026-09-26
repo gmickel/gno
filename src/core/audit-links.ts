@@ -6,9 +6,15 @@ import type {
 } from "../store/sqlite/graph-link-resolver";
 import type { AuditFindingDraft, AuditRuleContribution } from "./audit";
 
-import { compareAuditCodeUnits, compareAuditFindingDrafts } from "./audit";
+import { isTraversableResolution } from "../store/sqlite/graph-link-resolver";
+import {
+  AUDIT_MAX_EVIDENCE_DETAIL_CHARS,
+  compareAuditCodeUnits,
+  compareAuditFindingDrafts,
+} from "./audit";
 
-export const LINK_AUDIT_RULE_VERSION = "1.0" as const;
+/** 1.1: workspace-wide resolution and reference/resolution/scope evidence. */
+export const LINK_AUDIT_RULE_VERSION = "1.1" as const;
 /** Default per-rule cap; runs pass the effective `maxFindings` instead. */
 export const LINK_AUDIT_MAX_FINDINGS_PER_RULE = 1000;
 
@@ -30,11 +36,107 @@ const boundedFindings = (
 const lineLocation = (line: number, column: number): string =>
   `L${line}:C${column}`;
 
-const linkFinding = (
+type LinkReferenceKind =
+  | "wiki-name"
+  | "wiki-path"
+  | "explicit-collection"
+  | "markdown";
+
+const referenceKind = (
   link: AuditLinkSnapshot["links"][number]
+): LinkReferenceKind =>
+  link.linkType === "markdown"
+    ? "markdown"
+    : link.explicitCollection === true
+      ? "explicit-collection"
+      : link.targetRef.includes("/")
+        ? "wiki-path"
+        : "wiki-name";
+
+interface CandidateEvidence {
+  /** Canonical-path-ordered tied candidates visible in the audit scope. */
+  uris: string[];
+  /** Candidates outside the requested collection scope (identity withheld). */
+  withheld: number;
+  truncated: boolean;
+}
+
+const linkFinding = (
+  link: AuditLinkSnapshot["links"][number],
+  context: {
+    documents: ReadonlyMap<number, AuditLinkSnapshotDocument>;
+    scope: ReadonlySet<string> | null;
+  },
+  onEvidenceTruncated: () => void
 ): AuditFindingDraft => {
   const ambiguous = (link.resolved?.matchCount ?? 0) > 1;
   const target = `${link.targetCollection}:${link.targetRef}`;
+  const kind = referenceKind(link);
+  const tied = (link.resolved?.candidates ?? []).map((candidate) =>
+    context.documents.get(candidate.id)
+  );
+  const visible = tied.filter(
+    (document): document is AuditLinkSnapshotDocument =>
+      document !== undefined &&
+      (context.scope === null || context.scope.has(document.collection))
+  );
+  const resolvedScope = !ambiguous
+    ? null
+    : link.explicitCollection === true
+      ? "explicit-collection"
+      : visible.some(
+            (document) => document.collection !== link.sourceCollection
+          )
+        ? "cross-collection"
+        : "same-collection";
+  const base = {
+    anchor: link.targetAnchor,
+    endColumn: link.endCol,
+    endLine: link.endLine,
+    linkType: link.linkType,
+    matchCount: link.resolved?.matchCount ?? 0,
+    matchRank: link.resolved?.matchRank ?? null,
+    normalizedTarget: link.targetRefNorm,
+    referenceKind: kind,
+    resolutionStatus: ambiguous ? "ambiguous" : "unresolved",
+    resolvedScope,
+  };
+  // Candidate URIs are added while the detail stays within the evidence
+  // bound, so a long tie is reported as truncated rather than silently cut.
+  const candidates: CandidateEvidence = {
+    uris: [],
+    withheld: tied.length - visible.length,
+    truncated: false,
+  };
+  const render = (): string =>
+    JSON.stringify(
+      tied.length > 0
+        ? {
+            ...base,
+            candidateCount: tied.length,
+            candidates: candidates.uris,
+            ...(candidates.withheld > 0
+              ? { candidatesWithheld: candidates.withheld }
+              : {}),
+            ...(candidates.truncated ? { candidatesTruncated: true } : {}),
+          }
+        : base
+    );
+  for (const document of visible) {
+    candidates.uris.push(document.uri);
+    if (Array.from(render()).length > AUDIT_MAX_EVIDENCE_DETAIL_CHARS) {
+      candidates.uris.pop();
+      candidates.truncated = true;
+      break;
+    }
+  }
+  if (
+    candidates.truncated &&
+    Array.from(render()).length > AUDIT_MAX_EVIDENCE_DETAIL_CHARS
+  ) {
+    candidates.uris.pop();
+  }
+  if (candidates.truncated) onEvidenceTruncated();
   return {
     subject: link.sourceUri,
     location: lineLocation(link.startLine, link.startCol),
@@ -48,19 +150,15 @@ const linkFinding = (
         summary: target,
         uri: link.sourceUri,
         path: link.sourceRelPath,
-        detail: JSON.stringify({
-          anchor: link.targetAnchor,
-          endColumn: link.endCol,
-          endLine: link.endLine,
-          linkType: link.linkType,
-          matchCount: link.resolved?.matchCount ?? 0,
-          matchRank: link.resolved?.matchRank ?? null,
-          normalizedTarget: link.targetRefNorm,
-        }),
+        detail: render(),
       },
     ],
     guidance: ambiguous
-      ? ["Use an explicit collection-relative target path"]
+      ? [
+          tied.length > 0
+            ? "Use a longer path such as [[Folder/Note]] to pick one target"
+            : "Use an explicit collection-relative target path",
+        ]
       : ["Create the target or correct the local link"],
   };
 };
@@ -114,18 +212,32 @@ export const evaluateLinkAudit = (
   const auditedDocumentIds = new Set(
     snapshot.auditedDocumentIds ?? snapshot.documents.map(({ id }) => id)
   );
+  let evidenceTruncated = false;
+  const findingContext = {
+    documents: new Map(snapshot.documents.map((doc) => [doc.id, doc])),
+    scope: snapshot.scopeCollections
+      ? new Set(snapshot.scopeCollections)
+      : null,
+  };
+  const finding = (link: AuditLinkSnapshot["links"][number]) =>
+    linkFinding(link, findingContext, () => {
+      evidenceTruncated = true;
+    });
   for (const link of snapshot.links) {
     const sourceAudited = auditedDocumentIds.has(link.sourceId);
     if (!link.resolved) {
-      if (sourceAudited) unresolved.push(linkFinding(link));
+      if (sourceAudited) unresolved.push(finding(link));
       continue;
     }
-    if (sourceAudited) connected.add(link.sourceId);
-    if (auditedDocumentIds.has(link.resolved.targetId)) {
-      connected.add(link.resolved.targetId);
+    // A tied workspace link is not a resolved link: it connects nothing.
+    if (isTraversableResolution(link.resolved)) {
+      if (sourceAudited) connected.add(link.sourceId);
+      if (auditedDocumentIds.has(link.resolved.targetId)) {
+        connected.add(link.resolved.targetId);
+      }
     }
     if (sourceAudited && link.resolved.matchCount > 1) {
-      ambiguous.push(linkFinding(link));
+      ambiguous.push(finding(link));
     }
   }
   const maxFindingsPerRule =
@@ -191,6 +303,7 @@ export const evaluateLinkAudit = (
       ...common,
       ruleId: "links.ambiguous-targets",
       category: "links",
+      evidenceTruncated,
       status: statusFor(ambiguous),
       message: partial
         ? "Ambiguous target scan was truncated"

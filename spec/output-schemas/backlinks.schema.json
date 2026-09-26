@@ -28,6 +28,10 @@
                 "type": "string",
                 "description": "Source document title"
               },
+              "sourceCollection": {
+                "type": "string",
+                "description": "Collection of the linking document (may differ from the target's in a link workspace)"
+              },
               "linkText": {
                 "type": "string",
                 "description": "Link display text"

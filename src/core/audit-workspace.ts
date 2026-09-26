@@ -349,7 +349,8 @@ const filterLinkSnapshot = (
   snapshot: AuditLinkSnapshot,
   selectedIds: ReadonlySet<number>,
   selectedDocuments: readonly DocumentRow[],
-  selectionTruncated: boolean
+  selectionTruncated: boolean,
+  scopeCollections: readonly string[]
 ): AuditLinkSnapshot => {
   const links = snapshot.links.filter(
     (link) =>
@@ -364,6 +365,9 @@ const filterLinkSnapshot = (
     // Preserve graph-wide documents as duplicate-mirror evidence while the
     // explicit id set prevents findings outside the requested audit scope.
     auditedDocumentIds: [...selectedIds],
+    ...(scopeCollections.length > 0
+      ? { scopeCollections: [...scopeCollections] }
+      : {}),
     links,
     totals: { documents: selectedDocuments.length, links: outgoingTotal },
     truncated: {
@@ -431,7 +435,8 @@ const loadWorkspaceSnapshot = async (
       rawLinks,
       selectedIds,
       selected.documents,
-      selected.truncated
+      selected.truncated,
+      filters.collections
     ),
     truncated: selected.truncated,
   };
