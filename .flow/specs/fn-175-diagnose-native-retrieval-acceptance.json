@@ -1,21 +1,69 @@
 {
   "branch_name": "fn-175-diagnose-native-retrieval-acceptance",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-26T12:24:58.336560Z",
   "created_at": "2026-09-23T13:32:55.287068Z",
   "default_impl": null,
   "default_review": null,
   "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-175-diagnose-native-retrieval-acceptance",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-175-diagnose-native-retrieval-acceptance.1": 0
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "review_attempts": [
+    {
+      "artifact_sha256": "b21b22020255f2dedec66783307eb38857247ac24b386efa5d702c8c2a51ff9e",
+      "backend": "codex",
+      "base_sha": "b8f8aa6ed01c62e340d924b2975863dbcfb0551d",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "828cb43423054f81c4be991d353f58ad064eaf39",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 95614,
+      "output_sha256": "7cbf2529f61d08f85ba5cc6637e2328d7fd598ddbea2044c0c96545e24594a50",
+      "reservation_id": "f3a62681d288490d89d5dae0ab8c149a",
+      "round_consumed": true,
+      "scope": "impl:fn-175-diagnose-native-retrieval-acceptance.1",
+      "superseded_by": null,
+      "task": "fn-175-diagnose-native-retrieval-acceptance.1",
+      "timestamp": "2026-09-26T12:23:32.038270Z",
+      "tool_calls": 12,
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "impl:fn-175-diagnose-native-retrieval-acceptance.1": 1
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-175-diagnose-native-retrieval-acceptance.1": 0
+  },
   "spec_path": ".flow/specs/fn-175-diagnose-native-retrieval-acceptance.md",
-  "status": "open",
+  "status": "done",
   "title": "Diagnose native retrieval acceptance instability",
   "tracker": {
     "baseHashFlow": null,
@@ -28,5 +76,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-23T13:34:23.458784Z"
+  "updated_at": "2026-09-26T12:24:58.651352Z"
 }

@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-175-diagnose-native-retrieval-acceptance",
   "spec_path": ".flow/tasks/fn-175-diagnose-native-retrieval-acceptance.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Diagnose and fix native retrieval acceptance instability",
   "updated_at": "2026-09-26T12:04:55.307654Z"
 }

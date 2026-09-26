@@ -1,0 +1,26 @@
+{
+  "base": "b8f8aa6ed01c62e340d924b2975863dbcfb0551d",
+  "effort": "medium",
+  "findings": {
+    "backend": "codex",
+    "baseSha": "b8f8aa6ed01c62e340d924b2975863dbcfb0551d",
+    "headSha": "828cb43423054f81c4be991d353f58ad064eaf39",
+    "items": [],
+    "reviewKind": "implementation",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-b0996b88d1c2a4517d15282533c68a9d7e5077ebe40c0b5af421a7636371e66f"
+  },
+  "id": "fn-175-diagnose-native-retrieval-acceptance.1",
+  "introduced_count": 0,
+  "mode": "codex",
+  "model": "gpt-6-astra",
+  "pre_existing_count": 0,
+  "review": "I\u2019ll read the task contract, inspect the diff and affected callers, then run the focused checks where the sandbox permits.\n\nThe change removes the expansion-only timeout and isolates generation timeouts from the enclosing request. I\u2019m checking that cancellation still propagates and that the retained native reports support the diagnosis.\n\nNo blocking findings introduced by this changeset.\n\nThe timeout isolation preserves request cancellation and deadlines. Retained native reports support the diagnosis: the post-fix run is valid; the noExpand comparison still fails on `missing-policy`, and noExpand remains off.\n\nVerification: 8 focused tests passed. The native cancellation suite could not initialize because the read-only sandbox denied `mkdtemp`. A separate in-memory check passed for timeout fallback, parent-scope survival, and caller cancellation/deadlines. Native model gates were not rerun.\n\nClassification counts: 0 introduced, 0 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":0,\"pre_existing\":0}}\n```\n\n<verdict>SHIP</verdict>",
+  "review_reservation_id": "f3a62681d288490d89d5dae0ab8c149a",
+  "session_id": "01a0ddaa-a6b7-75a2-ab57-04584ada1699",
+  "spec": "codex:gpt-6-astra:medium",
+  "timestamp": "2026-09-26T12:23:32.037383Z",
+  "type": "impl_review",
+  "verdict": "SHIP"
+}
