@@ -11,6 +11,26 @@ import { saveConfigToPath } from "../src/config/saver";
 import { startBackgroundRuntime } from "../src/serve/background-runtime";
 import { safeRm } from "../test/helpers/cleanup";
 
+const REPLACE_ATTEMPTS = 20;
+
+/**
+ * Windows refuses a rename over a file that is still open (here, the watcher
+ * reading the previous version) with EPERM or EBUSY; editors retry.
+ */
+async function replaceFile(from: string, to: string): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await rename(from, to);
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      const busy = code === "EPERM" || code === "EBUSY";
+      if (!busy || attempt >= REPLACE_ATTEMPTS) throw error;
+      await Bun.sleep(50);
+    }
+  }
+}
+
 const POLL_TIMEOUT_MS = 10_000;
 
 async function freePort(): Promise<number> {
@@ -148,7 +168,7 @@ async function main(): Promise<void> {
 
     const replacement = join(collectionDir, ".atomic.md.tmp");
     await Bun.write(replacement, "atomic-new-token");
-    await rename(replacement, join(collectionDir, "atomic.md"));
+    await replaceFile(replacement, join(collectionDir, "atomic.md"));
     const responsiveStartedAt = performance.now();
     const status = await fetch(`${baseUrl}/api/resident/status`);
     await status.body?.cancel();
@@ -166,7 +186,7 @@ async function main(): Promise<void> {
 
     const plainReplacement = join(collectionDir, "plain.md.tmp");
     await Bun.write(plainReplacement, "plain-new-token");
-    await rename(plainReplacement, join(collectionDir, "plain.md"));
+    await replaceFile(plainReplacement, join(collectionDir, "plain.md"));
     await waitFor(
       async () =>
         (await search(baseUrl, "plain-new-token")).includes("plain.md"),

@@ -606,6 +606,27 @@ describe("owner-only routes", () => {
     expect(ctxHolder.config.sessions?.sources.map((s) => s.id)).toEqual([
       "codex-main",
     ]);
+
+    // Removing it again is a no-op: success, and no egress policy reset.
+    let invalidations = 0;
+    ctxHolder.invalidateEgressPolicy = async () => {
+      invalidations += 1;
+      return {
+        policyEpoch: "2",
+        queuedJobsInvalidated: 0,
+        sessionsInvalidated: 0,
+        staleWorkMustRetry: true,
+      };
+    };
+    const again = await handleSessionsRemoveSource(
+      ctxHolder,
+      store,
+      "codex-two",
+      post("/api/sessions/sources/codex-two", undefined, "DELETE"),
+      { server: localServer }
+    );
+    expect(again.status).toBe(200);
+    expect(invalidations).toBe(0);
   });
 
   test("local init binds this instance's own config and refuses the default config", async () => {

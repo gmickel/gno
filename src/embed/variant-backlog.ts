@@ -42,7 +42,16 @@ export async function embedVariantBacklog(
     while (true) {
       // A failed request drops the port's cached identity (a timed-out native
       // worker is retired); reload it so one failed page cannot end the pass.
-      if (background) await withInferencePage(() => deps.embedPort.init());
+      if (background) {
+        const reloaded = await withInferencePage(() => deps.embedPort.init());
+        // Without an identity the pass cannot continue. Failing it schedules
+        // the scheduler's bounded retry instead of ending with pages pending.
+        if (!reloaded?.ok)
+          throw new Error(
+            reloaded?.error.message ??
+              "Embedding model reload exceeded its inference deadline"
+          );
+      }
       if (!identityStillCurrent()) break;
       assertInferenceActive();
       const pending = variantBacklogPage(deps, store, batchSize, after);

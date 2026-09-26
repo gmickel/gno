@@ -481,7 +481,10 @@ export async function handleSessionsRemoveSource(
         throw error;
       }
     );
-    await adoptConfig(ctxHolder, store, config);
+    // A no-op remove leaves the served config current; adopting it anyway
+    // would reset the egress policy under concurrent reads.
+    if (!Bun.deepEquals(config, ctxHolder.config))
+      await adoptConfig(ctxHolder, store, config);
   } catch (error) {
     return sessionsErrorResponse(error);
   }
