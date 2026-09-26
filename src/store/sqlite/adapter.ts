@@ -2183,7 +2183,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           params.push(options.collection);
         }
 
-        const sql = `SELECT * FROM documents WHERE ${clauses.join(" AND ")} ORDER BY id`;
+        const sql = `SELECT * FROM documents INDEXED BY idx_documents_mirror_hash WHERE ${clauses.join(" AND ")} ORDER BY id`;
         rows.push(...db.query<DbDocumentRow, string[]>(sql).all(...params));
       }
 
