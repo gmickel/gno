@@ -9,12 +9,8 @@ import { realpath, stat } from "node:fs/promises";
 // node:path for join (no Bun path utils)
 import { isAbsolute, join, relative, sep } from "node:path";
 
-import type { NormalizedContentTypeRule } from "../config";
 import type { Collection } from "../config/types";
-import type { TypedMetadata } from "../core/typed-metadata";
 import type {
-  ChunkInput,
-  DocLinkInput,
   DocumentInput,
   DocumentRow,
   IngestErrorInput,
@@ -24,7 +20,6 @@ import type {
 import type {
   ChunkerPort,
   CollectionSyncResult,
-  ContentTypeSource,
   FileSyncResult,
   ProcessDecision,
   SyncOptions,
@@ -33,50 +28,44 @@ import type {
   WalkerPort,
 } from "./types";
 
-import {
-  fingerprintContentTypeMetadataRules,
-  resolveContentTypeRule,
-} from "../config";
+import { fingerprintContentTypeMetadataRules } from "../config";
 import { createJsonlAdapter } from "../converters/adapters/jsonl/adapter";
 import { createTranscriptAdapter } from "../converters/adapters/transcript/adapter";
-import { defaultConversionMemoryMb } from "../converters/budget";
 import { getDefaultMimeDetector, type MimeDetector } from "../converters/mime";
-import { MARKDOWN_CONVERTER_ID } from "../converters/native/markdown";
 import {
   type ConversionPipeline,
   getDefaultPipeline,
 } from "../converters/pipeline";
-import {
-  type ConvertInput,
-  DEFAULT_LIMITS,
-  type PipelineResult,
-  type RecordAdapter,
-} from "../converters/types";
+import { DEFAULT_LIMITS, type RecordAdapter } from "../converters/types";
 import {
   diffDocumentStructure,
-  extractDocumentStructure,
+  type DocumentStructureSnapshot,
 } from "../core/change-diff";
 import { enforceCollectionEgress } from "../core/egress-enforcement";
-import {
-  normalizeMarkdownPath,
-  normalizeWikiName,
-  parseLinks,
-} from "../core/links";
-import { extractMemoryScopes } from "../core/memory-record";
-import { normalizeTag, validateTag } from "../core/tags";
 import { defaultChunker } from "./chunker";
 import { persistChunkLayout, prepareChunking } from "./chunking";
 import {
   isCompiledContextPath,
   isCompiledContextContent,
 } from "./compiled-context";
+import { extractDocumentMetadata } from "./document-metadata";
 import {
-  extractHashtags,
-  parseFrontmatter,
-  stripFrontmatter,
-} from "./frontmatter";
+  canUseFileWorker,
+  defaultConversionMemoryMb,
+  type FileBudgetLimits,
+  memoryFailure,
+  prepareInWorker,
+  timeoutFailure,
+} from "./file-worker";
 import { projectGraph } from "./graph-reconciliation";
-import { buildLineOffsets } from "./position";
+import {
+  type PrepareFailure,
+  prepareFile,
+  type PrepareFileRequest,
+  type PrepareOutcome,
+  type PreparePhase,
+  type PreviousRevision,
+} from "./prepare-file";
 import { processRecordContainer } from "./record-container";
 import {
   createDirectoryAvailability,
@@ -91,10 +80,10 @@ import {
   type SourceContentReaderPort,
   type SourceReadFailure,
 } from "./source-availability";
-import { type ExcludedRange, getExcludedRanges } from "./strip";
-import { extractTypedMetadata } from "./typed-metadata";
 import { collectionToWalkConfig, DEFAULT_CHUNK_PARAMS } from "./types";
 import { defaultWalker } from "./walker";
+
+export { extractDocumentMetadata } from "./document-metadata";
 
 /** Default concurrency for file processing */
 const DEFAULT_CONCURRENCY = 1;
@@ -105,19 +94,8 @@ const TX_BATCH_SIZE = 50;
 /** Max concurrency to prevent resource exhaustion */
 const MAX_CONCURRENCY = 16;
 
-/** Why one file's indexing stopped: a conversion error or a budget overrun. */
-interface FileBudgetFailure {
-  code: string;
-  message: string;
-  details?: Record<string, unknown>;
-}
-
-interface FileBudget {
-  timeoutMs: number;
-  maxMemoryBytes: number;
+interface FileBudget extends FileBudgetLimits {
   startedAt: number;
-  /** Budget failure once the file has overrun, else null. */
-  check: (phase: string) => FileBudgetFailure | null;
 }
 
 /** A file still being indexed this long (or half its budget) is reported. */
@@ -215,241 +193,6 @@ function decideAction(
 
   // All good - skip
   return { kind: "skip", reason: "unchanged" };
-}
-
-/**
- * Extract tags from markdown content.
- * Combines frontmatter tags and inline hashtags, normalized and validated.
- */
-function extractTags(markdown: string): string[] {
-  const tags = new Set<string>();
-
-  // 1. Extract from frontmatter
-  const frontmatter = parseFrontmatter(markdown);
-  for (const tag of frontmatter.tags) {
-    const normalized = normalizeTag(tag);
-    if (validateTag(normalized)) {
-      tags.add(normalized);
-    }
-  }
-
-  // 2. Extract hashtags from body (after stripping frontmatter)
-  const body = stripFrontmatter(markdown);
-  const hashtags = extractHashtags(body);
-  for (const tag of hashtags) {
-    const normalized = normalizeTag(tag);
-    if (validateTag(normalized)) {
-      tags.add(normalized);
-    }
-  }
-
-  return [...tags];
-}
-
-interface DocumentMetadata {
-  typedMetadata?: TypedMetadata;
-  metadataError?: string;
-  contentType?: string;
-  contentTypeSource: ContentTypeSource;
-  categories?: string[];
-  author?: string;
-  frontmatterDate?: string;
-  dateFields?: Record<string, string>;
-}
-
-const CODE_EXTENSIONS = new Set([
-  ".c",
-  ".cc",
-  ".cpp",
-  ".cs",
-  ".go",
-  ".java",
-  ".js",
-  ".jsx",
-  ".m",
-  ".mm",
-  ".php",
-  ".py",
-  ".rb",
-  ".rs",
-  ".swift",
-  ".ts",
-  ".tsx",
-]);
-
-const AUTHOR_KEYS = ["author", "by", "owner", "creator"] as const;
-const DATE_KEYS = [
-  "date",
-  "published",
-  "published_at",
-  "created",
-  "created_at",
-  "updated",
-  "updated_at",
-] as const;
-const DATE_FIELD_KEY_REGEX =
-  /(^|_)(date|time|created|updated|published|modified|deadline|expires|expiry|start|end)(_|$)/;
-
-function normalizeMetadataKey(rawKey: string): string {
-  return rawKey
-    .trim()
-    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .replace(/_+/g, "_");
-}
-
-function normalizeDate(value: unknown): string | undefined {
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? undefined : value.toISOString();
-  }
-  if (typeof value !== "string" && typeof value !== "number") {
-    return undefined;
-  }
-  const normalizedValue =
-    typeof value === "string"
-      ? value.trim().replace(/^["'](.*)["']$/, "$1")
-      : value;
-  const parsed = new Date(normalizedValue);
-  if (Number.isNaN(parsed.getTime())) {
-    return undefined;
-  }
-  return parsed.toISOString();
-}
-
-function inferPathContentType(
-  relPath: string,
-  ext: string
-): {
-  contentType: string;
-  source: ContentTypeSource;
-} {
-  const lowerPath = relPath.toLowerCase();
-  if (CODE_EXTENSIONS.has(ext.toLowerCase())) {
-    return { contentType: "code", source: "path-ext" };
-  }
-  if (/(meeting|standup|retro|minutes)/.test(lowerPath)) {
-    return { contentType: "meeting", source: "path-ext" };
-  }
-  if (/(spec|rfc|adr|design)/.test(lowerPath)) {
-    return { contentType: "spec", source: "path-ext" };
-  }
-  if (/(notes|journal|log)/.test(lowerPath)) {
-    return { contentType: "notes", source: "path-ext" };
-  }
-  return { contentType: "prose", source: "fallback" };
-}
-
-function normalizeFrontmatterScalar(value: string): string {
-  const trimmed = value.trim();
-  if (trimmed.length < 2) {
-    return trimmed;
-  }
-  const first = trimmed[0];
-  const last = trimmed.at(-1);
-  if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
-    return trimmed.slice(1, -1).trim();
-  }
-  return trimmed;
-}
-
-function parseCategories(input: unknown): string[] {
-  if (Array.isArray(input)) {
-    return input
-      .filter((v): v is string => typeof v === "string")
-      .map((v) => normalizeFrontmatterScalar(v).toLowerCase())
-      .filter((v) => v.length > 0);
-  }
-  if (typeof input === "string") {
-    return input
-      .split(",")
-      .map((v) => normalizeFrontmatterScalar(v).toLowerCase())
-      .filter((v) => v.length > 0);
-  }
-  return [];
-}
-
-export function extractDocumentMetadata(
-  markdown: string,
-  relPath: string,
-  ext: string,
-  contentTypeRules: NormalizedContentTypeRule[] = []
-): DocumentMetadata {
-  const parsed = parseFrontmatter(markdown);
-  const metadata = parsed.metadata;
-  const rawFrontmatterType =
-    typeof metadata.type === "string"
-      ? normalizeFrontmatterScalar(metadata.type)
-      : "";
-  const configuredRule = resolveContentTypeRule(
-    rawFrontmatterType,
-    relPath,
-    contentTypeRules
-  );
-  const inferred = inferPathContentType(relPath, ext);
-  const contentType = configuredRule?.rule.id ?? inferred.contentType;
-  const contentTypeSource: ContentTypeSource =
-    configuredRule?.source === "configured-id"
-      ? "frontmatter-type"
-      : configuredRule?.source === "prefix"
-        ? "prefix"
-        : inferred.source;
-  const categories = new Set<string>([contentType]);
-
-  const fmCategories = parseCategories(
-    metadata.category ?? metadata.categories ?? metadata.type
-  );
-  for (const category of fmCategories) {
-    categories.add(category);
-  }
-
-  let author: string | undefined;
-  for (const key of AUTHOR_KEYS) {
-    const value = metadata[key];
-    if (typeof value === "string" && value.trim().length > 0) {
-      author = value.trim();
-      break;
-    }
-  }
-
-  const normalizedMetadata = new Map<string, unknown>();
-  for (const [rawKey, value] of Object.entries(metadata)) {
-    const key = normalizeMetadataKey(rawKey);
-    if (key.length > 0 && !normalizedMetadata.has(key)) {
-      normalizedMetadata.set(key, value);
-    }
-  }
-
-  let frontmatterDate: string | undefined;
-  for (const key of DATE_KEYS) {
-    const normalized = normalizeDate(normalizedMetadata.get(key));
-    if (normalized) {
-      frontmatterDate = normalized;
-      break;
-    }
-  }
-
-  const dateFields: Record<string, string> = {};
-  for (const [key, value] of normalizedMetadata.entries()) {
-    if (!DATE_FIELD_KEY_REGEX.test(key)) {
-      continue;
-    }
-    const normalized = normalizeDate(value);
-    if (normalized) {
-      dateFields[key] = normalized;
-    }
-  }
-
-  return {
-    ...extractTypedMetadata(markdown),
-    contentType,
-    contentTypeSource,
-    categories: [...categories],
-    author,
-    frontmatterDate,
-    dateFields: Object.keys(dateFields).length > 0 ? dateFields : undefined,
-  };
 }
 
 /**
@@ -612,6 +355,8 @@ export class SyncService {
   private readonly chunker: ChunkerPort;
   private readonly mimeDetector: MimeDetector;
   private readonly pipeline: ConversionPipeline;
+  /** Default pipeline and chunker: files can be prepared in the worker. */
+  private readonly defaultPreparation: boolean;
   private readonly sourceReaderFactory: (
     mode: "any" | "local"
   ) => SourceContentReaderPort;
@@ -633,6 +378,7 @@ export class SyncService {
     this.chunker = chunker ?? defaultChunker;
     this.mimeDetector = mimeDetector ?? getDefaultMimeDetector();
     this.pipeline = pipeline ?? getDefaultPipeline();
+    this.defaultPreparation = pipeline === undefined && chunker === undefined;
     this.sourceReaderFactory =
       sourceReaderFactory ?? ((mode) => createSourceContentReader(mode));
     this.directoryAvailabilityFactory =
@@ -846,13 +592,15 @@ export class SyncService {
         return { relPath: entry.relPath, status: "unchanged" };
       }
 
-      // 6. Convert via pipeline, then post-process, under one per-file time
-      // and memory budget. Conversion runs in a worker that is stopped at the
-      // budget; the linear post-conversion phases check it between phases.
+      // 6. Prepare the file (convert, then everything CPU-bound before the
+      // database write) under one per-file time and memory budget. The file
+      // worker is stopped mid-step at the budget; in-process preparation
+      // (compiled executables, injected test doubles) checks it between steps.
       const budget = this.fileBudget(options, limits.timeoutMs);
       slowNotice = this.scheduleSlowNotice(collection, entry, options, budget);
       const recordFailure = async (
-        failure: FileBudgetFailure
+        failure: PrepareFailure,
+        previousStructure: DocumentStructureSnapshot | null | undefined
       ): Promise<FileSyncResult> => {
         // Record error (checked)
         const errorInput: IngestErrorInput = {
@@ -869,15 +617,12 @@ export class SyncService {
 
         const hadRetrievableEvidence = Boolean(existing?.mirrorHash);
         const structureDelta = hadRetrievableEvidence
-          ? diffDocumentStructure(
-              await this.readPreviousStructure(store, existing),
-              {
-                headings: [],
-                links: [],
-                typedEdges: [],
-                dates: {},
-              }
-            ).delta
+          ? diffDocumentStructure(previousStructure, {
+              headings: [],
+              links: [],
+              typedEdges: [],
+              dates: {},
+            }).delta
           : undefined;
 
         // Upsert document with error info, explicitly clear mirrorHash. This
@@ -919,127 +664,51 @@ export class SyncService {
         };
       };
 
-      const convertResult = await this.convertWithBudget(
+      // No previous revision: null (a new document). A previous revision whose
+      // structure was not computed before a stop: undefined (history
+      // unavailable), as for a missing mirror.
+      let previousStructure: DocumentStructureSnapshot | null | undefined =
+        existing ? undefined : null;
+      const previous = await this.readPreviousRevision(store, existing);
+      const prepared = await this.prepare(
         {
-          sourcePath: entry.absPath,
-          relativePath: entry.relPath,
-          collection: collection.name,
-          bytes,
-          mime: mime.mime,
-          ext: mime.ext,
-          limits,
+          input: {
+            sourcePath: entry.absPath,
+            relativePath: entry.relPath,
+            collection: collection.name,
+            bytes,
+            mime: mime.mime,
+            ext: mime.ext,
+            limits,
+          },
+          metadataExt: mime.ext,
+          contentTypeRules,
+          chunkParams: options.chunkingToken?.params ?? DEFAULT_CHUNK_PARAMS,
+          collectionLanguageHint: collection.languageHint,
+          memoryManaged: collection.memoryManaged === true,
+          previous,
         },
-        budget
+        budget,
+        (structure) => {
+          previousStructure = structure;
+        }
       );
-      if (!convertResult.ok) return await recordFailure(convertResult.error);
-
-      const artifact = convertResult.value;
-      const extractedMetadata = extractDocumentMetadata(
-        artifact.markdown,
-        entry.relPath,
-        mime.ext,
-        contentTypeRules
-      );
-      const afterMetadata = budget.check("metadata extraction");
-      if (afterMetadata) return await recordFailure(afterMetadata);
-      // Compute code ranges once and share them with the change journal and
-      // link extraction. Only Markdown sources have links and reach the
-      // Markdown parser; converted documents (a spreadsheet is one huge
-      // table) never do.
-      const isMarkdownSource =
-        artifact.meta.converterId === MARKDOWN_CONVERTER_ID;
-      const excludedRanges = isMarkdownSource
-        ? getExcludedRanges(artifact.markdown)
-        : null;
-      const afterCodeRanges = budget.check("code-region detection");
-      if (afterCodeRanges) return await recordFailure(afterCodeRanges);
-      const previousStructure = await this.readPreviousStructure(
-        store,
-        existing,
-        { markdown: artifact.markdown, excludedRanges }
-      );
-      const nextStructure = extractDocumentStructure(
-        artifact.markdown,
-        entry.relPath,
-        extractedMetadata.dateFields,
-        excludedRanges
-      );
+      if (!prepared.ok) {
+        return await recordFailure(prepared.error, previousStructure);
+      }
+      const {
+        artifact,
+        metadata: extractedMetadata,
+        nextStructure,
+        chunkInputs,
+        linkInputs,
+        tags: extractedTags,
+        memoryScopes,
+      } = prepared.value;
       const structureDelta = diffDocumentStructure(
         previousStructure,
         nextStructure
       ).delta;
-      const afterStructure = budget.check("change-journal structure");
-      if (afterStructure) return await recordFailure(afterStructure);
-
-      // 9. Chunk content
-      const chunks = this.chunker.chunk(
-        artifact.markdown,
-        options.chunkingToken?.params ?? DEFAULT_CHUNK_PARAMS,
-        artifact.languageHint ?? collection.languageHint,
-        entry.relPath
-      );
-
-      // 10. Convert to ChunkInput for store
-      const chunkInputs: ChunkInput[] = chunks.map((c) => ({
-        seq: c.seq,
-        pos: c.pos,
-        text: c.text,
-        startLine: c.startLine,
-        endLine: c.endLine,
-        language: c.language ?? undefined,
-        tokenCount: c.tokenCount ?? undefined,
-      }));
-
-      const afterChunking = budget.check("chunking");
-      if (afterChunking) return await recordFailure(afterChunking);
-
-      // Parse links (stored in step 14). Only Markdown sources carry links,
-      // as in Obsidian: link-shaped text in code, plain text or converted
-      // documents stays searchable prose.
-      const parsedLinks = excludedRanges
-        ? parseLinks(
-            artifact.markdown,
-            buildLineOffsets(artifact.markdown),
-            excludedRanges
-          )
-        : [];
-
-      const linkInputs: DocLinkInput[] = [];
-      for (const link of parsedLinks) {
-        // Compute target_ref_norm based on link type
-        let targetRefNorm: string;
-        if (link.kind === "wiki") {
-          targetRefNorm = normalizeWikiName(link.targetRef);
-        } else {
-          // Markdown links with collection prefix are not supported
-          // (use wiki links for cross-collection references)
-          if (link.targetCollection) {
-            continue;
-          }
-          const resolved = normalizeMarkdownPath(link.targetRef, entry.relPath);
-          if (!resolved) {
-            // Link escapes collection root - skip silently
-            continue;
-          }
-          targetRefNorm = resolved;
-        }
-
-        linkInputs.push({
-          targetRef: link.targetRef,
-          targetRefNorm,
-          targetAnchor: link.targetAnchor,
-          targetCollection: link.targetCollection,
-          linkType: link.kind,
-          linkText: link.displayText,
-          startLine: link.startLine,
-          startCol: link.startCol,
-          endLine: link.endLine,
-          endCol: link.endCol,
-        });
-      }
-
-      const afterLinks = budget.check("link extraction");
-      if (afterLinks) return await recordFailure(afterLinks);
 
       const persistSuccessfulFile = async (): Promise<FileSyncResult> => {
         // 7. Upsert document - EXPLICITLY clear error fields on success
@@ -1097,9 +766,8 @@ export class SyncService {
           artifact.languageHint ?? collection.languageHint
         );
 
-        // 13. Extract and store tags from frontmatter and body hashtags
-        // Always call setDocTags to clear removed tags on re-sync
-        const extractedTags = extractTags(artifact.markdown);
+        // 13. Store tags from frontmatter and body hashtags. Always call
+        // setDocTags to clear removed tags on re-sync.
         const tagsResult = await store.setDocTags(
           docId,
           extractedTags,
@@ -1114,8 +782,7 @@ export class SyncService {
         // A record that passes the memory validator gets scope rows; a
         // malformed file clears them and therefore drops out of managed
         // recall while staying searchable.
-        if (collection.memoryManaged === true) {
-          const memoryScopes = extractMemoryScopes(artifact.markdown);
+        if (memoryScopes) {
           const scopesResult = await store.setDocMemoryScopes(
             docId,
             memoryScopes
@@ -1126,7 +793,7 @@ export class SyncService {
           });
         }
 
-        // 14. Store links (parsed before persistence).
+        // 14. Store links.
         const linksResult = await store.setDocLinks(
           docId,
           linkInputs,
@@ -1245,47 +912,22 @@ export class SyncService {
     };
   }
 
-  /**
-   * The per-file budget: one wall-clock deadline and memory ceiling shared
-   * by conversion and the post-conversion phases. `check` is the cooperative
-   * checkpoint between phases; it cannot interrupt a phase that is running.
-   */
+  /** The per-file budget, from the sync limits and config. */
   private fileBudget(options: SyncOptions, timeoutMs: number): FileBudget {
-    const maxMemoryBytes =
-      (options.limits?.maxMemoryMb ?? defaultConversionMemoryMb()) *
-      BYTES_PER_MB;
-    const startedAt = performance.now();
     return {
       timeoutMs,
-      maxMemoryBytes,
-      startedAt,
-      check: (phase) => {
-        const elapsedMs = Math.round(performance.now() - startedAt);
-        if (elapsedMs > timeoutMs) {
-          return {
-            code: "TIMEOUT",
-            message: `Indexing stopped after ${phase}: ${elapsedMs}ms exceeded the ${timeoutMs}ms budget`,
-            details: { phase, elapsedMs, timeoutMs },
-          };
-        }
-        const rss = process.memoryUsage.rss();
-        if (rss > maxMemoryBytes) {
-          const rssMb = Math.round(rss / BYTES_PER_MB);
-          const maxMemoryMb = Math.round(maxMemoryBytes / BYTES_PER_MB);
-          return {
-            code: "MEMORY_LIMIT",
-            message: `Indexing stopped after ${phase}: resident memory ${rssMb} MB exceeded the ${maxMemoryMb} MB budget`,
-            details: { phase, rssMb, maxMemoryMb },
-          };
-        }
-        return null;
-      },
+      maxMemoryBytes:
+        (options.limits?.maxMemoryMb ?? defaultConversionMemoryMb()) *
+        BYTES_PER_MB,
+      startedAt: performance.now(),
     };
   }
 
   /**
    * Report a file still being indexed after `SLOW_CONVERSION_NOTICE_MS` (or
    * half its budget), so an operator can see which file a run is stuck on.
+   * Preparation runs in the file worker, so the timer fires even while a
+   * step is still running.
    */
   private scheduleSlowNotice(
     collection: Collection,
@@ -1308,46 +950,59 @@ export class SyncService {
     );
   }
 
-  /** Convert one file; binary formats run in the budgeted worker. */
-  private async convertWithBudget(
-    input: ConvertInput,
-    budget: FileBudget
-  ): Promise<PipelineResult> {
-    // Test doubles and custom pipelines may implement convert() only.
-    const pipeline = this.pipeline as ConversionPipeline & {
-      convertWithBudget?: ConversionPipeline["convertWithBudget"];
-    };
-    return pipeline.convertWithBudget
-      ? await pipeline.convertWithBudget(input, budget)
-      : await pipeline.convert(input);
+  /**
+   * Prepare one file: in the terminable file worker when this service uses
+   * the default pipeline and chunker and the runtime can start the worker;
+   * otherwise in-process, checking the budget between steps.
+   */
+  private prepare(
+    request: PrepareFileRequest,
+    budget: FileBudget,
+    onPrevious: (structure: DocumentStructureSnapshot) => void
+  ): Promise<PrepareOutcome> {
+    if (this.defaultPreparation && canUseFileWorker()) {
+      return prepareInWorker(request, budget, { onPrevious });
+    }
+    let phase: PreparePhase = "previous revision";
+    return prepareFile(request, {
+      convert: (input) => this.pipeline.convert(input),
+      chunker: this.chunker,
+      onPrevious,
+      onPhase: (next) => {
+        phase = next;
+      },
+      check: () => {
+        const elapsedMs = performance.now() - budget.startedAt;
+        if (elapsedMs > budget.timeoutMs) {
+          return timeoutFailure(phase, elapsedMs, budget.timeoutMs);
+        }
+        const rss = process.memoryUsage.rss();
+        return rss > budget.maxMemoryBytes
+          ? memoryFailure(phase, rss, budget.maxMemoryBytes)
+          : null;
+      },
+    });
   }
 
-  private async readPreviousStructure(
+  /** The previously indexed revision's content, when its mirror exists. */
+  private async readPreviousRevision(
     store: StorePort,
-    existing: DocumentRow | null,
-    current?: { markdown: string; excludedRanges: ExcludedRange[] | null }
-  ): Promise<ReturnType<typeof extractDocumentStructure> | null | undefined> {
-    if (!existing) return null;
-    if (!existing.mirrorHash) return undefined;
-
+    existing: DocumentRow | null
+  ): Promise<PreviousRevision | null> {
+    if (!existing?.mirrorHash) return null;
     const content = await store.getContent(existing.mirrorHash);
     if (!content.ok) {
       throw new Error(`Store operation failed: ${content.error.message}`, {
         cause: content.error,
       });
     }
-    if (content.value === null) return undefined;
-    return extractDocumentStructure(
-      content.value,
-      existing.relPath,
-      existing.dateFields,
-      // Unchanged content (a re-ingest) reuses the current parse.
-      current !== undefined && content.value === current.markdown
-        ? current.excludedRanges
-        : existing.converterId === MARKDOWN_CONVERTER_ID
-          ? getExcludedRanges(content.value)
-          : null
-    );
+    if (content.value === null) return null;
+    return {
+      markdown: content.value,
+      relPath: existing.relPath,
+      dateFields: existing.dateFields ?? null,
+      converterId: existing.converterId,
+    };
   }
 
   /**

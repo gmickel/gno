@@ -18,7 +18,6 @@ import {
   isInitialized,
   loadConfig,
 } from "../../config";
-import { BUDGET_ERROR_CODES } from "../../converters/budget";
 import { isConnectorActivationComplete } from "../../core/activation-connector-health";
 import { buildActivationStatus } from "../../core/activation-status";
 import { formatChunkingStatus } from "../../core/chunking-status";
@@ -28,6 +27,7 @@ import {
   formatMemoryStatusLines,
 } from "../../core/memory-diagnostics";
 import { formatVectorPartitionLines } from "../../core/vector-partition-status";
+import { BUDGET_ERROR_CODES } from "../../ingestion/file-worker";
 import { ModelCache } from "../../llm/cache";
 import { getActivePreset, resolveModelUri } from "../../llm/registry";
 import { getConnectorVerificationTargets } from "../../serve/connectors";
