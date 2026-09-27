@@ -3988,7 +3988,10 @@ gno similar <doc> [-n, --limit <num>] [--threshold <num>] [--cross-collection] [
 
 - Finds documents semantically similar to the source document
 - Requires embeddings to be generated (`gno embed`)
-- Uses average document embedding for comparison
+- Source vector: the stored vector of the document's first chunk (the
+  lowest-seq chunk whose vector is current), read from the active vector
+  partition. `gno_similar` (MCP), `GET /api/doc/:id/similar` (REST) and graph
+  similarity edges use the same rule, so scores match across surfaces
 - By default, limits results to same collection
 
 **Output (JSON):**

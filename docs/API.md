@@ -2004,8 +2004,10 @@ curl "http://localhost:3000/api/doc/%23abc123/backlinks" | jq
 GET /api/doc/:id/similar?limit=5&threshold=0.7&crossCollection=true
 ```
 
-Find semantically similar documents using vector embeddings. Uses the doc's
-`seq=0` embedding (falls back to first chunk).
+Find semantically similar documents using vector embeddings. Uses the stored
+embedding of the doc's first chunk (the lowest-seq chunk with a current
+embedding), the same source vector as `gno similar` and MCP `gno_similar`, so
+scores match.
 
 **URL Parameters**:
 
@@ -2092,7 +2094,7 @@ Returns a knowledge graph of document links (wiki links, markdown links, and opt
 | `similarTopK`    | number  | 5       | Similar docs per node (1-20)      |
 
 > **Note**: When `collection` is specified, nodes are limited to that collection and edges are drawn only between those nodes, but node `degree` may reflect links to documents outside the filtered view.
-> **Note**: Similarity edges use `seq=0` embeddings only (no fallback).
+> **Note**: Similarity edges use each document's first-chunk embedding, the same source vector as `/api/doc/:id/similar`.
 
 **Response**:
 

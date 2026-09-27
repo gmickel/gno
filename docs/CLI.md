@@ -1995,7 +1995,7 @@ Options:
 - `--json`, `--md` - Output format
 
 **Requirements**: Embeddings must be generated with `gno embed` or `gno index`.
-**Similarity basis**: Uses the doc's `seq=0` embedding (falls back to first chunk).
+**Similarity basis**: Uses the stored embedding of the doc's first chunk (the lowest-seq chunk with a current embedding). MCP `gno_similar`, the REST API and graph similarity edges use the same rule, so scores match.
 
 ### gno graph
 
@@ -2061,7 +2061,7 @@ gno graph --mermaid | pbcopy
 # Paste into https://mermaid.live
 ```
 
-Similarity edges use `seq=0` embeddings only.
+Similarity edges use each document's first-chunk embedding, the same source vector as `gno similar`.
 
 ## Knowledge Change Commands
 
