@@ -8,12 +8,75 @@
   "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-197-markdown-links-honour-escaped-brackets",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-197-markdown-links-honour-escaped-brackets.1": 1
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "review_attempts": [
+    {
+      "artifact_sha256": "dd29f786a5a7b7142240dd55799666ae7c9935d8849da5794a3dc0079287ccf0",
+      "backend": "codex",
+      "base_sha": "64d19bde91a91b746e70cd6573dc672091c58fca",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-9859aabcc5abd77551e1acf2bc1553a3",
+            "classification": "introduced",
+            "findingId": "finding-9859aabcc5abd77551e1acf2bc1553a3",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-afc00b10d7241383f2440ec753c4ce18",
+            "classification": "pre_existing",
+            "findingId": "finding-afc00b10d7241383f2440ec753c4ce18",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "8494357575640e40c166b1d5c03c556300f3ab64",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 97221,
+      "output_sha256": "24c806079d8fe8cd4485fbf53a0751b35c953ca788e6246cb338a56850e6f357",
+      "reservation_id": "55f34816c85a43ff9e8aaa166622ef34",
+      "round_consumed": true,
+      "scope": "impl:fn-197-markdown-links-honour-escaped-brackets.1",
+      "superseded_by": null,
+      "task": "fn-197-markdown-links-honour-escaped-brackets.1",
+      "timestamp": "2026-09-27T13:45:12.503040Z",
+      "tool_calls": 13,
+      "verdict": "NEEDS_WORK"
+    }
+  ],
+  "review_hash_epoch": {},
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-197-markdown-links-honour-escaped-brackets.1": 0
+  },
   "spec_path": ".flow/specs/fn-197-markdown-links-honour-escaped-brackets.md",
   "status": "open",
   "title": "Markdown links: honour escaped brackets and reject destinations with spaces",
@@ -28,5 +91,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-27T12:54:48.252044Z"
+  "updated_at": "2026-09-27T13:45:12.507048Z"
 }

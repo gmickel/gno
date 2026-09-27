@@ -461,6 +461,41 @@ describe("residual link noise (code, non-Markdown sources, unindexed files)", ()
   });
 });
 
+describe("Markdown link text that CommonMark reads as plain text", () => {
+  test("escaped and spaced clauses are not links; angle and %20 destinations resolve", async () => {
+    fixture = await openLinkWorkspaceFixture();
+    await fixture.write("ai", "my note.md", "# My note\n");
+    await fixture.write(
+      "ai",
+      "Clauses.md",
+      [
+        "# Clauses",
+        "",
+        "Quoted: \\[-some clause -](see section 4 of the annex)",
+        "",
+        "Unescaped: [-some clause -](see section 4 of the annex)",
+        "",
+        "Angle: [x](<my note.md>) and encoded: [y](my%20note.md)",
+        "",
+      ].join("\n")
+    );
+    await fixture.sync();
+    const report = await audit(fixture);
+    const clauseFindings = report.findings.filter(
+      ({ subject }) => subject === "gno://ai/Clauses.md"
+    );
+    expect(clauseFindings).toEqual([]);
+
+    const target = fixture.docId("gno://ai/my%20note.md");
+    const backlinks = await fixture.store.getBacklinksForDoc(target);
+    if (!backlinks.ok) throw new Error(backlinks.error.message);
+    expect(backlinks.value.map(({ sourceDocUri }) => sourceDocUri)).toEqual([
+      "gno://ai/Clauses.md",
+      "gno://ai/Clauses.md",
+    ]);
+  });
+});
+
 describe("audit bounds (A13)", () => {
   test("a large tie is reported as truncated evidence within the detail bound", async () => {
     fixture = await openLinkWorkspaceFixture();

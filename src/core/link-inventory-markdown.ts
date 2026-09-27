@@ -11,6 +11,7 @@ import { offsetToPosition } from "../ingestion/position";
 import { rangeIntersectsExcluded } from "../ingestion/strip";
 import {
   detectEncodingStyle,
+  isBackslashEscaped,
   parseParenthesizedDestination,
   splitDestinationPath,
   stripAngleBracketDestination,
@@ -298,7 +299,10 @@ export function inventoryInlineMarkdown(
   while (searchFrom < markdown.length) {
     const labelOpen = markdown.indexOf("[", searchFrom);
     if (labelOpen < 0) break;
-    if (labelOpen > 0 && markdown[labelOpen - 1] === "!") {
+    if (
+      (labelOpen > 0 && markdown[labelOpen - 1] === "!") ||
+      isBackslashEscaped(markdown, labelOpen)
+    ) {
       searchFrom = labelOpen + 1;
       continue;
     }

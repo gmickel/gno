@@ -108,8 +108,11 @@ const MAX_CONCURRENCY = 16;
  * link text with square brackets parse the way Obsidian renders them.
  * 9: links are extracted from Markdown sources only, and never from code
  * spans or indented code blocks.
+ * 10: Markdown links follow CommonMark: an escaped `[` opens no link, a
+ * destination with an unescaped space is text unless wrapped in `<...>`, and
+ * the destination ends before a link title.
  */
-export const INGEST_VERSION = 9;
+export const INGEST_VERSION = 10;
 const EMPTY_CONTENT_TYPE_RULES_FINGERPRINT =
   fingerprintContentTypeMetadataRules([]);
 const NON_RETRYABLE_CONVERSION_ERROR_CODES = new Set([
