@@ -4,72 +4,59 @@
   "findings": {
     "backend": "codex",
     "baseSha": "8e3046389e0a87c0041a1690302cb01ee725fbcc",
-    "headSha": "b26be44cbb08a6a9b936f14e042f9972448c7dc1",
+    "headSha": "eca64835a533e848bacdb0363ddecdcab4db13c3",
     "items": [
       {
-        "anchor": {
-          "baseSha": "8e3046389e0a87c0041a1690302cb01ee725fbcc",
-          "headSha": "b26be44cbb08a6a9b936f14e042f9972448c7dc1",
-          "path": "src/ingestion/strip.ts",
-          "side": "head",
-          "startLine": 157
-        },
         "body": "Every `>` line increments the block ID, although consecutive quoted lines can belong to one paragraph. This valid code span produces a `NotALink` edge after the change; the base correctly produces none:",
         "classification": "introduced",
         "confidence": 75,
         "firstSeenReceiptId": "review-b973fc756bec2aaa4b354f1bfc6065fa48ca4ab43f8805fa5aed0f441073df37",
         "id": "finding-5d84fe52d63c0aecf998062345f4ae20",
-        "lastSeenReceiptId": "review-b973fc756bec2aaa4b354f1bfc6065fa48ca4ab43f8805fa5aed0f441073df37",
+        "lastSeenReceiptId": "review-afe565279392183cf1918c967c5af1c6e7dce046a95f1649c3fc2a20812ed912",
         "ordinal": 1,
         "rIds": [
           "R1"
         ],
         "severity": "P2",
-        "status": "open",
+        "status": "fixed",
         "suggestion": "Track paragraph boundaries within blockquotes instead of treating each quote marker as a new block. Add this regression case.",
         "title": "Every `>` line increments the block ID, although consecutive quoted lines can belong to one paragraph"
       },
       {
-        "anchor": {
-          "baseSha": "8e3046389e0a87c0041a1690302cb01ee725fbcc",
-          "headSha": "b26be44cbb08a6a9b936f14e042f9972448c7dc1",
-          "path": "src/ingestion/strip.ts",
-          "side": "head",
-          "startLine": 338
-        },
         "body": "`inList = LIST_ITEM_REGEX.test(line) || (inList && indented)` clears list context for a valid two-space continuation. A subsequent list paragraph is then mistaken for indented code:",
         "classification": "introduced",
         "confidence": 75,
         "firstSeenReceiptId": "review-b973fc756bec2aaa4b354f1bfc6065fa48ca4ab43f8805fa5aed0f441073df37",
         "id": "finding-aca79a5d8f101ae98f3f691ed0b7f738",
-        "lastSeenReceiptId": "review-b973fc756bec2aaa4b354f1bfc6065fa48ca4ab43f8805fa5aed0f441073df37",
+        "lastSeenReceiptId": "review-afe565279392183cf1918c967c5af1c6e7dce046a95f1649c3fc2a20812ed912",
         "ordinal": 2,
         "rIds": [
           "R1"
         ],
         "severity": "P2",
-        "status": "open",
+        "status": "fixed",
         "suggestion": "Track list content indentation and preserve membership across continuation paragraphs. Add regression coverage for this example.",
         "title": "`inList = LIST_ITEM_REGEX"
       }
     ],
     "reviewKind": "implementation",
-    "round": 1,
+    "round": 2,
     "schemaVersion": 1,
-    "sourceReceiptId": "review-b973fc756bec2aaa4b354f1bfc6065fa48ca4ab43f8805fa5aed0f441073df37"
+    "sourceReceiptId": "review-afe565279392183cf1918c967c5af1c6e7dce046a95f1649c3fc2a20812ed912",
+    "supersedesReceiptId": "review-b973fc756bec2aaa4b354f1bfc6065fa48ca4ab43f8805fa5aed0f441073df37"
   },
-  "focus": "strip.ts code-span pairing change: does it alter indexed/searchable text, chunking, mirror hashes or publish attachment discovery (must not re-embed or change search content); nested list items vs indented code; R2 non-Markdown gating by converter; R3 outside-index for relative Markdown links existence-only; ingest v9 migration",
+  "focus": "verify both prior findings fixed via parser-derived code regions; the cheap pre-check that skips parsing cannot miss code regions (false skip => links in code counted); frontmatter blanking preserves offsets; no regression in link extraction vs base for ordinary notes",
   "id": "fn-195-audit-links-ignore-code-spans-and-non.1",
-  "introduced_count": 2,
+  "introduced_count": 0,
   "mode": "codex",
   "model": "gpt-6-astra",
   "pre_existing_count": 0,
-  "review": "I\u2019ll read the task spec, inspect the diff, and run the focused checks relevant to the changed behavior.\nThe source-type filter and outside-index classification look consistent with the spec. I\u2019m checking Markdown block boundaries, where the new code-span logic may change which links are extracted.\nI reproduced two regressions against the base commit: multiline code inside a blockquote now creates a link, and a valid link in a continued list item is dropped as indented code. The parser checks passed (98 tests); sync and workspace-audit tests were blocked by the sandbox\u2019s read-only `/tmp`.\n## Findings\n\n### 1. Multiline code spans in blockquotes become links\n\n- **Severity:** P2\n- **Confidence:** 75\n- **Classification:** introduced\n- **File:Line:** `src/ingestion/strip.ts:157`\n- **R-IDs:** [R1]\n- **Problem:** Every `>` line increments the block ID, although consecutive quoted lines can belong to one paragraph. This valid code span produces a `NotALink` edge after the change; the base correctly produces none:\n\n  ```markdown\n  > `example\n  > [[NotALink]]`\n  ```\n\n  The installed Markdown parser confirms one `inlineCode` node. The new extraction creates false graph edges and unresolved audit findings.\n- **Suggestion:** Track paragraph boundaries within blockquotes instead of treating each quote marker as a new block. Add this regression case.\n\n### 2. Continued list prose is incorrectly excluded as code\n\n- **Severity:** P2\n- **Confidence:** 75\n- **Classification:** introduced\n- **File:Line:** `src/ingestion/strip.ts:338`\n- **R-IDs:** [R1]\n- **Problem:** `inList = LIST_ITEM_REGEX.test(line) || (inList && indented)` clears list context for a valid two-space continuation. A subsequent list paragraph is then mistaken for indented code:\n\n  ```markdown\n  - item\n    continuation\n\n      [[RealLink]]\n  ```\n\n  The base extracts `RealLink`; the changed implementation drops it. The installed Markdown parser confirms both paragraphs belong to the same list item. Re-ingestion therefore removes a legitimate graph/backlink relationship.\n- **Suggestion:** Track list content indentation and preserve membership across continuation paragraphs. Add regression coverage for this example.\n\n## Verification\n\n98 parser tests passed. Sync and workspace-audit tests could not run successfully because fixture creation failed with `EROFS` under `/tmp`. Both findings were reproduced directly against the reviewed base and current implementation.\n\n## Requirements coverage\n\n| R-ID | Status | Evidence |\n|---|---|---|\n| R1 | partial | Added exclusions work for covered examples; two reproduced regressions remain. |\n| R2 | met | Converter gate, ingest-version bump, and upgrade regression test. |\n| R3 | met | Workspace placement and exact-path existence matching. |\n| R4 | met | Added residual-noise fixture covers the specified cases. |\n| R5 | met | CLI, configuration, architecture, MCP, and skill documentation updated. |\n\nUnaddressed R-IDs: []\n\nClassification counts: 2 introduced, 0 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":2,\"pre_existing\":0},\"unaddressed\":[]}\n```\n\n<verdict>NEEDS_WORK</verdict>",
-  "review_reservation_id": "5f5db181870944feadad83a2b1ca944b",
+  "review": "Prior finding #1: fixed\nPrior finding #2: fixed\n\nBoth original reproductions now pass: quoted multiline code produces no link, and continued list prose retains `RealLink`. The implementation uses the existing CommonMark/GFM parser, with regression coverage for both cases.\n\nVerification: 99 tests passed across `test/core/links.test.ts` and `test/ingestion/strip.test.ts`. Integration suites remain unverified here because the sandbox prevents temporary-file creation. No new blocking findings.\n\n## Requirements coverage\n\n| R-ID | Status | Evidence |\n|---|---|---|\n| R1 | met | Parser-based exclusions; both regressions verified fixed. |\n| R2 | met | Markdown converter gate and ingest-version upgrade coverage. |\n| R3 | met | Workspace-relative existence matching without indexing targets. |\n| R4 | met | Residual-noise audit fixture covers the required cases. |\n| R5 | met | Documentation describes source filtering and link classification. |\n\nUnaddressed R-IDs: []\n\nClassification counts: 0 introduced, 0 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":0,\"pre_existing\":0},\"unaddressed\":[]}\n```\n\n<verdict>SHIP</verdict>\n",
+  "review_reservation_id": "e3f6a37625bb4ea19dd470262cd58a75",
   "session_id": "01a0e1df-3ec5-7e91-8d0b-fa6b076f7f99",
   "spec": "codex:gpt-6-astra:medium",
-  "timestamp": "2026-09-27T08:00:03.618087Z",
+  "timestamp": "2026-09-27T08:17:52.752003Z",
   "type": "impl_review",
   "unaddressed": [],
-  "verdict": "NEEDS_WORK"
+  "verdict": "SHIP"
 }

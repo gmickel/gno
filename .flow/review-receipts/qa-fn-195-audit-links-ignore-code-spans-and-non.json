@@ -1,0 +1,46 @@
+{
+  "branch": "fn-195-audit-links-ignore-code-spans-and-non",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "eca64835a533e848bacdb0363ddecdcab4db13c3",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-61a9ab30a9099869f5e692a2adf01964faf482ba5aab7af50ed9a92317ca5b8b"
+  },
+  "head_sha": "eca64835a533e848bacdb0363ddecdcab4db13c3",
+  "id": "fn-195-audit-links-ignore-code-spans-and-non",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "PASS",
+  "rid_coverage": {
+    "covered": 5,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R5"
+      }
+    ],
+    "total": 5
+  },
+  "timestamp": "2026-09-27T08:18:12Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

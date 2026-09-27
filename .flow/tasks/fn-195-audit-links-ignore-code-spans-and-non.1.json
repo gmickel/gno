@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-195-audit-links-ignore-code-spans-and-non",
   "spec_path": ".flow/tasks/fn-195-audit-links-ignore-code-spans-and-non.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Audit links: ignore code spans and non-Markdown sources, classify Markdown links to unindexed files",
   "updated_at": "2026-09-27T07:33:10.890941Z"
 }
