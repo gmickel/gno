@@ -231,3 +231,65 @@ test
   },
   60_000
 );
+
+test.skipIf(process.platform === "win32")(
+  "compiled daemon on SIGTERM finishes its graceful shutdown while its busy child is killed",
+  async () => {
+    const collection = join(root, "daemon-notes");
+    await mkdir(collection, { recursive: true });
+    const rows = Array.from(
+      { length: SLOW_TABLE_ROWS },
+      (_, row) => `| row ${row} | \`code ${row}\` | [[n${row}]] | 1.5 |`
+    );
+    await Bun.write(
+      join(collection, "big-table.md"),
+      ["| a | b | c | d |", "| --- | --- | --- | --- |", ...rows].join("\n")
+    );
+    const env = {
+      GNO_CONFIG_DIR: join(root, "config-daemon"),
+      GNO_DATA_DIR: join(root, "data-daemon"),
+      GNO_CACHE_DIR: join(root, "cache-daemon"),
+      HOME: join(root, "home-daemon"),
+    };
+    const init = await run(
+      ["init", collection, "--name", "notes", "--tokenizer", "unicode61"],
+      env
+    );
+    expect(init.exitCode).toBe(0);
+    const probe = Bun.serve({ port: 0, fetch: () => new Response("") });
+    const port = probe.port;
+    await probe.stop(true);
+    // --offline: the embed scheduler never downloads a model.
+    const daemon = Bun.spawn(
+      [binary, "--offline", "daemon", "--port", String(port)],
+      { env: { ...process.env, ...env }, stdout: "pipe", stderr: "ignore" }
+    );
+    try {
+      let child = 0;
+      expect(
+        await waitFor(async () => {
+          child = await processorChild(daemon.pid);
+          return child > 0;
+        }, 15_000)
+      ).toBe(true);
+      // Let the child load and enter the long code-region step.
+      await Bun.sleep(1500);
+      expect(pidAlive(child)).toBe(true);
+
+      daemon.kill("SIGTERM");
+
+      const childGone = await waitFor(() => !pidAlive(child), 1000);
+      const stdout = await new Response(daemon.stdout).text();
+      await daemon.exited;
+      if (!childGone) process.kill(child, 9);
+      expect(childGone).toBe(true);
+      // The daemon's own graceful shutdown ran and set the exit status.
+      expect(stdout).toContain("Received SIGTERM. Shutting down...");
+      expect(daemon.signalCode).toBeNull();
+      expect(daemon.exitCode).toBe(0);
+    } finally {
+      daemon.kill(9);
+    }
+  },
+  60_000
+);

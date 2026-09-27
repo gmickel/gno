@@ -317,6 +317,9 @@ function killChildren(): void {
  * A signal the process would otherwise die from by default: kill the
  * children, and when no one else handles the signal, stop listening and
  * re-raise it so the process still ends the default way (same exit status).
+ * The listener is prepended, so it runs before any other handler and counts
+ * the real owners: a `process.once` handler (serve, daemon) removes itself
+ * before it runs, so a listener running after it would see none.
  */
 function onTerminatingSignal(signal: "SIGINT" | "SIGTERM"): () => void {
   const listener = (): void => {
@@ -343,7 +346,7 @@ function ensureShutdownHooks(): void {
   if (shutdownHooksInstalled) return;
   shutdownHooksInstalled = true;
   process.on("exit", killChildren);
-  process.on("SIGTERM", onTerminatingSignal("SIGTERM"));
+  process.prependListener("SIGTERM", onTerminatingSignal("SIGTERM"));
   if (process.listenerCount("SIGINT") === 0) {
     process.on("SIGINT", onTerminatingSignal("SIGINT"));
   }
