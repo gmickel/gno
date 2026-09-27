@@ -141,5 +141,7 @@ test.each(["forward", "reverse"] as const)(
       await pair.dispose();
     }
     expect(await Bun.file(pair.baseline.dbPath).exists()).toBe(false);
-  }
+  },
+  // Builds two full indexes of the acceptance corpus; setup alone is ~4 s.
+  30_000
 );
