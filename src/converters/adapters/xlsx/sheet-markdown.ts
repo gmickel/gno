@@ -271,6 +271,9 @@ const readCell = (
  * Output matches `turndown(sheet_to_html(sheet))` for the same sheet.
  */
 export function sheetToMarkdown(sheet: WorkSheet): string {
+  // Memoized markup is per sheet: the file processor reuses one worker across
+  // files, so a process-wide cache would retain every earlier workbook.
+  markupCache.clear();
   const range = XLSX.utils.decode_range(sheet["!ref"] ?? "A1");
   const mergeAt = mergeLookup(sheet["!merges"] ?? []);
   const rows: string[] = [];

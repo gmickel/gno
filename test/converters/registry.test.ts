@@ -9,6 +9,7 @@ import type { Converter, ConvertInput } from "../../src/converters/types";
 import {
   ConverterRegistry,
   createDefaultRegistry,
+  loadAdapter,
 } from "../../src/converters/registry";
 import { DEFAULT_LIMITS } from "../../src/converters/types";
 
@@ -185,5 +186,24 @@ describe("createDefaultRegistry", () => {
       ".pptx"
     );
     expect(converter?.id).toBe("adapter/officeparser");
+  });
+});
+
+describe("unavailable adapter stand-in", () => {
+  test("matches the real adapter's MIME types, not only extensions", async () => {
+    const standIn = await loadAdapter(
+      () => Promise.reject(new Error("pdf.js cannot initialize")),
+      "adapter/markitdown-ts",
+      [".pdf"],
+      ["application/pdf"]
+    );
+    // A sniffed PDF without an extension still belongs to this adapter.
+    expect(standIn.canHandle("application/pdf", "")).toBe(true);
+    expect(standIn.canHandle("text/plain", ".txt")).toBe(false);
+    const result = await standIn.convert(
+      makeInput({ mime: "application/pdf", ext: "" })
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe("ADAPTER_FAILURE");
   });
 });

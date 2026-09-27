@@ -75,10 +75,11 @@ export class ConverterRegistry {
  * Load an adapter module; if it cannot load in this runtime, stand in a
  * converter that fails its file types with ADAPTER_FAILURE and the reason.
  */
-async function loadAdapter(
+export async function loadAdapter(
   load: () => Promise<Converter>,
   id: string,
-  extensions: readonly string[]
+  extensions: readonly string[],
+  mimes: readonly string[]
 ): Promise<Converter> {
   try {
     return await load();
@@ -87,7 +88,10 @@ async function loadAdapter(
     return {
       id,
       version: "unavailable",
-      canHandle: (_mime, ext) => extensions.includes(ext),
+      // Same matching as the real adapter, so a sniffed MIME without an
+      // extension still reports ADAPTER_FAILURE, not UNSUPPORTED.
+      canHandle: (mime, ext) =>
+        extensions.includes(ext) || mimes.includes(mime),
       convert: (input) =>
         Promise.resolve({
           ok: false,
@@ -124,13 +128,20 @@ export async function createDefaultRegistry(): Promise<ConverterRegistry> {
     async () =>
       (await import("./adapters/markitdownTs/adapter")).markitdownAdapter,
     "adapter/markitdown-ts",
-    [".pdf", ".docx"]
+    [".pdf", ".docx"],
+    [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ]
   );
   const officeparserAdapter = await loadAdapter(
     async () =>
       (await import("./adapters/officeparser/adapter")).officeparserAdapter,
     "adapter/officeparser",
-    [".pptx"]
+    [".pptx"],
+    [
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ]
   );
   const { jsonlAdapter } = await import("./adapters/jsonl/adapter");
   const { transcriptAdapter } = await import("./adapters/transcript/adapter");

@@ -291,3 +291,27 @@ Content`;
     expect(result).toBe("Content");
   });
 });
+
+describe("frontmatter prototype keys", () => {
+  test("__proto__, constructor and prototype never reach an object's prototype", () => {
+    const source = [
+      "---",
+      "__proto__: polluted",
+      "constructor: nope",
+      "prototype: nope",
+      "owner:",
+      "  __proto__:",
+      "    - polluted",
+      "title: Kept",
+      "---",
+      "Body",
+    ].join("\n");
+    const result = parseFrontmatter(source);
+    expect(Object.hasOwn(result.metadata, "__proto__")).toBe(false);
+    expect(Object.hasOwn(result.metadata, "constructor")).toBe(false);
+    expect(Object.hasOwn(result.metadata, "prototype")).toBe(false);
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    expect(Object.getPrototypeOf(result.metadata)).toBe(Object.prototype);
+    expect(result.metadata.title).toBe("Kept");
+  });
+});

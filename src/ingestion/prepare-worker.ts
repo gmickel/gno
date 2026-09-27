@@ -21,6 +21,9 @@ const post = (message: FileWorkerMessage | ReadyMessage): void => {
 };
 
 self.onmessage = async (event: MessageEvent<FileWorkerRequest>) => {
+  // Only the parent that created this worker may drive it; a Bun Worker sees
+  // its parent's messages with an empty origin.
+  if (event.origin !== "") return;
   const { request, phaseSlot } = event.data;
   const outcome = await prepareFile(request, {
     convert: convertForPreparation,
