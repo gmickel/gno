@@ -1,0 +1,32 @@
+{
+  "branch_name": "fn-195-audit-links-ignore-code-spans-and-non",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
+  "created_at": "2026-09-27T06:51:25.446506Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
+  "depends_on_epics": [],
+  "id": "fn-195-audit-links-ignore-code-spans-and-non",
+  "impl_review_rounds": {},
+  "next_task": 1,
+  "no_plan": true,
+  "plan_review_rounds": 0,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-195-audit-links-ignore-code-spans-and-non.md",
+  "status": "open",
+  "title": "Audit links: ignore code spans and non-Markdown sources, classify Markdown links to unindexed files",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-09-27T06:51:38.083073Z"
+}
