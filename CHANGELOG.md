@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.2] - 2026-09-27
+
 ### Fixed
 
 - `gno audit links`, backlinks, `gno links`, `gno impact` and the link graph no longer treat link-shaped text in code as a link. A wiki link written inside an inline code span, such as `` `[[Note]]` ``, was still read as a link when a single stray backtick appeared earlier in the note, or when another code span ended in a backslash. Indented code blocks are now skipped too, as Obsidian does; nested list items indented by four spaces stay links.
@@ -2883,7 +2885,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.8.1...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.8.2...HEAD
+[2.8.2]: https://github.com/gmickel/gno/compare/v2.8.1...v2.8.2
 [2.8.1]: https://github.com/gmickel/gno/compare/v2.8.0...v2.8.1
 [2.8.0]: https://github.com/gmickel/gno/compare/v2.7.1...v2.8.0
 [2.7.1]: https://github.com/gmickel/gno/compare/v2.7.0...v2.7.1
