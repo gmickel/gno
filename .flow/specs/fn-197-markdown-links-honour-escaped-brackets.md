@@ -3,7 +3,7 @@
 ## Goal & Context
 <!-- scope: business; source: user -->
 
-After fn-195 (2.8.2), `gno audit links` on a real vault of about 2,000 notes reports one broken link that Obsidian does not render as a link at all: quoted prose of the form `\[-some clause -](vgl. Ziff. 10.1 von Beilage 4)`. Two CommonMark rules each make this plain text: a backslash-escaped `[` cannot open a link, and an inline link destination may not contain unescaped spaces unless it is wrapped in `<...>`. GNO still extracts it as a Markdown link to a file named `vgl. Ziff. 10.1 von Beilage 4` and reports it as `unresolved`. The same text without the backslash is also plain text under the second rule. [paraphrase]
+After fn-195 (2.8.2), `gno audit links` on a real vault of about 2,000 notes reports one broken link that Obsidian does not render as a link at all: quoted prose of the form `\[-some clause -](see section 4 of the annex)`. Two CommonMark rules each make this plain text: a backslash-escaped `[` cannot open a link, and an inline link destination may not contain unescaped spaces unless it is wrapped in `<...>`. GNO still extracts it as a Markdown link to a file named `see section 4 of the annex` and reports it as `unresolved`. The same text without the backslash is also plain text under the second rule. [paraphrase]
 
 ## Acceptance Criteria
 <!-- scope: both -->
