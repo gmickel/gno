@@ -26,6 +26,10 @@ What changed:
 - **R2, compiled builds (round 4).** One file-processor abstraction has two backends: the Bun Worker, and, where a TypeScript worker cannot start (bun build --compile), a child process of the same executable (the internal env flag, as the session-import child uses). It is reused, and killed and replaced mid-step at the deadline or memory limit. The child's RSS counts toward the memory budget (/proc on Linux, ps elsewhere, time only on Windows). A processor that cannot start fails closed with ISOLATION_UNAVAILABLE. The file's clock starts when the processor is ready.
   - Compiled `gno update` was broken for every file before this change (pdf.js `DOMMatrix`, node-llama-cpp resolution). Now PDF/Word/PowerPoint fail on their own with ADAPTER_FAILURE in such builds, while Markdown, text and Excel index.
   - A real compiled smoke stops an 80k-row Markdown table at about 1000 ms (15,322 ms on 0dd0eb01) and indexes the note.
+- **R2, child shutdown (round 5).** A child busy in a synchronous step cannot run its disconnect handler.
+  - The parent now SIGKILLs every child processor on exit (which the CLI's SIGINT path reaches through process.exit), on SIGTERM (re-raised when unowned, so the exit status is unchanged), on SIGINT when nothing else owns it, on disposeFileProcessor(), and in the resident runtime's dispose.
+  - On Linux the child arms PR_SET_PDEATHSIG through Bun's built-in bun:ffi (libc prctl), so it also dies with a SIGKILLed or crashed parent. Elsewhere it exits between steps once its parent is gone; the documented gap is a parent SIGKILLed on macOS or Windows.
+  - Tests (red on 5f7c5fa6): compiled CLI parent sent SIGTERM, SIGINT and SIGKILL mid-step leaves the child gone within 1 s; dispose kills a busy child within 1 s.
 - **R3.** The slow-file notice fires while a step runs. Budget stops are listed in update output, `gno status` and the audit.
 
 Live QA (evidence in `.flow/tmp/qa-fn-198-large-pivot-table-workbook-makes-282/round3/`):
@@ -37,10 +41,10 @@ Live QA (evidence in `.flow/tmp/qa-fn-198-large-pivot-table-workbook-makes-282/r
 
 Tier: session model (in-host worker)
 
-stage: impl-review - ran (conductor-owned codex reviews: NEEDS_WORK rounds 1-3; findings addressed in c53774e2, 2a65ba89, f64cfbfa, 07480f5b)
+stage: impl-review - ran (conductor-owned codex reviews: NEEDS_WORK rounds 1-4; findings addressed in c53774e2, 2a65ba89, f64cfbfa, 07480f5b, 99088a8b)
 
 stage: plan-sync - skipped(config: planSync.enabled != true)
 ## Evidence
-- Commits: f68f7ab82f1ee47f5c01985e39b1ec1cef831a58, 787bad2e317ca7179097060201c7a2632eb5c12c, ae2c795d47b7324325caff5f9a61179c2683f726, c53774e2087c29429dd2baee8216572d29abd3ac, 42eb83e200eef8a0d7606d00f633dc2f97964f6c, 1a3eeeb1282ea151dd08366ec6993c7e2cc2123b, 2a65ba89aa6b2372473753804a12898bab14eba6, f64cfbfa9d6c9148f97af2991711963b0939e5e1, 0dd0eb014355225e7c58c2c984184c2fbe895937, 07480f5b940674825715e620fca41f11e803d2bd
-- Tests: mise exec bun@1.4.2 -- bun run lint:check (0 errors, 45 pre-existing warnings), mise exec bun@1.4.2 -- bun run docs:verify, mise exec bun@1.4.2 -- bun test: 5986 pass, 0 fail, compiled smoke test/ingestion/compiled-file-processor.test.ts: real bun build --compile CLI stops 80k-row Markdown table at ~1000 ms, note indexed; 15,322 ms on 0dd0eb01 (red), child and worker backends: mid-step stop < 2x 1 s budget with notice; memory limit recycles the processor, 1000 small notes worker path: 2257 ms vs 2310 ms on 0dd0eb01, live QA round3/round4 in .flow/tmp/qa-fn-198-large-pivot-table-workbook-makes-282/, gno.sh gno-sh-fn198 eb79b20: check, typecheck, test (431), build; rendered at 375 px
+- Commits: f68f7ab82f1ee47f5c01985e39b1ec1cef831a58, 787bad2e317ca7179097060201c7a2632eb5c12c, ae2c795d47b7324325caff5f9a61179c2683f726, c53774e2087c29429dd2baee8216572d29abd3ac, 42eb83e200eef8a0d7606d00f633dc2f97964f6c, 1a3eeeb1282ea151dd08366ec6993c7e2cc2123b, 2a65ba89aa6b2372473753804a12898bab14eba6, f64cfbfa9d6c9148f97af2991711963b0939e5e1, 0dd0eb014355225e7c58c2c984184c2fbe895937, 07480f5b940674825715e620fca41f11e803d2bd, 5f7c5fa6d88da367e137889a8cb3d620b538054d, 99088a8b2c07d4e7549a03a38af865c4ba7f9493
+- Tests: mise exec bun@1.4.2 -- bun run lint:check (0 errors, 45 pre-existing warnings), mise exec bun@1.4.2 -- bun run docs:verify, mise exec bun@1.4.2 -- bun test: 5990 pass, 0 fail, compiled CLI SIGTERM/SIGINT/SIGKILL mid-step: child gone < 1 s (fails on 5f7c5fa6: child alive, reparented, 130% CPU at 3 s), disposeFileProcessor kills a busy child < 1 s and fails its file (red on 5f7c5fa6), compiled smoke: 80k-row table stopped at 1000 ms, note added, 2.3 s, 1000 small notes: 2124 ms vs 2138 ms on 5f7c5fa6, gno.sh gno-sh-fn198 ca6dd0f: check, typecheck, test (431), build
 - PRs:
