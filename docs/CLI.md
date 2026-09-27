@@ -2267,10 +2267,6 @@ gno vec drop 9a8b7c6d5e4f   # Drop an abandoned shadow partition
 
 - `sync` - Fast incremental sync, fixes drift after failed inserts
 - `rebuild` - Full rebuild, use when sync isn't enough
-
-Both work on the active vector partition of the current embedding model (the
-vectors `gno embed` writes since 2.7) and report its counts. An index that never
-activated a partition keeps using its legacy `content_vectors` vectors.
 - `drop <partition>` - Remove an abandoned shadow vector partition (legacy
   shadows included) that this runtime's retrieval does not read (id prefix of
   at least 8 characters from `gno status`) with its vectors. Status prints the
@@ -2278,6 +2274,11 @@ activated a partition keeps using its legacy `content_vectors` vectors.
   included, are refused: another runtime may read them, and an active legacy
   partition may hold the only copy of the vectors until its one-time re-key.
 - `--json` - JSON output format
+
+`sync` and `rebuild` work on the active vector partition of the current
+embedding model (the vectors `gno embed` writes since 2.7) and report its
+counts. An index that never activated a partition keeps using its legacy
+`content_vectors` vectors.
 
 **When to use**: If `gno similar` returns empty results but embeddings exist, run `gno vec sync`.
 
