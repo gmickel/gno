@@ -28,7 +28,7 @@ import { withRemoteHostPathRedaction } from "./host-path-redaction";
 import { PDFJS_ASSET_CACHE_CONTROL } from "./pdfjs-assets";
 // HTML import - Bun handles bundling TSX/CSS automatically via routes
 import homepage from "./public/index.html";
-import { handleResidentRead } from "./resident-request";
+import { handleResidentRead, refreshResidentConfig } from "./resident-request";
 import {
   handleActiveJob,
   handleAsk,
@@ -702,7 +702,8 @@ export async function startServer(
         "/api/collections": {
           GET: async () =>
             withSecurityHeaders(
-              await handleCollections(ctxHolder.config),
+              (await refreshResidentConfig(runtime as ResidentRuntime)) ??
+                (await handleCollections(ctxHolder.config)),
               isDev
             ),
           POST: async (req: Request) => {

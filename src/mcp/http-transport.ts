@@ -17,6 +17,7 @@ import { MCP_SERVER_NAME, VERSION } from "../app/constants";
 import { EgressDeniedError } from "../core/egress-enforcement";
 import { httpMcpRequestNamespace } from "../core/request-receipts";
 import { withInferenceScope } from "../llm/inference-scope";
+import { remoteSafeSessionsError } from "../sessions/types";
 import { createMcpServerSurface, type ToolContext } from "./context";
 import {
   enforceHttpMcpEgress,
@@ -44,6 +45,8 @@ const POLICY_CHANGED_SSE = new TextEncoder().encode(
 export interface HttpMcpTransportRuntime extends HttpMcpSessionRuntime {
   readonly authorizationEpoch?: string;
   readonly isShuttingDown: boolean;
+  /** Adopt config-file collection edits; see ResidentRuntime.refreshConfig. */
+  refreshConfig?(): Promise<void>;
   admitRequest(signal?: AbortSignal): ResidentRequestHandle | null;
 }
 
@@ -281,6 +284,14 @@ export class HttpMcpTransport {
     if (!MCP_HTTP_METHODS.has(request.method)) return methodNotAllowed();
     if (this.#closed || this.#runtime.isShuttingDown)
       return jsonRpcError(503, -32_000, "Resident runtime is unavailable");
+    // Before admission: adopting config-file collection edits moves the
+    // policy epoch, which would void a request already admitted.
+    try {
+      await this.#runtime.refreshConfig?.();
+    } catch (error) {
+      const typed = remoteSafeSessionsError(error);
+      return jsonRpcError(500, -32_000, `${typed.code}: ${typed.message}`);
+    }
     if (!(await this.#acquireCapacity(request.signal))) {
       if (this.#closed || this.#runtime.isShuttingDown)
         return jsonRpcError(503, -32_000, "Resident runtime is unavailable");

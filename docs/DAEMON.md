@@ -423,7 +423,15 @@ Check:
 
 ### "I changed config but nothing happened"
 
-Restart the daemon. v1 reads config on startup.
+Collection changes (`gno collection add/remove`, or editing `collections` or
+`contexts` by hand) are picked up while the daemon runs, within about two
+seconds. A newly added collection is watched from then on; run `gno update` to
+index the files it already holds. An unreadable config file is logged, and
+requests fail with an error until it is fixed; the old collections are never
+served.
+
+Other settings (models, gateway, findings, session automation) are read on
+startup, so restart the daemon after changing them:
 
 ```bash
 gno daemon --stop

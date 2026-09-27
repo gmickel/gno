@@ -4451,6 +4451,21 @@ gno serve --detach --stop
 
 ---
 
+#### Config reload while running
+
+A running `gno serve` or `gno daemon` re-reads its config file before each
+request (REST, Web UI, HTTP MCP, daemon status) and every 2 seconds, and adopts
+changes to `collections` and `contexts` made by the CLI (`gno collection
+add/remove`) or by hand: status, MCP `gno_status`, the watcher and search scope
+follow without a restart. A newly added collection is watched from then on; its
+existing files are indexed by `gno update` (or the next start's initial sync).
+An adoption that changes the collection set or policies moves the egress policy
+epoch as a REST collection change does. The checks are the sessions config
+refresh's: an unreadable config file answers an error (`500`, sessions code
+`SESSIONS_RUNTIME_FAILURE`), never the stale config, and a config bound to
+another index is refused. Other settings (models, gateway, sessions sources
+outside the sessions routes) keep their restart behaviour.
+
 ### gno daemon
 
 Start a headless long-running watcher process for continuous indexing.
@@ -4490,6 +4505,8 @@ is blocked.
 
 - Opens DB once at startup
 - Loads config and requires at least one configured collection
+- Follows collection edits to the config file while running (see
+  [Config reload](#config-reload-while-running))
 - Starts the same watcher + embed scheduler used by `gno serve`
 - Exact contained eligible paths always use targeted content-hash sync.
   Ambiguous temp/directory/missing-name/recursive-delete events use bounded,

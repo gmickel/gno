@@ -782,6 +782,12 @@ deleting it by hand means are in
 
 Collections define what gets indexed.
 
+A running `gno serve` or `gno daemon` picks up collections added, removed or
+edited in this file (by `gno collection add/remove` or by hand) without a
+restart; run `gno update` to index the existing files of a new collection. An
+unreadable file is reported as an error instead of serving the old
+collections.
+
 ### Collection Fields
 
 | Field           | Type            | Default     | Description                                                            |
