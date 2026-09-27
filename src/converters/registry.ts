@@ -76,8 +76,9 @@ export class ConverterRegistry {
  * Priority order per PRD §8.6:
  * 1. native/markdown - handles .md
  * 2. native/plaintext - handles .txt
- * 3. adapter/markitdown-ts - handles .pdf, .docx, .xlsx
- * 4. adapter/officeparser - handles .pptx
+ * 3. adapter/xlsx - handles .xlsx (linear SheetJS -> Markdown tables)
+ * 4. adapter/markitdown-ts - handles .pdf, .docx
+ * 5. adapter/officeparser - handles .pptx
  */
 export async function createDefaultRegistry(): Promise<ConverterRegistry> {
   const registry = new ConverterRegistry();
@@ -85,6 +86,7 @@ export async function createDefaultRegistry(): Promise<ConverterRegistry> {
   // Import converters dynamically to avoid circular deps
   const { markdownConverter } = await import("./native/markdown");
   const { plaintextConverter } = await import("./native/plaintext");
+  const { xlsxAdapter } = await import("./adapters/xlsx/adapter");
   const { markitdownAdapter } = await import("./adapters/markitdownTs/adapter");
   const { officeparserAdapter } =
     await import("./adapters/officeparser/adapter");
@@ -98,6 +100,7 @@ export async function createDefaultRegistry(): Promise<ConverterRegistry> {
   // Register in priority order
   registry.register(markdownConverter);
   registry.register(plaintextConverter);
+  registry.register(xlsxAdapter);
   registry.register(markitdownAdapter);
   registry.register(officeparserAdapter);
   registry.registerRecordAdapter(jsonlAdapter);

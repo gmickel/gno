@@ -172,9 +172,13 @@ export function decorateSearchResultsForIndex(
  */
 export function reportSlowConversion(event: SlowConversionEvent): void {
   process.stderr.write(
-    `Still converting ${event.collection}/${event.relPath} after ${Math.round(event.elapsedMs / 1000)}s (budget ${Math.round(event.budgetMs / 1000)}s)\n`
+    `Still converting ${event.collection}/${event.relPath} after ${formatSeconds(event.elapsedMs)} (budget ${formatSeconds(event.budgetMs)})\n`
   );
 }
+
+/** Seconds with one decimal below ten seconds, whole seconds above. */
+const formatSeconds = (ms: number): string =>
+  ms < 10_000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms / 1000)}s`;
 
 /**
  * Format sync result lines (shared between update and index commands).

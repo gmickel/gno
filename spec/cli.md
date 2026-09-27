@@ -1474,13 +1474,15 @@ preserve the same fields.
 
 Every file is indexed under the per-file budget `conversion.timeoutMs`
 (default 60000) and `conversion.maxMemoryMb` (default half of physical memory,
-at least 2048; process resident memory). PDF, Word, Excel and PowerPoint
-conversion runs in a worker that is terminated at either limit; after
-conversion, and for native Markdown/text files, both limits are checked
-between post-conversion phases (metadata, code regions, change-journal
-structure, chunking, link extraction), before the database write. A file over
-either limit is recorded with error code `TIMEOUT` or `MEMORY_LIMIT`, stays
-unindexed, and is retried by the next sync; the rest of the run continues. `update` and `index` always print such a
+at least 2048; process resident memory). Conversion and every post-conversion
+phase (metadata, code regions, change-journal structure, chunking, link
+extraction) run in one worker per process, one file at a time; the worker is
+terminated at either limit, mid-phase, and replaced for the next file.
+Database reads and writes stay on the main thread. A standalone compiled
+executable runs the phases in-process and checks the limits between phases.
+A file over either limit is recorded with error code `TIMEOUT` or
+`MEMORY_LIMIT` (the message names the running phase), stays unindexed, and is
+retried by the next sync; the rest of the run continues. `update` and `index` always print such a
 file in terminal output as `[CODE] <relPath>: <message>` (other per-file
 errors stay `--verbose` only), and write
 `Still converting <collection>/<relPath> after <n>s (budget <m>s)` to stderr

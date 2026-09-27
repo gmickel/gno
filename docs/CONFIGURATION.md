@@ -231,17 +231,17 @@ stopped it, or exclude the file.
 
 What is enforced, and how:
 
-- PDF, Word, Excel and PowerPoint files convert in a separate worker, one
-  file at a time. The worker is stopped as soon as the file runs out of time,
-  or when a memory sample (every 200 ms) is over the limit.
-- After conversion, and for Markdown and plain-text files, GNO checks the
-  time and memory limits between processing steps. A step that is already
-  running finishes before the file is stopped; each step's cost grows about
-  linearly with the file's size. The database write that follows the checks
-  is not interrupted, so a file is never half written.
-- A standalone compiled executable cannot start the worker: it converts
-  in-process, so only the checks between steps apply. npm and desktop
-  installs use the worker.
+- Every file, Markdown and plain text included, is converted and processed
+  in a separate worker, one file at a time. GNO stops the worker the moment
+  the file runs out of time, or when a memory sample (every 200 ms) is over
+  the limit, even in the middle of a step; the next file gets a fresh
+  worker.
+- Database reads and writes stay in the main process, after the worker has
+  finished the file, so a stopped file is never half written.
+- A standalone compiled executable cannot start the worker. It processes
+  files in-process and checks the limits only between steps, so a step that
+  is already running finishes first. npm and desktop installs use the
+  worker.
 
 While a file is still being processed after 10 seconds, or after half its
 budget if that is sooner, `gno update` and `gno index` name it on stderr:

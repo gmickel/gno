@@ -231,16 +231,19 @@ UI. A changed source hash makes GNO try the repaired file again.
 ### A large spreadsheet never finishes indexing, or is stopped with `TIMEOUT` / `MEMORY_LIMIT`
 
 GNO 2.8.2 could spend hours and tens of gigabytes on one large Excel workbook
-(for example one with pivot tables and several big sheets) and write nothing
-to the index. Converted spreadsheet text is one large table per sheet, and
-2.8.2 ran its Markdown code detection over it; that cost grows with the square
-of the table's cells. Current versions never run that detection on converted
-files and parse very large Markdown tables without the table rules, so such a workbook indexes
-in time and memory proportional to its size again.
+(for example a pivot report with a sheet of tens of thousands of rows) and
+write nothing to the index; 2.8.1 also used tens of gigabytes on such a file.
+Converting a sheet went through an HTML table whose cost grew with the square
+of its rows and used about 20 KB per cell, and 2.8.2 added Markdown code
+detection over the converted table, which grew with the square of its cells.
+Current versions build each sheet's table directly from the sheet data, never
+run code detection on converted files, and parse very large Markdown tables
+without the table rules, so such a workbook indexes in seconds.
 
-Each file is also indexed under a per-file budget covering conversion and
-the processing after it. While a file is still converting after 10 seconds, `gno update` and
-`gno index` print its path:
+Each file is also indexed under a per-file budget covering conversion and the
+processing after it, and is stopped mid-step when it runs over. While a file
+is still being processed after 10 seconds, `gno update` and `gno index` print
+its path:
 
 ```text
 Still converting work/reports/pivot-report.xlsx after 10s (budget 60s)

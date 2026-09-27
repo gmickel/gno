@@ -135,7 +135,7 @@ describe("Document Conversion Integration", () => {
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.meta.converterId).toBe("adapter/markitdown-ts");
+        expect(result.value.meta.converterId).toBe("adapter/xlsx");
         // Should contain spreadsheet data
         expect(result.value.markdown.length).toBeGreaterThan(50);
       }

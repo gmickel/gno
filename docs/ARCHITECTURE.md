@@ -181,7 +181,8 @@ File on disk
     │
     ├─[ sourceHash unchanged, active, complete ]─► Skip
     │
-    ▼ Converter (MIME detection → Markdown; PDF/Office in a budgeted worker)
+    ▼ File worker, under the per-file budget: Converter (MIME detection → Markdown;
+    │   .xlsx: SheetJS → Markdown tables), then metadata, code regions, chunks, links
     │
     ▼ Canonicalize (NFC, normalize whitespace)
     │

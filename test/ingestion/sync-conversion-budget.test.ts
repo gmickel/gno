@@ -84,7 +84,7 @@ describe("SyncService conversion budget (fn-198)", () => {
     // indexes in milliseconds.
     await Bun.write(
       join(root, "report.xlsx"),
-      buildLargeWorkbook({ scale: 0.3, sheets: 1 })
+      buildLargeWorkbook({ scale: 0.25 })
     );
     await Bun.write(join(root, "notes.md"), "# Notes\n\nPlain note.\n");
   };

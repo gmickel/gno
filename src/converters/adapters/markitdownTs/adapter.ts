@@ -113,7 +113,8 @@ function hasCompletePdfTrailer(bytes: Uint8Array): boolean {
   return startXrefIndex >= 0 && eofIndex > startXrefIndex;
 }
 
-function isPasswordProtectedXlsx(bytes: Uint8Array): boolean {
+/** An encrypted (password-protected) OOXML workbook: a CFB container. */
+export function isPasswordProtectedXlsx(bytes: Uint8Array): boolean {
   return (
     hasPrefix(bytes, CFB_SIGNATURE) &&
     includesBytes(bytes, ENCRYPTION_INFO) &&

@@ -169,13 +169,13 @@ describe("createDefaultRegistry", () => {
     expect(converter?.id).toBe("adapter/markitdown-ts");
   });
 
-  test("selects markitdown for .xlsx", async () => {
+  test("selects the direct xlsx adapter for .xlsx", async () => {
     const registry = await createDefaultRegistry();
     const converter = registry.select(
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       ".xlsx"
     );
-    expect(converter?.id).toBe("adapter/markitdown-ts");
+    expect(converter?.id).toBe("adapter/xlsx");
   });
 
   test("selects officeparser for .pptx", async () => {
