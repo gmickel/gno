@@ -207,8 +207,9 @@ No chunk size is promised to improve retrieval for every corpus.
 
 ## Conversion budget
 
-GNO converts PDF, Word, Excel and PowerPoint files to Markdown in a separate
-worker, one file at a time, under a per-file budget:
+Each file GNO indexes has a budget covering its conversion to Markdown and
+the processing after it (metadata, code detection, change journal, chunking
+and link extraction):
 
 ```yaml
 conversion:
@@ -216,11 +217,11 @@ conversion:
   maxMemoryMb: 8192 # default: half of physical memory, at least 2048
 ```
 
-- `timeoutMs` is the wall-clock time one file may spend converting, in whole
-  milliseconds from 1000 through 86400000.
+- `timeoutMs` is the wall-clock time one file may take, in whole milliseconds
+  from 1000 through 86400000.
 - `maxMemoryMb` is the resident memory the GNO process may reach while a file
-  converts, in whole MB from 256 through 1048576. It measures the whole
-  process, not just the conversion.
+  is processed, in whole MB from 256 through 1048576. It measures the whole
+  process, not just that file.
 
 A file that runs past either limit is stopped. GNO records it with the error
 code `TIMEOUT` or `MEMORY_LIMIT`, leaves it unindexed and goes on with the rest
@@ -228,8 +229,22 @@ of the collection. The next `gno update` or `gno index` (or resident sync)
 tries the file again. If a file keeps being stopped, raise the limit that
 stopped it, or exclude the file.
 
-While a file is still converting after 10 seconds, or after half its budget if
-that is sooner, `gno update` and `gno index` name it on stderr:
+What is enforced, and how:
+
+- PDF, Word, Excel and PowerPoint files convert in a separate worker, one
+  file at a time. The worker is stopped as soon as the file runs out of time,
+  or when a memory sample (every 200 ms) is over the limit.
+- After conversion, and for Markdown and plain-text files, GNO checks the
+  time and memory limits between processing steps. A step that is already
+  running finishes before the file is stopped; each step's cost grows about
+  linearly with the file's size. The database write that follows the checks
+  is not interrupted, so a file is never half written.
+- A standalone compiled executable cannot start the worker: it converts
+  in-process, so only the checks between steps apply. npm and desktop
+  installs use the worker.
+
+While a file is still being processed after 10 seconds, or after half its
+budget if that is sooner, `gno update` and `gno index` name it on stderr:
 
 ```text
 Still converting work/reports/pivot-report.xlsx after 10s (budget 60s)
@@ -238,11 +253,6 @@ Still converting work/reports/pivot-report.xlsx after 10s (budget 60s)
 `gno update` output, `gno status` (under "Stopped at conversion budget") and
 the `gno audit` finding `freshness.index-revision` name a stopped file and
 its code.
-
-Markdown and plain-text files are not converted in the worker and have no
-budget; the work done on them after conversion scales linearly with their
-size. A standalone compiled executable cannot start the worker and converts
-in-process without a budget. npm and desktop installs use the worker.
 
 ## Project affinity
 

@@ -105,7 +105,22 @@ const TX_BATCH_SIZE = 50;
 /** Max concurrency to prevent resource exhaustion */
 const MAX_CONCURRENCY = 16;
 
-/** A conversion running this long (or half its budget) is reported once. */
+/** Why one file's indexing stopped: a conversion error or a budget overrun. */
+interface FileBudgetFailure {
+  code: string;
+  message: string;
+  details?: Record<string, unknown>;
+}
+
+interface FileBudget {
+  timeoutMs: number;
+  maxMemoryBytes: number;
+  startedAt: number;
+  /** Budget failure once the file has overrun, else null. */
+  check: (phase: string) => FileBudgetFailure | null;
+}
+
+/** A file still being indexed this long (or half its budget) is reported. */
 export const SLOW_CONVERSION_NOTICE_MS = 10_000;
 const BYTES_PER_MB = 1_048_576;
 
@@ -674,6 +689,7 @@ export class SyncService {
       maxOutputChars:
         options.limits?.maxOutputChars ?? DEFAULT_LIMITS.maxOutputChars,
     };
+    let slowNotice: ReturnType<typeof setTimeout> | undefined;
 
     try {
       // 1. Re-stat before read to enforce maxBytes on current file size
@@ -830,28 +846,21 @@ export class SyncService {
         return { relPath: entry.relPath, status: "unchanged" };
       }
 
-      // 6. Convert via pipeline, under the per-file time and memory budget
-      const convertResult = await this.convertWithBudget(
-        {
-          sourcePath: entry.absPath,
-          relativePath: entry.relPath,
-          collection: collection.name,
-          bytes,
-          mime: mime.mime,
-          ext: mime.ext,
-          limits,
-        },
-        options
-      );
-
-      if (!convertResult.ok) {
+      // 6. Convert via pipeline, then post-process, under one per-file time
+      // and memory budget. Conversion runs in a worker that is stopped at the
+      // budget; the linear post-conversion phases check it between phases.
+      const budget = this.fileBudget(options, limits.timeoutMs);
+      slowNotice = this.scheduleSlowNotice(collection, entry, options, budget);
+      const recordFailure = async (
+        failure: FileBudgetFailure
+      ): Promise<FileSyncResult> => {
         // Record error (checked)
         const errorInput: IngestErrorInput = {
           collection: collection.name,
           relPath: entry.relPath,
-          code: convertResult.error.code,
-          message: convertResult.error.message,
-          details: convertResult.error.details,
+          code: failure.code,
+          message: failure.message,
+          details: failure.details,
         };
         const recordResult = await store.recordError(errorInput);
         if (!recordResult.ok) {
@@ -885,8 +894,8 @@ export class SyncService {
           sourceSize,
           sourceMtime,
           sourceCtime,
-          lastErrorCode: convertResult.error.code,
-          lastErrorMessage: convertResult.error.message,
+          lastErrorCode: failure.code,
+          lastErrorMessage: failure.message,
           ingestVersion: INGEST_VERSION,
           contentTypeRulesFingerprint,
           changeJournal: structureDelta ? { structureDelta } : false,
@@ -905,10 +914,24 @@ export class SyncService {
         return {
           relPath: entry.relPath,
           status: "error",
-          errorCode: convertResult.error.code,
-          errorMessage: convertResult.error.message,
+          errorCode: failure.code,
+          errorMessage: failure.message,
         };
-      }
+      };
+
+      const convertResult = await this.convertWithBudget(
+        {
+          sourcePath: entry.absPath,
+          relativePath: entry.relPath,
+          collection: collection.name,
+          bytes,
+          mime: mime.mime,
+          ext: mime.ext,
+          limits,
+        },
+        budget
+      );
+      if (!convertResult.ok) return await recordFailure(convertResult.error);
 
       const artifact = convertResult.value;
       const extractedMetadata = extractDocumentMetadata(
@@ -917,15 +940,19 @@ export class SyncService {
         mime.ext,
         contentTypeRules
       );
+      const afterMetadata = budget.check("metadata extraction");
+      if (afterMetadata) return await recordFailure(afterMetadata);
       // Compute code ranges once and share them with the change journal and
-      // link extraction. Only Markdown sources may reach the Markdown parser:
-      // converted documents (a spreadsheet is one huge table) use the linear
-      // scanner, as they did before 2.8.2.
+      // link extraction. Only Markdown sources have links and reach the
+      // Markdown parser; converted documents (a spreadsheet is one huge
+      // table) never do.
       const isMarkdownSource =
         artifact.meta.converterId === MARKDOWN_CONVERTER_ID;
-      const excludedRanges = getExcludedRanges(artifact.markdown, {
-        markdownSource: isMarkdownSource,
-      });
+      const excludedRanges = isMarkdownSource
+        ? getExcludedRanges(artifact.markdown)
+        : null;
+      const afterCodeRanges = budget.check("code-region detection");
+      if (afterCodeRanges) return await recordFailure(afterCodeRanges);
       const previousStructure = await this.readPreviousStructure(
         store,
         existing,
@@ -941,6 +968,78 @@ export class SyncService {
         previousStructure,
         nextStructure
       ).delta;
+      const afterStructure = budget.check("change-journal structure");
+      if (afterStructure) return await recordFailure(afterStructure);
+
+      // 9. Chunk content
+      const chunks = this.chunker.chunk(
+        artifact.markdown,
+        options.chunkingToken?.params ?? DEFAULT_CHUNK_PARAMS,
+        artifact.languageHint ?? collection.languageHint,
+        entry.relPath
+      );
+
+      // 10. Convert to ChunkInput for store
+      const chunkInputs: ChunkInput[] = chunks.map((c) => ({
+        seq: c.seq,
+        pos: c.pos,
+        text: c.text,
+        startLine: c.startLine,
+        endLine: c.endLine,
+        language: c.language ?? undefined,
+        tokenCount: c.tokenCount ?? undefined,
+      }));
+
+      const afterChunking = budget.check("chunking");
+      if (afterChunking) return await recordFailure(afterChunking);
+
+      // Parse links (stored in step 14). Only Markdown sources carry links,
+      // as in Obsidian: link-shaped text in code, plain text or converted
+      // documents stays searchable prose.
+      const parsedLinks = excludedRanges
+        ? parseLinks(
+            artifact.markdown,
+            buildLineOffsets(artifact.markdown),
+            excludedRanges
+          )
+        : [];
+
+      const linkInputs: DocLinkInput[] = [];
+      for (const link of parsedLinks) {
+        // Compute target_ref_norm based on link type
+        let targetRefNorm: string;
+        if (link.kind === "wiki") {
+          targetRefNorm = normalizeWikiName(link.targetRef);
+        } else {
+          // Markdown links with collection prefix are not supported
+          // (use wiki links for cross-collection references)
+          if (link.targetCollection) {
+            continue;
+          }
+          const resolved = normalizeMarkdownPath(link.targetRef, entry.relPath);
+          if (!resolved) {
+            // Link escapes collection root - skip silently
+            continue;
+          }
+          targetRefNorm = resolved;
+        }
+
+        linkInputs.push({
+          targetRef: link.targetRef,
+          targetRefNorm,
+          targetAnchor: link.targetAnchor,
+          targetCollection: link.targetCollection,
+          linkType: link.kind,
+          linkText: link.displayText,
+          startLine: link.startLine,
+          startCol: link.startCol,
+          endLine: link.endLine,
+          endCol: link.endCol,
+        });
+      }
+
+      const afterLinks = budget.check("link extraction");
+      if (afterLinks) return await recordFailure(afterLinks);
 
       const persistSuccessfulFile = async (): Promise<FileSyncResult> => {
         // 7. Upsert document - EXPLICITLY clear error fields on success
@@ -988,25 +1087,6 @@ export class SyncService {
           mirrorHash: artifact.mirrorHash,
         });
 
-        // 9. Chunk content
-        const chunks = this.chunker.chunk(
-          artifact.markdown,
-          options.chunkingToken?.params ?? DEFAULT_CHUNK_PARAMS,
-          artifact.languageHint ?? collection.languageHint,
-          entry.relPath
-        );
-
-        // 10. Convert to ChunkInput for store
-        const chunkInputs: ChunkInput[] = chunks.map((c) => ({
-          seq: c.seq,
-          pos: c.pos,
-          text: c.text,
-          startLine: c.startLine,
-          endLine: c.endLine,
-          language: c.language ?? undefined,
-          tokenCount: c.tokenCount ?? undefined,
-        }));
-
         // 11-12. Apply chunks and lexical projection under the policy token.
         await persistChunkLayout(
           store,
@@ -1046,54 +1126,7 @@ export class SyncService {
           });
         }
 
-        // 14. Extract and store links (wiki and markdown links). Only
-        // Markdown sources carry links, as in Obsidian: link-shaped text in
-        // code, plain text or converted documents stays searchable prose.
-        const parsedLinks = isMarkdownSource
-          ? parseLinks(
-              artifact.markdown,
-              buildLineOffsets(artifact.markdown),
-              excludedRanges
-            )
-          : [];
-
-        const linkInputs: DocLinkInput[] = [];
-        for (const link of parsedLinks) {
-          // Compute target_ref_norm based on link type
-          let targetRefNorm: string;
-          if (link.kind === "wiki") {
-            targetRefNorm = normalizeWikiName(link.targetRef);
-          } else {
-            // Markdown links with collection prefix are not supported
-            // (use wiki links for cross-collection references)
-            if (link.targetCollection) {
-              continue;
-            }
-            const resolved = normalizeMarkdownPath(
-              link.targetRef,
-              entry.relPath
-            );
-            if (!resolved) {
-              // Link escapes collection root - skip silently
-              continue;
-            }
-            targetRefNorm = resolved;
-          }
-
-          linkInputs.push({
-            targetRef: link.targetRef,
-            targetRefNorm,
-            targetAnchor: link.targetAnchor,
-            targetCollection: link.targetCollection,
-            linkType: link.kind,
-            linkText: link.displayText,
-            startLine: link.startLine,
-            startCol: link.startCol,
-            endLine: link.endLine,
-            endCol: link.endCol,
-          });
-        }
-
+        // 14. Store links (parsed before persistence).
         const linksResult = await store.setDocLinks(
           docId,
           linkInputs,
@@ -1175,6 +1208,8 @@ export class SyncService {
         errorCode: code,
         errorMessage: message,
       };
+    } finally {
+      clearTimeout(slowNotice);
     }
   }
 
@@ -1211,51 +1246,86 @@ export class SyncService {
   }
 
   /**
-   * Convert one file under its budget. A conversion still running after
-   * `SLOW_CONVERSION_NOTICE_MS` (or half its budget) is reported once through
-   * `onSlowConversion`, so an operator can see which file a run is stuck on.
+   * The per-file budget: one wall-clock deadline and memory ceiling shared
+   * by conversion and the post-conversion phases. `check` is the cooperative
+   * checkpoint between phases; it cannot interrupt a phase that is running.
    */
+  private fileBudget(options: SyncOptions, timeoutMs: number): FileBudget {
+    const maxMemoryBytes =
+      (options.limits?.maxMemoryMb ?? defaultConversionMemoryMb()) *
+      BYTES_PER_MB;
+    const startedAt = performance.now();
+    return {
+      timeoutMs,
+      maxMemoryBytes,
+      startedAt,
+      check: (phase) => {
+        const elapsedMs = Math.round(performance.now() - startedAt);
+        if (elapsedMs > timeoutMs) {
+          return {
+            code: "TIMEOUT",
+            message: `Indexing stopped after ${phase}: ${elapsedMs}ms exceeded the ${timeoutMs}ms budget`,
+            details: { phase, elapsedMs, timeoutMs },
+          };
+        }
+        const rss = process.memoryUsage.rss();
+        if (rss > maxMemoryBytes) {
+          const rssMb = Math.round(rss / BYTES_PER_MB);
+          const maxMemoryMb = Math.round(maxMemoryBytes / BYTES_PER_MB);
+          return {
+            code: "MEMORY_LIMIT",
+            message: `Indexing stopped after ${phase}: resident memory ${rssMb} MB exceeded the ${maxMemoryMb} MB budget`,
+            details: { phase, rssMb, maxMemoryMb },
+          };
+        }
+        return null;
+      },
+    };
+  }
+
+  /**
+   * Report a file still being indexed after `SLOW_CONVERSION_NOTICE_MS` (or
+   * half its budget), so an operator can see which file a run is stuck on.
+   */
+  private scheduleSlowNotice(
+    collection: Collection,
+    entry: WalkEntry,
+    options: SyncOptions,
+    budget: FileBudget
+  ): ReturnType<typeof setTimeout> | undefined {
+    const report = options.onSlowConversion;
+    if (!report) return undefined;
+    return setTimeout(
+      () => {
+        report({
+          collection: collection.name,
+          relPath: entry.relPath,
+          elapsedMs: Math.round(performance.now() - budget.startedAt),
+          budgetMs: budget.timeoutMs,
+        });
+      },
+      Math.min(SLOW_CONVERSION_NOTICE_MS, budget.timeoutMs / 2)
+    );
+  }
+
+  /** Convert one file; binary formats run in the budgeted worker. */
   private async convertWithBudget(
     input: ConvertInput,
-    options: SyncOptions
+    budget: FileBudget
   ): Promise<PipelineResult> {
-    const budget = {
-      timeoutMs: input.limits.timeoutMs,
-      maxMemoryBytes:
-        (options.limits?.maxMemoryMb ?? defaultConversionMemoryMb()) *
-        BYTES_PER_MB,
-    };
-    const started = performance.now();
-    const notice = options.onSlowConversion
-      ? setTimeout(
-          () => {
-            options.onSlowConversion?.({
-              collection: input.collection,
-              relPath: input.relativePath,
-              elapsedMs: Math.round(performance.now() - started),
-              budgetMs: budget.timeoutMs,
-            });
-          },
-          Math.min(SLOW_CONVERSION_NOTICE_MS, budget.timeoutMs / 2)
-        )
-      : undefined;
     // Test doubles and custom pipelines may implement convert() only.
     const pipeline = this.pipeline as ConversionPipeline & {
       convertWithBudget?: ConversionPipeline["convertWithBudget"];
     };
-    try {
-      return pipeline.convertWithBudget
-        ? await pipeline.convertWithBudget(input, budget)
-        : await pipeline.convert(input);
-    } finally {
-      clearTimeout(notice);
-    }
+    return pipeline.convertWithBudget
+      ? await pipeline.convertWithBudget(input, budget)
+      : await pipeline.convert(input);
   }
 
   private async readPreviousStructure(
     store: StorePort,
     existing: DocumentRow | null,
-    current?: { markdown: string; excludedRanges: ExcludedRange[] }
+    current?: { markdown: string; excludedRanges: ExcludedRange[] | null }
   ): Promise<ReturnType<typeof extractDocumentStructure> | null | undefined> {
     if (!existing) return null;
     if (!existing.mirrorHash) return undefined;
@@ -1274,9 +1344,9 @@ export class SyncService {
       // Unchanged content (a re-ingest) reuses the current parse.
       current !== undefined && content.value === current.markdown
         ? current.excludedRanges
-        : getExcludedRanges(content.value, {
-            markdownSource: existing.converterId === MARKDOWN_CONVERTER_ID,
-          })
+        : existing.converterId === MARKDOWN_CONVERTER_ID
+          ? getExcludedRanges(content.value)
+          : null
     );
   }
 

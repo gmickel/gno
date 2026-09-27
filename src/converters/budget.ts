@@ -16,7 +16,8 @@
  *
  * Native Markdown and plain-text conversion is linear and stays in-process.
  * A standalone compiled executable cannot start a TypeScript worker entry and
- * also converts in-process (no budget); npm and desktop installs run source.
+ * also converts in-process; npm and desktop installs run source. In-process
+ * conversions are covered only by sync's checks between processing phases.
  *
  * @module src/converters/budget
  */

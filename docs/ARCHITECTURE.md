@@ -672,7 +672,7 @@ The `doc_links` table stores:
 - Position (line/column for editor integration)
 - Optional anchor (#section) and display text
 
-Links are extracted during sync from Markdown sources only, excluding frontmatter, HTML comments, inline code spans, and fenced or indented code blocks, as Obsidian does. Plain text, source code, data files and converted documents produce no links; their content stays searchable. Code regions come from the CommonMark parser only for Markdown notes up to 1 MB with no table over 5,000 cells (its table handling slows with the square of a table's cells); larger notes use a linear scan that finds fenced blocks and code spans but not indented code.
+Links are extracted during sync from Markdown sources only, excluding frontmatter, HTML comments, inline code spans, and fenced or indented code blocks, as Obsidian does. Plain text, source code, data files and converted documents produce no links; their content stays searchable. Code regions come from the CommonMark + GFM parser. Its table handling slows with the square of a table's cells, so a note with a table of more than 5,000 cells is parsed without GFM tables: code spans, fences, indented code, blockquotes and lists are unchanged, and only a code span that crosses a table-cell pipe (`` `a | b` `` in a table row) is kept whole instead of being split at the pipe.
 
 ## Technical Notes
 

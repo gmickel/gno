@@ -28,7 +28,6 @@ import { persistChunkLayout } from "./chunking";
 import { runRecordAdapter } from "./record-adapter";
 import { recordVirtualPath } from "./record-path";
 import { reconcileRecordSnapshot, type RecordSyncPlan } from "./record-sync";
-import { getExcludedRanges } from "./strip";
 import { DEFAULT_CHUNK_PARAMS, MAX_RECORD_IMPORT_RECEIPT_ITEMS } from "./types";
 
 interface RecordDocumentMetadata {
@@ -322,7 +321,7 @@ const loadPreviousStructure = async (
     content,
     existing.relPath,
     existing.dateFields,
-    getExcludedRanges(content, { markdownSource: false })
+    null
   );
 };
 
@@ -349,12 +348,12 @@ const persistRecord = async (
     contentType
   );
   const previousStructure = await loadPreviousStructure(input.store, existing);
-  // Records are adapter output, never Markdown sources: no Markdown parse.
+  // Records are adapter output, not Markdown sources: they have no links.
   const nextStructure = extractDocumentStructure(
     record.markdown,
     virtualPath,
     dateFields,
-    getExcludedRanges(record.markdown, { markdownSource: false })
+    null
   );
   const structureDelta = diffDocumentStructure(
     previousStructure,

@@ -108,11 +108,18 @@ export const extractDocumentStructure = (
   markdown: string,
   relPath: string,
   dateFields: Readonly<Record<string, string>> | null | undefined,
-  excludedRanges: ExcludedRange[] = getExcludedRanges(markdown)
+  /**
+   * Code ranges of a Markdown source; `null` for any other document, which
+   * has no links (converted files and records are never parsed as Markdown).
+   */
+  excludedRanges: ExcludedRange[] | null = getExcludedRanges(markdown)
 ): DocumentStructureSnapshot => {
-  const links = parseLinks(markdown, buildLineOffsets(markdown), excludedRanges)
-    .map((link) => linkSummary(link, relPath))
-    .filter((value): value is string => value !== null);
+  const links =
+    excludedRanges === null
+      ? []
+      : parseLinks(markdown, buildLineOffsets(markdown), excludedRanges)
+          .map((link) => linkSummary(link, relPath))
+          .filter((value): value is string => value !== null);
 
   return {
     headings: withOccurrences(

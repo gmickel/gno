@@ -1472,16 +1472,20 @@ individual virtual document. The closed `record.adapter` identity contains the
 adapter ID, version, and configuration fingerprint. `get` and `multi-get`
 preserve the same fields.
 
-PDF, Word, Excel and PowerPoint conversion runs in a worker under the per-file
-budget `conversion.timeoutMs` (default 60000) and `conversion.maxMemoryMb`
-(default half of physical memory, at least 2048; process resident memory while
-the file converts). A file over either limit is stopped and recorded with error
-code `TIMEOUT` or `MEMORY_LIMIT`, stays unindexed, and is retried by the next
-sync; the rest of the run continues. `update` and `index` always print such a
+Every file is indexed under the per-file budget `conversion.timeoutMs`
+(default 60000) and `conversion.maxMemoryMb` (default half of physical memory,
+at least 2048; process resident memory). PDF, Word, Excel and PowerPoint
+conversion runs in a worker that is terminated at either limit; after
+conversion, and for native Markdown/text files, both limits are checked
+between post-conversion phases (metadata, code regions, change-journal
+structure, chunking, link extraction), before the database write. A file over
+either limit is recorded with error code `TIMEOUT` or `MEMORY_LIMIT`, stays
+unindexed, and is retried by the next sync; the rest of the run continues. `update` and `index` always print such a
 file in terminal output as `[CODE] <relPath>: <message>` (other per-file
 errors stay `--verbose` only), and write
 `Still converting <collection>/<relPath> after <n>s (budget <m>s)` to stderr
-once a conversion has run 10 seconds or half its budget, whichever is sooner.
+once a file has been processing for 10 seconds or half its budget, whichever
+is sooner.
 `gno status` lists stopped files under "Stopped at conversion budget" in
 terminal output (JSON output is unchanged).
 

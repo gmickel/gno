@@ -235,11 +235,11 @@ GNO 2.8.2 could spend hours and tens of gigabytes on one large Excel workbook
 to the index. Converted spreadsheet text is one large table per sheet, and
 2.8.2 ran its Markdown code detection over it; that cost grows with the square
 of the table's cells. Current versions never run that detection on converted
-files and bound it on very large Markdown notes, so such a workbook indexes
+files and parse very large Markdown tables without the table rules, so such a workbook indexes
 in time and memory proportional to its size again.
 
-Each PDF, Word, Excel or PowerPoint file also converts under a per-file
-budget. While a file is still converting after 10 seconds, `gno update` and
+Each file is also indexed under a per-file budget covering conversion and
+the processing after it. While a file is still converting after 10 seconds, `gno update` and
 `gno index` print its path:
 
 ```text

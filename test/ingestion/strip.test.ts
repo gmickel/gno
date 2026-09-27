@@ -9,7 +9,6 @@ import { describe, expect, test } from "bun:test";
 import {
   getExcludedRanges,
   isExcluded,
-  MAX_PARSED_CODE_REGION_CHARS,
   MAX_PARSED_TABLE_CELLS,
   rangeIntersectsExcluded,
 } from "../../src/ingestion/strip";
@@ -309,8 +308,6 @@ describe("rangeIntersectsExcluded", () => {
 });
 
 describe("code-region parse budget (fn-198)", () => {
-  const CODE_BLOCKS =
-    "\n\nIntro `span` paragraph.\n\n    indented code line\n\n```\nfenced\n```\n";
   const tableBlock = (rows: number): string =>
     [
       "| a | b | c | d |",
@@ -320,12 +317,10 @@ describe("code-region parse budget (fn-198)", () => {
         (_, row) => `| row ${row} | \`code ${row}\` | text | 1.5 |`
       ),
     ].join("\n");
-  const rowsOverBudget = Math.ceil(MAX_PARSED_TABLE_CELLS / 5) + 1;
-  const halfTable = tableBlock(Math.floor(rowsOverBudget / 2));
+  const overBudget = `\n\n${tableBlock(Math.ceil(MAX_PARSED_TABLE_CELLS / 5) + 1)}\n`;
 
-  test("a spreadsheet-sized table stays linear and keeps code spans excluded", () => {
-    // 20,000 rows: the GFM table parser is quadratic in cells and took
-    // minutes on this before the budget; the scanner takes milliseconds.
+  test("a spreadsheet-sized table stays fast and keeps code spans excluded", () => {
+    // 20,000 rows: with the GFM table extension this took minutes.
     const markdown = tableBlock(20_000);
     const spans = getExcludedRanges(markdown).filter(
       (range) => range.kind === "inline_code"
@@ -335,39 +330,47 @@ describe("code-region parse budget (fn-198)", () => {
   });
 
   test.each([
-    { label: "small Markdown table", body: tableBlock(10), parsed: true },
     {
-      label: "two tables under the cell budget, split by a blank line",
-      body: `${halfTable}\n\n${halfTable}`,
-      parsed: true,
+      label: "fences inside frontmatter and HTML comments open no code block",
+      note: "---\nexample: |\n  ```\n---\n<!-- ```\n-->\n\n[[real-link]]\n",
+      targets: { "[[real-link]]": false },
     },
     {
-      label: "one table over the cell budget",
-      body: tableBlock(rowsOverBudget),
-      parsed: false,
+      label:
+        "code spans never pair across paragraphs; a backslash does not escape a closing backtick",
+      note: "A lone ` backtick.\n\n[[para-link]] follows.\n\nPath `C:\\dir\\` then [[after-path]].\n",
+      targets: {
+        "[[para-link]]": false,
+        "[[after-path]]": false,
+        "C:\\dir\\": true,
+      },
     },
     {
-      label: "Markdown over the size budget",
-      body: "prose line\n".repeat(
-        Math.ceil(MAX_PARSED_CODE_REGION_CHARS / 11) + 1
-      ),
-      parsed: false,
+      label: "fences inside a blockquote are code",
+      note: "> ~~~\n> [[example-only]]\n> ~~~\n\n[[outside]]\n",
+      targets: { "[[example-only]]": true, "[[outside]]": false },
     },
-    {
-      label: "non-Markdown converted output",
-      body: tableBlock(10),
-      markdownSource: false,
-      parsed: false,
-    },
-  ])("$label: parser used = $parsed", ({ body, markdownSource, parsed }) => {
-    const found = new Set(
-      getExcludedRanges(`${body}${CODE_BLOCKS}`, { markdownSource }).map(
-        (range) => range.kind
-      )
-    );
-    // Only the parser detects indented code; both paths find fences and spans.
-    expect(found.has("indented_code")).toBe(parsed);
-    expect(found.has("fenced_code")).toBe(true);
-    expect(found.has("inline_code")).toBe(true);
+  ])("$label, below and above the table budget", ({ note, targets }) => {
+    for (const markdown of [note, `${note}${overBudget}`]) {
+      const ranges = getExcludedRanges(markdown);
+      for (const [target, excluded] of Object.entries(targets)) {
+        expect([target, isExcluded(markdown.indexOf(target), ranges)]).toEqual([
+          target,
+          excluded,
+        ]);
+      }
+    }
+  });
+
+  test("over the table budget, a code span may cross a table-cell pipe", () => {
+    // GFM splits table cells at an unescaped pipe even inside backticks;
+    // without the table extension the span is kept whole. This is the only
+    // difference the budget introduces.
+    const row = "| x | `a | b` |";
+    const note = `| h | h |\n| - | - |\n${row}\n`;
+    const spanAt = (markdown: string) =>
+      isExcluded(markdown.indexOf("`a | b`") + 1, getExcludedRanges(markdown));
+    expect(spanAt(note)).toBe(false);
+    expect(spanAt(`${note}${overBudget}`)).toBe(true);
   });
 });
