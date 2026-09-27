@@ -7,11 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.3] - 2026-09-27
+
 ### Fixed
 
 - `gno audit links`, backlinks, `gno links`, `gno impact` and the link graph no longer read quoted prose such as `\[-some clause -](see section 4 of the annex)` as a link to a file named `see section 4 of the annex`. As in Obsidian, a `[` escaped with a backslash opens no link, and a Markdown link destination with an unescaped space is plain text unless it is wrapped in angle brackets.
 - `[x](<my note.md>)` now links to `my note.md`; before, the angle brackets stayed in the target and the link was reported as unresolved. `[x](my%20note.md)` keeps working, and a link title such as `[x](note.md "Title")` no longer becomes part of the target.
-- Renaming or moving a note no longer rewrites an escaped `\[text](note.md)`, which is plain text.
+- Renaming or moving a note no longer rewrites an escaped `\[text](note.md)` or `[text\](note.md)`, which are plain text. Link text with balanced brackets, such as `[see [1]](note.md)`, is still updated.
 - The first `gno update` after upgrading re-reads existing notes once so these rules take effect.
 - A running `gno serve` or `gno daemon` now picks up collections added, removed or edited in the config file, by `gno collection add/remove` or by hand, without a restart. `/api/status`, MCP `gno_status`, the watcher and search follow the file before the next request, and an idle daemon picks up the change within about two seconds. Run `gno update` to index the files a new collection already holds. An unreadable config file now makes requests fail with an error instead of serving the old collections, and a config bound to another index is refused. Other settings, such as models and gateway options, still take effect on restart.
 - `gno vec sync` and `gno vec rebuild` failed with "No embeddings found … Run: gno embed" on any index embedded by 2.7 or later, and `gno doctor` listed no embedding fingerprint groups for such an index. All three read only the old vector table, which the vector partitions replaced. They now work on the active vector partition and report its counts. Indexes that were never re-embedded keep using the old table.
@@ -2904,7 +2906,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.8.2...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.8.3...HEAD
+[2.8.3]: https://github.com/gmickel/gno/compare/v2.8.2...v2.8.3
 [2.8.2]: https://github.com/gmickel/gno/compare/v2.8.1...v2.8.2
 [2.8.1]: https://github.com/gmickel/gno/compare/v2.8.0...v2.8.1
 [2.8.0]: https://github.com/gmickel/gno/compare/v2.7.1...v2.8.0
