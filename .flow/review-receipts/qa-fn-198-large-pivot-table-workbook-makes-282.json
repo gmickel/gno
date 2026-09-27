@@ -1,0 +1,38 @@
+{
+  "branch": "batch/v2.8.3",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "369509fe80fad3e0fa4cc92009b26a0a00af25ee",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-3f5d7c7f4a5adcb7f8dc57ec2759e4721b65f243b8acea58ffd8ff4274bc018a"
+  },
+  "head_sha": "369509fe80fad3e0fa4cc92009b26a0a00af25ee",
+  "id": "fn-198-large-pivot-table-workbook-makes-282",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "PASS",
+  "rid_coverage": {
+    "covered": 3,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      }
+    ],
+    "total": 3
+  },
+  "timestamp": "2026-09-27T21:21:21Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

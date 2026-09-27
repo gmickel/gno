@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-197-markdown-links-honour-escaped-brackets",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-27T21:21:20.656766Z",
   "created_at": "2026-09-27T12:54:47.829819Z",
   "default_impl": null,
   "default_review": null,
@@ -78,7 +78,7 @@
     "impl:fn-197-markdown-links-honour-escaped-brackets.1": 0
   },
   "spec_path": ".flow/specs/fn-197-markdown-links-honour-escaped-brackets.md",
-  "status": "open",
+  "status": "done",
   "title": "Markdown links: honour escaped brackets and reject destinations with spaces",
   "tracker": {
     "baseHashFlow": null,
@@ -91,5 +91,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-27T13:45:12.507048Z"
+  "updated_at": "2026-09-27T21:21:21.020674Z"
 }

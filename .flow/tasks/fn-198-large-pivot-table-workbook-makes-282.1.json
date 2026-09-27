@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-198-large-pivot-table-workbook-makes-282",
   "spec_path": ".flow/tasks/fn-198-large-pivot-table-workbook-makes-282.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Large pivot-table workbook makes 2.8.2 indexing run away in memory",
   "updated_at": "2026-09-27T14:10:00.970778Z"
 }

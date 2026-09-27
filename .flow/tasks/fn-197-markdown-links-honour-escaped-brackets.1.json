@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-197-markdown-links-honour-escaped-brackets",
   "spec_path": ".flow/tasks/fn-197-markdown-links-honour-escaped-brackets.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Markdown links: honour escaped brackets and reject destinations with spaces",
   "updated_at": "2026-09-27T13:21:51.522981Z"
 }

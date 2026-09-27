@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-196-consistency-follow-ups-after-28x",
   "spec_path": ".flow/tasks/fn-196-consistency-follow-ups-after-28x.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Consistency follow-ups after 2.8.x",
   "updated_at": "2026-09-27T13:21:33.090970Z"
 }
