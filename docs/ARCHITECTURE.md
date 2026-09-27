@@ -639,6 +639,12 @@ Inside a Markdown table, Obsidian writes the alias separator as `\|`
 with display text `click here`. Markdown link text may contain balanced square
 brackets (`[see [1]](note.md)`).
 
+Markdown links follow CommonMark, as Obsidian renders them. A `[` escaped with
+a backslash (`\[clause](see section 4)`) is plain text, and so is a
+destination with an unescaped space: write `[x](<my note.md>)` or
+`[x](my%20note.md)` to link to `my note.md`. A link title
+(`[x](note.md "Title")`) is not part of the target.
+
 ### Resolution
 
 Links are resolved at query time, not stored with target document IDs. This handles document renames gracefully. Every link consumer (graph neighbors in search, ask and Context Capsules, backlinks, `gno links`, `gno impact`, graph export, `gno audit links`) uses the same resolution.

@@ -32,6 +32,7 @@ import { fingerprintContentTypeMetadataRules } from "../config";
 import { createJsonlAdapter } from "../converters/adapters/jsonl/adapter";
 import { createTranscriptAdapter } from "../converters/adapters/transcript/adapter";
 import { getDefaultMimeDetector, type MimeDetector } from "../converters/mime";
+import { markdownConverter } from "../converters/native/markdown";
 import {
   type ConversionPipeline,
   getDefaultPipeline,
@@ -111,8 +112,11 @@ const BYTES_PER_MB = 1_048_576;
  * link text with square brackets parse the way Obsidian renders them.
  * 9: links are extracted from Markdown sources only, and never from code
  * spans or indented code blocks.
+ * 10: Markdown links follow CommonMark: an escaped `[` opens no link, a
+ * destination with an unescaped space is text unless wrapped in `<...>`, and
+ * the destination ends before a link title.
  */
-export const INGEST_VERSION = 9;
+export const INGEST_VERSION = 10;
 const EMPTY_CONTENT_TYPE_RULES_FINGERPRINT =
   fingerprintContentTypeMetadataRules([]);
 const NON_RETRYABLE_CONVERSION_ERROR_CODES = new Set([
@@ -685,6 +689,8 @@ export class SyncService {
           chunkParams: options.chunkingToken?.params ?? DEFAULT_CHUNK_PARAMS,
           collectionLanguageHint: collection.languageHint,
           memoryManaged: collection.memoryManaged === true,
+          // The default registry tries the Markdown converter first.
+          markdownSource: markdownConverter.canHandle(mime.mime, mime.ext),
           previous,
         },
         budget,

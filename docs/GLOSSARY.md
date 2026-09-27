@@ -229,7 +229,7 @@ A link FROM a document to another document. The inverse of backlink.
 
 ### Similar Documents
 
-Documents that are semantically related based on vector similarity. Found using the hybrid search pipeline on document content.
+Documents that are semantically related based on vector similarity: a nearest-neighbour search from the stored embedding of the source document's first chunk. CLI, MCP, REST and graph similarity edges use the same source vector.
 
 ### Link Resolution
 

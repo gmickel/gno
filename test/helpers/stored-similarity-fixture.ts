@@ -69,6 +69,17 @@ export async function seedSimilarityDocuments(
   }
 }
 
+/** One vector for every chunk of a document, or one per chunk seq. */
+export type SimilarityVectors = Record<string, number[] | number[][]>;
+
+const chunkVector = (
+  vectors: number[] | number[][],
+  seq: number
+): number[] | undefined =>
+  Array.isArray(vectors[0])
+    ? (vectors as number[][])[seq]
+    : (vectors as number[]);
+
 /**
  * Activate a partition for `model` holding `vectors` keyed by rel path, then
  * retitle the twins. A title is part of the embedded input, so the twins are
@@ -78,9 +89,10 @@ export async function seedSimilarityDocuments(
 export async function embedStoredSimilarityVectors(
   db: Database,
   model: string,
-  vectors: Record<string, number[]> = SIMILARITY_VECTORS
+  vectors: SimilarityVectors = SIMILARITY_VECTORS
 ): Promise<void> {
-  const dimensions = Object.values(vectors)[0]?.length ?? 0;
+  const [first] = Object.values(vectors);
+  const dimensions = first ? (chunkVector(first, 0)?.length ?? 0) : 0;
   const variants = await createVectorVariantStore(db, {
     model,
     modelFingerprint: "synthetic-similarity-weights",
@@ -99,8 +111,10 @@ export async function embedStoredSimilarityVectors(
   variants.write(
     variants.pending().map((owner) => {
       const relPath = relPaths.get(owner.documentId) ?? "";
-      const vector = vectors[relPath];
-      if (!vector) throw new Error(`No synthetic vector for ${relPath}`);
+      const byDocument = vectors[relPath];
+      const vector = byDocument && chunkVector(byDocument, owner.seq);
+      if (!vector)
+        throw new Error(`No synthetic vector for ${relPath}#${owner.seq}`);
       return { owner, embedding: new Float32Array(vector) };
     })
   );

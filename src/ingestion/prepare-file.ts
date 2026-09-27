@@ -51,6 +51,12 @@ export interface PrepareFileRequest {
   chunkParams: ChunkParams;
   collectionLanguageHint?: string;
   memoryManaged: boolean;
+  /**
+   * Whether this file is a Markdown source (the Markdown converter handles
+   * it). The previous revision's links are read under this rule too, so a
+   * non-Markdown source never journals link additions or removals.
+   */
+  markdownSource: boolean;
   previous: PreviousRevision | null;
 }
 
@@ -99,12 +105,6 @@ export interface PrepareHooks {
   /** In-process budget checkpoint after a step; null to continue. */
   check: (phase: PreparePhase) => PrepareFailure | null;
 }
-
-const codeRangesFor = (
-  markdown: string,
-  converterId: string | null
-): ExcludedRange[] | null =>
-  converterId === MARKDOWN_CONVERTER_ID ? getExcludedRanges(markdown) : null;
 
 const toLinkInputs = (
   markdown: string,
@@ -162,13 +162,18 @@ export async function prepareFile(
   let previousRanges: ExcludedRange[] | null = null;
   if (previous) {
     hooks.onPhase("previous revision");
-    previousRanges = codeRangesFor(previous.markdown, previous.converterId);
+    previousRanges = request.markdownSource
+      ? getExcludedRanges(previous.markdown)
+      : null;
     hooks.onPrevious(
       extractDocumentStructure(
         previous.markdown,
         previous.relPath,
         previous.dateFields,
-        previousRanges
+        {
+          markdownSource: request.markdownSource,
+          excludedRanges: previousRanges ?? undefined,
+        }
       )
     );
     const stop = step("previous revision");
@@ -207,13 +212,13 @@ export async function prepareFile(
   if (stopAfterMetadata) return { ok: false, error: stopAfterMetadata };
 
   hooks.onPhase("code-region detection");
+  const markdownSource = artifact.meta.converterId === MARKDOWN_CONVERTER_ID;
   // Unchanged content (a re-ingest) reuses the previous revision's parse.
-  const excludedRanges =
-    previous &&
-    previous.markdown === markdown &&
-    previous.converterId === artifact.meta.converterId
+  const excludedRanges = !markdownSource
+    ? null
+    : previous && previousRanges && previous.markdown === markdown
       ? previousRanges
-      : codeRangesFor(markdown, artifact.meta.converterId);
+      : getExcludedRanges(markdown);
   const stopAfterRanges = step("code-region detection");
   if (stopAfterRanges) return { ok: false, error: stopAfterRanges };
 
@@ -222,7 +227,7 @@ export async function prepareFile(
     markdown,
     relPath,
     metadata.dateFields,
-    excludedRanges
+    { markdownSource, excludedRanges: excludedRanges ?? undefined }
   );
   const stopAfterStructure = step("change-journal structure");
   if (stopAfterStructure) return { ok: false, error: stopAfterStructure };

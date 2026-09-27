@@ -19,7 +19,10 @@ import { readdir, realpath, stat } from "node:fs/promises";
 // node:path join: platform path algebra; no Bun equivalent.
 import { join } from "node:path";
 
-import type { AuditLinkSnapshot } from "../store/sqlite/graph-link-resolver";
+import type {
+  AuditLinkSnapshot,
+  AuditLinkSnapshotLink,
+} from "../store/sqlite/graph-link-resolver";
 
 import {
   createWorkspaceFileMatcher,
@@ -29,6 +32,27 @@ import { pathContains, placeDocument } from "./link-workspace";
 
 /** Path identity for exact-path matching: NFC, case-insensitive. */
 const pathKey = (path: string): string => path.normalize("NFC").toLowerCase();
+
+/**
+ * A Markdown link names the file's exact path; as with wiki links, `.md` is
+ * optional, so `[x](Note)` matches an unindexed `Note.md`. An indexed
+ * `Note.md` is not outside the index, so that link keeps its status. Indexed
+ * paths are compared under the same key as listed files (NFC, Unicode
+ * lowercase), never SQLite's ASCII-only NOCASE.
+ */
+const markdownTargetExists = (
+  link: AuditLinkSnapshotLink,
+  targetPath: string,
+  paths: ReadonlySet<string> | undefined,
+  indexedKeys: (collection: string) => ReadonlySet<string>
+): boolean => {
+  const key = pathKey(targetPath);
+  if (paths?.has(key) === true) return true;
+  if (key.endsWith(".md") || paths?.has(`${key}.md`) !== true) return false;
+  return !indexedKeys(link.targetCollection).has(
+    pathKey(`${link.targetRefNorm}.md`)
+  );
+};
 
 /** Upper bound of files listed per workspace; beyond it the listing is partial. */
 export const WORKSPACE_FILE_LISTING_MAX_FILES = 200_000;
@@ -152,7 +176,7 @@ export const listWorkspaceFiles = async (
  * Mark unresolved plain wiki links and relative Markdown links of audited
  * documents inside a link workspace whose target exists as a workspace file.
  * A wiki link matches under workspace resolution rules; a Markdown link must
- * name the file's exact path (NFC, case-insensitive). Each involved workspace
+ * name the file's exact path (NFC, case-insensitive), `.md` optional. Each involved workspace
  * is listed once per call. A failed or partial listing never marks a link
  * that is not in it; the snapshot then carries one diagnostic.
  */
@@ -220,12 +244,33 @@ export const markOutsideIndexLinks = async (
       paths: new Set(listing.files.map(pathKey)),
     });
   }
+  const indexedByCollection = new Map<string, Set<string>>();
+  const indexedKeys = (collection: string): ReadonlySet<string> => {
+    let keys = indexedByCollection.get(collection);
+    if (!keys) {
+      keys = new Set(
+        db
+          .query<{ relPath: string }, [string]>(
+            "SELECT rel_path AS relPath FROM documents WHERE active = 1 AND collection = ?"
+          )
+          .all(collection)
+          .map(({ relPath }) => pathKey(relPath))
+      );
+      indexedByCollection.set(collection, keys);
+    }
+    return keys;
+  };
   const links = [...snapshot.links];
   for (const entry of placed) {
     const listing = listings.get(entry.key);
     const exists =
       "targetPath" in entry
-        ? listing?.paths.has(pathKey(entry.targetPath)) === true
+        ? markdownTargetExists(
+            entry.link,
+            entry.targetPath,
+            listing?.paths,
+            indexedKeys
+          )
         : listing?.matches(entry.link.targetRefNorm, entry.sourcePath) === true;
     if (exists) {
       links[entry.index] = { ...entry.link, outsideIndex: true };

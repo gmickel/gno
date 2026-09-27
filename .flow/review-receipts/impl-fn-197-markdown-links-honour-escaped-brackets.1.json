@@ -1,0 +1,73 @@
+{
+  "base": "64d19bde91a91b746e70cd6573dc672091c58fca",
+  "effort": "medium",
+  "findings": {
+    "backend": "codex",
+    "baseSha": "64d19bde91a91b746e70cd6573dc672091c58fca",
+    "headSha": "8494357575640e40c166b1d5c03c556300f3ab64",
+    "items": [
+      {
+        "anchor": {
+          "baseSha": "64d19bde91a91b746e70cd6573dc672091c58fca",
+          "headSha": "8494357575640e40c166b1d5c03c556300f3ab64",
+          "path": "src/core/links.ts",
+          "side": "head",
+          "startLine": 322
+        },
+        "body": "`[x](<note.md>` now produces a link to `note.md`, despite missing the closing `)`. Verified against base, which returns no links. The reused helper can return `closeParenOffset` without checking that it points to `)`. This introduces false graph edges and audit findings.",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-40e294a7da93b966670bc892607b60ed3e6496481b40b187de0b04ee1d1091a6",
+        "id": "finding-9859aabcc5abd77551e1acf2bc1553a3",
+        "lastSeenReceiptId": "review-40e294a7da93b966670bc892607b60ed3e6496481b40b187de0b04ee1d1091a6",
+        "ordinal": 1,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "suggestion": "Require a valid closing parenthesis after the destination and optional title. Add regression coverage for incomplete angle-bracket destinations.",
+        "title": "`[x](<note"
+      },
+      {
+        "anchor": {
+          "baseSha": "64d19bde91a91b746e70cd6573dc672091c58fca",
+          "headSha": "8494357575640e40c166b1d5c03c556300f3ab64",
+          "path": "src/core/link-destination-parse.ts",
+          "side": "head",
+          "startLine": 253
+        },
+        "body": "`[x](foo(bar baz).md)` still produces a link, violating R2. The helper rejects whitespace only at parenthesis depth zero. Base also incorrectly extracts a link from this input, so this is pre-existing.",
+        "classification": "pre_existing",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-40e294a7da93b966670bc892607b60ed3e6496481b40b187de0b04ee1d1091a6",
+        "id": "finding-afc00b10d7241383f2440ec753c4ce18",
+        "lastSeenReceiptId": "review-40e294a7da93b966670bc892607b60ed3e6496481b40b187de0b04ee1d1091a6",
+        "ordinal": 2,
+        "rIds": [
+          "R2"
+        ],
+        "severity": "P2",
+        "status": "open",
+        "suggestion": "Reject unescaped whitespace at every depth in bare destinations; add this case to R2 coverage.",
+        "title": "`[x](foo(bar baz)"
+      }
+    ],
+    "reviewKind": "implementation",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-40e294a7da93b966670bc892607b60ed3e6496481b40b187de0b04ee1d1091a6"
+  },
+  "focus": "CommonMark escaped-bracket and destination rules vs Obsidian; parseParenthesizedDestination reuse for extraction and rename; titles stripped; angle-bracket and %20 destinations; external <url(...)> handling; ingest v10 with no re-embed; no change to wiki-link parsing",
+  "id": "fn-197-markdown-links-honour-escaped-brackets.1",
+  "introduced_count": 1,
+  "mode": "codex",
+  "model": "gpt-6-astra",
+  "pre_existing_count": 1,
+  "review": "I\u2019ll read the task spec, inspect the diff, and run the focused checks before giving the review verdict.\nThe core and refactor tests pass; the audit tests are blocked by the read-only sandbox. I found a possible regression in malformed angle-bracket links and am checking it against the base parser.\n## Findings\n\n### 1. Incomplete angle-bracket destinations now create links\n\n- **Severity:** P2\n- **Confidence:** 75\n- **Classification:** introduced\n- **File:Line:** `src/core/links.ts:322`\n- **R-IDs:** []\n- **Problem:** `[x](<note.md>` now produces a link to `note.md`, despite missing the closing `)`. Verified against base, which returns no links. The reused helper can return `closeParenOffset` without checking that it points to `)`. This introduces false graph edges and audit findings.\n- **Suggestion:** Require a valid closing parenthesis after the destination and optional title. Add regression coverage for incomplete angle-bracket destinations.\n\n## Pre-existing issues (not blocking this verdict)\n\n### 2. Spaces inside destination parentheses remain accepted\n\n- **Severity:** P2\n- **Confidence:** 75\n- **Classification:** pre_existing\n- **File:Line:** `src/core/link-destination-parse.ts:253`\n- **R-IDs:** [R2]\n- **Problem:** `[x](foo(bar baz).md)` still produces a link, violating R2. The helper rejects whitespace only at parenthesis depth zero. Base also incorrectly extracts a link from this input, so this is pre-existing.\n- **Suggestion:** Reject unescaped whitespace at every depth in bare destinations; add this case to R2 coverage.\n\n## Requirements coverage\n\n| R-ID | Status | Evidence |\n|---|---|---|\n| R1 | met | Escape parity checks and focused tests pass. |\n| R2 | partial | Ordinary spaced destinations are rejected; nested-parenthesis spaces remain accepted. |\n| R3 | met | Required audit fixture and backlink assertions are present; execution blocked by sandbox. |\n\nUnaddressed R-IDs: []\n\n**Verification:** Bun 1.4.2: 101 focused core/refactor tests passed. Audit tests could not create temporary fixtures (`EROFS`). Confirmed both findings with direct parser probes and base comparison.\n\nClassification counts: 1 introduced, 1 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":1,\"pre_existing\":1},\"unaddressed\":[]}\n```\n\n<verdict>NEEDS_WORK</verdict>",
+  "review_reservation_id": "55f34816c85a43ff9e8aaa166622ef34",
+  "session_id": "01a0e31b-8b93-7960-8ca7-91de44a71f5f",
+  "spec": "codex:gpt-6-astra:medium",
+  "timestamp": "2026-09-27T13:45:12.501978Z",
+  "type": "impl_review",
+  "unaddressed": [],
+  "verdict": "NEEDS_WORK"
+}

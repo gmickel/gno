@@ -53,9 +53,10 @@ export async function assertInstanceBinding(
  * before it can touch this one.
  */
 export async function readInstanceConfig(
-  instance: SessionsInstance
+  instance: SessionsInstance,
+  load: typeof loadConfig = loadConfig
 ): Promise<Config> {
-  const loaded = await loadConfig(instance.configPath);
+  const loaded = await load(instance.configPath);
   if (!loaded.ok) {
     throw new SessionsError(
       "SESSIONS_RUNTIME_FAILURE",

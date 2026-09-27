@@ -42,6 +42,19 @@ const COMMONMARK_ESCAPABLE = new Set([
   " ",
 ]);
 
+/**
+ * True when the character at `index` is backslash-escaped: preceded by an odd
+ * number of backslashes. An escaped `[` is literal text in CommonMark and
+ * cannot open a link.
+ */
+export function isBackslashEscaped(text: string, index: number): boolean {
+  let backslashes = 0;
+  for (let i = index - 1; i >= 0 && text[i] === "\\"; i -= 1) {
+    backslashes += 1;
+  }
+  return backslashes % 2 === 1;
+}
+
 export interface LinkEncodingStyle {
   spaces: "percent" | "backslash" | "raw";
   parens: "percent" | "backslash" | "raw";
@@ -220,10 +233,10 @@ export function parseParenthesizedDestination(
         i += 1;
         continue;
       }
-      if (
-        depth === 0 &&
-        (ch === " " || ch === "\t" || ch === "\n" || ch === "\r")
-      ) {
+      if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r") {
+        // CommonMark: a bare destination has no unescaped whitespace, inside
+        // nested parentheses too (`(foo(bar baz).md)` is not a link).
+        if (depth > 0) return null;
         destEnd = i;
         break;
       }
@@ -261,6 +274,10 @@ export function parseParenthesizedDestination(
     if (markdown[j] !== ")") return null;
     close = j;
   }
+
+  // The destination and optional title must end at a real `)`:
+  // `[x](<note.md>` or `[x](<note.md>.` is not a link.
+  if (markdown[close] !== ")") return null;
 
   const destinationRaw = markdown.slice(destStart, destEnd);
   if (!destinationRaw) return null;

@@ -434,6 +434,31 @@ describe("overlap / dedup", () => {
     ]);
   });
 
+  test("never rewrites an escaped-bracket Markdown clause", () => {
+    const keys = buildSourceRelevanceKeys({
+      relPath: "old-note.md",
+      title: "Old Note",
+    });
+    const inventory = inventoryDocumentLinks(
+      "Quoted \\[clause](old-note.md) and [link](old-note.md)\n",
+      { sourceKeys: keys }
+    );
+    expect(inventory.tokens.map((token) => token.raw)).toEqual([
+      "[link](old-note.md)",
+    ]);
+  });
+
+  test("never rewrites a Markdown link without a closing parenthesis", () => {
+    const keys = buildSourceRelevanceKeys({
+      relPath: "old-note.md",
+      title: "Old Note",
+    });
+    const inventory = inventoryDocumentLinks("Open [x](<old-note.md>.", {
+      sourceKeys: keys,
+    });
+    expect(inventory.tokens).toEqual([]);
+  });
+
   test("dedupes identical destination spans across scanner kinds", () => {
     const duplicateA: LinkInventoryToken = {
       kind: "wiki",

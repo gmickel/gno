@@ -321,7 +321,9 @@ const loadPreviousStructure = async (
     content,
     existing.relPath,
     existing.dateFields,
-    null
+    {
+      markdownSource: false,
+    }
   );
 };
 
@@ -348,12 +350,12 @@ const persistRecord = async (
     contentType
   );
   const previousStructure = await loadPreviousStructure(input.store, existing);
-  // Records are adapter output, not Markdown sources: they have no links.
+  // Records are not Markdown sources: they store and journal no links.
   const nextStructure = extractDocumentStructure(
     record.markdown,
     virtualPath,
     dateFields,
-    null
+    { markdownSource: false }
   );
   const structureDelta = diffDocumentStructure(
     previousStructure,

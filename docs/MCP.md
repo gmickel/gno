@@ -1834,10 +1834,9 @@ crossCollection: false     # Include docs from other collections (default: false
 
 Uses document embeddings to find semantically related content. The algorithm:
 
-1. Retrieves embeddings for all chunks of the source document
-2. Computes the average embedding
-3. Searches for nearest neighbors using sqlite-vec
-4. Returns top N similar documents (excluding the source itself)
+1. Takes the stored embedding of the source document's first chunk (the same source vector as `gno similar`, the REST API and graph similarity edges, so scores match)
+2. Searches for nearest neighbors using sqlite-vec
+3. Returns top N similar documents (excluding the source itself)
 
 **Note**: Requires documents to be embedded (`gno embed` or `gno index`). Vector search must be available (sqlite-vec installed).
 
