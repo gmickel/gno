@@ -907,16 +907,18 @@ export class SyncService {
       // Code ranges come from a full Markdown parse: compute them once and
       // share them with the change journal and link extraction.
       const excludedRanges = getExcludedRanges(artifact.markdown);
+      const markdownSource =
+        artifact.meta.converterId === MARKDOWN_CONVERTER_ID;
       const previousStructure = await this.readPreviousStructure(
         store,
         existing,
-        { markdown: artifact.markdown, excludedRanges }
+        { markdown: artifact.markdown, excludedRanges, markdownSource }
       );
       const nextStructure = extractDocumentStructure(
         artifact.markdown,
         entry.relPath,
         extractedMetadata.dateFields,
-        excludedRanges
+        { markdownSource, excludedRanges }
       );
       const structureDelta = diffDocumentStructure(
         previousStructure,
@@ -1030,14 +1032,13 @@ export class SyncService {
         // 14. Extract and store links (wiki and markdown links). Only
         // Markdown sources carry links, as in Obsidian: link-shaped text in
         // code, plain text or converted documents stays searchable prose.
-        const parsedLinks =
-          artifact.meta.converterId === MARKDOWN_CONVERTER_ID
-            ? parseLinks(
-                artifact.markdown,
-                buildLineOffsets(artifact.markdown),
-                excludedRanges
-              )
-            : [];
+        const parsedLinks = markdownSource
+          ? parseLinks(
+              artifact.markdown,
+              buildLineOffsets(artifact.markdown),
+              excludedRanges
+            )
+          : [];
 
         const linkInputs: DocLinkInput[] = [];
         for (const link of parsedLinks) {
@@ -1195,7 +1196,11 @@ export class SyncService {
   private async readPreviousStructure(
     store: StorePort,
     existing: DocumentRow | null,
-    current?: { markdown: string; excludedRanges: ExcludedRange[] }
+    current?: {
+      markdown: string;
+      excludedRanges: ExcludedRange[];
+      markdownSource: boolean;
+    }
   ): Promise<ReturnType<typeof extractDocumentStructure> | null | undefined> {
     if (!existing) return null;
     if (!existing.mirrorHash) return undefined;
@@ -1211,10 +1216,18 @@ export class SyncService {
       content.value,
       existing.relPath,
       existing.dateFields,
-      // Unchanged content (a re-ingest) reuses the current parse.
-      current !== undefined && content.value === current.markdown
-        ? current.excludedRanges
-        : getExcludedRanges(content.value)
+      {
+        // The prior link set is read under the current source's rule, so a
+        // non-Markdown source never journals link additions or removals.
+        markdownSource:
+          current?.markdownSource ??
+          existing.converterId === MARKDOWN_CONVERTER_ID,
+        // Unchanged content (a re-ingest) reuses the current parse.
+        excludedRanges:
+          current !== undefined && content.value === current.markdown
+            ? current.excludedRanges
+            : undefined,
+      }
     );
   }
 
