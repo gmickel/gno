@@ -2260,13 +2260,17 @@ gno reset --confirm
 Vector index maintenance. Use when vector search returns empty despite embeddings existing.
 
 ```bash
-gno vec sync      # Sync vec0 index with content_vectors
-gno vec rebuild   # Full rebuild of vec0 index
+gno vec sync      # Sync the vec0 index with the stored vectors
+gno vec rebuild   # Full rebuild of the vec0 index
 gno vec drop 9a8b7c6d5e4f   # Drop an abandoned shadow partition
 ```
 
 - `sync` - Fast incremental sync, fixes drift after failed inserts
 - `rebuild` - Full rebuild, use when sync isn't enough
+
+Both work on the active vector partition of the current embedding model (the
+vectors `gno embed` writes since 2.7) and report its counts. An index that never
+activated a partition keeps using its legacy `content_vectors` vectors.
 - `drop <partition>` - Remove an abandoned shadow vector partition (legacy
   shadows included) that this runtime's retrieval does not read (id prefix of
   at least 8 characters from `gno status`) with its vectors. Status prints the

@@ -31,6 +31,7 @@ import {
   resolveFindingsSchedule,
 } from "../../core/findings-run-state";
 import { formatVectorPartitionLines } from "../../core/vector-partition-status";
+import { getEmbeddingFingerprint } from "../../embed/fingerprint";
 import { getCodeChunkingStatus } from "../../ingestion/chunker";
 import { ModelCache } from "../../llm/cache";
 import { getActivePreset, resolveModelUri } from "../../llm/registry";
@@ -42,6 +43,8 @@ import {
   getLoadAttempts,
 } from "../../store/sqlite/setup";
 import { getStoredEmbeddingFingerprint } from "../../store/vector/freshness";
+import { currentOwnerCount } from "../../store/vector/runtime-compat";
+import { storedVectorPartition } from "../../store/vector/status";
 import {
   buildDoctorActivation,
   checkConnectorActivation,
@@ -319,10 +322,14 @@ async function checkEmbeddingFingerprints(
       ];
     }
 
-    const legacyChunks =
-      db
-        .query<{ count: number }, [string]>(
-          `
+    // An index embedded since 2.7 keeps its vectors in the active partition;
+    // legacy `content_vectors` count only before any partition activates.
+    const partition = storedVectorPartition(db, model);
+    const legacyChunks = partition
+      ? 0
+      : (db
+          .query<{ count: number }, [string]>(
+            `
           SELECT COUNT(*) as count
           FROM content_vectors v
           JOIN content_chunks c
@@ -336,12 +343,23 @@ async function checkEmbeddingFingerprints(
                 AND d.active = 1
             )
         `
-        )
-        .get(model)?.count ?? 0;
+          )
+          .get(model)?.count ?? 0);
 
-    const groups = db
-      .query<{ model: string; fingerprint: string; count: number }, []>(
-        `
+    const groups = partition
+      ? [
+          {
+            model,
+            fingerprint: getEmbeddingFingerprint({
+              modelUri: model,
+              dimensions: partition.dimensions,
+            }),
+            count: currentOwnerCount(db, partition.partitionId),
+          },
+        ]
+      : db
+          .query<{ model: string; fingerprint: string; count: number }, []>(
+            `
         SELECT
           v.model as model,
           v.embed_fingerprint as fingerprint,
@@ -358,18 +376,18 @@ async function checkEmbeddingFingerprints(
         GROUP BY v.model, v.embed_fingerprint
         ORDER BY count DESC, v.model ASC, v.embed_fingerprint ASC
       `
-      )
-      .all()
-      .map((group) => ({
-        model: group.model,
-        fingerprint: group.fingerprint,
-        count: group.count,
-        current:
-          group.model === model && group.fingerprint === currentFingerprint,
-        legacy: group.fingerprint === "",
-      }));
+          )
+          .all();
+    const fingerprintGroups = groups.map((group) => ({
+      model: group.model,
+      fingerprint: group.fingerprint,
+      count: group.count,
+      current:
+        group.model === model && group.fingerprint === currentFingerprint,
+      legacy: group.fingerprint === "",
+    }));
 
-    const mixedGroups = groups.length;
+    const mixedGroups = fingerprintGroups.length;
     const pendingChunks = statusResult.value.embeddingBacklog;
     const hasWarnings =
       pendingChunks > 0 || legacyChunks > 0 || mixedGroups > 1;
@@ -380,7 +398,7 @@ async function checkEmbeddingFingerprints(
       pendingChunks,
       legacyChunks,
       mixedGroups,
-      groups,
+      groups: fingerprintGroups,
     };
 
     const message =
@@ -392,7 +410,7 @@ async function checkEmbeddingFingerprints(
     if (hasWarnings) {
       details.push("Run: gno embed");
       details.push("If vectors still look stale, run: gno embed --force");
-      for (const group of groups) {
+      for (const group of fingerprintGroups) {
         const label = describeFingerprintGroup(group);
         const fingerprint = group.legacy
           ? "(empty)"

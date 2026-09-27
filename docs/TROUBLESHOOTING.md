@@ -751,7 +751,8 @@ upgrade, run `gno embed` again so stored vectors match the new formatter.
 
 `gno doctor` reports this as the `embedding-fingerprint` check. It shows the
 current fingerprint, pending/stale chunks, legacy empty-fingerprint vectors, and
-stored fingerprint groups. Warnings mean vector search can still run, but you
+stored fingerprint groups (on an index embedded since 2.7, the active vector
+partition and its chunk count). Warnings mean vector search can still run, but you
 should re-embed:
 
 ```bash

@@ -3655,7 +3655,7 @@ function wireVecCommands(program: Command): void {
   addWriteLeaseFlags(
     vecCmd
       .command("sync")
-      .description("Sync vec0 index with content_vectors")
+      .description("Sync the vec0 index with the active vector partition")
       .option("--json", "JSON output")
   ).action(async (cmdOpts: Record<string, unknown>) => {
     const format = getFormat(cmdOpts);
@@ -3728,7 +3728,7 @@ function wireVecCommands(program: Command): void {
   addWriteLeaseFlags(
     vecCmd
       .command("rebuild")
-      .description("Rebuild vec0 index from content_vectors")
+      .description("Rebuild the vec0 index from the active vector partition")
       .option("--json", "JSON output")
   ).action(async (cmdOpts: Record<string, unknown>) => {
     const format = getFormat(cmdOpts);

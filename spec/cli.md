@@ -2976,7 +2976,11 @@ misconfigured `findings` block (see [Daemon Mode](../docs/DAEMON.md#scheduled-fi
 The `embedding-fingerprint` check is additive doctor-only diagnostics. It uses
 the active embed model and stored vector dimensions to report the current
 freshness fingerprint, pending/stale chunks, legacy empty-fingerprint vectors,
-and stored fingerprint groups. Stale, legacy, and mixed groups are warnings;
+and stored fingerprint groups. On an index with an activated vector partition
+for the embed model (every index `gno embed` wrote since 2.7), the groups are
+that partition with its current chunk count and there are no legacy vectors;
+legacy `content_vectors` groups are read only before any partition activates.
+Stale, legacy, and mixed groups are warnings;
 recover with `gno embed`, or `gno embed --force` if vectors still look stale.
 
 The additive `activation` object uses the same contract as `gno status` and
