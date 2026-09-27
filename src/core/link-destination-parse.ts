@@ -233,10 +233,10 @@ export function parseParenthesizedDestination(
         i += 1;
         continue;
       }
-      if (
-        depth === 0 &&
-        (ch === " " || ch === "\t" || ch === "\n" || ch === "\r")
-      ) {
+      if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r") {
+        // CommonMark: a bare destination has no unescaped whitespace, inside
+        // nested parentheses too (`(foo(bar baz).md)` is not a link).
+        if (depth > 0) return null;
         destEnd = i;
         break;
       }
@@ -274,6 +274,10 @@ export function parseParenthesizedDestination(
     if (markdown[j] !== ")") return null;
     close = j;
   }
+
+  // The destination and optional title must end at a real `)`:
+  // `[x](<note.md>` or `[x](<note.md>.` is not a link.
+  if (markdown[close] !== ")") return null;
 
   const destinationRaw = markdown.slice(destStart, destEnd);
   if (!destinationRaw) return null;

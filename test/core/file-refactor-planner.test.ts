@@ -448,6 +448,17 @@ describe("overlap / dedup", () => {
     ]);
   });
 
+  test("never rewrites a Markdown link without a closing parenthesis", () => {
+    const keys = buildSourceRelevanceKeys({
+      relPath: "old-note.md",
+      title: "Old Note",
+    });
+    const inventory = inventoryDocumentLinks("Open [x](<old-note.md>.", {
+      sourceKeys: keys,
+    });
+    expect(inventory.tokens).toEqual([]);
+  });
+
   test("dedupes identical destination spans across scanner kinds", () => {
     const duplicateA: LinkInventoryToken = {
       kind: "wiki",

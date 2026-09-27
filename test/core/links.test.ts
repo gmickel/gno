@@ -351,6 +351,13 @@ Real [link](page.md).`;
       ["[x](my%20note.md)", ["my%20note.md"]],
       ['[x](note.md "Title")', ["note.md"]],
       ["[x](a\\(b\\).md)", ["a(b).md"]],
+      ["[x](a(b).md)", ["a(b).md"]],
+      // A space inside nested parentheses is still unescaped.
+      ["[x](foo(bar baz).md)", []],
+      // No closing parenthesis after the destination: not a link.
+      ["[x](<note.md>", []],
+      ["[x](<note.md>. More text.", []],
+      ['[x](<note.md> "Title"', []],
       ["[Plan]([[Project Plan]])", ["Project Plan"]],
     ])("CommonMark link rules %p", (markdown, targets) => {
       expect(parse(markdown).map(({ targetRef }) => targetRef)).toEqual(
