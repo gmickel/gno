@@ -27,7 +27,7 @@ import {
   formatMemoryStatusLines,
 } from "../../core/memory-diagnostics";
 import { formatVectorPartitionLines } from "../../core/vector-partition-status";
-import { BUDGET_ERROR_CODES } from "../../ingestion/file-worker";
+import { BUDGET_ERROR_CODES } from "../../ingestion/file-processor";
 import { ModelCache } from "../../llm/cache";
 import { getActivePreset, resolveModelUri } from "../../llm/registry";
 import { getConnectorVerificationTargets } from "../../serve/connectors";

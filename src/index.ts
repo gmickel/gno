@@ -7,6 +7,7 @@
  */
 
 import { runCli } from "./cli/run";
+import { FILE_PROCESSOR_CHILD_ENV } from "./ingestion/file-child-env";
 import { resetModelManager } from "./llm/nodeLlamaCpp/lifecycle";
 import { IMPORT_CHILD_ENV } from "./sessions/import-child-env";
 
@@ -75,6 +76,15 @@ process.on("SIGINT", () => {
 if (process.env[IMPORT_CHILD_ENV] === "1") {
   const { runImportChild } = await import("./sessions/import-child");
   await runImportChild();
+  await cleanupAndExit(0);
+}
+
+// A compiled executable re-run as the file processor child (see
+// src/ingestion/file-processor.ts) prepares files for its parent until the
+// parent disconnects.
+if (process.env[FILE_PROCESSOR_CHILD_ENV] === "1") {
+  const { runFileProcessorChild } = await import("./ingestion/file-child");
+  await runFileProcessorChild();
   await cleanupAndExit(0);
 }
 

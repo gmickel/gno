@@ -18,7 +18,7 @@ import type { Converter, ConvertInput, ConvertResult } from "../../types";
 
 import { corruptError, permissionError, tooLargeError } from "../../errors";
 import { ADAPTER_VERSIONS } from "../../versions";
-import { isPasswordProtectedXlsx } from "../markitdownTs/adapter";
+import { isPasswordProtectedXlsx } from "../shared/ooxml-protection";
 import { sheetToMarkdown } from "./sheet-markdown";
 
 const CONVERTER_ID = "adapter/xlsx" as const;

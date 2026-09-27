@@ -20,7 +20,7 @@ import {
   loadConfig,
   writeConfigWarningsToStderr,
 } from "../../config";
-import { BUDGET_ERROR_CODES } from "../../ingestion/file-worker";
+import { BUDGET_ERROR_CODES } from "../../ingestion/file-processor";
 import { SqliteAdapter } from "../../store/sqlite/adapter";
 import { assertCliSessionBinding } from "../session-binding";
 

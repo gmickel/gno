@@ -1479,7 +1479,11 @@ phase (metadata, code regions, change-journal structure, chunking, link
 extraction) run in one worker per process, one file at a time; the worker is
 terminated at either limit, mid-phase, and replaced for the next file.
 Database reads and writes stay on the main thread. A standalone compiled
-executable runs the phases in-process and checks the limits between phases.
+executable, which cannot start the worker, runs the phases in a child process
+of itself (internal environment flag) under the same limits; the child's
+resident memory counts toward `conversion.maxMemoryMb` (Linux `/proc`, `ps`
+elsewhere; time only on Windows). A processor that cannot start fails the file
+with `ISOLATION_UNAVAILABLE`; nothing is prepared without the budget.
 A file over either limit is recorded with error code `TIMEOUT` or
 `MEMORY_LIMIT` (the message names the running phase), stays unindexed, and is
 retried by the next sync; the rest of the run continues. `update` and `index` always print such a

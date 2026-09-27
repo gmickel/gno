@@ -18,10 +18,17 @@ import type {
 
 import { buildLargeWorkbook } from "../../scripts/generate-large-workbook";
 import { defaultChunker } from "../../src/ingestion/chunker";
-import { fileWorkersStarted } from "../../src/ingestion/file-worker";
+import {
+  type FileProcessorBackendKind,
+  fileProcessorsStarted,
+  useFileProcessorBackend,
+} from "../../src/ingestion/file-processor";
 import { SyncService } from "../../src/ingestion/sync";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
+
+/** Both file processor backends: worker (source), child (compiled). */
+const BACKENDS: FileProcessorBackendKind[] = ["worker", "child"];
 
 describe("SyncService conversion budget (fn-198)", () => {
   let adapter: SqliteAdapter;
@@ -48,6 +55,7 @@ describe("SyncService conversion budget (fn-198)", () => {
   });
 
   afterEach(async () => {
+    useFileProcessorBackend(null);
     await adapter.close();
     await safeRm(tmpDir);
   });
@@ -110,72 +118,86 @@ describe("SyncService conversion budget (fn-198)", () => {
     expect(await lastErrorCode("report.xlsx")).toBeNull();
   }, 30_000);
 
-  test("the memory ceiling stops every file and recycles the file worker", async () => {
-    await writeWorkbookAndNote();
-    const service = new SyncService();
+  test.each(BACKENDS)(
+    "%s backend: the memory ceiling stops every file and recycles the processor",
+    async (backend) => {
+      useFileProcessorBackend(backend);
+      await writeWorkbookAndNote();
+      const service = new SyncService();
 
-    const stopped = await service.syncCollection(collection, adapter, {
-      limits: { maxMemoryMb: 1 },
-    });
+      const stopped = await service.syncCollection(collection, adapter, {
+        limits: { maxMemoryMb: 1 },
+      });
 
-    expect(stopped.errors).toEqual(
-      expect.arrayContaining(
-        ["report.xlsx", "notes.md"].map((relPath) =>
-          expect.objectContaining({ relPath, code: "MEMORY_LIMIT" })
+      expect(stopped.errors).toEqual(
+        expect.arrayContaining(
+          ["report.xlsx", "notes.md"].map((relPath) =>
+            expect.objectContaining({ relPath, code: "MEMORY_LIMIT" })
+          )
         )
-      )
-    );
-    const startedBeforeRetry = fileWorkersStarted();
+      );
+      const startedBeforeRetry = fileProcessorsStarted();
 
-    const retried = await service.syncCollection(collection, adapter);
+      const retried = await service.syncCollection(collection, adapter);
 
-    expect(retried.filesErrored).toBe(0);
-    // The stopped worker was discarded; the retry needed a fresh one.
-    expect(fileWorkersStarted()).toBeGreaterThan(startedBeforeRetry);
-    expect(await lastErrorCode("report.xlsx")).toBeNull();
-    expect(await lastErrorCode("notes.md")).toBeNull();
-  }, 30_000);
+      expect(retried.filesErrored).toBe(0);
+      // The stopped worker was discarded; the retry needed a fresh one.
+      expect(fileProcessorsStarted()).toBeGreaterThan(startedBeforeRetry);
+      expect(await lastErrorCode("report.xlsx")).toBeNull();
+      expect(await lastErrorCode("notes.md")).toBeNull();
+    },
+    30_000
+  );
 
-  test("a Markdown step past its budget is stopped mid-step, named while it runs, and the next file indexes", async () => {
-    // 80,000 table rows: code-region parsing alone takes several seconds.
-    const rows = Array.from(
-      { length: 80_000 },
-      (_, row) => `| row ${row} | \`code ${row}\` | [[n${row}]] | 1.5 |`
-    );
-    await Bun.write(
-      join(root, "big-table.md"),
-      [
-        "# Big",
-        "",
-        "| a | b | c | d |",
-        "| --- | --- | --- | --- |",
-        ...rows,
-      ].join("\n")
-    );
-    await Bun.write(join(root, "notes.md"), "# Notes\n\nPlain note.\n");
-    const events: SlowConversionEvent[] = [];
-    const budgetMs = 1000;
+  test.each(BACKENDS)(
+    "%s backend: a Markdown step past its budget is stopped mid-step, named while it runs, and the next file indexes",
+    async (backend) => {
+      useFileProcessorBackend(backend);
+      // 80,000 table rows: code-region parsing alone takes several seconds.
+      const rows = Array.from(
+        { length: 80_000 },
+        (_, row) => `| row ${row} | \`code ${row}\` | [[n${row}]] | 1.5 |`
+      );
+      await Bun.write(
+        join(root, "big-table.md"),
+        [
+          "# Big",
+          "",
+          "| a | b | c | d |",
+          "| --- | --- | --- | --- |",
+          ...rows,
+        ].join("\n")
+      );
+      await Bun.write(join(root, "notes.md"), "# Notes\n\nPlain note.\n");
+      const events: SlowConversionEvent[] = [];
+      const budgetMs = 1000;
 
-    const started = performance.now();
-    const result = await new SyncService().syncCollection(collection, adapter, {
-      limits: { timeoutMs: budgetMs },
-      onSlowConversion: (event) => events.push(event),
-    });
-    const elapsedMs = performance.now() - started;
+      const started = performance.now();
+      const result = await new SyncService().syncCollection(
+        collection,
+        adapter,
+        {
+          limits: { timeoutMs: budgetMs },
+          onSlowConversion: (event) => events.push(event),
+        }
+      );
+      const elapsedMs = performance.now() - started;
 
-    expect(result.errors).toEqual([
-      expect.objectContaining({
-        relPath: "big-table.md",
-        code: "TIMEOUT",
-        message: expect.stringContaining("Indexing stopped during"),
-      }),
-    ]);
-    expect(await lastErrorCode("notes.md")).toBeNull();
-    expect(elapsedMs).toBeLessThan(2 * budgetMs);
-    expect(events).toEqual([
-      expect.objectContaining({ relPath: "big-table.md", budgetMs }),
-    ]);
-  }, 30_000);
+      expect(result.errors).toEqual([
+        expect.objectContaining({
+          relPath: "big-table.md",
+          code: "TIMEOUT",
+          message: expect.stringContaining("Indexing stopped during"),
+        }),
+      ]);
+      expect(await lastErrorCode("notes.md")).toBeNull();
+      expect(elapsedMs).toBeLessThan(2 * budgetMs);
+      expect(events).toEqual([
+        expect.objectContaining({ relPath: "big-table.md", budgetMs }),
+      ]);
+    },
+    30_000
+  );
 
   test("in-process preparation checks the budget between steps: that file stops, the next run retries it", async () => {
     await Bun.write(join(root, "slow.md"), "# Slow\n\nBody.\n");

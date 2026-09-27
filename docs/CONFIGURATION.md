@@ -238,10 +238,12 @@ What is enforced, and how:
   worker.
 - Database reads and writes stay in the main process, after the worker has
   finished the file, so a stopped file is never half written.
-- A standalone compiled executable cannot start the worker. It processes
-  files in-process and checks the limits only between steps, so a step that
-  is already running finishes first. npm and desktop installs use the
-  worker.
+- A standalone compiled executable cannot start the worker; it runs the
+  same work in a child process of itself, stopped and replaced the same way.
+  Its memory counts the child too (read from `/proc` on Linux and `ps` on
+  macOS; on Windows the child is held to the time limit only). If neither
+  can start, the file fails with `ISOLATION_UNAVAILABLE` rather than being
+  processed without its budget.
 
 While a file is still being processed after 10 seconds, or after half its
 budget if that is sooner, `gno update` and `gno index` name it on stderr:

@@ -50,13 +50,13 @@ import {
 } from "./compiled-context";
 import { extractDocumentMetadata } from "./document-metadata";
 import {
-  canUseFileWorker,
   defaultConversionMemoryMb,
   type FileBudgetLimits,
+  type FileProcessorHooks,
   memoryFailure,
-  prepareInWorker,
+  prepareInProcessor,
   timeoutFailure,
-} from "./file-worker";
+} from "./file-processor";
 import { projectGraph } from "./graph-reconciliation";
 import {
   type PrepareFailure,
@@ -594,10 +594,9 @@ export class SyncService {
 
       // 6. Prepare the file (convert, then everything CPU-bound before the
       // database write) under one per-file time and memory budget. The file
-      // worker is stopped mid-step at the budget; in-process preparation
-      // (compiled executables, injected test doubles) checks it between steps.
+      // processor is stopped mid-step at the budget; in-process preparation
+      // (injected test doubles only) checks it between steps.
       const budget = this.fileBudget(options, limits.timeoutMs);
-      slowNotice = this.scheduleSlowNotice(collection, entry, options, budget);
       const recordFailure = async (
         failure: PrepareFailure,
         previousStructure: DocumentStructureSnapshot | null | undefined
@@ -689,8 +688,20 @@ export class SyncService {
           previous,
         },
         budget,
-        (structure) => {
-          previousStructure = structure;
+        {
+          onPrevious: (structure) => {
+            previousStructure = structure;
+          },
+          // The file's clock and slow-file notice start when processing does.
+          onStarted: () => {
+            budget.startedAt = performance.now();
+            slowNotice = this.scheduleSlowNotice(
+              collection,
+              entry,
+              options,
+              budget
+            );
+          },
         }
       );
       if (!prepared.ok) {
@@ -951,23 +962,26 @@ export class SyncService {
   }
 
   /**
-   * Prepare one file: in the terminable file worker when this service uses
-   * the default pipeline and chunker and the runtime can start the worker;
-   * otherwise in-process, checking the budget between steps.
+   * Prepare one file. With the default pipeline and chunker it runs in the
+   * terminable file processor (worker, or a child process for compiled
+   * executables), which fails closed if it cannot start. A service built
+   * with injected test doubles prepares in-process, checking the budget
+   * between steps.
    */
   private prepare(
     request: PrepareFileRequest,
     budget: FileBudget,
-    onPrevious: (structure: DocumentStructureSnapshot) => void
+    hooks: Required<FileProcessorHooks>
   ): Promise<PrepareOutcome> {
-    if (this.defaultPreparation && canUseFileWorker()) {
-      return prepareInWorker(request, budget, { onPrevious });
+    if (this.defaultPreparation) {
+      return prepareInProcessor(request, budget, hooks);
     }
+    hooks.onStarted();
     let phase: PreparePhase = "previous revision";
     return prepareFile(request, {
       convert: (input) => this.pipeline.convert(input),
       chunker: this.chunker,
-      onPrevious,
+      onPrevious: hooks.onPrevious,
       onPhase: (next) => {
         phase = next;
       },
