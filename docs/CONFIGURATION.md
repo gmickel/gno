@@ -321,8 +321,12 @@ open, or return the file, the link does not become part of the link graph,
 and an excluded folder stays excluded. The target must match the way Obsidian
 matches it: a file other than a note needs its extension (`[[diagram]]` does
 not find `diagram.png`), `.md` is optional for notes, and a Markdown link must
-name the file's path relative to the note (again with `.md` optional:
-`[plan](Archive/Plan)` finds `Archive/Plan.md`). Hidden folders such
+name the file's path relative to the note. For this existence check `.md`
+is optional in a Markdown link too: `[plan](Archive/Plan)` finds an unindexed
+`Archive/Plan.md`. It does not make such a link resolve: a Markdown link
+without `.md` to a note that _is_ indexed is still reported as an unresolved
+local target, so write `[plan](Archive/Plan.md)` for links you want in the
+link graph. Hidden folders such
 as `.obsidian` and `.trash` are not checked, and a symlink counts only when it
 points to a file inside the workspace. If a folder cannot be read, links into
 it stay unresolved and the audit says once that the check was incomplete.

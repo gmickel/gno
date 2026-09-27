@@ -988,7 +988,9 @@ file is opened, and no graph edge is created. Wiki targets match files by the wo
 link rules; a non-Markdown target needs its extension, `.md` is optional. A
 Markdown link matches only the file at its resolved path (NFC,
 case-insensitive); as for wiki links, `.md` is optional, so `[x](Note)` matches
-an unindexed `Note.md` (an indexed `Note.md` is not outside the index). A
+an unindexed `Note.md`. An indexed `Note.md` (compared under the same NFC,
+Unicode-lowercase key) is not outside the index, and Markdown link resolution
+itself stays exact-path, so that link remains in `links.local-targets`. A
 target missing from the listing stays unresolved; an unreadable folder or the
 file bound makes the listing incomplete, which the `links.outside-index` rule
 message states once.

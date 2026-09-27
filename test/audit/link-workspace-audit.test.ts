@@ -479,6 +479,40 @@ describe("extensionless Markdown links", () => {
     expect(of("links.local-targets")).toContain("Gone");
     expect(JSON.stringify(report)).not.toContain("Secret.md");
   });
+
+  const NFC_NOTE = "\u00dcberblick";
+  test.each([
+    // Non-ASCII case difference, which SQLite NOCASE does not fold.
+    ["unicode case", NFC_NOTE.toLowerCase(), "NFC" as const],
+    // An index row stored in NFD (as a decomposing filesystem can report
+    // it), injected so the case runs on every platform.
+    ["nfd index row", NFC_NOTE, "NFD" as const],
+  ])(
+    "an extensionless link to an indexed note keeps its status (%s)",
+    async (_label, linkTarget, storedForm) => {
+      fixture = await openParityFixture();
+      await fixture.write("work", `${NFC_NOTE}.md`, "# Overview\n");
+      await fixture.write(
+        "work",
+        "Links.md",
+        `# Links\n\n[a](${linkTarget})\n`
+      );
+      await fixture.sync();
+      fixture.store
+        .getRawDb()
+        .run("UPDATE documents SET rel_path = ? WHERE rel_path = ?", [
+          `${NFC_NOTE}.md`.normalize(storedForm),
+          `${NFC_NOTE}.md`,
+        ]);
+      const report = await audit(fixture);
+      const of = (ruleId: string) =>
+        findings(report, ruleId)
+          .filter(({ subject }) => subject === "gno://work/Links.md")
+          .map(({ detail }) => String(detail.normalizedTarget));
+      expect(of("links.outside-index")).toEqual([]);
+      expect(of("links.local-targets")).toEqual([linkTarget]);
+    }
+  );
 });
 
 describe("audit bounds (A13)", () => {
