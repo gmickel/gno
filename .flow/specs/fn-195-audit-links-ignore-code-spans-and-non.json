@@ -8,12 +8,75 @@
   "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-195-audit-links-ignore-code-spans-and-non",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-195-audit-links-ignore-code-spans-and-non.1": 1
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "review_attempts": [
+    {
+      "artifact_sha256": "a4fc860020b1f1f456e626f206f6f0b8f6fe9ce4674358735bb9e3d8b1074e58",
+      "backend": "codex",
+      "base_sha": "8e3046389e0a87c0041a1690302cb01ee725fbcc",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-5d84fe52d63c0aecf998062345f4ae20",
+            "classification": "introduced",
+            "findingId": "finding-5d84fe52d63c0aecf998062345f4ae20",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-aca79a5d8f101ae98f3f691ed0b7f738",
+            "classification": "introduced",
+            "findingId": "finding-aca79a5d8f101ae98f3f691ed0b7f738",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "b26be44cbb08a6a9b936f14e042f9972448c7dc1",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 193004,
+      "output_sha256": "6f0a080be7bb8245c4223e94cd9282937d05611dd64a6faf79a645fb8fef0ca4",
+      "reservation_id": "5f5db181870944feadad83a2b1ca944b",
+      "round_consumed": true,
+      "scope": "impl:fn-195-audit-links-ignore-code-spans-and-non.1",
+      "superseded_by": null,
+      "task": "fn-195-audit-links-ignore-code-spans-and-non.1",
+      "timestamp": "2026-09-27T08:00:03.619909Z",
+      "tool_calls": 10,
+      "verdict": "NEEDS_WORK"
+    }
+  ],
+  "review_hash_epoch": {},
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-195-audit-links-ignore-code-spans-and-non.1": 0
+  },
   "spec_path": ".flow/specs/fn-195-audit-links-ignore-code-spans-and-non.md",
   "status": "open",
   "title": "Audit links: ignore code spans and non-Markdown sources, classify Markdown links to unindexed files",
@@ -28,5 +91,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-27T06:51:38.083073Z"
+  "updated_at": "2026-09-27T08:00:03.625491Z"
 }
