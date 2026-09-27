@@ -14,9 +14,15 @@ import {
   createVectorStatsPort,
 } from "../../store/vector";
 import {
+  rebuildPartitionIndex,
+  syncPartitionIndex,
+} from "../../store/vector/partition-index";
+import {
   dropVectorPartition,
+  storedVectorPartition,
   type VectorPartitionStatus,
 } from "../../store/vector/status";
+import { loadSqliteVec } from "../../store/vector/variants";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -76,7 +82,9 @@ function inferDimensions(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Sync vec0 index with content_vectors (add missing, remove orphans).
+ * Sync the vec0 index with stored vectors (add missing, remove orphans): the
+ * active vector partition's variants, or legacy `content_vectors` on an
+ * index that never activated a partition.
  */
 export async function vecSync(
   options: VecOptions = {}
@@ -111,6 +119,21 @@ export async function vecSync(
 
   try {
     const db = store.getRawDb();
+
+    const partition = storedVectorPartition(db, modelUri);
+    if (partition) {
+      if (!(await loadSqliteVec(db))) {
+        return {
+          success: false,
+          error: "sqlite-vec not available. Cannot sync index.",
+        };
+      }
+      return {
+        success: true,
+        ...syncPartitionIndex(db, partition),
+        model: modelUri,
+      };
+    }
 
     // Infer dimensions from stored vectors for this model
     const dimensions = inferDimensions(db, modelUri);
@@ -154,7 +177,9 @@ export async function vecSync(
 }
 
 /**
- * Rebuild vec0 index from content_vectors (drop + recreate + repopulate).
+ * Rebuild the vec0 index (drop + recreate + repopulate) from the active
+ * vector partition's variants, or from legacy `content_vectors` on an index
+ * that never activated a partition.
  */
 export async function vecRebuild(
   options: VecOptions = {}
@@ -189,6 +214,21 @@ export async function vecRebuild(
 
   try {
     const db = store.getRawDb();
+
+    const partition = storedVectorPartition(db, modelUri);
+    if (partition) {
+      if (!(await loadSqliteVec(db))) {
+        return {
+          success: false,
+          error: "sqlite-vec not available. Cannot rebuild index.",
+        };
+      }
+      return {
+        success: true,
+        count: rebuildPartitionIndex(db, partition),
+        model: modelUri,
+      };
+    }
 
     // Infer dimensions from stored vectors for this model
     const dimensions = inferDimensions(db, modelUri);

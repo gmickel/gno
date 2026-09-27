@@ -2188,12 +2188,11 @@ Find semantically similar documents using vector embeddings.
 
 **Algorithm:**
 
-1. Get all chunks for the source document
-2. Retrieve each chunk's stored embedding from the active vector partition (legacy `content_vectors` only before any partition activates); no model is loaded
-3. Compute average embedding across all chunks
-4. Search for nearest neighbors using sqlite-vec
-5. Exclude self and filter by collection if not crossCollection
-6. Return top N similar documents with scores
+1. Take the stored vector of the source document's first chunk (the lowest-seq chunk whose vector is current) from the active vector partition (legacy `content_vectors` only before any partition activates); no model is loaded. This is the same source vector `gno similar`, `GET /api/doc/:id/similar` and graph similarity edges use, so scores match across surfaces
+2. Normalize it to unit length
+3. Search for nearest neighbors using sqlite-vec
+4. Exclude self and filter by collection if not crossCollection
+5. Return top N similar documents with scores
 
 **Errors:**
 

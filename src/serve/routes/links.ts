@@ -8,7 +8,7 @@ import type { SqliteAdapter } from "../../store/sqlite/adapter";
 import type { ServerContext } from "../context";
 
 import {
-  readStoredDocumentVectors,
+  readSimilaritySourceVectors,
   resolveStoredVectorSource,
   similarityHitDocuments,
   storedVectorSearchOptions,
@@ -313,7 +313,7 @@ export async function handleDocBacklinks(
  *   ?threshold=0.5 (min similarity score 0-1, default 0.5)
  *   ?crossCollection=true (search across all collections, default false)
  *
- * Algorithm: seq=0 embedding (fallback to first available) -> vector search -> exclude self
+ * Algorithm: first-chunk source vector (readSimilaritySourceVectors) -> vector search -> exclude self
  */
 export async function handleDocSimilar(
   ctx: ServerContext,
@@ -378,18 +378,14 @@ export async function handleDocSimilar(
     } satisfies SimilarDocResponse);
   }
 
-  // Stored vector of the document's first chunk, from the active partition
+  // Similarity source vector (first chunk, unit length), active partition
   const db = store.getRawDb();
   const source = resolveStoredVectorSource(db, ctx.vectorIndex.model);
   let embedding: Float32Array | undefined;
   try {
-    [embedding] =
-      readStoredDocumentVectors(
-        db,
-        source,
-        [{ id: doc.id, mirrorHash: doc.mirrorHash }],
-        { firstChunkOnly: true }
-      ).get(doc.id) ?? [];
+    embedding = readSimilaritySourceVectors(db, source, [
+      { id: doc.id, mirrorHash: doc.mirrorHash },
+    ]).get(doc.id);
   } catch (e) {
     return errorResponse(
       "RUNTIME",
@@ -409,20 +405,6 @@ export async function handleDocSimilar(
         crossCollection,
       },
     } satisfies SimilarDocResponse);
-  }
-  const dimensions = embedding.length;
-
-  // Normalize embedding for cosine similarity
-  let norm = 0;
-  for (let i = 0; i < dimensions; i++) {
-    const val = embedding[i] ?? 0;
-    norm += val * val;
-  }
-  norm = Math.sqrt(norm);
-  if (norm > 0) {
-    for (let i = 0; i < dimensions; i++) {
-      embedding[i] = (embedding[i] ?? 0) / norm;
-    }
   }
 
   // Search for similar docs (request extra to account for self-exclusion, filtering)

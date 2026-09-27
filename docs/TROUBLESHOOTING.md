@@ -433,9 +433,14 @@ bypassing them.
 
 ### "Daemon not refreshing after I changed config"
 
-V1 `gno daemon` reads config on startup.
+A running `gno daemon` or `gno serve` picks up added, removed or edited
+collections from the config file within about two seconds (and before the next
+request). Files already in a newly added collection are indexed by
+`gno update`. If a change does not show, check the config file is valid:
+`gno doctor` reports a config it cannot read.
 
-If you add/remove collections or change patterns while it is running, restart it:
+Other settings (models, gateway, findings, session automation) are read on
+startup. After changing those, restart it:
 
 ```bash
 # Foreground: Ctrl+C, then re-run gno daemon
@@ -751,7 +756,8 @@ upgrade, run `gno embed` again so stored vectors match the new formatter.
 
 `gno doctor` reports this as the `embedding-fingerprint` check. It shows the
 current fingerprint, pending/stale chunks, legacy empty-fingerprint vectors, and
-stored fingerprint groups. Warnings mean vector search can still run, but you
+stored fingerprint groups (on an index embedded since 2.7, the active vector
+partition and its chunk count). Warnings mean vector search can still run, but you
 should re-embed:
 
 ```bash

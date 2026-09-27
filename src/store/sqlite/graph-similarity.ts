@@ -6,7 +6,7 @@
 import type { Database } from "bun:sqlite";
 
 import {
-  readStoredDocumentVectors,
+  readSimilaritySourceVectors,
   resolveStoredVectorSource,
 } from "../vector/stored-vectors";
 
@@ -25,13 +25,6 @@ export interface StoredSimilarityEdge {
   target: string;
   /** Cosine similarity clamped to [0, 1] */
   score: number;
-}
-
-function unit(vector: Float32Array): Float32Array {
-  let norm = 0;
-  for (const value of vector) norm += value * value;
-  norm = Math.sqrt(norm);
-  return norm > 0 ? vector.map((value) => value / norm) : vector;
 }
 
 function dot(a: Float32Array, b: Float32Array): number {
@@ -61,15 +54,14 @@ export function storedSimilarityEdges(
         ORDER BY docid
       `)
       .all(JSON.stringify(docids));
-    const vectors = readStoredDocumentVectors(
+    const vectors = readSimilaritySourceVectors(
       db,
       resolveStoredVectorSource(db, model),
-      documents,
-      { firstChunkOnly: true }
+      documents
     );
     const nodes = documents.flatMap((document) => {
-      const vector = vectors.get(document.id)?.[0];
-      return vector ? [{ ...document, vector: unit(vector) }] : [];
+      const vector = vectors.get(document.id);
+      return vector ? [{ ...document, vector }] : [];
     });
     const edges: StoredSimilarityEdge[] = [];
     for (const node of nodes) {

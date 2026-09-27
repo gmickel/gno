@@ -11,19 +11,34 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import type { ToolContext } from "../../../src/mcp/server";
+import type { ServerContext } from "../../../src/serve/context";
+
 import { getIndexDbPath } from "../../../src/app/constants";
 import { runCli } from "../../../src/cli/run";
 import { DEFAULT_FTS_TOKENIZER } from "../../../src/config/types";
 import { getActivePreset } from "../../../src/llm/registry";
+import { handleSimilar } from "../../../src/mcp/tools/links";
+import { handleDocSimilar } from "../../../src/serve/routes/links";
 import { SqliteAdapter } from "../../../src/store/sqlite/adapter";
+import { createVectorIndexPort } from "../../../src/store/vector/sqlite-vec";
 import { safeRm } from "../../helpers/cleanup";
 import {
   ALPHA_BETA_SCORE,
   embedStoredSimilarityVectors,
   SIMILARITY_DOCS,
+  SIMILARITY_VECTORS,
 } from "../../helpers/stored-similarity-fixture";
 
 let testDir: string;
+const MULTI_DOC = "# Multi\n\nMulti notes.\n";
+/** First chunk leans to beta; the mean of both chunks leans to gamma. */
+const MULTI_VECTORS = [
+  [0, 1, 0],
+  [0, 0, 1],
+];
+/** cos([0,1,0], beta): the first-chunk rule's score for multi -> beta. */
+const MULTI_BETA_SCORE = 0.1 / Math.hypot(0.9, 0.1);
 /** `gno init` writes no model settings, so the default preset is active. */
 const DEFAULT_CONFIG = {
   version: "1.0" as const,
@@ -74,6 +89,7 @@ beforeAll(async () => {
   for (const [relPath, body] of Object.entries(SIMILARITY_DOCS)) {
     await writeFile(join(notesDir, relPath), body);
   }
+  await writeFile(join(notesDir, "multi.md"), MULTI_DOC);
   process.env.GNO_CONFIG_DIR = join(testDir, "config");
   process.env.GNO_DATA_DIR = join(testDir, "data");
   process.env.GNO_CACHE_DIR = join(testDir, "cache");
@@ -84,9 +100,26 @@ beforeAll(async () => {
   const opened = await store.open(getIndexDbPath(), DEFAULT_FTS_TOKENIZER);
   if (!opened.ok) throw new Error(opened.error.message);
   try {
+    // multi.md gets a second chunk: its first chunk and the mean of its
+    // chunks point different ways, so the source-vector rule shows in scores.
+    const multi = await store.getDocument("notes", "multi.md");
+    const mirror = multi.ok ? multi.value?.mirrorHash : undefined;
+    if (!mirror) throw new Error("multi.md not indexed");
+    const chunks = await store.upsertChunks(mirror, [
+      { seq: 0, pos: 0, text: MULTI_DOC, startLine: 1, endLine: 3 },
+      {
+        seq: 1,
+        pos: MULTI_DOC.length,
+        text: "More.",
+        startLine: 4,
+        endLine: 4,
+      },
+    ]);
+    if (!chunks.ok) throw new Error(chunks.error.message);
     await embedStoredSimilarityVectors(
       store.getRawDb(),
-      getActivePreset(DEFAULT_CONFIG).embed
+      getActivePreset(DEFAULT_CONFIG).embed,
+      { ...SIMILARITY_VECTORS, "multi.md": MULTI_VECTORS }
     );
   } finally {
     await store.close();
@@ -158,4 +191,71 @@ test("gno graph --include-similar emits similarity edges", async () => {
     "gno://notes/alpha.md gno://notes/beta.md",
   ]);
   expect(similar[0]?.weight).toBeCloseTo(ALPHA_BETA_SCORE, 5);
+});
+
+test("gno similar scores the first chunk alike on CLI, MCP and REST", async () => {
+  const cliRun = await cli(
+    "similar",
+    "gno://notes/multi.md",
+    "--threshold",
+    "0",
+    "--json"
+  );
+  expect(cliRun.code).toBe(0);
+  const cliScores = (
+    JSON.parse(cliRun.stdout) as {
+      similar: Array<{ uri: string; score: number }>;
+    }
+  ).similar;
+
+  const model = getActivePreset(DEFAULT_CONFIG).embed;
+  const store = new SqliteAdapter();
+  const opened = await store.open(getIndexDbPath(), DEFAULT_FTS_TOKENIZER);
+  if (!opened.ok) throw new Error(opened.error.message);
+  try {
+    const mcp = await handleSimilar(
+      { ref: "gno://notes/multi.md", threshold: 0 },
+      {
+        store,
+        config: DEFAULT_CONFIG,
+        collections: [],
+        toolMutex: { acquire: async () => () => {} },
+        isShuttingDown: () => false,
+      } as unknown as ToolContext
+    );
+    expect(mcp.isError).toBeFalsy();
+    const mcpScores = (
+      mcp.structuredContent as {
+        similar: Array<{ uri: string; score: number }>;
+      }
+    ).similar;
+
+    const vectorIndex = await createVectorIndexPort(store.getRawDb(), {
+      model,
+      dimensions: 3,
+    });
+    if (!vectorIndex.ok) throw new Error(vectorIndex.error.message);
+    const multi = await store.getDocument("notes", "multi.md");
+    const docid = multi.ok ? (multi.value?.docid ?? "") : "";
+    const rest = await handleDocSimilar(
+      { store, vectorIndex: vectorIndex.value } as ServerContext,
+      docid,
+      new URL(
+        `http://localhost/api/doc/${encodeURIComponent(docid)}/similar?threshold=0`
+      )
+    );
+    expect(rest.status).toBe(200);
+    const restScores = (
+      (await rest.json()) as {
+        similar: Array<{ uri: string; score: number }>;
+      }
+    ).similar;
+
+    for (const scores of [cliScores, mcpScores, restScores]) {
+      expect(scores[0]?.uri).toBe("gno://notes/beta.md");
+      expect(scores[0]?.score).toBeCloseTo(MULTI_BETA_SCORE, 5);
+    }
+  } finally {
+    await store.close();
+  }
 });

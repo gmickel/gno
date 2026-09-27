@@ -16,6 +16,7 @@ import {
   resolveHttpGatewayConfig,
 } from "../../mcp/http-security";
 import { startBackgroundRuntime } from "../../serve/background-runtime";
+import { refreshResidentConfig } from "../../serve/resident-request";
 import { handleResidentStatus, handleStatus } from "../../serve/routes/api";
 import { createMcpHttpGateway } from "../../serve/routes/mcp";
 import { SessionsError } from "../../sessions/types";
@@ -106,6 +107,8 @@ export const authorizeDaemonStatus = async (
 ): Promise<Response> => {
   const authorization = await gateway.security.authorize(request, server);
   if (!authorization.ok) return authorization.response;
+  const refreshFailure = await refreshResidentConfig(runtime);
+  if (refreshFailure) return refreshFailure;
   try {
     enforceCollectionEgress({
       collections: runtime.config.collections,
@@ -132,13 +135,15 @@ export const authorizeDaemonStatus = async (
   }
 };
 
-export function handleDaemonAppStatus(
+export async function handleDaemonAppStatus(
   runtime: ResidentRuntime,
   host: string
-): Promise<Response> | Response {
+): Promise<Response> {
   if (!isHttpGatewayLoopbackBind(host)) {
     return new Response(null, { status: 404 });
   }
+  const refreshFailure = await refreshResidentConfig(runtime);
+  if (refreshFailure) return refreshFailure;
   return handleStatus(runtime.ctxHolder.current, {
     getResidentStatus: () => runtime.getStatus(),
   });

@@ -53,25 +53,30 @@ interface PartitionVectorRow {
   embedding: Uint8Array;
 }
 
+const unitVector = (vector: Float32Array): Float32Array => {
+  let norm = 0;
+  for (const value of vector) norm += value * value;
+  norm = Math.sqrt(norm);
+  return norm > 0 ? vector.map((value) => value / norm) : vector;
+};
+
 /**
- * Chunk vectors of current active documents, ordered by chunk seq, keyed by
- * document id. Partition vectors count only while their owner still yields
- * the stored input (the rule vector search applies). `firstChunkOnly` keeps
- * the lowest-seq vector per document.
+ * The similarity source vector of each current active document, keyed by
+ * document id: the stored vector of its first chunk (lowest seq whose vector
+ * is current), unit-normalized. Every similarity surface (CLI, MCP, REST and
+ * graph edges) uses this one rule, so scores agree. Partition vectors count
+ * only while their owner still yields the stored input (the rule vector
+ * search applies).
  */
-export function readStoredDocumentVectors(
+export function readSimilaritySourceVectors(
   db: Database,
   source: StoredVectorSource,
-  documents: StoredVectorDocument[],
-  options: { firstChunkOnly?: boolean } = {}
-): Map<number, Float32Array[]> {
-  const vectors = new Map<number, Float32Array[]>();
+  documents: StoredVectorDocument[]
+): Map<number, Float32Array> {
+  const vectors = new Map<number, Float32Array>();
   const add = (documentId: number, blob: Uint8Array): void => {
-    const existing = vectors.get(documentId);
-    if (existing && options.firstChunkOnly) return;
-    const embedding = decodeEmbedding(blob);
-    if (existing) existing.push(embedding);
-    else vectors.set(documentId, [embedding]);
+    if (!vectors.has(documentId))
+      vectors.set(documentId, unitVector(decodeEmbedding(blob)));
   };
   if (documents.length === 0) return vectors;
 
@@ -95,7 +100,7 @@ export function readStoredDocumentVectors(
         JSON.stringify(documents.map((document) => document.id))
       );
     for (const row of rows) {
-      if (options.firstChunkOnly && vectors.has(row.documentId)) continue;
+      if (vectors.has(row.documentId)) continue;
       const input = formatDocForEmbedding(
         row.text,
         row.title ?? undefined,

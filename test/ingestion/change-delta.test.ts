@@ -162,9 +162,12 @@ See [[New Target]] and [new guide](./new.md#Next).
   });
 
   test("discloses unavailable prior structure without inventing removals", () => {
-    const next = extractDocumentStructure("# Current\n\n[[Target]]\n", "a.md", {
-      date: "2026-01-01T00:00:00.000Z",
-    });
+    const next = extractDocumentStructure(
+      "# Current\n\n[[Target]]\n",
+      "a.md",
+      { date: "2026-01-01T00:00:00.000Z" },
+      { markdownSource: true }
+    );
     const result = diffDocumentStructure(undefined, next);
 
     expect(result.history).toBe("unavailable");
@@ -206,4 +209,58 @@ See [[New Target]] and [new guide](./new.md#Next).
       truncated: true,
     });
   });
+});
+
+describe("change journal link gating", () => {
+  let adapter: SqliteAdapter;
+  let testDir = "";
+
+  beforeEach(async () => {
+    testDir = await mkdtemp(join(tmpdir(), "gno-change-links-test-"));
+    adapter = new SqliteAdapter();
+    expect(
+      (await adapter.open(join(testDir, "index.sqlite"), "unicode61")).ok
+    ).toBe(true);
+  });
+
+  afterEach(async () => {
+    await adapter.close();
+    await safeRm(testDir);
+  });
+
+  test.each(["notes.txt", "script.py"])(
+    "records content changes but no link changes for non-Markdown %s",
+    async (fileName) => {
+      const collectionDir = join(testDir, "src");
+      await mkdir(collectionDir);
+      const sources: Collection = {
+        name: "src",
+        path: collectionDir,
+        pattern: "**/*",
+        include: [],
+        exclude: [],
+      };
+      expect((await adapter.syncCollections([sources])).ok).toBe(true);
+      const path = join(collectionDir, fileName);
+      await Bun.write(path, "# see [[Old]] and [old](./old.md)\nx = 1\n");
+      const service = new SyncService();
+      await service.syncCollection(sources, adapter);
+      await Bun.write(path, "# see [[New]] and [new](./new.md)\nx = 2\n");
+      await service.syncCollection(sources, adapter);
+
+      const changes = await adapter.listDocumentChanges();
+      expect(changes.ok).toBe(true);
+      if (!changes.ok) return;
+      expect(changes.value.changes.map(({ kind }) => kind)).toEqual([
+        "create",
+        "update",
+      ]);
+      for (const change of changes.value.changes) {
+        expect(change.structureDelta?.links).toEqual({
+          added: [],
+          removed: [],
+        });
+      }
+    }
+  );
 });
