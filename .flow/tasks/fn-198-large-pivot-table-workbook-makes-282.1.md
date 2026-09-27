@@ -30,6 +30,8 @@ What changed:
   - The parent now SIGKILLs every child processor on exit (which the CLI's SIGINT path reaches through process.exit), on SIGTERM (re-raised when unowned, so the exit status is unchanged), on SIGINT when nothing else owns it, on disposeFileProcessor(), and in the resident runtime's dispose.
   - On Linux the child arms PR_SET_PDEATHSIG through Bun's built-in bun:ffi (libc prctl), so it also dies with a SIGKILLed or crashed parent. Elsewhere it exits between steps once its parent is gone; the documented gap is a parent SIGKILLed on macOS or Windows.
   - Tests (red on 5f7c5fa6): compiled CLI parent sent SIGTERM, SIGINT and SIGKILL mid-step leaves the child gone within 1 s; dispose kills a busy child within 1 s.
+- **R2, graceful owners (round 6).** The child-kill SIGTERM handler is prepended, so it counts the real owners before once() handlers remove themselves. It re-raises only when it is the sole listener, so serve and daemon finish their own graceful shutdown and keep their exit status.
+  - Tests (red on d72d8c61): a once(SIGTERM) async shutdown finishes with exit code 7 while its busy child is killed within 1 s; the compiled daemon exits 0 after its shutdown message with its child killed within 1 s.
 - **R3.** The slow-file notice fires while a step runs. Budget stops are listed in update output, `gno status` and the audit.
 
 Live QA (evidence in `.flow/tmp/qa-fn-198-large-pivot-table-workbook-makes-282/round3/`):
@@ -41,10 +43,10 @@ Live QA (evidence in `.flow/tmp/qa-fn-198-large-pivot-table-workbook-makes-282/r
 
 Tier: session model (in-host worker)
 
-stage: impl-review - ran (conductor-owned codex reviews: NEEDS_WORK rounds 1-4; findings addressed in c53774e2, 2a65ba89, f64cfbfa, 07480f5b, 99088a8b)
+stage: impl-review - ran (conductor-owned codex reviews: NEEDS_WORK rounds 1-5; findings addressed in c53774e2, 2a65ba89, f64cfbfa, 07480f5b, 99088a8b, a289878f)
 
 stage: plan-sync - skipped(config: planSync.enabled != true)
 ## Evidence
-- Commits: f68f7ab82f1ee47f5c01985e39b1ec1cef831a58, 787bad2e317ca7179097060201c7a2632eb5c12c, ae2c795d47b7324325caff5f9a61179c2683f726, c53774e2087c29429dd2baee8216572d29abd3ac, 42eb83e200eef8a0d7606d00f633dc2f97964f6c, 1a3eeeb1282ea151dd08366ec6993c7e2cc2123b, 2a65ba89aa6b2372473753804a12898bab14eba6, f64cfbfa9d6c9148f97af2991711963b0939e5e1, 0dd0eb014355225e7c58c2c984184c2fbe895937, 07480f5b940674825715e620fca41f11e803d2bd, 5f7c5fa6d88da367e137889a8cb3d620b538054d, 99088a8b2c07d4e7549a03a38af865c4ba7f9493
-- Tests: mise exec bun@1.4.2 -- bun run lint:check (0 errors, 45 pre-existing warnings), mise exec bun@1.4.2 -- bun run docs:verify, mise exec bun@1.4.2 -- bun test: 5990 pass, 0 fail, compiled CLI SIGTERM/SIGINT/SIGKILL mid-step: child gone < 1 s (fails on 5f7c5fa6: child alive, reparented, 130% CPU at 3 s), disposeFileProcessor kills a busy child < 1 s and fails its file (red on 5f7c5fa6), compiled smoke: 80k-row table stopped at 1000 ms, note added, 2.3 s, 1000 small notes: 2124 ms vs 2138 ms on 5f7c5fa6, gno.sh gno-sh-fn198 ca6dd0f: check, typecheck, test (431), build
+- Commits: f68f7ab82f1ee47f5c01985e39b1ec1cef831a58, 787bad2e317ca7179097060201c7a2632eb5c12c, ae2c795d47b7324325caff5f9a61179c2683f726, c53774e2087c29429dd2baee8216572d29abd3ac, 42eb83e200eef8a0d7606d00f633dc2f97964f6c, 1a3eeeb1282ea151dd08366ec6993c7e2cc2123b, 2a65ba89aa6b2372473753804a12898bab14eba6, f64cfbfa9d6c9148f97af2991711963b0939e5e1, 0dd0eb014355225e7c58c2c984184c2fbe895937, 07480f5b940674825715e620fca41f11e803d2bd, 5f7c5fa6d88da367e137889a8cb3d620b538054d, 99088a8b2c07d4e7549a03a38af865c4ba7f9493, d72d8c61e9ee6d2fa141e8e5b5d682ca49a133dd, a289878f0b6817086557cab05f5b5f6c2b7b32a3
+- Tests: mise exec bun@1.4.2 -- bun run lint:check (0 errors, 45 pre-existing warnings), mise exec bun@1.4.2 -- bun run docs:verify, mise exec bun@1.4.2 -- bun test: 5991 pass, 1 fail (test/eval/acceptance/fixtures.test.ts forward/reverse at the bun 5 s default timeout; 296 Markdown docs x 2 indexes take ~4.0 s vs ~3.5 s on base; base also failed it once at 5032 ms; passes 2 of 3 runs in isolation), graceful once(SIGTERM) owner: GRACEFUL_FINISHED, exit 7, busy child killed < 1 s (red on d72d8c61), compiled daemon SIGTERM: shutdown message, exit 0, child killed < 1 s (red on d72d8c61), compiled CLI SIGTERM/SIGINT/SIGKILL and dispose: child gone < 1 s, compiled smoke: 80k-row table stopped at 1000 ms, note added, 1.9 s
 - PRs:
