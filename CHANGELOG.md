@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Indexing a large Excel workbook no longer runs away. On 2.8.2, one workbook with several large sheets and pivot tables made `gno update` run at full CPU for close to an hour, reach tens of gigabytes of memory and write nothing, while 2.8.1 indexed the same file in seconds. The new code-span detection ran the Markdown parser over the converted workbook, which is one large table per sheet, and the parser's table handling slows with the square of a table's cells. Converted documents (PDF, Office, plain text, records) no longer go through the Markdown parser, and Markdown notes over 1 MB, or with a single table of more than 5,000 cells, use a linear scan for code instead. A generated workbook of that shape now indexes in about 9 s with a 3.3 GB peak.
+
+### Added
+
+- Per-file conversion budget. PDF, Word, Excel and PowerPoint files now convert in a worker that is stopped when a file runs past `conversion.timeoutMs` (default 60 s) or GNO's memory passes `conversion.maxMemoryMb` (default half of physical memory, at least 2 GB). The file is recorded as `TIMEOUT` or `MEMORY_LIMIT` and the rest of the collection still indexes; the next update tries it again. Before, the 60 s conversion timeout could not interrupt Office conversions at all. A file still converting after 10 s is named on stderr by `gno update` and `gno index`, and stopped files are listed in `gno update` output, `gno status` and the `gno audit` freshness finding. See [Conversion budget](docs/CONFIGURATION.md#conversion-budget).
+
 ## [2.8.2] - 2026-09-27
 
 ### Fixed

@@ -44,6 +44,7 @@ export type {
   LanguageDetectorPort,
   ProcessDecision,
   SkippedEntry,
+  SlowConversionEvent,
   SyncOptions,
   SyncResult,
   WalkConfig,

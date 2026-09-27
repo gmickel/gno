@@ -20,6 +20,11 @@ import type {
   RecordAdapter,
 } from "./types";
 
+import {
+  canIsolateConversion,
+  type ConversionBudget,
+  convertInWorker,
+} from "./budget";
 import { canonicalize, mirrorHash } from "./canonicalize";
 import { internalError, outputTooLargeError } from "./errors";
 import { type ConverterRegistry, createDefaultRegistry } from "./registry";
@@ -27,12 +32,15 @@ import { type ConverterRegistry, createDefaultRegistry } from "./registry";
 export class ConversionPipeline {
   private registry: ConverterRegistry | null = null;
   private initPromise: Promise<void> | null = null;
+  /** Only the default registry can be rebuilt inside a conversion worker. */
+  private readonly defaultRegistry: boolean;
 
   /**
    * Create a pipeline with default registry.
    * Registry is lazily initialized on first use.
    */
   constructor(registry?: ConverterRegistry) {
+    this.defaultRegistry = registry === undefined;
     if (registry) {
       this.registry = registry;
     }
@@ -138,6 +146,31 @@ export class ConversionPipeline {
         ),
       };
     }
+  }
+
+  /**
+   * Convert a file under a per-file time and memory budget. Converters for
+   * binary formats run in a worker that is stopped when the file overruns
+   * (TIMEOUT / MEMORY_LIMIT); native Markdown and plain text, custom
+   * registries and compiled executables convert in-process.
+   */
+  async convertWithBudget(
+    input: ConvertInput,
+    budget: ConversionBudget
+  ): Promise<PipelineResult> {
+    const converter = this.defaultRegistry
+      ? await this.ensureRegistry()
+          .then((registry) => registry.select(input.mime, input.ext))
+          .catch(() => undefined)
+      : undefined;
+    if (
+      !converter ||
+      converter.id.startsWith("native/") ||
+      !canIsolateConversion()
+    ) {
+      return this.convert(input);
+    }
+    return convertInWorker(input, budget);
   }
 
   /** Select a streaming multi-record adapter without reading the full file. */

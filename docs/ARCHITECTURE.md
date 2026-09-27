@@ -181,7 +181,7 @@ File on disk
     │
     ├─[ sourceHash unchanged, active, complete ]─► Skip
     │
-    ▼ Converter (MIME detection → Markdown)
+    ▼ Converter (MIME detection → Markdown; PDF/Office in a budgeted worker)
     │
     ▼ Canonicalize (NFC, normalize whitespace)
     │
@@ -672,7 +672,7 @@ The `doc_links` table stores:
 - Position (line/column for editor integration)
 - Optional anchor (#section) and display text
 
-Links are extracted during sync from Markdown sources only, excluding frontmatter, HTML comments, inline code spans, and fenced or indented code blocks, as Obsidian does. Plain text, source code, data files and converted documents produce no links; their content stays searchable.
+Links are extracted during sync from Markdown sources only, excluding frontmatter, HTML comments, inline code spans, and fenced or indented code blocks, as Obsidian does. Plain text, source code, data files and converted documents produce no links; their content stays searchable. Code regions come from the CommonMark parser only for Markdown notes up to 1 MB with no table over 5,000 cells (its table handling slows with the square of a table's cells); larger notes use a linear scan that finds fenced blocks and code spans but not indented code.
 
 ## Technical Notes
 

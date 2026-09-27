@@ -23,6 +23,11 @@ ftsTokenizer: snowball english
 # Raise for long embedding passes on slow disks.
 # busyTimeoutMs: 60000
 
+# Per-file conversion budget for PDF/Office files (see "Conversion budget").
+# conversion:
+#   timeoutMs: 60000
+#   maxMemoryMb: 8192
+
 # Trusted local CLI project affinity
 projectAffinity:
   enabled: true
@@ -199,6 +204,45 @@ ranking unchanged. Chunk boundaries affect semantic retrieval and selected
 evidence spans. Hold content-type boosts and other ranking settings constant
 when testing structural changes; boosting a type is a separate intervention.
 No chunk size is promised to improve retrieval for every corpus.
+
+## Conversion budget
+
+GNO converts PDF, Word, Excel and PowerPoint files to Markdown in a separate
+worker, one file at a time, under a per-file budget:
+
+```yaml
+conversion:
+  timeoutMs: 120000 # per file; default 60000 (60 s)
+  maxMemoryMb: 8192 # default: half of physical memory, at least 2048
+```
+
+- `timeoutMs` is the wall-clock time one file may spend converting, in whole
+  milliseconds from 1000 through 86400000.
+- `maxMemoryMb` is the resident memory the GNO process may reach while a file
+  converts, in whole MB from 256 through 1048576. It measures the whole
+  process, not just the conversion.
+
+A file that runs past either limit is stopped. GNO records it with the error
+code `TIMEOUT` or `MEMORY_LIMIT`, leaves it unindexed and goes on with the rest
+of the collection. The next `gno update` or `gno index` (or resident sync)
+tries the file again. If a file keeps being stopped, raise the limit that
+stopped it, or exclude the file.
+
+While a file is still converting after 10 seconds, or after half its budget if
+that is sooner, `gno update` and `gno index` name it on stderr:
+
+```text
+Still converting work/reports/pivot-report.xlsx after 10s (budget 60s)
+```
+
+`gno update` output, `gno status` (under "Stopped at conversion budget") and
+the `gno audit` finding `freshness.index-revision` name a stopped file and
+its code.
+
+Markdown and plain-text files are not converted in the worker and have no
+budget; the work done on them after conversion scales linearly with their
+size. A standalone compiled executable cannot start the worker and converts
+in-process without a budget. npm and desktop installs use the worker.
 
 ## Project affinity
 

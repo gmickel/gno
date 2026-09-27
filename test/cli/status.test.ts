@@ -94,6 +94,7 @@ function statusResult(): StatusResult {
       collections: [],
     },
     backgroundIssues: [],
+    budgetStops: [],
   };
 }
 
@@ -278,3 +279,21 @@ function setOptionalEnv(name: string, value: string | undefined): void {
   }
   process.env[name] = value;
 }
+
+test("lists files stopped at the conversion budget in terminal output (fn-198)", () => {
+  const result = statusResult();
+  if (!result.success) throw new Error("Expected status fixture");
+  result.budgetStops = [
+    {
+      collection: "wb",
+      relPath: "reports/pivot.xlsx",
+      code: "MEMORY_LIMIT",
+      message:
+        "Conversion stopped: resident memory 8300 MB exceeded the 8192 MB budget",
+    },
+  ];
+
+  expect(formatStatus(result, {})).toContain(
+    "Stopped at conversion budget (retried by the next update):\n  wb/reports/pivot.xlsx [MEMORY_LIMIT] Conversion stopped"
+  );
+});

@@ -65,6 +65,7 @@ export type ConvertErrorCode =
   | "UNSUPPORTED"
   | "TOO_LARGE"
   | "TIMEOUT"
+  | "MEMORY_LIMIT"
   | "CORRUPT"
   | "PERMISSION"
   | "IO"

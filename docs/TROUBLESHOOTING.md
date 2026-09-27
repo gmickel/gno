@@ -228,6 +228,40 @@ qpdf --check /path/to/file.pdf
 Replace or re-export the PDF, then run `gno update` or **Update All** in the Web
 UI. A changed source hash makes GNO try the repaired file again.
 
+### A large spreadsheet never finishes indexing, or is stopped with `TIMEOUT` / `MEMORY_LIMIT`
+
+GNO 2.8.2 could spend hours and tens of gigabytes on one large Excel workbook
+(for example one with pivot tables and several big sheets) and write nothing
+to the index. Converted spreadsheet text is one large table per sheet, and
+2.8.2 ran its Markdown code detection over it; that cost grows with the square
+of the table's cells. Current versions never run that detection on converted
+files and bound it on very large Markdown notes, so such a workbook indexes
+in time and memory proportional to its size again.
+
+Each PDF, Word, Excel or PowerPoint file also converts under a per-file
+budget. While a file is still converting after 10 seconds, `gno update` and
+`gno index` print its path:
+
+```text
+Still converting work/reports/pivot-report.xlsx after 10s (budget 60s)
+```
+
+A file that runs past its time budget or pushes GNO's memory past the memory
+budget is stopped and recorded as `TIMEOUT` or `MEMORY_LIMIT`; the rest of the
+collection still indexes. `gno update` output, `gno status` and `gno audit`
+name the file. The next update tries it again.
+
+To let a legitimately large file finish, raise the budget in the config:
+
+```yaml
+conversion:
+  timeoutMs: 300000
+  maxMemoryMb: 12288
+```
+
+To skip it instead, add it to the collection's `exclude` list. See
+[Conversion budget](CONFIGURATION.md#conversion-budget).
+
 ### Saved Context Capsule reverification failed
 
 Inspect the registration in its index:

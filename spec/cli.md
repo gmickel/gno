@@ -1472,6 +1472,19 @@ individual virtual document. The closed `record.adapter` identity contains the
 adapter ID, version, and configuration fingerprint. `get` and `multi-get`
 preserve the same fields.
 
+PDF, Word, Excel and PowerPoint conversion runs in a worker under the per-file
+budget `conversion.timeoutMs` (default 60000) and `conversion.maxMemoryMb`
+(default half of physical memory, at least 2048; process resident memory while
+the file converts). A file over either limit is stopped and recorded with error
+code `TIMEOUT` or `MEMORY_LIMIT`, stays unindexed, and is retried by the next
+sync; the rest of the run continues. `update` and `index` always print such a
+file in terminal output as `[CODE] <relPath>: <message>` (other per-file
+errors stay `--verbose` only), and write
+`Still converting <collection>/<relPath> after <n>s (budget <m>s)` to stderr
+once a conversion has run 10 seconds or half its budget, whichever is sooner.
+`gno status` lists stopped files under "Stopped at conversion budget" in
+terminal output (JSON output is unchanged).
+
 File/export adapter iteration has a 60-second deadline in addition to the byte,
 record, metadata, and total-character caps. A partial import that retains valid
 siblings exits successfully but is never silent: terminal output includes the

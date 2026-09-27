@@ -185,9 +185,18 @@ export interface SyncOptions {
   /** Conversion limits override */
   limits?: {
     maxBytes?: number;
+    /** Per-file conversion wall-clock budget (config `conversion.timeoutMs`). */
     timeoutMs?: number;
     maxOutputChars?: number;
+    /** Process memory ceiling while a file converts (`conversion.maxMemoryMb`). */
+    maxMemoryMb?: number;
   };
+  /**
+   * Internal: called once when one file's conversion has run longer than
+   * `SLOW_CONVERSION_NOTICE_MS` (or half its budget, if sooner), naming the
+   * file while it is still running.
+   */
+  onSlowConversion?: (event: SlowConversionEvent) => void;
   /**
    * Max concurrent file processing (default: 1).
    * Higher values improve throughput but increase memory pressure.
@@ -205,6 +214,15 @@ export interface SyncOptions {
    * Wins over collection config when set. Distinct from egress policy.
    */
   sourceAvailability?: "any" | "local";
+}
+
+/** A file whose conversion is taking longer than the notice threshold. */
+export interface SlowConversionEvent {
+  collection: string;
+  /** Collection-relative path of the file being converted. */
+  relPath: string;
+  elapsedMs: number;
+  budgetMs: number;
 }
 
 export type ContentTypeSource =

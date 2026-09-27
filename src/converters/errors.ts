@@ -69,7 +69,7 @@ export function convertError(
  * Check if an error code indicates a retryable failure.
  */
 export function isRetryable(code: ConvertErrorCode): boolean {
-  return ["TIMEOUT", "IO", "ADAPTER_FAILURE"].includes(code);
+  return ["TIMEOUT", "MEMORY_LIMIT", "IO", "ADAPTER_FAILURE"].includes(code);
 }
 
 /**

@@ -39,13 +39,19 @@ import {
 } from "../config";
 import { createJsonlAdapter } from "../converters/adapters/jsonl/adapter";
 import { createTranscriptAdapter } from "../converters/adapters/transcript/adapter";
+import { defaultConversionMemoryMb } from "../converters/budget";
 import { getDefaultMimeDetector, type MimeDetector } from "../converters/mime";
 import { MARKDOWN_CONVERTER_ID } from "../converters/native/markdown";
 import {
   type ConversionPipeline,
   getDefaultPipeline,
 } from "../converters/pipeline";
-import { DEFAULT_LIMITS, type RecordAdapter } from "../converters/types";
+import {
+  type ConvertInput,
+  DEFAULT_LIMITS,
+  type PipelineResult,
+  type RecordAdapter,
+} from "../converters/types";
 import {
   diffDocumentStructure,
   extractDocumentStructure,
@@ -98,6 +104,10 @@ const TX_BATCH_SIZE = 50;
 
 /** Max concurrency to prevent resource exhaustion */
 const MAX_CONCURRENCY = 16;
+
+/** A conversion running this long (or half its budget) is reported once. */
+export const SLOW_CONVERSION_NOTICE_MS = 10_000;
+const BYTES_PER_MB = 1_048_576;
 
 /**
  * Current ingest schema version.
@@ -820,16 +830,19 @@ export class SyncService {
         return { relPath: entry.relPath, status: "unchanged" };
       }
 
-      // 6. Convert via pipeline
-      const convertResult = await this.pipeline.convert({
-        sourcePath: entry.absPath,
-        relativePath: entry.relPath,
-        collection: collection.name,
-        bytes,
-        mime: mime.mime,
-        ext: mime.ext,
-        limits,
-      });
+      // 6. Convert via pipeline, under the per-file time and memory budget
+      const convertResult = await this.convertWithBudget(
+        {
+          sourcePath: entry.absPath,
+          relativePath: entry.relPath,
+          collection: collection.name,
+          bytes,
+          mime: mime.mime,
+          ext: mime.ext,
+          limits,
+        },
+        options
+      );
 
       if (!convertResult.ok) {
         // Record error (checked)
@@ -904,9 +917,15 @@ export class SyncService {
         mime.ext,
         contentTypeRules
       );
-      // Code ranges come from a full Markdown parse: compute them once and
-      // share them with the change journal and link extraction.
-      const excludedRanges = getExcludedRanges(artifact.markdown);
+      // Compute code ranges once and share them with the change journal and
+      // link extraction. Only Markdown sources may reach the Markdown parser:
+      // converted documents (a spreadsheet is one huge table) use the linear
+      // scanner, as they did before 2.8.2.
+      const isMarkdownSource =
+        artifact.meta.converterId === MARKDOWN_CONVERTER_ID;
+      const excludedRanges = getExcludedRanges(artifact.markdown, {
+        markdownSource: isMarkdownSource,
+      });
       const previousStructure = await this.readPreviousStructure(
         store,
         existing,
@@ -1030,14 +1049,13 @@ export class SyncService {
         // 14. Extract and store links (wiki and markdown links). Only
         // Markdown sources carry links, as in Obsidian: link-shaped text in
         // code, plain text or converted documents stays searchable prose.
-        const parsedLinks =
-          artifact.meta.converterId === MARKDOWN_CONVERTER_ID
-            ? parseLinks(
-                artifact.markdown,
-                buildLineOffsets(artifact.markdown),
-                excludedRanges
-              )
-            : [];
+        const parsedLinks = isMarkdownSource
+          ? parseLinks(
+              artifact.markdown,
+              buildLineOffsets(artifact.markdown),
+              excludedRanges
+            )
+          : [];
 
         const linkInputs: DocLinkInput[] = [];
         for (const link of parsedLinks) {
@@ -1192,6 +1210,48 @@ export class SyncService {
     };
   }
 
+  /**
+   * Convert one file under its budget. A conversion still running after
+   * `SLOW_CONVERSION_NOTICE_MS` (or half its budget) is reported once through
+   * `onSlowConversion`, so an operator can see which file a run is stuck on.
+   */
+  private async convertWithBudget(
+    input: ConvertInput,
+    options: SyncOptions
+  ): Promise<PipelineResult> {
+    const budget = {
+      timeoutMs: input.limits.timeoutMs,
+      maxMemoryBytes:
+        (options.limits?.maxMemoryMb ?? defaultConversionMemoryMb()) *
+        BYTES_PER_MB,
+    };
+    const started = performance.now();
+    const notice = options.onSlowConversion
+      ? setTimeout(
+          () => {
+            options.onSlowConversion?.({
+              collection: input.collection,
+              relPath: input.relativePath,
+              elapsedMs: Math.round(performance.now() - started),
+              budgetMs: budget.timeoutMs,
+            });
+          },
+          Math.min(SLOW_CONVERSION_NOTICE_MS, budget.timeoutMs / 2)
+        )
+      : undefined;
+    // Test doubles and custom pipelines may implement convert() only.
+    const pipeline = this.pipeline as ConversionPipeline & {
+      convertWithBudget?: ConversionPipeline["convertWithBudget"];
+    };
+    try {
+      return pipeline.convertWithBudget
+        ? await pipeline.convertWithBudget(input, budget)
+        : await pipeline.convert(input);
+    } finally {
+      clearTimeout(notice);
+    }
+  }
+
   private async readPreviousStructure(
     store: StorePort,
     existing: DocumentRow | null,
@@ -1214,7 +1274,9 @@ export class SyncService {
       // Unchanged content (a re-ingest) reuses the current parse.
       current !== undefined && content.value === current.markdown
         ? current.excludedRanges
-        : getExcludedRanges(content.value)
+        : getExcludedRanges(content.value, {
+            markdownSource: existing.converterId === MARKDOWN_CONVERTER_ID,
+          })
     );
   }
 

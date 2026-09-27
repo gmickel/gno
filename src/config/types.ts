@@ -429,6 +429,22 @@ export const DEFAULT_MODEL_PRESETS: ModelPreset[] = [
   },
 ];
 
+/**
+ * Per-file conversion budget. A file that overruns either limit is recorded
+ * with TIMEOUT or MEMORY_LIMIT and retried by the next update.
+ */
+export const ConversionConfigSchema = z
+  .object({
+    /** Wall-clock budget for converting one file, in ms (default 60000). */
+    timeoutMs: z.number().int().min(1000).max(86_400_000).optional(),
+    /**
+     * Resident-memory ceiling while a file converts, in MB (default: half
+     * of physical memory, at least 2048).
+     */
+    maxMemoryMb: z.number().int().min(256).max(1_048_576).optional(),
+  })
+  .strict();
+
 export const ModelConfigSchema = z.object({
   /** Active preset ID */
   activePreset: z.string().default("slim-tuned"),
@@ -607,6 +623,9 @@ export const ConfigSchema = z.object({
 
   /** Optional index-wide chunk size/overlap; omitted preserves legacy defaults. */
   chunking: ChunkingConfigSchema.optional(),
+
+  /** Per-file conversion budget; omitted fields use the runtime defaults. */
+  conversion: ConversionConfigSchema.optional(),
 
   /** Model configuration */
   models: ModelConfigSchema.optional(),

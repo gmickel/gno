@@ -28,7 +28,11 @@ import {
   withContentTypeRules,
 } from "../../ingestion";
 import { type EmbedResult, embedStageOutcome } from "./embed";
-import { formatSyncResultLines, initStore } from "./shared";
+import {
+  formatSyncResultLines,
+  initStore,
+  reportSlowConversion,
+} from "./shared";
 
 /**
  * Options for index command.
@@ -202,7 +206,11 @@ export async function index(options: IndexOptions = {}): Promise<IndexResult> {
           collections,
           store,
           withContentTypeRules(
-            { gitPull: options.gitPull, runUpdateCmd: true },
+            {
+              gitPull: options.gitPull,
+              runUpdateCmd: true,
+              onSlowConversion: reportSlowConversion,
+            },
             config
           )
         );

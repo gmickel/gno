@@ -9,6 +9,8 @@ import { describe, expect, test } from "bun:test";
 import {
   getExcludedRanges,
   isExcluded,
+  MAX_PARSED_CODE_REGION_CHARS,
+  MAX_PARSED_TABLE_CELLS,
   rangeIntersectsExcluded,
 } from "../../src/ingestion/strip";
 
@@ -303,5 +305,69 @@ describe("rangeIntersectsExcluded", () => {
 
   test("returns false for empty excluded ranges", () => {
     expect(rangeIntersectsExcluded(0, 10, [])).toBe(false);
+  });
+});
+
+describe("code-region parse budget (fn-198)", () => {
+  const CODE_BLOCKS =
+    "\n\nIntro `span` paragraph.\n\n    indented code line\n\n```\nfenced\n```\n";
+  const tableBlock = (rows: number): string =>
+    [
+      "| a | b | c | d |",
+      "| --- | --- | --- | --- |",
+      ...Array.from(
+        { length: rows },
+        (_, row) => `| row ${row} | \`code ${row}\` | text | 1.5 |`
+      ),
+    ].join("\n");
+  const rowsOverBudget = Math.ceil(MAX_PARSED_TABLE_CELLS / 5) + 1;
+  const halfTable = tableBlock(Math.floor(rowsOverBudget / 2));
+
+  test("a spreadsheet-sized table stays linear and keeps code spans excluded", () => {
+    // 20,000 rows: the GFM table parser is quadratic in cells and took
+    // minutes on this before the budget; the scanner takes milliseconds.
+    const markdown = tableBlock(20_000);
+    const spans = getExcludedRanges(markdown).filter(
+      (range) => range.kind === "inline_code"
+    );
+    expect(spans).toHaveLength(20_000);
+    expect(markdown.slice(spans[0]!.start, spans[0]!.end)).toBe("`code 0`");
+  });
+
+  test.each([
+    { label: "small Markdown table", body: tableBlock(10), parsed: true },
+    {
+      label: "two tables under the cell budget, split by a blank line",
+      body: `${halfTable}\n\n${halfTable}`,
+      parsed: true,
+    },
+    {
+      label: "one table over the cell budget",
+      body: tableBlock(rowsOverBudget),
+      parsed: false,
+    },
+    {
+      label: "Markdown over the size budget",
+      body: "prose line\n".repeat(
+        Math.ceil(MAX_PARSED_CODE_REGION_CHARS / 11) + 1
+      ),
+      parsed: false,
+    },
+    {
+      label: "non-Markdown converted output",
+      body: tableBlock(10),
+      markdownSource: false,
+      parsed: false,
+    },
+  ])("$label: parser used = $parsed", ({ body, markdownSource, parsed }) => {
+    const found = new Set(
+      getExcludedRanges(`${body}${CODE_BLOCKS}`, { markdownSource }).map(
+        (range) => range.kind
+      )
+    );
+    // Only the parser detects indented code; both paths find fences and spans.
+    expect(found.has("indented_code")).toBe(parsed);
+    expect(found.has("fenced_code")).toBe(true);
+    expect(found.has("inline_code")).toBe(true);
   });
 });
