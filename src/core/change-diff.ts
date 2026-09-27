@@ -12,7 +12,7 @@ import type {
 
 import { parseFrontmatter } from "../ingestion/frontmatter";
 import { buildLineOffsets } from "../ingestion/position";
-import { getExcludedRanges } from "../ingestion/strip";
+import { type ExcludedRange, getExcludedRanges } from "../ingestion/strip";
 import { normalizeMarkdownPath, normalizeWikiName, parseLinks } from "./links";
 import { extractSections } from "./sections";
 
@@ -107,9 +107,9 @@ const extractTypedEdges = (markdown: string): string[] => {
 export const extractDocumentStructure = (
   markdown: string,
   relPath: string,
-  dateFields: Readonly<Record<string, string>> | null | undefined
+  dateFields: Readonly<Record<string, string>> | null | undefined,
+  excludedRanges: ExcludedRange[] = getExcludedRanges(markdown)
 ): DocumentStructureSnapshot => {
-  const excludedRanges = getExcludedRanges(markdown);
   const links = parseLinks(markdown, buildLineOffsets(markdown), excludedRanges)
     .map((link) => linkSummary(link, relPath))
     .filter((value): value is string => value !== null);

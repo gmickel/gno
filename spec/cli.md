@@ -968,11 +968,10 @@ connects nothing.
 Links are parsed only from documents converted by the Markdown converter
 (`native/markdown`); plain text, source code, data files and converted
 documents store no links and produce no link findings, while staying
-searchable. The parser skips frontmatter, HTML comments, inline code spans
-(paired within one paragraph, heading, list item or table row, a backslash
-before the closing backtick being literal), fenced code blocks, and indented
-code blocks (four columns of indentation after a blank line, except inside a
-list). A link outside code on the same line still counts.
+searchable. The parser skips frontmatter, HTML comments, and code as a
+CommonMark + GFM parser reads it: inline code spans, fenced code blocks and
+indented code blocks, inside blockquotes and list items too (an indented list
+paragraph is not code). A link outside code on the same line still counts.
 
 A plain wiki link, embed, or relative Markdown link from a document in a link
 workspace whose target is not an indexed document but exists as a file inside

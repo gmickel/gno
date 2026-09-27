@@ -365,6 +365,26 @@ Real [link](page.md).`;
         "- [[Prose]]\n    - [[Nested]]\n\n    - [[Loose]]",
         ["Prose", "Nested", "Loose"],
       ],
+      [
+        "indented code right after a heading",
+        "# Heading\n    [[InCode]]\n\n[[Prose]]",
+        ["Prose"],
+      ],
+      [
+        "code span across quoted lines of one paragraph",
+        "> `example\n> [[InCode]]` and [[Prose]]",
+        ["Prose"],
+      ],
+      [
+        "list paragraph after a two-space continuation",
+        "- item\n  continuation\n\n    [[Prose]]",
+        ["Prose"],
+      ],
+      [
+        "list inside a blockquote: span, list paragraph, indented code",
+        "> - item `start\n>   [[InCode]]` and [[Prose]]\n>\n>     [[ListPara]]\n>\n>         [[IndentedCode]]",
+        ["Prose", "ListPara"],
+      ],
     ])("%s", (_name, markdown, targets) => {
       expect(parse(markdown).map(({ targetRef }) => targetRef)).toEqual(
         targets

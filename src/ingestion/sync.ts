@@ -85,7 +85,7 @@ import {
   type SourceContentReaderPort,
   type SourceReadFailure,
 } from "./source-availability";
-import { getExcludedRanges } from "./strip";
+import { type ExcludedRange, getExcludedRanges } from "./strip";
 import { extractTypedMetadata } from "./typed-metadata";
 import { collectionToWalkConfig, DEFAULT_CHUNK_PARAMS } from "./types";
 import { defaultWalker } from "./walker";
@@ -904,14 +904,19 @@ export class SyncService {
         mime.ext,
         contentTypeRules
       );
+      // Code ranges come from a full Markdown parse: compute them once and
+      // share them with the change journal and link extraction.
+      const excludedRanges = getExcludedRanges(artifact.markdown);
       const previousStructure = await this.readPreviousStructure(
         store,
-        existing
+        existing,
+        { markdown: artifact.markdown, excludedRanges }
       );
       const nextStructure = extractDocumentStructure(
         artifact.markdown,
         entry.relPath,
-        extractedMetadata.dateFields
+        extractedMetadata.dateFields,
+        excludedRanges
       );
       const structureDelta = diffDocumentStructure(
         previousStructure,
@@ -1030,7 +1035,7 @@ export class SyncService {
             ? parseLinks(
                 artifact.markdown,
                 buildLineOffsets(artifact.markdown),
-                getExcludedRanges(artifact.markdown)
+                excludedRanges
               )
             : [];
 
@@ -1189,7 +1194,8 @@ export class SyncService {
 
   private async readPreviousStructure(
     store: StorePort,
-    existing: DocumentRow | null
+    existing: DocumentRow | null,
+    current?: { markdown: string; excludedRanges: ExcludedRange[] }
   ): Promise<ReturnType<typeof extractDocumentStructure> | null | undefined> {
     if (!existing) return null;
     if (!existing.mirrorHash) return undefined;
@@ -1204,7 +1210,11 @@ export class SyncService {
     return extractDocumentStructure(
       content.value,
       existing.relPath,
-      existing.dateFields
+      existing.dateFields,
+      // Unchanged content (a re-ingest) reuses the current parse.
+      current !== undefined && content.value === current.markdown
+        ? current.excludedRanges
+        : getExcludedRanges(content.value)
     );
   }
 
