@@ -12,6 +12,7 @@ import { join } from "node:path";
 import type { NormalizedContentTypeRule } from "../../src/config";
 import type { Collection } from "../../src/config/types";
 
+import { TYPED_METADATA_INGEST_VERSION } from "../../src/core/typed-metadata";
 import { INGEST_VERSION, SyncService } from "../../src/ingestion/sync";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
@@ -480,6 +481,30 @@ See [[Link]].
     if (!docResult.ok || !docResult.value) return;
 
     expect(docResult.value.ingestVersion).toBe(INGEST_VERSION);
+  });
+
+  test("an index from the previous parser re-parses table-escaped aliases", async () => {
+    // Typed-metadata coverage reads ingest_version; it must never go back.
+    expect(INGEST_VERSION).toBeGreaterThanOrEqual(
+      TYPED_METADATA_INGEST_VERSION
+    );
+    await writeFile(
+      join(collectionDir, "table.md"),
+      "| Link |\n| --- |\n| [[Target\\|Alias]] |\n"
+    );
+    const syncService = new SyncService();
+    await syncService.syncCollection(collection, adapter);
+    const db = adapter.getRawDb();
+    // Simulate a document indexed by the previous parser.
+    db.run("UPDATE doc_links SET target_ref = 'Target\\'");
+    db.run("UPDATE documents SET ingest_version = ?", [INGEST_VERSION - 1]);
+    await syncService.syncCollection(collection, adapter);
+    const rows = db
+      .query<{ target_ref: string; link_text: string | null }, []>(
+        "SELECT target_ref, link_text FROM doc_links"
+      )
+      .all();
+    expect(rows).toEqual([{ target_ref: "Target", link_text: "Alias" }]);
   });
 
   test("projects frontmatter relations to typed edges after same-batch sync", async () => {

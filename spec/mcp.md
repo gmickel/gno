@@ -361,7 +361,10 @@ modifies source files, config, index rows, graph edges, daemon state, or a
 persisted audit baseline.
 
 Rules report `pass`, `fail`, `skip`, `unavailable`, or `inconclusive`; reports
-are `complete`, `partial`, `changed_during_audit`, or `failed`. Unavailable or
+are `complete`, `partial`, `changed_during_audit`, or `failed`. A passing rule
+may carry `info` findings (`links.outside-index`: link targets that exist as
+files in the link workspace but are not indexed); only `warning` and `error`
+findings fail a rule. Link semantics match `gno audit` (spec/cli.md). Unavailable or
 changing evidence never appears healthy. Stable finding IDs are derived from
 rule, normalized subject/location, and evidence fingerprint. Responses are
 canonically ordered and bounded while retaining exact pre-truncation totals.

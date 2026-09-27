@@ -3,11 +3,20 @@
  */
 
 import { afterEach, describe, expect, test } from "bun:test";
+// node:fs/promises chmod/mkdir/symlink: filesystem structure ops, no Bun equivalent.
+import { chmod, mkdir, symlink } from "node:fs/promises";
+// node:path join: path algebra, no Bun equivalent.
+import { join } from "node:path";
 
 import type { AuditReport } from "../../src/core/audit";
 
 import { ConfigSchema } from "../../src/config/types";
 import { evaluateLinkAudit } from "../../src/core/audit-links";
+import {
+  listWorkspaceFiles,
+  markOutsideIndexLinks,
+  type WorkspaceFileSystem,
+} from "../../src/core/audit-outside-index";
 import { runWorkspaceAudit } from "../../src/core/audit-workspace";
 import { captureAuditLinkSnapshot } from "../../src/store/sqlite/graph-link-resolver";
 import {
@@ -101,6 +110,263 @@ describe("workspace link audit (R7)", () => {
     });
     expect(JSON.stringify(aiOnly.findings)).not.toContain("gno://work/");
   });
+});
+
+/** Files in the vault that are not indexed documents. */
+const writeVaultFile = async (
+  f: LinkWorkspaceFixture,
+  relPath: string,
+  body = "x"
+): Promise<void> => {
+  const path = join(f.vault, relPath);
+  await mkdir(join(path, ".."), { recursive: true });
+  await Bun.write(path, body);
+};
+
+const PARITY_NOTE = [
+  "# Parity",
+  "",
+  "| Link | Kind |",
+  "| --- | --- |",
+  "| [[Roadmap\\|Plan]] | escaped table alias |",
+  "",
+  "![[diagram.png]] ![[Attachments/report.pdf|200]]",
+  "[[Secret]] [[Old Plan]]",
+  "[Title [draft] (v2](Agents/_index.md)",
+  "[[Nowhere]] [[diagram]]",
+  "",
+].join("\n");
+
+const openParityFixture = async (): Promise<LinkWorkspaceFixture> => {
+  const f = await openLinkWorkspaceFixture();
+  await writeVaultFile(f, "Attachments/diagram.png");
+  await writeVaultFile(f, "Attachments/report.pdf");
+  await writeVaultFile(f, "Archive/Old Plan.md", "# Old plan\n");
+  await writeVaultFile(f, ".trash/Nowhere.md", "# Hidden\n");
+  await f.write("work", "_internal/Secret.md", "# Secret\n");
+  await f.write("ai", "Parity.md", PARITY_NOTE);
+  await f.write("ai", "Gallery.md", "# Gallery\n\n![[diagram.png]]\n");
+  await f.reconfigure(
+    f.collections.map((c) =>
+      c.name === "work" ? { ...c, exclude: ["_internal"] } : c
+    )
+  );
+  await f.sync();
+  return f;
+};
+
+describe("files outside the index (Obsidian parity)", () => {
+  test("only genuinely missing targets stay unresolved; the rest is outside-index", async () => {
+    fixture = await openParityFixture();
+    const report = await audit(fixture);
+    const of = (ruleId: string) =>
+      findings(report, ruleId)
+        .filter(({ subject }) => subject === "gno://ai/Parity.md")
+        .map(({ detail }) => detail);
+    // The escaped alias and the bracketed Markdown link resolve; a
+    // non-Markdown target needs its extension, as in Obsidian.
+    const sorted = (values: unknown[]) =>
+      values.map(String).sort((left, right) => left.localeCompare(right));
+    expect(
+      sorted(of("links.local-targets").map((d) => d.normalizedTarget))
+    ).toEqual(["diagram", "nowhere"]);
+    expect(
+      sorted(
+        of("links.outside-index").map((d) =>
+          [d.normalizedTarget, d.resolutionStatus].map(String).join(" ")
+        )
+      )
+    ).toEqual([
+      "attachments/report.pdf outside-index",
+      "diagram.png outside-index",
+      "old plan outside-index",
+      "secret outside-index",
+    ]);
+    const outsideRule = report.rules.find(
+      ({ ruleId }) => ruleId === "links.outside-index"
+    );
+    expect(outsideRule?.status).toBe("pass");
+    expect(outsideRule?.findingCount).toBe(5);
+    expect(
+      report.findings
+        .filter(({ ruleId }) => ruleId === "links.outside-index")
+        .every(({ severity }) => severity === "info")
+    ).toBe(true);
+    // Existence only: nothing about the excluded note beyond the link.
+    expect(JSON.stringify(report)).not.toContain("_internal");
+    // An outside-index link is no edge: Gallery stays an orphan.
+    expect(
+      findings(report, "links.orphans").map(({ subject }) => subject)
+    ).toContain("gno://ai/Gallery.md");
+    const excluded = fixture.store
+      .getRawDb()
+      .query<{ count: number }, []>(
+        "SELECT COUNT(*) AS count FROM documents WHERE rel_path LIKE '_internal/%' AND active = 1"
+      )
+      .get();
+    expect(excluded?.count).toBe(0);
+  });
+
+  test("an incomplete file listing degrades to unresolved with one diagnostic", async () => {
+    fixture = await openParityFixture();
+    const snapshot = captureAuditLinkSnapshot(fixture.store.getRawDb());
+    const marked = await markOutsideIndexLinks(
+      fixture.store.getRawDb(),
+      snapshot,
+      { maxFiles: 0 }
+    );
+    expect(marked.links.some((link) => link.outsideIndex)).toBe(false);
+    const rules = evaluateLinkAudit(marked, {
+      rootUris: [],
+      ignorePathPrefixes: [],
+    });
+    const outside = rules.find(
+      ({ ruleId }) => ruleId === "links.outside-index"
+    );
+    expect(outside?.status).toBe("pass");
+    expect(outside?.findingCount).toBe(0);
+    expect(outside?.message).toContain(
+      "file listing of 1 link workspace was incomplete"
+    );
+    const local = rules.find(({ ruleId }) => ruleId === "links.local-targets");
+    expect(
+      local?.findings?.some(
+        (finding) => finding.evidence[0]?.summary === "ai:diagram.png"
+      )
+    ).toBe(true);
+  });
+
+  /** In-memory filesystem: folders by exact path, symlink targets, files. */
+  const memoryFileSystem = (spec: {
+    folders: Record<string, Array<[string, "file" | "dir" | "link"]>>;
+    links?: Record<string, string | Error>;
+    regularFiles?: string[];
+  }): WorkspaceFileSystem => {
+    const missing = (path: string) =>
+      Object.assign(new Error(`ENOENT: ${path}`), { code: "ENOENT" });
+    return {
+      readDirectory: async (path) => {
+        const entries = spec.folders[path];
+        if (!entries) throw missing(path);
+        return entries.map(([name, kind]) => ({
+          name,
+          isFile: () => kind === "file",
+          isDirectory: () => kind === "dir",
+          isSymbolicLink: () => kind === "link",
+        }));
+      },
+      realPath: async (path) => {
+        const target = spec.links?.[path] ?? path;
+        if (target instanceof Error) throw target;
+        return target;
+      },
+      isRegularFile: async (path) => spec.regularFiles?.includes(path) ?? false,
+    };
+  };
+
+  test("folders with decomposed names are read by their on-disk name", async () => {
+    const root = join("/", "ws");
+    const decomposed = "Cafe\u0301";
+    const listing = await listWorkspaceFiles(root, {
+      fileSystem: memoryFileSystem({
+        folders: {
+          [root]: [[decomposed, "dir"]],
+          [join(root, decomposed)]: [["Menu.png", "file"]],
+        },
+      }),
+    });
+    expect(listing).toEqual({
+      files: ["Caf\u00e9/Menu.png"],
+      complete: true,
+    });
+  });
+
+  test.each([
+    [false, true],
+    [true, false],
+  ])(
+    "a symlink counts only when it resolves to a regular file inside the workspace (unreadable link: %p)",
+    async (withDenied, complete) => {
+      const root = join("/", "ws");
+      const at = (name: string) => join(root, name);
+      const outside = join("/", "elsewhere", "x.png");
+      const links: Array<[string, string | Error]> = [
+        ["good.png", at("real.png")],
+        [
+          "dangling.png",
+          Object.assign(new Error("ENOENT"), { code: "ENOENT" }),
+        ],
+        ["folder.png", at("dir")],
+        ["outside.png", outside],
+        ...(withDenied
+          ? ([
+              [
+                "denied.png",
+                Object.assign(new Error("EACCES"), { code: "EACCES" }),
+              ],
+            ] as Array<[string, Error]>)
+          : []),
+      ];
+      const listing = await listWorkspaceFiles(root, {
+        fileSystem: memoryFileSystem({
+          folders: {
+            [root]: [
+              ["real.png", "file"],
+              ["dir", "dir"],
+              ...links.map(([name]) => [name, "link"] as [string, "link"]),
+            ],
+            [at("dir")]: [],
+          },
+          links: Object.fromEntries(
+            links.map(([name, target]) => [at(name), target])
+          ),
+          regularFiles: [at("real.png"), outside],
+        }),
+      });
+      expect(listing.files.sort((l, r) => l.localeCompare(r))).toEqual([
+        "good.png",
+        "real.png",
+      ]);
+      // Missing or foreign targets are not files; only a read error makes
+      // the listing incomplete.
+      expect(listing.complete).toBe(complete);
+    }
+  );
+
+  test.skipIf(process.platform === "win32")(
+    "on disk, dangling and folder symlinks are not listed as files",
+    async () => {
+      fixture = await openParityFixture();
+      const at = (relPath: string) => join(fixture!.vault, relPath);
+      await symlink(at("Attachments/diagram.png"), at("Attachments/alias.png"));
+      await symlink(at("Attachments/gone.png"), at("Attachments/dangling.png"));
+      await symlink(at("Archive"), at("Attachments/folder.png"));
+      const listing = await listWorkspaceFiles(fixture.vault);
+      expect(listing.files).toContain("Attachments/alias.png");
+      expect(listing.files).not.toContain("Attachments/dangling.png");
+      expect(listing.files).not.toContain("Attachments/folder.png");
+      expect(listing.complete).toBe(true);
+    }
+  );
+
+  test.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "the listing skips hidden and unreadable folders and reports itself incomplete",
+    async () => {
+      fixture = await openParityFixture();
+      const locked = join(fixture.vault, "Locked");
+      await writeVaultFile(fixture, "Locked/Inside.md");
+      await chmod(locked, 0o000);
+      try {
+        const listing = await listWorkspaceFiles(fixture.vault);
+        expect(listing.complete).toBe(false);
+        expect(listing.files).toContain("Attachments/diagram.png");
+        expect(listing.files.some((path) => path.startsWith("."))).toBe(false);
+        expect(listing.files).not.toContain("Locked/Inside.md");
+      } finally {
+        await chmod(locked, 0o755);
+      }
+    }
+  );
 });
 
 describe("audit bounds (A13)", () => {

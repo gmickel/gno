@@ -57,7 +57,6 @@ import {
 } from "../core/links";
 import { extractMemoryScopes } from "../core/memory-record";
 import { normalizeTag, validateTag } from "../core/tags";
-import { TYPED_METADATA_INGEST_VERSION } from "../core/typed-metadata";
 import { defaultChunker } from "./chunker";
 import { persistChunkLayout, prepareChunking } from "./chunking";
 import {
@@ -102,9 +101,12 @@ const MAX_CONCURRENCY = 16;
 /**
  * Current ingest schema version.
  * Increment when ingestion adds new derived data (tags, metadata, etc.)
- * Documents with ingestVersion < INGEST_VERSION will be re-processed.
+ * or changes how it is parsed. Documents with ingestVersion < INGEST_VERSION
+ * will be re-processed. Must stay >= TYPED_METADATA_INGEST_VERSION (tested).
+ * 8: wiki links with a table-escaped alias (`[[Note\|Alias]]`) and Markdown
+ * link text with square brackets parse the way Obsidian renders them.
  */
-export const INGEST_VERSION = TYPED_METADATA_INGEST_VERSION;
+export const INGEST_VERSION = 8;
 const EMPTY_CONTENT_TYPE_RULES_FINGERPRINT =
   fingerprintContentTypeMetadataRules([]);
 const NON_RETRYABLE_CONVERSION_ERROR_CODES = new Set([

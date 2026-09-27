@@ -265,6 +265,32 @@ describe("knowledge integrity audit contract", () => {
     expect(result.exit).toBe("partial");
   });
 
+  test.each([
+    ["info", "pass", "clean"],
+    ["warning", "fail", "findings"],
+  ] as const)(
+    "a passing rule with %s findings reports %s and exits %s",
+    async (severity, status, exit) => {
+      const base = finding("gno://work/a.md");
+      const result = await runAudit({
+        scope,
+        capabilities,
+        captureFingerprints: () => fingerprints,
+        rules: [
+          () => ({
+            ...base,
+            status: "pass",
+            findings: base.findings?.map((draft) => ({ ...draft, severity })),
+          }),
+        ],
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.report.rules[0]?.status).toBe(status);
+      expect(result.exit).toBe(exit);
+    }
+  );
+
   test("runner failures return a versioned failed report and runtime exit", async () => {
     const result = await runAudit({
       scope,

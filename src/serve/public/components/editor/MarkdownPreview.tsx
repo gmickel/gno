@@ -16,6 +16,7 @@ import remarkGfm from "remark-gfm";
 import {
   normalizeWikiName,
   parseTargetParts,
+  splitWikiLinkContent,
   stripWikiMdExt,
 } from "../../../../core/links";
 import { slugifySectionTitle } from "../../../../core/sections";
@@ -103,9 +104,10 @@ function renderMarkdownWithWikiLinks(
   }
 
   return content.replace(WIKI_LINK_REGEX, (match, rawContent: string) => {
-    const [rawTarget, rawAlias] = rawContent.split("|");
-    const displayText = rawAlias?.trim() || rawTarget?.trim() || match;
-    const parsed = parseTargetParts(rawTarget ?? "");
+    const { target: rawTarget, alias: rawAlias } =
+      splitWikiLinkContent(rawContent);
+    const displayText = rawAlias?.trim() || rawTarget.trim() || match;
+    const parsed = parseTargetParts(rawTarget);
     const targetCollection = parsed.collection || collection || "";
     const targetRefKey = normalizeWikiName(stripWikiMdExt(parsed.ref));
     const targetAnchorKey = (parsed.anchor ?? "").trim().toLowerCase();
