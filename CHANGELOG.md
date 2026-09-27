@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `gno audit links`, backlinks, `gno links`, `gno impact` and the link graph no longer treat link-shaped text in code as a link. A wiki link written inside an inline code span, such as `` `[[Note]]` ``, was still read as a link when a single stray backtick appeared earlier in the note, or when another code span ended in a backslash. Indented code blocks are now skipped too, as Obsidian does; nested list items indented by four spaces stay links.
+- Files that are not Markdown notes no longer produce links. A collection that indexes `**/*` used to read `[[...]]` and `[text](path)` strings in Python scripts, JSON or text files and converted documents as links, and `gno audit links` reported them as unresolved. These files stay searchable; they just have no links, as in Obsidian.
+- A relative Markdown link to a file that exists beside the note but is not indexed, such as `[scripts/doctor.sh](scripts/doctor.sh)` in a collection that indexes `**/*.md`, is now an informational `links.outside-index` finding instead of a broken link, as wiki links and embeds already were. GNO only checks that the file exists.
+- The first `gno update` after upgrading re-reads existing files once so these rules take effect.
+
 ## [2.8.1] - 2026-09-27
 
 ### Fixed

@@ -1091,9 +1091,12 @@ URLs are outside the local-link graph. Age is only a review signal when
 false. Use repeatable `--orphan-root` and `--orphan-ignore-prefix` inputs for an
 explicit orphan policy.
 
-In a link workspace, a wiki link or embed whose target is not indexed but
-exists as a file in the workspace (an image, a PDF, a note in an unindexed or
-excluded folder) is listed by `links.outside-index` as an `info` finding
+Links are read only from Markdown notes and never from code spans or code
+blocks, so link-shaped text in scripts, data files, converted documents or
+code examples is not audited. In a link workspace, a wiki link, embed or
+relative Markdown link whose target is not indexed but exists as a file in the
+workspace (an image, a PDF, a script beside the note, a note in an unindexed
+or excluded folder) is listed by `links.outside-index` as an `info` finding
 instead of as an unresolved link. That rule always passes, so these links
 never change the exit code; only targets that do not exist stay in
 `links.local-targets`. See

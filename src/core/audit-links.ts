@@ -16,8 +16,9 @@ import {
 /**
  * 1.1: workspace-wide resolution and reference/resolution/scope evidence.
  * 1.2: `links.outside-index` for workspace files that are not indexed.
+ * 1.3: relative Markdown links to such files are `outside-index` too.
  */
-export const LINK_AUDIT_RULE_VERSION = "1.2" as const;
+export const LINK_AUDIT_RULE_VERSION = "1.3" as const;
 /** Default per-rule cap; runs pass the effective `maxFindings` instead. */
 export const LINK_AUDIT_MAX_FINDINGS_PER_RULE = 1000;
 

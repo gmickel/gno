@@ -965,18 +965,30 @@ Orphans stay "no incoming or outgoing resolved links", with connectivity drawn
 from the whole index even when the audited documents are scoped; a tied link
 connects nothing.
 
-A plain wiki link or embed from a document in a link workspace whose target
-is not an indexed document but exists as a file inside the workspace root (a
-non-Markdown attachment, a note in an unindexed folder, a note excluded by a
-collection pattern) is not reported by `links.local-targets`. It is an `info`
+Links are parsed only from documents converted by the Markdown converter
+(`native/markdown`); plain text, source code, data files and converted
+documents store no links and produce no link findings, while staying
+searchable. The parser skips frontmatter, HTML comments, inline code spans
+(paired within one paragraph, heading, list item or table row, a backslash
+before the closing backtick being literal), fenced code blocks, and indented
+code blocks (four columns of indentation after a blank line, except inside a
+list). A link outside code on the same line still counts.
+
+A plain wiki link, embed, or relative Markdown link from a document in a link
+workspace whose target is not an indexed document but exists as a file inside
+the workspace root (a non-Markdown attachment, a script beside the note, a
+note in an unindexed folder, a note excluded by a collection pattern) is not
+reported by `links.local-targets`. It is an `info`
 finding of `links.outside-index` (evidence kind `outside-index-target`,
 `resolutionStatus: "outside-index"`). That rule stays `pass`, so these
 findings never change the exit code. The check is existence-only: each
 involved workspace root is listed once per run (hidden files and folders
 skipped, symlinked folders not descended, a symlink counted only when it
 resolves to a regular file inside the workspace, at most 200,000 files), no
-file is opened, and no graph edge is created. Targets match files by the workspace
+file is opened, and no graph edge is created. Wiki targets match files by the workspace
 link rules; a non-Markdown target needs its extension, `.md` is optional. A
+Markdown link matches only the file at its resolved path (NFC,
+case-insensitive). A
 target missing from the listing stays unresolved; an unreadable folder or the
 file bound makes the listing incomplete, which the `links.outside-index` rule
 message states once.

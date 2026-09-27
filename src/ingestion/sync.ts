@@ -40,6 +40,7 @@ import {
 import { createJsonlAdapter } from "../converters/adapters/jsonl/adapter";
 import { createTranscriptAdapter } from "../converters/adapters/transcript/adapter";
 import { getDefaultMimeDetector, type MimeDetector } from "../converters/mime";
+import { MARKDOWN_CONVERTER_ID } from "../converters/native/markdown";
 import {
   type ConversionPipeline,
   getDefaultPipeline,
@@ -105,8 +106,10 @@ const MAX_CONCURRENCY = 16;
  * will be re-processed. Must stay >= TYPED_METADATA_INGEST_VERSION (tested).
  * 8: wiki links with a table-escaped alias (`[[Note\|Alias]]`) and Markdown
  * link text with square brackets parse the way Obsidian renders them.
+ * 9: links are extracted from Markdown sources only, and never from code
+ * spans or indented code blocks.
  */
-export const INGEST_VERSION = 8;
+export const INGEST_VERSION = 9;
 const EMPTY_CONTENT_TYPE_RULES_FINGERPRINT =
   fingerprintContentTypeMetadataRules([]);
 const NON_RETRYABLE_CONVERSION_ERROR_CODES = new Set([
@@ -1019,14 +1022,17 @@ export class SyncService {
           });
         }
 
-        // 14. Extract and store links (wiki and markdown links)
-        const excludedRanges = getExcludedRanges(artifact.markdown);
-        const lineOffsets = buildLineOffsets(artifact.markdown);
-        const parsedLinks = parseLinks(
-          artifact.markdown,
-          lineOffsets,
-          excludedRanges
-        );
+        // 14. Extract and store links (wiki and markdown links). Only
+        // Markdown sources carry links, as in Obsidian: link-shaped text in
+        // code, plain text or converted documents stays searchable prose.
+        const parsedLinks =
+          artifact.meta.converterId === MARKDOWN_CONVERTER_ID
+            ? parseLinks(
+                artifact.markdown,
+                buildLineOffsets(artifact.markdown),
+                getExcludedRanges(artifact.markdown)
+              )
+            : [];
 
         const linkInputs: DocLinkInput[] = [];
         for (const link of parsedLinks) {

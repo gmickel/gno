@@ -336,6 +336,40 @@ Real [link](page.md).`;
         targets
       );
     });
+
+    // Code is never a link; a link beside code on the same line still is.
+    test.each([
+      ["code span beside a link", "`[[InCode]]` then [[Prose]]", ["Prose"]],
+      [
+        "stray backtick in an earlier paragraph",
+        "Press the ` key.\n\nSyntax: `[[InCode]]` and [[Prose]]",
+        ["Prose"],
+      ],
+      [
+        "stray backtick in an earlier list item",
+        "- a ` stray\n- `[[InCode]]` and [[Prose]]",
+        ["Prose"],
+      ],
+      [
+        "backslash before the closing backtick",
+        "Path `C:\\dir\\` then `[[InCode]]` and [[Prose]]",
+        ["Prose"],
+      ],
+      [
+        "indented code block",
+        "Text\n\n    [[InCode]] [md](code.md)\n\n[[Prose]]",
+        ["Prose"],
+      ],
+      [
+        "indented nested list items stay prose",
+        "- [[Prose]]\n    - [[Nested]]\n\n    - [[Loose]]",
+        ["Prose", "Nested", "Loose"],
+      ],
+    ])("%s", (_name, markdown, targets) => {
+      expect(parse(markdown).map(({ targetRef }) => targetRef)).toEqual(
+        targets
+      );
+    });
   });
 
   describe("edge cases", () => {

@@ -8,7 +8,9 @@ import type { Converter, ConvertInput, ConvertResult } from "../types";
 import { basenameWithoutExt } from "../path";
 import { NATIVE_VERSIONS } from "../versions";
 
-const CONVERTER_ID = "native/markdown" as const;
+/** Converter id of Markdown sources, the only documents with link edges. */
+export const MARKDOWN_CONVERTER_ID = "native/markdown" as const;
+const CONVERTER_ID = MARKDOWN_CONVERTER_ID;
 const CONVERTER_VERSION = NATIVE_VERSIONS.markdown;
 
 /** UTF-8 BOM character */

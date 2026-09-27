@@ -1,7 +1,8 @@
 /**
- * Existence-only classification of unresolved workspace wiki links whose
- * target is a file inside the link workspace that is not an indexed document
- * (an attachment, or a note in an unindexed or excluded folder). Obsidian
+ * Existence-only classification of unresolved workspace wiki links and
+ * relative Markdown links whose target is a file inside the link workspace
+ * that is not an indexed document (an attachment, a script beside a note, or
+ * a note in an unindexed or excluded folder). Obsidian
  * resolves such links, so the link audit reports them as `outside-index`
  * instead of unresolved. Only file names are listed: no file is opened,
  * indexed, or returned, and no graph edge is created.
@@ -25,6 +26,9 @@ import {
   loadLinkWorkspaceMemberships,
 } from "../store/sqlite/workspace-link-resolver";
 import { pathContains, placeDocument } from "./link-workspace";
+
+/** Path identity for exact-path matching: NFC, case-insensitive. */
+const pathKey = (path: string): string => path.normalize("NFC").toLowerCase();
 
 /** Upper bound of files listed per workspace; beyond it the listing is partial. */
 export const WORKSPACE_FILE_LISTING_MAX_FILES = 200_000;
@@ -145,8 +149,10 @@ export const listWorkspaceFiles = async (
 };
 
 /**
- * Mark unresolved plain wiki links of audited documents inside a link
- * workspace whose target exists as a workspace file. Each involved workspace
+ * Mark unresolved plain wiki links and relative Markdown links of audited
+ * documents inside a link workspace whose target exists as a workspace file.
+ * A wiki link matches under workspace resolution rules; a Markdown link must
+ * name the file's exact path (NFC, case-insensitive). Each involved workspace
  * is listed once per call. A failed or partial listing never marks a link
  * that is not in it; the snapshot then carries one diagnostic.
  */
@@ -163,8 +169,8 @@ export const markOutsideIndexLinks = async (
     .filter(
       ({ link }) =>
         link.resolved === null &&
-        link.linkType === "wiki" &&
-        link.explicitCollection !== true &&
+        (link.linkType === "markdown" ||
+          (link.linkType === "wiki" && link.explicitCollection !== true)) &&
         (audited === null || audited.has(link.sourceId))
     );
   if (candidates.length === 0) return snapshot;
@@ -172,19 +178,34 @@ export const markOutsideIndexLinks = async (
   const documentRelPaths = new Map(
     snapshot.documents.map((document) => [document.id, document.relPath])
   );
-  const placed = candidates.flatMap(({ link, index }) => {
+  type PlacedLink = {
+    link: AuditLinkSnapshot["links"][number];
+    index: number;
+    key: string;
+  } & ({ sourcePath: string } | { targetPath: string });
+  const placed = candidates.flatMap(({ link, index }): PlacedLink[] => {
+    const membership = memberships.get(link.sourceCollection);
     const placement = placeDocument(
-      memberships.get(link.sourceCollection),
+      membership,
       documentRelPaths.get(link.sourceId) ?? link.sourceRelPath
     );
-    return placement.key === null
-      ? []
-      : [{ link, index, key: placement.key, sourcePath: placement.path }];
+    if (placement.key === null) return [];
+    if (link.linkType === "wiki") {
+      return [{ link, index, key: placement.key, sourcePath: placement.path }];
+    }
+    // A Markdown target is stored collection-relative; place it the same way.
+    const target = placeDocument(membership, link.targetRefNorm);
+    return target.key === placement.key
+      ? [{ link, index, key: placement.key, targetPath: target.path }]
+      : [];
   });
   if (placed.length === 0) return snapshot;
-  const matchers = new Map<
+  const listings = new Map<
     string,
-    ReturnType<typeof createWorkspaceFileMatcher>
+    {
+      matches: ReturnType<typeof createWorkspaceFileMatcher>;
+      paths: Set<string>;
+    }
   >();
   const maxFiles = options.maxFiles ?? WORKSPACE_FILE_LISTING_MAX_FILES;
   let incomplete = 0;
@@ -194,12 +215,19 @@ export const markOutsideIndexLinks = async (
       signal: options.signal,
     });
     if (!listing.complete) incomplete += 1;
-    matchers.set(key, createWorkspaceFileMatcher(listing.files));
+    listings.set(key, {
+      matches: createWorkspaceFileMatcher(listing.files),
+      paths: new Set(listing.files.map(pathKey)),
+    });
   }
   const links = [...snapshot.links];
   for (const entry of placed) {
-    const matches = matchers.get(entry.key);
-    if (matches?.(entry.link.targetRefNorm, entry.sourcePath)) {
+    const listing = listings.get(entry.key);
+    const exists =
+      "targetPath" in entry
+        ? listing?.paths.has(pathKey(entry.targetPath)) === true
+        : listing?.matches(entry.link.targetRefNorm, entry.sourcePath) === true;
+    if (exists) {
       links[entry.index] = { ...entry.link, outsideIndex: true };
     }
   }

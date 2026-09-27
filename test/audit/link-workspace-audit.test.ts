@@ -369,6 +369,98 @@ describe("files outside the index (Obsidian parity)", () => {
   );
 });
 
+const RESIDUE_LOG = [
+  "# Log",
+  "",
+  "- Pressed the ` key by mistake.",
+  "- Documented the syntax as `[[Note Syntax]]` today.",
+  "",
+  "```md",
+  "[[Fenced Example]]",
+  "```",
+  "",
+  "Genuinely missing: [[Nowhere Else]]",
+  "",
+  "[[Half written",
+  "- next bullet ]]",
+  "",
+].join("\n");
+
+const openResidueFixture = async (): Promise<LinkWorkspaceFixture> => {
+  const f = await openLinkWorkspaceFixture();
+  await f.write("ai", "Log.md", RESIDUE_LOG);
+  await f.write(
+    "ai",
+    "scripts/render.py",
+    'LINK = f"[[{stem}{anc}]]"\nCASE = "[[Cross Link Target\\\\|x]]"\n'
+  );
+  await f.write(
+    "work",
+    "Skills/Tool/SKILL.md",
+    "# Tool\n\n[scripts/doctor.sh](scripts/doctor.sh) [gone](scripts/gone.sh)\n"
+  );
+  await f.write("work", "Skills/Tool/scripts/doctor.sh", "#!/bin/sh\n");
+  await f.reconfigure(
+    f.collections.map((c) => (c.name === "ai" ? { ...c, pattern: "**/*" } : c))
+  );
+  await f.sync();
+  return f;
+};
+
+describe("residual link noise (code, non-Markdown sources, unindexed files)", () => {
+  test("only the unclosed link and missing targets stay unresolved", async () => {
+    fixture = await openResidueFixture();
+    const report = await audit(fixture);
+    const residue = (ruleId: string) =>
+      findings(report, ruleId).filter(({ subject }) =>
+        [
+          "gno://ai/Log.md",
+          "gno://ai/scripts/render.py",
+          "gno://work/Skills/Tool/SKILL.md",
+        ].includes(subject)
+      );
+    expect(
+      residue("links.local-targets")
+        .map(
+          ({ subject, detail }) =>
+            `${subject} ${String(detail.normalizedTarget)}`
+        )
+        .sort()
+    ).toEqual(
+      [
+        "gno://ai/Log.md half written\n- next bullet",
+        "gno://ai/Log.md nowhere else",
+        "gno://work/Skills/Tool/SKILL.md Skills/Tool/scripts/gone.sh",
+      ].sort()
+    );
+    expect(
+      residue("links.outside-index").map(({ subject, detail }) => [
+        subject,
+        detail.normalizedTarget,
+        detail.referenceKind,
+      ])
+    ).toEqual([
+      [
+        "gno://work/Skills/Tool/SKILL.md",
+        "Skills/Tool/scripts/doctor.sh",
+        "markdown",
+      ],
+    ]);
+    // The Python file stays indexed and searchable; it just has no links.
+    const script = fixture.store
+      .getRawDb()
+      .query<{ links: number }, [number]>(
+        "SELECT COUNT(*) AS links FROM doc_links WHERE source_doc_id = ?"
+      )
+      .get(fixture.docId("gno://ai/scripts/render.py"));
+    expect(script?.links).toBe(0);
+    // Existence only: the unindexed script is never a document.
+    expect(() =>
+      fixture?.docId("gno://work/Skills/Tool/scripts/doctor.sh")
+    ).toThrow();
+  });
+});
+
 describe("audit bounds (A13)", () => {
   test("a large tie is reported as truncated evidence within the detail bound", async () => {
     fixture = await openLinkWorkspaceFixture();

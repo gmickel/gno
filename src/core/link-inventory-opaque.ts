@@ -81,7 +81,9 @@ export function findExcludedKind(
 export function codeContextReason(
   kind: ExcludedRange["kind"] | null
 ): "code_fence_context" | "inline_code_context" | null {
-  if (kind === "fenced_code") return "code_fence_context";
+  if (kind === "fenced_code" || kind === "indented_code") {
+    return "code_fence_context";
+  }
   if (kind === "inline_code") return "inline_code_context";
   return null;
 }
