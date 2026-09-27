@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-137-recall-lexical-leg-any-term-matching",
   "spec_path": ".flow/tasks/fn-137-recall-lexical-leg-any-term-matching.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Recall lexical leg: any-term matching for question-shaped queries",
   "updated_at": "2026-09-26T23:05:17.291728Z"
 }

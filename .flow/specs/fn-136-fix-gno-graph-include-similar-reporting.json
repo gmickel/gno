@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-136-fix-gno-graph-include-similar-reporting",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-27T00:07:51.629766Z",
   "created_at": "2026-09-02T21:11:40.006047Z",
   "default_impl": null,
   "default_review": null,
@@ -70,7 +70,7 @@
     "impl:fn-136-fix-gno-graph-include-similar-reporting.1": 0
   },
   "spec_path": ".flow/specs/fn-136-fix-gno-graph-include-similar-reporting.md",
-  "status": "open",
+  "status": "done",
   "title": "Fix gno graph --include-similar reporting sqlite-vec unavailable",
   "tracker": {
     "baseHashFlow": null,
@@ -83,5 +83,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-26T23:36:21.348115Z"
+  "updated_at": "2026-09-27T00:07:51.981893Z"
 }

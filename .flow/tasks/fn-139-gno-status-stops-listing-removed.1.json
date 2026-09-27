@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-139-gno-status-stops-listing-removed",
   "spec_path": ".flow/tasks/fn-139-gno-status-stops-listing-removed.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement gno status stops listing removed collections with only inactive rows",
   "updated_at": "2026-09-26T23:05:29.661781Z"
 }

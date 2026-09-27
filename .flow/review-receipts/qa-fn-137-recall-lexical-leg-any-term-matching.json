@@ -1,0 +1,30 @@
+{
+  "branch": "batch/v2.8.1",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "875151fc8eadbe74606b5848ba3db5900348aaed",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-bf48ebe61e750209e4f66b1d4eec189e3ec6824b28c051452d787530b47f43eb"
+  },
+  "head_sha": "875151fc8eadbe74606b5848ba3db5900348aaed",
+  "id": "fn-137-recall-lexical-leg-any-term-matching",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "PASS",
+  "rid_coverage": {
+    "covered": 1,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "requirements"
+      }
+    ],
+    "total": 1
+  },
+  "timestamp": "2026-09-27T00:07:52Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

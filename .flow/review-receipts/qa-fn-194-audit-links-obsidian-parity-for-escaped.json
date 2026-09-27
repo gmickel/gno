@@ -1,0 +1,50 @@
+{
+  "branch": "batch/v2.8.1",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "875151fc8eadbe74606b5848ba3db5900348aaed",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-c02e5745e4ea0e48734291c86125edf0d7bd5f1c4143571cb64589a4632e55f4"
+  },
+  "head_sha": "875151fc8eadbe74606b5848ba3db5900348aaed",
+  "id": "fn-194-audit-links-obsidian-parity-for-escaped",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "PASS",
+  "rid_coverage": {
+    "covered": 6,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R6"
+      }
+    ],
+    "total": 6
+  },
+  "timestamp": "2026-09-27T00:07:55Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

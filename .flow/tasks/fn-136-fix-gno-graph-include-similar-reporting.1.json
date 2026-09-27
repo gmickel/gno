@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-136-fix-gno-graph-include-similar-reporting",
   "spec_path": ".flow/tasks/fn-136-fix-gno-graph-include-similar-reporting.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Fix gno graph --include-similar reporting sqlite-vec unavailable",
   "updated_at": "2026-09-26T23:05:05.214965Z"
 }
