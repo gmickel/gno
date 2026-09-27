@@ -243,7 +243,10 @@ What is enforced, and how:
   Its memory counts the child too (read from `/proc` on Linux and `ps` on
   macOS; on Windows the child is held to the time limit only). If neither
   can start, the file fails with `ISOLATION_UNAVAILABLE` rather than being
-  processed without its budget.
+  processed without its budget. When GNO stops (Ctrl-C, SIGTERM, a
+  resident shutting down, or a normal exit) it kills that child with it. On
+  Linux the child also dies if GNO is killed outright (SIGKILL); on other
+  systems such a child stops at the end of its current step.
 
 While a file is still being processed after 10 seconds, or after half its
 budget if that is sooner, `gno update` and `gno index` name it on stderr:

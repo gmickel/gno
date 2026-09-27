@@ -160,6 +160,8 @@ interface Processor {
   externalRss(): Promise<number>;
   /** False once the processor died on its own; it is then replaced. */
   alive(): boolean;
+  /** Child process id (child backend), for shutdown and tests. */
+  readonly pid: number | null;
   stop(): void;
 }
 
@@ -206,7 +208,11 @@ function startWorker(): Processor {
     phase: () => phaseName(Atomics.load(phaseSlot, 0)),
     externalRss: () => Promise.resolve(0),
     alive: () => !dead,
-    stop: () => worker.terminate(),
+    pid: null,
+    stop() {
+      worker.terminate();
+      markFailed("file processor was stopped");
+    },
   };
 }
 
@@ -258,11 +264,13 @@ function startChild(): Processor {
     },
   });
   child.unref();
+  liveChildren.add(child);
+  ensureShutdownHooks();
   const failed = child.exited.then((code) => {
     exited = true;
-    // A child stopped on purpose never reports a failure.
+    liveChildren.delete(child);
     return stopping
-      ? new Promise<string>(() => undefined)
+      ? "file processor was stopped"
       : `file processor child exited (${code})`;
   });
   return {
@@ -277,11 +285,82 @@ function startChild(): Processor {
     phase: () => phase,
     externalRss: () => processRss(child.pid),
     alive: () => !exited,
+    pid: child.pid,
     stop() {
       stopping = true;
       child.kill(9);
     },
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Parent shutdown
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Child processors still running; killed on every parent shutdown path. */
+const liveChildren = new Set<ReturnType<typeof Bun.spawn>>();
+let shutdownHooksInstalled = false;
+
+/** SIGKILL every child processor (they are disposable). Synchronous. */
+function killChildren(): void {
+  for (const child of liveChildren) {
+    try {
+      child.kill(9);
+    } catch {
+      // Already gone.
+    }
+  }
+  liveChildren.clear();
+}
+
+/**
+ * A signal the process would otherwise die from by default: kill the
+ * children, and when no one else handles the signal, stop listening and
+ * re-raise it so the process still ends the default way (same exit status).
+ */
+function onTerminatingSignal(signal: "SIGINT" | "SIGTERM"): () => void {
+  const listener = (): void => {
+    killChildren();
+    if (process.listenerCount(signal) === 1) {
+      process.off(signal, listener);
+      process.kill(process.pid, signal);
+    }
+  };
+  return listener;
+}
+
+/**
+ * Kill child processors whenever this process ends: on exit (the CLI's
+ * SIGINT handler and every normal exit end in process.exit), and on SIGTERM.
+ * SIGINT gets its own listener only when nothing else owns it: the CLI
+ * treats an extra SIGINT listener as a command that finishes its own
+ * teardown, so adding one there would stop Ctrl-C from exiting. An
+ * uncaught exception is not intercepted (a listener would keep the process
+ * alive); the child's parent-death signal (Linux) or its between-step
+ * parent check covers it.
+ */
+function ensureShutdownHooks(): void {
+  if (shutdownHooksInstalled) return;
+  shutdownHooksInstalled = true;
+  process.on("exit", killChildren);
+  process.on("SIGTERM", onTerminatingSignal("SIGTERM"));
+  if (process.listenerCount("SIGINT") === 0) {
+    process.on("SIGINT", onTerminatingSignal("SIGINT"));
+  }
+}
+
+/**
+ * Stop the file processor and any child process now (resident shutdown).
+ * A file being prepared fails; the next file starts a new processor.
+ */
+export function disposeFileProcessor(): void {
+  stopProcessor();
+  killChildren();
+}
+
+/** Tests only: the running child processor's pid, if any. */
+export function activeFileProcessorPid(): number | null {
+  return processor?.pid ?? null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -51,6 +51,7 @@ import {
 } from "../core/shutdown-budget";
 import { acquireCliWriteLease } from "../core/write-lease";
 import { defaultSyncService, withContentTypeRules } from "../ingestion";
+import { disposeFileProcessor } from "../ingestion/file-processor";
 import { withOwnedInferenceScope } from "../llm/inference-scope";
 import { getActivePreset } from "../llm/registry";
 import { createToolContext, Mutex } from "../mcp/context";
@@ -676,6 +677,8 @@ export async function startResidentRuntime(
       disposed = true;
       admission.stop();
       jobManager.stop();
+      // A file mid-preparation fails now instead of holding shutdown.
+      disposeFileProcessor();
       admissionState = "draining";
       shutdownState = "graceful";
       disposal = disposeResidentResources({

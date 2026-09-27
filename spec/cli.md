@@ -1483,7 +1483,11 @@ executable, which cannot start the worker, runs the phases in a child process
 of itself (internal environment flag) under the same limits; the child's
 resident memory counts toward `conversion.maxMemoryMb` (Linux `/proc`, `ps`
 elsewhere; time only on Windows). A processor that cannot start fails the file
-with `ISOLATION_UNAVAILABLE`; nothing is prepared without the budget.
+with `ISOLATION_UNAVAILABLE`; nothing is prepared without the budget. The
+child is SIGKILLed on process exit, SIGTERM, SIGINT (via the CLI's exit
+path) and resident shutdown; on Linux it also carries a parent-death signal,
+so it dies with a SIGKILLed parent, and elsewhere it exits at its next step
+once its parent is gone.
 A file over either limit is recorded with error code `TIMEOUT` or
 `MEMORY_LIMIT` (the message names the running phase), stays unindexed, and is
 retried by the next sync; the rest of the run continues. `update` and `index` always print such a
