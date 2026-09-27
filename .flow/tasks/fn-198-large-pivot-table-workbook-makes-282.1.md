@@ -10,20 +10,33 @@ TBD
 Every R-ID in the parent spec's ## Acceptance Criteria is satisfied; judge this task against the spec's criteria directly.
 
 ## Done summary
-Fixed the 2.8.2 workbook runaway and put every file under a per-file budget covering conversion and post-conversion work. Root cause, confirmed by CPU profile on a generated pivot-shaped workbook: 2.8.2 ran the CommonMark/GFM parser for code regions over converted documents. A converted spreadsheet is one GFM table per sheet, and micromark-extension-gfm-table's edit map is quadratic in cells (93% of CPU in edit-map addImplementation and flushCell).
+The large pivot-table workbook now indexes in seconds, and every file is processed under a per-file budget that stops it mid-step. Two causes, both measured:
 
-Review rework (codex impl-review NEEDS_WORK, findings A and B):
-- A: the hand-rolled fallback scanner is deleted. A Markdown note with a table over 5,000 cells is parsed by the same mdast parser without the GFM table extension (autolink literal, footnote, strikethrough, task list kept), so code rules stay CommonMark-correct. The only difference, a code span crossing a table-cell pipe staying whole, is documented and tested. The three review reproductions (fences in frontmatter/HTML comments, code spans across paragraphs or after a backslash, fences in blockquotes) are regression tests, identical below and above the threshold; each failed on the previous head. Converted documents and records never reach the Markdown parser and produce no journal link summaries. Measurements without tables: 20k/40k/80k-row table 0.9/2.7/9.2 s; prose 1/2/4/8 M chars 0.7/1.3/2.9/7.0 s. The residual superlinearity is micromark core `resolveAllText` (events.splice inside one paragraph), which only an unbroken giant table in a Markdown note reaches.
-- B: one per-file clock and memory ceiling. Office/PDF conversion runs in a worker that is terminated at the limit; metadata, code regions, journal structure, chunking and link parsing (moved ahead of the write transaction) are followed by cooperative time and process-RSS checkpoints. An overrun records TIMEOUT / MEMORY_LIMIT, leaves the file pending, and continues. This applies to native Markdown/text files and compiled binaries too. What is not enforced: a running synchronous step is not interrupted (live: an 80k-row Markdown table ran 14.4 s against a 3 s budget before being stopped after code-region detection), and the slow-file notice cannot fire while such a step blocks the event loop. Test: `test/ingestion/sync-conversion-budget.test.ts` (slow-chunker post-conversion overrun, workbook TIMEOUT, memory ceiling for workbook and native Markdown, retry).
-- Live QA (default fixture): origin/main killed at 300 s with 0 docs; v2.8.1 10.3 s / 3142 MB; fixed 10.3 s / 3089 MB. Evidence: `.flow/tmp/qa-fn-198-large-pivot-table-workbook-makes-282/rework/`.
-- Dependencies: the GFM sub-extensions are now exact direct dependencies, at the versions already locked through micromark-extension-gfm 3.0.0 / mdast-util-gfm 3.1.0.
+1. The markitdown-ts xlsx chain (SheetJS `sheet_to_html` -> jsdom -> turndown + Joplin GFM) is O(columns x rows^2) in the GFM plugin's column-alignment scan and costs about 20 KB per cell. This was pre-existing; the real file (one 23 x 40,439 sheet) blew past memory on 2.8.1 too.
+2. 2.8.2's code-span detection ran the GFM table parser, which is quadratic in cells, over converted documents.
+
+What changed:
+- **R1 conversion.** New `adapter/xlsx` renders each sheet's Markdown table directly from SheetJS cell data. It reproduces `sheet_to_html` cell text, turndown whitespace and escaping, the GFM cell, empty-header, colspan and single-cell rules, and markitdown's normalization. Markup cells (rich text, links) still go through turndown, cached. Output is byte-identical to markitdown-ts on the fixtures, an edge-case workbook and generated pivot-report workbooks, and tests pin this.
+  - Documented change: an unreadable .xlsx is now CORRUPT instead of a retryable ADAPTER_FAILURE.
+- **R1 code regions.** Converted documents and records never reach the Markdown parser. A Markdown note with a table over 5,000 cells parses without GFM tables; the only difference is that a code span crossing a table-cell pipe stays whole. The fallback scanner is gone.
+- **R2.** Conversion, metadata, tags, memory scopes, code regions, journal structure (previous and next), chunking and link parsing run as one step in a reused, unref'd, terminable file worker, for every file.
+  - The main thread stops it mid-step at `conversion.timeoutMs` / `conversion.maxMemoryMb`. The file is recorded as TIMEOUT / MEMORY_LIMIT naming the running step, stays pending, the worker is replaced, and the next file continues.
+  - Database reads and writes stay on the main thread.
+  - Compiled executables and injected test doubles prepare in-process with checks between steps (documented).
+- **R3.** The slow-file notice fires while a step runs. Budget stops are listed in update output, `gno status` and the audit.
+
+Live QA (evidence in `.flow/tmp/qa-fn-198-large-pivot-table-workbook-makes-282/round3/`):
+- Real-shape workbook (23 x 40,439, ~770k shared-string refs, pivot records 16.4/14.7 MB): fixed 5.9 s / 1674 MB. v2.8.1 and origin/main were killed at the 6 GB cap (12.6 s / 15.1 s, 0 docs).
+- Earlier default workbook: fixed 2.1 s / 1024 MB; v2.8.1 8.8 s / 3120 MB; origin/main killed at 300 s.
+- 40k- and 80k-row Markdown tables under a 1 s budget: TIMEOUT at 1000 ms during code-region detection, 1.8 s total, and the notice fired.
+- 1,000 small notes: 2257 ms vs 2148 ms before round 3 (+5.1%, 5 interleaved runs).
 
 Tier: session model (in-host worker)
 
-stage: impl-review - ran (conductor-owned codex review: NEEDS_WORK, findings addressed in c53774e2)
+stage: impl-review - ran (conductor-owned codex reviews: NEEDS_WORK rounds 1-2; findings addressed in c53774e2, 2a65ba89, f64cfbfa)
 
 stage: plan-sync - skipped(config: planSync.enabled != true)
 ## Evidence
-- Commits: f68f7ab82f1ee47f5c01985e39b1ec1cef831a58, 787bad2e317ca7179097060201c7a2632eb5c12c, ae2c795d47b7324325caff5f9a61179c2683f726, c53774e2087c29429dd2baee8216572d29abd3ac, 42eb83e200eef8a0d7606d00f633dc2f97964f6c
-- Tests: mise exec bun@1.4.2 -- bun run lint:check (0 errors), mise exec bun@1.4.2 -- bun run docs:verify, mise exec bun@1.4.2 -- bun test: 5977 pass, 1 fail (test/eval/acceptance/fixtures.test.ts forward indexes: pre-existing 5 s timeout, reproduced identically on base 5643a02e), red-first: 3 review reproductions failed on ae2c795d; post-conversion overrun test failed on ae2c795d, live QA rework: origin/main killed 300 s 0 docs; v2.8.1 10.3 s/3142 MB; fixed 10.3 s/3089 MB (.flow/tmp/qa-fn-198-large-pivot-table-workbook-makes-282/rework/), gno.sh gno-sh-fn198 c7e86a1: check, typecheck, test (431), build; driven at 1380 and 375 px
+- Commits: f68f7ab82f1ee47f5c01985e39b1ec1cef831a58, 787bad2e317ca7179097060201c7a2632eb5c12c, ae2c795d47b7324325caff5f9a61179c2683f726, c53774e2087c29429dd2baee8216572d29abd3ac, 42eb83e200eef8a0d7606d00f633dc2f97964f6c, 1a3eeeb1282ea151dd08366ec6993c7e2cc2123b, 2a65ba89aa6b2372473753804a12898bab14eba6, f64cfbfa9d6c9148f97af2991711963b0939e5e1
+- Tests: mise exec bun@1.4.2 -- bun run lint:check (0 errors, 45 pre-existing warnings), mise exec bun@1.4.2 -- bun run docs:verify, mise exec bun@1.4.2 -- bun test: 5983 pass, 0 fail, red-first on 2a65ba89/1a3eeeb1: xlsx linearity via registry 15.7 s / 5.5 GB; mid-step Markdown stop 14.9 s; worker recycle; in-process checkpoints, xlsx equivalence vs markitdown-ts: byte-identical on sample.xlsx, edge-case workbook, real-shape scale 0.005/0.01/0.03, live QA round3: real-shape fixed 5.9 s/1674 MB, v2.8.1 and origin/main killed at 6 GB; Markdown 40k/80k rows stopped at 1000 ms; 1000 notes +5.1%, gno.sh gno-sh-fn198 c9e9e9f: check, typecheck, test (431), build; driven at 1380 and 375 px
 - PRs:
