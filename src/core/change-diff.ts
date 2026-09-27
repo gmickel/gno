@@ -104,15 +104,27 @@ const extractTypedEdges = (markdown: string): string[] => {
   return [...new Set(values)].sort();
 };
 
+export interface DocumentStructureOptions {
+  /** Only Markdown sources carry links (matches link extraction at sync). */
+  markdownSource: boolean;
+  excludedRanges?: ExcludedRange[];
+}
+
 export const extractDocumentStructure = (
   markdown: string,
   relPath: string,
   dateFields: Readonly<Record<string, string>> | null | undefined,
-  excludedRanges: ExcludedRange[] = getExcludedRanges(markdown)
+  { markdownSource, excludedRanges }: DocumentStructureOptions
 ): DocumentStructureSnapshot => {
-  const links = parseLinks(markdown, buildLineOffsets(markdown), excludedRanges)
-    .map((link) => linkSummary(link, relPath))
-    .filter((value): value is string => value !== null);
+  const links = markdownSource
+    ? parseLinks(
+        markdown,
+        buildLineOffsets(markdown),
+        excludedRanges ?? getExcludedRanges(markdown)
+      )
+        .map((link) => linkSummary(link, relPath))
+        .filter((value): value is string => value !== null)
+    : [];
 
   return {
     headings: withOccurrences(

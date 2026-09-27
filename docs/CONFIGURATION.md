@@ -23,6 +23,11 @@ ftsTokenizer: snowball english
 # Raise for long embedding passes on slow disks.
 # busyTimeoutMs: 60000
 
+# Per-file conversion budget for PDF/Office files (see "Conversion budget").
+# conversion:
+#   timeoutMs: 60000
+#   maxMemoryMb: 8192
+
 # Trusted local CLI project affinity
 projectAffinity:
   enabled: true
@@ -200,6 +205,60 @@ evidence spans. Hold content-type boosts and other ranking settings constant
 when testing structural changes; boosting a type is a separate intervention.
 No chunk size is promised to improve retrieval for every corpus.
 
+## Conversion budget
+
+Each file GNO indexes has a budget covering its conversion to Markdown and
+the processing after it (metadata, code detection, change journal, chunking
+and link extraction):
+
+```yaml
+conversion:
+  timeoutMs: 120000 # per file; default 60000 (60 s)
+  maxMemoryMb: 8192 # default: half of physical memory, at least 2048
+```
+
+- `timeoutMs` is the wall-clock time one file may take, in whole milliseconds
+  from 1000 through 86400000.
+- `maxMemoryMb` is the resident memory the GNO process may reach while a file
+  is processed, in whole MB from 256 through 1048576. It measures the whole
+  process, not just that file.
+
+A file that runs past either limit is stopped. GNO records it with the error
+code `TIMEOUT` or `MEMORY_LIMIT`, leaves it unindexed and goes on with the rest
+of the collection. The next `gno update` or `gno index` (or resident sync)
+tries the file again. If a file keeps being stopped, raise the limit that
+stopped it, or exclude the file.
+
+What is enforced, and how:
+
+- Every file, Markdown and plain text included, is converted and processed
+  in a separate worker, one file at a time. GNO stops the worker the moment
+  the file runs out of time, or when a memory sample (every 200 ms) is over
+  the limit, even in the middle of a step; the next file gets a fresh
+  worker.
+- Database reads and writes stay in the main process, after the worker has
+  finished the file, so a stopped file is never half written.
+- A standalone compiled executable cannot start the worker; it runs the
+  same work in a child process of itself, stopped and replaced the same way.
+  Its memory counts the child too (read from `/proc` on Linux and `ps` on
+  macOS; on Windows the child is held to the time limit only). If neither
+  can start, the file fails with `ISOLATION_UNAVAILABLE` rather than being
+  processed without its budget. When GNO stops (Ctrl-C, SIGTERM, a
+  resident shutting down, or a normal exit) it kills that child with it. On
+  Linux the child also dies if GNO is killed outright (SIGKILL); on other
+  systems such a child stops at the end of its current step.
+
+While a file is still being processed after 10 seconds, or after half its
+budget if that is sooner, `gno update` and `gno index` name it on stderr:
+
+```text
+Still converting work/reports/pivot-report.xlsx after 10s (budget 60s)
+```
+
+`gno update` output, `gno status` (under "Stopped at conversion budget") and
+the `gno audit` finding `freshness.index-revision` name a stopped file and
+its code.
+
 ## Project affinity
 
 `projectAffinity.enabled` defaults to `true` and controls only the fallback
@@ -321,7 +380,12 @@ open, or return the file, the link does not become part of the link graph,
 and an excluded folder stays excluded. The target must match the way Obsidian
 matches it: a file other than a note needs its extension (`[[diagram]]` does
 not find `diagram.png`), `.md` is optional for notes, and a Markdown link must
-name the file's path relative to the note. Hidden folders such
+name the file's path relative to the note. For this existence check `.md`
+is optional in a Markdown link too: `[plan](Archive/Plan)` finds an unindexed
+`Archive/Plan.md`. It does not make such a link resolve: a Markdown link
+without `.md` to a note that _is_ indexed is still reported as an unresolved
+local target, so write `[plan](Archive/Plan.md)` for links you want in the
+link graph. Hidden folders such
 as `.obsidian` and `.trash` are not checked, and a symlink counts only when it
 points to a file inside the workspace. If a folder cannot be read, links into
 it stay unresolved and the audit says once that the check was incomplete.
@@ -781,6 +845,12 @@ deleting it by hand means are in
 ## Collections
 
 Collections define what gets indexed.
+
+A running `gno serve` or `gno daemon` picks up collections added, removed or
+edited in this file (by `gno collection add/remove` or by hand) without a
+restart; run `gno update` to index the existing files of a new collection. An
+unreadable file is reported as an error instead of serving the old
+collections.
 
 ### Collection Fields
 

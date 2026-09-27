@@ -9,6 +9,7 @@ import { describe, expect, test } from "bun:test";
 import {
   getExcludedRanges,
   isExcluded,
+  MAX_PARSED_TABLE_CELLS,
   rangeIntersectsExcluded,
 } from "../../src/ingestion/strip";
 
@@ -303,5 +304,73 @@ describe("rangeIntersectsExcluded", () => {
 
   test("returns false for empty excluded ranges", () => {
     expect(rangeIntersectsExcluded(0, 10, [])).toBe(false);
+  });
+});
+
+describe("code-region parse budget (fn-198)", () => {
+  const tableBlock = (rows: number): string =>
+    [
+      "| a | b | c | d |",
+      "| --- | --- | --- | --- |",
+      ...Array.from(
+        { length: rows },
+        (_, row) => `| row ${row} | \`code ${row}\` | text | 1.5 |`
+      ),
+    ].join("\n");
+  const overBudget = `\n\n${tableBlock(Math.ceil(MAX_PARSED_TABLE_CELLS / 5) + 1)}\n`;
+
+  test("a spreadsheet-sized table stays fast and keeps code spans excluded", () => {
+    // 20,000 rows: with the GFM table extension this took minutes.
+    const markdown = tableBlock(20_000);
+    const spans = getExcludedRanges(markdown).filter(
+      (range) => range.kind === "inline_code"
+    );
+    expect(spans).toHaveLength(20_000);
+    expect(markdown.slice(spans[0]!.start, spans[0]!.end)).toBe("`code 0`");
+  });
+
+  test.each([
+    {
+      label: "fences inside frontmatter and HTML comments open no code block",
+      note: "---\nexample: |\n  ```\n---\n<!-- ```\n-->\n\n[[real-link]]\n",
+      targets: { "[[real-link]]": false },
+    },
+    {
+      label:
+        "code spans never pair across paragraphs; a backslash does not escape a closing backtick",
+      note: "A lone ` backtick.\n\n[[para-link]] follows.\n\nPath `C:\\dir\\` then [[after-path]].\n",
+      targets: {
+        "[[para-link]]": false,
+        "[[after-path]]": false,
+        "C:\\dir\\": true,
+      },
+    },
+    {
+      label: "fences inside a blockquote are code",
+      note: "> ~~~\n> [[example-only]]\n> ~~~\n\n[[outside]]\n",
+      targets: { "[[example-only]]": true, "[[outside]]": false },
+    },
+  ])("$label, below and above the table budget", ({ note, targets }) => {
+    for (const markdown of [note, `${note}${overBudget}`]) {
+      const ranges = getExcludedRanges(markdown);
+      for (const [target, excluded] of Object.entries(targets)) {
+        expect([target, isExcluded(markdown.indexOf(target), ranges)]).toEqual([
+          target,
+          excluded,
+        ]);
+      }
+    }
+  });
+
+  test("over the table budget, a code span may cross a table-cell pipe", () => {
+    // GFM splits table cells at an unescaped pipe even inside backticks;
+    // without the table extension the span is kept whole. This is the only
+    // difference the budget introduces.
+    const row = "| x | `a | b` |";
+    const note = `| h | h |\n| - | - |\n${row}\n`;
+    const spanAt = (markdown: string) =>
+      isExcluded(markdown.indexOf("`a | b`") + 1, getExcludedRanges(markdown));
+    expect(spanAt(note)).toBe(false);
+    expect(spanAt(`${note}${overBudget}`)).toBe(true);
   });
 });

@@ -306,6 +306,24 @@ export const NETWORK_BOUNDARY_INVENTORY = [
     enforcement: "local_process_only",
   },
   {
+    // `ps` for the file processor child's resident memory (non-Linux Unix).
+    id: "file-processor-rss-probe",
+    key: "src/ingestion/file-processor.ts::child_process#1",
+    path: "src/ingestion/file-processor.ts",
+    primitive: "child_process",
+    action: null,
+    enforcement: "local_process_only",
+  },
+  {
+    // The same executable re-run as the file processor child (compiled builds).
+    id: "file-processor-child",
+    key: "src/ingestion/file-processor.ts::child_process#2",
+    path: "src/ingestion/file-processor.ts",
+    primitive: "child_process",
+    action: null,
+    enforcement: "local_process_only",
+  },
+  {
     id: "http-mcp-tools",
     key: "logical::http-mcp-tools",
     path: "src/mcp/http-egress.ts",

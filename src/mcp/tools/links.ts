@@ -26,7 +26,7 @@ import { normalizeCollectionName } from "../../core/validation";
 import { getActivePreset } from "../../llm/registry";
 import { createVectorIndexPort } from "../../store/vector";
 import {
-  readStoredDocumentVectors,
+  readSimilaritySourceVectors,
   resolveStoredVectorSource,
   similarityHitDocuments,
   storedVectorSearchOptions,
@@ -415,55 +415,27 @@ export function handleSimilar(
       const preset = getActivePreset(ctx.config);
       const modelUri = preset.embed;
 
-      // Stored chunk vectors from the active partition (NO model loading required)
+      // Similarity source vector (first chunk, unit length) from the active
+      // partition (NO model loading required)
       const db = ctx.store.getRawDb();
       const source = resolveStoredVectorSource(db, modelUri);
 
-      let vectors: Float32Array[];
+      let embedding: Float32Array | undefined;
       try {
-        vectors =
-          readStoredDocumentVectors(db, source, [
-            { id: doc.id, mirrorHash: doc.mirrorHash },
-          ]).get(doc.id) ?? [];
+        embedding = readSimilaritySourceVectors(db, source, [
+          { id: doc.id, mirrorHash: doc.mirrorHash },
+        ]).get(doc.id);
       } catch (e) {
         throw new Error(
           `Invalid stored embedding data: ${e instanceof Error ? e.message : String(e)}`
         );
       }
-      const first = vectors[0];
-      if (!first) {
+      if (!embedding) {
         throw new Error(
           `${MCP_ERRORS.NOT_FOUND.code}: Document has no embeddings. Run: gno embed`
         );
       }
-
-      // Compute average embedding from all chunks
-      const dimensions = first.length;
-      const avgEmbedding = new Float32Array(dimensions);
-      for (const embedding of vectors) {
-        if (embedding.length !== dimensions) {
-          throw new Error(
-            `Invalid stored embedding data: Inconsistent embedding dimensions: expected ${dimensions}, got ${embedding.length}`
-          );
-        }
-        for (let i = 0; i < dimensions; i++) {
-          const current = avgEmbedding[i] ?? 0;
-          avgEmbedding[i] = current + (embedding[i] ?? 0) / vectors.length;
-        }
-      }
-
-      // Normalize the average embedding for cosine similarity
-      let norm = 0;
-      for (let i = 0; i < dimensions; i++) {
-        const val = avgEmbedding[i] ?? 0;
-        norm += val * val;
-      }
-      norm = Math.sqrt(norm);
-      if (norm > 0) {
-        for (let i = 0; i < dimensions; i++) {
-          avgEmbedding[i] = (avgEmbedding[i] ?? 0) / norm;
-        }
-      }
+      const dimensions = embedding.length;
 
       // Create vector index for search
       const vectorResult = await createVectorIndexPort(db, {
@@ -496,7 +468,7 @@ export function handleSimilar(
       // Search for similar documents (larger pool for filtering)
       const candidateLimit = Math.min(limit * 20, 200);
       const searchResult = await vectorIndex.searchNearest(
-        avgEmbedding,
+        embedding,
         candidateLimit,
         storedVectorSearchOptions(source)
       );

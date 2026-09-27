@@ -87,4 +87,45 @@ describe("formatUpdate", () => {
     );
     expect(json).toBe(formatUpdate(result, { json: true }));
   });
+
+  test("names a file stopped at its conversion budget without --verbose (fn-198)", () => {
+    const collection = {
+      collection: "wb",
+      filesProcessed: 2,
+      filesAdded: 1,
+      filesUpdated: 0,
+      filesUnchanged: 0,
+      filesErrored: 2,
+      filesSkipped: 0,
+      filesMarkedInactive: 0,
+      durationMs: 1,
+      errors: [
+        {
+          relPath: "reports/pivot.xlsx",
+          code: "TIMEOUT",
+          message: "Conversion timed out after 60000ms",
+        },
+        { relPath: "broken.pdf", code: "CORRUPT", message: "Invalid PDF" },
+      ],
+    };
+    const result = {
+      success: true as const,
+      result: {
+        collections: [collection],
+        totalDurationMs: 1,
+        totalFilesProcessed: 2,
+        totalFilesAdded: 1,
+        totalFilesUpdated: 0,
+        totalFilesErrored: 2,
+        totalFilesSkipped: 0,
+      },
+    };
+
+    const output = formatUpdate(result, {});
+
+    expect(output).toContain(
+      "[TIMEOUT] reports/pivot.xlsx: Conversion timed out after 60000ms"
+    );
+    expect(output).not.toContain("broken.pdf");
+  });
 });

@@ -1,21 +1,260 @@
 {
   "branch_name": "fn-198-large-pivot-table-workbook-makes-282",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-27T21:21:22.191622Z",
   "created_at": "2026-09-27T13:59:28.234138Z",
   "default_impl": null,
   "default_review": null,
   "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-198-large-pivot-table-workbook-makes-282",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-198-large-pivot-table-workbook-makes-282.1": 3
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "review_attempts": [
+    {
+      "artifact_sha256": "134e090c310eba6f94c78c6c86f75add2418c5927673f3d662236864c55778ba",
+      "backend": "codex",
+      "base_sha": "d1761f947f76247a4fdbf48236409afa8372d8f6",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-64a88c4430927096e816970d54ddbf39",
+            "classification": "introduced",
+            "findingId": "finding-64a88c4430927096e816970d54ddbf39",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-cfe068487e97aad86bfeffb934118acd",
+            "classification": "introduced",
+            "findingId": "finding-cfe068487e97aad86bfeffb934118acd",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-fc3d2e7bc5aa8c1f2653200e047c1a51",
+            "classification": "introduced",
+            "findingId": "finding-fc3d2e7bc5aa8c1f2653200e047c1a51",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-a787ba91d5c9f99a0293688aab460d3e",
+            "classification": "introduced",
+            "findingId": "finding-a787ba91d5c9f99a0293688aab460d3e",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "ae2c795d47b7324325caff5f9a61179c2683f726",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 205755,
+      "output_sha256": "5035479fdd3c483a6f54c74692065896bb9dd9e57febbd5c208100bd31ff43bd",
+      "reservation_id": "6cb0b13336474b32bdd7f297ebb2403d",
+      "round_consumed": true,
+      "scope": "impl:fn-198-large-pivot-table-workbook-makes-282.1",
+      "superseded_by": null,
+      "task": "fn-198-large-pivot-table-workbook-makes-282.1",
+      "timestamp": "2026-09-27T15:40:15.309147Z",
+      "tool_calls": 15,
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "eb1575368eaaf7376a157493a17e8bf96d276661920ab93e7a29b78542bc2157",
+      "backend": "codex",
+      "base_sha": "d1761f947f76247a4fdbf48236409afa8372d8f6",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-64a88c4430927096e816970d54ddbf39",
+            "classification": "introduced",
+            "findingId": "finding-64a88c4430927096e816970d54ddbf39",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "not_fixed"
+          },
+          {
+            "chainRoot": "finding-16564dea1a9d6e880ca48b27e8dac327",
+            "classification": "introduced",
+            "findingId": "finding-16564dea1a9d6e880ca48b27e8dac327",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-cfe068487e97aad86bfeffb934118acd",
+            "classification": "introduced",
+            "findingId": "finding-cfe068487e97aad86bfeffb934118acd",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-fc3d2e7bc5aa8c1f2653200e047c1a51",
+            "classification": "introduced",
+            "findingId": "finding-fc3d2e7bc5aa8c1f2653200e047c1a51",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-a787ba91d5c9f99a0293688aab460d3e",
+            "classification": "introduced",
+            "findingId": "finding-a787ba91d5c9f99a0293688aab460d3e",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "1a3eeeb1282ea151dd08366ec6993c7e2cc2123b",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 1760,
+      "output_sha256": "1bfcc39437716b54e579820a749db5a7e3be2bf17a43f54a55b4418f9c85f49c",
+      "reservation_id": "c9399e91da4040139df860d5715f23b7",
+      "round_consumed": true,
+      "scope": "impl:fn-198-large-pivot-table-workbook-makes-282.1",
+      "superseded_by": null,
+      "task": "fn-198-large-pivot-table-workbook-makes-282.1",
+      "timestamp": "2026-09-27T16:19:44.678649Z",
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "63654e5ef1bcf05ca7f904502f45ebb4118cd90b7ba7dff7da04598aa25ac58d",
+      "backend": "codex",
+      "base_sha": "d1761f947f76247a4fdbf48236409afa8372d8f6",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-64a88c4430927096e816970d54ddbf39",
+            "classification": "introduced",
+            "findingId": "finding-64a88c4430927096e816970d54ddbf39",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "not_fixed"
+          },
+          {
+            "chainRoot": "finding-16564dea1a9d6e880ca48b27e8dac327",
+            "classification": "introduced",
+            "findingId": "finding-16564dea1a9d6e880ca48b27e8dac327",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-00b7b10ece0a6126da2b00af9970d9d6",
+            "classification": "introduced",
+            "findingId": "finding-00b7b10ece0a6126da2b00af9970d9d6",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-cfe068487e97aad86bfeffb934118acd",
+            "classification": "introduced",
+            "findingId": "finding-cfe068487e97aad86bfeffb934118acd",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-fc3d2e7bc5aa8c1f2653200e047c1a51",
+            "classification": "introduced",
+            "findingId": "finding-fc3d2e7bc5aa8c1f2653200e047c1a51",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-a787ba91d5c9f99a0293688aab460d3e",
+            "classification": "introduced",
+            "findingId": "finding-a787ba91d5c9f99a0293688aab460d3e",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "0dd0eb014355225e7c58c2c984184c2fbe895937",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 1740,
+      "output_sha256": "d3fb04a5b4598762e0515c3d4b99e600e6124bee25aaf64487086e7efc5b6d83",
+      "reservation_id": "b76cd62db6844e71b8ef9199f17fb14e",
+      "round_consumed": true,
+      "scope": "impl:fn-198-large-pivot-table-workbook-makes-282.1",
+      "superseded_by": null,
+      "task": "fn-198-large-pivot-table-workbook-makes-282.1",
+      "timestamp": "2026-09-27T17:49:09.311201Z",
+      "verdict": "NEEDS_WORK"
+    }
+  ],
+  "review_hash_epoch": {},
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-198-large-pivot-table-workbook-makes-282.1": 0
+  },
   "spec_path": ".flow/specs/fn-198-large-pivot-table-workbook-makes-282.md",
-  "status": "open",
+  "status": "done",
   "title": "Large pivot-table workbook makes 2.8.2 indexing run away in memory",
   "tracker": {
     "baseHashFlow": null,
@@ -28,5 +267,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-27T13:59:28.533019Z"
+  "updated_at": "2026-09-27T21:21:22.563676Z"
 }

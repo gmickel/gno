@@ -181,7 +181,8 @@ File on disk
     │
     ├─[ sourceHash unchanged, active, complete ]─► Skip
     │
-    ▼ Converter (MIME detection → Markdown)
+    ▼ File worker, under the per-file budget: Converter (MIME detection → Markdown;
+    │   .xlsx: SheetJS → Markdown tables), then metadata, code regions, chunks, links
     │
     ▼ Canonicalize (NFC, normalize whitespace)
     │
@@ -638,6 +639,12 @@ Inside a Markdown table, Obsidian writes the alias separator as `\|`
 with display text `click here`. Markdown link text may contain balanced square
 brackets (`[see [1]](note.md)`).
 
+Markdown links follow CommonMark, as Obsidian renders them. A `[` escaped with
+a backslash (`\[clause](see section 4)`) is plain text, and so is a
+destination with an unescaped space: write `[x](<my note.md>)` or
+`[x](my%20note.md)` to link to `my note.md`. A link title
+(`[x](note.md "Title")`) is not part of the target.
+
 ### Resolution
 
 Links are resolved at query time, not stored with target document IDs. This handles document renames gracefully. Every link consumer (graph neighbors in search, ask and Context Capsules, backlinks, `gno links`, `gno impact`, graph export, `gno audit links`) uses the same resolution.
@@ -672,7 +679,7 @@ The `doc_links` table stores:
 - Position (line/column for editor integration)
 - Optional anchor (#section) and display text
 
-Links are extracted during sync from Markdown sources only, excluding frontmatter, HTML comments, inline code spans, and fenced or indented code blocks, as Obsidian does. Plain text, source code, data files and converted documents produce no links; their content stays searchable.
+Links are extracted during sync from Markdown sources only, excluding frontmatter, HTML comments, inline code spans, and fenced or indented code blocks, as Obsidian does. Plain text, source code, data files and converted documents produce no links; their content stays searchable. Code regions come from the CommonMark + GFM parser. Its table handling slows with the square of a table's cells, so a note with a table of more than 5,000 cells is parsed without GFM tables: code spans, fences, indented code, blockquotes and lists are unchanged, and only a code span that crosses a table-cell pipe (`` `a | b` `` in a table row) is kept whole instead of being split at the pipe.
 
 ## Technical Notes
 

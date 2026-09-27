@@ -18,5 +18,7 @@ export const NATIVE_VERSIONS = {
  */
 export const ADAPTER_VERSIONS = {
   "markitdown-ts": "0.0.10+xlsx.0.20.3",
+  /** Direct SheetJS -> Markdown tables (fn-198); output matches markitdown. */
+  xlsx: "sheetjs-0.20.3+md.1",
   officeparser: "7.8.0+pdfjs.6.3.289",
 } as const;

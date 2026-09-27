@@ -1,0 +1,117 @@
+{
+  "base": "d1761f947f76247a4fdbf48236409afa8372d8f6",
+  "effort": "medium",
+  "findings": {
+    "backend": "codex",
+    "baseSha": "d1761f947f76247a4fdbf48236409afa8372d8f6",
+    "headSha": "ae2c795d47b7324325caff5f9a61179c2683f726",
+    "items": [
+      {
+        "anchor": {
+          "baseSha": "d1761f947f76247a4fdbf48236409afa8372d8f6",
+          "headSha": "ae2c795d47b7324325caff5f9a61179c2683f726",
+          "path": "src/converters/budget.ts",
+          "side": "head",
+          "startLine": 123
+        },
+        "body": "The new deadline and memory sampler stop when conversion returns. Metadata extraction, structure/link extraction, chunking and persistence then execute without either budget. Native files and compiled executables bypass enforcement entirely. R2 explicitly requires bounded conversion and post-conversion processing; replacing one quadratic parser does not enforce that contract.",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-a4eed3dccd2fbe2a2144d1f739af2cab2d022b445dff5d35ae185c20ea69eb4f",
+        "id": "finding-64a88c4430927096e816970d54ddbf39",
+        "lastSeenReceiptId": "review-a4eed3dccd2fbe2a2144d1f739af2cab2d022b445dff5d35ae185c20ea69eb4f",
+        "ordinal": 1,
+        "rIds": [
+          "R2"
+        ],
+        "severity": "P1",
+        "status": "open",
+        "suggestion": "Extend enforceable time/memory limits through per-file processing, recording the budget error and continuing with subsequent files. Cover post-conversion overruns in regression tests.",
+        "title": "The new deadline and memory sampler stop when conversion returns"
+      },
+      {
+        "anchor": {
+          "baseSha": "d1761f947f76247a4fdbf48236409afa8372d8f6",
+          "headSha": "ae2c795d47b7324325caff5f9a61179c2683f726",
+          "path": "src/ingestion/strip.ts",
+          "side": "head",
+          "startLine": 289
+        },
+        "body": "`scanFencedCodeRanges(markdown)` scans frontmatter and HTML comments before respecting their excluded ranges. A fence inside either can open a code block extending through the remaining document, silently dropping real links. Reproduced with a YAML block scalar containing an indented triple-backtick line: `[[real-link]]` disappears when padding pushes the note over the parser threshold. The parser path preserves it.",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-a4eed3dccd2fbe2a2144d1f739af2cab2d022b445dff5d35ae185c20ea69eb4f",
+        "id": "finding-cfe068487e97aad86bfeffb934118acd",
+        "lastSeenReceiptId": "review-a4eed3dccd2fbe2a2144d1f739af2cab2d022b445dff5d35ae185c20ea69eb4f",
+        "ordinal": 2,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "suggestion": "Prevent excluded frontmatter/comment content from opening fences; add threshold-crossing regression tests.",
+        "title": "`scanFencedCodeRanges(markdown)` scans frontmatter and HTML comments before respecting their excluded ranges"
+      },
+      {
+        "anchor": {
+          "baseSha": "d1761f947f76247a4fdbf48236409afa8372d8f6",
+          "headSha": "ae2c795d47b7324325caff5f9a61179c2683f726",
+          "path": "src/ingestion/strip.ts",
+          "side": "head",
+          "startLine": 263
+        },
+        "body": "Inline delimiters pair globally across paragraph boundaries. For `A stray \\` character.\\n\\n[[real-link]]\\n\\nAnother \\` character.`, the fallback hides the real link, whereas the parser correctly finds no code span. The scanner also discards backslash-preceded closing backticks, although backslashes do not escape delimiters inside code spans; this can extend exclusions across subsequent links. Both failures reproduced.",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-a4eed3dccd2fbe2a2144d1f739af2cab2d022b445dff5d35ae185c20ea69eb4f",
+        "id": "finding-fc3d2e7bc5aa8c1f2653200e047c1a51",
+        "lastSeenReceiptId": "review-a4eed3dccd2fbe2a2144d1f739af2cab2d022b445dff5d35ae185c20ea69eb4f",
+        "ordinal": 3,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "suggestion": "Bound pairing to valid inline contexts and distinguish opener escaping from closing-delimiter rules.",
+        "title": "Inline delimiters pair globally across paragraph boundaries"
+      },
+      {
+        "anchor": {
+          "baseSha": "d1761f947f76247a4fdbf48236409afa8372d8f6",
+          "headSha": "ae2c795d47b7324325caff5f9a61179c2683f726",
+          "path": "src/ingestion/strip.ts",
+          "side": "head",
+          "startLine": 176
+        },
+        "body": "The fallback does not recognize fences inside blockquotes. Reproduced with `> ~~~\\n> [[example-only]]\\n> ~~~`: adding padding to cross the parser threshold causes `example-only` to become an indexed link. This changes graph contents solely because the note grows.",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-a4eed3dccd2fbe2a2144d1f739af2cab2d022b445dff5d35ae185c20ea69eb4f",
+        "id": "finding-a787ba91d5c9f99a0293688aab460d3e",
+        "lastSeenReceiptId": "review-a4eed3dccd2fbe2a2144d1f739af2cab2d022b445dff5d35ae185c20ea69eb4f",
+        "ordinal": 4,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "suggestion": "Track container prefixes when recognizing fenced blocks and test quoted/list-contained fences on the fallback path.",
+        "title": "The fallback does not recognize fences inside blockquotes"
+      }
+    ],
+    "reviewKind": "implementation",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-a4eed3dccd2fbe2a2144d1f739af2cab2d022b445dff5d35ae185c20ea69eb4f"
+  },
+  "focus": "parser gating: converted docs never reach mdast, large-Markdown fallback correctness; conversion worker: lifecycle, termination on timeout/memory, reuse after kill, no leaked workers, errors map to TIMEOUT/MEMORY_LIMIT and file stays pending; process-wide memory limit default (half RAM) cannot wrongly kill conversions in a large resident serve/daemon; compiled binaries fallback; config validation; no ingest/embedding change",
+  "id": "fn-198-large-pivot-table-workbook-makes-282.1",
+  "introduced_count": 4,
+  "mode": "codex",
+  "model": "gpt-6-astra",
+  "pre_existing_count": 0,
+  "review": "I\u2019ll read the task contract first, then trace the changed conversion and ingestion paths and review their focused tests.\nThe workbook regression is addressed by keeping converted tables out of the Markdown parser. R2 still has a gap: the new limits stop at conversion, leaving post-conversion processing unbudgeted. I\u2019m also checking whether the fallback scanner preserves link extraction around frontmatter and code.\nThe focused strip/config/update suites pass on Bun 1.4.2 (43 tests). Filesystem-backed tests are blocked by the read-only sandbox. In-memory checks reproduced fallback-scanner regressions: fences inside frontmatter/comments hide real links, backticks pair across paragraphs, and quoted fences expose example links.\nFour introduced issues need fixing.\n\n1. **Severity:** P1  \n   **Confidence:** 100  \n   **Classification:** introduced  \n   **File:Line:** `src/converters/budget.ts:123`  \n   **R-IDs:** [R2]  \n   **Problem:** The new deadline and memory sampler stop when conversion returns. Metadata extraction, structure/link extraction, chunking and persistence then execute without either budget. Native files and compiled executables bypass enforcement entirely. R2 explicitly requires bounded conversion **and post-conversion processing**; replacing one quadratic parser does not enforce that contract.  \n   **Suggestion:** Extend enforceable time/memory limits through per-file processing, recording the budget error and continuing with subsequent files. Cover post-conversion overruns in regression tests.\n\n2. **Severity:** P2  \n   **Confidence:** 75  \n   **Classification:** introduced  \n   **File:Line:** `src/ingestion/strip.ts:289`  \n   **R-IDs:** []  \n   **Problem:** `scanFencedCodeRanges(markdown)` scans frontmatter and HTML comments before respecting their excluded ranges. A fence inside either can open a code block extending through the remaining document, silently dropping real links. Reproduced with a YAML block scalar containing an indented triple-backtick line: `[[real-link]]` disappears when padding pushes the note over the parser threshold. The parser path preserves it.  \n   **Suggestion:** Prevent excluded frontmatter/comment content from opening fences; add threshold-crossing regression tests.\n\n3. **Severity:** P2  \n   **Confidence:** 75  \n   **Classification:** introduced  \n   **File:Line:** `src/ingestion/strip.ts:263`  \n   **R-IDs:** []  \n   **Problem:** Inline delimiters pair globally across paragraph boundaries. For `A stray \\` character.\\n\\n[[real-link]]\\n\\nAnother \\` character.`, the fallback hides the real link, whereas the parser correctly finds no code span. The scanner also discards backslash-preceded closing backticks, although backslashes do not escape delimiters inside code spans; this can extend exclusions across subsequent links. Both failures reproduced.  \n   **Suggestion:** Bound pairing to valid inline contexts and distinguish opener escaping from closing-delimiter rules.\n\n4. **Severity:** P2  \n   **Confidence:** 75  \n   **Classification:** introduced  \n   **File:Line:** `src/ingestion/strip.ts:176`  \n   **R-IDs:** []  \n   **Problem:** The fallback does not recognize fences inside blockquotes. Reproduced with `> ~~~\\n> [[example-only]]\\n> ~~~`: adding padding to cross the parser threshold causes `example-only` to become an indexed link. This changes graph contents solely because the note grows.  \n   **Suggestion:** Track container prefixes when recognizing fenced blocks and test quoted/list-contained fences on the fallback path.\n\n## Requirements coverage\n\n| R-ID | Status | Evidence |\n|---|---|---|\n| R1 | met | Converted output bypasses GFM parsing; task evidence reports 8.9 s / 3245 MB versus the stalled baseline. Focused large-table regression passes. |\n| R2 | partial | Worker timeout, memory rejection and successful retry verified in memory. Post-conversion enforcement is missing. |\n| R3 | met | CLI callbacks name slow files; budget errors appear in terminal results, status and audit messages. |\n\nUnaddressed R-IDs: [R2]\n\nVerification: 43 focused tests passed on Bun 1.4.2. Filesystem-backed integration tests were blocked by the read-only sandbox. All scanner examples above reproduced in memory.\n\nClassification counts: 4 introduced, 0 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":4,\"pre_existing\":0},\"unaddressed\":[\"R2\"]}\n```\n\n<verdict>NEEDS_WORK</verdict>",
+  "review_reservation_id": "6cb0b13336474b32bdd7f297ebb2403d",
+  "session_id": "01a0e384-0251-79e3-b230-64bc32a26c43",
+  "spec": "codex:gpt-6-astra:medium",
+  "timestamp": "2026-09-27T15:40:15.307575Z",
+  "type": "impl_review",
+  "unaddressed": [
+    "R2"
+  ],
+  "verdict": "NEEDS_WORK"
+}

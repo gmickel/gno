@@ -1,21 +1,122 @@
 {
   "branch_name": "fn-196-consistency-follow-ups-after-28x",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-09-27T21:21:19.123900Z",
   "created_at": "2026-09-27T12:49:27.422111Z",
   "default_impl": null,
   "default_review": null,
   "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-196-consistency-follow-ups-after-28x",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-196-consistency-follow-ups-after-28x.1": 0
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "review_attempts": [
+    {
+      "artifact_sha256": "5a565fcd5797749b6111ca80fb7edce61de3918eca4fbaa8a7bdffee2a90fddf",
+      "backend": "codex",
+      "base_sha": "64d19bde91a91b746e70cd6573dc672091c58fca",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-ae83bce5bcb5bf71572f33f09de05e88",
+            "classification": "introduced",
+            "findingId": "finding-ae83bce5bcb5bf71572f33f09de05e88",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "8a267f5bb09d873e7f5dfc928e6c04b39a7997ca",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 317645,
+      "output_sha256": "356e06d1e80de150ab918793afaf4485b95bf063d74745e8be23534934495994",
+      "reservation_id": "330d729ff6934b40a3fceb29132fa43e",
+      "round_consumed": true,
+      "scope": "impl:fn-196-consistency-follow-ups-after-28x.1",
+      "superseded_by": null,
+      "task": "fn-196-consistency-follow-ups-after-28x.1",
+      "timestamp": "2026-09-27T14:09:22.276435Z",
+      "tool_calls": 18,
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "34623855fe83f627b26a0c51177d3caf63d99d330a6e720c958ffec052c2d957",
+      "backend": "codex",
+      "base_sha": "64d19bde91a91b746e70cd6573dc672091c58fca",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-ae83bce5bcb5bf71572f33f09de05e88",
+            "classification": "introduced",
+            "findingId": "finding-ae83bce5bcb5bf71572f33f09de05e88",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "2502796c794334748ff8d92a2728f2a1eb24e055",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6-astra",
+      "outcome": "verdict",
+      "output_bytes": 1030,
+      "output_sha256": "0a83982a2d7518ac190a70e9ebe556513ffd8643aa3f2f2f668e4c27c1c23f95",
+      "reservation_id": "096d1b5189ed4bee9b523af830c3fd69",
+      "round_consumed": true,
+      "scope": "impl:fn-196-consistency-follow-ups-after-28x.1",
+      "superseded_by": null,
+      "task": "fn-196-consistency-follow-ups-after-28x.1",
+      "timestamp": "2026-09-27T14:21:56.128715Z",
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "impl:fn-196-consistency-follow-ups-after-28x.1": 1
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-196-consistency-follow-ups-after-28x.1": 0
+  },
   "spec_path": ".flow/specs/fn-196-consistency-follow-ups-after-28x.md",
-  "status": "open",
+  "status": "done",
   "title": "Consistency follow-ups after 2.8.x",
   "tracker": {
     "baseHashFlow": null,
@@ -28,5 +129,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-27T12:49:27.755060Z"
+  "updated_at": "2026-09-27T21:21:19.501245Z"
 }

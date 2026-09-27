@@ -19,6 +19,7 @@ import {
   tooLargeError,
 } from "../../errors";
 import { ADAPTER_VERSIONS } from "../../versions";
+import { hasPrefix, isPasswordProtectedXlsx } from "../shared/ooxml-protection";
 
 const CONVERTER_ID = "adapter/markitdown-ts" as const;
 const CONVERTER_VERSION = ADAPTER_VERSIONS["markitdown-ts"];
@@ -34,11 +35,6 @@ const SUPPORTED_MIMES = [
 ];
 
 const PDF_SIGNATURE = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]);
-const CFB_SIGNATURE = new Uint8Array([
-  0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1,
-]);
-const ENCRYPTION_INFO = utf16le("EncryptionInfo");
-const ENCRYPTED_PACKAGE = utf16le("EncryptedPackage");
 const PDF_TRAILER_SCAN_BYTES = 2048;
 const MAX_MESSAGE_LENGTH = 200;
 const PASSWORD_ERROR_REGEX = /password(?:-protected)?|no password given/i;
@@ -49,45 +45,6 @@ const PASSWORD_ERROR_REGEX = /password(?:-protected)?|no password given/i;
  */
 function toBuffer(bytes: Uint8Array): Buffer {
   return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-}
-
-function utf16le(value: string): Uint8Array {
-  return new Uint8Array(Buffer.from(value, "utf16le"));
-}
-
-function hasPrefix(bytes: Uint8Array, prefix: Uint8Array): boolean {
-  if (bytes.length < prefix.length) {
-    return false;
-  }
-
-  for (let index = 0; index < prefix.length; index += 1) {
-    if (bytes[index] !== prefix[index]) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-function includesBytes(bytes: Uint8Array, needle: Uint8Array): boolean {
-  if (needle.length === 0 || bytes.length < needle.length) {
-    return false;
-  }
-
-  outer: for (
-    let index = 0;
-    index <= bytes.length - needle.length;
-    index += 1
-  ) {
-    for (let offset = 0; offset < needle.length; offset += 1) {
-      if (bytes[index + offset] !== needle[offset]) {
-        continue outer;
-      }
-    }
-    return true;
-  }
-
-  return false;
 }
 
 function isPasswordProtectedPdf(bytes: Uint8Array): boolean {
@@ -111,14 +68,6 @@ function hasCompletePdfTrailer(bytes: Uint8Array): boolean {
   const startXrefIndex = tail.lastIndexOf("startxref");
 
   return startXrefIndex >= 0 && eofIndex > startXrefIndex;
-}
-
-function isPasswordProtectedXlsx(bytes: Uint8Array): boolean {
-  return (
-    hasPrefix(bytes, CFB_SIGNATURE) &&
-    includesBytes(bytes, ENCRYPTION_INFO) &&
-    includesBytes(bytes, ENCRYPTED_PACKAGE)
-  );
 }
 
 function isPasswordProtected(input: ConvertInput): boolean {

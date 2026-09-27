@@ -51,10 +51,16 @@ import {
 } from "../core/shutdown-budget";
 import { acquireCliWriteLease } from "../core/write-lease";
 import { defaultSyncService, withContentTypeRules } from "../ingestion";
+import { disposeFileProcessor } from "../ingestion/file-processor";
 import { withOwnedInferenceScope } from "../llm/inference-scope";
 import { getActivePreset } from "../llm/registry";
 import { createToolContext, Mutex } from "../mcp/context";
 import { watchedCollections } from "../sessions/config";
+import {
+  adoptServedConfig,
+  readInstanceConfig,
+} from "../sessions/config-refresh";
+import { remoteSafeSessionsError } from "../sessions/types";
 import { SqliteAdapter } from "../store/sqlite/adapter";
 import {
   createServerContext,
@@ -78,6 +84,8 @@ import {
 import { CollectionWatchService as DefaultCollectionWatchService } from "./watch-service";
 
 const OWNER_LOCK_TIMEOUT_MS = 0;
+/** How often an idle resident re-reads its config file for collection edits. */
+const CONFIG_REFRESH_INTERVAL_MS = 2_000;
 
 export type ResidentMode = "serve" | "daemon";
 
@@ -146,6 +154,15 @@ export interface ResidentRuntime {
     provider: (() => HttpMcpTransportStatus) | null
   ): void;
   setPolicySessionInvalidator(invalidator: (() => Promise<void>) | null): void;
+  /**
+   * Adopt collection (and context) edits made to the config file while the
+   * resident runs, with the sessions refresh's binding checks: rejects when
+   * the file is unreadable or bound to another index, leaving the served
+   * config as it was. Other settings keep their restart behaviour. Callers
+   * run it before admitting a request (an adoption moves the policy epoch).
+   * Optional only for test doubles; the real runtime always provides it.
+   */
+  refreshConfig?(): Promise<void>;
   admitRequest(signal?: AbortSignal): ResidentRequestHandle | null;
   withModelLease<T>(operation: () => Promise<T>): Promise<T>;
   markContentMutation(): void;
@@ -472,17 +489,56 @@ export async function startResidentRuntime(
     startBackgroundWork: (operation) => backgroundWork.start(operation),
   });
 
+  const setServedConfig = (config: Config): void => {
+    ctxHolder.config = config;
+    ctxHolder.current = { ...ctxHolder.current, config };
+    ctxHolder.watchService?.updateCollections(
+      watchedCollections(config),
+      withContentTypeRules({}, config)
+    );
+  };
+  const instance = {
+    configPath: actualConfigPath,
+    indexName: canonicalizeIndexName(options.index ?? DEFAULT_INDEX_NAME),
+  };
+  let configRefresh: Promise<void> | undefined;
+  const refreshConfig = (): Promise<void> => {
+    configRefresh ??= (async () => {
+      const file = await readInstanceConfig(
+        instance,
+        deps.loadConfig ?? loadConfig
+      );
+      const served = ctxHolder.config;
+      const next: Config = {
+        ...served,
+        collections: file.collections,
+        contexts: file.contexts,
+      };
+      if (Bun.deepEquals(next, served)) return;
+      await adoptServedConfig(
+        {
+          ...instance,
+          store,
+          config: served,
+          setConfig: setServedConfig,
+          invalidateEgressPolicy: async () => {
+            await ctxHolder.invalidateEgressPolicy?.();
+          },
+          markContentMutation: () => ctxHolder.markContentMutation?.(),
+          markIndexMutation: () => ctxHolder.markIndexMutation?.(),
+        },
+        next
+      );
+    })().finally(() => {
+      configRefresh = undefined;
+    });
+    return configRefresh;
+  };
+
   const mcpContext = createToolContext({
     store,
     getConfig: () => ctxHolder.config,
-    setConfig: (config) => {
-      ctxHolder.config = config;
-      ctxHolder.current = { ...ctxHolder.current, config };
-      ctxHolder.watchService?.updateCollections(
-        watchedCollections(config),
-        withContentTypeRules({}, config)
-      );
-    },
+    setConfig: setServedConfig,
     actualConfigPath,
     indexName: canonicalizeIndexName(options.index ?? DEFAULT_INDEX_NAME),
     toolMutex,
@@ -633,6 +689,7 @@ export async function startResidentRuntime(
     setPolicySessionInvalidator(invalidator) {
       policySessionInvalidator = invalidator;
     },
+    refreshConfig,
     async syncAll(syncOptions = {}) {
       const request = admission.admit();
       if (!request) throw new Error("Resident runtime is shutting down");
@@ -674,8 +731,11 @@ export async function startResidentRuntime(
     dispose(closeSurface) {
       if (disposal) return disposal;
       disposed = true;
+      clearInterval(configRefreshTimer);
       admission.stop();
       jobManager.stop();
+      // A file mid-preparation fails now instead of holding shutdown.
+      disposeFileProcessor();
       admissionState = "draining";
       shutdownState = "graceful";
       disposal = disposeResidentResources({
@@ -725,5 +785,21 @@ export async function startResidentRuntime(
     };
   };
   mcpContext.getResidentStatus = () => runtime.getStatus();
+  // Without requests (a headless daemon) the watcher still follows the file.
+  let lastRefreshError: string | undefined;
+  const configRefreshTimer = setInterval(() => {
+    backgroundWork.start(async () => {
+      try {
+        await refreshConfig();
+        lastRefreshError = undefined;
+      } catch (error) {
+        const message = remoteSafeSessionsError(error).message;
+        if (message !== lastRefreshError)
+          console.warn(`gno ${mode}: config not reloaded: ${message}`);
+        lastRefreshError = message;
+      }
+    });
+  }, CONFIG_REFRESH_INTERVAL_MS);
+  configRefreshTimer.unref?.();
   return { success: true, runtime };
 }

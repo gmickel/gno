@@ -11,6 +11,10 @@
 
 import { normalizeTag } from "../core/tags";
 
+/** Frontmatter keys that would write to an object's prototype. */
+const PROTOTYPE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+const isPrototypeKey = (key: string): boolean => PROTOTYPE_KEYS.has(key);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -233,7 +237,7 @@ function parseNestedMapValue(
       }
     }
 
-    if (key.length > 0 && values.length > 0) {
+    if (key.length > 0 && values.length > 0 && !isPrototypeKey(key)) {
       result[key] = values;
     }
   }
@@ -337,7 +341,7 @@ export function parseFrontmatter(source: string): FrontmatterResult {
         const value = line.slice(colonIdx + 1).trim();
         if (key !== "tags") {
           const metadataValue = parseMetadataValue(value, lines, i);
-          if (metadataValue !== undefined) {
+          if (metadataValue !== undefined && !isPrototypeKey(key)) {
             result.metadata[key] = metadataValue;
           }
         }

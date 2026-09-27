@@ -6,7 +6,7 @@
  */
 
 import type { Collection, Config } from "../../config/types";
-import type { SyncResult } from "../../ingestion";
+import type { SlowConversionEvent, SyncResult } from "../../ingestion";
 import type { SearchResults } from "../../pipeline/types";
 
 import {
@@ -20,6 +20,7 @@ import {
   loadConfig,
   writeConfigWarningsToStderr,
 } from "../../config";
+import { BUDGET_ERROR_CODES } from "../../ingestion/file-processor";
 import { SqliteAdapter } from "../../store/sqlite/adapter";
 import { assertCliSessionBinding } from "../session-binding";
 
@@ -165,6 +166,21 @@ export function decorateSearchResultsForIndex(
 }
 
 /**
+ * Name a file whose conversion is still running past the notice threshold,
+ * so an operator can see which file a slow run is working on (stderr, so
+ * JSON output on stdout stays parseable).
+ */
+export function reportSlowConversion(event: SlowConversionEvent): void {
+  process.stderr.write(
+    `Still converting ${event.collection}/${event.relPath} after ${formatSeconds(event.elapsedMs)} (budget ${formatSeconds(event.budgetMs)})\n`
+  );
+}
+
+/** Seconds with one decimal below ten seconds, whole seconds above. */
+const formatSeconds = (ms: number): string =>
+  ms < 10_000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms / 1000)}s`;
+
+/**
  * Format sync result lines (shared between update and index commands).
  */
 export function formatSyncResultLines(
@@ -193,6 +209,15 @@ export function formatSyncResultLines(
     );
     if (c.filesErrored > 0) {
       lines.push(`  ${c.filesErrored} errors`);
+    }
+    // A file stopped at its conversion budget is always named, not only in
+    // verbose output: it stays unindexed until a later run finishes it.
+    if (!options.verbose) {
+      for (const err of c.errors) {
+        if (BUDGET_ERROR_CODES.has(err.code)) {
+          lines.push(`    [${err.code}] ${err.relPath}: ${err.message}`);
+        }
+      }
     }
     if (c.filesMarkedInactive > 0) {
       lines.push(`  ${c.filesMarkedInactive} marked inactive`);

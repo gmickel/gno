@@ -1,0 +1,46 @@
+{
+  "base": "64d19bde91a91b746e70cd6573dc672091c58fca",
+  "effort": "medium",
+  "findings": {
+    "backend": "codex",
+    "baseSha": "64d19bde91a91b746e70cd6573dc672091c58fca",
+    "headSha": "2502796c794334748ff8d92a2728f2a1eb24e055",
+    "items": [
+      {
+        "body": "The indexed-target guard uses SQLite `COLLATE NOCASE`, which only folds ASCII, while filesystem matching uses Unicode lowercase and NFC normalization. With an indexed `\u00dcberblick.md`, `[x](\u00fcberblick)` now becomes `links.outside-index` despite its target being indexed. I reproduced this using the changed helper and an in-memory database.",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-007f888a4e070e9415bf79a912d01fb9a3dfabe124faa3dd7f988dcab8561cbd",
+        "id": "finding-ae83bce5bcb5bf71572f33f09de05e88",
+        "lastSeenReceiptId": "review-005dcb6aa9d17547fb039aacf6637c5d2f721d542961199b9541d1791503d009",
+        "ordinal": 1,
+        "rIds": [
+          "R5"
+        ],
+        "severity": "P2",
+        "status": "fixed",
+        "suggestion": "Compare indexed paths using the same `pathKey` normalization as filesystem paths. Add a regression covering non-ASCII case differences and preserve the indexed target\u2019s existing classification.",
+        "title": "The indexed-target guard uses SQLite `COLLATE NOCASE`, which only folds ASCII, while filesystem matching uses Unicode lowercase and NFC normalization"
+      }
+    ],
+    "reviewKind": "implementation",
+    "round": 2,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-005dcb6aa9d17547fb039aacf6637c5d2f721d542961199b9541d1791503d009",
+    "supersedesReceiptId": "review-007f888a4e070e9415bf79a912d01fb9a3dfabe124faa3dd7f988dcab8561cbd"
+  },
+  "focus": "verify the prior finding (indexed-target guard uses pathKey Unicode/NFC comparison, not COLLATE NOCASE) is fixed; per-audit load of indexed paths is bounded; no regression",
+  "id": "fn-196-consistency-follow-ups-after-28x.1",
+  "introduced_count": 0,
+  "mode": "codex",
+  "model": "gpt-6-astra",
+  "pre_existing_count": 0,
+  "review": "Prior finding: fixed\n\nIndexed paths now use the same NFC and Unicode-lowercase normalization as filesystem paths. In-memory checks passed for Unicode case differences, NFD index rows, and unindexed targets. No new blocking issues found.\n\nThe two regression tests were inspected and attempted; fixture creation remains blocked by the sandbox\u2019s read-only `/tmp` (`EROFS`).\n\n## Requirements coverage\n\n| R-ID | Status | Evidence |\n|---|---|---|\n| R1 | met | Previously reviewed resident config refresh; unchanged by fix. |\n| R2 | met | Previously reviewed partition maintenance and doctor counts; unchanged. |\n| R3 | met | Shared similarity source-vector rule; unchanged. |\n| R4 | met | Markdown-only journal link extraction; unchanged. |\n| R5 | met | Consistent Unicode normalization; regression cases added and in-memory checks passed. |\n\nUnaddressed R-IDs: []\n\nClassification counts: 0 introduced, 0 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":0,\"pre_existing\":0},\"unaddressed\":[]}\n```\n\n<verdict>SHIP</verdict>\n",
+  "review_reservation_id": "096d1b5189ed4bee9b523af830c3fd69",
+  "session_id": "01a0e330-f344-7a63-900f-168539e3d037",
+  "spec": "codex:gpt-6-astra:medium",
+  "timestamp": "2026-09-27T14:21:56.128146Z",
+  "type": "impl_review",
+  "unaddressed": [],
+  "verdict": "SHIP"
+}

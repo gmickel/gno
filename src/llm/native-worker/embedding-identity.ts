@@ -1,9 +1,21 @@
 // Bun has no inode/ctime identity API. Check replacement during hashing/loading.
 import { stat } from "node:fs/promises";
 
-const nativePackage: { version: string } = await Bun.file(
-  new URL("../package.json", import.meta.resolve("node-llama-cpp"))
-).json();
+/**
+ * node-llama-cpp's version, part of the embedding runtime identity. A
+ * standalone compiled executable ships no node-llama-cpp package (it cannot
+ * run local inference), so the lookup must not stop it from loading.
+ */
+const readNativePackage = async (): Promise<{ version: string }> => {
+  try {
+    return (await Bun.file(
+      new URL("../package.json", import.meta.resolve("node-llama-cpp"))
+    ).json()) as { version: string };
+  } catch {
+    return { version: "unavailable" };
+  }
+};
+const nativePackage = await readNativePackage();
 
 export async function fileIdentity(path: string): Promise<string> {
   const info = await stat(path, { bigint: true });

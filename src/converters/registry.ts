@@ -10,7 +10,7 @@ import type {
   RecordAdapter,
 } from "./types";
 
-import { unsupportedError } from "./errors";
+import { adapterError, unsupportedError } from "./errors";
 
 export class ConverterRegistry {
   private readonly converters: Converter[] = [];
@@ -72,12 +72,47 @@ export class ConverterRegistry {
 }
 
 /**
+ * Load an adapter module; if it cannot load in this runtime, stand in a
+ * converter that fails its file types with ADAPTER_FAILURE and the reason.
+ */
+export async function loadAdapter(
+  load: () => Promise<Converter>,
+  id: string,
+  extensions: readonly string[],
+  mimes: readonly string[]
+): Promise<Converter> {
+  try {
+    return await load();
+  } catch (cause) {
+    const reason = cause instanceof Error ? cause.message : String(cause);
+    return {
+      id,
+      version: "unavailable",
+      // Same matching as the real adapter, so a sniffed MIME without an
+      // extension still reports ADAPTER_FAILURE, not UNSUPPORTED.
+      canHandle: (mime, ext) =>
+        extensions.includes(ext) || mimes.includes(mime),
+      convert: (input) =>
+        Promise.resolve({
+          ok: false,
+          error: adapterError(
+            input,
+            id,
+            `${id} is unavailable in this build: ${reason}`
+          ),
+        }),
+    };
+  }
+}
+
+/**
  * Create the default registry with all MVP converters.
  * Priority order per PRD §8.6:
  * 1. native/markdown - handles .md
  * 2. native/plaintext - handles .txt
- * 3. adapter/markitdown-ts - handles .pdf, .docx, .xlsx
- * 4. adapter/officeparser - handles .pptx
+ * 3. adapter/xlsx - handles .xlsx (linear SheetJS -> Markdown tables)
+ * 4. adapter/markitdown-ts - handles .pdf, .docx
+ * 5. adapter/officeparser - handles .pptx
  */
 export async function createDefaultRegistry(): Promise<ConverterRegistry> {
   const registry = new ConverterRegistry();
@@ -85,9 +120,29 @@ export async function createDefaultRegistry(): Promise<ConverterRegistry> {
   // Import converters dynamically to avoid circular deps
   const { markdownConverter } = await import("./native/markdown");
   const { plaintextConverter } = await import("./native/plaintext");
-  const { markitdownAdapter } = await import("./adapters/markitdownTs/adapter");
-  const { officeparserAdapter } =
-    await import("./adapters/officeparser/adapter");
+  const { xlsxAdapter } = await import("./adapters/xlsx/adapter");
+  // The PDF/Office adapters load pdf.js, which cannot initialize where its
+  // native canvas binding is missing (a standalone compiled executable). A
+  // failed adapter only fails its own file types.
+  const markitdownAdapter = await loadAdapter(
+    async () =>
+      (await import("./adapters/markitdownTs/adapter")).markitdownAdapter,
+    "adapter/markitdown-ts",
+    [".pdf", ".docx"],
+    [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ]
+  );
+  const officeparserAdapter = await loadAdapter(
+    async () =>
+      (await import("./adapters/officeparser/adapter")).officeparserAdapter,
+    "adapter/officeparser",
+    [".pptx"],
+    [
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ]
+  );
   const { jsonlAdapter } = await import("./adapters/jsonl/adapter");
   const { transcriptAdapter } = await import("./adapters/transcript/adapter");
   const { emailRecordAdapter } = await import("./adapters/email/adapter");
@@ -98,6 +153,7 @@ export async function createDefaultRegistry(): Promise<ConverterRegistry> {
   // Register in priority order
   registry.register(markdownConverter);
   registry.register(plaintextConverter);
+  registry.register(xlsxAdapter);
   registry.register(markitdownAdapter);
   registry.register(officeparserAdapter);
   registry.registerRecordAdapter(jsonlAdapter);

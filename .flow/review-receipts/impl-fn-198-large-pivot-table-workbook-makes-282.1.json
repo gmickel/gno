@@ -1,0 +1,129 @@
+{
+  "base": "d1761f947f76247a4fdbf48236409afa8372d8f6",
+  "effort": "medium",
+  "findings": {
+    "backend": "codex",
+    "baseSha": "d1761f947f76247a4fdbf48236409afa8372d8f6",
+    "headSha": "0dd0eb014355225e7c58c2c984184c2fbe895937",
+    "items": [
+      {
+        "body": "The new deadline and memory sampler stop when conversion returns. Metadata extraction, structure/link extraction, chunking and persistence then execute without either budget. Native files and compiled executables bypass enforcement entirely. R2 explicitly requires bounded conversion and post-conversion processing; replacing one quadratic parser does not enforce that contract.",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-a4eed3dccd2fbe2a2144d1f739af2cab2d022b445dff5d35ae185c20ea69eb4f",
+        "id": "finding-64a88c4430927096e816970d54ddbf39",
+        "lastSeenReceiptId": "review-a6b6df90920a19acb5eb71b6182b1d1e2ecdb8d4aef57c1ddc13fa5ddfea42cb",
+        "ordinal": 1,
+        "rIds": [
+          "R2"
+        ],
+        "severity": "P1",
+        "status": "not_fixed",
+        "suggestion": "Extend enforceable time/memory limits through per-file processing, recording the budget error and continuing with subsequent files. Cover post-conversion overruns in regression tests.",
+        "title": "The new deadline and memory sampler stop when conversion returns"
+      },
+      {
+        "body": "Post-conversion limits are checked only after synchronous phases return. They detect an overrun but cannot bound it or prevent memory exhaustion during that phase. Reproduced using the current code-region parser and file-budget implementation: a 40,000-row Markdown table ran 3,984 ms against a 1,000 ms budget; the slow-file timer could not fire. The new slow-chunker test likewise verifies eventual error recording, not interruption. Finding #1 is improved but remains unresolved.",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-43b0f7ce790d36d1ba9d7af54c2644ce20056df736f2991b20ccfce7d4779fc3",
+        "id": "finding-16564dea1a9d6e880ca48b27e8dac327",
+        "lastSeenReceiptId": "review-a6b6df90920a19acb5eb71b6182b1d1e2ecdb8d4aef57c1ddc13fa5ddfea42cb",
+        "ordinal": 5,
+        "rIds": [
+          "R2"
+        ],
+        "severity": "P1",
+        "status": "open",
+        "suggestion": "Execute potentially unbounded processing in a terminable worker, or introduce bounded processing increments with deadline/memory checks. Test that processing stops near its configured deadline and subsequent files continue.",
+        "title": "Post-conversion limits are checked only after synchronous phases return"
+      },
+      {
+        "anchor": {
+          "baseSha": "d1761f947f76247a4fdbf48236409afa8372d8f6",
+          "headSha": "0dd0eb014355225e7c58c2c984184c2fbe895937",
+          "path": "src/ingestion/sync.ts",
+          "side": "head",
+          "startLine": 963
+        },
+        "body": "Compiled executables still bypass the worker and execute synchronous preparation with checks only after each phase. This was explicitly part of original finding #1. Exercising that same fallback through an injected default chunker reproduced 3,264 ms against a 1,000 ms budget. Memory exhaustion during a phase likewise cannot be prevented. Documenting this limitation does not satisfy the unchanged R2 contract.",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-a6b6df90920a19acb5eb71b6182b1d1e2ecdb8d4aef57c1ddc13fa5ddfea42cb",
+        "id": "finding-00b7b10ece0a6126da2b00af9970d9d6",
+        "lastSeenReceiptId": "review-a6b6df90920a19acb5eb71b6182b1d1e2ecdb8d4aef57c1ddc13fa5ddfea42cb",
+        "ordinal": 6,
+        "rIds": [
+          "R2"
+        ],
+        "severity": "P1",
+        "status": "open",
+        "suggestion": "Provide terminable execution for compiled builds, or refuse processing when the required isolation is unavailable instead of silently weakening enforcement.",
+        "title": "Compiled executables still bypass the worker and execute synchronous preparation with checks only after each phase"
+      },
+      {
+        "body": "`scanFencedCodeRanges(markdown)` scans frontmatter and HTML comments before respecting their excluded ranges. A fence inside either can open a code block extending through the remaining document, silently dropping real links. Reproduced with a YAML block scalar containing an indented triple-backtick line: `[[real-link]]` disappears when padding pushes the note over the parser threshold. The parser path preserves it.",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-a4eed3dccd2fbe2a2144d1f739af2cab2d022b445dff5d35ae185c20ea69eb4f",
+        "id": "finding-cfe068487e97aad86bfeffb934118acd",
+        "lastSeenReceiptId": "review-a6b6df90920a19acb5eb71b6182b1d1e2ecdb8d4aef57c1ddc13fa5ddfea42cb",
+        "ordinal": 2,
+        "rIds": [],
+        "severity": "P2",
+        "status": "fixed",
+        "suggestion": "Prevent excluded frontmatter/comment content from opening fences; add threshold-crossing regression tests.",
+        "title": "`scanFencedCodeRanges(markdown)` scans frontmatter and HTML comments before respecting their excluded ranges"
+      },
+      {
+        "body": "Inline delimiters pair globally across paragraph boundaries. For `A stray \\` character.\\n\\n[[real-link]]\\n\\nAnother \\` character.`, the fallback hides the real link, whereas the parser correctly finds no code span. The scanner also discards backslash-preceded closing backticks, although backslashes do not escape delimiters inside code spans; this can extend exclusions across subsequent links. Both failures reproduced.",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-a4eed3dccd2fbe2a2144d1f739af2cab2d022b445dff5d35ae185c20ea69eb4f",
+        "id": "finding-fc3d2e7bc5aa8c1f2653200e047c1a51",
+        "lastSeenReceiptId": "review-a6b6df90920a19acb5eb71b6182b1d1e2ecdb8d4aef57c1ddc13fa5ddfea42cb",
+        "ordinal": 3,
+        "rIds": [],
+        "severity": "P2",
+        "status": "fixed",
+        "suggestion": "Bound pairing to valid inline contexts and distinguish opener escaping from closing-delimiter rules.",
+        "title": "Inline delimiters pair globally across paragraph boundaries"
+      },
+      {
+        "body": "The fallback does not recognize fences inside blockquotes. Reproduced with `> ~~~\\n> [[example-only]]\\n> ~~~`: adding padding to cross the parser threshold causes `example-only` to become an indexed link. This changes graph contents solely because the note grows.",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-a4eed3dccd2fbe2a2144d1f739af2cab2d022b445dff5d35ae185c20ea69eb4f",
+        "id": "finding-a787ba91d5c9f99a0293688aab460d3e",
+        "lastSeenReceiptId": "review-a6b6df90920a19acb5eb71b6182b1d1e2ecdb8d4aef57c1ddc13fa5ddfea42cb",
+        "ordinal": 4,
+        "rIds": [],
+        "severity": "P2",
+        "status": "fixed",
+        "suggestion": "Track container prefixes when recognizing fenced blocks and test quoted/list-contained fences on the fallback path.",
+        "title": "The fallback does not recognize fences inside blockquotes"
+      }
+    ],
+    "reviewKind": "implementation",
+    "round": 3,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-a6b6df90920a19acb5eb71b6182b1d1e2ecdb8d4aef57c1ddc13fa5ddfea42cb",
+    "supersedesReceiptId": "review-43b0f7ce790d36d1ba9d7af54c2644ce20056df736f2991b20ccfce7d4779fc3"
+  },
+  "focus": "verify prior finding (post-conversion hard cut-off) fixed via per-file worker; direct xlsx converter output equivalence and escaping (pipes, newlines, merged cells, hyperlinks, rich text), shared strings, dates/numbers formatting vs old path; CORRUPT vs ADAPTER_FAILURE change; worker lifecycle/recycling, message sizes, no leaks; DB writes stay main-thread; compiled-binary fallback; no ingest/embedding regression",
+  "id": "fn-198-large-pivot-table-workbook-makes-282.1",
+  "introduced_count": 1,
+  "mode": "codex",
+  "model": "gpt-6-astra",
+  "pre_existing_count": 0,
+  "review": "Prior finding #1: not-fixed\nPrior finding #2: fixed\nPrior finding #3: fixed\nPrior finding #4: fixed\n\nThe default worker path now fixes the demonstrated overrun: an 80,000-row Markdown table stopped at 1,000 ms, the notice fired, and the next file succeeded. All 46 focused tests passed on Bun 1.4.2. Findings #2\u2013#4 remain fixed.\n\n**Remaining portion of finding #1**\n\n- **Severity:** P1\n- **Confidence:** 75\n- **Classification:** introduced\n- **File:Line:** `src/ingestion/sync.ts:963`\n- **R-IDs:** [R2]\n- **Problem:** Compiled executables still bypass the worker and execute synchronous preparation with checks only after each phase. This was explicitly part of original finding #1. Exercising that same fallback through an injected default chunker reproduced **3,264 ms against a 1,000 ms budget**. Memory exhaustion during a phase likewise cannot be prevented. Documenting this limitation does not satisfy the unchanged R2 contract.\n- **Suggestion:** Provide terminable execution for compiled builds, or refuse processing when the required isolation is unavailable instead of silently weakening enforcement.\n\n## Requirements coverage\n\n| R-ID | Status | Evidence |\n|---|---|---|\n| R1 | met | XLSX equivalence/performance tests pass; task evidence reports real-shape indexing at 5.9 s / 1674 MB. |\n| R2 | partial | Worker interruption and subsequent-file recovery verified; compiled fallback remains unbounded within phases. |\n| R3 | met | Slow-file timer fires during worker processing; budget failures identify the running phase. |\n\nUnaddressed R-IDs: [R2]\n\nClassification counts: 1 introduced, 0 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":1,\"pre_existing\":0},\"unaddressed\":[\"R2\"]}\n```\n\n<verdict>NEEDS_WORK</verdict>\n",
+  "review_reservation_id": "b76cd62db6844e71b8ef9199f17fb14e",
+  "session_id": "01a0e384-0251-79e3-b230-64bc32a26c43",
+  "spec": "codex:gpt-6-astra:medium",
+  "timestamp": "2026-09-27T17:49:09.310761Z",
+  "type": "impl_review",
+  "unaddressed": [
+    "R2"
+  ],
+  "verdict": "NEEDS_WORK"
+}

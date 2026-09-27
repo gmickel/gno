@@ -15,7 +15,11 @@ import {
   type SyncResult,
   withContentTypeRules,
 } from "../../ingestion";
-import { formatSyncResultLines, initStore } from "./shared";
+import {
+  formatSyncResultLines,
+  initStore,
+  reportSlowConversion,
+} from "./shared";
 
 /**
  * Options for update command.
@@ -66,6 +70,7 @@ export async function update(
           {
             gitPull: options.gitPull,
             runUpdateCmd: true,
+            onSlowConversion: reportSlowConversion,
           },
           config
         )

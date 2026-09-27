@@ -144,7 +144,7 @@ export const evaluateFreshnessAudit = (
           document,
           kind: "stale-indexed-revision",
           message: document.lastErrorCode
-            ? "The latest indexing attempt recorded an error"
+            ? `The latest indexing attempt recorded an error (${document.lastErrorCode})`
             : "The document has no indexed-at revision evidence",
           detail: {
             indexedAt: document.indexedAt,

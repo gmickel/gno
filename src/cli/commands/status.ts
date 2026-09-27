@@ -27,6 +27,7 @@ import {
   formatMemoryStatusLines,
 } from "../../core/memory-diagnostics";
 import { formatVectorPartitionLines } from "../../core/vector-partition-status";
+import { BUDGET_ERROR_CODES } from "../../ingestion/file-processor";
 import { ModelCache } from "../../llm/cache";
 import { getActivePreset, resolveModelUri } from "../../llm/registry";
 import { getConnectorVerificationTargets } from "../../serve/connectors";
@@ -64,8 +65,55 @@ export type StatusResult =
       contentTypeBoost: ContentTypeBoostStatus;
       memory: MemoryStatus;
       backgroundIssues: ResidentBackgroundIssue[];
+      /** Files whose latest conversion stopped at the per-file budget. */
+      budgetStops: BudgetStop[];
     }
   | { success: false; error: string };
+
+/** A file left unindexed because its conversion overran its budget. */
+export interface BudgetStop {
+  collection: string;
+  relPath: string;
+  code: string;
+  message: string;
+}
+
+/** Most recent ingest errors inspected for budget stops. */
+const BUDGET_STOP_SCAN_LIMIT = 100;
+/** Most budget stops listed in status output. */
+const MAX_BUDGET_STOPS = 10;
+
+/**
+ * Files whose latest indexing attempt stopped at the conversion budget, from
+ * the recent error log, kept only while the document still carries that code.
+ */
+async function collectBudgetStops(store: SqliteAdapter): Promise<BudgetStop[]> {
+  const recent = await store.getRecentErrors(BUDGET_STOP_SCAN_LIMIT);
+  if (!recent.ok) return [];
+  const stops: BudgetStop[] = [];
+  const seen = new Set<string>();
+  for (const row of recent.value) {
+    const key = `${row.collection}\u0000${row.relPath}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (!BUDGET_ERROR_CODES.has(row.code)) continue;
+    const document = await store.getDocument(row.collection, row.relPath);
+    if (
+      document.ok &&
+      document.value?.active &&
+      document.value.lastErrorCode === row.code
+    ) {
+      stops.push({
+        collection: row.collection,
+        relPath: row.relPath,
+        code: row.code,
+        message: row.message,
+      });
+      if (stops.length >= MAX_BUDGET_STOPS) break;
+    }
+  }
+  return stops;
+}
 
 /** A background issue reported by (or about) a running detached resident. */
 export type ResidentBackgroundIssue = BackgroundIssue & {
@@ -368,6 +416,7 @@ export async function status(
       contentTypeBoost: buildContentTypeBoostStatus(config.contentTypes ?? []),
       memory: await buildMemoryStatus(store, config.collections),
       backgroundIssues: await collectResidentIssues(),
+      budgetStops: await collectBudgetStops(store),
     };
   } finally {
     await store.close();
@@ -439,6 +488,10 @@ export function formatStatus(
     (issue) =>
       `  ${issue.process} (pid ${issue.pid}): ${formatBackgroundIssue(issue)}`
   );
+  const stopLines = result.budgetStops.map(
+    (stop) =>
+      `  ${stop.collection}/${stop.relPath} [${stop.code}] ${stop.message}`
+  );
   return [
     formatTerminal(
       result.status,
@@ -446,6 +499,13 @@ export function formatStatus(
       result.contentTypeBoost,
       result.memory
     ),
+    ...(stopLines.length
+      ? [
+          "",
+          "Stopped at conversion budget (retried by the next update):",
+          ...stopLines,
+        ]
+      : []),
     ...(issueLines.length ? ["", "Background issues:", ...issueLines] : []),
   ].join("\n");
 }

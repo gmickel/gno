@@ -228,6 +228,43 @@ qpdf --check /path/to/file.pdf
 Replace or re-export the PDF, then run `gno update` or **Update All** in the Web
 UI. A changed source hash makes GNO try the repaired file again.
 
+### A large spreadsheet never finishes indexing, or is stopped with `TIMEOUT` / `MEMORY_LIMIT`
+
+GNO 2.8.2 could spend hours and tens of gigabytes on one large Excel workbook
+(for example a pivot report with a sheet of tens of thousands of rows) and
+write nothing to the index; 2.8.1 also used tens of gigabytes on such a file.
+Converting a sheet went through an HTML table whose cost grew with the square
+of its rows and used about 20 KB per cell, and 2.8.2 added Markdown code
+detection over the converted table, which grew with the square of its cells.
+Current versions build each sheet's table directly from the sheet data, never
+run code detection on converted files, and parse very large Markdown tables
+without the table rules, so such a workbook indexes in seconds.
+
+Each file is also indexed under a per-file budget covering conversion and the
+processing after it, and is stopped mid-step when it runs over. While a file
+is still being processed after 10 seconds, `gno update` and `gno index` print
+its path:
+
+```text
+Still converting work/reports/pivot-report.xlsx after 10s (budget 60s)
+```
+
+A file that runs past its time budget or pushes GNO's memory past the memory
+budget is stopped and recorded as `TIMEOUT` or `MEMORY_LIMIT`; the rest of the
+collection still indexes. `gno update` output, `gno status` and `gno audit`
+name the file. The next update tries it again.
+
+To let a legitimately large file finish, raise the budget in the config:
+
+```yaml
+conversion:
+  timeoutMs: 300000
+  maxMemoryMb: 12288
+```
+
+To skip it instead, add it to the collection's `exclude` list. See
+[Conversion budget](CONFIGURATION.md#conversion-budget).
+
 ### Saved Context Capsule reverification failed
 
 Inspect the registration in its index:
@@ -433,9 +470,14 @@ bypassing them.
 
 ### "Daemon not refreshing after I changed config"
 
-V1 `gno daemon` reads config on startup.
+A running `gno daemon` or `gno serve` picks up added, removed or edited
+collections from the config file within about two seconds (and before the next
+request). Files already in a newly added collection are indexed by
+`gno update`. If a change does not show, check the config file is valid:
+`gno doctor` reports a config it cannot read.
 
-If you add/remove collections or change patterns while it is running, restart it:
+Other settings (models, gateway, findings, session automation) are read on
+startup. After changing those, restart it:
 
 ```bash
 # Foreground: Ctrl+C, then re-run gno daemon
@@ -751,7 +793,8 @@ upgrade, run `gno embed` again so stored vectors match the new formatter.
 
 `gno doctor` reports this as the `embedding-fingerprint` check. It shows the
 current fingerprint, pending/stale chunks, legacy empty-fingerprint vectors, and
-stored fingerprint groups. Warnings mean vector search can still run, but you
+stored fingerprint groups (on an index embedded since 2.7, the active vector
+partition and its chunk count). Warnings mean vector search can still run, but you
 should re-embed:
 
 ```bash

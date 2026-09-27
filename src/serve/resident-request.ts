@@ -2,6 +2,23 @@ import type { ResidentRuntime } from "./resident-runtime";
 /** Admission and bounded-reader boundary for resident REST reads. */
 
 import { withInferenceScope } from "../llm/inference-scope";
+import { sessionsErrorResponse } from "./routes/sessions";
+
+/**
+ * Adopt config-file collection edits before a request is admitted (adoption
+ * moves the policy epoch, which would void an admitted request). Returns the
+ * error response when the config cannot be read or is bound elsewhere.
+ */
+export async function refreshResidentConfig(
+  runtime: Pick<ResidentRuntime, "refreshConfig">
+): Promise<Response | null> {
+  try {
+    await runtime.refreshConfig?.();
+    return null;
+  } catch (error) {
+    return sessionsErrorResponse(error);
+  }
+}
 
 function unavailableResponse(): Response {
   return Response.json(
@@ -87,6 +104,8 @@ export async function handleResidentRead(
   request: Request | undefined,
   operation: (signal: AbortSignal) => Promise<Response> | Response
 ): Promise<Response> {
+  const refreshFailure = await refreshResidentConfig(runtime);
+  if (refreshFailure) return refreshFailure;
   const admitted = runtime.admitRequest(request?.signal);
   if (!admitted) return unavailableResponse();
 

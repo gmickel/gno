@@ -11,6 +11,7 @@ import { offsetToPosition } from "../ingestion/position";
 import { rangeIntersectsExcluded } from "../ingestion/strip";
 import {
   detectEncodingStyle,
+  isBackslashEscaped,
   parseParenthesizedDestination,
   splitDestinationPath,
   stripAngleBracketDestination,
@@ -298,12 +299,31 @@ export function inventoryInlineMarkdown(
   while (searchFrom < markdown.length) {
     const labelOpen = markdown.indexOf("[", searchFrom);
     if (labelOpen < 0) break;
-    if (labelOpen > 0 && markdown[labelOpen - 1] === "!") {
+    if (
+      (labelOpen > 0 && markdown[labelOpen - 1] === "!") ||
+      isBackslashEscaped(markdown, labelOpen)
+    ) {
       searchFrom = labelOpen + 1;
       continue;
     }
-    const labelClose = markdown.indexOf("]", labelOpen + 1);
-    if (labelClose < 0) break;
+    // Match link extraction: escaped brackets are literal label text, and
+    // nested brackets must balance (`[see [1]](note.md)` is one link).
+    let labelClose = -1;
+    let depth = 0;
+    for (let i = labelOpen + 1; i < markdown.length; i += 1) {
+      const ch = markdown[i];
+      if ((ch !== "]" && ch !== "[") || isBackslashEscaped(markdown, i))
+        continue;
+      if (ch === "[") depth += 1;
+      else if (depth === 0) {
+        labelClose = i;
+        break;
+      } else depth -= 1;
+    }
+    if (labelClose < 0) {
+      searchFrom = labelOpen + 1;
+      continue;
+    }
     if (markdown[labelClose + 1] !== "(") {
       searchFrom = labelOpen + 1;
       continue;

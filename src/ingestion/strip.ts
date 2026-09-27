@@ -11,12 +11,26 @@
  * Returns EXCLUDED RANGES on the original string - does NOT modify content.
  * This preserves position information for accurate line/column tracking.
  *
+ * Code regions come from the CommonMark + GFM parser. GFM table parsing is
+ * quadratic in the cells of one table (a 20,000-row table took minutes), so
+ * text with a table over the cell budget is parsed without the table
+ * extension: code spans, fences, indented code, blockquotes and lists keep
+ * their CommonMark meaning, and only table-cell boundaries are lost.
+ *
  * @module src/ingestion/strip
  */
 
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown } from "mdast-util-gfm";
+import { gfmAutolinkLiteralFromMarkdown } from "mdast-util-gfm-autolink-literal";
+import { gfmFootnoteFromMarkdown } from "mdast-util-gfm-footnote";
+import { gfmStrikethroughFromMarkdown } from "mdast-util-gfm-strikethrough";
+import { gfmTaskListItemFromMarkdown } from "mdast-util-gfm-task-list-item";
 import { gfm } from "micromark-extension-gfm";
+import { gfmAutolinkLiteral } from "micromark-extension-gfm-autolink-literal";
+import { gfmFootnote } from "micromark-extension-gfm-footnote";
+import { gfmStrikethrough } from "micromark-extension-gfm-strikethrough";
+import { gfmTaskListItem } from "micromark-extension-gfm-task-list-item";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -47,6 +61,14 @@ const FRONTMATTER_REGEX = /^---\r?\n[\s\S]*?(?:\r?\n)?---(?:\r?\n|$)/;
 
 /** HTML comments */
 const HTML_COMMENT_REGEX = /<!--[\s\S]*?-->/g;
+
+/**
+ * Most `|` characters one blank-line-delimited block may hold before the
+ * GFM table extension is left out of the parse. A GFM table only ends at a
+ * blank line (or another block), and its parse cost grows with the square
+ * of its cells: 5,000 cells take about 0.3 s, 26,000 about 8 s.
+ */
+export const MAX_PARSED_TABLE_CELLS = 5000;
 
 /** Backtick (code span or fence) or tilde fence anywhere in the text. */
 const INLINE_OR_FENCE_TRIGGER_REGEX = /`|~~~/;
@@ -87,6 +109,45 @@ const mayContainCode = (markdown: string): boolean => {
   return false;
 };
 
+/**
+ * Whether any blank-line-delimited block holds more table-cell pipes than
+ * the table budget. One linear pass, stopping as soon as the budget trips.
+ */
+const hasOversizedTable = (markdown: string): boolean => {
+  let blockPipes = 0;
+  let lineHasContent = false;
+  for (let index = 0; index < markdown.length; index += 1) {
+    const code = markdown.charCodeAt(index);
+    if (code === 10 /* \n */) {
+      if (!lineHasContent) blockPipes = 0;
+      lineHasContent = false;
+    } else if (code === 124 /* | */) {
+      blockPipes += 1;
+      lineHasContent = true;
+      if (blockPipes > MAX_PARSED_TABLE_CELLS) return true;
+    } else if (code !== 32 && code !== 9 && code !== 13) {
+      lineHasContent = true;
+    }
+  }
+  return false;
+};
+
+/** GFM without tables: every GFM construct except table rows and cells. */
+const GFM_WITHOUT_TABLES = {
+  extensions: [
+    gfmAutolinkLiteral(),
+    gfmFootnote(),
+    gfmStrikethrough(),
+    gfmTaskListItem(),
+  ],
+  mdastExtensions: [
+    gfmAutolinkLiteralFromMarkdown(),
+    gfmFootnoteFromMarkdown(),
+    gfmStrikethroughFromMarkdown(),
+    gfmTaskListItemFromMarkdown(),
+  ],
+};
+
 /** Opening fence at the start of a code node: backtick or tilde fence. */
 const FENCE_START_REGEX = /^[\t ]*(?:`{3,}|~{3,})/;
 
@@ -106,16 +167,17 @@ const collectCodeRanges = (
   markdown: string,
   frontmatterEnd: number
 ): ExcludedRange[] => {
-  if (!mayContainCode(markdown.slice(frontmatterEnd))) return [];
   const source =
     frontmatterEnd > 0
       ? markdown.slice(0, frontmatterEnd).replace(/[^\r\n]/gu, " ") +
         markdown.slice(frontmatterEnd)
       : markdown;
-  const root = fromMarkdown(source, {
-    extensions: [gfm()],
-    mdastExtensions: [gfmFromMarkdown()],
-  }) as CodeNode;
+  const root = fromMarkdown(
+    source,
+    hasOversizedTable(source)
+      ? GFM_WITHOUT_TABLES
+      : { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] }
+  ) as CodeNode;
   const ranges: ExcludedRange[] = [];
   const visit = (node: CodeNode): void => {
     const start = node.position?.start.offset;
@@ -176,9 +238,10 @@ export function getExcludedRanges(markdown: string): ExcludedRange[] {
   }
 
   // 3. Code spans and fenced or indented code blocks, from the parser.
-  ranges.push(
-    ...collectCodeRanges(markdown, frontmatterMatch?.[0].length ?? 0)
-  );
+  const frontmatterEnd = frontmatterMatch?.[0].length ?? 0;
+  if (mayContainCode(markdown.slice(frontmatterEnd))) {
+    ranges.push(...collectCodeRanges(markdown, frontmatterEnd));
+  }
 
   // Sort by start position for efficient lookup
   ranges.sort((a, b) => a.start - b.start);

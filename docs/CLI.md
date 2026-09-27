@@ -1995,7 +1995,7 @@ Options:
 - `--json`, `--md` - Output format
 
 **Requirements**: Embeddings must be generated with `gno embed` or `gno index`.
-**Similarity basis**: Uses the doc's `seq=0` embedding (falls back to first chunk).
+**Similarity basis**: Uses the stored embedding of the doc's first chunk (the lowest-seq chunk with a current embedding). MCP `gno_similar`, the REST API and graph similarity edges use the same rule, so scores match.
 
 ### gno graph
 
@@ -2061,7 +2061,7 @@ gno graph --mermaid | pbcopy
 # Paste into https://mermaid.live
 ```
 
-Similarity edges use `seq=0` embeddings only.
+Similarity edges use each document's first-chunk embedding, the same source vector as `gno similar`.
 
 ## Knowledge Change Commands
 
@@ -2091,7 +2091,9 @@ gno impact gno://notes/plan.md --collection notes --collection work --json
   `--json`; `--collection` filters the stream. Contract:
   `changes-follow-event.schema.json`.
 - `gno diff` returns the latest retained structural delta; `--change <id>`
-  selects an exact opaque change ID. Source bodies are never retained, and
+  selects an exact opaque change ID. Link changes are recorded only for
+  Markdown notes, the only documents GNO reads links from; other documents
+  still record their content changes. Source bodies are never retained, and
   missing prior structure is disclosed through `history` and
   `structureDelta.truncated`.
 - `gno impact` follows inbound typed, wiki, and Markdown dependencies. Depth,
@@ -2260,8 +2262,8 @@ gno reset --confirm
 Vector index maintenance. Use when vector search returns empty despite embeddings existing.
 
 ```bash
-gno vec sync      # Sync vec0 index with content_vectors
-gno vec rebuild   # Full rebuild of vec0 index
+gno vec sync      # Sync the vec0 index with the stored vectors
+gno vec rebuild   # Full rebuild of the vec0 index
 gno vec drop 9a8b7c6d5e4f   # Drop an abandoned shadow partition
 ```
 
@@ -2274,6 +2276,11 @@ gno vec drop 9a8b7c6d5e4f   # Drop an abandoned shadow partition
   included, are refused: another runtime may read them, and an active legacy
   partition may hold the only copy of the vectors until its one-time re-key.
 - `--json` - JSON output format
+
+`sync` and `rebuild` work on the active vector partition of the current
+embedding model (the vectors `gno embed` writes since 2.7) and report its
+counts. An index that never activated a partition keeps using its legacy
+`content_vectors` vectors.
 
 **When to use**: If `gno similar` returns empty results but embeddings exist, run `gno vec sync`.
 

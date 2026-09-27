@@ -587,21 +587,17 @@ export async function similar(
     }
     const db = store.getRawDb();
 
-    // Stored vector of the document's first chunk, from the active partition
+    // Similarity source vector (first chunk, unit length), active partition
     const {
-      readStoredDocumentVectors,
+      readSimilaritySourceVectors,
       resolveStoredVectorSource,
       similarityHitDocuments,
       storedVectorSearchOptions,
     } = await import("../../store/vector/stored-vectors.js");
     const source = resolveStoredVectorSource(db, modelPreset.embed);
-    const [embedding] =
-      readStoredDocumentVectors(
-        db,
-        source,
-        [{ id: doc.id, mirrorHash: doc.mirrorHash }],
-        { firstChunkOnly: true }
-      ).get(doc.id) ?? [];
+    const embedding = readSimilaritySourceVectors(db, source, [
+      { id: doc.id, mirrorHash: doc.mirrorHash },
+    ]).get(doc.id);
 
     if (!embedding) {
       return {
@@ -610,20 +606,7 @@ export async function similar(
         isValidation: true,
       };
     }
-
-    // Normalize embedding for cosine similarity
     const dimensions = embedding.length;
-    let norm = 0;
-    for (let i = 0; i < dimensions; i++) {
-      const val = embedding[i] ?? 0;
-      norm += val * val;
-    }
-    norm = Math.sqrt(norm);
-    if (norm > 0) {
-      for (let i = 0; i < dimensions; i++) {
-        embedding[i] = (embedding[i] ?? 0) / norm;
-      }
-    }
 
     // Create vector index port for search
     const { createVectorIndexPort } =

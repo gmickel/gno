@@ -987,7 +987,10 @@ resolves to a regular file inside the workspace, at most 200,000 files), no
 file is opened, and no graph edge is created. Wiki targets match files by the workspace
 link rules; a non-Markdown target needs its extension, `.md` is optional. A
 Markdown link matches only the file at its resolved path (NFC,
-case-insensitive). A
+case-insensitive); as for wiki links, `.md` is optional, so `[x](Note)` matches
+an unindexed `Note.md`. An indexed `Note.md` (compared under the same NFC,
+Unicode-lowercase key) is not outside the index, and Markdown link resolution
+itself stays exact-path, so that link remains in `links.local-targets`. A
 target missing from the listing stays unresolved; an unreadable folder or the
 file bound makes the listing incomplete, which the `links.outside-index` rule
 message states once.
@@ -995,7 +998,12 @@ message states once.
 The wiki link parser reads Obsidian's table-escaped alias `[[Note\|Alias]]`
 as target `Note` with alias `Alias`. Markdown link text may contain balanced
 square brackets (`[see [1]](note.md)`); a destination containing a square
-bracket is not a link.
+bracket is not a link. Markdown links follow CommonMark, as Obsidian renders
+them: a `[` escaped with a backslash (`\[clause](see section 4)`) opens no
+link, and an inline destination with an unescaped space is plain text unless
+it is wrapped in angle brackets. `[x](<my note.md>)` and `[x](my%20note.md)`
+both link to `my note.md`; a link title (`[x](note.md "Title")`) is not part
+of the target.
 
 The JSON contract is versioned as `gno://schemas/audit-report@1.0`. Finding IDs
 are stable SHA-256 identities derived from rule, normalized subject/location,
@@ -1471,6 +1479,33 @@ people/dates, thread/event/session identity, attachment inventory, and anchors.
 individual virtual document. The closed `record.adapter` identity contains the
 adapter ID, version, and configuration fingerprint. `get` and `multi-get`
 preserve the same fields.
+
+Every file is indexed under the per-file budget `conversion.timeoutMs`
+(default 60000) and `conversion.maxMemoryMb` (default half of physical memory,
+at least 2048; process resident memory). Conversion and every post-conversion
+phase (metadata, code regions, change-journal structure, chunking, link
+extraction) run in one worker per process, one file at a time; the worker is
+terminated at either limit, mid-phase, and replaced for the next file.
+Database reads and writes stay on the main thread. A standalone compiled
+executable, which cannot start the worker, runs the phases in a child process
+of itself (internal environment flag) under the same limits; the child's
+resident memory counts toward `conversion.maxMemoryMb` (Linux `/proc`, `ps`
+elsewhere; time only on Windows). A processor that cannot start fails the file
+with `ISOLATION_UNAVAILABLE`; nothing is prepared without the budget. The
+child is SIGKILLed on process exit, SIGTERM, SIGINT (via the CLI's exit
+path) and resident shutdown; on Linux it also carries a parent-death signal,
+so it dies with a SIGKILLed parent, and elsewhere it exits at its next step
+once its parent is gone.
+A file over either limit is recorded with error code `TIMEOUT` or
+`MEMORY_LIMIT` (the message names the running phase), stays unindexed, and is
+retried by the next sync; the rest of the run continues. `update` and `index` always print such a
+file in terminal output as `[CODE] <relPath>: <message>` (other per-file
+errors stay `--verbose` only), and write
+`Still converting <collection>/<relPath> after <n>s (budget <m>s)` to stderr
+once a file has been processing for 10 seconds or half its budget, whichever
+is sooner.
+`gno status` lists stopped files under "Stopped at conversion budget" in
+terminal output (JSON output is unchanged).
 
 File/export adapter iteration has a 60-second deadline in addition to the byte,
 record, metadata, and total-character caps. A partial import that retains valid
@@ -2976,7 +3011,11 @@ misconfigured `findings` block (see [Daemon Mode](../docs/DAEMON.md#scheduled-fi
 The `embedding-fingerprint` check is additive doctor-only diagnostics. It uses
 the active embed model and stored vector dimensions to report the current
 freshness fingerprint, pending/stale chunks, legacy empty-fingerprint vectors,
-and stored fingerprint groups. Stale, legacy, and mixed groups are warnings;
+and stored fingerprint groups. On an index with an activated vector partition
+for the embed model (every index `gno embed` wrote since 2.7), the groups are
+that partition with its current chunk count and there are no legacy vectors;
+legacy `content_vectors` groups are read only before any partition activates.
+Stale, legacy, and mixed groups are warnings;
 recover with `gno embed`, or `gno embed --force` if vectors still look stale.
 
 The additive `activation` object uses the same contract as `gno status` and
@@ -3988,7 +4027,10 @@ gno similar <doc> [-n, --limit <num>] [--threshold <num>] [--cross-collection] [
 
 - Finds documents semantically similar to the source document
 - Requires embeddings to be generated (`gno embed`)
-- Uses average document embedding for comparison
+- Source vector: the stored vector of the document's first chunk (the
+  lowest-seq chunk whose vector is current), read from the active vector
+  partition. `gno_similar` (MCP), `GET /api/doc/:id/similar` (REST) and graph
+  similarity edges use the same rule, so scores match across surfaces
 - By default, limits results to same collection
 
 **Output (JSON):**
@@ -4203,6 +4245,9 @@ gno changes --follow --jsonl [--cursor <cursor>] [--collection <name>]
   old/new identity and hash snapshots, normalized structural deltas, pagination,
   cursor-expiry, and retention-truncation disclosure.
 - The journal never returns source bodies.
+- Link additions and removals in `structureDelta.links` are recorded only for
+  Markdown sources, matching link extraction; content changes of other
+  documents (code, text, converted files, records) are still journaled.
 
 **Follow mode (`--follow --jsonl`)** streams journal events as they land and is
 the durable automation input for consumers that resume across restarts.
@@ -4444,6 +4489,21 @@ gno serve --detach --stop
 
 ---
 
+#### Config reload while running
+
+A running `gno serve` or `gno daemon` re-reads its config file before each
+request (REST, Web UI, HTTP MCP, daemon status) and every 2 seconds, and adopts
+changes to `collections` and `contexts` made by the CLI (`gno collection
+add/remove`) or by hand: status, MCP `gno_status`, the watcher and search scope
+follow without a restart. A newly added collection is watched from then on; its
+existing files are indexed by `gno update` (or the next start's initial sync).
+An adoption that changes the collection set or policies moves the egress policy
+epoch as a REST collection change does. The checks are the sessions config
+refresh's: an unreadable config file answers an error (`500`, sessions code
+`SESSIONS_RUNTIME_FAILURE`), never the stale config, and a config bound to
+another index is refused. Other settings (models, gateway, sessions sources
+outside the sessions routes) keep their restart behaviour.
+
 ### gno daemon
 
 Start a headless long-running watcher process for continuous indexing.
@@ -4483,6 +4543,8 @@ is blocked.
 
 - Opens DB once at startup
 - Loads config and requires at least one configured collection
+- Follows collection edits to the config file while running (see
+  [Config reload](#config-reload-while-running))
 - Starts the same watcher + embed scheduler used by `gno serve`
 - Exact contained eligible paths always use targeted content-hash sync.
   Ambiguous temp/directory/missing-name/recursive-delete events use bounded,

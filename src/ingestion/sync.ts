@@ -9,12 +9,8 @@ import { realpath, stat } from "node:fs/promises";
 // node:path for join (no Bun path utils)
 import { isAbsolute, join, relative, sep } from "node:path";
 
-import type { NormalizedContentTypeRule } from "../config";
 import type { Collection } from "../config/types";
-import type { TypedMetadata } from "../core/typed-metadata";
 import type {
-  ChunkInput,
-  DocLinkInput,
   DocumentInput,
   DocumentRow,
   IngestErrorInput,
@@ -24,7 +20,6 @@ import type {
 import type {
   ChunkerPort,
   CollectionSyncResult,
-  ContentTypeSource,
   FileSyncResult,
   ProcessDecision,
   SyncOptions,
@@ -33,14 +28,11 @@ import type {
   WalkerPort,
 } from "./types";
 
-import {
-  fingerprintContentTypeMetadataRules,
-  resolveContentTypeRule,
-} from "../config";
+import { fingerprintContentTypeMetadataRules } from "../config";
 import { createJsonlAdapter } from "../converters/adapters/jsonl/adapter";
 import { createTranscriptAdapter } from "../converters/adapters/transcript/adapter";
 import { getDefaultMimeDetector, type MimeDetector } from "../converters/mime";
-import { MARKDOWN_CONVERTER_ID } from "../converters/native/markdown";
+import { markdownConverter } from "../converters/native/markdown";
 import {
   type ConversionPipeline,
   getDefaultPipeline,
@@ -48,29 +40,33 @@ import {
 import { DEFAULT_LIMITS, type RecordAdapter } from "../converters/types";
 import {
   diffDocumentStructure,
-  extractDocumentStructure,
+  type DocumentStructureSnapshot,
 } from "../core/change-diff";
 import { enforceCollectionEgress } from "../core/egress-enforcement";
-import {
-  normalizeMarkdownPath,
-  normalizeWikiName,
-  parseLinks,
-} from "../core/links";
-import { extractMemoryScopes } from "../core/memory-record";
-import { normalizeTag, validateTag } from "../core/tags";
 import { defaultChunker } from "./chunker";
 import { persistChunkLayout, prepareChunking } from "./chunking";
 import {
   isCompiledContextPath,
   isCompiledContextContent,
 } from "./compiled-context";
+import { extractDocumentMetadata } from "./document-metadata";
 import {
-  extractHashtags,
-  parseFrontmatter,
-  stripFrontmatter,
-} from "./frontmatter";
+  defaultConversionMemoryMb,
+  type FileBudgetLimits,
+  type FileProcessorHooks,
+  memoryFailure,
+  prepareInProcessor,
+  timeoutFailure,
+} from "./file-processor";
 import { projectGraph } from "./graph-reconciliation";
-import { buildLineOffsets } from "./position";
+import {
+  type PrepareFailure,
+  prepareFile,
+  type PrepareFileRequest,
+  type PrepareOutcome,
+  type PreparePhase,
+  type PreviousRevision,
+} from "./prepare-file";
 import { processRecordContainer } from "./record-container";
 import {
   createDirectoryAvailability,
@@ -85,10 +81,10 @@ import {
   type SourceContentReaderPort,
   type SourceReadFailure,
 } from "./source-availability";
-import { type ExcludedRange, getExcludedRanges } from "./strip";
-import { extractTypedMetadata } from "./typed-metadata";
 import { collectionToWalkConfig, DEFAULT_CHUNK_PARAMS } from "./types";
 import { defaultWalker } from "./walker";
+
+export { extractDocumentMetadata } from "./document-metadata";
 
 /** Default concurrency for file processing */
 const DEFAULT_CONCURRENCY = 1;
@@ -99,6 +95,14 @@ const TX_BATCH_SIZE = 50;
 /** Max concurrency to prevent resource exhaustion */
 const MAX_CONCURRENCY = 16;
 
+interface FileBudget extends FileBudgetLimits {
+  startedAt: number;
+}
+
+/** A file still being indexed this long (or half its budget) is reported. */
+export const SLOW_CONVERSION_NOTICE_MS = 10_000;
+const BYTES_PER_MB = 1_048_576;
+
 /**
  * Current ingest schema version.
  * Increment when ingestion adds new derived data (tags, metadata, etc.)
@@ -108,8 +112,11 @@ const MAX_CONCURRENCY = 16;
  * link text with square brackets parse the way Obsidian renders them.
  * 9: links are extracted from Markdown sources only, and never from code
  * spans or indented code blocks.
+ * 10: Markdown links follow CommonMark: an escaped `[` opens no link, a
+ * destination with an unescaped space is text unless wrapped in `<...>`, and
+ * the destination ends before a link title.
  */
-export const INGEST_VERSION = 9;
+export const INGEST_VERSION = 10;
 const EMPTY_CONTENT_TYPE_RULES_FINGERPRINT =
   fingerprintContentTypeMetadataRules([]);
 const NON_RETRYABLE_CONVERSION_ERROR_CODES = new Set([
@@ -190,241 +197,6 @@ function decideAction(
 
   // All good - skip
   return { kind: "skip", reason: "unchanged" };
-}
-
-/**
- * Extract tags from markdown content.
- * Combines frontmatter tags and inline hashtags, normalized and validated.
- */
-function extractTags(markdown: string): string[] {
-  const tags = new Set<string>();
-
-  // 1. Extract from frontmatter
-  const frontmatter = parseFrontmatter(markdown);
-  for (const tag of frontmatter.tags) {
-    const normalized = normalizeTag(tag);
-    if (validateTag(normalized)) {
-      tags.add(normalized);
-    }
-  }
-
-  // 2. Extract hashtags from body (after stripping frontmatter)
-  const body = stripFrontmatter(markdown);
-  const hashtags = extractHashtags(body);
-  for (const tag of hashtags) {
-    const normalized = normalizeTag(tag);
-    if (validateTag(normalized)) {
-      tags.add(normalized);
-    }
-  }
-
-  return [...tags];
-}
-
-interface DocumentMetadata {
-  typedMetadata?: TypedMetadata;
-  metadataError?: string;
-  contentType?: string;
-  contentTypeSource: ContentTypeSource;
-  categories?: string[];
-  author?: string;
-  frontmatterDate?: string;
-  dateFields?: Record<string, string>;
-}
-
-const CODE_EXTENSIONS = new Set([
-  ".c",
-  ".cc",
-  ".cpp",
-  ".cs",
-  ".go",
-  ".java",
-  ".js",
-  ".jsx",
-  ".m",
-  ".mm",
-  ".php",
-  ".py",
-  ".rb",
-  ".rs",
-  ".swift",
-  ".ts",
-  ".tsx",
-]);
-
-const AUTHOR_KEYS = ["author", "by", "owner", "creator"] as const;
-const DATE_KEYS = [
-  "date",
-  "published",
-  "published_at",
-  "created",
-  "created_at",
-  "updated",
-  "updated_at",
-] as const;
-const DATE_FIELD_KEY_REGEX =
-  /(^|_)(date|time|created|updated|published|modified|deadline|expires|expiry|start|end)(_|$)/;
-
-function normalizeMetadataKey(rawKey: string): string {
-  return rawKey
-    .trim()
-    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .replace(/_+/g, "_");
-}
-
-function normalizeDate(value: unknown): string | undefined {
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? undefined : value.toISOString();
-  }
-  if (typeof value !== "string" && typeof value !== "number") {
-    return undefined;
-  }
-  const normalizedValue =
-    typeof value === "string"
-      ? value.trim().replace(/^["'](.*)["']$/, "$1")
-      : value;
-  const parsed = new Date(normalizedValue);
-  if (Number.isNaN(parsed.getTime())) {
-    return undefined;
-  }
-  return parsed.toISOString();
-}
-
-function inferPathContentType(
-  relPath: string,
-  ext: string
-): {
-  contentType: string;
-  source: ContentTypeSource;
-} {
-  const lowerPath = relPath.toLowerCase();
-  if (CODE_EXTENSIONS.has(ext.toLowerCase())) {
-    return { contentType: "code", source: "path-ext" };
-  }
-  if (/(meeting|standup|retro|minutes)/.test(lowerPath)) {
-    return { contentType: "meeting", source: "path-ext" };
-  }
-  if (/(spec|rfc|adr|design)/.test(lowerPath)) {
-    return { contentType: "spec", source: "path-ext" };
-  }
-  if (/(notes|journal|log)/.test(lowerPath)) {
-    return { contentType: "notes", source: "path-ext" };
-  }
-  return { contentType: "prose", source: "fallback" };
-}
-
-function normalizeFrontmatterScalar(value: string): string {
-  const trimmed = value.trim();
-  if (trimmed.length < 2) {
-    return trimmed;
-  }
-  const first = trimmed[0];
-  const last = trimmed.at(-1);
-  if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
-    return trimmed.slice(1, -1).trim();
-  }
-  return trimmed;
-}
-
-function parseCategories(input: unknown): string[] {
-  if (Array.isArray(input)) {
-    return input
-      .filter((v): v is string => typeof v === "string")
-      .map((v) => normalizeFrontmatterScalar(v).toLowerCase())
-      .filter((v) => v.length > 0);
-  }
-  if (typeof input === "string") {
-    return input
-      .split(",")
-      .map((v) => normalizeFrontmatterScalar(v).toLowerCase())
-      .filter((v) => v.length > 0);
-  }
-  return [];
-}
-
-export function extractDocumentMetadata(
-  markdown: string,
-  relPath: string,
-  ext: string,
-  contentTypeRules: NormalizedContentTypeRule[] = []
-): DocumentMetadata {
-  const parsed = parseFrontmatter(markdown);
-  const metadata = parsed.metadata;
-  const rawFrontmatterType =
-    typeof metadata.type === "string"
-      ? normalizeFrontmatterScalar(metadata.type)
-      : "";
-  const configuredRule = resolveContentTypeRule(
-    rawFrontmatterType,
-    relPath,
-    contentTypeRules
-  );
-  const inferred = inferPathContentType(relPath, ext);
-  const contentType = configuredRule?.rule.id ?? inferred.contentType;
-  const contentTypeSource: ContentTypeSource =
-    configuredRule?.source === "configured-id"
-      ? "frontmatter-type"
-      : configuredRule?.source === "prefix"
-        ? "prefix"
-        : inferred.source;
-  const categories = new Set<string>([contentType]);
-
-  const fmCategories = parseCategories(
-    metadata.category ?? metadata.categories ?? metadata.type
-  );
-  for (const category of fmCategories) {
-    categories.add(category);
-  }
-
-  let author: string | undefined;
-  for (const key of AUTHOR_KEYS) {
-    const value = metadata[key];
-    if (typeof value === "string" && value.trim().length > 0) {
-      author = value.trim();
-      break;
-    }
-  }
-
-  const normalizedMetadata = new Map<string, unknown>();
-  for (const [rawKey, value] of Object.entries(metadata)) {
-    const key = normalizeMetadataKey(rawKey);
-    if (key.length > 0 && !normalizedMetadata.has(key)) {
-      normalizedMetadata.set(key, value);
-    }
-  }
-
-  let frontmatterDate: string | undefined;
-  for (const key of DATE_KEYS) {
-    const normalized = normalizeDate(normalizedMetadata.get(key));
-    if (normalized) {
-      frontmatterDate = normalized;
-      break;
-    }
-  }
-
-  const dateFields: Record<string, string> = {};
-  for (const [key, value] of normalizedMetadata.entries()) {
-    if (!DATE_FIELD_KEY_REGEX.test(key)) {
-      continue;
-    }
-    const normalized = normalizeDate(value);
-    if (normalized) {
-      dateFields[key] = normalized;
-    }
-  }
-
-  return {
-    ...extractTypedMetadata(markdown),
-    contentType,
-    contentTypeSource,
-    categories: [...categories],
-    author,
-    frontmatterDate,
-    dateFields: Object.keys(dateFields).length > 0 ? dateFields : undefined,
-  };
 }
 
 /**
@@ -587,6 +359,8 @@ export class SyncService {
   private readonly chunker: ChunkerPort;
   private readonly mimeDetector: MimeDetector;
   private readonly pipeline: ConversionPipeline;
+  /** Default pipeline and chunker: files can be prepared in the worker. */
+  private readonly defaultPreparation: boolean;
   private readonly sourceReaderFactory: (
     mode: "any" | "local"
   ) => SourceContentReaderPort;
@@ -608,6 +382,7 @@ export class SyncService {
     this.chunker = chunker ?? defaultChunker;
     this.mimeDetector = mimeDetector ?? getDefaultMimeDetector();
     this.pipeline = pipeline ?? getDefaultPipeline();
+    this.defaultPreparation = pipeline === undefined && chunker === undefined;
     this.sourceReaderFactory =
       sourceReaderFactory ?? ((mode) => createSourceContentReader(mode));
     this.directoryAvailabilityFactory =
@@ -664,6 +439,7 @@ export class SyncService {
       maxOutputChars:
         options.limits?.maxOutputChars ?? DEFAULT_LIMITS.maxOutputChars,
     };
+    let slowNotice: ReturnType<typeof setTimeout> | undefined;
 
     try {
       // 1. Re-stat before read to enforce maxBytes on current file size
@@ -820,25 +596,22 @@ export class SyncService {
         return { relPath: entry.relPath, status: "unchanged" };
       }
 
-      // 6. Convert via pipeline
-      const convertResult = await this.pipeline.convert({
-        sourcePath: entry.absPath,
-        relativePath: entry.relPath,
-        collection: collection.name,
-        bytes,
-        mime: mime.mime,
-        ext: mime.ext,
-        limits,
-      });
-
-      if (!convertResult.ok) {
+      // 6. Prepare the file (convert, then everything CPU-bound before the
+      // database write) under one per-file time and memory budget. The file
+      // processor is stopped mid-step at the budget; in-process preparation
+      // (injected test doubles only) checks it between steps.
+      const budget = this.fileBudget(options, limits.timeoutMs);
+      const recordFailure = async (
+        failure: PrepareFailure,
+        previousStructure: DocumentStructureSnapshot | null | undefined
+      ): Promise<FileSyncResult> => {
         // Record error (checked)
         const errorInput: IngestErrorInput = {
           collection: collection.name,
           relPath: entry.relPath,
-          code: convertResult.error.code,
-          message: convertResult.error.message,
-          details: convertResult.error.details,
+          code: failure.code,
+          message: failure.message,
+          details: failure.details,
         };
         const recordResult = await store.recordError(errorInput);
         if (!recordResult.ok) {
@@ -847,15 +620,12 @@ export class SyncService {
 
         const hadRetrievableEvidence = Boolean(existing?.mirrorHash);
         const structureDelta = hadRetrievableEvidence
-          ? diffDocumentStructure(
-              await this.readPreviousStructure(store, existing),
-              {
-                headings: [],
-                links: [],
-                typedEdges: [],
-                dates: {},
-              }
-            ).delta
+          ? diffDocumentStructure(previousStructure, {
+              headings: [],
+              links: [],
+              typedEdges: [],
+              dates: {},
+            }).delta
           : undefined;
 
         // Upsert document with error info, explicitly clear mirrorHash. This
@@ -872,8 +642,8 @@ export class SyncService {
           sourceSize,
           sourceMtime,
           sourceCtime,
-          lastErrorCode: convertResult.error.code,
-          lastErrorMessage: convertResult.error.message,
+          lastErrorCode: failure.code,
+          lastErrorMessage: failure.message,
           ingestVersion: INGEST_VERSION,
           contentTypeRulesFingerprint,
           changeJournal: structureDelta ? { structureDelta } : false,
@@ -892,32 +662,66 @@ export class SyncService {
         return {
           relPath: entry.relPath,
           status: "error",
-          errorCode: convertResult.error.code,
-          errorMessage: convertResult.error.message,
+          errorCode: failure.code,
+          errorMessage: failure.message,
         };
-      }
+      };
 
-      const artifact = convertResult.value;
-      const extractedMetadata = extractDocumentMetadata(
-        artifact.markdown,
-        entry.relPath,
-        mime.ext,
-        contentTypeRules
+      // No previous revision: null (a new document). A previous revision whose
+      // structure was not computed before a stop: undefined (history
+      // unavailable), as for a missing mirror.
+      let previousStructure: DocumentStructureSnapshot | null | undefined =
+        existing ? undefined : null;
+      const previous = await this.readPreviousRevision(store, existing);
+      const prepared = await this.prepare(
+        {
+          input: {
+            sourcePath: entry.absPath,
+            relativePath: entry.relPath,
+            collection: collection.name,
+            bytes,
+            mime: mime.mime,
+            ext: mime.ext,
+            limits,
+          },
+          metadataExt: mime.ext,
+          contentTypeRules,
+          chunkParams: options.chunkingToken?.params ?? DEFAULT_CHUNK_PARAMS,
+          collectionLanguageHint: collection.languageHint,
+          memoryManaged: collection.memoryManaged === true,
+          // The default registry tries the Markdown converter first.
+          markdownSource: markdownConverter.canHandle(mime.mime, mime.ext),
+          previous,
+        },
+        budget,
+        {
+          onPrevious: (structure) => {
+            previousStructure = structure;
+          },
+          // The file's clock and slow-file notice start when processing does.
+          onStarted: () => {
+            budget.startedAt = performance.now();
+            slowNotice = this.scheduleSlowNotice(
+              collection,
+              entry,
+              options,
+              budget
+            );
+          },
+        }
       );
-      // Code ranges come from a full Markdown parse: compute them once and
-      // share them with the change journal and link extraction.
-      const excludedRanges = getExcludedRanges(artifact.markdown);
-      const previousStructure = await this.readPreviousStructure(
-        store,
-        existing,
-        { markdown: artifact.markdown, excludedRanges }
-      );
-      const nextStructure = extractDocumentStructure(
-        artifact.markdown,
-        entry.relPath,
-        extractedMetadata.dateFields,
-        excludedRanges
-      );
+      if (!prepared.ok) {
+        return await recordFailure(prepared.error, previousStructure);
+      }
+      const {
+        artifact,
+        metadata: extractedMetadata,
+        nextStructure,
+        chunkInputs,
+        linkInputs,
+        tags: extractedTags,
+        memoryScopes,
+      } = prepared.value;
       const structureDelta = diffDocumentStructure(
         previousStructure,
         nextStructure
@@ -969,25 +773,6 @@ export class SyncService {
           mirrorHash: artifact.mirrorHash,
         });
 
-        // 9. Chunk content
-        const chunks = this.chunker.chunk(
-          artifact.markdown,
-          options.chunkingToken?.params ?? DEFAULT_CHUNK_PARAMS,
-          artifact.languageHint ?? collection.languageHint,
-          entry.relPath
-        );
-
-        // 10. Convert to ChunkInput for store
-        const chunkInputs: ChunkInput[] = chunks.map((c) => ({
-          seq: c.seq,
-          pos: c.pos,
-          text: c.text,
-          startLine: c.startLine,
-          endLine: c.endLine,
-          language: c.language ?? undefined,
-          tokenCount: c.tokenCount ?? undefined,
-        }));
-
         // 11-12. Apply chunks and lexical projection under the policy token.
         await persistChunkLayout(
           store,
@@ -998,9 +783,8 @@ export class SyncService {
           artifact.languageHint ?? collection.languageHint
         );
 
-        // 13. Extract and store tags from frontmatter and body hashtags
-        // Always call setDocTags to clear removed tags on re-sync
-        const extractedTags = extractTags(artifact.markdown);
+        // 13. Store tags from frontmatter and body hashtags. Always call
+        // setDocTags to clear removed tags on re-sync.
         const tagsResult = await store.setDocTags(
           docId,
           extractedTags,
@@ -1015,8 +799,7 @@ export class SyncService {
         // A record that passes the memory validator gets scope rows; a
         // malformed file clears them and therefore drops out of managed
         // recall while staying searchable.
-        if (collection.memoryManaged === true) {
-          const memoryScopes = extractMemoryScopes(artifact.markdown);
+        if (memoryScopes) {
           const scopesResult = await store.setDocMemoryScopes(
             docId,
             memoryScopes
@@ -1027,55 +810,7 @@ export class SyncService {
           });
         }
 
-        // 14. Extract and store links (wiki and markdown links). Only
-        // Markdown sources carry links, as in Obsidian: link-shaped text in
-        // code, plain text or converted documents stays searchable prose.
-        const parsedLinks =
-          artifact.meta.converterId === MARKDOWN_CONVERTER_ID
-            ? parseLinks(
-                artifact.markdown,
-                buildLineOffsets(artifact.markdown),
-                excludedRanges
-              )
-            : [];
-
-        const linkInputs: DocLinkInput[] = [];
-        for (const link of parsedLinks) {
-          // Compute target_ref_norm based on link type
-          let targetRefNorm: string;
-          if (link.kind === "wiki") {
-            targetRefNorm = normalizeWikiName(link.targetRef);
-          } else {
-            // Markdown links with collection prefix are not supported
-            // (use wiki links for cross-collection references)
-            if (link.targetCollection) {
-              continue;
-            }
-            const resolved = normalizeMarkdownPath(
-              link.targetRef,
-              entry.relPath
-            );
-            if (!resolved) {
-              // Link escapes collection root - skip silently
-              continue;
-            }
-            targetRefNorm = resolved;
-          }
-
-          linkInputs.push({
-            targetRef: link.targetRef,
-            targetRefNorm,
-            targetAnchor: link.targetAnchor,
-            targetCollection: link.targetCollection,
-            linkType: link.kind,
-            linkText: link.displayText,
-            startLine: link.startLine,
-            startCol: link.startCol,
-            endLine: link.endLine,
-            endCol: link.endCol,
-          });
-        }
-
+        // 14. Store links.
         const linksResult = await store.setDocLinks(
           docId,
           linkInputs,
@@ -1157,6 +892,8 @@ export class SyncService {
         errorCode: code,
         errorMessage: message,
       };
+    } finally {
+      clearTimeout(slowNotice);
     }
   }
 
@@ -1192,30 +929,100 @@ export class SyncService {
     };
   }
 
-  private async readPreviousStructure(
-    store: StorePort,
-    existing: DocumentRow | null,
-    current?: { markdown: string; excludedRanges: ExcludedRange[] }
-  ): Promise<ReturnType<typeof extractDocumentStructure> | null | undefined> {
-    if (!existing) return null;
-    if (!existing.mirrorHash) return undefined;
+  /** The per-file budget, from the sync limits and config. */
+  private fileBudget(options: SyncOptions, timeoutMs: number): FileBudget {
+    return {
+      timeoutMs,
+      maxMemoryBytes:
+        (options.limits?.maxMemoryMb ?? defaultConversionMemoryMb()) *
+        BYTES_PER_MB,
+      startedAt: performance.now(),
+    };
+  }
 
+  /**
+   * Report a file still being indexed after `SLOW_CONVERSION_NOTICE_MS` (or
+   * half its budget), so an operator can see which file a run is stuck on.
+   * Preparation runs in the file worker, so the timer fires even while a
+   * step is still running.
+   */
+  private scheduleSlowNotice(
+    collection: Collection,
+    entry: WalkEntry,
+    options: SyncOptions,
+    budget: FileBudget
+  ): ReturnType<typeof setTimeout> | undefined {
+    const report = options.onSlowConversion;
+    if (!report) return undefined;
+    return setTimeout(
+      () => {
+        report({
+          collection: collection.name,
+          relPath: entry.relPath,
+          elapsedMs: Math.round(performance.now() - budget.startedAt),
+          budgetMs: budget.timeoutMs,
+        });
+      },
+      Math.min(SLOW_CONVERSION_NOTICE_MS, budget.timeoutMs / 2)
+    );
+  }
+
+  /**
+   * Prepare one file. With the default pipeline and chunker it runs in the
+   * terminable file processor (worker, or a child process for compiled
+   * executables), which fails closed if it cannot start. A service built
+   * with injected test doubles prepares in-process, checking the budget
+   * between steps.
+   */
+  private prepare(
+    request: PrepareFileRequest,
+    budget: FileBudget,
+    hooks: Required<FileProcessorHooks>
+  ): Promise<PrepareOutcome> {
+    if (this.defaultPreparation) {
+      return prepareInProcessor(request, budget, hooks);
+    }
+    hooks.onStarted();
+    let phase: PreparePhase = "previous revision";
+    return prepareFile(request, {
+      convert: (input) => this.pipeline.convert(input),
+      chunker: this.chunker,
+      onPrevious: hooks.onPrevious,
+      onPhase: (next) => {
+        phase = next;
+      },
+      check: () => {
+        const elapsedMs = performance.now() - budget.startedAt;
+        if (elapsedMs > budget.timeoutMs) {
+          return timeoutFailure(phase, elapsedMs, budget.timeoutMs);
+        }
+        const rss = process.memoryUsage.rss();
+        return rss > budget.maxMemoryBytes
+          ? memoryFailure(phase, rss, budget.maxMemoryBytes)
+          : null;
+      },
+    });
+  }
+
+  /** The previously indexed revision's content, when its mirror exists. */
+  private async readPreviousRevision(
+    store: StorePort,
+    existing: DocumentRow | null
+  ): Promise<PreviousRevision | null> {
+    if (!existing?.mirrorHash) return null;
     const content = await store.getContent(existing.mirrorHash);
     if (!content.ok) {
       throw new Error(`Store operation failed: ${content.error.message}`, {
         cause: content.error,
       });
     }
-    if (content.value === null) return undefined;
-    return extractDocumentStructure(
-      content.value,
-      existing.relPath,
-      existing.dateFields,
-      // Unchanged content (a re-ingest) reuses the current parse.
-      current !== undefined && content.value === current.markdown
-        ? current.excludedRanges
-        : getExcludedRanges(content.value)
-    );
+    if (content.value === null) return null;
+    return {
+      markdown: content.value,
+      relPath: existing.relPath,
+      dateFields: existing.dateFields ?? null,
+      converterId: existing.converterId,
+    };
   }
 
   /**
