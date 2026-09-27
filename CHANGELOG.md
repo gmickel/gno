@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.1] - 2026-09-27
+
 ### Fixed
 
 - `gno status` (and REST `/api/status`, MCP `gno_status`, the SDK `status()`) no longer lists a collection after `gno collection remove`. Before, the removed collection kept showing up with its old document count until the next `gno update`. Status now reports only configured collections, and its totals count documents and chunks from those collections only. The chunk total also stopped counting chunks left behind by deleted files, so `Total: 1 documents, 9 chunks` for one one-chunk file now reads `1 documents, 1 chunks`.
@@ -2874,7 +2876,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.8.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.8.1...HEAD
+[2.8.1]: https://github.com/gmickel/gno/compare/v2.8.0...v2.8.1
 [2.8.0]: https://github.com/gmickel/gno/compare/v2.7.1...v2.8.0
 [2.7.1]: https://github.com/gmickel/gno/compare/v2.7.0...v2.7.1
 [2.7.0]: https://github.com/gmickel/gno/compare/v2.6.0...v2.7.0
