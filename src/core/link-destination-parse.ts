@@ -42,6 +42,19 @@ const COMMONMARK_ESCAPABLE = new Set([
   " ",
 ]);
 
+/**
+ * True when the character at `index` is backslash-escaped: preceded by an odd
+ * number of backslashes. An escaped `[` is literal text in CommonMark and
+ * cannot open a link.
+ */
+export function isBackslashEscaped(text: string, index: number): boolean {
+  let backslashes = 0;
+  for (let i = index - 1; i >= 0 && text[i] === "\\"; i -= 1) {
+    backslashes += 1;
+  }
+  return backslashes % 2 === 1;
+}
+
 export interface LinkEncodingStyle {
   spaces: "percent" | "backslash" | "raw";
   parens: "percent" | "backslash" | "raw";

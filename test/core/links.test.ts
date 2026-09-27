@@ -337,6 +337,27 @@ Real [link](page.md).`;
       );
     });
 
+    // CommonMark: an escaped `[` is literal (R1); a destination with an
+    // unescaped space is a link only inside `<...>` (R2).
+    test.each([
+      ["\\[-some clause -](see section 4 of the annex)", []],
+      ["[-some clause -](see section 4 of the annex)", []],
+      ["\\[x](note.md)", []],
+      ["\\\\[x](note.md)", ["note.md"]],
+      ["[x\\](note.md)", []],
+      ["\\[see [x](note.md)]", ["note.md"]],
+      ["[x](my note.md) and [y](other.md)", ["other.md"]],
+      ["[x](<my note.md>)", ["my note.md"]],
+      ["[x](my%20note.md)", ["my%20note.md"]],
+      ['[x](note.md "Title")', ["note.md"]],
+      ["[x](a\\(b\\).md)", ["a(b).md"]],
+      ["[Plan]([[Project Plan]])", ["Project Plan"]],
+    ])("CommonMark link rules %p", (markdown, targets) => {
+      expect(parse(markdown).map(({ targetRef }) => targetRef)).toEqual(
+        targets
+      );
+    });
+
     // Code is never a link; a link beside code on the same line still is.
     test.each([
       ["code span beside a link", "`[[InCode]]` then [[Prose]]", ["Prose"]],
@@ -583,9 +604,9 @@ describe("parseLinks regression (fn-60.6 additive inventory)", () => {
     const links = parseLinks(markdown, offsets, excluded);
     // Inline code stays excluded
     expect(links.some((link) => link.targetRef === "Hidden")).toBe(false);
-    // Existing public parser keeps title text inside targetRef and treats embeds as wiki
+    // The destination ends before the link title (CommonMark); embeds are wiki
     const md = links.find((link) => link.kind === "markdown");
-    expect(md?.targetRef).toBe('note.md "Title"');
+    expect(md?.targetRef).toBe("note.md");
     expect(
       links.some((link) => link.kind === "wiki" && link.targetRef === "Embed")
     ).toBe(true);

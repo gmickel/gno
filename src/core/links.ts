@@ -14,6 +14,12 @@ import type { ExcludedRange } from "../ingestion/strip";
 
 import { buildLineOffsets, offsetToPosition } from "../ingestion/position";
 import { rangeIntersectsExcluded } from "../ingestion/strip";
+import {
+  isBackslashEscaped,
+  parseParenthesizedDestination,
+  stripAngleBracketDestination,
+  unescapeCommonMarkDestination,
+} from "./link-destination-parse";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -85,19 +91,24 @@ const LOGSEQ_EMBED_REGEX =
   /\{\{\s*embed\s+(\[\[[^\]]+\]\]|\(\([^)]+\)\))\s*\}\}/gi;
 
 /**
- * Markdown inline link: [text](url)
- * Captures: 1=text, 2=url (path and optional anchor)
+ * Markdown inline link opener: `[text](`, up to and including the `(`.
+ * Captures: 1=text. The destination after `(` is read by
+ * parseParenthesizedDestination, as CommonMark reads it.
  * Negative lookbehind to avoid image links ![]()
  * Link text may contain balanced square brackets one level deep
- * (`[see [1]](note.md)`), as CommonMark allows.
+ * (`[see [1]](note.md)`), as CommonMark allows; a backslash-escaped bracket
+ * (`\]`, `\[`) in the text is literal and never opens or closes it.
  *
  * SCOPE LIMITATIONS:
  * - Only matches simple inline links [text](url)
  * - Does NOT match reference-style links [text][ref] or [text]
  * - Does NOT match autolinks <url> or bare URLs
- * - Parens in URLs not supported (use %28 %29 encoding)
  */
-const MARKDOWN_LINK_REGEX = /(?<!!)\[((?:[^[\]]|\[[^[\]]*\])*)\]\(([^)]+)\)/g;
+const MARKDOWN_LINK_REGEX =
+  /(?<!!)\[((?:\\[\s\S]|[^[\]\\]|\[(?:\\[\s\S]|[^[\]\\])*\])*)\]\(/g;
+
+/** Logseq alias destination at the `(`: `([[Target]])`. */
+const LOGSEQ_ALIAS_DESTINATION_REGEX = /\((\[\[[^)]*\]\])\)/y;
 
 /** Square brackets in a destination mean the text was split, not a path. */
 const BRACKET_IN_DESTINATION_REGEX = /[[\]]/;
@@ -288,6 +299,40 @@ export function parseTargetParts(target: string): TargetParts {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Read an inline link destination at the `(` after `[text]`, the way
+ * CommonMark reads it: optional title, balanced parentheses, and no
+ * unescaped whitespace unless wrapped in `<...>`. Returns the unescaped
+ * destination (angle brackets removed) and the offset after the closing `)`,
+ * or null when the text is not a link. A Logseq alias `([[Target]])` is
+ * returned verbatim.
+ */
+function readInlineDestination(
+  markdown: string,
+  parenOffset: number
+): { url: string; endOffset: number; logseqAlias: boolean } | null {
+  LOGSEQ_ALIAS_DESTINATION_REGEX.lastIndex = parenOffset;
+  const logseq = LOGSEQ_ALIAS_DESTINATION_REGEX.exec(markdown);
+  if (logseq) {
+    return {
+      url: logseq[1] ?? "",
+      endOffset: parenOffset + logseq[0].length,
+      logseqAlias: true,
+    };
+  }
+  const parsed = parseParenthesizedDestination(markdown, parenOffset);
+  if (!parsed || parsed.destinationRaw.includes("\n")) {
+    return null;
+  }
+  return {
+    url: unescapeCommonMarkDestination(
+      stripAngleBracketDestination(parsed.destinationRaw).path
+    ),
+    endOffset: parsed.closeParenOffset + 1,
+    logseqAlias: false,
+  };
+}
+
+/**
  * Parse all links from markdown content.
  * Skips links inside excluded ranges (code blocks, frontmatter, etc.).
  *
@@ -409,32 +454,45 @@ export function parseLinks(
 
   while ((match = MARKDOWN_LINK_REGEX.exec(markdown)) !== null) {
     const startOffset = match.index;
-    const endOffset = startOffset + match[0].length;
+    const parenOffset = startOffset + match[0].length - 1;
+
+    // `\[` is literal text in CommonMark: it cannot open a link. A link
+    // may still start at a later `[` inside the text.
+    if (isBackslashEscaped(markdown, startOffset)) {
+      MARKDOWN_LINK_REGEX.lastIndex = startOffset + 1;
+      continue;
+    }
+
+    const destination = readInlineDestination(markdown, parenOffset);
+    // Not a link: a destination with an unescaped space outside `<...>`
+    // (`[x](my note.md)`) or no closing parenthesis. It is plain text; a link
+    // may still start at a later `[` inside the text.
+    if (!destination) {
+      MARKDOWN_LINK_REGEX.lastIndex = startOffset + 1;
+      continue;
+    }
+    const endOffset = destination.endOffset;
+    MARKDOWN_LINK_REGEX.lastIndex = endOffset;
 
     // Skip if inside excluded range
     if (rangeIntersectsExcluded(startOffset, endOffset, excludedRanges)) {
       continue;
     }
 
+    const raw = markdown.slice(startOffset, endOffset);
     const linkText = match[1] ?? "";
-    const url = match[2];
+    const { url } = destination;
     if (!url) continue;
 
     // Logseq alias syntax: [Display]([[Target]])
-    if (url.startsWith("[[") && url.endsWith("]]")) {
+    if (destination.logseqAlias) {
       const innerTarget = url.slice(2, -2).trim();
       if (innerTarget.length > 0) {
         const displayText =
           linkText && linkText !== innerTarget
             ? truncateText(linkText, MAX_DISPLAY_TEXT_GRAPHEMES)
             : undefined;
-        pushWikiLink(
-          match[0],
-          innerTarget,
-          startOffset,
-          endOffset,
-          displayText
-        );
+        pushWikiLink(raw, innerTarget, startOffset, endOffset, displayText);
       }
       continue;
     }
@@ -491,7 +549,7 @@ export function parseLinks(
 
     links.push({
       kind: "markdown",
-      raw: match[0],
+      raw,
       targetRef: parts.ref,
       targetAnchor: anchor ?? parts.anchor,
       targetCollection: parts.collection,
