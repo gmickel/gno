@@ -7,7 +7,7 @@
 
 import { afterAll, beforeAll, expect, test } from "bun:test";
 // Bun has no directory creation or OS/path equivalents.
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -68,7 +68,7 @@ async function cli(
 }
 
 beforeAll(async () => {
-  testDir = join(tmpdir(), `gno-similar-vectors-${crypto.randomUUID()}`);
+  testDir = await mkdtemp(join(tmpdir(), "gno-similar-vectors-"));
   const notesDir = join(testDir, "notes");
   await mkdir(notesDir, { recursive: true });
   for (const [relPath, body] of Object.entries(SIMILARITY_DOCS)) {
