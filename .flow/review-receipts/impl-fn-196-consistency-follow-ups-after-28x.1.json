@@ -4,49 +4,43 @@
   "findings": {
     "backend": "codex",
     "baseSha": "64d19bde91a91b746e70cd6573dc672091c58fca",
-    "headSha": "8a267f5bb09d873e7f5dfc928e6c04b39a7997ca",
+    "headSha": "2502796c794334748ff8d92a2728f2a1eb24e055",
     "items": [
       {
-        "anchor": {
-          "baseSha": "64d19bde91a91b746e70cd6573dc672091c58fca",
-          "headSha": "8a267f5bb09d873e7f5dfc928e6c04b39a7997ca",
-          "path": "src/core/audit-outside-index.ts",
-          "side": "head",
-          "startLine": 53
-        },
         "body": "The indexed-target guard uses SQLite `COLLATE NOCASE`, which only folds ASCII, while filesystem matching uses Unicode lowercase and NFC normalization. With an indexed `\u00dcberblick.md`, `[x](\u00fcberblick)` now becomes `links.outside-index` despite its target being indexed. I reproduced this using the changed helper and an in-memory database.",
         "classification": "introduced",
         "confidence": 100,
         "firstSeenReceiptId": "review-007f888a4e070e9415bf79a912d01fb9a3dfabe124faa3dd7f988dcab8561cbd",
         "id": "finding-ae83bce5bcb5bf71572f33f09de05e88",
-        "lastSeenReceiptId": "review-007f888a4e070e9415bf79a912d01fb9a3dfabe124faa3dd7f988dcab8561cbd",
+        "lastSeenReceiptId": "review-005dcb6aa9d17547fb039aacf6637c5d2f721d542961199b9541d1791503d009",
         "ordinal": 1,
         "rIds": [
           "R5"
         ],
         "severity": "P2",
-        "status": "open",
+        "status": "fixed",
         "suggestion": "Compare indexed paths using the same `pathKey` normalization as filesystem paths. Add a regression covering non-ASCII case differences and preserve the indexed target\u2019s existing classification.",
         "title": "The indexed-target guard uses SQLite `COLLATE NOCASE`, which only folds ASCII, while filesystem matching uses Unicode lowercase and NFC normalization"
       }
     ],
     "reviewKind": "implementation",
-    "round": 1,
+    "round": 2,
     "schemaVersion": 1,
-    "sourceReceiptId": "review-007f888a4e070e9415bf79a912d01fb9a3dfabe124faa3dd7f988dcab8561cbd"
+    "sourceReceiptId": "review-005dcb6aa9d17547fb039aacf6637c5d2f721d542961199b9541d1791503d009",
+    "supersedesReceiptId": "review-007f888a4e070e9415bf79a912d01fb9a3dfabe124faa3dd7f988dcab8561cbd"
   },
-  "focus": "R1 resident config reload: binding checks, egress invalidation only on policy change, no stale serving on unreadable config, daemon 2s timer, search scope and watcher updated, no races with write lease; R2 vec sync/rebuild/doctor active partition; R3 first-chunk rule consistent across CLI/MCP/REST/graph; R4 journal gating; R5 extensionless outside-index existence-only",
+  "focus": "verify the prior finding (indexed-target guard uses pathKey Unicode/NFC comparison, not COLLATE NOCASE) is fixed; per-audit load of indexed paths is bounded; no regression",
   "id": "fn-196-consistency-follow-ups-after-28x.1",
-  "introduced_count": 1,
+  "introduced_count": 0,
   "mode": "codex",
   "model": "gpt-6-astra",
   "pre_existing_count": 0,
-  "review": "I\u2019ll read the task spec first, then trace the changed paths and focused tests for introduced issues.\nThe diff addresses all five requirements. I\u2019m checking the live reload\u2019s interaction with concurrent work and the vector repair queries for behavior the new tests may miss.\nThe focused suites cannot create fixtures in this read-only sandbox (`EROFS` under `/tmp`), so their integration results are unverified here. I\u2019m finishing with source tracing and in-memory checks.\nOne introduced correctness issue needs fixing.\n\n- **Severity:** P2\n- **Confidence:** 100\n- **Classification:** introduced\n- **File:Line:** `src/core/audit-outside-index.ts:53`\n- **R-IDs:** [R5]\n- **Problem:** The indexed-target guard uses SQLite `COLLATE NOCASE`, which only folds ASCII, while filesystem matching uses Unicode lowercase and NFC normalization. With an indexed `\u00dcberblick.md`, `[x](\u00fcberblick)` now becomes `links.outside-index` despite its target being indexed. I reproduced this using the changed helper and an in-memory database.\n- **Suggestion:** Compare indexed paths using the same `pathKey` normalization as filesystem paths. Add a regression covering non-ASCII case differences and preserve the indexed target\u2019s existing classification.\n\n## Requirements coverage\n\n| R-ID | Status | Evidence |\n|---|---|---|\n| R1 | met | Resident refresh wired into REST, MCP, daemon status and idle polling; add/remove regression provided. |\n| R2 | met | Partition-aware maintenance and doctor counts; in-memory repair checks passed. |\n| R3 | met | CLI, MCP, REST and graph share `readSimilaritySourceVectors`; parity regression provided. |\n| R4 | met | Markdown-source gate applies to current/prior structures and records. |\n| R5 | partial | Extensionless lookup implemented, but indexed Unicode targets can be misclassified. |\n\nUnaddressed R-IDs: []\n\nVerification: In-memory vector checks passed for missing rows, stale embeddings, orphan removal, idempotency and rebuilding. The five focused suites were attempted but fixture creation failed because `/tmp` is read-only (`EROFS`); integration results remain unverified here.\n\nClassification counts: 1 introduced, 0 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":1,\"pre_existing\":0},\"unaddressed\":[]}\n```\n\n<verdict>NEEDS_WORK</verdict>",
-  "review_reservation_id": "330d729ff6934b40a3fceb29132fa43e",
+  "review": "Prior finding: fixed\n\nIndexed paths now use the same NFC and Unicode-lowercase normalization as filesystem paths. In-memory checks passed for Unicode case differences, NFD index rows, and unindexed targets. No new blocking issues found.\n\nThe two regression tests were inspected and attempted; fixture creation remains blocked by the sandbox\u2019s read-only `/tmp` (`EROFS`).\n\n## Requirements coverage\n\n| R-ID | Status | Evidence |\n|---|---|---|\n| R1 | met | Previously reviewed resident config refresh; unchanged by fix. |\n| R2 | met | Previously reviewed partition maintenance and doctor counts; unchanged. |\n| R3 | met | Shared similarity source-vector rule; unchanged. |\n| R4 | met | Markdown-only journal link extraction; unchanged. |\n| R5 | met | Consistent Unicode normalization; regression cases added and in-memory checks passed. |\n\nUnaddressed R-IDs: []\n\nClassification counts: 0 introduced, 0 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":0,\"pre_existing\":0},\"unaddressed\":[]}\n```\n\n<verdict>SHIP</verdict>\n",
+  "review_reservation_id": "096d1b5189ed4bee9b523af830c3fd69",
   "session_id": "01a0e330-f344-7a63-900f-168539e3d037",
   "spec": "codex:gpt-6-astra:medium",
-  "timestamp": "2026-09-27T14:09:22.274682Z",
+  "timestamp": "2026-09-27T14:21:56.128146Z",
   "type": "impl_review",
   "unaddressed": [],
-  "verdict": "NEEDS_WORK"
+  "verdict": "SHIP"
 }
