@@ -356,8 +356,10 @@ rewrite, persist findings, judge factual truth, or replace retrieval.
 finding. Link findings carry `referenceKind`, `resolutionStatus`, and
 `resolvedScope` in their evidence detail; ambiguous vault links list the tied
 `candidates`. `links.outside-index` `info` findings are link targets that
-exist in the vault but are not indexed (attachments, excluded or unindexed
-folders); Obsidian resolves them, so do not report them as broken links.
+exist in the vault but are not indexed (attachments, files a Markdown link
+names by path, excluded or unindexed folders); Obsidian resolves them, so do
+not report them as broken links. Links are read only from Markdown notes,
+never from code spans, code blocks, or non-Markdown files.
 Report `truncation.snapshotTruncated` as "totals cover the bounded snapshot,
 not the whole index".
 

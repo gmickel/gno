@@ -1,0 +1,62 @@
+{
+  "base": "8e3046389e0a87c0041a1690302cb01ee725fbcc",
+  "effort": "medium",
+  "findings": {
+    "backend": "codex",
+    "baseSha": "8e3046389e0a87c0041a1690302cb01ee725fbcc",
+    "headSha": "eca64835a533e848bacdb0363ddecdcab4db13c3",
+    "items": [
+      {
+        "body": "Every `>` line increments the block ID, although consecutive quoted lines can belong to one paragraph. This valid code span produces a `NotALink` edge after the change; the base correctly produces none:",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-b973fc756bec2aaa4b354f1bfc6065fa48ca4ab43f8805fa5aed0f441073df37",
+        "id": "finding-5d84fe52d63c0aecf998062345f4ae20",
+        "lastSeenReceiptId": "review-afe565279392183cf1918c967c5af1c6e7dce046a95f1649c3fc2a20812ed912",
+        "ordinal": 1,
+        "rIds": [
+          "R1"
+        ],
+        "severity": "P2",
+        "status": "fixed",
+        "suggestion": "Track paragraph boundaries within blockquotes instead of treating each quote marker as a new block. Add this regression case.",
+        "title": "Every `>` line increments the block ID, although consecutive quoted lines can belong to one paragraph"
+      },
+      {
+        "body": "`inList = LIST_ITEM_REGEX.test(line) || (inList && indented)` clears list context for a valid two-space continuation. A subsequent list paragraph is then mistaken for indented code:",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-b973fc756bec2aaa4b354f1bfc6065fa48ca4ab43f8805fa5aed0f441073df37",
+        "id": "finding-aca79a5d8f101ae98f3f691ed0b7f738",
+        "lastSeenReceiptId": "review-afe565279392183cf1918c967c5af1c6e7dce046a95f1649c3fc2a20812ed912",
+        "ordinal": 2,
+        "rIds": [
+          "R1"
+        ],
+        "severity": "P2",
+        "status": "fixed",
+        "suggestion": "Track list content indentation and preserve membership across continuation paragraphs. Add regression coverage for this example.",
+        "title": "`inList = LIST_ITEM_REGEX"
+      }
+    ],
+    "reviewKind": "implementation",
+    "round": 2,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-afe565279392183cf1918c967c5af1c6e7dce046a95f1649c3fc2a20812ed912",
+    "supersedesReceiptId": "review-b973fc756bec2aaa4b354f1bfc6065fa48ca4ab43f8805fa5aed0f441073df37"
+  },
+  "focus": "verify both prior findings fixed via parser-derived code regions; the cheap pre-check that skips parsing cannot miss code regions (false skip => links in code counted); frontmatter blanking preserves offsets; no regression in link extraction vs base for ordinary notes",
+  "id": "fn-195-audit-links-ignore-code-spans-and-non.1",
+  "introduced_count": 0,
+  "mode": "codex",
+  "model": "gpt-6-astra",
+  "pre_existing_count": 0,
+  "review": "Prior finding #1: fixed\nPrior finding #2: fixed\n\nBoth original reproductions now pass: quoted multiline code produces no link, and continued list prose retains `RealLink`. The implementation uses the existing CommonMark/GFM parser, with regression coverage for both cases.\n\nVerification: 99 tests passed across `test/core/links.test.ts` and `test/ingestion/strip.test.ts`. Integration suites remain unverified here because the sandbox prevents temporary-file creation. No new blocking findings.\n\n## Requirements coverage\n\n| R-ID | Status | Evidence |\n|---|---|---|\n| R1 | met | Parser-based exclusions; both regressions verified fixed. |\n| R2 | met | Markdown converter gate and ingest-version upgrade coverage. |\n| R3 | met | Workspace-relative existence matching without indexing targets. |\n| R4 | met | Residual-noise audit fixture covers the required cases. |\n| R5 | met | Documentation describes source filtering and link classification. |\n\nUnaddressed R-IDs: []\n\nClassification counts: 0 introduced, 0 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":0,\"pre_existing\":0},\"unaddressed\":[]}\n```\n\n<verdict>SHIP</verdict>\n",
+  "review_reservation_id": "e3f6a37625bb4ea19dd470262cd58a75",
+  "session_id": "01a0e1df-3ec5-7e91-8d0b-fa6b076f7f99",
+  "spec": "codex:gpt-6-astra:medium",
+  "timestamp": "2026-09-27T08:17:52.752003Z",
+  "type": "impl_review",
+  "unaddressed": [],
+  "verdict": "SHIP"
+}

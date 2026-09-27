@@ -307,9 +307,11 @@ what a search or answer can return, is described under
 ### Links to files GNO does not index
 
 Obsidian also resolves links to files that GNO does not index: pasted images
-and PDFs (`![[diagram.png]]`, `[[report.pdf]]`), and notes in folders that no
-collection indexes or that a collection excludes. `gno audit links` checks
-whether such a target exists in the workspace folder. If it does, the link is
+and PDFs (`![[diagram.png]]`, `[[report.pdf]]`), notes in folders that no
+collection indexes or that a collection excludes, and files beside a note that
+a Markdown link names by path (`[doctor.sh](scripts/doctor.sh)` when the
+collection indexes only `**/*.md`). `gno audit links` checks whether such a
+target exists in the workspace folder. If it does, the link is
 reported as `outside-index`, an informational finding that does not fail the
 audit, instead of an unresolved link. Only genuinely missing targets stay
 unresolved.
@@ -318,7 +320,8 @@ This check only asks whether a file with that name exists. GNO does not index,
 open, or return the file, the link does not become part of the link graph,
 and an excluded folder stays excluded. The target must match the way Obsidian
 matches it: a file other than a note needs its extension (`[[diagram]]` does
-not find `diagram.png`), and `.md` is optional for notes. Hidden folders such
+not find `diagram.png`), `.md` is optional for notes, and a Markdown link must
+name the file's path relative to the note. Hidden folders such
 as `.obsidian` and `.trash` are not checked, and a symlink counts only when it
 points to a file inside the workspace. If a folder cannot be read, links into
 it stay unresolved and the audit says once that the check was incomplete.
@@ -327,6 +330,15 @@ Wiki links in Markdown tables use Obsidian's escaped alias,
 `[[Note\|Alias]]`. GNO reads it as a link to `Note` shown as `Alias`. After an
 upgrade, the next `gno update` re-reads existing notes once so these links
 resolve.
+
+Like Obsidian, GNO reads links only in Markdown notes and only outside code.
+Link-shaped text inside an inline code span (`` `[[Note]]` ``), a fenced code
+block, or an indented code block is not a link, and neither is link-shaped text
+in any other indexed file, such as a Python script, a JSON or text file, or a
+converted PDF or Office document, when a collection indexes those with a
+pattern like `**/*`. Those files stay searchable; they just have no links, no
+backlinks, and no link findings. The next `gno update` after upgrading re-reads
+existing files once so these rules take effect.
 
 ## Memory-managed collections
 

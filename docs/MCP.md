@@ -207,9 +207,11 @@ or `SOURCE_AVAILABILITY_*` codes under `local` mode. Distinct from
 scope the scan. `maxFindings` is a number from 1 to 100000, or `"all"` for every
 finding; exact totals and truncation (finding cap, snapshot limit, shortened
 evidence) remain in the report. `maxAgeDays`, `orphanRoots`, and `orphanIgnorePrefixes` are explicit
-run policy, not persisted configuration. Link targets that exist as files in
-the link workspace but are not indexed are `info` findings of
-`links.outside-index`, which always passes.
+run policy, not persisted configuration. Links are read only from Markdown
+notes, outside code spans and code blocks. Link targets that exist as files in
+the link workspace but are not indexed (wiki links, embeds, and relative
+Markdown links) are `info` findings of `links.outside-index`, which always
+passes.
 
 The tool is annotated read-only, destructive-false, and idempotent, and the
 implementation independently performs only query-only SQLite and source reads.

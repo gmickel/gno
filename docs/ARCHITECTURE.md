@@ -649,7 +649,7 @@ Links are resolved at query time, not stored with target document IDs. This hand
 3. When several files match, the order is: exact workspace path, exact collection path, a file in the same folder as the linking document, then the file with the fewest folders above it. Files that are still tied are ambiguous: the link creates no graph edge, and `gno audit links` lists the candidates.
 4. When no file matches, a document whose title matches the target, inside the linking document's own collection, is used.
 
-A link whose target is not indexed but exists as a file in the workspace (an image or PDF, or a note in a folder no collection indexes or one a collection excludes) still creates no graph edge. `gno audit links` reports it as outside the index instead of unresolved; see [Links to files GNO does not index](CONFIGURATION.md#links-to-files-gno-does-not-index).
+A link whose target is not indexed but exists as a file in the workspace (an image or PDF, a file a relative Markdown link names by path, or a note in a folder no collection indexes or one a collection excludes) still creates no graph edge. `gno audit links` reports it as outside the index instead of unresolved; see [Links to files GNO does not index](CONFIGURATION.md#links-to-files-gno-does-not-index).
 
 **Other links keep their meaning:**
 
@@ -672,7 +672,7 @@ The `doc_links` table stores:
 - Position (line/column for editor integration)
 - Optional anchor (#section) and display text
 
-Links are extracted from original source content during sync, excluding frontmatter and code blocks.
+Links are extracted during sync from Markdown sources only, excluding frontmatter, HTML comments, inline code spans, and fenced or indented code blocks, as Obsidian does. Plain text, source code, data files and converted documents produce no links; their content stays searchable.
 
 ## Technical Notes
 

@@ -507,6 +507,49 @@ See [[Link]].
     expect(rows).toEqual([{ target_ref: "Target", link_text: "Alias" }]);
   });
 
+  test("non-Markdown sources carry no links and stay searchable, also after an upgrade", async () => {
+    const everything: Collection = { ...collection, pattern: "**/*" };
+    const synced = await adapter.syncCollections([everything]);
+    expect(synced.ok).toBe(true);
+    await writeFile(
+      join(collectionDir, "render.py"),
+      'LINK = "[[{stem}{anc}]]"  # quetzal\nCASE = "[[Cross Link Target\\\\|x]] [doc](missing.md)"\n'
+    );
+    await writeFile(join(collectionDir, "notes.txt"), "quetzal [[Plain]]\n");
+    const syncService = new SyncService();
+    await syncService.syncCollection(everything, adapter);
+    const db = adapter.getRawDb();
+    const linkCount = () =>
+      db
+        .query<{ count: number }, []>("SELECT COUNT(*) AS count FROM doc_links")
+        .get()?.count;
+    expect(linkCount()).toBe(0);
+    const hits = await adapter.searchFts("quetzal", { limit: 5 });
+    expect(hits.ok && hits.value.length).toBe(2);
+
+    // An index built before this rule re-extracts on the next sync.
+    const py = await adapter.getDocument("docs", "render.py");
+    if (!py.ok || !py.value) throw new Error("render.py not indexed");
+    await adapter.setDocLinks(
+      py.value.id,
+      [
+        {
+          targetRef: "{stem}{anc}",
+          targetRefNorm: "{stem}{anc}",
+          linkType: "wiki",
+          startLine: 1,
+          startCol: 9,
+          endLine: 1,
+          endCol: 24,
+        },
+      ],
+      "parsed"
+    );
+    db.run("UPDATE documents SET ingest_version = ?", [INGEST_VERSION - 1]);
+    await syncService.syncCollection(everything, adapter);
+    expect(linkCount()).toBe(0);
+  });
+
   test("projects frontmatter relations to typed edges after same-batch sync", async () => {
     await writeFile(
       join(collectionDir, "source.md"),

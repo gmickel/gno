@@ -336,6 +336,60 @@ Real [link](page.md).`;
         targets
       );
     });
+
+    // Code is never a link; a link beside code on the same line still is.
+    test.each([
+      ["code span beside a link", "`[[InCode]]` then [[Prose]]", ["Prose"]],
+      [
+        "stray backtick in an earlier paragraph",
+        "Press the ` key.\n\nSyntax: `[[InCode]]` and [[Prose]]",
+        ["Prose"],
+      ],
+      [
+        "stray backtick in an earlier list item",
+        "- a ` stray\n- `[[InCode]]` and [[Prose]]",
+        ["Prose"],
+      ],
+      [
+        "backslash before the closing backtick",
+        "Path `C:\\dir\\` then `[[InCode]]` and [[Prose]]",
+        ["Prose"],
+      ],
+      [
+        "indented code block",
+        "Text\n\n    [[InCode]] [md](code.md)\n\n[[Prose]]",
+        ["Prose"],
+      ],
+      [
+        "indented nested list items stay prose",
+        "- [[Prose]]\n    - [[Nested]]\n\n    - [[Loose]]",
+        ["Prose", "Nested", "Loose"],
+      ],
+      [
+        "indented code right after a heading",
+        "# Heading\n    [[InCode]]\n\n[[Prose]]",
+        ["Prose"],
+      ],
+      [
+        "code span across quoted lines of one paragraph",
+        "> `example\n> [[InCode]]` and [[Prose]]",
+        ["Prose"],
+      ],
+      [
+        "list paragraph after a two-space continuation",
+        "- item\n  continuation\n\n    [[Prose]]",
+        ["Prose"],
+      ],
+      [
+        "list inside a blockquote: span, list paragraph, indented code",
+        "> - item `start\n>   [[InCode]]` and [[Prose]]\n>\n>     [[ListPara]]\n>\n>         [[IndentedCode]]",
+        ["Prose", "ListPara"],
+      ],
+    ])("%s", (_name, markdown, targets) => {
+      expect(parse(markdown).map(({ targetRef }) => targetRef)).toEqual(
+        targets
+      );
+    });
   });
 
   describe("edge cases", () => {
