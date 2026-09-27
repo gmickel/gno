@@ -223,6 +223,8 @@ export async function searchBm25(
     filter: options.filter,
     memoryScopesAny: options.memoryFilter?.scopes,
     excludeSuperseded: options.memoryFilter?.excludeSuperseded,
+    anyTerm: options.anyTerm,
+    minRelativeScore: options.minRelativeScore,
   });
 
   if (!ftsResult.ok) {

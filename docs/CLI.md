@@ -703,8 +703,15 @@ gno recall "kindergarten" --scope family --max-facts 3 --max-tokens 256 --json
 - Retrieval is BM25 plus vectors when the embedding model is already cached
   (`Retrieval: hybrid`); otherwise lexical with the reason. Recall never
   downloads a model.
-- With nothing in scope it prints the self-teaching line
-  (`No memories in scope yet. Store one with: gno remember ...`) and exits 0.
+- The lexical leg drops question words, so a question such as
+  `gno recall "which branch does the canary deploy from?"` matches facts on
+  their content words. Facts with every content word rank first; when none
+  has them all, facts sharing any content word are returned, best match
+  first.
+- An empty result exits 0 with a hint that says why: nothing stored in scope
+  (`No memories in scope yet. Store one with: gno remember ...`), nothing in
+  scope matched (`No memories in scope matched this query. ...`), or the
+  matches did not fit `--max-tokens`.
 
 ## Session Commands
 
@@ -1083,6 +1090,14 @@ URLs are outside the local-link graph. Age is only a review signal when
 `--max-age-days` is supplied; it is never presented as proof that content is
 false. Use repeatable `--orphan-root` and `--orphan-ignore-prefix` inputs for an
 explicit orphan policy.
+
+In a link workspace, a wiki link or embed whose target is not indexed but
+exists as a file in the workspace (an image, a PDF, a note in an unindexed or
+excluded folder) is listed by `links.outside-index` as an `info` finding
+instead of as an unresolved link. That rule always passes, so these links
+never change the exit code; only targets that do not exist stay in
+`links.local-targets`. See
+[Links to files GNO does not index](CONFIGURATION.md#links-to-files-gno-does-not-index).
 
 `--max-findings` defaults to 100 and accepts a number from 1 to 100000, or
 `all` to export every finding (for example
@@ -2126,6 +2141,10 @@ Show index status plus the shared retrieval activation contract.
 gno status
 gno status --json
 ```
+
+Status lists configured collections only. After `gno collection remove`, the
+collection disappears from status at once, even though its documents stay in
+the index until the next `gno update` removes them.
 
 Each collection in a [link workspace](CONFIGURATION.md#link-workspaces) gets a
 `Link workspace:` line with the workspace folder and whether it was detected

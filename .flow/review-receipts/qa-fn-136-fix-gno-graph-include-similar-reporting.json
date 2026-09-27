@@ -1,0 +1,30 @@
+{
+  "branch": "batch/v2.8.1",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "875151fc8eadbe74606b5848ba3db5900348aaed",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-6e443a49ab8adede42df021079dede08c2ca3ad17036be3eede31aef796de596"
+  },
+  "head_sha": "875151fc8eadbe74606b5848ba3db5900348aaed",
+  "id": "fn-136-fix-gno-graph-include-similar-reporting",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "PASS",
+  "rid_coverage": {
+    "covered": 1,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "requirements"
+      }
+    ],
+    "total": 1
+  },
+  "timestamp": "2026-09-27T00:07:50Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

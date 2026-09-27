@@ -20,6 +20,7 @@ import {
   captureAuditLinkSnapshot,
   resolveGraphLinkTargets,
 } from "../../src/store/sqlite/graph-link-resolver";
+import { createWorkspaceFileMatcher } from "../../src/store/sqlite/workspace-link-resolver";
 import {
   openLinkWorkspaceFixture,
   type LinkWorkspaceFixture,
@@ -247,6 +248,33 @@ describe("workspace resolution order (R2, R3)", () => {
     // plain [[Roadmap]] prefers the file named Roadmap.md in work.
     expect(explicitAi?.targetCollection).toBe("ai");
     expect(implicitAi?.targetCollection).toBe("work");
+  });
+});
+
+describe("files outside the index follow the same matching rules", () => {
+  const matches = createWorkspaceFileMatcher([
+    "Attachments/Diagram.png",
+    "Archive/Old Plan.md",
+    "Spaces/AI/Agents/Draft.md",
+    "Spaces/AI/Notes",
+  ]);
+  test.each([
+    // Non-Markdown targets need their extension; `.md` is optional.
+    ["diagram.png", "Spaces/AI/Home.md", true],
+    ["diagram", "Spaces/AI/Home.md", false],
+    ["old plan", "Spaces/AI/Home.md", true],
+    ["old plan.md", "Spaces/AI/Home.md", true],
+    // Path targets: exact workspace path or path suffix.
+    ["attachments/diagram.png", "Spaces/AI/Home.md", true],
+    ["ai/agents/draft", "Spaces/AI/Home.md", true],
+    ["other/draft", "Spaces/AI/Home.md", false],
+    // `./` and `../` resolve against the source folder, exact path only.
+    ["./draft", "Spaces/AI/Agents/Home.md", true],
+    ["../agents/draft", "Spaces/AI/Agents/Home.md", true],
+    ["./draft", "Spaces/AI/Home.md", false],
+    ["../../../../archive/old plan", "Spaces/AI/Home.md", false],
+  ])("%p from %p matches: %p", (target, source, expected) => {
+    expect(matches(target, source)).toBe(expected);
   });
 });
 

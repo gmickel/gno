@@ -298,6 +298,46 @@ Real [link](page.md).`;
     });
   });
 
+  describe("Obsidian parity", () => {
+    const parse = (markdown: string) =>
+      parseLinks(
+        markdown,
+        buildLineOffsets(markdown),
+        getExcludedRanges(markdown)
+      ).map(({ kind, targetRef, targetAnchor, displayText }) => ({
+        kind,
+        targetRef,
+        targetAnchor,
+        displayText,
+      }));
+
+    test.each([
+      ["| [[Target\\|Alias]] | x |", "Target", undefined, "Alias"],
+      ["| [[Target#Part\\|Alias]] |", "Target", "Part", "Alias"],
+      ["[[Target|Alias]]", "Target", undefined, "Alias"],
+    ])(
+      "table-escaped wiki alias %p targets the note",
+      (markdown, targetRef, targetAnchor, displayText) => {
+        expect(parse(markdown)).toEqual([
+          { kind: "wiki", targetRef, targetAnchor, displayText },
+        ]);
+      }
+    );
+
+    test.each([
+      // Balanced brackets in the link text: the link parses.
+      ["[title [x] (site](notes/a.md)", ["notes/a.md"]],
+      ["[see [1]](ref.md)", ["ref.md"]],
+      // Text split at an unbalanced bracket: never a target made of text.
+      ["[title [x](site](url.md)", ["url.md"]],
+      ["[x](site](url.md)", []],
+    ])("bracketed Markdown link text %p", (markdown, targets) => {
+      expect(parse(markdown).map(({ targetRef }) => targetRef)).toEqual(
+        targets
+      );
+    });
+  });
+
   describe("edge cases", () => {
     test("returns empty on empty input", () => {
       const links = parseLinks("", [0], []);

@@ -5,12 +5,7 @@
  * @module src/cli/commands/links
  */
 
-import type {
-  DocEdgeRow,
-  DocLinkRow,
-  DocumentRow,
-  StorePort,
-} from "../../store/types";
+import type { DocEdgeRow, DocLinkRow, StorePort } from "../../store/types";
 
 import { resolveDocRef } from "../../core/ref-parser";
 import { initStore } from "./shared";
@@ -592,27 +587,23 @@ export async function similar(
     }
     const db = store.getRawDb();
 
-    // Get document embedding from content_vectors (prefer seq=0)
-    interface VectorRow {
-      embedding: Uint8Array;
-    }
+    // Stored vector of the document's first chunk, from the active partition
+    const {
+      readStoredDocumentVectors,
+      resolveStoredVectorSource,
+      similarityHitDocuments,
+      storedVectorSearchOptions,
+    } = await import("../../store/vector/stored-vectors.js");
+    const source = resolveStoredVectorSource(db, modelPreset.embed);
+    const [embedding] =
+      readStoredDocumentVectors(
+        db,
+        source,
+        [{ id: doc.id, mirrorHash: doc.mirrorHash }],
+        { firstChunkOnly: true }
+      ).get(doc.id) ?? [];
 
-    const embedModel = modelPreset.embed;
-    const vectorRow = db
-      .query<VectorRow, [string, string]>(
-        "SELECT embedding FROM content_vectors WHERE mirror_hash = ? AND model = ? AND seq = 0 LIMIT 1"
-      )
-      .get(doc.mirrorHash, embedModel);
-
-    const fallbackRow =
-      vectorRow ??
-      db
-        .query<VectorRow, [string, string]>(
-          "SELECT embedding FROM content_vectors WHERE mirror_hash = ? AND model = ? ORDER BY seq LIMIT 1"
-        )
-        .get(doc.mirrorHash, embedModel);
-
-    if (!fallbackRow) {
+    if (!embedding) {
       return {
         success: false,
         error: "Document has no embeddings. Run: gno embed",
@@ -621,9 +612,6 @@ export async function similar(
     }
 
     // Normalize embedding for cosine similarity
-    const { decodeEmbedding } =
-      await import("../../store/vector/sqlite-vec.js");
-    const embedding = decodeEmbedding(fallbackRow.embedding);
     const dimensions = embedding.length;
     let norm = 0;
     for (let i = 0; i < dimensions; i++) {
@@ -641,7 +629,7 @@ export async function similar(
     const { createVectorIndexPort } =
       await import("../../store/vector/sqlite-vec.js");
     const vecResult = await createVectorIndexPort(db, {
-      model: embedModel,
+      model: modelPreset.embed,
       dimensions,
     });
     if (!vecResult.ok) {
@@ -663,13 +651,13 @@ export async function similar(
     const searchResult = await vectorIndex.searchNearest(
       embedding,
       candidateLimit,
-      {}
+      storedVectorSearchOptions(source)
     );
     if (!searchResult.ok) {
       return { success: false, error: searchResult.error.message };
     }
 
-    // Build mirrorHash -> doc map from a single listDocuments call
+    // Candidate documents from a single listDocuments call
     const docsResult = crossCollection
       ? await store.listDocuments()
       : await store.listDocuments(doc.collection);
@@ -678,27 +666,17 @@ export async function similar(
       return { success: false, error: docsResult.error.message };
     }
 
-    const docsByHash = new Map<string, DocumentRow>();
-    for (const d of docsResult.value) {
-      if (d.active && d.mirrorHash) {
-        // Only keep first doc per hash (they have same content)
-        if (!docsByHash.has(d.mirrorHash)) {
-          docsByHash.set(d.mirrorHash, d);
-        }
-      }
-    }
-
-    // Map results to documents, excluding self
+    // Map hits to their owning documents, excluding self
     const similarItems: SimilarItem[] = [];
     const seenDocids = new Set<string>();
 
-    for (const vec of searchResult.value) {
+    for (const { document: d, distance } of similarityHitDocuments(
+      searchResult.value,
+      docsResult.value.filter((d) => d.active && d.mirrorHash)
+    )) {
       if (similarItems.length >= limit) {
         break;
       }
-
-      const d = docsByHash.get(vec.mirrorHash);
-      if (!d) continue;
 
       // Exclude self
       if (d.docid === doc.docid) continue;
@@ -708,7 +686,7 @@ export async function similar(
 
       // Compute similarity score from cosine distance
       // sqlite-vec with cosine metric returns distance where similarity = 1 - distance
-      const score = Math.max(0, Math.min(1, 1 - vec.distance));
+      const score = Math.max(0, Math.min(1, 1 - distance));
 
       if (score < threshold) continue;
 

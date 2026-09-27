@@ -447,15 +447,19 @@ CLI/MCP/Web UI/SDK → new Adapter() → adapter.createPort() → Port interface
 
 ### Storage
 
-| Table           | Purpose                                                                            |
-| --------------- | ---------------------------------------------------------------------------------- |
-| documents       | Source file tracking (path, hash, docid)                                           |
-| content         | Canonical Markdown by mirrorHash                                                   |
-| content_chunks  | Chunked text (default ~800 tokens; structural first-pass for supported code files) |
-| documents_fts   | Document-level FTS5 with Snowball stemmer                                          |
-| content_vectors | Chunk embeddings with title context (optional)                                     |
-| doc_tags        | Document tags (frontmatter and user-added)                                         |
-| doc_links       | Wiki and markdown links between documents                                          |
+| Table             | Purpose                                                                                                  |
+| ----------------- | -------------------------------------------------------------------------------------------------------- |
+| documents         | Source file tracking (path, hash, docid)                                                                 |
+| content           | Canonical Markdown by mirrorHash                                                                         |
+| content_chunks    | Chunked text (default ~800 tokens; structural first-pass for supported code files)                       |
+| documents_fts     | Document-level FTS5 with Snowball stemmer                                                                |
+| vector_partitions | One vector space per embedding identity (model, weights, context size, truncation); searched once active |
+| vector_variants   | Chunk embeddings, one per exact embedded input (chunk text with title context)                           |
+| vector_owners     | Binds each document chunk to its variant within a partition                                              |
+| `vec_v1_*`        | sqlite-vec KNN index of one partition                                                                    |
+| content_vectors   | Legacy chunk embeddings; read only by indexes that have not activated a partition                        |
+| doc_tags          | Document tags (frontmatter and user-added)                                                               |
+| doc_links         | Wiki and markdown links between documents                                                                |
 
 ### Write request ledger
 
@@ -629,6 +633,11 @@ GNO extracts and tracks links between documents:
 
 External URLs (https://) are NOT stored—only internal document links.
 
+Inside a Markdown table, Obsidian writes the alias separator as `\|`
+(`[[My Note\|click here]]`); GNO reads it the same way, as target `My Note`
+with display text `click here`. Markdown link text may contain balanced square
+brackets (`[see [1]](note.md)`).
+
 ### Resolution
 
 Links are resolved at query time, not stored with target document IDs. This handles document renames gracefully. Every link consumer (graph neighbors in search, ask and Context Capsules, backlinks, `gno links`, `gno impact`, graph export, `gno audit links`) uses the same resolution.
@@ -639,6 +648,8 @@ Links are resolved at query time, not stored with target document IDs. This hand
 2. A target without `/` matches a file name, case-insensitively, with or without `.md`.
 3. When several files match, the order is: exact workspace path, exact collection path, a file in the same folder as the linking document, then the file with the fewest folders above it. Files that are still tied are ambiguous: the link creates no graph edge, and `gno audit links` lists the candidates.
 4. When no file matches, a document whose title matches the target, inside the linking document's own collection, is used.
+
+A link whose target is not indexed but exists as a file in the workspace (an image or PDF, or a note in a folder no collection indexes or one a collection excludes) still creates no graph edge. `gno audit links` reports it as outside the index instead of unresolved; see [Links to files GNO does not index](CONFIGURATION.md#links-to-files-gno-does-not-index).
 
 **Other links keep their meaning:**
 

@@ -361,7 +361,10 @@ modifies source files, config, index rows, graph edges, daemon state, or a
 persisted audit baseline.
 
 Rules report `pass`, `fail`, `skip`, `unavailable`, or `inconclusive`; reports
-are `complete`, `partial`, `changed_during_audit`, or `failed`. Unavailable or
+are `complete`, `partial`, `changed_during_audit`, or `failed`. A passing rule
+may carry `info` findings (`links.outside-index`: link targets that exist as
+files in the link workspace but are not indexed); only `warning` and `error`
+findings fail a rule. Link semantics match `gno audit` (spec/cli.md). Unavailable or
 changing evidence never appears healthy. Stable finding IDs are derived from
 rule, normalized subject/location, and evidence fingerprint. Responses are
 canonically ordered and bounded while retaining exact pre-truncation totals.
@@ -1459,8 +1462,9 @@ Budgeted, cited, current-state recall from a memory-managed collection
   the vector leg did not run
 - `egressLineage` — strictest source policy across returned facts (absent when
   empty)
-- `hint` — self-teaching line naming `gno remember`, present only when no fact
-  was returned
+- `hint` — present only when no fact was returned; says why: the scope holds
+  no current fact (names `gno remember`), nothing in scope matched the query,
+  or the matches did not fit `maxTokens`
 
 **Identity:** `caller` is the MCP client implementation name from the
 `initialize` handshake (`mcp` when absent); `session` is the Streamable HTTP
@@ -2185,7 +2189,7 @@ Find semantically similar documents using vector embeddings.
 **Algorithm:**
 
 1. Get all chunks for the source document
-2. Retrieve embeddings for each chunk from content_vectors
+2. Retrieve each chunk's stored embedding from the active vector partition (legacy `content_vectors` only before any partition activates); no model is loaded
 3. Compute average embedding across all chunks
 4. Search for nearest neighbors using sqlite-vec
 5. Exclude self and filter by collection if not crossCollection

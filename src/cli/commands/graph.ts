@@ -14,6 +14,7 @@ import type {
 
 import { normalizeContentTypes } from "../../config";
 import { diagnoseGraphQuery } from "../../core/graph-query";
+import { getActivePreset } from "../../llm/registry";
 import { initStore } from "./shared";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -125,7 +126,7 @@ export async function graph(
   if (!initResult.ok) {
     return { success: false, error: initResult.error };
   }
-  const { store } = initResult;
+  const { store, config } = initResult;
 
   try {
     const storeOptions: GetGraphOptions = {
@@ -136,6 +137,7 @@ export async function graph(
       threshold: options.threshold,
       linkedOnly: !options.includeIsolated,
       similarTopK: options.similarTopK,
+      embedModel: getActivePreset(config).embed,
     };
 
     const result = await store.getGraph(storeOptions);

@@ -226,8 +226,16 @@ const materializeRule = (
     )
     .sort(compareAuditFindings);
 
+  // Only warning/error findings fail a passing rule; info findings of an
+  // informational rule (links.outside-index) leave it passing.
   let status = contribution.status;
-  if (findings.length > 0 && status === "pass") {
+  if (
+    status === "pass" &&
+    findings.some(
+      (finding) =>
+        finding.severity === "error" || finding.severity === "warning"
+    )
+  ) {
     status = "fail";
   }
 

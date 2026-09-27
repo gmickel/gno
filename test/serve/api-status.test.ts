@@ -27,6 +27,9 @@ describe("GET /api/status", () => {
     const original = ctx.store.getStatus.bind(ctx.store);
     ctx.store.getStatus = async (options) => {
       expect(options?.chunking).toEqual(ctx.config.chunking);
+      expect(options?.configuredCollections).toEqual(
+        ctx.config.collections.map(({ name }) => name)
+      );
       const result = await original();
       return result.ok
         ? {

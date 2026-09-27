@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `gno status` (and REST `/api/status`, MCP `gno_status`, the SDK `status()`) no longer lists a collection after `gno collection remove`. Before, the removed collection kept showing up with its old document count until the next `gno update`. Status now reports only configured collections, and its totals count documents and chunks from those collections only. The chunk total also stopped counting chunks left behind by deleted files, so `Total: 1 documents, 9 chunks` for one one-chunk file now reads `1 documents, 1 chunks`.
+- `gno recall` (and MCP `gno_recall`, REST, SDK) now answers question-shaped queries without vectors. Recall used to require every word of the query, so `recall "which branch does the QA canary deploy from?"` found nothing on a collection that was not embedded, even though `recall "canary branch"` found the fact. Recall now drops question words, returns facts that contain every remaining word first, and otherwise returns facts that share any of them, best match first. Facts that match only on a word found in most facts (such as a project name) are left out, and the 8-fact / 512-token budget is now filled in rank order instead of shortest fact first. Embedding the memory collection is no longer needed for questions; it still helps with paraphrases that share no word with a fact.
+- An empty recall no longer says "No memories in scope yet" when the scope has facts. The hint now distinguishes an empty scope, a scope where nothing matched, and matches that did not fit the token budget.
+- `gno similar`, MCP `gno_similar` and REST `/api/doc/:id/similar` failed with "Document has no embeddings. Run: gno embed" on an index that `gno embed` had just finished, and `gno graph --include-similar`, MCP `gno_graph` and `/api/graph?includeSimilar=true` returned no similarity edges. Embeddings are stored in vector partitions, but similarity still read the old vector table, which `gno embed` no longer fills. Similarity now reads the active vector partition (it still reads the old table on indexes that have not been re-embedded), and still loads no model. `gno graph` also no longer reports "Similarity edges unavailable: sqlite-vec not loaded" when sqlite-vec is installed: it checked a database connection that had not loaded the extension.
+- `gno audit links` no longer reports links that Obsidian resolves as broken. A wiki link or embed whose target exists in the vault but is not indexed (a pasted image or PDF, a note in a folder no collection indexes, or a note a collection excludes) is now an informational `links.outside-index` finding that does not fail the audit. GNO only checks that the file exists; it does not index, open or return it. See [Links to files GNO does not index](docs/CONFIGURATION.md#links-to-files-gno-does-not-index).
+- Wiki links in Markdown tables written with Obsidian's escaped alias, `[[Note\|Alias]]`, now link to `Note` in backlinks, `gno links`, `gno impact`, graph neighbours, the reader and the audit. Renaming a note also updates these links.
+- Markdown links whose text contains square brackets, such as `[see [1]](note.md)`, now link to their target. Link text split at an unbalanced bracket is no longer reported as a missing target named after the text.
+- The first `gno update` after upgrading re-reads existing notes once so the corrected links take effect.
+
 ## [2.8.0] - 2026-09-26
 
 ### Added

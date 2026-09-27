@@ -742,6 +742,11 @@ export interface FtsSearchOptions extends DocumentEligibilityOptions {
   snippet?: boolean;
   /** Match documents containing ANY positive term instead of ALL of them. */
   anyTerm?: boolean;
+  /**
+   * Drop rows whose raw BM25 score is below this fraction (0-1) of the best
+   * row's score, so matches carried only by near-zero-IDF terms fall away.
+   */
+  minRelativeScore?: number;
 }
 
 /** Managed-memory eligibility query (unbounded, executed in one SQL query). */
@@ -833,11 +838,11 @@ export interface IndexStatus {
   ftsTokenizer: FtsTokenizer;
   /** Per-collection status */
   collections: CollectionStatus[];
-  /** Total documents across all collections */
+  /** Total documents across the reported collections */
   totalDocuments: number;
   /** Active (non-deleted) documents */
   activeDocuments: number;
-  /** Total chunks across all collections */
+  /** Distinct chunks of active documents across the reported collections */
   totalChunks: number;
   /** Chunks without embeddings */
   embeddingBacklog: number;
@@ -1077,6 +1082,8 @@ export interface GetGraphOptions {
   linkedOnly?: boolean;
   /** Top-K similar docs per node (default 5, clamped 1-20) */
   similarTopK?: number;
+  /** Embedding model whose stored vectors score similarity edges */
+  embedModel?: string;
 }
 
 /** Options for seed-scoped one-hop graph neighbor lookup (query-time expansion). */
@@ -2386,6 +2393,12 @@ export interface StorePort {
     embedModel?: string;
     embedFingerprint?: string;
     chunking?: Partial<ChunkingParams>;
+    /**
+     * Configured collection names. When given, the collection list and the
+     * document/chunk totals cover only these collections, so a collection
+     * removed from config stops being reported before its rows are pruned.
+     */
+    configuredCollections?: readonly string[];
   }): Promise<StoreResult<IndexStatus>>;
 
   // ─────────────────────────────────────────────────────────────────────────

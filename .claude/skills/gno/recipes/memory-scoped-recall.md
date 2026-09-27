@@ -32,11 +32,16 @@ the flag.
      Superseded records never appear.
    - `budget.omitted` > 0: facts matched but did not fit. Narrow the query
      or raise the budget.
-   - Empty `facts` plus a `hint`: nothing is stored in scope yet. Say so;
-     the hint names `gno remember` for when the user wants to store one.
-   - `retrieval.mode: "lexical"`: the collection has no cached embeddings, so
-     the query matched every term. Rephrase to the fact's own words, or embed
-     the collection (`gno embed <collection>`) for question-shaped queries.
+   - Empty `facts` plus a `hint`: the hint says why. "No memories in scope
+     yet" means nothing is stored there; "No memories in scope matched this
+     query" means facts exist but none shares a word with the question, so
+     retry with other words before concluding memory is silent. The hints
+     name `gno remember` for when the user wants to store one.
+   - `retrieval.mode: "lexical"`: the collection has no cached embeddings.
+     Questions still work (question words are dropped and facts sharing a
+     content word are returned), but a paraphrase with no word in common
+     misses; embed the collection (`gno embed <collection>`) to match by
+     meaning.
 
 3. Answer from the facts and cite each by its `gno://` URI. When memory is
    silent or stale, fall through to `gno search` / `gno query` on the

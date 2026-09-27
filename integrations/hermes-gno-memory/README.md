@@ -66,11 +66,13 @@ collections:
     memoryManaged: true
 ```
 
-**Embed the memory collection.** Lexical-only recall requires every query
-term to match, so a question-shaped turn ("What is the deploy branch?")
-misses facts that the vector leg finds. Run `gno embed memory` after seeding
-facts (or keep `gno serve` / `gno daemon` watching the collection); the
-provider logs a one-time warning while recall reports `mode: lexical`.
+**Embedding is optional.** Lexical-only recall drops question words and
+matches the turn's content words, so "Which branch does the canary deploy
+from?" finds a fact that mentions the canary. A paraphrase that shares no word
+with the fact ("Where do test builds ship from?") still needs the vector leg:
+run `gno embed memory` after seeding facts (or keep `gno serve` /
+`gno daemon` watching the collection). The provider logs a one-time warning
+while recall reports `mode: lexical`.
 
 ## Config reference (`$HERMES_HOME/gno/config.json`)
 

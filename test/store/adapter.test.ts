@@ -1569,6 +1569,70 @@ describe("SqliteAdapter", () => {
       );
     });
 
+    test.each([
+      ["active", false],
+      ["inactive", true],
+    ])(
+      "status omits a collection removed from config while its rows are %s (fn-139)",
+      async (_label, deactivateRemoved) => {
+        // DB still carries "gone" in its collections table: config removal
+        // does not sync the table until the next update.
+        await adapter.syncCollections(
+          ["keep", "gone"].map((name) => ({
+            name,
+            path: `/${name}`,
+            pattern: "**/*",
+            include: [],
+            exclude: [],
+          }))
+        );
+        const addDoc = async (
+          collection: string,
+          relPath: string,
+          chunks: number
+        ): Promise<void> => {
+          const mirrorHash = `${collection}_${relPath}_mirror`;
+          await adapter.upsertDocument({
+            collection,
+            relPath,
+            sourceHash: `${collection}_${relPath}_hash`,
+            sourceMime: "text/markdown",
+            sourceExt: ".md",
+            sourceSize: 10,
+            sourceMtime: "2024-01-01T00:00:00Z",
+            mirrorHash,
+          });
+          await adapter.upsertContent(mirrorHash, relPath);
+          await adapter.upsertChunks(
+            mirrorHash,
+            Array.from({ length: chunks }, (_, seq) => ({
+              seq,
+              pos: seq,
+              text: `${relPath} ${seq}`,
+              startLine: seq + 1,
+              endLine: seq + 1,
+            }))
+          );
+        };
+        await addDoc("keep", "live.md", 1);
+        await addDoc("keep", "deleted.md", 2);
+        await addDoc("gone", "orphan.md", 1);
+        await adapter.markInactive("keep", ["deleted.md"]);
+        if (deactivateRemoved) {
+          await adapter.markInactive("gone", ["orphan.md"]);
+        }
+
+        const result = await adapter.getStatus({
+          configuredCollections: ["keep"],
+        });
+        if (!result.ok) throw new Error(result.error.message);
+        expect(result.value.collections.map((c) => c.name)).toEqual(["keep"]);
+        expect(result.value.activeDocuments).toBe(1);
+        // Chunks of the deleted document and of the removed collection do not count.
+        expect(result.value.totalChunks).toBe(1);
+      }
+    );
+
     test("status can scope embedded counts and backlog to one embed model", async () => {
       await adapter.syncCollections([
         {

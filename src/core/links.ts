@@ -88,6 +88,8 @@ const LOGSEQ_EMBED_REGEX =
  * Markdown inline link: [text](url)
  * Captures: 1=text, 2=url (path and optional anchor)
  * Negative lookbehind to avoid image links ![]()
+ * Link text may contain balanced square brackets one level deep
+ * (`[see [1]](note.md)`), as CommonMark allows.
  *
  * SCOPE LIMITATIONS:
  * - Only matches simple inline links [text](url)
@@ -95,7 +97,10 @@ const LOGSEQ_EMBED_REGEX =
  * - Does NOT match autolinks <url> or bare URLs
  * - Parens in URLs not supported (use %28 %29 encoding)
  */
-const MARKDOWN_LINK_REGEX = /(?<!!)\[([^\]]*)\]\(([^)]+)\)/g;
+const MARKDOWN_LINK_REGEX = /(?<!!)\[((?:[^[\]]|\[[^[\]]*\])*)\]\(([^)]+)\)/g;
+
+/** Square brackets in a destination mean the text was split, not a path. */
+const BRACKET_IN_DESTINATION_REGEX = /[[\]]/;
 
 /** External URL pattern (http:// https:// mailto: etc.) */
 const EXTERNAL_URL_REGEX = /^[a-z][a-z0-9+.-]*:/i;
@@ -142,6 +147,26 @@ export function stripWikiMdExt(ref: string): string {
 export function extractWikiBasename(ref: string): string {
   const base = pathPosix.basename(ref.trim());
   return stripWikiMdExt(base);
+}
+
+/**
+ * Split the content of a wiki link into target and alias. Obsidian also reads
+ * `\|` (the pipe escaped inside a Markdown table) as the alias separator,
+ * so `[[Note\|Alias]]` targets `Note`, not `Note\`.
+ */
+export function splitWikiLinkContent(content: string): {
+  target: string;
+  alias?: string;
+} {
+  const pipeIndex = content.indexOf("|");
+  if (pipeIndex < 0) {
+    return { target: content };
+  }
+  const escaped = pipeIndex > 0 && content[pipeIndex - 1] === "\\";
+  return {
+    target: content.slice(0, escaped ? pipeIndex - 1 : pipeIndex),
+    alias: content.slice(pipeIndex + 1),
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -338,22 +363,14 @@ export function parseLinks(
     const content = match[1];
     if (!content) continue;
 
-    // Parse [[target|alias]] format
-    const pipeIndex = content.indexOf("|");
-    let targetPart: string;
-    let displayText: string | undefined;
-
-    if (pipeIndex >= 0) {
-      targetPart = content.slice(0, pipeIndex);
-      const aliasText = content.slice(pipeIndex + 1);
-      // Only set displayText if different from target
-      displayText =
-        aliasText !== targetPart
-          ? truncateText(aliasText, MAX_DISPLAY_TEXT_GRAPHEMES)
-          : undefined;
-    } else {
-      targetPart = content;
-    }
+    // Parse [[target|alias]] (and table-escaped [[target\|alias]]) format
+    const { target: targetPart, alias: aliasText } =
+      splitWikiLinkContent(content);
+    // Only set displayText if different from target
+    const displayText =
+      aliasText !== undefined && aliasText !== targetPart
+        ? truncateText(aliasText, MAX_DISPLAY_TEXT_GRAPHEMES)
+        : undefined;
 
     const trimmedTarget = targetPart.trim();
     if (!trimmedTarget) {
@@ -424,6 +441,12 @@ export function parseLinks(
 
     // Skip external URLs
     if (EXTERNAL_URL_REGEX.test(url)) {
+      continue;
+    }
+
+    // Brackets in the destination come from link text split at an
+    // unbalanced bracket (`[a [b](c](d)`): unparseable, not a missing target.
+    if (BRACKET_IN_DESTINATION_REGEX.test(url)) {
       continue;
     }
 

@@ -1,0 +1,75 @@
+{
+  "base": "5711ee29953d1f16dbc8c18cc11f50a92698c5ba",
+  "effort": "medium",
+  "findings": {
+    "backend": "codex",
+    "baseSha": "5711ee29953d1f16dbc8c18cc11f50a92698c5ba",
+    "headSha": "38284f84df6a9594c1437aff824617f8c3127393",
+    "items": [
+      {
+        "anchor": {
+          "baseSha": "5711ee29953d1f16dbc8c18cc11f50a92698c5ba",
+          "headSha": "38284f84df6a9594c1437aff824617f8c3127393",
+          "path": "src/core/audit-outside-index.ts",
+          "side": "head",
+          "startLine": 66
+        },
+        "body": "Directory names are normalized to NFC before being queued for filesystem traversal. On a normalization-sensitive filesystem, an existing decomposed name such as `Cafe\\u0301` is subsequently opened as `Caf\u00e9`, producing `ENOENT`. Every attachment or excluded note below that directory incorrectly stays unresolved. Exercising the actual function body with an injected directory reader reproduced an empty, incomplete listing.",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-e8416942e0cd45b32919282f201127a44c1119cbeee978bad3dcd730e02fdbe8",
+        "id": "finding-2755526a0f38ab2fa717bb16d44deb04",
+        "lastSeenReceiptId": "review-e8416942e0cd45b32919282f201127a44c1119cbeee978bad3dcd730e02fdbe8",
+        "ordinal": 1,
+        "rIds": [
+          "R2"
+        ],
+        "severity": "P2",
+        "status": "open",
+        "suggestion": "Preserve original directory names for filesystem operations; normalize only the paths returned for matching. Add a decomposed-directory regression test.",
+        "title": "Directory names are normalized to NFC before being queued for filesystem traversal"
+      },
+      {
+        "anchor": {
+          "baseSha": "5711ee29953d1f16dbc8c18cc11f50a92698c5ba",
+          "headSha": "38284f84df6a9594c1437aff824617f8c3127393",
+          "path": "src/core/audit-outside-index.ts",
+          "side": "head",
+          "startLine": 71
+        },
+        "body": "`entry.isFile() || entry.isSymbolicLink()` accepts every symlink as an existing file. Dangling symlinks and symlinks to directories therefore make matching wiki links pass as `outside-index`, hiding genuinely missing file targets. The function accepts both without checking their targets.",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-e8416942e0cd45b32919282f201127a44c1119cbeee978bad3dcd730e02fdbe8",
+        "id": "finding-c081532e4959f0f6f340e873476cc80c",
+        "lastSeenReceiptId": "review-e8416942e0cd45b32919282f201127a44c1119cbeee978bad3dcd730e02fdbe8",
+        "ordinal": 2,
+        "rIds": [
+          "R2"
+        ],
+        "severity": "P2",
+        "status": "open",
+        "suggestion": "Verify that a symlink resolves to an existing regular file within the workspace before including it. Keep missing targets unresolved and handle filesystem errors through the diagnostic path.",
+        "title": "`entry"
+      }
+    ],
+    "reviewKind": "implementation",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-e8416942e0cd45b32919282f201127a44c1119cbeee978bad3dcd730e02fdbe8"
+  },
+  "focus": "ingest version bump to 8: must re-parse links without forcing re-embedding of unchanged content; outside-index filename scan never opens files, respects excluded folders and does not leak excluded names to remote/scoped callers; escaped-alias helper consistent across graph/backlinks/rename/preview; runner exit semantics for info findings",
+  "id": "fn-194-audit-links-obsidian-parity-for-escaped.1",
+  "introduced_count": 2,
+  "mode": "codex",
+  "model": "gpt-6-astra",
+  "pre_existing_count": 0,
+  "review": "I\u2019ll read the task spec, inspect the diff and affected callers, then run the focused checks where the sandbox permits.\n\nThe parser and preview checks passed. I\u2019m checking two filesystem edge cases in the new scan: Unicode directory names and whether a symlink proves its target exists.\n\nTwo introduced issues need fixing in the filesystem scan.\n\n1. **Severity:** P2  \n   **Confidence:** 100  \n   **Classification:** introduced  \n   **File:Line:** `src/core/audit-outside-index.ts:66`  \n   **R-IDs:** [R2]  \n   **Problem:** Directory names are normalized to NFC before being queued for filesystem traversal. On a normalization-sensitive filesystem, an existing decomposed name such as `Cafe\\u0301` is subsequently opened as `Caf\u00e9`, producing `ENOENT`. Every attachment or excluded note below that directory incorrectly stays unresolved. Exercising the actual function body with an injected directory reader reproduced an empty, incomplete listing.  \n   **Suggestion:** Preserve original directory names for filesystem operations; normalize only the paths returned for matching. Add a decomposed-directory regression test.\n\n2. **Severity:** P2  \n   **Confidence:** 100  \n   **Classification:** introduced  \n   **File:Line:** `src/core/audit-outside-index.ts:71`  \n   **R-IDs:** [R2]  \n   **Problem:** `entry.isFile() || entry.isSymbolicLink()` accepts every symlink as an existing file. Dangling symlinks and symlinks to directories therefore make matching wiki links pass as `outside-index`, hiding genuinely missing file targets. The function accepts both without checking their targets.  \n   **Suggestion:** Verify that a symlink resolves to an existing regular file within the workspace before including it. Keep missing targets unresolved and handle filesystem errors through the diagnostic path.\n\nVerification: 80 parser, audit-report and preview tests passed. Filesystem-backed checks were blocked by sandbox `EROFS` errors during fixture creation. The two scan behaviors were reproduced using the current function body with injected directory entries.\n\n## Requirements coverage\n\n| R-ID | Status | Evidence |\n|---|---|---|\n| R1 | met | Shared alias splitter, ingestion-version bump, parser and preview tests |\n| R2 | partial | Outside-index classification implemented; Unicode traversal and symlink checks are incorrect |\n| R3 | met | Shared matching classes, extension handling, one listing per workspace |\n| R4 | met | Bracket-aware parser and focused passing tests |\n| R5 | met | Fixture covers required cases; runtime verification blocked by read-only filesystem |\n| R6 | met | Audit reference and configuration documentation updated |\n\nUnaddressed R-IDs: []\n\nClassification counts: 2 introduced, 0 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":2,\"pre_existing\":0},\"unaddressed\":[]}\n```\n\n<verdict>NEEDS_WORK</verdict>",
+  "review_reservation_id": "1a568599e45f497caaa3f71f5f7098de",
+  "session_id": "01a0e014-c6c7-72f3-be7a-09e743445291",
+  "spec": "codex:gpt-6-astra:medium",
+  "timestamp": "2026-09-26T23:39:16.850037Z",
+  "type": "impl_review",
+  "unaddressed": [],
+  "verdict": "NEEDS_WORK"
+}

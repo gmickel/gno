@@ -1,6 +1,6 @@
 {
   "suite": "recall",
-  "description": "Recall quality under the 8-fact/512-token budget. Quality queries carry relevance judgments (recall@5); the budget query has ten relevant facts sized so the 8-fact cap binds before the token cap (each ~45 tokens), and checks both caps. Every returned URI must resolve through the SDK.",
+  "description": "Recall quality under the 8-fact/512-token budget. Quality queries carry relevance judgments (recall@5); q13-q19 are question-shaped turns that must hit on the lexical leg alone; the budget query has ten relevant facts sized so the 8-fact cap binds before the token cap (each ~45 tokens), and checks both caps. Every returned URI must resolve through the SDK.",
   "facts": [
     {
       "id": "f01",
@@ -166,6 +166,41 @@
     {
       "id": "q12",
       "query": "dashboards Grafana Prometheus",
+      "relevant": ["f09"]
+    },
+    {
+      "id": "q13",
+      "query": "Who is the on-call lead for Orbit search this quarter?",
+      "relevant": ["f03"]
+    },
+    {
+      "id": "q14",
+      "query": "When does the Orbit search index rebuild?",
+      "relevant": ["f02"]
+    },
+    {
+      "id": "q15",
+      "query": "Where do billing disputes for Orbit go?",
+      "relevant": ["f05"]
+    },
+    {
+      "id": "q16",
+      "query": "Which region holds Orbit customer data?",
+      "relevant": ["f11"]
+    },
+    {
+      "id": "q17",
+      "query": "What do we know about the Terraform setup?",
+      "relevant": ["f13"]
+    },
+    {
+      "id": "q18",
+      "query": "How often does the mobile team ship a release?",
+      "relevant": ["f08"]
+    },
+    {
+      "id": "q19",
+      "query": "Which tool do Orbit dashboards use for charts?",
       "relevant": ["f09"]
     },
     {

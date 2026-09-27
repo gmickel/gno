@@ -2,8 +2,8 @@
  * Integration tests for MCP link tools.
  * Tests handler logic with actual database operations.
  *
- * Note: gno_similar tests are skipped because they require embedding models
- * which are not available in CI. Use store-level vector tests instead.
+ * gno_similar and gno_graph similarity use synthetic stored vectors, so no
+ * embedding model is loaded.
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
@@ -14,14 +14,22 @@ import { join } from "node:path";
 import type { ToolContext } from "../../src/mcp/server";
 import type { DocLinkInput, DocumentInput } from "../../src/store/types";
 
+import { getActivePreset } from "../../src/llm/registry";
 import {
+  handleGraph,
   handleGraphQuery,
   handleGraphNeighbors,
   handleGraphPath,
+  handleSimilar,
 } from "../../src/mcp/tools/links";
 import { handleQueryDiagnose } from "../../src/mcp/tools/query";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
+import {
+  ALPHA_BETA_SCORE,
+  embedStoredSimilarityVectors,
+  seedSimilarityDocuments,
+} from "../helpers/stored-similarity-fixture";
 
 describe("MCP link tools integration", () => {
   let tmpDir: string;
@@ -529,9 +537,70 @@ describe("MCP link tools integration", () => {
     });
   });
 
+  describe("similarity from the activated vector partition", () => {
+    async function embedSimilarityDocs(): Promise<void> {
+      await seedSimilarityDocuments(store, "notes");
+      await embedStoredSimilarityVectors(
+        store.getRawDb(),
+        getActivePreset(toolContext().config).embed
+      );
+    }
+
+    test("gno_similar returns neighbours without legacy vectors", async () => {
+      await embedSimilarityDocs();
+      const result = await handleSimilar(
+        { ref: "gno://notes/alpha.md", threshold: 0.5 },
+        toolContext()
+      );
+      expect(result.content[0]?.text).not.toContain("no embeddings");
+      expect(result.isError).toBeFalsy();
+      const similar = (
+        result.structuredContent as {
+          similar: Array<{ uri: string; score: number }>;
+        }
+      ).similar;
+      // The unembedded twins share beta's content but never take its hit.
+      expect(similar.map((item) => item.uri)).toEqual(["gno://notes/beta.md"]);
+      expect(similar[0]?.score).toBeCloseTo(ALPHA_BETA_SCORE, 5);
+    });
+
+    test("gno_graph includes similarity edges", async () => {
+      await embedSimilarityDocs();
+      const result = await handleGraph(
+        { includeSimilar: true, linkedOnly: false, threshold: 0.5 },
+        toolContext()
+      );
+      expect(result.isError).toBeFalsy();
+      const graph = result.structuredContent as {
+        nodes: Array<{ id: string; uri: string }>;
+        links: Array<{
+          source: string;
+          target: string;
+          type: string;
+          weight: number;
+        }>;
+        meta: { similarAvailable: boolean; warnings: string[] };
+      };
+      expect(graph.meta.similarAvailable).toBe(true);
+      expect(graph.meta.warnings).toEqual([]);
+      const uriById = new Map(graph.nodes.map((node) => [node.id, node.uri]));
+      const similar = graph.links
+        .filter((link) => link.type === "similar")
+        .map((link) => ({
+          pair: [uriById.get(link.source) ?? "", uriById.get(link.target) ?? ""]
+            .sort((a, b) => a.localeCompare(b))
+            .join(" "),
+          weight: link.weight,
+        }));
+      expect(similar.map((edge) => edge.pair)).toEqual([
+        "gno://notes/alpha.md gno://notes/beta.md",
+      ]);
+      expect(similar[0]?.weight).toBeCloseTo(ALPHA_BETA_SCORE, 5);
+    });
+  });
+
   describe("gno_similar integration", () => {
-    // gno_similar requires embedding models which are not available in CI
-    // These tests verify the store-level operations that gno_similar depends on
+    // Store-level operations that gno_similar depends on
 
     test("can store and retrieve content for similarity comparison", async () => {
       const doc1Id = await createTestDoc(

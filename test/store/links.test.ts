@@ -1083,8 +1083,10 @@ describe("SqliteAdapter links", () => {
       expect(graph.value.links).toHaveLength(1);
       expect(graph.value.meta.truncated).toBe(true);
       expect(graph.value.meta.warnings).toContain("Edges truncated: 3 → 1");
+      // sqlite-vec loads here; this call names no embedding model.
+      expect(graph.value.meta.similarAvailable).toBe(true);
       expect(graph.value.meta.warnings).toContain(
-        "Similarity edges unavailable: sqlite-vec not loaded"
+        "Similarity unavailable: no embedding model configured"
       );
     });
 

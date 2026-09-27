@@ -240,7 +240,12 @@ the model with `id`, `model`, `dimensions`, `state` (`active`|`shadow`),
 `provenance` (building runtime, e.g. `CUDA, Bun 1.4.2`),
 `compatibleRuntimes` (runtimes that read it) and `incompatibleRuntimes`.
 Terminal output prints a `Vector partitions:` block
-unless there is exactly one healthy partition. Per-collection chunk totals remain deduplicated by canonical chunk;
+unless there is exactly one healthy partition. `collections`, `totalDocuments`
+and `totalChunks` cover configured collections only: a collection removed from
+config (for example by `gno collection remove`) is not reported even while its
+rows remain in the index until the next `gno update`. `totalChunks` counts the
+distinct chunks of active documents; chunks left by deleted documents do not
+count. Per-collection chunk totals remain deduplicated by canonical chunk;
 embedded counts require matching current inputs for every active owner within
 that collection. Status reads persisted identity and coverage without loading
 models. Legacy storage remains the fallback before variant authority; ambiguous
@@ -949,9 +954,9 @@ healthy.
 Link findings resolve with the workspace-aware resolver (see
 docs/ARCHITECTURE.md "Resolution"). Their evidence `detail` JSON carries
 separate `referenceKind` (`wiki-name`, `wiki-path`, `explicit-collection`,
-`markdown`), `resolutionStatus` (`unresolved`, `ambiguous`) and
-`resolvedScope` (`same-collection`, `cross-collection`, `explicit-collection`,
-or null when unresolved). Ambiguous workspace links add `candidateCount` and
+`markdown`), `resolutionStatus` (`unresolved`, `ambiguous`, `outside-index`)
+and `resolvedScope` (`same-collection`, `cross-collection`,
+`explicit-collection`, or null when unresolved). Ambiguous workspace links add `candidateCount` and
 `candidates` (tied candidate URIs in canonical path order); in a
 collection-scoped audit, candidates outside the requested collections are
 counted in `candidatesWithheld` and never named, and a list longer than the
@@ -959,6 +964,27 @@ detail bound sets `candidatesTruncated` (and `truncation.evidenceTruncated`).
 Orphans stay "no incoming or outgoing resolved links", with connectivity drawn
 from the whole index even when the audited documents are scoped; a tied link
 connects nothing.
+
+A plain wiki link or embed from a document in a link workspace whose target
+is not an indexed document but exists as a file inside the workspace root (a
+non-Markdown attachment, a note in an unindexed folder, a note excluded by a
+collection pattern) is not reported by `links.local-targets`. It is an `info`
+finding of `links.outside-index` (evidence kind `outside-index-target`,
+`resolutionStatus: "outside-index"`). That rule stays `pass`, so these
+findings never change the exit code. The check is existence-only: each
+involved workspace root is listed once per run (hidden files and folders
+skipped, symlinked folders not descended, a symlink counted only when it
+resolves to a regular file inside the workspace, at most 200,000 files), no
+file is opened, and no graph edge is created. Targets match files by the workspace
+link rules; a non-Markdown target needs its extension, `.md` is optional. A
+target missing from the listing stays unresolved; an unreadable folder or the
+file bound makes the listing incomplete, which the `links.outside-index` rule
+message states once.
+
+The wiki link parser reads Obsidian's table-escaped alias `[[Note\|Alias]]`
+as target `Note` with alias `Alias`. Markdown link text may contain balanced
+square brackets (`[see [1]](note.md)`); a destination containing a square
+bracket is not a link.
 
 The JSON contract is versioned as `gno://schemas/audit-report@1.0`. Finding IDs
 are stable SHA-256 identities derived from rule, normalized subject/location,
@@ -2014,6 +2040,12 @@ gno recall <query> --scope <scope> [--scope <scope>...] [--collection <name>] [-
   `retrieval.semanticUnavailable` explaining why). Query expansion, graph
   expansion, and reranking are disabled. Scope and supersession filtering run
   inside the retrieval query; superseded facts are never returned.
+- The lexical leg searches the query's content words (question and function
+  words dropped; quoted phrases and `-term` exclusions kept). Facts containing
+  every content word are returned first; when none does, facts sharing any
+  content word are returned in BM25 order, dropping those scoring below 0.1
+  of the best match.
+- The budget is filled in retrieval-rank order.
 - Budget: at most `--max-facts` facts (default 8) under `--max-tokens`
   (default 512). Both must be positive integers. Recall never downloads a
   model.
@@ -2023,8 +2055,11 @@ gno recall <query> --scope <scope> [--scope <scope>...] [--collection <name>] [-
   (`caller`, `session`, `issuedAt`, `memoryIds`, `spanHashes`, `digest`) plus
   `budget` and `retrieval`. Derived output inherits the strictest source
   egress policy (`egressLineage`).
-- Empty recall prints the self-teaching line naming `gno remember`
-  (`hint` in JSON) and exits 0.
+- Empty recall prints a hint (`hint` in JSON) and exits 0. The hint
+  distinguishes an empty scope (`No memories in scope yet. Store one with:
+gno remember ...`), a populated scope with no match (`No memories in scope
+matched this query. ...`, also naming `gno remember`), and matches that did
+  not fit the token budget.
 
 **Output:** `--json` prints the shared `RecallResult`. Terminal output lists
 numbered facts with URI, text, scopes, hash, and identity, then `Budget:`,

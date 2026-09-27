@@ -116,6 +116,11 @@ export interface AuditLinkSnapshotLink {
   endLine: number;
   endCol: number;
   resolved: ResolvedGraphLinkTarget | null;
+  /**
+   * Unresolved workspace wiki link whose target exists as a file in the
+   * workspace but is not an indexed document. Existence only: no edge.
+   */
+  outsideIndex?: boolean;
 }
 
 export interface AuditLinkSnapshot {
@@ -128,6 +133,8 @@ export interface AuditLinkSnapshot {
    */
   scopeCollections?: string[];
   links: AuditLinkSnapshotLink[];
+  /** Why some workspace file listings were incomplete, when they were. */
+  outsideIndexDiagnostic?: string;
   totals: { documents: number; links: number };
   truncated: { documents: boolean; links: boolean };
   metrics: {
