@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Indexing a large Excel workbook no longer runs away. On 2.8.2, one workbook with several large sheets and pivot tables made `gno update` run at full CPU for close to an hour, reach tens of gigabytes of memory and write nothing, while 2.8.1 indexed the same file in seconds. The new code-span detection ran the Markdown parser over the converted workbook, which is one large table per sheet, and the parser's table handling slows with the square of a table's cells. Converted documents (PDF, Office, plain text, records) no longer go through the Markdown parser, and Markdown notes over 1 MB, or with a single table of more than 5,000 cells, use a linear scan for code instead. A generated workbook of that shape now indexes in about 9 s with a 3.3 GB peak.
+- Indexing a large Excel workbook no longer runs away. On 2.8.2, one workbook with several large sheets and pivot tables made `gno update` run at full CPU for close to an hour, reach tens of gigabytes of memory and write nothing, while 2.8.1 indexed the same file in seconds. The new code-span detection ran the Markdown parser over the converted workbook, which is one large table per sheet, and the parser's table handling slows with the square of a table's cells. Converted documents (PDF, Office, plain text, records) no longer go through the Markdown parser, and Markdown notes over 1 MB, or with a single table of more than 5,000 cells, use a linear scan for code instead. A generated workbook of that shape now indexes in about 9 s with a 3.2 GB peak, as on 2.8.1.
 
 ### Added
 
