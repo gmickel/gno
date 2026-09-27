@@ -2091,7 +2091,9 @@ gno impact gno://notes/plan.md --collection notes --collection work --json
   `--json`; `--collection` filters the stream. Contract:
   `changes-follow-event.schema.json`.
 - `gno diff` returns the latest retained structural delta; `--change <id>`
-  selects an exact opaque change ID. Source bodies are never retained, and
+  selects an exact opaque change ID. Link changes are recorded only for
+  Markdown notes, the only documents GNO reads links from; other documents
+  still record their content changes. Source bodies are never retained, and
   missing prior structure is disclosed through `history` and
   `structureDelta.truncated`.
 - `gno impact` follows inbound typed, wiki, and Markdown dependencies. Depth,

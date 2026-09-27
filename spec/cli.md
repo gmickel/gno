@@ -987,7 +987,8 @@ resolves to a regular file inside the workspace, at most 200,000 files), no
 file is opened, and no graph edge is created. Wiki targets match files by the workspace
 link rules; a non-Markdown target needs its extension, `.md` is optional. A
 Markdown link matches only the file at its resolved path (NFC,
-case-insensitive). A
+case-insensitive); as for wiki links, `.md` is optional, so `[x](Note)` matches
+an unindexed `Note.md` (an indexed `Note.md` is not outside the index). A
 target missing from the listing stays unresolved; an unreadable folder or the
 file bound makes the listing incomplete, which the `links.outside-index` rule
 message states once.
@@ -4210,6 +4211,9 @@ gno changes --follow --jsonl [--cursor <cursor>] [--collection <name>]
   old/new identity and hash snapshots, normalized structural deltas, pagination,
   cursor-expiry, and retention-truncation disclosure.
 - The journal never returns source bodies.
+- Link additions and removals in `structureDelta.links` are recorded only for
+  Markdown sources, matching link extraction; content changes of other
+  documents (code, text, converted files, records) are still journaled.
 
 **Follow mode (`--follow --jsonl`)** streams journal events as they land and is
 the durable automation input for consumers that resume across restarts.

@@ -321,7 +321,8 @@ open, or return the file, the link does not become part of the link graph,
 and an excluded folder stays excluded. The target must match the way Obsidian
 matches it: a file other than a note needs its extension (`[[diagram]]` does
 not find `diagram.png`), `.md` is optional for notes, and a Markdown link must
-name the file's path relative to the note. Hidden folders such
+name the file's path relative to the note (again with `.md` optional:
+`[plan](Archive/Plan)` finds `Archive/Plan.md`). Hidden folders such
 as `.obsidian` and `.trash` are not checked, and a symlink counts only when it
 points to a file inside the workspace. If a folder cannot be read, links into
 it stay unresolved and the audit says once that the check was incomplete.
