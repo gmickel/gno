@@ -995,7 +995,12 @@ message states once.
 The wiki link parser reads Obsidian's table-escaped alias `[[Note\|Alias]]`
 as target `Note` with alias `Alias`. Markdown link text may contain balanced
 square brackets (`[see [1]](note.md)`); a destination containing a square
-bracket is not a link.
+bracket is not a link. Markdown links follow CommonMark, as Obsidian renders
+them: a `[` escaped with a backslash (`\[clause](see section 4)`) opens no
+link, and an inline destination with an unescaped space is plain text unless
+it is wrapped in angle brackets. `[x](<my note.md>)` and `[x](my%20note.md)`
+both link to `my note.md`; a link title (`[x](note.md "Title")`) is not part
+of the target.
 
 The JSON contract is versioned as `gno://schemas/audit-report@1.0`. Finding IDs
 are stable SHA-256 identities derived from rule, normalized subject/location,

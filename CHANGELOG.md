@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `gno audit links`, backlinks, `gno links`, `gno impact` and the link graph no longer read quoted prose such as `\[-some clause -](see section 4 of the annex)` as a link to a file named `see section 4 of the annex`. As in Obsidian, a `[` escaped with a backslash opens no link, and a Markdown link destination with an unescaped space is plain text unless it is wrapped in angle brackets.
+- `[x](<my note.md>)` now links to `my note.md`; before, the angle brackets stayed in the target and the link was reported as unresolved. `[x](my%20note.md)` keeps working, and a link title such as `[x](note.md "Title")` no longer becomes part of the target.
+- Renaming or moving a note no longer rewrites an escaped `\[text](note.md)`, which is plain text.
+- The first `gno update` after upgrading re-reads existing notes once so these rules take effect.
+
 ## [2.8.2] - 2026-09-27
 
 ### Fixed
