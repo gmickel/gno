@@ -30,19 +30,25 @@ describe("xlsx adapter (fn-198)", () => {
       label: "pivot-report shape",
       build: () => buildLargeWorkbook({ scale: 0.005, backtickEvery: 20 }),
     },
-  ])("$label: Markdown and title match markitdown-ts", async ({ build }) => {
-    const bytes = build();
+  ])(
+    "$label: Markdown and title match markitdown-ts",
+    async ({ build }) => {
+      const bytes = build();
 
-    const [before, after] = await Promise.all([
-      markitdownAdapter.convert(input(bytes)),
-      xlsxAdapter.convert(input(bytes)),
-    ]);
+      const [before, after] = await Promise.all([
+        markitdownAdapter.convert(input(bytes)),
+        xlsxAdapter.convert(input(bytes)),
+      ]);
 
-    if (!before.ok || !after.ok) throw new Error("conversion failed");
-    expect(after.value.markdown).toBe(before.value.markdown);
-    expect(after.value.title).toBe(before.value.title);
-    expect(after.value.meta.converterId).toBe("adapter/xlsx");
-  });
+      if (!before.ok || !after.ok) throw new Error("conversion failed");
+      expect(after.value.markdown).toBe(before.value.markdown);
+      expect(after.value.title).toBe(before.value.title);
+      expect(after.value.meta.converterId).toBe("adapter/xlsx");
+    },
+    // The markitdown-ts reference is the old quadratic path; it took 6.1 s on
+    // a macOS CI runner.
+    30_000
+  );
 
   test("converts a 4,000-row, 23-column sheet in well under the old runtime", async () => {
     // markitdown-ts took 15.7 s and 5.5 GB here (columns x rows^2 in the GFM
