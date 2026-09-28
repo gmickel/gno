@@ -42,14 +42,14 @@ function statusResult(): StatusResult {
               startedAt: null,
               completedAt: null,
               latencyMs: 1,
-              code: "no_documents",
+              code: "index_out_of_sync",
             },
             lexical: {
               status: "skipped",
               startedAt: null,
               completedAt: null,
               latencyMs: null,
-              code: "no_documents",
+              code: "index_out_of_sync",
             },
             semantic: {
               status: "pending",
@@ -73,9 +73,9 @@ function statusResult(): StatusResult {
           },
           remediation: {
             stage: "index",
-            code: "no_documents",
+            code: "index_out_of_sync",
             command: "gno index notes --no-embed",
-            message: "Index at least one supported text document.",
+            message: "Rebuild this collection's lexical index.",
           },
         },
       ],
@@ -143,7 +143,7 @@ describe("gno status activation output", () => {
     const terminal = formatStatus(result, {});
     expect(terminal).toContain("Health: DEGRADED");
     expect(terminal).toContain("Lexical activation: BLOCKED");
-    expect(terminal).toContain("index: no_documents");
+    expect(terminal).toContain("index: index_out_of_sync");
     expect(terminal).toContain("gno index notes --no-embed");
   });
 
@@ -182,7 +182,7 @@ describe("gno status activation output", () => {
     );
   });
 
-  test("exits 0 with structured unhealthy activation", async () => {
+  test("reports a collection with no documents as informational, not degraded", async () => {
     const testDir = await mkdtemp(join(tmpdir(), "gno-status-activation-"));
     const emptyDir = join(testDir, "empty");
     const originalStdoutWrite = process.stdout.write.bind(process.stdout);
@@ -212,9 +212,20 @@ describe("gno status activation output", () => {
       expect(code).toBe(0);
       const parsed = JSON.parse(output);
       expect(parsed).toMatchObject({
-        healthy: false,
-        activation: { usable: false, healthy: false },
+        healthy: true,
+        activation: { usable: false, healthy: true },
       });
+      expect(parsed.activation.collections[0].remediation).toMatchObject({
+        code: "no_documents",
+        command: "gno update",
+      });
+
+      output = "";
+      expect(await runCli(["bun", "gno", "status"])).toBe(0);
+      expect(output).toContain("Lexical activation: NO DOCUMENTS YET");
+      expect(output).toContain(
+        "empty: no documents yet (add files, then run gno update)"
+      );
     } finally {
       process.stdout.write = originalStdoutWrite;
       setOptionalEnv("GNO_CONFIG_DIR", previousEnv.config);

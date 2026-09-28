@@ -347,10 +347,12 @@
           "const": "1.0"
         },
         "usable": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "At least one collection passed the lexical retrieval proof"
         },
         "healthy": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "At least one collection is configured and none failed its lexical retrieval proof. A collection with no documents yet (remediation code no_documents, command gno update) is informational, not a failure."
         },
         "collections": {
           "type": "array",

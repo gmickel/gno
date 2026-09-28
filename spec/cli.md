@@ -351,7 +351,12 @@ gno status [--json|--md]
 ```
 
 `activation.usable` means at least one configured collection passed its local
-lexical proof. `activation.healthy` means every configured collection passed.
+lexical proof. `activation.healthy` means at least one collection is configured
+and none failed its proof. A collection with no documents yet (index stage
+`no_documents`, remediation `gno update`) is informational, not a failure: it
+leaves `healthy` true, projects no connector proofs, and terminal output
+lists it as `no documents yet` (`Lexical activation: NO DOCUMENTS YET` when no
+collection has documents).
 Semantic and connector stages remain independent; passive status never starts a
 model runtime or connector process. `gno status` still exits 0 when activation
 is unhealthy so scripts can inspect the structured state.
@@ -3022,7 +3027,11 @@ The additive `activation` object uses the same contract as `gno status` and
 `GET /api/status`. Doctor performs only the local lexical proof. It never starts
 connector children or initializes/downloads models. A failed lexical proof adds
 the `retrieval-activation` error check and exits 2 after writing the complete
-result; no duplicate error is written to stderr. Connector failure or projection
+result; no duplicate error is written to stderr. A collection with no
+documents yet is not a failed proof: when it is the only activation problem,
+`retrieval-activation` has status `info` (terminal icon `i`) and lists the
+collection with its remediation (add files, then `gno update`). Check status
+is one of `ok`, `info`, `warn` or `error`; only `error` fails doctor. Connector failure or projection
 truncation adds a warning and makes the structured doctor result non-healthy,
 but preserves exit 0 when lexical proof and all other required checks pass. An
 omitted target/collection pair has no inferred result.

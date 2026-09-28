@@ -3,6 +3,8 @@
 import type { ActivationStatus } from "../core/activation-status";
 import type { HealthCheck } from "./status-model";
 
+import { isEmptyActivationCollection } from "../core/activation-empty";
+
 function countLabel(count: number, singular: string): string {
   return `${count} ${count === 1 ? singular : `${singular}s`}`;
 }
@@ -10,26 +12,42 @@ function countLabel(count: number, singular: string): string {
 export function buildActivationCheck(
   activation: ActivationStatus
 ): HealthCheck {
+  const ready = activation.collections.filter((collection) => collection.ready);
+  const empty = activation.collections.filter(isEmptyActivationCollection);
+  const emptyDetail =
+    empty.length > 0
+      ? `${countLabel(empty.length, "folder")} ${empty.length === 1 ? "has" : "have"} no documents yet (${empty.map(({ collection }) => collection).join(", ")}): add files, then run update.`
+      : null;
   if (activation.healthy) {
     const semanticReasons = [
       ...new Set(
-        activation.collections.map(
-          ({ semanticAvailability }) => semanticAvailability.code
-        )
+        ready.map(({ semanticAvailability }) => semanticAvailability.code)
       ),
     ];
+    const semanticDetail =
+      ready.length > 0
+        ? `Lexical search is proven. Semantic availability is separate (${semanticReasons.join(", ")}).`
+        : null;
     return {
       id: "retrieval-activation",
       title: "Retrieval proof",
       status: "ok",
-      summary: `${countLabel(activation.collections.length, "folder")} passed lexical retrieval`,
-      detail: `Lexical search is proven. Semantic availability is separate (${semanticReasons.join(", ")}).`,
+      summary:
+        ready.length === 0
+          ? `No documents indexed yet in ${countLabel(empty.length, "folder")}`
+          : empty.length > 0
+            ? `${countLabel(ready.length, "folder")} passed lexical retrieval; ${countLabel(empty.length, "folder")} with no documents yet`
+            : `${countLabel(ready.length, "folder")} passed lexical retrieval`,
+      detail: [semanticDetail, emptyDetail].filter(Boolean).join(" "),
       actionLabel: "Run update",
       actionKind: "sync",
     };
   }
 
-  const failed = activation.collections.filter(({ ready }) => !ready);
+  const failed = activation.collections.filter(
+    (collection) =>
+      !collection.ready && !isEmptyActivationCollection(collection)
+  );
   const first = failed[0];
   const detail = first?.remediation
     ? `${first.collection}: ${first.remediation.stage}/${first.remediation.code}. Run: ${first.remediation.command}`
@@ -41,7 +59,7 @@ export function buildActivationCheck(
     summary: activation.usable
       ? `${countLabel(failed.length, "folder")} failed lexical retrieval`
       : "No folder passed lexical retrieval",
-    detail,
+    detail: [detail, emptyDetail].filter(Boolean).join(" "),
     actionLabel: "Run update",
     actionKind: "sync",
   };

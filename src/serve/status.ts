@@ -14,6 +14,7 @@ import type {
 
 import { getModelsCachePath } from "../app/constants";
 import { buildContentTypeBoostStatus } from "../config/content-types";
+import { isEmptyActivationCollection } from "../core/activation-empty";
 import {
   type ActivationStatus,
   buildActivationStatus,
@@ -555,7 +556,13 @@ function buildOnboarding(
 ): AppStatusResponse["onboarding"] {
   const foldersReady = activation.collections.length > 0;
   const modelsReady = modelCheck.status === "ok";
-  const indexedReady = activation.healthy;
+  // An empty folder is not a failure, but a workspace with no documents yet
+  // has not finished its first proof.
+  const indexedReady = activation.healthy && activation.usable;
+  const readyCount = activation.collections.filter(({ ready }) => ready).length;
+  const emptyCount = activation.collections.filter(
+    isEmptyActivationCollection
+  ).length;
   const semanticStates = [
     ...new Set(
       activation.collections.map(
@@ -563,10 +570,22 @@ function buildOnboarding(
       )
     ),
   ];
-  const failedActivation = activation.collections.find(({ ready }) => !ready);
-  const activationDetail = failedActivation?.remediation
-    ? `${failedActivation.collection}: ${failedActivation.remediation.stage}/${failedActivation.remediation.code}. Run: ${failedActivation.remediation.command}`
-    : "Run the first sync to populate a searchable lexical index.";
+  const failedActivation =
+    activation.collections.find(
+      (collection) =>
+        !collection.ready && !isEmptyActivationCollection(collection)
+    ) ?? activation.collections.find(({ ready }) => !ready);
+  const activationDetail = !failedActivation?.remediation
+    ? "Run the first sync to populate a searchable lexical index."
+    : isEmptyActivationCollection(failedActivation)
+      ? `${failedActivation.collection} has no documents yet. Add files, then run: ${failedActivation.remediation.command}`
+      : `${failedActivation.collection}: ${failedActivation.remediation.stage}/${failedActivation.remediation.code}. Run: ${failedActivation.remediation.command}`;
+  const emptyNote =
+    emptyCount > 0
+      ? ` ${summarizeCount(emptyCount, "folder")} with no documents yet.`
+      : "";
+  const passedFolders =
+    emptyCount > 0 ? "Every folder with documents" : "Every folder";
 
   const steps = [
     {
@@ -600,7 +619,7 @@ function buildOnboarding(
       title: "Prove lexical retrieval",
       status: indexedReady ? "complete" : foldersReady ? "current" : "upcoming",
       detail: indexedReady
-        ? `${summarizeCount(activation.collections.length, "folder")} passed a corpus-derived lexical proof.`
+        ? `${summarizeCount(readyCount, "folder")} passed a corpus-derived lexical proof.${emptyNote}`
         : activationDetail,
       action: "sync",
     },
@@ -636,8 +655,8 @@ function buildOnboarding(
     stage: "ready",
     headline: "Workspace ready",
     detail: modelsReady
-      ? `Every folder passed lexical retrieval. Local model files are cached; semantic retrieval remains separate (${semanticStates.join(", ")}).`
-      : `Every folder passed lexical retrieval. Semantic retrieval remains an optional next step (${semanticStates.join(", ")}).`,
+      ? `${passedFolders} passed lexical retrieval.${emptyNote} Local model files are cached; semantic retrieval remains separate (${semanticStates.join(", ")}).`
+      : `${passedFolders} passed lexical retrieval.${emptyNote} Semantic retrieval remains an optional next step (${semanticStates.join(", ")}).`,
     suggestedCollections: suggestions,
     steps,
   };

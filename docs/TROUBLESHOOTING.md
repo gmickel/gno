@@ -144,7 +144,10 @@ Inspect the exact collection, stage, code, and remediation:
 gno status --json | jq '.activation.collections[] | select(.ready == false)'
 ```
 
-- `no_documents`: index at least one supported text document.
+- `no_documents`: the collection has no indexed documents yet. This is
+  informational, not a failure: `gno doctor` shows it with `i`, and
+  `gno status` lists it as `no documents yet`. Add supported files to the
+  collection's folder, then run `gno update`.
 - `no_probe_term`: the bounded document prefixes contain no safe searchable
   term; check filters/content and reindex.
 - `index_out_of_sync`: an owned FTS row or sync marker is missing/stale; run
@@ -238,7 +241,11 @@ of its rows and used about 20 KB per cell, and 2.8.2 added Markdown code
 detection over the converted table, which grew with the square of its cells.
 Current versions build each sheet's table directly from the sheet data, never
 run code detection on converted files, and parse very large Markdown tables
-without the table rules, so such a workbook indexes in seconds.
+without the table rules, so such a workbook indexes in seconds. A Markdown
+note that is mostly one such table indexes in time proportional to its size
+too: a note of 23 columns by 40,000 rows takes a few seconds, including rows
+with an unmatched `]`, an unclosed `[[` or an unclosed `<!--`, which used to
+stop it at the per-file budget.
 
 Each file is also indexed under a per-file budget covering conversion and the
 processing after it, and is stopped mid-step when it runs over. While a file

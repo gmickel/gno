@@ -89,36 +89,55 @@ function receipt(
 describe("activation status", () => {
   const store = {} as StorePort;
 
-  test("distinguishes usable mixed state from fully healthy state", async () => {
-    const status = await buildActivationStatus(store, ["zeta", "alpha"], {
-      semantic: {
-        modelsCached: false,
-        embeddingBacklog: 9,
-        vectorAvailable: false,
+  test.each([
+    {
+      code: "retrieval_mismatch" as const,
+      healthy: false,
+      remediation: {
+        stage: "lexical",
+        code: "retrieval_mismatch",
+        command: "gno index alpha --no-embed",
       },
-      verifyCollection: async (_store, collection) => ({
-        ok: true,
-        value: receipt(collection, collection === "zeta"),
-      }),
-    });
+    },
+    {
+      // A collection with no documents yet is informational, not a failure.
+      code: "no_documents" as const,
+      healthy: true,
+      remediation: {
+        stage: "index",
+        code: "no_documents",
+        command: "gno update",
+      },
+    },
+  ])(
+    "a usable mixed state with $code is healthy: $healthy",
+    async ({ code, healthy, remediation }) => {
+      const status = await buildActivationStatus(store, ["zeta", "alpha"], {
+        semantic: {
+          modelsCached: false,
+          embeddingBacklog: 9,
+          vectorAvailable: false,
+        },
+        verifyCollection: async (_store, collection) => ({
+          ok: true,
+          value: receipt(collection, collection === "zeta", code),
+        }),
+      });
 
-    expect(status.collections.map(({ collection }) => collection)).toEqual([
-      "alpha",
-      "zeta",
-    ]);
-    expect(status.usable).toBe(true);
-    expect(status.healthy).toBe(false);
-    expect(status.collections[0]?.remediation).toMatchObject({
-      stage: "index",
-      code: "no_documents",
-      command: "gno index alpha --no-embed",
-    });
-    expect(status.collections[1]?.semanticAvailability).toEqual({
-      status: "pending",
-      code: "models_missing",
-      command: "gno models pull --embed",
-    });
-  });
+      expect(status.collections.map(({ collection }) => collection)).toEqual([
+        "alpha",
+        "zeta",
+      ]);
+      expect(status.usable).toBe(true);
+      expect(status.healthy).toBe(healthy);
+      expect(status.collections[0]?.remediation).toMatchObject(remediation);
+      expect(status.collections[1]?.semanticAvailability).toEqual({
+        status: "pending",
+        code: "models_missing",
+        command: "gno models pull --embed",
+      });
+    }
+  );
 
   test("treats semantic pending as independent from lexical health", async () => {
     const status = await buildActivationStatus(store, ["notes"], {
@@ -410,6 +429,35 @@ describe("activation status", () => {
         code: "connector_unsupported_config",
       }),
     ]);
+  });
+
+  test("projects no connector proofs for a collection with no documents", async () => {
+    const status = await buildActivationStatus(store, ["empty", "notes"], {
+      connectorTargets: [
+        {
+          kind: "skill",
+          id: "codex-skill",
+          target: "codex",
+          scope: "user",
+          configPath: "/tmp/codex-skill",
+          installed: true,
+        },
+      ],
+      verifyCollection: async (_store, collection) => ({
+        ok: true,
+        value: receipt(collection, collection === "notes"),
+      }),
+    });
+
+    expect(status.healthy).toBe(true);
+    expect(status.connectors.map(({ collection }) => collection)).toEqual([
+      "notes",
+    ]);
+    expect(status.connectorProjection).toEqual({
+      total: 1,
+      projected: 1,
+      truncated: false,
+    });
   });
 
   test("bounds connector projections and reports truncation", async () => {

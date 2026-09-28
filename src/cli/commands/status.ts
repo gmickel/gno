@@ -19,6 +19,7 @@ import {
   loadConfig,
 } from "../../config";
 import { isConnectorActivationComplete } from "../../core/activation-connector-health";
+import { isEmptyActivationCollection } from "../../core/activation-empty";
 import { buildActivationStatus } from "../../core/activation-status";
 import { formatChunkingStatus } from "../../core/chunking-status";
 import { formatLinkWorkspace } from "../../core/link-workspace";
@@ -229,10 +230,21 @@ function formatTerminal(
     `Health: ${isStatusHealthy(indexStatus, activation) ? "OK" : "DEGRADED"}`
   );
   lines.push("");
-  lines.push(
-    `Lexical activation: ${activation.healthy ? "READY" : activation.usable ? "DEGRADED" : "BLOCKED"}`
-  );
+  const activationState = activation.healthy
+    ? activation.usable
+      ? "READY"
+      : "NO DOCUMENTS YET"
+    : activation.usable
+      ? "DEGRADED"
+      : "BLOCKED";
+  lines.push(`Lexical activation: ${activationState}`);
   for (const collection of activation.collections) {
+    if (isEmptyActivationCollection(collection)) {
+      lines.push(
+        `  ${collection.collection}: no documents yet (add files, then run ${collection.remediation?.command})`
+      );
+      continue;
+    }
     const failedStage = collection.remediation?.stage;
     const suffix = failedStage
       ? ` (${failedStage}: ${collection.remediation?.code}; ${collection.remediation?.command})`
@@ -325,7 +337,7 @@ function formatMarkdown(
   lines.push(`- **Lexically healthy**: ${activation.healthy}`);
   for (const collection of activation.collections) {
     lines.push(
-      `- **${collection.collection}**: ${collection.ready ? "lexical ready" : `${collection.remediation?.stage ?? "index"} ${collection.remediation?.code ?? "index_query_failed"}`}`
+      `- **${collection.collection}**: ${collection.ready ? "lexical ready" : isEmptyActivationCollection(collection) ? `no documents yet (${collection.remediation?.command})` : `${collection.remediation?.stage ?? "index"} ${collection.remediation?.code ?? "index_query_failed"}`}`
     );
   }
   for (const connector of activation.connectors) {

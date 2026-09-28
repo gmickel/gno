@@ -7,6 +7,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  findWikiLinks,
   normalizeMarkdownPath,
   normalizeWikiName,
   parseLinks,
@@ -617,5 +618,33 @@ describe("parseLinks regression (fn-60.6 additive inventory)", () => {
     expect(
       links.some((link) => link.kind === "wiki" && link.targetRef === "Embed")
     ).toBe(true);
+  });
+});
+
+describe("findWikiLinks", () => {
+  test("matches exactly what the wiki-link regex matched, on random text", () => {
+    const legacy = /\[\[([^\]|]+(?:\|[^\]]+)?)\]\]/g;
+    const alphabet = "[[]]||ab \n\\";
+    let seed = 199;
+    const random = (): number => {
+      seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
+      return seed / 2_147_483_648;
+    };
+    for (let sample = 0; sample < 2000; sample += 1) {
+      const length = Math.floor(random() * 40);
+      let text = "";
+      for (let index = 0; index < length; index += 1) {
+        text += alphabet[Math.floor(random() * alphabet.length)];
+      }
+      const expected = [...text.matchAll(legacy)].map((match) => ({
+        index: match.index,
+        raw: match[0],
+        content: match[1] ?? "",
+      }));
+      expect({ text, matches: [...findWikiLinks(text)] }).toEqual({
+        text,
+        matches: expected,
+      });
+    }
   });
 });

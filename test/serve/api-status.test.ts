@@ -384,7 +384,7 @@ describe("GET /api/status", () => {
     const body = (await response.json()) as AppStatusResponse;
     expect(body.activation).toMatchObject({ usable: true, healthy: false });
     expect(body.onboarding.ready).toBe(false);
-    expect(body.onboarding.detail).toContain("alpha: index/no_documents");
+    expect(body.onboarding.detail).toContain("alpha: index/index_out_of_sync");
     expect(body.onboarding.detail).toContain("gno index alpha --no-embed");
     expect(
       body.health.checks.find(({ id }) => id === "retrieval-activation")
@@ -394,6 +394,58 @@ describe("GET /api/status", () => {
     ).toMatchObject({ status: "error" });
     expect(body.healthy).toBe(false);
   });
+
+  test.each([
+    {
+      label: "beside a proven folder",
+      collections: () => [
+        ...activationStatus(["alpha"], "empty").collections,
+        ...activationStatus(["zeta"]).collections,
+      ],
+      summary:
+        "1 folder passed lexical retrieval; 1 folder with no documents yet",
+      onboardingReady: true,
+      onboardingDetail: "Every folder with documents passed lexical retrieval.",
+    },
+    {
+      label: "on its own",
+      collections: () => activationStatus(["alpha"], "empty").collections,
+      summary: "No documents indexed yet in 1 folder",
+      onboardingReady: false,
+      onboardingDetail:
+        "alpha has no documents yet. Add files, then run: gno update",
+    },
+  ])(
+    "shows a folder with no documents $label as informational",
+    async ({ collections, summary, onboardingReady, onboardingDetail }) => {
+      const ctx = createMockContext();
+      configureReadyNotesContext(ctx);
+      const projected = collections();
+      const activation: ActivationStatus = {
+        ...activationStatus([]),
+        usable: projected.some(({ ready }) => ready),
+        healthy: true,
+        collections: projected,
+      };
+
+      const response = await handleStatus(ctx, {
+        inspectDisk: async () => ({
+          freeBytes: 8 * 1024 * 1024 * 1024,
+          totalBytes: 16 * 1024 * 1024 * 1024,
+          path: "/tmp",
+        }),
+        isModelCached: async () => true,
+        listSuggestedCollections: async () => [],
+        buildActivation: async () => activation,
+      });
+      const body = (await response.json()) as AppStatusResponse;
+      expect(
+        body.health.checks.find(({ id }) => id === "retrieval-activation")
+      ).toMatchObject({ status: "ok", summary });
+      expect(body.onboarding.ready).toBe(onboardingReady);
+      expect(body.onboarding.detail).toContain(onboardingDetail);
+    }
+  );
 
   test("keeps a truncated all-pass connector projection non-healthy", async () => {
     const ctx = createMockContext();

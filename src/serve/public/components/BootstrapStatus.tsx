@@ -9,6 +9,7 @@ import {
 
 import type { AppStatusResponse } from "../../status-model";
 
+import { isEmptyActivationCollection } from "../../../core/activation-empty";
 import { buildConnectorActivationCheck } from "../../activation-health";
 import { Button } from "./ui/button";
 import {
@@ -147,9 +148,9 @@ export function BootstrapStatus({
         <Card className="border-border/60 bg-card/70">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
-              {activation.healthy && connectorsHealthy ? (
+              {activation.healthy && activation.usable && connectorsHealthy ? (
                 <CheckCircle2Icon className="size-4 text-emerald-500" />
-              ) : activation.usable ? (
+              ) : activation.usable || activation.healthy ? (
                 <ServerCogIcon className="size-4 text-amber-500" />
               ) : (
                 <AlertCircleIcon className="size-4 text-destructive" />
@@ -158,7 +159,9 @@ export function BootstrapStatus({
             </div>
             <CardDescription>
               {activation.healthy
-                ? "Lexical retrieval proven"
+                ? activation.usable
+                  ? "Lexical retrieval proven"
+                  : "No documents indexed yet"
                 : activation.usable
                   ? `Search usable in ${activation.collections.filter(({ ready }) => ready).length}/${activation.collections.length} folders`
                   : "Retrieval proof failed"}
@@ -179,7 +182,9 @@ export function BootstrapStatus({
                   <p className="text-muted-foreground text-xs">
                     {collection.ready
                       ? `Lexical passed; semantic ${collection.semanticAvailability.code}`
-                      : `${collection.remediation?.stage ?? "index"}/${collection.remediation?.code ?? "index_query_failed"}`}
+                      : isEmptyActivationCollection(collection)
+                        ? "No documents yet. Add files, then run update."
+                        : `${collection.remediation?.stage ?? "index"}/${collection.remediation?.code ?? "index_query_failed"}`}
                   </p>
                   {collection.remediation && (
                     <p className="mt-1 font-mono text-muted-foreground text-xs">

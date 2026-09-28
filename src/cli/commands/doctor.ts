@@ -55,7 +55,8 @@ import {
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type DoctorCheckStatus = "ok" | "warn" | "error";
+/** `info` reports a state that needs no repair, such as an empty collection. */
+export type DoctorCheckStatus = "ok" | "info" | "warn" | "error";
 
 export interface DoctorCheck {
   name: string;
@@ -754,6 +755,8 @@ function statusIcon(status: DoctorCheckStatus): string {
   switch (status) {
     case "ok":
       return "✓";
+    case "info":
+      return "i";
     case "warn":
       return "!";
     case "error":
