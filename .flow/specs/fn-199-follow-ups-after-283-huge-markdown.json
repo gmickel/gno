@@ -16,7 +16,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-199-follow-ups-after-283-huge-markdown.md",
-  "status": "open",
+  "status": "done",
   "title": "Follow-ups after 2.8.3: huge Markdown tables, doctor on empty collections, Windows update hang, trace-graph similarity",
   "tracker": {
     "baseHashFlow": null,
@@ -29,5 +29,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-28T10:49:35.406581Z"
+  "updated_at": "2026-09-28T11:18:49.067403Z"
 }
