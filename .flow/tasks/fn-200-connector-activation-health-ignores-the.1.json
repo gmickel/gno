@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-200-connector-activation-health-ignores-the",
   "spec_path": ".flow/tasks/fn-200-connector-activation-health-ignores-the.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement connector activation health ignores the display cap",
   "updated_at": "2026-09-28T13:32:35.451261Z"
 }

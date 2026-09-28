@@ -16,7 +16,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-200-connector-activation-health-ignores-the.md",
-  "status": "open",
+  "status": "done",
   "title": "Connector activation health ignores the display cap",
   "tracker": {
     "baseHashFlow": null,
@@ -29,5 +29,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-28T13:32:24.120248Z"
+  "updated_at": "2026-09-28T14:27:18.065993Z"
 }
