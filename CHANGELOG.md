@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.4] - 2026-09-28
+
 ### Fixed
 
 - A Markdown note that is mostly one very large table no longer gets stopped at the per-file budget. When such a note had a code span anywhere and an unmatched `]` in its rows, code detection rescanned the whole table at every `]`. A note of 23 columns by 40,000 rows hit the 60 s budget as `TIMEOUT` during code-region detection; it now indexes in about 3 s. An unclosed `[[` or `<!--` in every row slowed link extraction the same way, and a code span beside a wiki link in every row did too. All of these now take time proportional to the note's size. Output for ordinary notes is unchanged. A note with a table of more than 5,000 cells is still parsed without the GFM table rules, and now also without inline links and inline HTML, so in such a note a backtick inside a link destination or an HTML tag can start a code span.
@@ -2911,7 +2913,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.8.3...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.8.4...HEAD
+[2.8.4]: https://github.com/gmickel/gno/compare/v2.8.3...v2.8.4
 [2.8.3]: https://github.com/gmickel/gno/compare/v2.8.2...v2.8.3
 [2.8.2]: https://github.com/gmickel/gno/compare/v2.8.1...v2.8.2
 [2.8.1]: https://github.com/gmickel/gno/compare/v2.8.0...v2.8.1
