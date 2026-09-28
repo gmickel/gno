@@ -40,6 +40,43 @@ describe("connector activation completeness", () => {
     expect(isConnectorActivationComplete(activation([], true))).toBe(false);
   });
 
+  test("decides a truncated projection from the omitted summary", () => {
+    const listed: ActivationStatus["connectors"] = [
+      {
+        collection: "notes",
+        target: "cursor-mcp",
+        status: "passed",
+        remediation: "",
+      },
+    ];
+    const withOmitted = (
+      omitted: NonNullable<ActivationStatus["connectorProjection"]["omitted"]>,
+      total = 4
+    ): ActivationStatus => ({
+      ...activation(listed),
+      connectorProjection: {
+        total,
+        projected: listed.length,
+        truncated: true,
+        omitted,
+      },
+    });
+    const clean = { passed: 2, failed: 0, incomplete: 0, notApplicable: 1 };
+
+    expect(isConnectorActivationComplete(withOmitted(clean))).toBe(true);
+    // A pending pair past the display cap keeps health incomplete.
+    expect(
+      isConnectorActivationComplete(
+        withOmitted({ ...clean, passed: 1, incomplete: 1 })
+      )
+    ).toBe(false);
+    // Counts that do not account for every unlisted pair fail closed.
+    expect(isConnectorActivationComplete(withOmitted(clean, 5))).toBe(false);
+    expect(
+      isConnectorActivationComplete(withOmitted({ ...clean, passed: 1 }))
+    ).toBe(false);
+  });
+
   test("ignores absent configs and unverifiable skill runtimes", () => {
     expect(
       isConnectorActivationComplete(
