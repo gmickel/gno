@@ -3,6 +3,7 @@ import { mkdir, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { getIndexDbPath } from "../../src/app/constants";
 import { hasCriticalDoctorErrors } from "../../src/cli/commands/doctor";
 import {
   checkConnectorActivation,
@@ -12,6 +13,7 @@ import { runCli } from "../../src/cli/run";
 import { getConfigPaths } from "../../src/config";
 import { loadConfigFromPath } from "../../src/config/loader";
 import { saveConfigToPath } from "../../src/config/saver";
+import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
 
 let stdoutData = "";
@@ -92,9 +94,26 @@ describe("gno doctor activation exit semantics", () => {
   });
 
   test("writes one JSON result and exits 2 silently when lexical proof fails", async () => {
-    const emptyDir = join(testDir, "empty");
-    await mkdir(emptyDir, { recursive: true });
-    expect((await cli("init", emptyDir, "--name", "empty")).code).toBe(0);
+    const notesDir = join(testDir, "notes");
+    await mkdir(notesDir, { recursive: true });
+    await Bun.write(join(notesDir, "a.md"), "# Alpha\n\nQuartzite ledger.\n");
+    expect((await cli("init", notesDir, "--name", "notes")).code).toBe(0);
+    expect((await cli("update")).code).toBe(0);
+    // Drop the lexical rows so the proof fails with index_out_of_sync.
+    const config = await loadConfigFromPath(getConfigPaths().configFile);
+    if (!config.ok) throw new Error("Expected a loadable config");
+    const store = new SqliteAdapter();
+    const opened = await store.open(
+      getIndexDbPath(),
+      config.value.ftsTokenizer,
+      config.value.busyTimeoutMs
+    );
+    if (!opened.ok) throw new Error("Expected the index to open");
+    try {
+      store.getRawDb().run("DELETE FROM documents_fts");
+    } finally {
+      await store.close();
+    }
 
     const result = await cli("doctor", "--json");
     expect(result.code).toBe(2);
@@ -107,6 +126,106 @@ describe("gno doctor activation exit semantics", () => {
         status: "error",
       })
     );
+  });
+
+  test("reports a collection with no documents as informational, not a failure", async () => {
+    const emptyDir = join(testDir, "empty");
+    await mkdir(emptyDir, { recursive: true });
+    expect((await cli("init", emptyDir, "--name", "empty")).code).toBe(0);
+
+    const result = await cli("doctor", "--json");
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.activation).toMatchObject({ usable: false, healthy: true });
+    expect(parsed.activation.collections[0].remediation).toMatchObject({
+      code: "no_documents",
+      command: "gno update",
+    });
+    const check = parsed.checks.find(
+      ({ name }: { name: string }) => name === "retrieval-activation"
+    );
+    expect(check).toMatchObject({
+      status: "info",
+      message: "No documents indexed yet in 1 collection",
+    });
+    expect(result.code).toBe(hasCriticalDoctorErrors(parsed.checks) ? 2 : 0);
+  });
+
+  test("lists empty collections beside passing and failing ones", () => {
+    const collection = (
+      name: string,
+      ready: boolean,
+      code?: "no_documents" | "retrieval_mismatch"
+    ) => ({
+      collection: name,
+      ready,
+      generatedAt: null,
+      stages: {} as never,
+      semanticAvailability: {
+        status: "pending" as const,
+        code: "semantic_not_checked" as const,
+        command: "gno status",
+      },
+      remediation: code
+        ? {
+            stage:
+              code === "no_documents"
+                ? ("index" as const)
+                : ("lexical" as const),
+            code,
+            command:
+              code === "no_documents"
+                ? "gno update"
+                : `gno index ${name} --no-embed`,
+            message: "",
+          }
+        : null,
+    });
+    const activation = (
+      healthy: boolean,
+      collections: ReturnType<typeof collection>[]
+    ) => ({
+      schemaVersion: "1.0" as const,
+      usable: collections.some(({ ready }) => ready),
+      healthy,
+      collections,
+      connectors: [],
+      connectorProjection: { total: 0, projected: 0, truncated: false },
+    });
+
+    expect(
+      checkRetrievalActivation(
+        activation(true, [
+          collection("docs", true),
+          collection("inbox", false, "no_documents"),
+        ])
+      )
+    ).toMatchObject({
+      status: "info",
+      message:
+        "1 collection passed lexical retrieval proof; 1 collection with no documents yet",
+      details: expect.arrayContaining([
+        "inbox: no documents indexed yet (informational)",
+        "Add files, then run: gno update",
+      ]),
+    });
+    expect(
+      checkRetrievalActivation(
+        activation(false, [
+          collection("docs", true),
+          collection("inbox", false, "no_documents"),
+          collection("wiki", false, "retrieval_mismatch"),
+        ])
+      )
+    ).toMatchObject({
+      status: "error",
+      message: "1 collection failed lexical retrieval proof",
+      details: [
+        "wiki: lexical/retrieval_mismatch",
+        "Run: gno index wiki --no-embed",
+        "inbox: no documents indexed yet (informational)",
+        "Add files, then run: gno update",
+      ],
+    });
   });
 
   test("warns when connector status omits bounded projections", () => {

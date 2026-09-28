@@ -14,6 +14,7 @@ import type {
   ConnectorVerificationTarget,
 } from "./connector-verifier";
 
+import { isEmptyActivationCollection } from "./activation-empty";
 import { createEphemeralActivationProbePlan } from "./activation-probe-plan";
 import { verifyLexicalActivation } from "./activation-verifier";
 import {
@@ -73,7 +74,13 @@ export interface ActivationConnectorStatus {
 
 export interface ActivationStatus {
   schemaVersion: "1.0";
+  /** At least one collection passed the lexical proof. */
   usable: boolean;
+  /**
+   * At least one collection is configured and none failed its proof. A
+   * collection with no documents yet is not a failure (see
+   * `isEmptyActivationCollection`), so it does not clear this flag.
+   */
   healthy: boolean;
   collections: ActivationCollectionStatus[];
   /** Only fingerprint-current persisted connector receipts may appear here. */
@@ -178,10 +185,13 @@ function remediationFor(
   stage: ActivationStageName,
   code: ActivationVerificationCode
 ): ActivationRemediation {
-  const command = `gno index ${collection} --no-embed`;
+  const command =
+    code === "no_documents"
+      ? "gno update"
+      : `gno index ${collection} --no-embed`;
   const messages: Partial<Record<ActivationVerificationCode, string>> = {
     no_documents:
-      "Index at least one supported text document in this collection.",
+      "No documents are indexed yet. Add supported files to this collection's folder, then run gno update.",
     no_probe_term:
       "Add searchable text or adjust the collection filters, then reindex.",
     index_query_failed:
@@ -322,7 +332,11 @@ async function buildConnectorStatuses(
 ): Promise<{ items: ActivationConnectorStatus[]; total: number }> {
   const sortedTargets = [...targets].sort((a, b) => a.id.localeCompare(b.id));
   const boundedTargets = sortedTargets.slice(0, MAX_CONNECTOR_TARGETS);
-  const allPairs = collections.flatMap((collection) =>
+  // A collection with no documents gives a connector nothing to prove.
+  const provable = collections.filter(
+    ({ projected }) => !isEmptyActivationCollection(projected)
+  );
+  const allPairs = provable.flatMap((collection) =>
     boundedTargets.map((target) => ({ collection, target }))
   );
   const items = await mapBounded(
@@ -363,7 +377,7 @@ async function buildConnectorStatuses(
       };
     }
   );
-  return { items, total: collections.length * sortedTargets.length };
+  return { items, total: provable.length * sortedTargets.length };
 }
 
 async function verifyCoalesced(
@@ -501,7 +515,11 @@ export async function buildActivationStatus(
     schemaVersion: "1.0",
     usable: projected.some((collection) => collection.ready),
     healthy:
-      projected.length > 0 && projected.every((collection) => collection.ready),
+      projected.length > 0 &&
+      projected.every(
+        (collection) =>
+          collection.ready || isEmptyActivationCollection(collection)
+      ),
     collections: projected,
     connectors: connectorStatuses.items,
     connectorProjection: {

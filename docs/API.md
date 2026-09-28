@@ -709,7 +709,9 @@ vectors fall back to lexical retrieval and carry a
 
 The activation object is identical to the `gno status --json`/doctor/Web model.
 Lexical readiness is proven per collection; semantic availability remains
-independent. Connector entries are fingerprint-current persisted receipts only.
+independent. A collection with no documents yet (`no_documents`, remediation
+`gno update`) is informational: it keeps `activation.healthy` true and leaves the
+`retrieval-activation` health check `ok`, whose summary names it. Connector entries are fingerprint-current persisted receipts only.
 If `connectorProjection.truncated` is true, omitted pairs have no claimed result
 and health remains degraded. Status may perform a bounded local lexical proof on
 a receipt miss, but it never starts connector children or remote inference.

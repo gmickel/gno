@@ -6,6 +6,7 @@ import type { StorePort } from "../../store/types";
 import type { DoctorCheck } from "./doctor";
 
 import { getIndexDbPath, getModelsCachePath } from "../../app/constants";
+import { isEmptyActivationCollection } from "../../core/activation-empty";
 import { buildActivationStatus } from "../../core/activation-status";
 import { ModelCache } from "../../llm/cache";
 import { getActivePreset } from "../../llm/registry";
@@ -75,28 +76,54 @@ export async function buildDoctorActivation(
   }
 }
 
+const plural = (count: number, noun: string): string =>
+  `${count} ${noun}${count === 1 ? "" : "s"}`;
+
 export function checkRetrievalActivation(
   activation: ActivationStatus
 ): DoctorCheck {
+  const ready = activation.collections.filter((collection) => collection.ready);
+  const empty = activation.collections.filter(isEmptyActivationCollection);
+  const emptyDetails = empty.flatMap(({ collection, remediation }) => [
+    `${collection}: no documents indexed yet (informational)`,
+    `Add files, then run: ${remediation?.command ?? "gno update"}`,
+  ]);
+
   if (activation.healthy) {
     const semanticStates = [
       ...new Set(
-        activation.collections.map(
-          ({ semanticAvailability }) => semanticAvailability.code
-        )
+        ready.map(({ semanticAvailability }) => semanticAvailability.code)
       ),
     ];
+    const semanticDetail =
+      ready.length > 0
+        ? [
+            `Semantic retrieval remains separate (${semanticStates.join(", ")}).`,
+          ]
+        : [];
+    if (empty.length === 0) {
+      return {
+        name: "retrieval-activation",
+        status: "ok",
+        message: `${plural(ready.length, "collection")} passed lexical retrieval proof`,
+        details: semanticDetail,
+      };
+    }
     return {
       name: "retrieval-activation",
-      status: "ok",
-      message: `${activation.collections.length} collection${activation.collections.length === 1 ? "" : "s"} passed lexical retrieval proof`,
-      details: [
-        `Semantic retrieval remains separate (${semanticStates.join(", ")}).`,
-      ],
+      status: "info",
+      message:
+        ready.length > 0
+          ? `${plural(ready.length, "collection")} passed lexical retrieval proof; ${plural(empty.length, "collection")} with no documents yet`
+          : `No documents indexed yet in ${plural(empty.length, "collection")}`,
+      details: [...emptyDetails, ...semanticDetail],
     };
   }
 
-  const failed = activation.collections.filter(({ ready }) => !ready);
+  const failed = activation.collections.filter(
+    (collection) =>
+      !collection.ready && !isEmptyActivationCollection(collection)
+  );
   const details = failed.flatMap(({ collection, remediation }) =>
     remediation
       ? [
@@ -112,9 +139,9 @@ export function checkRetrievalActivation(
       activation.collections.length === 0
         ? "No collections configured. Run: gno collection add"
         : activation.usable
-          ? `${failed.length} collection${failed.length === 1 ? "" : "s"} failed lexical retrieval proof`
+          ? `${plural(failed.length, "collection")} failed lexical retrieval proof`
           : "No configured collection passed lexical retrieval proof",
-    details,
+    details: [...details, ...emptyDetails],
   };
 }
 

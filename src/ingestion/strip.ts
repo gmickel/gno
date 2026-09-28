@@ -14,8 +14,10 @@
  * Code regions come from the CommonMark + GFM parser. GFM table parsing is
  * quadratic in the cells of one table (a 20,000-row table took minutes), so
  * text with a table over the cell budget is parsed without the table
- * extension: code spans, fences, indented code, blockquotes and lists keep
- * their CommonMark meaning, and only table-cell boundaries are lost.
+ * extension and without inline links and inline HTML, which rescan a
+ * table-sized paragraph once per row: code spans, fences, indented code,
+ * blockquotes and lists keep their CommonMark meaning; table-cell
+ * boundaries, link destinations and HTML tags no longer hide a backtick.
  *
  * @module src/ingestion/strip
  */
@@ -58,9 +60,6 @@ export interface ExcludedRange {
 
 /** Frontmatter at start of file (YAML between --- delimiters) */
 const FRONTMATTER_REGEX = /^---\r?\n[\s\S]*?(?:\r?\n)?---(?:\r?\n|$)/;
-
-/** HTML comments */
-const HTML_COMMENT_REGEX = /<!--[\s\S]*?-->/g;
 
 /**
  * Most `|` characters one blank-line-delimited block may hold before the
@@ -132,13 +131,33 @@ const hasOversizedTable = (markdown: string): boolean => {
   return false;
 };
 
-/** GFM without tables: every GFM construct except table rows and cells. */
+/**
+ * Inline constructs left out with the table extension. Without table rules a
+ * large table is one paragraph, and these rescan it once per row: on every
+ * `]` link and image ends walk back through all the paragraph's earlier
+ * events looking for an opening `[` (an unmatched `]` per row made 8,000
+ * rows take 66 s), and inline HTML reads forward from every unclosed `<!--`
+ * to the paragraph's end. They only matter to code detection through a
+ * backtick inside a link destination or title or an inline HTML tag, which
+ * then reads as a code-span delimiter.
+ */
+const PARAGRAPH_RESCANNING_CONSTRUCTS = [
+  "labelEnd",
+  "gfmPotentialFootnoteCall",
+  "htmlText",
+];
+
+/**
+ * GFM without tables: every GFM construct except table rows and cells, and
+ * without the constructs in `PARAGRAPH_RESCANNING_CONSTRUCTS`.
+ */
 const GFM_WITHOUT_TABLES = {
   extensions: [
     gfmAutolinkLiteral(),
     gfmFootnote(),
     gfmStrikethrough(),
     gfmTaskListItem(),
+    { disable: { null: PARAGRAPH_RESCANNING_CONSTRUCTS } },
   ],
   mdastExtensions: [
     gfmAutolinkLiteralFromMarkdown(),
@@ -226,15 +245,15 @@ export function getExcludedRanges(markdown: string): ExcludedRange[] {
     });
   }
 
-  // 2. HTML comments
-  HTML_COMMENT_REGEX.lastIndex = 0;
-  let match: RegExpExecArray | null;
-  while ((match = HTML_COMMENT_REGEX.exec(markdown)) !== null) {
-    ranges.push({
-      start: match.index,
-      end: match.index + match[0].length,
-      kind: "html_comment",
-    });
+  // 2. HTML comments: each `<!--` to the first `-->` after it. Once no
+  // `-->` follows, no later comment can close either, so the scan stops;
+  // the regex /<!--[\s\S]*?-->/g rescanned to the end from every opener.
+  let open = markdown.indexOf("<!--");
+  while (open !== -1) {
+    const close = markdown.indexOf("-->", open + 4);
+    if (close === -1) break;
+    ranges.push({ start: open, end: close + 3, kind: "html_comment" });
+    open = markdown.indexOf("<!--", close + 3);
   }
 
   // 3. Code spans and fenced or indented code blocks, from the parser.
@@ -282,23 +301,46 @@ export function isExcluded(
 }
 
 /**
+ * Largest `end` among each prefix of a start-sorted range list, built once
+ * per list. Ranges can overlap (a comment around a code span), so a range
+ * list's ends are not sorted and the prefix maximum stands in for them.
+ */
+const prefixMaxEnds = new WeakMap<readonly ExcludedRange[], Int32Array>();
+
+const getPrefixMaxEnds = (ranges: readonly ExcludedRange[]): Int32Array => {
+  let maxEnds = prefixMaxEnds.get(ranges);
+  if (maxEnds?.length !== ranges.length) {
+    maxEnds = new Int32Array(ranges.length);
+    let maxEnd = -1;
+    for (const [index, range] of ranges.entries()) {
+      maxEnd = Math.max(maxEnd, range.end);
+      maxEnds[index] = maxEnd;
+    }
+    prefixMaxEnds.set(ranges, maxEnds);
+  }
+  return maxEnds;
+};
+
+/**
  * Check if a range [start, end) intersects any excluded range.
- * More precise than isExcluded for multi-character matches.
+ * More precise than isExcluded for multi-character matches. Ranges must be
+ * sorted by start, as getExcludedRanges returns them; one lookup is a binary
+ * search, so checking every link of a large note stays linear.
  */
 export function rangeIntersectsExcluded(
   start: number,
   end: number,
-  excludedRanges: ExcludedRange[]
+  excludedRanges: readonly ExcludedRange[]
 ): boolean {
-  for (const range of excludedRanges) {
-    // Two ranges [a, b) and [c, d) intersect if a < d && c < b
-    if (start < range.end && range.start < end) {
-      return true;
-    }
-    // Early exit if we've passed the range (ranges are sorted)
-    if (range.start >= end) {
-      break;
-    }
+  // Ranges starting before `end` form a prefix; one of them intersects
+  // [start, end) exactly when the largest end among them passes `start`.
+  let low = 0;
+  let high = excludedRanges.length;
+  while (low < high) {
+    const mid = (low + high) >>> 1;
+    if ((excludedRanges[mid]?.start ?? end) < end) low = mid + 1;
+    else high = mid;
   }
-  return false;
+  if (low === 0) return false;
+  return (getPrefixMaxEnds(excludedRanges)[low - 1] ?? -1) > start;
 }

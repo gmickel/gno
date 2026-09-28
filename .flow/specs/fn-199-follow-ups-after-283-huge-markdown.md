@@ -41,3 +41,36 @@ Four loose ends from shipping 2.8.3. Each one is small and independent of the ot
 ## Downstream
 
 - User-facing changes (R1 behaviour, R2 doctor output) go in the CHANGELOG and, where they affect docs, gno.sh docs (troubleshooting and doctor pages). R4 ships in the same gno.sh PR.
+
+## Findings
+
+### R1: which step was superlinear
+
+A plain numeric table was already linear once GFM tables were off: 23 x 16,000 rows took 0.8 s in total. The superlinear cost depended on what the rows contained. It was measured per `prepareFile` phase on 23-column notes.
+
+- **Code-region detection (micromark), an unmatched `]` in every row.** Without table rules the table is one paragraph. On every `]`, micromark's `labelEnd` walks back through all of the paragraph's earlier events looking for an opening `[`, and `gfmPotentialFootnoteCall` does the same. 2,000 / 4,000 / 8,000 rows took 1.0 / 7.1 / 66 s. This is only reached when the note contains a backtick or an indented-code line, because otherwise the parser is skipped.
+- **Code-region detection, an unclosed `<!--` in every row.** micromark's `htmlText` reads forward from each `<!--` to the paragraph's end: 4,350 / 8,700 rows took 19.7 / 94 s. The `/<!--[\s\S]*?-->/g` regex in `getExcludedRanges` was quadratic the same way even without the parser: 1.3 / 5.1 / 20.7 s.
+- **Link extraction and change-journal structure, an unclosed `[[` in every row.** `WIKI_LINK_REGEX` rescanned from every `[[` to the next `]`. It runs twice, in structure extraction and in link extraction: 4,350 / 8,700 / 17,400 rows took 4.1 / 15.4 / 61 s.
+- **Link extraction, a code span and a wiki link in every row.** `rangeIntersectsExcluded` scanned the excluded ranges from the start for every link: 18 / 55 / 236 ms. This is mild, but quadratic.
+- Chunking, conversion and metadata were linear.
+
+**Fix.** The table-less parse also leaves out `labelEnd`, `gfmPotentialFootnoteCall` and `htmlText`. As a result, a backtick inside a link destination or an inline HTML tag can open a code span in a note over the table budget. The HTML-comment scan, the wiki-link match and `rangeIntersectsExcluded` became single-pass rewrites, each checked against its old definition by a randomized equivalence test.
+
+**Result.** The worst cases took 23 x 2,175 / 4,350 / 8,700 rows = 50k / 100k / 200k cells: 0.16 / 0.30 / 0.64 s, which is 1.9x and 2.2x per doubling. The remaining mild curve beyond 200k cells is inside micromark's own paragraph parse, and a plain table shows it too.
+
+A 23 x 40,000 pivot-shaped note, with a stray `]` in every row and a code span, went through `gno update`. On the base commit it hit `TIMEOUT` during code-region detection after 60.6 s. On this branch it indexed in 3.3 s. The regression tests `test/ingestion/strip.test.ts` "stay linear with ..." compare 1,500 and 3,000 rows and fail on the base commit.
+
+### R3: Windows hang in `test/cli/concurrency.test.ts`
+
+- **Which process hung.** `update` was still alive at the 20 s timeout. Bun's "killed 1 dangling process" count includes `Bun.spawn` children but not `Bun.$` ones, and `update` was the only `Bun.spawn` child. A local probe confirmed this. `init` and the second `ls` are ruled out, because they run before `update` starts or after it exits.
+- **It recurs.** The same timeout and dangling line appear in 5 Windows runs since 2026-09-24: 36008818600, 36120603554, 36163135186, 36175323110 and 36357036746, all at 20.2 to 20.7 s. None of the failed runs scanned back to 2026-09-02 show it, and passing runs take 4.0 to 4.3 s.
+- **Ruled out:**
+  - The fn-198 per-file worker (landed 09-27) and the fn-189 `flushStream` exit flush (09-25), because failures predate both.
+  - Write-lease contention, because `ls` never takes the lease.
+  - The worker's `unref()` and idle timer, because `update` always ends in an explicit `process.exit`.
+  - The child backend's kill paths, because they are only used by compiled executables.
+- **Still open, no mechanism proven:**
+  - `update` not exiting on Windows while an `ls` overlaps it.
+  - A synchronous SQLite busy wait: `busy_timeout` defaults to 60 s, and #247 added read-only index opens (`readIndexBinding`) without a busy timeout.
+  - The window points at #245 or #247 (09-24/25).
+- **Change.** No product fix is justified yet. The test now captures stdout and stderr of `init`, `update` and both `ls` runs through pipes that are read from the start. A watchdog fires 3 s before bun's timeout: it names each child that has not exited, kills it, and fails with each child's start and exit times and output tails. Timeouts are unchanged. A simulated hung `update` produced `Hung: update`, with its output and the concurrent `ls` exit time.

@@ -3,14 +3,20 @@ import type { ActivationStatus } from "../../../src/core/activation-status";
 import type { ServerContext } from "../../../src/serve/context";
 import type { ActivationVerificationReceipt } from "../../../src/store/types";
 
+/**
+ * Activation for `collections`, all in one state: ready (true), failing
+ * (false, an out-of-sync index) or "empty" (no documents yet).
+ */
 export function activationStatus(
   collections: string[],
-  ready = true
+  state: boolean | "empty" = true
 ): ActivationStatus {
+  const ready = state === true;
+  const code = state === "empty" ? "no_documents" : "index_out_of_sync";
   return {
     schemaVersion: "1.0",
     usable: ready && collections.length > 0,
-    healthy: ready && collections.length > 0,
+    healthy: state !== false && collections.length > 0,
     collections: collections.map((collection) => ({
       collection,
       ready,
@@ -21,14 +27,14 @@ export function activationStatus(
           startedAt: null,
           completedAt: null,
           latencyMs: 1,
-          ...(!ready ? { code: "no_documents" as const } : {}),
+          ...(!ready ? { code } : {}),
         },
         lexical: {
           status: ready ? "passed" : "skipped",
           startedAt: null,
           completedAt: null,
           latencyMs: 1,
-          ...(!ready ? { code: "no_documents" as const } : {}),
+          ...(!ready ? { code } : {}),
         },
         semantic: {
           status: "pending",
@@ -54,9 +60,12 @@ export function activationStatus(
         ? null
         : {
             stage: "index",
-            code: "no_documents",
-            command: `gno index ${collection} --no-embed`,
-            message: "Index at least one supported text document.",
+            code,
+            command:
+              state === "empty"
+                ? "gno update"
+                : `gno index ${collection} --no-embed`,
+            message: "Repair or populate this collection.",
           },
     })),
     connectors: [],

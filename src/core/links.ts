@@ -80,11 +80,53 @@ const UNSAFE_PERCENT_CODES = new Set(["%2F", "%5C", "%00", "%2f", "%5c"]);
 // Regex Patterns
 // ─────────────────────────────────────────────────────────────────────────────
 
+interface WikiLinkMatch {
+  index: number;
+  raw: string;
+  content: string;
+}
+
 /**
- * Wiki link: [[target]] or [[target|alias]] or [[target#anchor]] or [[collection:target]]
- * Captures: 1=content inside brackets
+ * Wiki links: [[target]], [[target|alias]], [[target#anchor]] or
+ * [[collection:target]]. Matches exactly what
+ * `/\[\[([^\]|]+(?:\|[^\]]+)?)\]\]/g` matches, in one pass: the content runs
+ * to the first `]`, which must be doubled; it must not start with `|`, and a
+ * `|` in it needs text after it. The regex rescanned to that `]` from every
+ * unclosed `[[`, so a note with thousands of them took minutes.
  */
-const WIKI_LINK_REGEX = /\[\[([^\]|]+(?:\|[^\]]+)?)\]\]/g;
+export function* findWikiLinks(
+  markdown: string
+): Generator<WikiLinkMatch, void, undefined> {
+  let nextClose = -2;
+  let nextPipe = -2;
+  let start = markdown.indexOf("[[");
+  while (start !== -1) {
+    const contentStart = start + 2;
+    if (nextClose < contentStart) {
+      nextClose = markdown.indexOf("]", contentStart);
+      if (nextClose === -1) return;
+    }
+    if (nextPipe !== -1 && nextPipe < contentStart) {
+      nextPipe = markdown.indexOf("|", contentStart);
+    }
+    const pipeInContent = nextPipe !== -1 && nextPipe < nextClose;
+    const matched =
+      markdown.charCodeAt(nextClose + 1) === 93 /* ] */ &&
+      nextClose > contentStart &&
+      nextPipe !== contentStart &&
+      (!pipeInContent || nextClose > nextPipe + 1);
+    if (matched) {
+      yield {
+        index: start,
+        raw: markdown.slice(start, nextClose + 2),
+        content: markdown.slice(contentStart, nextClose),
+      };
+      start = markdown.indexOf("[[", nextClose + 2);
+    } else {
+      start = markdown.indexOf("[[", start + 1);
+    }
+  }
+}
 
 /** Logseq embed: {{embed [[Page]]}} or {{embed ((block-id))}} */
 const LOGSEQ_EMBED_REGEX =
@@ -385,12 +427,9 @@ export function parseLinks(
   };
 
   // Parse wiki links
-  WIKI_LINK_REGEX.lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = WIKI_LINK_REGEX.exec(markdown)) !== null) {
-    const startOffset = match.index;
-    const endOffset = startOffset + match[0].length;
+  for (const wiki of findWikiLinks(markdown)) {
+    const startOffset = wiki.index;
+    const endOffset = startOffset + wiki.raw.length;
 
     // Skip [[target]] nested in Logseq alias syntax: [Display]([[target]])
     if (
@@ -405,12 +444,10 @@ export function parseLinks(
       continue;
     }
 
-    const content = match[1];
-    if (!content) continue;
-
     // Parse [[target|alias]] (and table-escaped [[target\|alias]]) format
-    const { target: targetPart, alias: aliasText } =
-      splitWikiLinkContent(content);
+    const { target: targetPart, alias: aliasText } = splitWikiLinkContent(
+      wiki.content
+    );
     // Only set displayText if different from target
     const displayText =
       aliasText !== undefined && aliasText !== targetPart
@@ -421,11 +458,12 @@ export function parseLinks(
     if (!trimmedTarget) {
       continue;
     }
-    pushWikiLink(match[0], trimmedTarget, startOffset, endOffset, displayText);
+    pushWikiLink(wiki.raw, trimmedTarget, startOffset, endOffset, displayText);
   }
 
   // Parse Logseq embeds as links
   LOGSEQ_EMBED_REGEX.lastIndex = 0;
+  let match: RegExpExecArray | null;
 
   while ((match = LOGSEQ_EMBED_REGEX.exec(markdown)) !== null) {
     const startOffset = match.index;

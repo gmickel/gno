@@ -6,6 +6,8 @@
 
 import { describe, expect, test } from "bun:test";
 
+import { parseLinks } from "../../src/core/links";
+import { buildLineOffsets } from "../../src/ingestion/position";
 import {
   getExcludedRanges,
   isExcluded,
@@ -362,15 +364,125 @@ describe("code-region parse budget (fn-198)", () => {
     }
   });
 
-  test("over the table budget, a code span may cross a table-cell pipe", () => {
-    // GFM splits table cells at an unescaped pipe even inside backticks;
-    // without the table extension the span is kept whole. This is the only
-    // difference the budget introduces.
-    const row = "| x | `a | b` |";
-    const note = `| h | h |\n| - | - |\n${row}\n`;
+  // The differences the budget introduces. GFM splits table cells at an
+  // unescaped pipe even inside backticks, where the table-less parse keeps
+  // the span whole; and inline links and inline HTML are not read over the
+  // budget, so a backtick inside a link destination or an HTML tag pairs
+  // with the next one.
+  test.each([
+    {
+      label: "a code span crossing a table-cell pipe",
+      note: "| h | h |\n| - | - |\n| x | `a | b` |\n",
+      probe: "a | b",
+    },
+    {
+      label: "a backtick in a link destination",
+      note: "[l](u`v) then `w` here\n",
+      probe: "v) then",
+    },
+    {
+      label: "a backtick in an inline HTML tag",
+      note: 'x <a title="`"> then `w` here\n',
+      probe: '"> then',
+    },
+  ])("over the table budget, $label opens a code span", ({ note, probe }) => {
     const spanAt = (markdown: string) =>
-      isExcluded(markdown.indexOf("`a | b`") + 1, getExcludedRanges(markdown));
+      isExcluded(markdown.indexOf(probe), getExcludedRanges(markdown));
     expect(spanAt(note)).toBe(false);
     expect(spanAt(`${note}${overBudget}`)).toBe(true);
+  });
+
+  // Over the table budget a table is one paragraph. An unmatched `]` in every
+  // row made code detection grow with the cube of the rows, and an unclosed
+  // `[[` in every row made link parsing grow with their square.
+  const pivotNote = (cell: string, rows: number): string =>
+    [
+      "Report from `pivot`.",
+      "",
+      `| n | v |${" c |".repeat(8)}`,
+      `| - | - |${" - |".repeat(8)}`,
+      ...Array.from(
+        { length: rows },
+        (_, row) => `| ${row} | ${cell} |${` ${row % 97} |`.repeat(8)}`
+      ),
+    ].join("\n");
+  const fastestPass = (markdown: string): number => {
+    let fastest = Number.POSITIVE_INFINITY;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const started = performance.now();
+      parseLinks(
+        markdown,
+        buildLineOffsets(markdown),
+        getExcludedRanges(markdown)
+      );
+      fastest = Math.min(fastest, performance.now() - started);
+    }
+    return fastest;
+  };
+
+  test.each(["x]", "[[open"])(
+    "code detection and link parsing stay linear with %p in every row",
+    (cell) => {
+      const single = fastestPass(pivotNote(cell, 1500));
+      const double = fastestPass(pivotNote(cell, 3000));
+      // Linear work doubles; quadratic quadruples. The 25 ms absorbs timer
+      // noise at these sizes.
+      expect({ single, double, bounded: double <= 2.8 * single + 25 }).toEqual({
+        single,
+        double,
+        bounded: true,
+      });
+    }
+  );
+});
+
+describe("linear rewrites match their earlier definitions", () => {
+  let seed = 199;
+  const random = (limit: number): number => {
+    seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
+    return Math.floor((seed / 2_147_483_648) * limit);
+  };
+
+  test("HTML comments match /<!--[\\s\\S]*?-->/g", () => {
+    const pieces = ["<!--", "-->", "<!-->", "-", ">", "a", "\n"];
+    for (let sample = 0; sample < 1000; sample += 1) {
+      const text = Array.from(
+        { length: random(12) },
+        () => pieces[random(pieces.length)]
+      ).join("");
+      const expected = [...text.matchAll(/<!--[\s\S]*?-->/g)].map((match) => ({
+        start: match.index,
+        end: match.index + match[0].length,
+        kind: "html_comment" as const,
+      }));
+      const actual = getExcludedRanges(text).filter(
+        (range) => range.kind === "html_comment"
+      );
+      expect({ text, ranges: actual }).toEqual({ text, ranges: expected });
+    }
+  });
+
+  test("rangeIntersectsExcluded matches a scan of every range, overlaps included", () => {
+    for (let sample = 0; sample < 1000; sample += 1) {
+      const ranges = Array.from({ length: random(6) }, () => {
+        const start = random(30);
+        return {
+          start,
+          end: start + 1 + random(12),
+          kind: "inline_code" as const,
+        };
+      }).sort((a, b) => a.start - b.start);
+      const start = random(40);
+      const end = start + 1 + random(8);
+      const expected = ranges.some(
+        (range) => start < range.end && range.start < end
+      );
+      expect([
+        ranges,
+        start,
+        end,
+        rangeIntersectsExcluded(start, end, ranges),
+      ]).toEqual([ranges, start, end, expected]);
+    }
   });
 });

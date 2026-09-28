@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A Markdown note that is mostly one very large table no longer gets stopped at the per-file budget. When such a note had a code span anywhere and an unmatched `]` in its rows, code detection rescanned the whole table at every `]`. A note of 23 columns by 40,000 rows hit the 60 s budget as `TIMEOUT` during code-region detection; it now indexes in about 3 s. An unclosed `[[` or `<!--` in every row slowed link extraction the same way, and a code span beside a wiki link in every row did too. All of these now take time proportional to the note's size. Output for ordinary notes is unchanged. A note with a table of more than 5,000 cells is still parsed without the GFM table rules, and now also without inline links and inline HTML, so in such a note a backtick inside a link destination or an HTML tag can start a code span.
+- `gno doctor` no longer reports a collection with no documents as a failed retrieval check (✗), and no longer exits 2 for it. The check is now informational (`i`) and names the collection with what to do: add files, then run `gno update`, which is now also the remediation command in the JSON output. A collection that has documents but fails the lexical proof is still an error. `gno status`, REST `/api/status` and the Web UI show empty collections the same way: `activation.healthy` stays true for them, `gno status` lists them as `no documents yet` (and reports `Lexical activation: NO DOCUMENTS YET` when no collection has documents), and they no longer produce pending connector proofs. MCP `gno_status` never reported them as a failure. Doctor checks can now have the status `info`.
+
 ## [2.8.3] - 2026-09-27
 
 ### Fixed

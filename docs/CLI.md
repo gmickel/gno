@@ -2165,8 +2165,10 @@ Healthy default terminal output stays unchanged. Custom or pending settings
 are shown with the applied policy and any required `gno update` work.
 
 `activation.usable` means at least one configured collection passed a local,
-corpus-derived lexical retrieval proof; `activation.healthy` means every
-configured collection passed. Status exits 0 even when those fields are false
+corpus-derived lexical retrieval proof; `activation.healthy` means no
+configured collection failed its proof. A collection with no documents yet is
+informational, not a failure: status lists it as `no documents yet` with the
+remediation `gno update`. Status exits 0 even when those fields are false
 so automation can inspect remediation. It does not start connector children,
 initialize/download models, or invoke remote inference.
 
@@ -2235,7 +2237,9 @@ Checks include:
 - per-collection corpus-derived lexical retrieval proof
 - passive projection of explicit connector proof receipts
 
-Doctor exits 2 when lexical activation fails. Connector failures or a truncated
+Doctor exits 2 when lexical activation fails. A collection with no documents
+yet is not a failure: doctor shows it as informational (`i`) with its
+remediation (add files, then `gno update`). Connector failures or a truncated
 projection remain warnings for process-exit purposes but make the structured
 doctor result non-healthy. Doctor never actively starts a connector or model.
 
