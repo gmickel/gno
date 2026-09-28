@@ -28,3 +28,9 @@ The 64-item cap exists to bound the size of the displayed list and output, not t
 - No change to what a connector check proves or how it is verified.
 - No change to the display cap unless R2's measurement shows a need.
 - Schemas under `spec/output-schemas` change only if a field is added (for example a per-status count of omitted pairs). Keep the change additive.
+
+## Decisions and measurements
+
+- **R4, target cap: removed; every target is evaluated.** Connector targets come from the fixed `CONNECTOR_DEFINITIONS` catalog in `src/serve/connectors.ts`, which has 7 entries (Claude Code, Claude Desktop, Cursor, Codex, OpenCode, OpenClaw, Hermes). The 16-target cap could never bind in production, and where it could (a test passing 17 targets) it dropped pairs from both the listing and the decision while `total` still counted them. Evaluating every target costs one cached receipt lookup per pair at most, so a separate cap guarded nothing. `MAX_CONNECTOR_TARGETS` is gone; the 64-pair display cap is unchanged.
+- **R5, cost.** Pairs past the display cap use the same path as listed pairs: `connectorFallback`, then at most one `store.getActivationReceipt` read. No connector is started. `gno status --json` on a throwaway index of 25 collections x 7 targets (175 pairs, 111 past the cap), 5 runs each, GNO_LLAMA_GPU=false: base `0a9b2bb8` 161/141/141/148/150 ms (median 148 ms); head 142/145/139/136/135 ms (median 139 ms). No measurable change, so the display cap stays at 64.
+- **R2, shape.** `connectorProjection.omitted` (present only when truncated) counts the unlisted pairs as `passed`, `failed`, `incomplete` (pending, or skipped for a runtime reason) and `notApplicable` (`connector_not_configured`, `target_runtime_unverifiable`). The counts sum to `total - projected`; a truncated projection without them, or with counts that do not sum, is treated as unverified and never healthy.

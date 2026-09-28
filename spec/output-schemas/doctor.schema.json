@@ -164,7 +164,7 @@
             "total": {
               "type": "integer",
               "minimum": 0,
-              "description": "All configured collection and connector target pairs before projection bounds."
+              "description": "All non-empty collection and connector target pairs; every pair is evaluated from cached receipts."
             },
             "projected": {
               "type": "integer",
@@ -174,7 +174,27 @@
             },
             "truncated": {
               "type": "boolean",
-              "description": "True exactly when total is greater than projected; omitted pairs have no claimed result."
+              "description": "True exactly when total is greater than projected. Omitted pairs are still evaluated; their outcomes are counted in omitted."
+            },
+            "omitted": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["passed", "failed", "incomplete", "notApplicable"],
+              "description": "Present when truncated: outcome counts for the evaluated pairs not listed in connectors. The counts sum to total - projected. Connector completeness is decided from connectors plus these counts.",
+              "properties": {
+                "passed": { "type": "integer", "minimum": 0 },
+                "failed": { "type": "integer", "minimum": 0 },
+                "incomplete": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Pending, or skipped for a runtime reason such as lexical retrieval not ready."
+                },
+                "notApplicable": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Connector not configured, or a skill runtime that cannot be verified."
+                }
+              }
             }
           }
         }

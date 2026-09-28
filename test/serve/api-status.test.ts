@@ -447,58 +447,77 @@ describe("GET /api/status", () => {
     }
   );
 
-  test("keeps a truncated all-pass connector projection non-healthy", async () => {
-    const ctx = createMockContext();
-    configureReadyNotesContext(ctx);
-    ctx.capabilities = {
-      answer: true,
-      bm25: true,
-      hybrid: true,
-      vector: true,
-    };
-    const activation = activationStatus(["notes"]);
-    activation.connectors = Array.from({ length: 64 }, (_, index) => ({
-      collection: "notes",
-      target: `connector-${index}`,
-      status: "passed" as const,
-      remediation: null,
-    }));
-    activation.connectorProjection = {
-      total: 85,
-      projected: 64,
-      truncated: true,
-    };
-
-    const response = await handleStatus(ctx, {
-      inspectDisk: async () => ({
-        freeBytes: 8 * 1024 * 1024 * 1024,
-        totalBytes: 16 * 1024 * 1024 * 1024,
-        path: "/tmp",
-      }),
-      isModelCached: async () => true,
-      listSuggestedCollections: async () => [],
-      buildActivation: async () => activation,
-    });
-    const body = (await response.json()) as AppStatusResponse;
-    const connectorCheck = body.health.checks.find(
-      ({ id }) => id === "connector-activation"
-    );
-
-    expect(body.activation.connectorProjection).toEqual({
-      total: 85,
-      projected: 64,
-      truncated: true,
-    });
-    expect(connectorCheck).toMatchObject({
+  test.each([
+    {
+      label: "unevaluated omitted pairs stay non-healthy",
+      omitted: undefined,
       status: "warn",
       summary: "64 of 85 connector target/collection checks projected",
-    });
-    expect(connectorCheck?.detail).toContain(
-      "21 target/collection checks were omitted"
-    );
-    expect(body.healthy).toBe(false);
-    expect(body.health.state).toBe("needs-attention");
-  });
+      detail: "21 target/collection checks were omitted",
+      healthy: false,
+    },
+    {
+      label: "evaluated passing omitted pairs are healthy",
+      omitted: { passed: 21, failed: 0, incomplete: 0, notApplicable: 0 },
+      status: "ok",
+      summary: "85 connector proofs passed (64 of 85 checks listed)",
+      detail: "21 more target/collection checks are not listed: 21 passed.",
+      healthy: true,
+    },
+  ])(
+    "truncated all-pass connector projection: $label",
+    async ({ omitted, status, summary, detail, healthy }) => {
+      const ctx = createMockContext();
+      configureReadyNotesContext(ctx);
+      ctx.capabilities = {
+        answer: true,
+        bm25: true,
+        hybrid: true,
+        vector: true,
+      };
+      const activation = activationStatus(["notes"]);
+      activation.connectors = Array.from({ length: 64 }, (_, index) => ({
+        collection: "notes",
+        target: `connector-${index}`,
+        status: "passed" as const,
+        remediation: null,
+      }));
+      activation.connectorProjection = {
+        total: 85,
+        projected: 64,
+        truncated: true,
+        ...(omitted ? { omitted } : {}),
+      };
+
+      const response = await handleStatus(ctx, {
+        inspectDisk: async () => ({
+          freeBytes: 8 * 1024 * 1024 * 1024,
+          totalBytes: 16 * 1024 * 1024 * 1024,
+          path: "/tmp",
+        }),
+        isModelCached: async () => true,
+        listSuggestedCollections: async () => [],
+        buildActivation: async () => activation,
+      });
+      const body = (await response.json()) as AppStatusResponse;
+      const connectorCheck = body.health.checks.find(
+        ({ id }) => id === "connector-activation"
+      );
+
+      expect(body.activation.connectorProjection).toEqual({
+        total: 85,
+        projected: 64,
+        truncated: true,
+        ...(omitted ? { omitted } : {}),
+      });
+      expect(connectorCheck).toMatchObject({ status, summary });
+      expect(connectorCheck?.detail).toContain(detail);
+      expect(body.healthy).toBe(healthy);
+      if (!healthy) {
+        expect(body.health.state).toBe("needs-attention");
+      }
+    }
+  );
 
   test("surfaces preserved vector runtime diagnostics without logging", async () => {
     const ctx = createMockContext();

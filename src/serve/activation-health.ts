@@ -3,6 +3,11 @@
 import type { ActivationStatus } from "../core/activation-status";
 import type { HealthCheck } from "./status-model";
 
+import {
+  classifyConnectorProof,
+  describeOmittedConnectorPairs,
+  omittedConnectorSummary,
+} from "../core/activation-connector-health";
 import { isEmptyActivationCollection } from "../core/activation-empty";
 
 function countLabel(count: number, singular: string): string {
@@ -69,41 +74,46 @@ export function buildConnectorActivationCheck(
   activation: ActivationStatus
 ): HealthCheck | null {
   const { projected, total, truncated } = activation.connectorProjection;
-  const omitted = total - projected;
+  const omitted = omittedConnectorSummary(activation);
   const observed = activation.connectors.filter(
-    ({ code }) =>
-      code !== "connector_not_configured" &&
-      code !== "target_runtime_unverifiable"
+    (connector) => classifyConnectorProof(connector) !== "notApplicable"
   );
-  if (observed.length === 0 && !truncated) {
+  const omittedObserved = omitted
+    ? omitted.passed + omitted.failed + omitted.incomplete
+    : 0;
+  if (observed.length === 0 && omittedObserved === 0 && omitted) {
     return null;
   }
   const failed = observed.filter(({ status }) => status === "failed");
   const incomplete = observed.filter(({ status }) => status !== "passed");
+  const failedCount = failed.length + (omitted?.failed ?? 0);
+  const incompleteCount =
+    incomplete.length + (omitted?.incomplete ?? 0) + (omitted?.failed ?? 0);
+  const passedCount =
+    observed.length - incomplete.length + (omitted?.passed ?? 0);
   const first = failed[0] ?? incomplete[0] ?? observed[0];
   const firstDetail = first
     ? `${first.target} / ${first.collection}: ${first.status}${first.code ? `/${first.code}` : ""}${first.remediation ? `. ${first.remediation}` : ""}`
     : null;
-  const projectionDetail = truncated
-    ? `${omitted} target/collection checks were omitted by the bounded status projection; no result is claimed for them.`
-    : null;
+  const projectionDetail = describeOmittedConnectorPairs(activation);
+  const listing = truncated ? ` (${projected} of ${total} checks listed)` : "";
   return {
     id: "connector-activation",
     title: "Connector proof",
     status:
-      failed.length > 0
+      failedCount > 0
         ? "error"
-        : incomplete.length > 0 || truncated
+        : incompleteCount > 0 || !omitted
           ? "warn"
           : "ok",
     summary:
-      failed.length > 0
-        ? `${countLabel(failed.length, "connector proof")} failed`
-        : incomplete.length > 0
-          ? `${countLabel(incomplete.length, "connector proof")} incomplete`
-          : truncated
-            ? `${projected} of ${total} connector target/collection checks projected`
-            : `${countLabel(observed.length, "connector proof")} passed`,
+      failedCount > 0
+        ? `${countLabel(failedCount, "connector proof")} failed${listing}`
+        : incompleteCount > 0
+          ? `${countLabel(incompleteCount, "connector proof")} incomplete${listing}`
+          : omitted
+            ? `${countLabel(passedCount, "connector proof")} passed${listing}`
+            : `${projected} of ${total} connector target/collection checks projected`,
     detail: [projectionDetail, firstDetail].filter(Boolean).join(" "),
   };
 }

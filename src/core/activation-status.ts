@@ -14,6 +14,7 @@ import type {
   ConnectorVerificationTarget,
 } from "./connector-verifier";
 
+import { summarizeConnectorProofs } from "./activation-connector-health";
 import { isEmptyActivationCollection } from "./activation-empty";
 import { createEphemeralActivationProbePlan } from "./activation-probe-plan";
 import { verifyLexicalActivation } from "./activation-verifier";
@@ -23,7 +24,7 @@ import {
 } from "./connector-verifier";
 
 const DEFAULT_CONCURRENCY = 4;
-const MAX_CONNECTOR_TARGETS = 16;
+/** Bounds the listed pairs only; completeness is decided from every pair. */
 const MAX_CONNECTOR_PROJECTIONS = 64;
 const CONNECTOR_CODES = new Set<ActivationVerificationCode>([
   "connector_not_configured",
@@ -341,18 +342,22 @@ async function buildConnectorStatuses(
   store: StorePort,
   collections: VerifiedCollection[],
   targets: readonly ConnectorVerificationTarget[]
-): Promise<{ items: ActivationConnectorStatus[]; total: number }> {
+): Promise<{
+  items: ActivationConnectorStatus[];
+  omitted: ConnectorOmittedSummary;
+  total: number;
+}> {
   const sortedTargets = [...targets].sort((a, b) => a.id.localeCompare(b.id));
-  const boundedTargets = sortedTargets.slice(0, MAX_CONNECTOR_TARGETS);
   // A collection with no documents gives a connector nothing to prove.
   const provable = collections.filter(
     ({ projected }) => !isEmptyActivationCollection(projected)
   );
   const allPairs = provable.flatMap((collection) =>
-    boundedTargets.map((target) => ({ collection, target }))
+    sortedTargets.map((target) => ({ collection, target }))
   );
-  const items = await mapBounded(
-    allPairs.slice(0, MAX_CONNECTOR_PROJECTIONS),
+  // Every pair is read from cached receipts only; the cap bounds the listing.
+  const evaluated = await mapBounded(
+    allPairs,
     DEFAULT_CONCURRENCY,
     async ({ collection, target }) => {
       const fallback = connectorFallback(
@@ -389,7 +394,13 @@ async function buildConnectorStatuses(
       };
     }
   );
-  return { items, total: provable.length * sortedTargets.length };
+  return {
+    items: evaluated.slice(0, MAX_CONNECTOR_PROJECTIONS),
+    omitted: summarizeConnectorProofs(
+      evaluated.slice(MAX_CONNECTOR_PROJECTIONS)
+    ),
+    total: evaluated.length,
+  };
 }
 
 async function verifyCoalesced(
@@ -538,6 +549,9 @@ export async function buildActivationStatus(
       total: connectorStatuses.total,
       projected: connectorStatuses.items.length,
       truncated: connectorStatuses.total > connectorStatuses.items.length,
+      ...(connectorStatuses.total > connectorStatuses.items.length
+        ? { omitted: connectorStatuses.omitted }
+        : {}),
     },
   };
 }

@@ -406,11 +406,19 @@ Passive callers report `semantic_not_checked` when vector runtime availability
 is unknown. `vector_unavailable` is reserved for a resident runtime that has
 positively reported vector search unavailable.
 
-`connectorProjection.total` counts every configured collection and connector
-target pair before projection bounds. `projected` equals `connectors.length`,
-and `truncated` is true exactly when `total > projected`. No result is claimed
-for omitted pairs, and human-readable health output must not report connector
-proof as healthy while the projection is truncated.
+`connectorProjection.total` counts every non-empty collection and connector
+target pair. Every pair is evaluated from cached receipts; the 64-pair cap
+bounds only the listed `connectors`. `projected` equals `connectors.length`,
+and `truncated` is true exactly when `total > projected`. When truncated,
+`omitted` counts the unlisted pairs by outcome (`passed`, `failed`,
+`incomplete`, `notApplicable`; the counts sum to `total - projected`). Connector
+completeness, and so overall health, is decided from the listed pairs plus
+these counts: a truncated projection whose pairs all passed or are not
+applicable is healthy, and a failed or pending pair beyond the list keeps it
+degraded. Human-readable output keeps the `N/M ... shown; K omitted` line and
+summarizes the omitted outcomes, for example `(108 passed, 1 failed)`. A
+truncated projection without `omitted` claims no result for the unlisted pairs
+and is never reported healthy.
 
 **Exit Codes:**
 

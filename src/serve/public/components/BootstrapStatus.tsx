@@ -9,6 +9,10 @@ import {
 
 import type { AppStatusResponse } from "../../status-model";
 
+import {
+  describeConnectorSummary,
+  omittedConnectorSummary as summarizeOmittedConnectors,
+} from "../../../core/activation-connector-health";
 import { isEmptyActivationCollection } from "../../../core/activation-empty";
 import { buildConnectorActivationCheck } from "../../activation-health";
 import { Button } from "./ui/button";
@@ -54,6 +58,7 @@ export function BootstrapStatus({
   const omittedConnectorCount =
     activation.connectorProjection.total -
     activation.connectorProjection.projected;
+  const omittedConnectorSummary = summarizeOmittedConnectors(activation);
   const connectorHealth = buildConnectorActivationCheck(activation);
   const connectorsHealthy =
     connectorHealth === null || connectorHealth.status === "ok";
@@ -221,6 +226,9 @@ export function BootstrapStatus({
                   <p className="text-muted-foreground text-xs">
                     {omittedConnectorCount} additional target/collection checks
                     omitted from this bounded status view
+                    {omittedConnectorSummary
+                      ? ` (${describeConnectorSummary(omittedConnectorSummary)})`
+                      : ""}
                   </p>
                 )}
               </div>
