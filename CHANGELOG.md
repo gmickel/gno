@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.5] - 2026-09-28
+
 ### Fixed
 
 - `gno status`, `gno doctor`, REST `/api/status` and the Web UI no longer report connector proof as incomplete, and overall health as degraded, just because a vault has more than 64 collection/connector pairs. Only 64 pairs are listed, but every pair is now checked, from cached results only, and health is decided from all of them. A vault whose checks all pass now reports healthy, and a failed or pending check beyond the list still counts. The `64/175 ... shown; 111 omitted` line now adds what the unlisted checks found, for example `(108 passed, 1 failed)`, and the JSON adds `connectorProjection.omitted` with those counts. The separate limit of 16 connector targets is gone; GNO has 7.
@@ -2917,7 +2919,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.8.4...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.8.5...HEAD
+[2.8.5]: https://github.com/gmickel/gno/compare/v2.8.4...v2.8.5
 [2.8.4]: https://github.com/gmickel/gno/compare/v2.8.3...v2.8.4
 [2.8.3]: https://github.com/gmickel/gno/compare/v2.8.2...v2.8.3
 [2.8.2]: https://github.com/gmickel/gno/compare/v2.8.1...v2.8.2
