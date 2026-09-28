@@ -1,0 +1,46 @@
+{
+  "branch": "fn-200-connector-activation-health-ignores-the",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "38a79a3ba227d9a312167d2a4b93f53e66e8524c",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-867c53bb5612fd9cb8eefdd53da30c5a93d44d42a483a7cd9c02f532492eda6f"
+  },
+  "head_sha": "38a79a3ba227d9a312167d2a4b93f53e66e8524c",
+  "id": "fn-200-connector-activation-health-ignores-the",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 5,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      }
+    ],
+    "total": 5
+  },
+  "timestamp": "2026-09-28T14:26:51Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

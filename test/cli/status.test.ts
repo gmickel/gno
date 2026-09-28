@@ -147,40 +147,57 @@ describe("gno status activation output", () => {
     expect(terminal).toContain("gno index notes --no-embed");
   });
 
-  test("reports omitted connector projections in human-readable output", () => {
-    const result = statusResult();
-    if (!result.success) {
-      throw new Error("Expected status fixture to succeed");
-    }
-    result.activation.usable = true;
-    result.activation.healthy = true;
-    result.activation.connectors = Array.from({ length: 64 }, (_, index) => ({
-      collection: "notes",
-      target: index === 0 ? "cursor-mcp" : `connector-${index}`,
-      status: "passed",
-      remediation: null,
-    }));
-    result.activation.connectorProjection = {
-      total: 85,
-      projected: 64,
-      truncated: true,
-    };
+  test.each([
+    {
+      label: "unevaluated",
+      omitted: undefined,
+      projection:
+        "Connector projection: 64/85 target/collection checks shown; 21 omitted, no result claimed",
+      healthy: false,
+    },
+    {
+      label: "evaluated and passing",
+      omitted: { passed: 21, failed: 0, incomplete: 0, notApplicable: 0 },
+      projection:
+        "Connector projection: 64/85 target/collection checks shown; 21 omitted (21 passed)",
+      healthy: true,
+    },
+  ])(
+    "reports omitted connector projections in human-readable output: $label",
+    ({ omitted, projection, healthy }) => {
+      const result = statusResult();
+      if (!result.success) {
+        throw new Error("Expected status fixture to succeed");
+      }
+      result.activation.usable = true;
+      result.activation.healthy = true;
+      result.activation.connectors = Array.from({ length: 64 }, (_, index) => ({
+        collection: "notes",
+        target: index === 0 ? "cursor-mcp" : `connector-${index}`,
+        status: "passed",
+        remediation: null,
+      }));
+      result.activation.connectorProjection = {
+        total: 85,
+        projected: 64,
+        truncated: true,
+        ...(omitted ? { omitted } : {}),
+      };
 
-    const projection =
-      "Connector projection: 64/85 target/collection checks shown; 21 omitted";
-    const terminal = formatStatus(result, {});
-    const markdown = formatStatus(result, { md: true });
-    expect(terminal).toContain(projection);
-    expect(markdown).toContain(projection);
-    expect(terminal).toContain("Health: DEGRADED");
-    expect(terminal).toContain("Lexical activation: READY");
-    expect(terminal).not.toContain("\nActivation: READY");
-    expect(markdown).toContain("**Lexically healthy**: true");
-    expect(markdown).not.toContain("**Healthy**: true");
-    expect(JSON.parse(formatStatus(result, { json: true })).healthy).toBe(
-      false
-    );
-  });
+      const terminal = formatStatus(result, {});
+      const markdown = formatStatus(result, { md: true });
+      expect(terminal).toContain(projection);
+      expect(markdown).toContain(projection);
+      expect(terminal).toContain(healthy ? "Health: OK" : "Health: DEGRADED");
+      expect(terminal).toContain("Lexical activation: READY");
+      expect(terminal).not.toContain("\nActivation: READY");
+      expect(markdown).toContain("**Lexically healthy**: true");
+      expect(markdown).not.toContain("**Healthy**: true");
+      expect(JSON.parse(formatStatus(result, { json: true })).healthy).toBe(
+        healthy
+      );
+    }
+  );
 
   test("reports a collection with no documents as informational, not degraded", async () => {
     const testDir = await mkdtemp(join(tmpdir(), "gno-status-activation-"));

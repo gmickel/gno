@@ -18,7 +18,11 @@ import {
   isInitialized,
   loadConfig,
 } from "../../config";
-import { isConnectorActivationComplete } from "../../core/activation-connector-health";
+import {
+  describeConnectorSummary,
+  isConnectorActivationComplete,
+  omittedConnectorSummary,
+} from "../../core/activation-connector-health";
 import { isEmptyActivationCollection } from "../../core/activation-empty";
 import { buildActivationStatus } from "../../core/activation-status";
 import { formatChunkingStatus } from "../../core/chunking-status";
@@ -146,7 +150,8 @@ function connectorProjectionLine(activation: ActivationStatus): string | null {
   if (!truncated) {
     return null;
   }
-  return `Connector projection: ${projected}/${total} target/collection checks shown; ${total - projected} omitted`;
+  const omitted = omittedConnectorSummary(activation);
+  return `Connector projection: ${projected}/${total} target/collection checks shown; ${total - projected} omitted${omitted ? ` (${describeConnectorSummary(omitted)})` : ", no result claimed"}`;
 }
 
 function isStatusHealthy(

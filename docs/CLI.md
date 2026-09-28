@@ -2196,8 +2196,13 @@ correcting status.
 Semantic availability is separate: unknown resident capability is
 `semantic_not_checked`; only a positively known unavailable vector runtime is
 `vector_unavailable`. Connector status is a bounded passive projection of
-explicit verification receipts. `connectorProjection.truncated` means omitted
-target/collection pairs have no result and overall health is degraded.
+explicit verification receipts. Only the first 64
+target/collection pairs are listed; `connectorProjection.truncated` marks that
+more exist, and `connectorProjection.omitted` counts those unlisted pairs by
+outcome. Every pair, listed or not, is evaluated from cached receipts, and
+connector health is decided from all of them, so a large vault whose checks all
+pass reports healthy. The terminal line reads, for example,
+`Connector projection: 64/175 target/collection checks shown; 111 omitted (111 passed)`.
 
 JSON output includes a safe `resident-status@1.0` lifecycle projection. A
 direct `gno status` invocation reports `mode:"direct-cli"` and

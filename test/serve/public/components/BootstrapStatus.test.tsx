@@ -329,4 +329,30 @@ describe("BootstrapStatus", () => {
     expect(html).toContain("text-amber-500");
     expect(html).not.toContain("text-emerald-500");
   });
+  test("summarizes evaluated omitted connector checks as healthy", () => {
+    const html = renderToStaticMarkup(
+      <BootstrapStatus
+        activation={{
+          schemaVersion: "1.0",
+          usable: true,
+          healthy: true,
+          collections: [],
+          connectors: [],
+          connectorProjection: {
+            total: 2,
+            projected: 0,
+            truncated: true,
+            omitted: { passed: 2, failed: 0, incomplete: 0, notApplicable: 0 },
+          },
+        }}
+        bootstrap={minimalBootstrap}
+        onDownloadModels={() => undefined}
+      />
+    );
+
+    expect(html).toContain(
+      "2 additional target/collection checks omitted from this bounded status view (2 passed)"
+    );
+    expect(html).toContain("text-emerald-500");
+  });
 });

@@ -3,6 +3,8 @@ import { mkdir, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import type { ActivationStatus } from "../../src/core/activation-status";
+
 import { getIndexDbPath } from "../../src/app/constants";
 import { hasCriticalDoctorErrors } from "../../src/cli/commands/doctor";
 import {
@@ -13,6 +15,7 @@ import { runCli } from "../../src/cli/run";
 import { getConfigPaths } from "../../src/config";
 import { loadConfigFromPath } from "../../src/config/loader";
 import { saveConfigToPath } from "../../src/config/saver";
+import { isConnectorActivationComplete } from "../../src/core/activation-connector-health";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
 
@@ -228,29 +231,57 @@ describe("gno doctor activation exit semantics", () => {
     });
   });
 
-  test("warns when connector status omits bounded projections", () => {
-    const check = checkConnectorActivation({
-      schemaVersion: "1.0",
-      usable: true,
-      healthy: true,
-      collections: [],
-      connectors: Array.from({ length: 64 }, (_, index) => ({
-        collection: "notes",
-        target: index === 0 ? "cursor-mcp" : `connector-${index}`,
-        status: "passed",
-        remediation: null,
-      })),
-      connectorProjection: { total: 85, projected: 64, truncated: true },
-    });
-
-    expect(check).toMatchObject({
+  test.each([
+    {
+      label: "unevaluated",
+      omitted: undefined,
       status: "warn",
       message: "64 of 85 connector target/collection checks projected",
-    });
-    expect(check?.details?.[0]).toContain(
-      "21 target/collection checks were omitted"
-    );
-  });
+      detail: "21 target/collection checks were omitted",
+    },
+    {
+      label: "evaluated and passing",
+      omitted: { passed: 21, failed: 0, incomplete: 0, notApplicable: 0 },
+      status: "ok",
+      message: "85 connector proofs passed (64 of 85 checks listed)",
+      detail: "21 more target/collection checks are not listed: 21 passed.",
+    },
+    {
+      label: "evaluated with an unlisted failure",
+      omitted: { passed: 20, failed: 1, incomplete: 0, notApplicable: 0 },
+      status: "warn",
+      message: "1 connector proof pending or failed (64 of 85 checks listed)",
+      detail:
+        "21 more target/collection checks are not listed: 20 passed, 1 failed.",
+    },
+  ])(
+    "decides bounded connector projections from omitted pairs: $label",
+    ({ omitted, status, message, detail }) => {
+      const activation: ActivationStatus = {
+        schemaVersion: "1.0",
+        usable: true,
+        healthy: true,
+        collections: [],
+        connectors: Array.from({ length: 64 }, (_, index) => ({
+          collection: "notes",
+          target: index === 0 ? "cursor-mcp" : `connector-${index}`,
+          status: "passed",
+          remediation: null,
+        })),
+        connectorProjection: {
+          total: 85,
+          projected: 64,
+          truncated: true,
+          ...(omitted ? { omitted } : {}),
+        },
+      };
+      const check = checkConnectorActivation(activation);
+
+      expect(check).toMatchObject({ status, message });
+      expect(check?.details?.[0]).toContain(detail);
+      expect(isConnectorActivationComplete(activation)).toBe(status === "ok");
+    }
+  );
 
   test("does not describe known vector unavailability as pending", () => {
     const check = checkRetrievalActivation({

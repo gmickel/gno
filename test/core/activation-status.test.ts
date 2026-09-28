@@ -6,6 +6,7 @@ import type {
   StorePort,
 } from "../../src/store/types";
 
+import { isConnectorActivationComplete } from "../../src/core/activation-connector-health";
 import { buildActivationStatus } from "../../src/core/activation-status";
 import { getConnectorActivationReceiptLookup } from "../../src/core/connector-verifier";
 
@@ -483,6 +484,90 @@ describe("activation status", () => {
       total: 85,
       projected: 64,
       truncated: true,
+      omitted: { passed: 0, failed: 0, incomplete: 0, notApplicable: 21 },
     });
   });
+
+  test.each([
+    {
+      label: "all passing",
+      failingCollection: null,
+      complete: true,
+      failed: 0,
+      passed: 6,
+    },
+    {
+      label: "an unlisted failure",
+      failingCollection: "c69",
+      complete: false,
+      failed: 1,
+      passed: 5,
+    },
+  ])(
+    "decides connector completeness from every pair past the display cap: $label",
+    async ({ failingCollection, complete, failed, passed }) => {
+      const collections = Array.from(
+        { length: 70 },
+        (_, index) => `c${index.toString().padStart(2, "0")}`
+      );
+      const target = {
+        kind: "mcp" as const,
+        id: "cursor-mcp",
+        target: "cursor",
+        scope: "user" as const,
+        configPath: "/tmp/cursor.json",
+        configured: true,
+        serverEntry: { command: "/usr/local/bin/gno", args: ["mcp"] },
+      };
+      const lookup = getConnectorActivationReceiptLookup(HASH, target);
+      const connectorStore = {
+        getActivationReceipt: async (collection: string) => {
+          const lexical = receipt(collection, true);
+          const value: ActivationVerificationReceipt = {
+            ...lexical,
+            fingerprint: lookup.fingerprint,
+            stages: {
+              ...lexical.stages,
+              connector:
+                collection === failingCollection
+                  ? {
+                      status: "failed",
+                      startedAt: null,
+                      completedAt: null,
+                      latencyMs: 4,
+                      code: "connector_search_failed",
+                    }
+                  : {
+                      status: "passed",
+                      startedAt: null,
+                      completedAt: null,
+                      latencyMs: 4,
+                    },
+            },
+          };
+          return { ok: true as const, value };
+        },
+      } as unknown as StorePort;
+
+      const status = await buildActivationStatus(connectorStore, collections, {
+        connectorTargets: [target],
+        verifyCollection: async (_store, collection) => ({
+          ok: true,
+          value: receipt(collection, true),
+        }),
+      });
+
+      expect(status.connectors).toHaveLength(64);
+      expect(
+        status.connectors.every(({ status: proof }) => proof === "passed")
+      ).toBe(true);
+      expect(isConnectorActivationComplete(status)).toBe(complete);
+      expect(status.connectorProjection).toEqual({
+        total: 70,
+        projected: 64,
+        truncated: true,
+        omitted: { passed, failed, incomplete: 0, notApplicable: 0 },
+      });
+    }
+  );
 });

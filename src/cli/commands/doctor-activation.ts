@@ -6,6 +6,11 @@ import type { StorePort } from "../../store/types";
 import type { DoctorCheck } from "./doctor";
 
 import { getIndexDbPath, getModelsCachePath } from "../../app/constants";
+import {
+  classifyConnectorProof,
+  describeOmittedConnectorPairs,
+  omittedConnectorSummary,
+} from "../../core/activation-connector-health";
 import { isEmptyActivationCollection } from "../../core/activation-empty";
 import { buildActivationStatus } from "../../core/activation-status";
 import { ModelCache } from "../../llm/cache";
@@ -149,13 +154,14 @@ export function checkConnectorActivation(
   activation: ActivationStatus
 ): DoctorCheck | null {
   const { projected, total, truncated } = activation.connectorProjection;
-  const omitted = total - projected;
+  const omitted = omittedConnectorSummary(activation);
   const observed = activation.connectors.filter(
-    ({ code }) =>
-      code !== "connector_not_configured" &&
-      code !== "target_runtime_unverifiable"
+    (connector) => classifyConnectorProof(connector) !== "notApplicable"
   );
-  if (observed.length === 0 && !truncated) {
+  const omittedObserved = omitted
+    ? omitted.passed + omitted.failed + omitted.incomplete
+    : 0;
+  if (observed.length === 0 && omittedObserved === 0 && omitted) {
     return null;
   }
   const incomplete = observed.filter(({ status }) => status !== "passed");
@@ -163,20 +169,23 @@ export function checkConnectorActivation(
     ({ collection, target, status, code, remediation }) =>
       `${target}/${collection}: ${status}${code ? `/${code}` : ""}${remediation ? `. ${remediation}` : ""}`
   );
-  if (truncated) {
-    details.unshift(
-      `${omitted} target/collection checks were omitted by the bounded status projection; no result is claimed for them.`
-    );
+  const omittedDetail = describeOmittedConnectorPairs(activation);
+  if (omittedDetail) {
+    details.unshift(omittedDetail);
   }
+  const unresolved =
+    incomplete.length + (omitted ? omitted.failed + omitted.incomplete : 0);
+  const passed = observed.length - incomplete.length + (omitted?.passed ?? 0);
+  const listing = truncated ? ` (${projected} of ${total} checks listed)` : "";
   return {
     name: "connector-activation",
-    status: incomplete.length > 0 || truncated ? "warn" : "ok",
+    status: unresolved > 0 || !omitted ? "warn" : "ok",
     message:
-      incomplete.length > 0
-        ? `${incomplete.length} connector proof${incomplete.length === 1 ? "" : "s"} pending or failed`
-        : truncated
-          ? `${projected} of ${total} connector target/collection checks projected`
-          : `${observed.length} connector proof${observed.length === 1 ? "" : "s"} passed`,
+      unresolved > 0
+        ? `${unresolved} connector proof${unresolved === 1 ? "" : "s"} pending or failed${listing}`
+        : omitted
+          ? `${passed} connector proof${passed === 1 ? "" : "s"} passed${listing}`
+          : `${projected} of ${total} connector target/collection checks projected`,
     details,
   };
 }

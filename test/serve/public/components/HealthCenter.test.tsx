@@ -148,6 +148,51 @@ describe("HealthCenter", () => {
     expect(check?.detail).toContain("21 target/collection checks were omitted");
   });
 
+  test.each([
+    {
+      label: "all passing",
+      omitted: { passed: 21, failed: 0, incomplete: 0, notApplicable: 0 },
+      status: "ok",
+      summary: "22 connector proofs passed (64 of 85 checks listed)",
+      detail: "21 more target/collection checks are not listed: 21 passed.",
+    },
+    {
+      label: "an unlisted failure",
+      omitted: { passed: 20, failed: 1, incomplete: 0, notApplicable: 0 },
+      status: "error",
+      summary: "1 connector proof failed (64 of 85 checks listed)",
+      detail:
+        "21 more target/collection checks are not listed: 20 passed, 1 failed.",
+    },
+  ])(
+    "decides a truncated connector projection from its evaluated omitted pairs: $label",
+    ({ omitted, status, summary, detail }) => {
+      const check = buildConnectorActivationCheck({
+        schemaVersion: "1.0",
+        usable: true,
+        healthy: true,
+        collections: [],
+        connectors: [
+          {
+            collection: "notes",
+            target: "cursor-mcp",
+            status: "passed",
+            remediation: null,
+          },
+        ],
+        connectorProjection: {
+          total: 85,
+          projected: 64,
+          truncated: true,
+          omitted,
+        },
+      });
+
+      expect(check).toMatchObject({ status, summary });
+      expect(check?.detail).toContain(detail);
+    }
+  );
+
   test("surfaces truncation even when no projected proof is observable", () => {
     const check = buildConnectorActivationCheck({
       schemaVersion: "1.0",

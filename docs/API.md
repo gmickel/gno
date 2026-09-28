@@ -712,8 +712,12 @@ Lexical readiness is proven per collection; semantic availability remains
 independent. A collection with no documents yet (`no_documents`, remediation
 `gno update`) is informational: it keeps `activation.healthy` true and leaves the
 `retrieval-activation` health check `ok`, whose summary names it. Connector entries are fingerprint-current persisted receipts only.
-If `connectorProjection.truncated` is true, omitted pairs have no claimed result
-and health remains degraded. Status may perform a bounded local lexical proof on
+If `connectorProjection.truncated` is true, only the first 64 pairs are listed,
+but every pair is still evaluated: `connectorProjection.omitted` counts the
+unlisted pairs as `passed`, `failed`, `incomplete` or `notApplicable`, and the
+connector health check is decided from all of them. A truncated projection
+whose pairs all passed is healthy; a failed or pending pair beyond the list is
+not. Status may perform a bounded local lexical proof on
 a receipt miss, but it never starts connector children or remote inference.
 
 `contentTypeBoost` is the live ranking configuration shared with CLI, MCP, and
