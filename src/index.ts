@@ -7,6 +7,7 @@
  */
 
 import { runCli } from "./cli/run";
+import { tracePhase } from "./core/phase-trace";
 import { FILE_PROCESSOR_CHILD_ENV } from "./ingestion/file-child-env";
 import { resetModelManager } from "./llm/nodeLlamaCpp/lifecycle";
 import { IMPORT_CHILD_ENV } from "./sessions/import-child-env";
@@ -50,6 +51,7 @@ async function cleanupAndExit(code: number): Promise<never> {
   await resetModelManager().catch(() => {
     // Ignore cleanup errors on exit
   });
+  tracePhase("exit: models reset");
   await Promise.all([flushStream(process.stdout), flushStream(process.stderr)]);
   process.exit(code);
 }
@@ -89,8 +91,12 @@ if (process.env[FILE_PROCESSOR_CHILD_ENV] === "1") {
 }
 
 // Await module completion so pending piped stdin keeps Windows Bun alive.
+tracePhase("cli: start");
 await runCli(process.argv)
-  .then((code) => cleanupAndExit(interruptExitCode || code))
+  .then((code) => {
+    tracePhase(`cli: done (${code})`);
+    return cleanupAndExit(interruptExitCode || code);
+  })
   .catch((err) => {
     process.stderr.write(
       `Fatal error: ${err instanceof Error ? err.message : String(err)}\n`
