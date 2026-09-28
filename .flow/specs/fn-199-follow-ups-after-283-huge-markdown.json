@@ -1,0 +1,32 @@
+{
+  "branch_name": "fn-199-follow-ups-after-283-huge-markdown",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
+  "created_at": "2026-09-28T08:23:02.964273Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
+  "depends_on_epics": [],
+  "id": "fn-199-follow-ups-after-283-huge-markdown",
+  "impl_review_rounds": {},
+  "next_task": 1,
+  "no_plan": true,
+  "plan_review_rounds": 0,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-199-follow-ups-after-283-huge-markdown.md",
+  "status": "open",
+  "title": "Follow-ups after 2.8.3: huge Markdown tables, doctor on empty collections, Windows update hang, trace-graph similarity",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-09-28T08:23:06.845592Z"
+}
