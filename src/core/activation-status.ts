@@ -89,7 +89,19 @@ export interface ActivationStatus {
     total: number;
     projected: number;
     truncated: boolean;
+    /** Outcome counts for the evaluated pairs past the display cap; present when truncated. */
+    omitted?: ConnectorOmittedSummary;
   };
+}
+
+/** Per-outcome counts of evaluated connector pairs that are not listed. */
+export interface ConnectorOmittedSummary {
+  passed: number;
+  failed: number;
+  /** Pending, or skipped for a runtime reason (for example lexical not ready). */
+  incomplete: number;
+  /** Not configured, or a skill runtime that cannot be verified. */
+  notApplicable: number;
 }
 
 export interface ActivationStatusOptions {
