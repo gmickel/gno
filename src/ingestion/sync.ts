@@ -501,6 +501,7 @@ export class SyncService {
         extensionMime.mime,
         extensionMime.ext
       );
+      tracePhase("sync: record adapter selected");
       const contentTypeRules = options.contentTypeRules ?? [];
       const contentTypeRulesFingerprint =
         options.contentTypeRulesFingerprint ??
@@ -675,6 +676,7 @@ export class SyncService {
       let previousStructure: DocumentStructureSnapshot | null | undefined =
         existing ? undefined : null;
       const previous = await this.readPreviousRevision(store, existing);
+      tracePhase("sync: preparing file");
       const prepared = await this.prepare(
         {
           input: {

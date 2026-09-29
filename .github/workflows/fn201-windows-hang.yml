@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1]
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
@@ -30,7 +30,7 @@ jobs:
           echo "TMP=D:/Temp" >> $env:GITHUB_ENV
       - run: bun install --frozen-lockfile
       - name: Loop concurrency test
-        run: bun .github/scripts/fn201-loop.ts 40
+        run: bun .github/scripts/fn201-loop.ts 10
 
   full-suite:
     runs-on: windows-latest
@@ -38,7 +38,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2

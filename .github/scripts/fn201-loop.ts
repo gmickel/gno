@@ -18,6 +18,9 @@ for (let run = 1; run <= runs; run += 1) {
   ]);
   const ms = Math.round(performance.now() - started);
   console.log(`run ${run}: exit ${code} in ${ms} ms`);
+  if (code === 0 && (run === 1 || err.includes("FN201_SLOW"))) {
+    console.log(`FN201_TRACE run ${run}\n${err}`);
+  }
   if (code !== 0) {
     failures += 1;
     console.log(`::group::run ${run} output`);
