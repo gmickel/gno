@@ -359,6 +359,19 @@ Tips:
 - Add excludes (`node_modules`, `dist`)
 - First run is slowest (subsequent runs are incremental)
 
+**See where a slow or stuck command spends its time:** set `GNO_PHASE_TRACE=1`.
+Each startup phase (write lease, index open, migrations, collection walk, each
+file, the file processor) then prints one line to stderr, with milliseconds
+since the process started:
+
+```bash
+GNO_PHASE_TRACE=1 gno update
+# gno-phase 461 4856 sync: file a.md
+# gno-phase 473 4856 sync: record adapter selected
+```
+
+The last line a stuck command printed names the phase it is in.
+
 ### Slow Indexing on Windows
 
 Windows can be significantly slower due to NTFS overhead and real-time antivirus scanning.

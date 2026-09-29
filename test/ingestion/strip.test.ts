@@ -406,30 +406,42 @@ describe("code-region parse budget (fn-198)", () => {
         (_, row) => `| ${row} | ${cell} |${` ${row % 97} |`.repeat(8)}`
       ),
     ].join("\n");
-  const fastestPass = (markdown: string): number => {
-    let fastest = Number.POSITIVE_INFINITY;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const started = performance.now();
-      parseLinks(
-        markdown,
-        buildLineOffsets(markdown),
-        getExcludedRanges(markdown)
-      );
-      fastest = Math.min(fastest, performance.now() - started);
+  const timedPass = (markdown: string): number => {
+    const started = performance.now();
+    parseLinks(
+      markdown,
+      buildLineOffsets(markdown),
+      getExcludedRanges(markdown)
+    );
+    return performance.now() - started;
+  };
+  /**
+   * Fastest pass at each size. The sizes alternate, so a slow stretch on a
+   * shared runner lands on both instead of inflating only the larger one.
+   */
+  const fastestPasses = (small: string, large: string) => {
+    let fastestSmall = Number.POSITIVE_INFINITY;
+    let fastestLarge = Number.POSITIVE_INFINITY;
+    for (let round = 0; round < 5; round += 1) {
+      fastestSmall = Math.min(fastestSmall, timedPass(small));
+      fastestLarge = Math.min(fastestLarge, timedPass(large));
     }
-    return fastest;
+    return { small: fastestSmall, large: fastestLarge };
   };
 
   test.each(["x]", "[[open"])(
     "code detection and link parsing stay linear with %p in every row",
     (cell) => {
-      const single = fastestPass(pivotNote(cell, 1500));
-      const double = fastestPass(pivotNote(cell, 3000));
-      // Linear work doubles; quadratic quadruples. The 25 ms absorbs timer
-      // noise at these sizes.
-      expect({ single, double, bounded: double <= 2.8 * single + 25 }).toEqual({
-        single,
-        double,
+      const { small, large } = fastestPasses(
+        pivotNote(cell, 1500),
+        pivotNote(cell, 6000)
+      );
+      // Four times the rows: linear work grows about 4-5x here, quadratic
+      // 13-16x (measured on the pre-fn-199 code). 8x splits them with room
+      // for runner noise either way; the 25 ms absorbs timer noise.
+      expect({ small, large, bounded: large <= 8 * small + 25 }).toEqual({
+        small,
+        large,
         bounded: true,
       });
     }

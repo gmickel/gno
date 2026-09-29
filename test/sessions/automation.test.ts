@@ -235,10 +235,15 @@ beforeEach(async () => {
   await setAutomationProfile(ctx(), { id: "main", sources: ["claude"] });
 });
 
+const restoreEnv = (key: string, value: string | undefined): void => {
+  if (value === undefined) Reflect.deleteProperty(process.env, key);
+  else process.env[key] = value;
+};
+
 afterEach(async () => {
-  process.env.GNO_CONFIG_DIR = env.config;
-  process.env.GNO_DATA_DIR = env.data;
-  process.env.GNO_CACHE_DIR = env.cache;
+  restoreEnv("GNO_CONFIG_DIR", env.config);
+  restoreEnv("GNO_DATA_DIR", env.data);
+  restoreEnv("GNO_CACHE_DIR", env.cache);
   await safeRm(root);
 });
 

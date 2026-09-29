@@ -3,13 +3,15 @@
  */
 
 import { describe, expect, test } from "bun:test";
+// node:path join: no Bun path utils.
+import { join } from "node:path";
 
 import type { Converter, ConvertInput } from "../../src/converters/types";
 
 import {
   ConverterRegistry,
   createDefaultRegistry,
-  loadAdapter,
+  lazyAdapter,
 } from "../../src/converters/registry";
 import { DEFAULT_LIMITS } from "../../src/converters/types";
 
@@ -190,20 +192,69 @@ describe("createDefaultRegistry", () => {
 });
 
 describe("unavailable adapter stand-in", () => {
-  test("matches the real adapter's MIME types, not only extensions", async () => {
-    const standIn = await loadAdapter(
-      () => Promise.reject(new Error("pdf.js cannot initialize")),
-      "adapter/markitdown-ts",
-      [".pdf"],
-      ["application/pdf"]
+  test("routes without loading, then fails its file types with the reason", async () => {
+    let loads = 0;
+    const adapter = lazyAdapter(
+      {
+        id: "adapter/markitdown-ts",
+        version: "1",
+        canHandle: (mime, ext) => ext === ".pdf" || mime === "application/pdf",
+      },
+      () => {
+        loads += 1;
+        return Promise.reject(new Error("pdf.js cannot initialize"));
+      }
     );
     // A sniffed PDF without an extension still belongs to this adapter.
-    expect(standIn.canHandle("application/pdf", "")).toBe(true);
-    expect(standIn.canHandle("text/plain", ".txt")).toBe(false);
-    const result = await standIn.convert(
-      makeInput({ mime: "application/pdf", ext: "" })
-    );
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.code).toBe("ADAPTER_FAILURE");
+    expect(adapter.canHandle("application/pdf", "")).toBe(true);
+    expect(adapter.canHandle("text/plain", ".txt")).toBe(false);
+    expect(loads).toBe(0);
+    for (const _ of [1, 2]) {
+      const result = await adapter.convert(
+        makeInput({ mime: "application/pdf", ext: "" })
+      );
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("ADAPTER_FAILURE");
+        expect(result.error.message).toContain("pdf.js cannot initialize");
+      }
+    }
+    expect(loads).toBe(1);
+  });
+});
+
+describe("default registry loading (fn-201)", () => {
+  test("routing a Markdown file loads no PDF/Office parser; a PDF does", () => {
+    // A fresh process: this test runner has usually loaded the parsers already.
+    // A cold load of these parsers took 9-11 s on Windows runners, inside every
+    // `gno update`, before the first file.
+    const pipeline = join(import.meta.dir, "../../src/converters/pipeline.ts");
+    const script = `
+      const { getDefaultPipeline } = await import(${JSON.stringify(pipeline)});
+      const heavy = () =>
+        Object.keys(require.cache).some((path) =>
+          /vendor[\\\\/]converters[\\\\/](markitdown-ts|officeparser)/.test(path)
+        );
+      const defaults = getDefaultPipeline();
+      await defaults.selectRecordAdapter("text/markdown", ".md");
+      await defaults.listConverters();
+      const afterRouting = heavy();
+      await defaults.convert({
+        sourcePath: "/x/a.pdf", relativePath: "a.pdf", collection: "c",
+        bytes: new Uint8Array(0), mime: "application/pdf", ext: ".pdf",
+        limits: { maxBytes: 1000, timeoutMs: 1000 },
+      });
+      console.log(JSON.stringify({ afterRouting, afterPdf: heavy() }));
+    `;
+    const child = Bun.spawnSync({
+      cmd: [process.execPath, "-e", script],
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    expect(child.stderr.toString()).toBe("");
+    expect(JSON.parse(child.stdout.toString())).toEqual({
+      afterRouting: false,
+      afterPdf: true,
+    });
   });
 });

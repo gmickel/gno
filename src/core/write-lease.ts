@@ -11,6 +11,7 @@ import { dirname, join } from "node:path";
 
 import { getIndexDbPath } from "../app/constants";
 import { acquireWriteLock } from "./file-lock";
+import { tracePhase } from "./phase-trace";
 
 export const DEFAULT_LOCK_WAIT_MS = 120_000;
 export const WRITE_LEASE_BUSY_MESSAGE =
@@ -149,6 +150,7 @@ export async function acquireCliWriteLease(
   options: AcquireCliWriteLeaseOptions
 ): Promise<WriteLeaseResult> {
   const lockPath = writeLeasePath(options.dbPath);
+  tracePhase("lease: acquiring");
   // A non-finite or out-of-range wait must never loop unbounded (fn-127 review).
   const requestedWaitMs = Number.isFinite(options.waitMs)
     ? Math.min(Math.max(0, options.waitMs), MAX_LOCK_WAIT_MS)
@@ -163,7 +165,9 @@ export async function acquireCliWriteLease(
     const sliceMs = options.noWait ? 0 : Math.min(LOCK_SLICE_MS, remaining);
     const handle = await acquireWriteLock(lockPath, sliceMs);
     if (handle) {
+      tracePhase("lease: acquired");
       await writeHolderSidecar(lockPath, options.command);
+      tracePhase("lease: holder recorded");
       return {
         ok: true,
         release: async () => {
@@ -213,6 +217,7 @@ export async function withCliWriteLease<T>(
   } finally {
     try {
       await result.release();
+      tracePhase("lease: released");
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
       process.stderr.write(`gno: failed to release write lease: ${message}\n`);

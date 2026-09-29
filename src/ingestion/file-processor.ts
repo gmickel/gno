@@ -37,6 +37,7 @@ import type {
   PrepareOutcome,
 } from "./prepare-file";
 
+import { tracePhase } from "../core/phase-trace";
 import { isBunfsPath } from "../serve/spa-production-build";
 import { FILE_PROCESSOR_CHILD_ENV } from "./file-child-env";
 import { PREPARE_PHASES } from "./prepare-file";
@@ -452,7 +453,9 @@ const runOne = async (
   }
   // Loading the processor is not the file's time: its clock starts once the
   // processor can take it.
+  tracePhase(`processor: awaiting ${active.kind}`);
   const notReady = await awaitReady(active);
+  tracePhase(`processor: ${notReady ?? "ready"}`);
   if (notReady) {
     if (processor === active) stopProcessor();
     return { ok: false, error: unavailableFailure(notReady) };

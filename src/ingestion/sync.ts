@@ -43,6 +43,7 @@ import {
   type DocumentStructureSnapshot,
 } from "../core/change-diff";
 import { enforceCollectionEgress } from "../core/egress-enforcement";
+import { tracePhase } from "../core/phase-trace";
 import { defaultChunker } from "./chunker";
 import { persistChunkLayout, prepareChunking } from "./chunking";
 import {
@@ -433,6 +434,7 @@ export class SyncService {
         "Compiled context is derived material; index original sources instead",
     };
     if (isCompiledContextPath(entry.relPath)) return generatedResult;
+    tracePhase(`sync: file ${entry.relPath}`);
     const limits = {
       maxBytes: options.limits?.maxBytes ?? DEFAULT_LIMITS.maxBytes,
       timeoutMs: options.limits?.timeoutMs ?? DEFAULT_LIMITS.timeoutMs,
@@ -499,6 +501,7 @@ export class SyncService {
         extensionMime.mime,
         extensionMime.ext
       );
+      tracePhase("sync: record adapter selected");
       const contentTypeRules = options.contentTypeRules ?? [];
       const contentTypeRulesFingerprint =
         options.contentTypeRulesFingerprint ??
@@ -673,6 +676,7 @@ export class SyncService {
       let previousStructure: DocumentStructureSnapshot | null | undefined =
         existing ? undefined : null;
       const previous = await this.readPreviousRevision(store, existing);
+      tracePhase("sync: preparing file");
       const prepared = await this.prepare(
         {
           input: {
@@ -1626,7 +1630,9 @@ export class SyncService {
       sourceAvailability: availabilityMode,
       directoryAvailability,
     };
+    tracePhase(`sync: walking ${collection.name}`);
     const { entries, skipped } = await this.walker.walk(walkConfig);
+    tracePhase(`sync: walked ${entries.length} entries`);
 
     // Track seen paths for marking inactive
     // Only include TOO_LARGE files (they exist but are unprocessable)
@@ -1945,7 +1951,9 @@ export class SyncService {
     options: SyncOptions = {}
   ): Promise<SyncResult> {
     const startTime = Date.now();
+    tracePhase("sync: preparing chunking");
     const prepared = await prepareChunking(store, this.chunker, options);
+    tracePhase("sync: chunking prepared");
     const results: CollectionSyncResult[] = [];
     const deferredProjectionOptions: SyncOptions = {
       ...prepared.options,
@@ -1961,6 +1969,7 @@ export class SyncService {
       results.push(result);
     }
 
+    tracePhase("sync: collections done");
     let graphRebuild: SyncResult["graphRebuild"];
     if (results.length > 0) {
       const projectionErrors = await this.projectTypedEdges(store, {
@@ -1973,6 +1982,7 @@ export class SyncService {
       results.at(-1)?.errors.push(...projectionErrors);
     }
 
+    tracePhase("sync: typed edges projected");
     // Aggregate totals
     const totals = results.reduce(
       (acc, r) => ({

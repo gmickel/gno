@@ -145,6 +145,7 @@ import {
   type LinkWorkspaceSource,
 } from "../../core/link-workspace";
 import { normalizeWikiName, stripWikiMdExt } from "../../core/links";
+import { tracePhase } from "../../core/phase-trace";
 import {
   TYPED_METADATA_INGEST_VERSION,
   typedMetadataSchema,
@@ -615,6 +616,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   ): Promise<StoreResult<MigrationResult>> {
     try {
       this.db = new Database(dbPath, { create: true });
+      tracePhase("db: connection open");
       this.shutdownFenced = false;
       this.shutdownDeadline = undefined;
       this.dbPath = dbPath;
@@ -633,8 +635,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         const journalMode = this.db
           .query<{ journal_mode: string }, []>("PRAGMA journal_mode")
           .get()?.journal_mode;
+        tracePhase(`db: journal_mode ${journalMode}`);
         if (journalMode?.toLowerCase() !== "wal") {
           this.db.exec("PRAGMA journal_mode = WAL");
+          tracePhase("db: journal_mode set to wal");
         }
       } catch (cause) {
         if (!isDatabaseLockedError(cause)) {
@@ -664,7 +668,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }
 
       // Run migrations
+      tracePhase("db: migrations");
       const result = runMigrations(this.db, migrations, ftsTokenizer);
+      tracePhase("db: migrations done");
       if (!result.ok) {
         this.db.close();
         this.db = null;

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { PHASE_TRACE_ENV } from "../../src/core/phase-trace";
 import { safeRm } from "../helpers/cleanup";
 
 const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -136,6 +137,8 @@ describe("CLI concurrent read/write access", () => {
         GNO_CONFIG_DIR: join(testDir, "config"),
         GNO_DATA_DIR: join(testDir, "data"),
         GNO_CACHE_DIR: join(testDir, "cache"),
+        // A hang report then shows the last phase each child reached.
+        [PHASE_TRACE_ENV]: "1",
       };
 
       const init = startChild(

@@ -20,6 +20,7 @@ import {
   loadConfig,
   writeConfigWarningsToStderr,
 } from "../../config";
+import { tracePhase } from "../../core/phase-trace";
 import { BUDGET_ERROR_CODES } from "../../ingestion/file-processor";
 import { SqliteAdapter } from "../../store/sqlite/adapter";
 import { assertCliSessionBinding } from "../session-binding";
@@ -63,6 +64,7 @@ export interface InitStoreOptions {
 export async function initStore(
   options: InitStoreOptions = {}
 ): Promise<InitStoreResult> {
+  tracePhase("store: init");
   // Check if initialized
   const initialized = await isInitialized(options.configPath);
   if (!initialized) {
@@ -119,11 +121,13 @@ export async function initStore(
   // Set configPath for status output
   store.setConfigPath(actualConfigPath);
 
+  tracePhase("store: opening index");
   const openResult = await store.open(
     dbPath,
     config.ftsTokenizer,
     config.busyTimeoutMs
   );
+  tracePhase("store: index open");
   if (!openResult.ok) {
     return { ok: false, error: openResult.error.message };
   }
@@ -139,6 +143,7 @@ export async function initStore(
     return { ok: false, error: syncCollResult.error.message };
   }
 
+  tracePhase("store: collections synced");
   // Sync contexts from config to DB
   const syncCtxResult = await store.syncContexts(config.contexts ?? []);
   if (!syncCtxResult.ok) {
@@ -146,6 +151,7 @@ export async function initStore(
     return { ok: false, error: syncCtxResult.error.message };
   }
 
+  tracePhase("store: contexts synced");
   return { ok: true, store, config, collections, actualConfigPath };
 }
 
