@@ -6,6 +6,22 @@ import { beforeEach } from "bun:test";
  * writes into the repository (fn-201: `undefined/.mcp-write.lock`). Fail the
  * next test instead, so the leaking restore is found where it happens.
  */
+const DIRECTORY_VARIABLES = ["GNO_DATA_DIR", "GNO_CONFIG_DIR", "GNO_CACHE_DIR"];
+
+// An inherited "undefined" directory is as dangerous as a leaked one: every
+// test would resolve it relative to the repository. Refuse to run at all.
+const invalidAtStartup = DIRECTORY_VARIABLES.filter(
+  (key) => process.env[key] === "undefined"
+);
+if (invalidAtStartup.length > 0) {
+  throw new Error(
+    `${invalidAtStartup.join(", ")} is set to the string "undefined" in the ` +
+      "test environment; unset it or point it at a real directory."
+  );
+}
+
+// Other variables inherited as "undefined" are outside GNO's control; only a
+// change made during the run counts as a leak.
 const inheritedUndefined = new Set(
   Object.keys(process.env).filter((key) => process.env[key] === "undefined")
 );
