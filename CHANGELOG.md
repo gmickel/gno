@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `gno update` no longer loads the PDF, Word and PowerPoint parsers before indexing a collection that has none of those files. Every update used to load them at its first file, to check for multi-record formats. On a cold Windows machine that took 9 to 11 seconds before the update printed anything. The parsers now load when the first such file is converted. A build that cannot load them still fails only those file types, as before.
+
+### Added
+
+- `GNO_PHASE_TRACE=1` prints one line per startup phase of a CLI command to stderr (write lease, index open, migrations, walk, each file, file processor), so a slow or stuck run shows where it is. See Troubleshooting, "Slow Indexing".
+
 ## [2.8.5] - 2026-09-28
 
 ### Fixed
