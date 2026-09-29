@@ -1,0 +1,38 @@
+{
+  "branch": "fn-201-test-and-ci-reliability-windows-update",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "5badd06a34bf597ae0ff60aab1b3bead4341a8bc",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-616ba25f85ec1dcfd0139ba6bbf978982036df38d37f88607953527723696ae5"
+  },
+  "head_sha": "5badd06a34bf597ae0ff60aab1b3bead4341a8bc",
+  "id": "fn-201-test-and-ci-reliability-windows-update",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 3,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R2"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R3"
+      }
+    ],
+    "total": 3
+  },
+  "timestamp": "2026-09-29T01:01:39Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
