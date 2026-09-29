@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.6] - 2026-09-29
+
 ### Fixed
 
 - `gno update` no longer loads the PDF, Word and PowerPoint parsers before indexing a collection that has none of those files. Every update used to load them at its first file, to check for multi-record formats. On a cold Windows machine that took 9 to 11 seconds before the update printed anything. The parsers now load when the first such file is converted. A build that cannot load them still fails only those file types, as before.
@@ -2927,7 +2929,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.8.5...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.8.6...HEAD
+[2.8.6]: https://github.com/gmickel/gno/compare/v2.8.5...v2.8.6
 [2.8.5]: https://github.com/gmickel/gno/compare/v2.8.4...v2.8.5
 [2.8.4]: https://github.com/gmickel/gno/compare/v2.8.3...v2.8.4
 [2.8.3]: https://github.com/gmickel/gno/compare/v2.8.2...v2.8.3
