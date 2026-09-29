@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-201-test-and-ci-reliability-windows-update",
   "spec_path": ".flow/tasks/fn-201-test-and-ci-reliability-windows-update.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement test and CI reliability fixes",
   "updated_at": "2026-09-28T23:20:05.866044Z"
 }

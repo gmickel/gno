@@ -16,7 +16,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-201-test-and-ci-reliability-windows-update.md",
-  "status": "open",
+  "status": "done",
   "title": "Test and CI reliability: Windows update hang, a fragile scaling test, a stray lock file",
   "tracker": {
     "baseHashFlow": null,
@@ -29,5 +29,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-28T23:19:52.828156Z"
+  "updated_at": "2026-09-29T01:01:50.968605Z"
 }
