@@ -3,6 +3,8 @@
  */
 
 import { describe, expect, test } from "bun:test";
+// node:path join: no Bun path utils.
+import { join } from "node:path";
 
 import type { Converter, ConvertInput } from "../../src/converters/types";
 
@@ -205,5 +207,41 @@ describe("unavailable adapter stand-in", () => {
     );
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe("ADAPTER_FAILURE");
+  });
+});
+
+describe("default registry loading (fn-201)", () => {
+  test("routing a Markdown file loads no PDF/Office parser; a PDF does", () => {
+    // A fresh process: this test runner has usually loaded the parsers already.
+    // A cold load of these parsers took 9-11 s on Windows runners, inside every
+    // `gno update`, before the first file.
+    const pipeline = join(import.meta.dir, "../../src/converters/pipeline.ts");
+    const script = `
+      const { getDefaultPipeline } = await import(${JSON.stringify(pipeline)});
+      const heavy = () =>
+        Object.keys(require.cache).some((path) =>
+          /vendor[\\\\/]converters[\\\\/](markitdown-ts|officeparser)/.test(path)
+        );
+      const defaults = getDefaultPipeline();
+      await defaults.selectRecordAdapter("text/markdown", ".md");
+      await defaults.listConverters();
+      const afterRouting = heavy();
+      await defaults.convert({
+        sourcePath: "/x/a.pdf", relativePath: "a.pdf", collection: "c",
+        bytes: new Uint8Array(0), mime: "application/pdf", ext: ".pdf",
+        limits: { maxBytes: 1000, timeoutMs: 1000 },
+      });
+      console.log(JSON.stringify({ afterRouting, afterPdf: heavy() }));
+    `;
+    const child = Bun.spawnSync({
+      cmd: [process.execPath, "-e", script],
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    expect(child.stderr.toString()).toBe("");
+    expect(JSON.parse(child.stdout.toString())).toEqual({
+      afterRouting: false,
+      afterPdf: true,
+    });
   });
 });
