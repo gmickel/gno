@@ -20,19 +20,10 @@ import {
 } from "../../errors";
 import { ADAPTER_VERSIONS } from "../../versions";
 import { hasPrefix, isPasswordProtectedXlsx } from "../shared/ooxml-protection";
+import { MARKITDOWN_CONVERTER_ID, markitdownCanHandle } from "./match";
 
-const CONVERTER_ID = "adapter/markitdown-ts" as const;
+const CONVERTER_ID = MARKITDOWN_CONVERTER_ID;
 const CONVERTER_VERSION = ADAPTER_VERSIONS["markitdown-ts"];
-
-/** Supported extensions for this adapter */
-const SUPPORTED_EXTENSIONS = [".pdf", ".docx", ".xlsx"];
-
-/** Supported MIME types */
-const SUPPORTED_MIMES = [
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-];
 
 const PDF_SIGNATURE = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]);
 const PDF_TRAILER_SCAN_BYTES = 2048;
@@ -114,9 +105,7 @@ export const markitdownAdapter: Converter = {
   id: CONVERTER_ID,
   version: CONVERTER_VERSION,
 
-  canHandle(mime: string, ext: string): boolean {
-    return SUPPORTED_EXTENSIONS.includes(ext) || SUPPORTED_MIMES.includes(mime);
-  },
+  canHandle: markitdownCanHandle,
 
   async convert(input: ConvertInput): Promise<ConvertResult> {
     // 1. Check size limit (defense in depth; EPIC 5 does stat-based pre-check)

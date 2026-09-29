@@ -5,12 +5,22 @@
 
 import type {
   Converter,
+  ConverterId,
   ConvertInput,
   ConvertResult,
   RecordAdapter,
 } from "./types";
 
+import {
+  MARKITDOWN_CONVERTER_ID,
+  markitdownCanHandle,
+} from "./adapters/markitdownTs/match";
+import {
+  OFFICEPARSER_CONVERTER_ID,
+  officeparserCanHandle,
+} from "./adapters/officeparser/match";
 import { adapterError, unsupportedError } from "./errors";
+import { ADAPTER_VERSIONS } from "./versions";
 
 export class ConverterRegistry {
   private readonly converters: Converter[] = [];
@@ -71,38 +81,56 @@ export class ConverterRegistry {
   }
 }
 
+/** Identity and routing of an adapter whose module loads on first use. */
+export interface LazyAdapterSpec {
+  id: ConverterId;
+  version: string;
+  canHandle: Converter["canHandle"];
+}
+
 /**
- * Load an adapter module; if it cannot load in this runtime, stand in a
- * converter that fails its file types with ADAPTER_FAILURE and the reason.
+ * An adapter that loads its module on its first conversion. Routing and
+ * identity come from the spec, so selecting a converter or a record adapter
+ * never loads the parser: the PDF/Office parsers took 9-11 s to load on a
+ * cold Windows runner, inside every `gno update` (fn-201). If the module
+ * cannot load in this runtime (pdf.js without its native canvas binding in a
+ * standalone executable), its file types fail with ADAPTER_FAILURE and the
+ * reason, and other file types are unaffected.
  */
-export async function loadAdapter(
-  load: () => Promise<Converter>,
-  id: string,
-  extensions: readonly string[],
-  mimes: readonly string[]
-): Promise<Converter> {
-  try {
-    return await load();
-  } catch (cause) {
-    const reason = cause instanceof Error ? cause.message : String(cause);
-    return {
-      id,
-      version: "unavailable",
-      // Same matching as the real adapter, so a sniffed MIME without an
-      // extension still reports ADAPTER_FAILURE, not UNSUPPORTED.
-      canHandle: (mime, ext) =>
-        extensions.includes(ext) || mimes.includes(mime),
-      convert: (input) =>
-        Promise.resolve({
-          ok: false,
-          error: adapterError(
-            input,
-            id,
-            `${id} is unavailable in this build: ${reason}`
-          ),
-        }),
-    };
-  }
+export function lazyAdapter(
+  spec: LazyAdapterSpec,
+  load: () => Promise<Converter>
+): Converter {
+  let loaded: Promise<Converter> | undefined;
+  return {
+    id: spec.id,
+    version: spec.version,
+    canHandle: spec.canHandle,
+    async convert(input) {
+      loaded ??= load().catch((cause: unknown) =>
+        unavailableAdapter(
+          spec,
+          cause instanceof Error ? cause.message : String(cause)
+        )
+      );
+      return (await loaded).convert(input);
+    },
+  };
+}
+
+function unavailableAdapter(spec: LazyAdapterSpec, reason: string): Converter {
+  return {
+    ...spec,
+    convert: (input) =>
+      Promise.resolve({
+        ok: false,
+        error: adapterError(
+          input,
+          spec.id,
+          `${spec.id} is unavailable in this build: ${reason}`
+        ),
+      }),
+  };
 }
 
 /**
@@ -121,27 +149,23 @@ export async function createDefaultRegistry(): Promise<ConverterRegistry> {
   const { markdownConverter } = await import("./native/markdown");
   const { plaintextConverter } = await import("./native/plaintext");
   const { xlsxAdapter } = await import("./adapters/xlsx/adapter");
-  // The PDF/Office adapters load pdf.js, which cannot initialize where its
-  // native canvas binding is missing (a standalone compiled executable). A
-  // failed adapter only fails its own file types.
-  const markitdownAdapter = await loadAdapter(
+  const markitdownAdapter = lazyAdapter(
+    {
+      id: MARKITDOWN_CONVERTER_ID,
+      version: ADAPTER_VERSIONS["markitdown-ts"],
+      canHandle: markitdownCanHandle,
+    },
     async () =>
-      (await import("./adapters/markitdownTs/adapter")).markitdownAdapter,
-    "adapter/markitdown-ts",
-    [".pdf", ".docx"],
-    [
-      "application/pdf",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ]
+      (await import("./adapters/markitdownTs/adapter")).markitdownAdapter
   );
-  const officeparserAdapter = await loadAdapter(
+  const officeparserAdapter = lazyAdapter(
+    {
+      id: OFFICEPARSER_CONVERTER_ID,
+      version: ADAPTER_VERSIONS.officeparser,
+      canHandle: officeparserCanHandle,
+    },
     async () =>
-      (await import("./adapters/officeparser/adapter")).officeparserAdapter,
-    "adapter/officeparser",
-    [".pptx"],
-    [
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    ]
+      (await import("./adapters/officeparser/adapter")).officeparserAdapter
   );
   const { jsonlAdapter } = await import("./adapters/jsonl/adapter");
   const { transcriptAdapter } = await import("./adapters/transcript/adapter");

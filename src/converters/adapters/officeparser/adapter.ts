@@ -14,13 +14,10 @@ import { parseOffice } from "../../../../vendor/converters/officeparser";
 import { adapterError, corruptError, tooLargeError } from "../../errors";
 import { basenameWithoutExt } from "../../path";
 import { ADAPTER_VERSIONS } from "../../versions";
+import { OFFICEPARSER_CONVERTER_ID, officeparserCanHandle } from "./match";
 
-const CONVERTER_ID = "adapter/officeparser" as const;
+const CONVERTER_ID = OFFICEPARSER_CONVERTER_ID;
 const CONVERTER_VERSION = ADAPTER_VERSIONS.officeparser;
-
-/** Supported MIME type */
-const PPTX_MIME =
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 
 /**
  * Control character pattern built dynamically to avoid lint issues.
@@ -62,9 +59,7 @@ export const officeparserAdapter: Converter = {
   id: CONVERTER_ID,
   version: CONVERTER_VERSION,
 
-  canHandle(mime: string, ext: string): boolean {
-    return ext === ".pptx" || mime === PPTX_MIME;
-  },
+  canHandle: officeparserCanHandle,
 
   async convert(input: ConvertInput): Promise<ConvertResult> {
     // Size check (defense in depth; EPIC 5 does stat-based pre-check)
