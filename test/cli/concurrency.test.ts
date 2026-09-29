@@ -176,6 +176,13 @@ describe("CLI concurrent read/write access", () => {
         testStart
       );
       await awaitChildren([lsAfter], deadline);
+      // FN201-TEMP: report slow passing runs too (removed before merge).
+      if (performance.now() - testStart > 7000) {
+        const slow = await Promise.all(
+          [init, update, lsDuring, lsAfter].map((child) => describeChild(child))
+        );
+        console.error(`FN201_SLOW\n${slow.join("\n")}`);
+      }
       const parsed = JSON.parse(await successfulOutput(lsAfter)) as {
         documents: Array<{ uri: string }>;
         meta: { total: number };
