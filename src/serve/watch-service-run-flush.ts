@@ -10,7 +10,7 @@ import { normalize } from "node:path";
 import type { Collection } from "../config/types";
 import type { CollectionSyncResult, SyncOptions } from "../ingestion";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
-import type { WatchQueueHost } from "./watch-service-events";
+import type { WatchQueueHost, WatcherRetryKind } from "./watch-service-events";
 import type { CollectionPending } from "./watch-service-state";
 import type { WatcherSnapshot, WatcherSnapshotFs } from "./watch-snapshot";
 
@@ -36,7 +36,7 @@ export interface RunFlushContext {
   pendingByCollection: Map<string, CollectionPending>;
   flushDeadlineAt: Map<string, number>;
   syncing: Set<string>;
-  retryScheduled: Set<string>;
+  retryScheduled: Map<string, WatcherRetryKind>;
   collectionGenerations: Map<string, number>;
   snapshots: Map<string, WatcherSnapshot>;
   snapshotReady: Map<string, boolean>;
@@ -149,6 +149,9 @@ export async function runOwnedCollectionFlush(
     );
   };
 
+  // A flush can requeue failed work (e.g. a dirty classification error) and
+  // still settle as synced/idle; that must not reset the failure backoff.
+  let requeuedFailure = false;
   try {
     const outcome = await flushCollectionOnce({
       collection,
@@ -219,6 +222,7 @@ export async function runOwnedCollectionFlush(
         if (!stillOwner()) {
           return;
         }
+        requeuedFailure = true;
         requeueAfterFailure(
           ctx.queueHost,
           collectionName,
@@ -237,7 +241,10 @@ export async function runOwnedCollectionFlush(
         requeueGenerationReconcile(ctx.queueHost, collectionName);
       },
     });
-    if (outcome.status === "synced" || outcome.status === "idle") {
+    if (
+      (outcome.status === "synced" || outcome.status === "idle") &&
+      !requeuedFailure
+    ) {
       ctx.queueHost.retryFailures.delete(collectionName);
     }
     if (

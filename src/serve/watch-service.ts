@@ -15,6 +15,7 @@ import type { CollectionSyncResult, SyncOptions } from "../ingestion";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 import type { DocumentEvent, DocumentEventBus } from "./doc-events";
 import type { EmbedScheduler } from "./embed-scheduler";
+import type { WatcherRetryKind } from "./watch-service-events";
 import type {
   WatcherSnapshot,
   WatcherSnapshotBuildResult,
@@ -126,7 +127,7 @@ export class CollectionWatchService {
   readonly #pendingByCollection = new Map<string, CollectionPending>();
   readonly #timers = new Map<string, ReturnType<typeof setTimeout>>();
   readonly #flushDeadlineAt = new Map<string, number>();
-  readonly #retryScheduled = new Set<string>();
+  readonly #retryScheduled = new Map<string, WatcherRetryKind>();
   readonly #retryFailures = new Map<string, number>();
   readonly #freshEvents = new Set<string>();
   readonly #syncing = new Set<string>();

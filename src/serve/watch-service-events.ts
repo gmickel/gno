@@ -25,6 +25,12 @@ import {
   type PendingForceFlags,
 } from "./watch-service-state";
 
+/**
+ * Why an explicit retry timer is armed: "backoff" after a failed flush, "fixed"
+ * for an explicit delay such as writer-lease contention (R3: stays at 5 s).
+ */
+export type WatcherRetryKind = "backoff" | "fixed";
+
 export interface WatchEventHost {
   disposed: () => boolean;
   findCollection: (collectionName: string) => Collection | undefined;
@@ -45,8 +51,8 @@ export interface WatchQueueHost {
   pendingByCollection: Map<string, CollectionPending>;
   flushDeadlineAt: Map<string, number>;
   timers: Map<string, ReturnType<typeof setTimeout>>;
-  /** Collections with an explicit retry timer; finally must not bypass. */
-  retryScheduled: Set<string>;
+  /** Collections with an explicit retry timer, by kind; finally must not bypass. */
+  retryScheduled: Map<string, WatcherRetryKind>;
   /** Consecutive failed flushes per collection; cleared by a successful flush. */
   retryFailures: Map<string, number>;
   /** Collections with watcher events queued since their last flush took its work. */
@@ -158,13 +164,15 @@ export function scheduleFlush(
   if (host.disposed()) {
     return;
   }
-  if (host.retryScheduled.has(collectionName)) {
+  const retryKind = host.retryScheduled.get(collectionName);
+  if (retryKind !== undefined) {
     // Explicit retry owns the single timer; do not replace it with debounce.
-    if (!host.freshEvents.has(collectionName)) {
+    if (retryKind === "fixed" || !host.freshEvents.has(collectionName)) {
       return;
     }
     // A fresh event never waits out a failure backoff: drop the retry timer and
     // flush on the normal debounce. The failure count stays until a flush succeeds.
+    // A fixed (lease) retry keeps its timer so a held lease is not probed per event.
     host.retryScheduled.delete(collectionName);
     host.flushDeadlineAt.delete(collectionName);
   }
@@ -244,7 +252,10 @@ export function requeueAfterFailure(
     // Pending already merged; existing retry timer remains the sole attempt.
     return;
   }
-  host.retryScheduled.add(collectionName);
+  host.retryScheduled.set(
+    collectionName,
+    delayMs === undefined ? "backoff" : "fixed"
+  );
   let retryDelayMs = delayMs;
   if (retryDelayMs === undefined) {
     const failures = (host.retryFailures.get(collectionName) ?? 0) + 1;

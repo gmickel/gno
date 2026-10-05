@@ -63,7 +63,10 @@ const failed = (): CollectionSyncResult =>
   });
 
 async function watchNote(
-  syncPaths: (paths: string[]) => Promise<CollectionSyncResult>
+  syncPaths: (paths: string[]) => Promise<CollectionSyncResult>,
+  overrides: Partial<
+    ConstructorParameters<typeof CollectionWatchService>[0]
+  > = {}
 ) {
   const root = await mkdtemp(join(tmpdir(), "gno-watch-backoff-"));
   await writeFile(join(root, "note.md"), "x");
@@ -103,11 +106,12 @@ async function watchNote(
       emit = callback as typeof emit;
       return { close: () => undefined };
     }) as never,
+    ...overrides,
   });
   service.start();
   await Bun.sleep(60);
   return {
-    touch: (name = "note.md") => emit?.("change", name),
+    touch: (name: string | null = "note.md") => emit?.("change", name),
     cleanup: async () => {
       await service.dispose();
       await safeRm(root);
@@ -151,12 +155,13 @@ describe("watcher retry backoff", () => {
     });
     try {
       watch.touch();
-      // ~0 fail, +0.5 s fail, +1.5 s success.
-      await Bun.sleep(1_800);
+      // ~0 fail, +0.5 s fail, +1.5 s success; nothing runs after the success.
+      await Bun.sleep(2_000);
       expect(calls).toBe(3);
       watch.touch();
       // Fails at once; after a reset the retry follows 500 ms later, not 2 s.
-      await Bun.sleep(800);
+      // The next retry is not due until +1.5 s, so 1 s leaves room both ways.
+      await Bun.sleep(1_000);
       expect(calls).toBe(5);
     } finally {
       await watch.cleanup();
@@ -174,7 +179,8 @@ describe("watcher retry backoff", () => {
       // Attempts at ~0, +0.5 s, +1.5 s; the next retry is not due until +3.5 s.
       await Bun.sleep(1_800);
       watch.touch("other.md");
-      await Bun.sleep(300);
+      // A held-back edit would wait for the +3.5 s retry, 1.7 s from now.
+      await Bun.sleep(800);
       expect(synced.some((paths) => paths.includes("other.md"))).toBe(true);
     } finally {
       await watch.cleanup();
@@ -196,6 +202,41 @@ describe("watcher retry backoff", () => {
       watch.touch("other.md");
       await Bun.sleep(500);
       expect(synced.some((paths) => paths.includes("other.md"))).toBe(true);
+    } finally {
+      await watch.cleanup();
+    }
+  });
+
+  test("a dirty change whose classification keeps failing also backs off", async () => {
+    let storeCalls = 0;
+    const watch = await watchNote(async () => syncResult(), {
+      store: {
+        listActiveDirectChildSourcePaths: async () => ({ ok: true, value: [] }),
+        listActiveDescendantSourcePaths: async () => ({ ok: true, value: [] }),
+        listActiveSourcePaths: async () => {
+          storeCalls += 1;
+          return {
+            ok: false,
+            error: { code: "QUERY_FAILED", message: "store boom" },
+          };
+        },
+      } as unknown as SqliteAdapter,
+      // No baseline, so the dirty hint is classified against the store.
+      buildSnapshot: async () => ({
+        status: "fallback",
+        reason: "scan_failed",
+        durationMs: 0,
+        cause: new Error("no baseline"),
+      }),
+    });
+    try {
+      // An event without a filename marks the whole root dirty.
+      watch.touch(null);
+      // Attempts at ~0, +0.5 s, +1.5 s, then +3.5 s. A fixed 500 ms retry
+      // would have made five or six attempts in this window.
+      await Bun.sleep(2_700);
+      expect(storeCalls).toBeGreaterThanOrEqual(2);
+      expect(storeCalls).toBeLessThanOrEqual(3);
     } finally {
       await watch.cleanup();
     }

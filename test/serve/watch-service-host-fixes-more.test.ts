@@ -230,6 +230,8 @@ describe("lifecycle map tombstones", () => {
 
     const host: WatchLifecycleHost = {
       disposed: () => false,
+      retryFailures: new Map<string, number>(),
+      freshEvents: new Set<string>(),
       getCollections: () => collections,
       setCollections: (next) => {
         collections = next;

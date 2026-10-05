@@ -1,5 +1,5 @@
 ---
-title: Edits wait for the watcher failure backoff when another file in the collection k
+title: Edits wait for the watcher failure backoff while another file keeps failing
 date: "2026-10-05"
 track: bug
 category: performance
