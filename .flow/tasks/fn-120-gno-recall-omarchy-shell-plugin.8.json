@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-120-gno-recall-omarchy-shell-plugin",
   "spec_path": ".flow/tasks/fn-120-gno-recall-omarchy-shell-plugin.8.md",
-  "status": "todo",
+  "status": "done",
   "title": "Browse collections from overlay and panel",
   "updated_at": "2026-08-29T15:11:17.976741Z"
 }

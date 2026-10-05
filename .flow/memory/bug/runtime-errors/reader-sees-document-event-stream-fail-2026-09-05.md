@@ -9,6 +9,7 @@ problem_type: runtime-error
 symptoms: Idle /api/events stream emits net::ERR_INCOMPLETE_CHUNKED_ENCODING on baseline and candidate
 root_cause: (observed via live QA - unconfirmed)
 resolution_type: fix
+last_audited: "2026-10-05"
 related_to: [bug/runtime-errors/doc-view-logs-a-503-console-error-on-2026-09-02]
 ---
 

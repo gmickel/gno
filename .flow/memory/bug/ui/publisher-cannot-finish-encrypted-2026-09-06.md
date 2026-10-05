@@ -9,7 +9,7 @@ problem_type: ui
 symptoms: Unbounded encrypted dialog dismisses when audience checkbox lies outside short viewport
 root_cause: New dialog sizing utilities absent from generated production CSS; confirmed by computed style
 resolution_type: fix
-related_to: [bug/ui/mobile-collections-page-overflows-a-2026-09-05, bug/ui/mobile-graph-reader-sees-465px-page-2026-09-05, bug/ui/mobile-user-sees-clipped-docview-960px-2026-08-03]
+last_audited: "2026-10-05"
 ---
 
 ## Problem

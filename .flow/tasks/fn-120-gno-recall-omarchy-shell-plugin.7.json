@@ -15,7 +15,7 @@
   "priority": null,
   "spec": "fn-120-gno-recall-omarchy-shell-plugin",
   "spec_path": ".flow/tasks/fn-120-gno-recall-omarchy-shell-plugin.7.md",
-  "status": "todo",
+  "status": "done",
   "title": "Gate marketplace publish on released gno and the 14-state matrix",
   "updated_at": "2026-08-29T11:30:18.230550Z"
 }

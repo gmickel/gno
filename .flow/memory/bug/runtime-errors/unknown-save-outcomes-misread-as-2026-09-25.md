@@ -9,6 +9,7 @@ problem_type: runtime-error
 symptoms: Lost or pending save later shown as an outside change on disk
 root_cause: Only thrown fetches marked outcome unknown; failed verification read treated as hash mismatch
 resolution_type: fix
+last_audited: "2026-10-05"
 related_to: [bug/runtime-errors/doc-view-logs-a-503-console-error-on-2026-09-02]
 ---
 

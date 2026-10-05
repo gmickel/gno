@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-120-gno-recall-omarchy-shell-plugin",
   "spec_path": ".flow/tasks/fn-120-gno-recall-omarchy-shell-plugin.10.md",
-  "status": "todo",
+  "status": "done",
   "title": "Shift+Enter deep search via gno query (balanced)",
   "updated_at": "2026-08-29T21:10:39.907034Z"
 }

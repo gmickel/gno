@@ -17,7 +17,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-120-gno-recall-omarchy-shell-plugin.md",
-  "status": "open",
+  "status": "done",
   "title": "GNO Recall \u2014 Omarchy shell plugin",
   "tracker": {
     "baseHashFlow": null,
@@ -30,5 +30,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-08-29T10:35:54.760653Z"
+  "updated_at": "2026-10-05T00:55:16.531298Z"
 }

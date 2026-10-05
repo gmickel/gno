@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-120-gno-recall-omarchy-shell-plugin",
   "spec_path": ".flow/tasks/fn-120-gno-recall-omarchy-shell-plugin.4.md",
-  "status": "todo",
+  "status": "done",
   "title": "Ship recall overlay with Enter-only search",
   "updated_at": "2026-08-29T11:30:18.230465Z"
 }

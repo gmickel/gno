@@ -9,6 +9,7 @@ problem_type: integration
 symptoms: JSON source served by /api/doc-asset lost keys; Range slices threw
 root_cause: content-type gate treated original JSON files as API envelopes
 resolution_type: fix
+last_audited: "2026-10-05"
 ---
 
 ## Problem

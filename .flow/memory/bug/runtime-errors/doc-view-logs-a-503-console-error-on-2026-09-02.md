@@ -9,6 +9,7 @@ problem_type: runtime-error
 symptoms: /api/doc/:id/similar returns 503 on an index without embeddings; one console error per document open
 root_cause: (observed via live QA — unconfirmed)
 resolution_type: fix
+last_audited: "2026-10-05"
 ---
 
 ## Problem

@@ -9,6 +9,7 @@ problem_type: integration
 symptoms: First /api/sessions/status after a CLI source add into a new collection answers 409 EGRESS_POLICY_CHANGED
 root_cause: adoptConfig rotates the authorization epoch while handleResidentRead holds the pre-adoption epoch
 resolution_type: fix
+last_audited: "2026-10-05"
 related_to: [bug/integration/write-lease-gate-missed-embed-2026-09-25]
 ---
 

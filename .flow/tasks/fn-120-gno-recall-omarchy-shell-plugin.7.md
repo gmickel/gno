@@ -32,8 +32,9 @@ Publishing against an unreleased local gno is out of spec even if the plugin loo
 - [ ] Post-submit check: omarchy plugin add <public-url> installs and the widget/overlay still load against released gno.
 
 ## Done summary
-TBD
+Marketplace publish completed: GNO Recall listed on omacom/omarchy-plugin-marketplace (issue #3590, closed 2026-09-15, labels listed + approved-and-verified). Plugin repo commit 4b261f7 links the listing.
 
+stage: plan-sync - skipped(config: planSync.enabled != true)
 ## Evidence
 - Commits:
 - Tests:

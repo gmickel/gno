@@ -9,6 +9,7 @@ problem_type: data
 symptoms: Bun upgrade after fork re-forked; context change forked silently; stale vectors reused
 root_cause: Resolution derived candidate partitions from the current runtime instead of stored vector-space membership
 resolution_type: fix
+last_audited: "2026-10-05"
 ---
 
 ## Problem

@@ -9,6 +9,7 @@ problem_type: data
 symptoms: "Retry after interrupted write re-applied stale tags, double-superseded, or recreated a deleted note"
 root_cause: Recovery checked only the request's own file hash and used an index-local row ID
 resolution_type: fix
+last_audited: "2026-10-05"
 ---
 
 ## Problem

@@ -10,7 +10,7 @@
   "priority": null,
   "spec": "fn-120-gno-recall-omarchy-shell-plugin",
   "spec_path": ".flow/tasks/fn-120-gno-recall-omarchy-shell-plugin.9.md",
-  "status": "todo",
+  "status": "done",
   "title": "Guarantee Enter opens every document row with smart fallback",
   "updated_at": "2026-08-29T15:11:18.261473Z"
 }

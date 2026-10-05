@@ -9,6 +9,7 @@ problem_type: integration
 symptoms: "Resident preparation writes (variant partition, selection) ran outside the lease"
 root_cause: Gate wrapped page loop only; prepareEmbeddingBacklog writes first
 resolution_type: fix
+last_audited: "2026-10-05"
 ---
 
 ## Problem
