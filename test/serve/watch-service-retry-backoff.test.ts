@@ -62,11 +62,18 @@ const failed = (): CollectionSyncResult =>
     ],
   });
 
-async function watchNote(syncPaths: () => Promise<CollectionSyncResult>) {
+async function watchNote(
+  syncPaths: (paths: string[]) => Promise<CollectionSyncResult>
+) {
   const root = await mkdtemp(join(tmpdir(), "gno-watch-backoff-"));
   await writeFile(join(root, "note.md"), "x");
-  defaultSyncService.syncPaths =
-    syncPaths as unknown as typeof defaultSyncService.syncPaths;
+  await writeFile(join(root, "other.md"), "y");
+  defaultSyncService.syncPaths = (async (
+    _collection: unknown,
+    _store: unknown,
+    paths: string[]
+  ) =>
+    await syncPaths(paths)) as unknown as typeof defaultSyncService.syncPaths;
   let emit: ((eventType: string, filename: string | null) => void) | undefined;
   const service = new CollectionWatchService({
     ...portableWatchOptions(),
@@ -100,7 +107,7 @@ async function watchNote(syncPaths: () => Promise<CollectionSyncResult>) {
   service.start();
   await Bun.sleep(60);
   return {
-    touch: () => emit?.("change", "note.md"),
+    touch: (name = "note.md") => emit?.("change", name),
     cleanup: async () => {
       await service.dispose();
       await safeRm(root);
@@ -151,6 +158,44 @@ describe("watcher retry backoff", () => {
       // Fails at once; after a reset the retry follows 500 ms later, not 2 s.
       await Bun.sleep(800);
       expect(calls).toBe(5);
+    } finally {
+      await watch.cleanup();
+    }
+  });
+
+  test("an edit to another file is not held back by the failure backoff", async () => {
+    const synced: string[][] = [];
+    const watch = await watchNote(async (paths) => {
+      synced.push(paths);
+      return paths.includes("note.md") ? failed() : syncResult();
+    });
+    try {
+      watch.touch();
+      // Attempts at ~0, +0.5 s, +1.5 s; the next retry is not due until +3.5 s.
+      await Bun.sleep(1_800);
+      watch.touch("other.md");
+      await Bun.sleep(300);
+      expect(synced.some((paths) => paths.includes("other.md"))).toBe(true);
+    } finally {
+      await watch.cleanup();
+    }
+  });
+
+  test("an edit made while a failing flush runs is not held back", async () => {
+    const synced: string[][] = [];
+    const watch = await watchNote(async (paths) => {
+      synced.push(paths);
+      await Bun.sleep(200);
+      return paths.includes("note.md") ? failed() : syncResult();
+    });
+    try {
+      watch.touch();
+      // Two failed passes put the next retry 1 s after the second one.
+      await Bun.sleep(900);
+      // The second failing pass is in flight now; edit another file meanwhile.
+      watch.touch("other.md");
+      await Bun.sleep(500);
+      expect(synced.some((paths) => paths.includes("other.md"))).toBe(true);
     } finally {
       await watch.cleanup();
     }
