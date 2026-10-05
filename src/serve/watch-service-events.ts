@@ -12,8 +12,8 @@ import type { Collection } from "../config/types";
 import {
   WATCHER_FLUSH_DEBOUNCE_MS,
   WATCHER_MAX_FLUSH_DELAY_MS,
-  WATCHER_RETRY_BACKOFF_MS,
   classifyWatcherFilename,
+  watcherRetryDelayMs,
 } from "./watch-reconciliation";
 import {
   applyPendingForceFlags,
@@ -24,6 +24,12 @@ import {
   type CollectionPending,
   type PendingForceFlags,
 } from "./watch-service-state";
+
+/**
+ * Why an explicit retry timer is armed: "backoff" after a failed flush, "fixed"
+ * for an explicit delay such as writer-lease contention (R3: stays at 5 s).
+ */
+export type WatcherRetryKind = "backoff" | "fixed";
 
 export interface WatchEventHost {
   disposed: () => boolean;
@@ -45,8 +51,12 @@ export interface WatchQueueHost {
   pendingByCollection: Map<string, CollectionPending>;
   flushDeadlineAt: Map<string, number>;
   timers: Map<string, ReturnType<typeof setTimeout>>;
-  /** Collections with an explicit retry timer; finally must not bypass. */
-  retryScheduled: Set<string>;
+  /** Collections with an explicit retry timer, by kind; finally must not bypass. */
+  retryScheduled: Map<string, WatcherRetryKind>;
+  /** Consecutive failed flushes per collection; cleared by a successful flush. */
+  retryFailures: Map<string, number>;
+  /** Collections with watcher events queued since their last flush took its work. */
+  freshEvents: Set<string>;
   snapshotReady: Map<string, boolean>;
   inFlightSyncs: Set<Promise<void>>;
   runFlush: (collectionName: string) => Promise<void>;
@@ -105,6 +115,7 @@ export function enqueueExactPath(
     collectionName,
     queueExactPath(pending, relPath, host.maxExactPaths)
   );
+  host.freshEvents.add(collectionName);
   scheduleFlush(host, collectionName);
 }
 
@@ -123,6 +134,7 @@ export function enqueueDirtyHint(
     collectionName,
     queueDirtyHint(pending, hint, host.maxDirtyHints)
   );
+  host.freshEvents.add(collectionName);
   scheduleFlush(host, collectionName);
 }
 
@@ -152,9 +164,17 @@ export function scheduleFlush(
   if (host.disposed()) {
     return;
   }
-  // Explicit retry owns the single timer; do not replace it with debounce.
-  if (host.retryScheduled.has(collectionName)) {
-    return;
+  const retryKind = host.retryScheduled.get(collectionName);
+  if (retryKind !== undefined) {
+    // Explicit retry owns the single timer; do not replace it with debounce.
+    if (retryKind === "fixed" || !host.freshEvents.has(collectionName)) {
+      return;
+    }
+    // A fresh event never waits out a failure backoff: drop the retry timer and
+    // flush on the normal debounce. The failure count stays until a flush succeeds.
+    // A fixed (lease) retry keeps its timer so a held lease is not probed per event.
+    host.retryScheduled.delete(collectionName);
+    host.flushDeadlineAt.delete(collectionName);
   }
   const schedule = computeFlushDelay({
     nowMs: host.clock(),
@@ -213,6 +233,8 @@ export function startFlush(host: WatchQueueHost, collectionName: string): void {
  * Re-arm pending work after a file-level failure with retry backoff.
  * At most one retry timer per collection; finally must not startFlush while set.
  * forceFallback/overflow survive until forced classification + sync succeed.
+ * Without an explicit delay, each consecutive failure doubles the wait (capped),
+ * so work that fails the same way every time cannot spin the resident.
  */
 export function requeueAfterFailure(
   host: WatchQueueHost,
@@ -220,7 +242,7 @@ export function requeueAfterFailure(
   exact: string[],
   dirty: string[],
   forceFlags?: PendingForceFlags,
-  delayMs = WATCHER_RETRY_BACKOFF_MS
+  delayMs?: number
 ): void {
   queueWithoutSchedule(host, collectionName, exact, dirty, forceFlags);
   if (host.disposed()) {
@@ -230,7 +252,19 @@ export function requeueAfterFailure(
     // Pending already merged; existing retry timer remains the sole attempt.
     return;
   }
-  host.retryScheduled.add(collectionName);
+  host.retryScheduled.set(
+    collectionName,
+    delayMs === undefined ? "backoff" : "fixed"
+  );
+  let retryDelayMs = delayMs;
+  if (retryDelayMs === undefined) {
+    const failures = (host.retryFailures.get(collectionName) ?? 0) + 1;
+    host.retryFailures.set(collectionName, failures);
+    // Events that arrived while the failed flush ran flush on the debounce.
+    retryDelayMs = host.freshEvents.has(collectionName)
+      ? host.flushDebounceMs
+      : watcherRetryDelayMs(failures);
+  }
   const existingTimer = host.timers.get(collectionName);
   if (existingTimer) {
     clearTimeout(existingTimer);
@@ -242,7 +276,7 @@ export function requeueAfterFailure(
       host.timers.delete(collectionName);
       host.retryScheduled.delete(collectionName);
       startFlush(host, collectionName);
-    }, delayMs)
+    }, retryDelayMs)
   );
 }
 

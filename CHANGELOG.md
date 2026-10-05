@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A resident `gno serve` or `gno daemon` no longer spins when a watched collection keeps failing to sync, for example because a file is unreadable or the collection sets `sourceAvailability: local` on a path GNO cannot verify. The watcher used to retry that collection every 0.5 seconds for as long as the resident ran. Each retry took the write lock and recorded another error, which used most of a CPU core and kept background embedding waiting. Retries now wait 0.5 seconds at first and double up to 5 minutes; the next successful sync resets the delay. New edits in that collection, and a change to its configuration that may fix the cause, are still picked up right away. Thanks to the user who sent the diagnostics for this report.
+
 ## [2.9.0] - 2026-09-29
 
 ### Fixed

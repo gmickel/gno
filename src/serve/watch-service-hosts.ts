@@ -8,7 +8,11 @@ import type { FSWatcher } from "node:fs";
 
 import type { Collection } from "../config/types";
 import type { SyncOptions } from "../ingestion";
-import type { WatchEventHost, WatchQueueHost } from "./watch-service-events";
+import type {
+  WatchEventHost,
+  WatchQueueHost,
+  WatcherRetryKind,
+} from "./watch-service-events";
 import type { WatchLifecycleHost } from "./watch-service-lifecycle";
 import type { CollectionPending } from "./watch-service-state";
 import type { WatcherSnapshot } from "./watch-snapshot";
@@ -46,7 +50,9 @@ export interface WatchServiceHostState {
   maxDirtyHints: number;
   flushDeadlineAt: Map<string, number>;
   timers: Map<string, ReturnType<typeof setTimeout>>;
-  retryScheduled: Set<string>;
+  retryScheduled: Map<string, WatcherRetryKind>;
+  retryFailures: Map<string, number>;
+  freshEvents: Set<string>;
   inFlightSyncs: Set<Promise<void>>;
   runFlush: (collectionName: string) => Promise<void>;
 }
@@ -71,6 +77,8 @@ export function buildLifecycleHost(
     snapshotInit: state.snapshotInit,
     syncing: state.syncing,
     pendingByCollection: state.pendingByCollection,
+    retryFailures: state.retryFailures,
+    freshEvents: state.freshEvents,
     clearCollectionRuntimeState: state.clearCollectionRuntimeState,
     beginSnapshotInit: state.beginSnapshotInit,
     watchFactory: state.watchFactory,
@@ -102,6 +110,8 @@ export function buildQueueHost(state: WatchServiceHostState): WatchQueueHost {
     flushDeadlineAt: state.flushDeadlineAt,
     timers: state.timers,
     retryScheduled: state.retryScheduled,
+    retryFailures: state.retryFailures,
+    freshEvents: state.freshEvents,
     snapshotReady: state.snapshotReady,
     inFlightSyncs: state.inFlightSyncs,
     runFlush: state.runFlush,

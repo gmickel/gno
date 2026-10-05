@@ -15,6 +15,7 @@ import type { CollectionSyncResult, SyncOptions } from "../ingestion";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 import type { DocumentEvent, DocumentEventBus } from "./doc-events";
 import type { EmbedScheduler } from "./embed-scheduler";
+import type { WatcherRetryKind } from "./watch-service-events";
 import type {
   WatcherSnapshot,
   WatcherSnapshotBuildResult,
@@ -126,7 +127,9 @@ export class CollectionWatchService {
   readonly #pendingByCollection = new Map<string, CollectionPending>();
   readonly #timers = new Map<string, ReturnType<typeof setTimeout>>();
   readonly #flushDeadlineAt = new Map<string, number>();
-  readonly #retryScheduled = new Set<string>();
+  readonly #retryScheduled = new Map<string, WatcherRetryKind>();
+  readonly #retryFailures = new Map<string, number>();
+  readonly #freshEvents = new Set<string>();
   readonly #syncing = new Set<string>();
   readonly #inFlightSyncs = new Set<Promise<void>>();
   readonly #suppressedPaths = new Map<string, number>();
@@ -216,6 +219,8 @@ export class CollectionWatchService {
     this.#timers.clear();
     this.#flushDeadlineAt.clear();
     this.#retryScheduled.clear();
+    this.#retryFailures.clear();
+    this.#freshEvents.clear();
     this.#watchers.clear();
     this.#watchRoots.clear();
     this.#collectionGenerations.clear();
@@ -303,6 +308,8 @@ export class CollectionWatchService {
       flushDeadlineAt: this.#flushDeadlineAt,
       timers: this.#timers,
       retryScheduled: this.#retryScheduled,
+      retryFailures: this.#retryFailures,
+      freshEvents: this.#freshEvents,
       inFlightSyncs: this.#inFlightSyncs,
       runFlush: (name) => this.#flushCollection(name),
     };
@@ -316,6 +323,8 @@ export class CollectionWatchService {
     this.#snapshotInit.delete(collectionName);
     this.#flushDeadlineAt.delete(collectionName);
     this.#retryScheduled.delete(collectionName);
+    this.#retryFailures.delete(collectionName);
+    this.#freshEvents.delete(collectionName);
     const timer = this.#timers.get(collectionName);
     if (timer) {
       clearTimeout(timer);

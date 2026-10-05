@@ -38,6 +38,10 @@ export interface WatchLifecycleHost {
    * forceFallback + durable generation reconcile so a new baseline cannot absorb it.
    */
   pendingByCollection: Map<string, CollectionPending>;
+  /** Consecutive failed flushes per collection (failure backoff input). */
+  retryFailures: Map<string, number>;
+  /** Collections whose queued work is new user action, not a failure retry. */
+  freshEvents: Set<string>;
   clearCollectionRuntimeState: (collectionName: string) => void;
   beginSnapshotInit: (collection: Collection) => void;
   watchFactory: (
@@ -186,6 +190,10 @@ export function applyCollectionUpdate(
         pending.forceFallback = true;
       }
       host.pendingByCollection.set(collection.name, pending);
+      // A config edit is user action that may fix the failure cause: it must
+      // not wait out an armed failure backoff, and the count starts over.
+      host.freshEvents.add(collection.name);
+      host.retryFailures.delete(collection.name);
     }
     if (host.watchers.has(collection.name)) {
       host.beginSnapshotInit(collection);

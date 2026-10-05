@@ -164,7 +164,8 @@ describe("durable forceFallback / overflow", () => {
       });
       service.start();
       watcherCallback?.("rename", "doc.md.tmp");
-      await Bun.sleep(1_400);
+      // Two failed classifications back off: attempts at ~0, +0.5 s, +1.5 s.
+      await Bun.sleep(2_200);
       expect(seen.some((batch) => batch.includes("doc.md"))).toBe(true);
       await service.dispose();
     } finally {

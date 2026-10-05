@@ -42,8 +42,19 @@ export const WATCHER_MAX_DIRTY_HINTS = 4_096;
 /** Cap on application-write suppression history entries. */
 export const WATCHER_MAX_SUPPRESSION_ENTRIES = 4_096;
 
-/** Bounded retry delay after failed classification/sync. */
+/** Retry delay after the first failed classification/sync of a collection. */
 export const WATCHER_RETRY_BACKOFF_MS = 500;
+
+/** Ceiling for the retry delay while a collection keeps failing. */
+export const WATCHER_MAX_RETRY_BACKOFF_MS = 5 * 60_000;
+
+/** Delay before the retry that follows `failures` consecutive failed flushes. */
+export function watcherRetryDelayMs(failures: number): number {
+  return Math.min(
+    WATCHER_RETRY_BACKOFF_MS * 2 ** Math.max(0, failures - 1),
+    WATCHER_MAX_RETRY_BACKOFF_MS
+  );
+}
 
 /** Retry delay while another writer holds the shared writer lease. */
 export const WATCHER_LEASE_RETRY_MS = 5_000;

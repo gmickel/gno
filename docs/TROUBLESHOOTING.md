@@ -526,7 +526,14 @@ On supported local filesystems, atomic replacements and recursive directory
 deletions should settle without `gno update`. Exact file events are
 content-hashed; temp/directory/missing-name events are reconciled from bounded
 filesystem/index evidence. A failed scan or store query is retried and never
-used as deletion proof. On Windows, or when native anchored directory handles
+used as deletion proof. While a collection keeps failing the same way (an
+unreadable file, or `sourceAvailability: local` on a path GNO cannot verify),
+the retry waits 0.5 seconds at first and doubles up to 5 minutes, so it does
+not keep the resident busy; the next successful sync resets it. New file
+changes in that collection, and syncs started with `gno update` or from the Web
+UI, are not delayed by this backoff. Changing the collection's configuration
+(for example fixing `sourceAvailability`) also syncs it right away and restarts
+the backoff from 0.5 seconds. On Windows, or when native anchored directory handles
 are unavailable, ambiguous work safely escalates to full collection sync.
 
 If changes remain stale, verify the collection root is mounted and readable,
