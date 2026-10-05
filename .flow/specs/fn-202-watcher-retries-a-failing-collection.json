@@ -15,7 +15,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-202-watcher-retries-a-failing-collection.md",
-  "status": "open",
+  "status": "done",
   "title": "Watcher retries a failing collection every 500 ms forever",
   "tracker": {
     "baseHashFlow": null,
@@ -28,5 +28,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-05T20:35:47.361211Z"
+  "updated_at": "2026-10-05T21:01:08.243441Z"
 }

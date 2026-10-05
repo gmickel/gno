@@ -6,7 +6,7 @@
   "priority": null,
   "spec": "fn-202-watcher-retries-a-failing-collection",
   "spec_path": ".flow/tasks/fn-202-watcher-retries-a-failing-collection.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement watcher retry backoff",
   "updated_at": "2026-10-05T20:26:20.812775Z"
 }
