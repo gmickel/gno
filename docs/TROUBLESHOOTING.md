@@ -529,8 +529,9 @@ filesystem/index evidence. A failed scan or store query is retried and never
 used as deletion proof. While a collection keeps failing the same way (an
 unreadable file, or `sourceAvailability: local` on a path GNO cannot verify),
 the retry waits 0.5 seconds at first and doubles up to 5 minutes, so it does
-not keep the resident busy; the next successful sync resets it. A sync started
-with `gno update` or from the Web UI is not delayed by this backoff. On Windows, or when native anchored directory handles
+not keep the resident busy; the next successful sync resets it. New file
+changes in that collection, and syncs started with `gno update` or from the Web
+UI, are not delayed by this backoff. On Windows, or when native anchored directory handles
 are unavailable, ambiguous work safely escalates to full collection sync.
 
 If changes remain stale, verify the collection root is mounted and readable,

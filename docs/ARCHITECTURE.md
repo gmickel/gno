@@ -392,7 +392,8 @@ full collection sync rather than inferring deletion or dropping an update.
 Watcher queues, snapshots, suppression history, and retry timing are capped;
 sustained churn has a hard flush deadline. Consecutive failed flushes of one
 collection back off from 0.5 seconds, doubling up to 5 minutes, and a
-successful flush resets the delay. Windows retains end-state
+successful flush resets the delay. A new watcher event still flushes on the
+normal debounce. Windows retains end-state
 correctness through full-collection escalation because native anchored handles
 are unavailable. Network, removable, and coarse-timestamp filesystems are not
 universally guaranteed. Changed sources and incoming references are reprojected,
