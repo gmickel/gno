@@ -48,6 +48,7 @@ export interface WatchServiceHostState {
   timers: Map<string, ReturnType<typeof setTimeout>>;
   retryScheduled: Set<string>;
   retryFailures: Map<string, number>;
+  freshEvents: Set<string>;
   inFlightSyncs: Set<Promise<void>>;
   runFlush: (collectionName: string) => Promise<void>;
 }
@@ -104,6 +105,7 @@ export function buildQueueHost(state: WatchServiceHostState): WatchQueueHost {
     timers: state.timers,
     retryScheduled: state.retryScheduled,
     retryFailures: state.retryFailures,
+    freshEvents: state.freshEvents,
     snapshotReady: state.snapshotReady,
     inFlightSyncs: state.inFlightSyncs,
     runFlush: state.runFlush,

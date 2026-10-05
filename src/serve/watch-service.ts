@@ -128,6 +128,7 @@ export class CollectionWatchService {
   readonly #flushDeadlineAt = new Map<string, number>();
   readonly #retryScheduled = new Set<string>();
   readonly #retryFailures = new Map<string, number>();
+  readonly #freshEvents = new Set<string>();
   readonly #syncing = new Set<string>();
   readonly #inFlightSyncs = new Set<Promise<void>>();
   readonly #suppressedPaths = new Map<string, number>();
@@ -218,6 +219,7 @@ export class CollectionWatchService {
     this.#flushDeadlineAt.clear();
     this.#retryScheduled.clear();
     this.#retryFailures.clear();
+    this.#freshEvents.clear();
     this.#watchers.clear();
     this.#watchRoots.clear();
     this.#collectionGenerations.clear();
@@ -306,6 +308,7 @@ export class CollectionWatchService {
       timers: this.#timers,
       retryScheduled: this.#retryScheduled,
       retryFailures: this.#retryFailures,
+      freshEvents: this.#freshEvents,
       inFlightSyncs: this.#inFlightSyncs,
       runFlush: (name) => this.#flushCollection(name),
     };
@@ -320,6 +323,7 @@ export class CollectionWatchService {
     this.#flushDeadlineAt.delete(collectionName);
     this.#retryScheduled.delete(collectionName);
     this.#retryFailures.delete(collectionName);
+    this.#freshEvents.delete(collectionName);
     const timer = this.#timers.get(collectionName);
     if (timer) {
       clearTimeout(timer);

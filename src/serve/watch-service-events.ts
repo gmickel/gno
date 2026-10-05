@@ -49,6 +49,8 @@ export interface WatchQueueHost {
   retryScheduled: Set<string>;
   /** Consecutive failed flushes per collection; cleared by a successful flush. */
   retryFailures: Map<string, number>;
+  /** Collections with watcher events queued since their last flush took its work. */
+  freshEvents: Set<string>;
   snapshotReady: Map<string, boolean>;
   inFlightSyncs: Set<Promise<void>>;
   runFlush: (collectionName: string) => Promise<void>;
@@ -107,6 +109,7 @@ export function enqueueExactPath(
     collectionName,
     queueExactPath(pending, relPath, host.maxExactPaths)
   );
+  host.freshEvents.add(collectionName);
   scheduleFlush(host, collectionName);
 }
 
@@ -125,6 +128,7 @@ export function enqueueDirtyHint(
     collectionName,
     queueDirtyHint(pending, hint, host.maxDirtyHints)
   );
+  host.freshEvents.add(collectionName);
   scheduleFlush(host, collectionName);
 }
 
@@ -154,9 +158,15 @@ export function scheduleFlush(
   if (host.disposed()) {
     return;
   }
-  // Explicit retry owns the single timer; do not replace it with debounce.
   if (host.retryScheduled.has(collectionName)) {
-    return;
+    // Explicit retry owns the single timer; do not replace it with debounce.
+    if (!host.freshEvents.has(collectionName)) {
+      return;
+    }
+    // A fresh event never waits out a failure backoff: drop the retry timer and
+    // flush on the normal debounce. The failure count stays until a flush succeeds.
+    host.retryScheduled.delete(collectionName);
+    host.flushDeadlineAt.delete(collectionName);
   }
   const schedule = computeFlushDelay({
     nowMs: host.clock(),
@@ -239,7 +249,10 @@ export function requeueAfterFailure(
   if (retryDelayMs === undefined) {
     const failures = (host.retryFailures.get(collectionName) ?? 0) + 1;
     host.retryFailures.set(collectionName, failures);
-    retryDelayMs = watcherRetryDelayMs(failures);
+    // Events that arrived while the failed flush ran flush on the debounce.
+    retryDelayMs = host.freshEvents.has(collectionName)
+      ? host.flushDebounceMs
+      : watcherRetryDelayMs(failures);
   }
   const existingTimer = host.timers.get(collectionName);
   if (existingTimer) {

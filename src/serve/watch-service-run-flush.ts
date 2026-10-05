@@ -125,6 +125,7 @@ export async function runOwnedCollectionFlush(
   }
 
   // Events that arrived while the lease was being taken join this flush.
+  ctx.queueHost.freshEvents.delete(collectionName);
   const taken = takePending(
     ctx.pendingByCollection.get(collectionName) ?? pending
   );
