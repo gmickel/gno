@@ -12,8 +12,8 @@ import type { Collection } from "../config/types";
 import {
   WATCHER_FLUSH_DEBOUNCE_MS,
   WATCHER_MAX_FLUSH_DELAY_MS,
-  WATCHER_RETRY_BACKOFF_MS,
   classifyWatcherFilename,
+  watcherRetryDelayMs,
 } from "./watch-reconciliation";
 import {
   applyPendingForceFlags,
@@ -47,6 +47,8 @@ export interface WatchQueueHost {
   timers: Map<string, ReturnType<typeof setTimeout>>;
   /** Collections with an explicit retry timer; finally must not bypass. */
   retryScheduled: Set<string>;
+  /** Consecutive failed flushes per collection; cleared by a successful flush. */
+  retryFailures: Map<string, number>;
   snapshotReady: Map<string, boolean>;
   inFlightSyncs: Set<Promise<void>>;
   runFlush: (collectionName: string) => Promise<void>;
@@ -213,6 +215,8 @@ export function startFlush(host: WatchQueueHost, collectionName: string): void {
  * Re-arm pending work after a file-level failure with retry backoff.
  * At most one retry timer per collection; finally must not startFlush while set.
  * forceFallback/overflow survive until forced classification + sync succeed.
+ * Without an explicit delay, each consecutive failure doubles the wait (capped),
+ * so work that fails the same way every time cannot spin the resident.
  */
 export function requeueAfterFailure(
   host: WatchQueueHost,
@@ -220,7 +224,7 @@ export function requeueAfterFailure(
   exact: string[],
   dirty: string[],
   forceFlags?: PendingForceFlags,
-  delayMs = WATCHER_RETRY_BACKOFF_MS
+  delayMs?: number
 ): void {
   queueWithoutSchedule(host, collectionName, exact, dirty, forceFlags);
   if (host.disposed()) {
@@ -231,6 +235,12 @@ export function requeueAfterFailure(
     return;
   }
   host.retryScheduled.add(collectionName);
+  let retryDelayMs = delayMs;
+  if (retryDelayMs === undefined) {
+    const failures = (host.retryFailures.get(collectionName) ?? 0) + 1;
+    host.retryFailures.set(collectionName, failures);
+    retryDelayMs = watcherRetryDelayMs(failures);
+  }
   const existingTimer = host.timers.get(collectionName);
   if (existingTimer) {
     clearTimeout(existingTimer);
@@ -242,7 +252,7 @@ export function requeueAfterFailure(
       host.timers.delete(collectionName);
       host.retryScheduled.delete(collectionName);
       startFlush(host, collectionName);
-    }, delayMs)
+    }, retryDelayMs)
   );
 }
 

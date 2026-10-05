@@ -236,6 +236,9 @@ export async function runOwnedCollectionFlush(
         requeueGenerationReconcile(ctx.queueHost, collectionName);
       },
     });
+    if (outcome.status === "synced" || outcome.status === "idle") {
+      ctx.queueHost.retryFailures.delete(collectionName);
+    }
     if (
       outcome.status === "failed" &&
       outcome.error &&
