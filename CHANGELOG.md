@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.9.1] - 2026-10-06
+
 ### Fixed
 
 - A resident `gno serve` or `gno daemon` no longer spins when a watched collection keeps failing to sync, for example because a file is unreadable or the collection sets `sourceAvailability: local` on a path GNO cannot verify. The watcher used to retry that collection every 0.5 seconds for as long as the resident ran. Each retry took the write lock and recorded another error, which used most of a CPU core and kept background embedding waiting. Retries now wait 0.5 seconds at first and double up to 5 minutes; the next successful sync resets the delay. New edits in that collection, and a change to its configuration that may fix the cause, are still picked up right away. Thanks to the user who sent the diagnostics for this report.
@@ -2933,7 +2935,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.9.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.9.1...HEAD
+[2.9.1]: https://github.com/gmickel/gno/compare/v2.9.0...v2.9.1
 [2.9.0]: https://github.com/gmickel/gno/compare/v2.8.5...v2.9.0
 [2.8.5]: https://github.com/gmickel/gno/compare/v2.8.4...v2.8.5
 [2.8.4]: https://github.com/gmickel/gno/compare/v2.8.3...v2.8.4
