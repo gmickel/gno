@@ -2,7 +2,7 @@
   "branch": "fn-202-watcher-retries-a-failing-collection",
   "findings": {
     "backend": "interactive",
-    "headSha": "fd0d68bcac04423c7bab07020f0c6bb044087d16",
+    "headSha": "6b68fd350d877465c9676e97be862bdfe240d50d",
     "items": [
       {
         "body": "While a collection is in failure backoff, a fresh edit to a healthy file in it waits for the backoff timer (12-14 s after 20 s of failures; up to 5 min at the cap) because scheduleFlush defers to an armed retry timer. Reproduced twice on the live resident. (surface: src/serve/watch-service-events.ts)",
@@ -10,25 +10,33 @@
         "confidence": 100,
         "firstSeenReceiptId": "review-11663a2b6898d98949b0a551972f12ce6a523ab4596088b85ceeb3719a6f9774",
         "id": "finding-5aafcb91b9dd6daedb616fbdbf3c294a",
-        "lastSeenReceiptId": "review-4d9669e74d43e12aec3294395a6f12b6f5c03259349a1dbe3e6bff968906c3cd",
+        "lastSeenReceiptId": "review-11663a2b6898d98949b0a551972f12ce6a523ab4596088b85ceeb3719a6f9774",
         "ordinal": 1,
         "rIds": [],
         "severity": "P1",
-        "status": "fixed",
+        "status": "open",
         "title": "F1"
       }
     ],
     "reviewKind": "qa",
-    "round": 2,
+    "round": 1,
     "schemaVersion": 1,
-    "sourceReceiptId": "review-4d9669e74d43e12aec3294395a6f12b6f5c03259349a1dbe3e6bff968906c3cd",
-    "supersedesReceiptId": "review-11663a2b6898d98949b0a551972f12ce6a523ab4596088b85ceeb3719a6f9774"
+    "sourceReceiptId": "review-11663a2b6898d98949b0a551972f12ce6a523ab4596088b85ceeb3719a6f9774"
   },
-  "head_sha": "fd0d68bcac04423c7bab07020f0c6bb044087d16",
+  "head_sha": "6b68fd350d877465c9676e97be862bdfe240d50d",
   "id": "fn-202-watcher-retries-a-failing-collection",
   "mode": "interactive",
-  "open_p0p1": [],
-  "qa_outcome": "SHIP",
+  "open_p0p1": [
+    {
+      "classification": "introduced",
+      "confidence": 100,
+      "file": "src/serve/watch-service-events.ts",
+      "id": "F1",
+      "reason": "While a collection is in failure backoff, a fresh edit to a healthy file in it waits for the backoff timer (12-14 s after 20 s of failures; up to 5 min at the cap) because scheduleFlush defers to an armed retry timer. Reproduced twice on the live resident.",
+      "severity": "P1"
+    }
+  ],
+  "qa_outcome": "NEEDS_WORK",
   "rid_coverage": {
     "covered": 4,
     "rids": [
@@ -51,7 +59,7 @@
     ],
     "total": 4
   },
-  "timestamp": "2026-10-05T20:36:03Z",
+  "timestamp": "2026-10-05T20:25:09Z",
   "type": "qa_verdict",
-  "verdict": "SHIP"
+  "verdict": "NEEDS_WORK"
 }
