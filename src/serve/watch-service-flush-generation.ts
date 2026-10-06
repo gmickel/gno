@@ -22,6 +22,7 @@ import {
 
 /** Failure codes from the store side of a sync: transient, worth a retry. */
 const STORE_SIDE_FAILURE_CODES = new Set(["QUERY_FAILED", "STORE_ERROR"]);
+const SOURCE_AVAILABILITY_PREFIX = "SOURCE_AVAILABILITY_";
 
 interface ReconcileFailures {
   /** A collection-level failure (no path): the reconcile itself is incomplete. */
@@ -45,18 +46,23 @@ function classifyReconcileFailures(
     if (STORE_SIDE_FAILURE_CODES.has(file.errorCode ?? ""))
       storeSide.add(file.relPath);
   }
+  // A collection whose source availability cannot be proven fails the same
+  // way on every attempt until its config or volume changes (a config edit
+  // starts a new reconcile): record it once, like a content failure.
+  let unavailable = false;
   // Walker failures (TOO_LARGE, PERMISSION...) appear only here.
   for (const entry of result.errors) {
     if (isSourceAvailabilitySkip(entry.code)) continue;
     if (!entry.relPath) {
-      unscoped = true;
+      if (entry.code.startsWith(SOURCE_AVAILABILITY_PREFIX)) unavailable = true;
+      else unscoped = true;
       continue;
     }
     named.add(entry.relPath);
     if (STORE_SIDE_FAILURE_CODES.has(entry.code)) storeSide.add(entry.relPath);
   }
   // A failure count with nothing named is collection-level too.
-  if (named.size === 0) unscoped = true;
+  if (named.size === 0 && !unavailable) unscoped = true;
   return { unscoped, named: [...named], storeSide: [...storeSide] };
 }
 

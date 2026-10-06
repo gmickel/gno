@@ -194,6 +194,37 @@ test("a collection-level store failure keeps the whole-collection retry", async 
   expect(fullReconciles).toBeGreaterThanOrEqual(2);
 });
 
+test("an unverifiable collection is recorded once, not retried on a timer", async () => {
+  let fullReconciles = 0;
+  startService(
+    [await collection("alpha")],
+    async () => {
+      fullReconciles += 1;
+      return syncResult({
+        filesErrored: 1,
+        filesUnchanged: 0,
+        files: [
+          {
+            relPath: ".",
+            status: "error",
+            errorCode: "SOURCE_AVAILABILITY_UNSUPPORTED",
+          },
+        ],
+        errors: [
+          {
+            relPath: "",
+            code: "SOURCE_AVAILABILITY_UNSUPPORTED",
+            message: "local availability cannot be verified",
+          },
+        ],
+      });
+    },
+    { reconcileOnStart: true }
+  );
+  await Bun.sleep(2_700);
+  expect(fullReconciles).toBe(1);
+});
+
 test("a store-side failure retries only that path, with backoff", async () => {
   let fullReconciles = 0;
   const retried = recordRetries("QUERY_FAILED");
