@@ -135,7 +135,7 @@ export function parseArgs(
 }
 
 /** Re-exec inside a PID namespace so a killed harness takes every child with it (R2). */
-function reexecContained(): never | void {
+async function reexecContained(): Promise<void> {
   if (
     !(
       process.platform === "linux" &&
@@ -144,7 +144,7 @@ function reexecContained(): never | void {
     )
   )
     return;
-  const proc = Bun.spawnSync({
+  const proc = Bun.spawn({
     cmd: [
       "unshare",
       "--user",
@@ -164,11 +164,29 @@ function reexecContained(): never | void {
       ...process.argv.slice(2),
     ],
     env: { ...process.env, [CONTAINED_ENV]: "1" },
-    stdin: "inherit",
+    // Lifeline: never written. When this launcher dies for any reason the
+    // pipe closes, the contained harness exits, and the namespace (PID 1 and
+    // every GNO process in it) goes with it.
+    stdin: "pipe",
     stdout: "inherit",
     stderr: "inherit",
   });
-  process.exit(proc.exitCode ?? 2);
+  for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
+    process.on(signal, () => proc.kill(signal));
+  }
+  process.exit((await proc.exited) ?? 2);
+}
+
+/** Inside the namespace: exit when the launcher's lifeline pipe closes. */
+function watchLifeline(): void {
+  if (!process.env[CONTAINED_ENV]) return;
+  process.stdin.on("end", () => {
+    console.error(
+      "soak: launcher is gone; stopping (the namespace takes every child with it)"
+    );
+    process.exit(3);
+  });
+  process.stdin.resume();
 }
 
 /** Processes left by earlier (crashed) runs: anything carrying a run marker. */
@@ -241,7 +259,8 @@ export async function main(argv: string[]): Promise<number> {
       contain: cli.options.contain || previous.options.contain,
     };
   }
-  if (options.contain) reexecContained();
+  if (options.contain) await reexecContained();
+  watchLifeline();
 
   const runId = `${options.tier}-${options.seed}-${Date.now().toString(36)}`;
   const reportDir = cli.out ?? join(tmpdir(), "gno-soak-reports", runId);
