@@ -1,11 +1,20 @@
 {
   "branch_name": "fn-204-stdio-gno-mcp-fails-to-start-while-a",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
   "created_at": "2026-10-06T14:01:29.364308Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-204-stdio-gno-mcp-fails-to-start-while-a",
+  "impl_review_rounds": {},
   "next_task": 1,
+  "no_plan": true,
+  "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "ready": true,
   "spec_path": ".flow/specs/fn-204-stdio-gno-mcp-fails-to-start-while-a.md",
   "status": "open",
   "title": "Stdio gno mcp fails to start while a resident is writing",
@@ -20,5 +29,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-06T14:01:29.367038Z"
+  "updated_at": "2026-10-06T15:15:10.235136Z"
 }
