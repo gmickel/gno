@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `gno mcp` and other commands no longer fail at startup with `database is locked` while `gno serve`, `gno daemon` or the desktop app is writing to the same index. Startup syncs the collection list from the config, and when another process committed a write at the same moment, the sync failed immediately instead of waiting. It now waits its turn. An agent that starts `gno mcp` beside a busy GNO used to see the MCP server exit.
 - `gno daemon --stop` and `gno serve --stop` no longer hang for 12 seconds and then force-kill a process that was stopped while still starting up, for example right after `--detach` returned. The stop signal was caught before the shutdown handler existed and then ignored. A process stopped during startup now exits at once, and `--stop` removes its pid file when the process could not.
 
 ## [2.9.1] - 2026-10-06
