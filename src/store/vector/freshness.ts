@@ -36,7 +36,8 @@ export function getStoredEmbeddingDimensions(
   }
   // Validate the entire model partition: never trust an arbitrary first blob.
   // One aggregate per query so each bound is a seek on idx_vectors_model_bytes
-  // (MIN and MAX together would scan every vector).
+  // (MIN and MAX together would scan every vector), read in one transaction
+  // so both bounds see the same snapshot while another process writes.
   const bound = (aggregate: "MIN" | "MAX"): number | null =>
     (
       db
@@ -45,10 +46,10 @@ export function getStoredEmbeddingDimensions(
         )
         .get(model) as { bytes: number | null }
     ).bytes;
-  const bytes = bound("MIN");
+  const [bytes, largest] = db.transaction(() => [bound("MIN"), bound("MAX")])();
   if (
     !bytes ||
-    bytes !== bound("MAX") ||
+    bytes !== largest ||
     bytes % Float32Array.BYTES_PER_ELEMENT !== 0
   ) {
     return undefined;

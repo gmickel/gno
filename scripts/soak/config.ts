@@ -25,7 +25,10 @@ export const THRESHOLDS = {
    * I4: status probe latency. Set from the fn-208 healthy baseline (seed 5
    * torture config-edit/sse-flood/sleep-wake/embed-faults, seed 1 smoke, on
    * Linux): worst p99 65 ms and worst max 65 ms (sleep-wake), smoke churn p99
-   * 15 ms. The limits leave about 2x headroom for slower machines.
+   * 15 ms. The p99 limit leaves about 2x headroom for slower machines. The
+   * max limit is looser (about 15x) on purpose: it only catches outright
+   * stalls, since one probe can land on a GC pause or a cold disk read on a
+   * busy laptop, while the p99 limit carries the responsiveness requirement.
    */
   statusP99Ms: 150,
   statusMaxMs: 1_000,
