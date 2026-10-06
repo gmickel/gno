@@ -38,18 +38,18 @@ export async function startResident(
     sandbox.logDir,
     `${options.label ?? mode}-${Date.now()}.log`
   );
-  const proc = spawnTagged(
-    sandbox,
-    gnoCmd(
-      mode,
-      "--host",
-      "127.0.0.1",
-      "--port",
-      String(options.port),
-      ...(options.args ?? [])
-    ),
-    { logFile }
+  const cmd = gnoCmd(
+    mode,
+    "--host",
+    "127.0.0.1",
+    "--port",
+    String(options.port),
+    ...(options.args ?? [])
   );
+  // GNO_SOAK_CPU_PROF=<dir>: profile each resident (written when it exits).
+  const profileDir = process.env.GNO_SOAK_CPU_PROF;
+  if (profileDir) cmd.splice(1, 0, "--cpu-prof", "--cpu-prof-dir", profileDir);
+  const proc = spawnTagged(sandbox, cmd, { logFile });
   const resident: Resident = {
     mode,
     pid: proc.pid,

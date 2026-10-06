@@ -301,9 +301,10 @@ const sleepWake: Runner = async (ctx) => {
 };
 
 const desktopShellKill: Runner = async (ctx) => {
-  // Same spawn shape as desktop/electrobun-shell: plain (non-detached) child.
+  // Same spawn shape as desktop/electrobun-shell (serve-process.ts): plain
+  // (non-detached) child holding a stdin lifeline pipe.
   const port = freePort();
-  const script = `const p = Bun.spawn({ cmd: ${JSON.stringify(gnoCmd("serve", "--host", "127.0.0.1", "--port", String(port)))}, stdout: "ignore", stderr: "ignore" }); await Bun.sleep(600000);`;
+  const script = `const p = Bun.spawn({ cmd: ${JSON.stringify(gnoCmd("serve", "--host", "127.0.0.1", "--port", String(port)))}, stdin: "pipe", stdout: "ignore", stderr: "ignore", env: { ...process.env, GNO_PARENT_LIFELINE: "stdin" } }); await Bun.sleep(600000);`;
   const shell = spawnTagged(ctx.sandbox, [process.execPath, "-e", script]);
   const deadline = Date.now() + 120_000;
   while (Date.now() < deadline) {

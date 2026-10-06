@@ -1,0 +1,42 @@
+{
+  "branch": "fn-207-child-processes-outlive-a-killed-parent",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "e58e9c62078a67a7e3d74ec2cff872a684958216",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-e50358892df66aec5232bd03debcabe33e159bc8008c1a2a61543648c17f8913"
+  },
+  "head_sha": "e58e9c62078a67a7e3d74ec2cff872a684958216",
+  "id": "fn-207-child-processes-outlive-a-killed-parent",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 4,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      }
+    ],
+    "total": 4
+  },
+  "timestamp": "2026-10-06T17:08:07Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

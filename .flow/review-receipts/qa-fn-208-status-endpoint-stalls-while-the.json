@@ -1,0 +1,38 @@
+{
+  "branch": "fn-208-status-endpoint-stalls-while-the",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "59dcc33f74a1adae4ba7ce7262b39134a0784a77",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-797df85335c568852310f0e0eb25d4e965d47cf8b1d94c0c8400b15199e02501"
+  },
+  "head_sha": "59dcc33f74a1adae4ba7ce7262b39134a0784a77",
+  "id": "fn-208-status-endpoint-stalls-while-the",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 3,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      }
+    ],
+    "total": 3
+  },
+  "timestamp": "2026-10-06T18:12:44Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

@@ -267,7 +267,7 @@ export async function main(argv: string[]): Promise<number> {
   const cli = parseArgs(argv);
   if (cli.help) {
     console.log(
-      `Usage: bun run soak --tier smoke|torture|soak [--seed N] [--duration 4h] [--docs N]\n       [--classes ${TORTURE_CLASSES.join(",")}]\n       [--idle-quiet 60s] [--out dir] [--keep] [--contain] [--replay report.json]`
+      `Usage: bun run soak --tier smoke|torture|soak [--seed N] [--duration 4h] [--docs N]\n       [--classes ${TORTURE_CLASSES.join(",")}]\n       [--idle-quiet 60s] [--out dir] [--keep] [--contain] [--replay report.json]\n\nGNO_SOAK_CPU_PROF=<dir> writes a CPU profile of each resident to <dir> when it exits.`
     );
     return 0;
   }

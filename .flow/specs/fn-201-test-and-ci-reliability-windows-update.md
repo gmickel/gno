@@ -40,6 +40,11 @@ Three loose ends from the 2.8.3 to 2.8.5 releases. Each one cost a CI rerun or l
   - Do not add `undefined/` to `.gitignore`. Ignoring the symptom is not the fix.
   - A full `bun test` run leaves `git status` clean.
 
+- **R4:** Recurring timing flakes seen during the fn-202 to fn-208 PRs (each passed on rerun, none related to the change under review) are made robust or explained:
+  - Windows: `test/cli/index-protected-files.test.ts` ("reports clean PERMISSION errors and exits successfully", also a progress line after 10 s), `status-performance` (<100 ms bound), `watch-service` deletion forwarding.
+  - macOS: `request-receipts-process`, `index-resume`, `test/serve/watch-service-retry-config-repair.test.ts` ("a config repair restarts the failure count", PR #292), `CollectionWatchService > forwards eligible deletion paths for inactive sync and one notification` (PR #289).
+  - For each: find what the timing depends on and make the assertion depend on events instead of wall-clock windows where possible; keep the behavior under test.
+
 ## Boundaries
 
 - R1 must not change the timeout, add retries to the test, or mark it skipped on Windows.
