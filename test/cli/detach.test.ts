@@ -1031,6 +1031,56 @@ describe("detach helper", () => {
       expect(sent).toEqual(["SIGTERM", "SIGKILL"]);
     });
 
+    test("removes the pid file of the process it stopped", async () => {
+      const pidFile = join(tmpDir, "owned.pid");
+      await writePidFile(pidFile, {
+        pid: 6666,
+        cmd: "daemon",
+        version: VERSION,
+        started_at: new Date().toISOString(),
+        port: null,
+      });
+      let alive = true;
+      await stopProcess({
+        kind: "daemon",
+        pidFile,
+        pollIntervalMs: 5,
+        isAlive: () => alive,
+        kill: () => {
+          alive = false;
+        },
+        sleep: () => Promise.resolve(),
+      });
+      expect(await Bun.file(pidFile).exists()).toBe(false);
+    });
+
+    test("leaves the pid file alone while a start holds the start lock", async () => {
+      const pidFile = join(tmpDir, "racing.pid");
+      await writePidFile(pidFile, {
+        pid: 5555,
+        cmd: "daemon",
+        version: VERSION,
+        started_at: new Date().toISOString(),
+        port: null,
+      });
+      // A concurrent --detach is between its guard and its pid-file write.
+      await Bun.write(`${pidFile}.startlock`, "");
+      let alive = true;
+      const result = await stopProcess({
+        kind: "daemon",
+        pidFile,
+        pollIntervalMs: 5,
+        isAlive: () => alive,
+        kill: () => {
+          alive = false;
+        },
+        sleep: () => Promise.resolve(),
+      });
+      expect(result).toMatchObject({ kind: "stopped", pid: 5555 });
+      expect(await Bun.file(pidFile).exists()).toBe(true);
+      expect(await Bun.file(`${pidFile}.startlock`).exists()).toBe(true);
+    });
+
     test("returns timeout when the process survives SIGKILL", async () => {
       const pidFile = join(tmpDir, "timeout.pid");
       await writePidFile(pidFile, {

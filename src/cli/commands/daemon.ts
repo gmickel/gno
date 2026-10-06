@@ -10,6 +10,7 @@ import {
   EGRESS_DENIED_MESSAGE,
   EgressDeniedError,
 } from "../../core/egress-enforcement";
+import { markResidentShutdownHandlerInstalled } from "../../core/resident-shutdown-handler";
 import {
   DEFAULT_HTTP_GATEWAY_PORT,
   isHttpGatewayLoopbackBind,
@@ -178,6 +179,7 @@ function createSignalPromise(
     signal?.addEventListener("abort", onAbort, { once: true });
     process.once("SIGINT", onSigint);
     process.once("SIGTERM", onSigterm);
+    markResidentShutdownHandlerInstalled();
   });
 }
 

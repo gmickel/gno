@@ -3,6 +3,7 @@ import type { RequestPeerServer } from "./request-locality";
 import type { ResidentRuntime } from "./resident-runtime";
 import type { ContextHolder } from "./routes/api";
 
+import { markResidentShutdownHandlerInstalled } from "../core/resident-shutdown-handler";
 import { getActivePreset } from "../llm/registry";
 import {
   isHttpGatewayLoopbackBind,
@@ -478,6 +479,7 @@ export async function startServer(
 
   process.once("SIGINT", shutdown);
   process.once("SIGTERM", shutdown);
+  markResidentShutdownHandlerInstalled();
   const removeShutdownHandlers = (): void => {
     process.off("SIGINT", shutdown);
     process.off("SIGTERM", shutdown);

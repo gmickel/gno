@@ -979,7 +979,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         }
       });
 
-      transaction();
+      // Read-then-write: take the write lock up front. A deferred transaction
+      // whose snapshot goes stale (another process commits meanwhile) fails at
+      // once with "database is locked" instead of waiting out the busy timeout.
+      transaction.immediate();
       return ok(undefined);
     } catch (cause) {
       return err(

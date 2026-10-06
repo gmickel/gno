@@ -1,0 +1,38 @@
+{
+  "branch": "fn-206-detached-daemon-ignores-sigterm-during",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "dc5d0212771e5811063a3f72b171ff957b6b04b8",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-86807b4ec07795b02706f2aca9565945cb97e7e650365855fba2e967638bca1d"
+  },
+  "head_sha": "dc5d0212771e5811063a3f72b171ff957b6b04b8",
+  "id": "fn-206-detached-daemon-ignores-sigterm-during",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 3,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      }
+    ],
+    "total": 3
+  },
+  "timestamp": "2026-10-06T16:05:59Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
