@@ -7,17 +7,38 @@
 // node:path — Bun has no path utilities
 import { normalize } from "node:path";
 
+import type { CollectionSyncResult } from "../ingestion";
 import type {
   FlushCollectionInput,
   FlushCollectionOutcome,
 } from "./watch-service-flush";
 
 import { defaultSyncService } from "../ingestion";
-import { hasFileLevelSyncError } from "./watch-reconciliation";
+import { failedSyncPaths, hasFileLevelSyncError } from "./watch-reconciliation";
 import {
   contentChangedPaths,
   notifyCompletedSync,
 } from "./watch-service-flush-helpers";
+
+/** Failure codes from the store side of a sync: transient, worth a retry. */
+const STORE_SIDE_FAILURE_CODES = new Set(["QUERY_FAILED", "STORE_ERROR"]);
+
+/** Paths whose sync failed in the store rather than on the file's content. */
+function storeSideFailedPaths(result: CollectionSyncResult): string[] {
+  const paths = new Set<string>();
+  for (const file of result.files ?? []) {
+    if (
+      file.status === "error" &&
+      STORE_SIDE_FAILURE_CODES.has(file.errorCode ?? "")
+    )
+      paths.add(file.relPath);
+  }
+  for (const entry of result.errors) {
+    if (entry.relPath && STORE_SIDE_FAILURE_CODES.has(entry.code))
+      paths.add(entry.relPath);
+  }
+  return [...paths];
+}
 
 /**
  * When collection generation advanced during/before flush, run full
@@ -96,11 +117,38 @@ export async function runGenerationReconcile(
         contentChangedPaths(result);
 
       if (hasFileLevelSyncError(result)) {
-        // Notify completed sync once; keep durable generation work.
-        notifyCompletedSync(input, operationPaths, result, ownership);
         const error = new Error(
           "One or more paths failed during watcher generation reconcile"
         );
+        const failed = failedSyncPaths(result, []);
+        // The walk completed: the collection is reconciled except for the
+        // failed paths (fn-211). Requeuing the whole generation re-walked the
+        // collection every backoff step for as long as one file kept failing.
+        // Store-side failures are transient and can leave a stale document,
+        // so only those paths are retried (exact paths, failure backoff).
+        // Content failures (unreadable, corrupt, too large...) are recorded
+        // once, as `gno update` and the daemon's initial sync do; the next
+        // edit to the file retries it. Keep generation work only when the
+        // failures cannot be named or this flush no longer owns the
+        // collection (its requeue would be dropped).
+        if (
+          failed.length > 0 &&
+          input.getCurrentGeneration() === input.ownerGeneration
+        ) {
+          input.invalidateSnapshot(stillCurrent);
+          notifyCompletedSync(input, operationPaths, result, ownership);
+          input.onSyncError(failed, error);
+          const retry = storeSideFailedPaths(result);
+          if (retry.length > 0) {
+            input.requeue(retry, []);
+            return { status: "failed", error };
+          }
+          completedGeneration = currentGeneration;
+          needsWork = input.getCurrentGeneration() !== completedGeneration;
+          continue;
+        }
+        // Notify completed sync once; keep durable generation work.
+        notifyCompletedSync(input, operationPaths, result, ownership);
         input.onSyncError([], error);
         input.requeueGeneration();
         return { status: "failed", error };

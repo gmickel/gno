@@ -220,12 +220,26 @@ describe("syncCollection inventory / inactivation errors", () => {
     }
   });
 
-  test("overflow full-reconcile markInactive failure keeps durable generation retry", async () => {
+  test("overflow full-reconcile markInactive failure keeps a durable retry", async () => {
     const root = await mkdtemp(join(tmpdir(), "gno-watch-r6-ov-mark-"));
     let cb: ((e: string, f: string | null) => void) | undefined;
     let collectionCalls = 0;
+    const retried: string[] = [];
     try {
       await writeFile(join(root, "seed.md"), "s");
+      // fn-211: the failed path is retried, not necessarily the whole walk.
+      defaultSyncService.syncPaths = (async (
+        _collection: unknown,
+        _store: unknown,
+        paths: string[]
+      ) => {
+        retried.push(...paths);
+        return createSyncResult({
+          filesProcessed: paths.length,
+          filesMarkedInactive: paths.length,
+          files: paths.map((relPath) => ({ relPath, status: "updated" })),
+        });
+      }) as typeof defaultSyncService.syncPaths;
       defaultSyncService.syncCollection = (async () => {
         collectionCalls += 1;
         if (collectionCalls < 2) {
@@ -272,7 +286,9 @@ describe("syncCollection inventory / inactivation errors", () => {
       await Bun.sleep(120);
       cb?.("change", null);
       await Bun.sleep(1_800);
-      expect(collectionCalls).toBeGreaterThanOrEqual(2);
+      // Retried as the path itself or inside the reconcile that the zero
+      // snapshot ceiling forces for any dirty work; either way it drains.
+      expect(retried.includes("gone.md") || collectionCalls >= 2).toBe(true);
       expect(service.getState().queuedCollections).toEqual([]);
       await service.dispose();
     } finally {

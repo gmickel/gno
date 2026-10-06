@@ -111,10 +111,15 @@ test("without reconcileOnStart the watcher only takes a baseline", async () => {
   expect(synced).toEqual([]);
 });
 
-test("a file that keeps failing is retried alone, never the whole collection", async () => {
-  // fn-211: a completed reconcile with one failing file used to requeue the
-  // whole collection with backoff, re-walking it every 5 minutes forever.
-  let fullReconciles = 0;
+function failingFile(errorCode: string) {
+  return syncResult({
+    filesErrored: 1,
+    filesUnchanged: 0,
+    files: [{ relPath: "note.md", status: "error", errorCode }],
+  });
+}
+
+function recordRetries(errorCode: string): string[][] {
   const retried: string[][] = [];
   defaultSyncService.syncPaths = (async (
     _collection: unknown,
@@ -122,26 +127,43 @@ test("a file that keeps failing is retried alone, never the whole collection", a
     paths: string[]
   ) => {
     retried.push(paths);
-    return syncResult({
-      filesErrored: 1,
-      filesUnchanged: 0,
-      files: paths.map((relPath) => ({ relPath, status: "error" as const })),
-    });
+    return failingFile(errorCode);
   }) as unknown as typeof defaultSyncService.syncPaths;
+  return retried;
+}
+
+// fn-211: a completed reconcile with one failing file used to requeue the
+// whole collection with backoff, re-walking it every 5 minutes forever.
+test("a file that keeps failing on its content is recorded once, never re-walked", async () => {
+  let fullReconciles = 0;
+  const retried = recordRetries("PERMISSION");
+  const service = startService(
+    [await collection("alpha")],
+    async () => {
+      fullReconciles += 1;
+      return failingFile("PERMISSION");
+    },
+    { reconcileOnStart: true }
+  );
+  await Bun.sleep(2_700);
+  expect(fullReconciles).toBe(1);
+  expect(retried).toEqual([]);
+  expect(service.getState().queuedCollections).toEqual([]);
+});
+
+test("a store-side failure retries only that path, with backoff", async () => {
+  let fullReconciles = 0;
+  const retried = recordRetries("QUERY_FAILED");
   startService(
     [await collection("alpha")],
     async () => {
       fullReconciles += 1;
-      return syncResult({
-        filesErrored: 1,
-        filesUnchanged: 0,
-        files: [{ relPath: "note.md", status: "error" }],
-      });
+      return failingFile("QUERY_FAILED");
     },
     { reconcileOnStart: true }
   );
-  // Retries of the failing path at ~+0.5 s and +1.5 s, then +3.5 s; a fixed
-  // 500 ms retry would have made five or six attempts in this window.
+  // Retries at ~+0.5 s and +1.5 s, then +3.5 s; a fixed 500 ms retry would
+  // have made five or six attempts in this window.
   await Bun.sleep(2_700);
   expect(fullReconciles).toBe(1);
   expect(retried.length).toBeGreaterThanOrEqual(1);
