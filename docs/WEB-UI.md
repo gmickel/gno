@@ -603,6 +603,12 @@ The dashboard health model now includes background-service state:
 
 This is meant to reduce the “why didn’t it refresh?” class of failures in long sessions.
 
+At startup, `gno serve` reconciles each watched folder with the disk in the
+background, so notes added, edited or deleted while it was not running reach
+the index without a manual sync. Search and status stay available while this
+runs; a folder that keeps failing is retried with the same backoff as live
+watcher syncs.
+
 Exact watcher paths use content-hash synchronization. Ambiguous atomic-save,
 directory, missing-name, and recursive-delete events reconcile a bounded dirty
 scope against filesystem/index evidence, selecting proven candidates and

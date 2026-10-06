@@ -3,6 +3,7 @@ import type { RequestPeerServer } from "./request-locality";
 import type { ResidentRuntime } from "./resident-runtime";
 import type { ContextHolder } from "./routes/api";
 
+import { markResidentShutdownHandlerInstalled } from "../core/resident-shutdown-handler";
 import { getActivePreset } from "../llm/registry";
 import {
   isHttpGatewayLoopbackBind,
@@ -25,6 +26,7 @@ import {
  * @module src/serve/server
  */
 import { withRemoteHostPathRedaction } from "./host-path-redaction";
+import { watchParentLifeline } from "./parent-lifeline";
 import { PDFJS_ASSET_CACHE_CONTROL } from "./pdfjs-assets";
 // HTML import - Bun handles bundling TSX/CSS automatically via routes
 import homepage from "./public/index.html";
@@ -478,9 +480,17 @@ export async function startServer(
 
   process.once("SIGINT", shutdown);
   process.once("SIGTERM", shutdown);
+  markResidentShutdownHandlerInstalled();
+  // A launcher that owns this process (the desktop shell) closes our stdin
+  // when it exits or is killed; shut down instead of running orphaned.
+  const stopLifeline = watchParentLifeline(() => {
+    console.log("\nParent process gone.");
+    shutdown();
+  });
   const removeShutdownHandlers = (): void => {
     process.off("SIGINT", shutdown);
     process.off("SIGTERM", shutdown);
+    stopLifeline();
   };
 
   // Start server with try/catch for port-in-use etc.
@@ -1778,6 +1788,11 @@ export async function startServer(
     await dependencies.waitForShutdown(shutdownController.signal);
   } else {
     await new Promise<void>((resolve) => {
+      // The lifeline can fire while the listener is still starting.
+      if (shutdownController.signal.aborted) {
+        resolve();
+        return;
+      }
       shutdownController.signal.addEventListener("abort", () => resolve(), {
         once: true,
       });

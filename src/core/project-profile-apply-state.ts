@@ -78,6 +78,9 @@ export function applyProjectProfileDesiredState(
     include: [],
     exclude: desired.collection.exclude,
     ...(existing?.updateCmd ? { updateCmd: existing.updateCmd } : {}),
+    ...(existing?.updateCmdTimeoutMs
+      ? { updateCmdTimeoutMs: existing.updateCmdTimeoutMs }
+      : {}),
     ...(desired.collection.languageHint
       ? { languageHint: desired.collection.languageHint }
       : existing?.languageHint

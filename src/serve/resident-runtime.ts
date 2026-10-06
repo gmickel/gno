@@ -209,6 +209,7 @@ export type ResidentRuntimeDeps = {
     callbacks?: CollectionWatchCallbacks;
     syncOptions?: Parameters<typeof withContentTypeRules>[0];
     acquireWriteLease?: () => Promise<(() => Promise<void>) | null>;
+    reconcileOnStart?: boolean;
   }) => CollectionWatchService;
   modelManagerFactory?: (config: Config) => ModelManager;
 };
@@ -392,6 +393,8 @@ export async function startResidentRuntime(
     },
     syncOptions: withContentTypeRules({}, initialConfig),
     acquireWriteLease: leaseFor(`gno ${mode} (watch sync)`),
+    // serve has no initial sync of its own; the daemon runs one unless told not to.
+    reconcileOnStart: mode === "serve",
   });
   watchService.start();
   // A backlog left by `--no-embed` or an earlier run gets a pass without

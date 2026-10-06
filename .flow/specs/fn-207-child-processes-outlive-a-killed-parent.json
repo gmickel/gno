@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-207-child-processes-outlive-a-killed-parent",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-10-06T17:08:06.800202Z",
   "created_at": "2026-10-06T14:01:30.348684Z",
   "default_impl": null,
   "default_review": null,
@@ -16,7 +16,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-207-child-processes-outlive-a-killed-parent.md",
-  "status": "open",
+  "status": "done",
   "title": "Child processes outlive a killed parent",
   "tracker": {
     "baseHashFlow": null,
@@ -29,5 +29,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-06T15:15:12.662246Z"
+  "updated_at": "2026-10-06T18:07:19.719975Z"
 }

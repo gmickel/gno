@@ -1079,6 +1079,9 @@ gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-
 ]
 ````
 
+`updateCmdTimeoutMs` (milliseconds) appears when the collection sets a limit
+for `updateCmd`; without it the command is stopped after 10 minutes.
+
 **Exit Codes:**
 
 - 0: Success

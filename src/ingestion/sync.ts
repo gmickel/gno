@@ -229,11 +229,73 @@ async function gitPull(path: string): Promise<void> {
 /**
  * Run collection update command (best effort).
  */
-async function runUpdateCmd(path: string, cmd: string): Promise<void> {
+/** Default cap on a collection's updateCmd; `updateCmdTimeoutMs` overrides it. */
+export const UPDATE_CMD_TIMEOUT_MS = 10 * 60_000;
+/**
+ * POSIX wrapper run as `sh -c WRAPPER sh <updateCmd>` in a new process group
+ * (detached spawn). It runs the command with stdin from /dev/null and blocks
+ * a subshell on gno's stdin pipe: when gno exits or is killed, by any signal
+ * including SIGKILL, the pipe closes and the subshell stops the whole group,
+ * so no part of the command (a hung `git` or `rsync`) outlives gno; anything
+ * still running 5 s after SIGTERM gets SIGKILL. The pipe goes through fd 3
+ * because an asynchronous list's stdin is /dev/null.
+ */
+const UPDATE_CMD_WRAPPER = [
+  "exec 3<&0",
+  '"$0" -c "$1" </dev/null 3<&- &',
+  "cmd=$!",
+  // The watcher ignores the TERM it sends, gives the command up to 5 s to
+  // exit, then SIGKILLs whatever is left of the group (itself included).
+  [
+    "( trap '' TERM; read -r _ <&3; kill -TERM 0",
+    'i=0; while kill -0 "$cmd" 2>/dev/null && [ "$i" -lt 50 ]; do sleep 0.1; i=$((i + 1)); done',
+    "kill -KILL 0 ) &",
+  ].join("; "),
+  "exec 3<&-",
+  'wait "$cmd"',
+].join("\n");
+
+async function runUpdateCmd(
+  path: string,
+  cmd: string,
+  timeoutMs = UPDATE_CMD_TIMEOUT_MS
+): Promise<void> {
+  const posix = process.platform !== "win32";
+  let child: Bun.Subprocess<"pipe", "ignore", "ignore">;
   try {
-    await Bun.$`sh -c ${cmd}`.cwd(path).quiet().nothrow();
+    child = Bun.spawn({
+      cmd: posix
+        ? ["sh", "-c", UPDATE_CMD_WRAPPER, "sh", cmd]
+        : ["sh", "-c", cmd],
+      cwd: path,
+      stdin: "pipe",
+      stdout: "ignore",
+      stderr: "ignore",
+      detached: posix,
+    });
   } catch {
-    // Ignore update command failures
+    // Ignore update command failures (no shell, bad cwd).
+    return;
+  }
+  const signalAll = (signal: NodeJS.Signals): void => {
+    try {
+      if (posix) process.kill(-child.pid, signal);
+      else child.kill(signal);
+    } catch {
+      // already gone
+    }
+  };
+  // On timeout, TERM the group. POSIX: that ends the wrapper, the finally
+  // below closes the lifeline, and the wrapper's watcher escalates whatever
+  // ignores TERM to SIGKILL. On Windows SIGTERM already terminates.
+  const timer = setTimeout(() => signalAll("SIGTERM"), timeoutMs);
+  try {
+    // Ignore update command failures (non-zero exit, timeout).
+    await child.exited;
+  } finally {
+    clearTimeout(timer);
+    // Closing the lifeline also reaps anything the command left running.
+    await Promise.resolve(child.stdin.end()).catch(() => undefined);
   }
 }
 
@@ -1605,7 +1667,11 @@ export class SyncService {
         caller: { authenticated: true, operationAuthorized: true },
         contentClass: "source",
       });
-      await runUpdateCmd(collection.path, collection.updateCmd);
+      await runUpdateCmd(
+        collection.path,
+        collection.updateCmd,
+        collection.updateCmdTimeoutMs
+      );
     }
 
     if (options.gitPull && (await isGitRepo(collection.path))) {

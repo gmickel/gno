@@ -1,0 +1,15 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-10-06T17:07:39.583784Z",
+  "depends_on": [],
+  "id": "fn-207-child-processes-outlive-a-killed-parent.1",
+  "implicit_owner": true,
+  "priority": null,
+  "spec": "fn-207-child-processes-outlive-a-killed-parent",
+  "spec_path": ".flow/tasks/fn-207-child-processes-outlive-a-killed-parent.1.md",
+  "status": "done",
+  "title": "Bound child processes by their parent",
+  "updated_at": "2026-10-06T17:07:39.583784Z"
+}
