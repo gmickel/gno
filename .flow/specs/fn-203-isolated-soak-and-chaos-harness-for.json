@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-203-isolated-soak-and-chaos-harness-for",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-10-06T14:08:17.415974Z",
   "created_at": "2026-10-06T00:05:04.162354Z",
   "default_impl": null,
   "default_review": null,
@@ -29,5 +29,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-06T11:06:55.245688Z"
+  "updated_at": "2026-10-06T14:08:17.415980Z"
 }
