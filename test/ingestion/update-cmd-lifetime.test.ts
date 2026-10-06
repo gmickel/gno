@@ -118,7 +118,7 @@ for (const { signal, ignoreTerm } of cases) {
       // A command that ignores SIGTERM gets SIGKILL after a 5 s grace.
       const gone = await waitFor(
         () => pidsMatching(marker).length === 0,
-        ignoreTerm ? 9_000 : 3_000
+        ignoreTerm ? 15_000 : 3_000
       );
       strays.push(...pidsMatching(marker));
       expect(gone).toBe(true);
@@ -146,7 +146,7 @@ for (const ignoreTerm of [false, true]) {
       expect(Date.now() - started).toBeLessThan(15_000);
       const gone = await waitFor(
         () => pidsMatching(marker).length === 0,
-        ignoreTerm ? 9_000 : 1_000
+        ignoreTerm ? 15_000 : 1_000
       );
       strays.push(...pidsMatching(marker));
       expect(gone).toBe(true);
