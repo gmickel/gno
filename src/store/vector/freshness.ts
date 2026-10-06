@@ -35,14 +35,20 @@ export function getStoredEmbeddingDimensions(
     }
   }
   // Validate the entire model partition: never trust an arbitrary first blob.
-  const row = db
-    .prepare(`SELECT MIN(length(embedding)) AS smallest,
-    MAX(length(embedding)) AS largest FROM content_vectors WHERE model = ?`)
-    .get(model) as { smallest: number | null; largest: number | null };
-  const bytes = row.smallest;
+  // One aggregate per query so each bound is a seek on idx_vectors_model_bytes
+  // (MIN and MAX together would scan every vector).
+  const bound = (aggregate: "MIN" | "MAX"): number | null =>
+    (
+      db
+        .prepare(
+          `SELECT ${aggregate}(length(embedding)) AS bytes FROM content_vectors WHERE model = ?`
+        )
+        .get(model) as { bytes: number | null }
+    ).bytes;
+  const bytes = bound("MIN");
   if (
     !bytes ||
-    bytes !== row.largest ||
+    bytes !== bound("MAX") ||
     bytes % Float32Array.BYTES_PER_ELEMENT !== 0
   ) {
     return undefined;

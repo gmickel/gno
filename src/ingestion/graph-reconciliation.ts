@@ -19,6 +19,7 @@ import {
   normalizeWikiName,
   parseTargetParts,
 } from "../core/links";
+import { createTimeSlicer } from "../core/time-slice";
 import {
   createInMemoryWorkspaceResolver,
   membershipsFromCollectionRows,
@@ -137,6 +138,9 @@ function relationResolver(
   };
 }
 
+/** Changed identities per incoming-link lookup (one statement each). */
+const INCOMING_LINK_CHUNK = 8;
+
 export async function projectGraph(
   store: StorePort,
   options: SyncOptions,
@@ -144,6 +148,7 @@ export async function projectGraph(
   forceFull = false
 ): Promise<ProjectionError[]> {
   const errors: ProjectionError[] = [];
+  const slicer = createTimeSlicer();
   try {
     const graph = store.graphReferenceStore?.();
     let fingerprint = "";
@@ -221,10 +226,16 @@ export async function projectGraph(
       // No durable per-source link journal exists; conservatively rebuild in that case.
       if (changed.size === 0 && state.dirty) selected = undefined;
       else {
-        for (const id of graph.incomingLinkSources(
-          [...changed.values()].flat()
-        ))
-          selected.add(id);
+        // One statement over every changed identity scales with links x
+        // targets and cannot yield; chunk it so the event loop gets turns.
+        const identities = [...changed.values()].flat();
+        for (let i = 0; i < identities.length; i += INCOMING_LINK_CHUNK) {
+          await slicer.maybeYield();
+          for (const id of graph.incomingLinkSources(
+            identities.slice(i, i + INCOMING_LINK_CHUNK)
+          ))
+            selected.add(id);
+        }
         const resolveOld = relationResolver(
           previous.map((row) => row.document),
           memberships
@@ -264,7 +275,10 @@ export async function projectGraph(
       );
       if (!backfill.ok) throw new Error(backfill.error.message);
       for (const [index, doc] of targets.entries()) {
+        // Every 25 documents at least, and sooner when slow documents
+        // (large link resolution) would hold the event loop past its budget.
         if (index > 0 && index % 25 === 0) await Bun.sleep(0);
+        else await slicer.maybeYield();
         if (!doc.active) {
           const cleared = await store.setDocEdges(
             doc.id,

@@ -21,9 +21,14 @@ export const THRESHOLDS = {
   idleNewIngestErrors: 0,
   /** I2: how long a child may outlive a killed parent before it is an orphan. */
   orphanGraceMs: 3_000,
-  /** I4: status probe latency. */
-  statusP99Ms: 250,
-  statusMaxMs: 8_000,
+  /**
+   * I4: status probe latency. Set from the fn-208 healthy baseline (seed 5
+   * torture config-edit/sse-flood/sleep-wake/embed-faults, seed 1 smoke, on
+   * Linux): worst p99 65 ms and worst max 65 ms (sleep-wake), smoke churn p99
+   * 15 ms. The limits leave about 2x headroom for slower machines.
+   */
+  statusP99Ms: 150,
+  statusMaxMs: 1_000,
   /** I5: SIGTERM to exit (drain 5 s + abort 5 s + exit 1 s, plus margin). */
   shutdownMs: 12_000,
   /** I6: per-hour slopes over a soak. */

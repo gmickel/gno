@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A busy `gno serve` or `gno daemon` stays responsive. Under load, for example after waking from sleep with many changed notes, while indexing a burst of edits or with many open browser tabs, the status endpoint used to stall for half a second to several seconds, and status checks from the desktop app or scripts could time out. Three causes are fixed: each status check scanned every stored embedding to confirm their size (now an index lookup), every request re-read and re-parsed the config file even when it had not changed, and updating the links between notes after a burst of changes ran without pause. In soak tests the slowest status response under each of these loads dropped from up to 2.4 seconds to under 70 ms.
+
+### Fixed
+
 - `gno mcp` and other commands no longer fail at startup with `database is locked` while `gno serve`, `gno daemon` or the desktop app is writing to the same index. Startup syncs the collection list from the config, and when another process committed a write at the same moment, the sync failed immediately instead of waiting. It now waits its turn. An agent that starts `gno mcp` beside a busy GNO used to see the MCP server exit.
 
 ## [2.9.1] - 2026-10-06

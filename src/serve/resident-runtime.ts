@@ -502,8 +502,24 @@ export async function startResidentRuntime(
     indexName: canonicalizeIndexName(options.index ?? DEFAULT_INDEX_NAME),
   };
   let configRefresh: Promise<void> | undefined;
+  // Every read request refreshes the config. Re-reading and re-parsing an
+  // unchanged file each time kept the main thread busy under load; skip it
+  // while the file's identity, size and times match the last good load. Any
+  // write, rename, chmod or delete changes the stamp, so a broken file is
+  // still reported, never served stale.
+  let loadedConfigStamp: string | undefined;
+  const configStamp = async (): Promise<string | undefined> => {
+    try {
+      const stat = await Bun.file(instance.configPath).stat();
+      return `${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`;
+    } catch {
+      return undefined;
+    }
+  };
   const refreshConfig = (): Promise<void> => {
     configRefresh ??= (async () => {
+      const stamp = await configStamp();
+      if (stamp !== undefined && stamp === loadedConfigStamp) return;
       const file = await readInstanceConfig(
         instance,
         deps.loadConfig ?? loadConfig
@@ -514,7 +530,10 @@ export async function startResidentRuntime(
         collections: file.collections,
         contexts: file.contexts,
       };
-      if (Bun.deepEquals(next, served)) return;
+      if (Bun.deepEquals(next, served)) {
+        loadedConfigStamp = stamp;
+        return;
+      }
       await adoptServedConfig(
         {
           ...instance,
@@ -529,6 +548,7 @@ export async function startResidentRuntime(
         },
         next
       );
+      loadedConfigStamp = stamp;
     })().finally(() => {
       configRefresh = undefined;
     });
