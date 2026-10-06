@@ -7,17 +7,64 @@
 // node:path — Bun has no path utilities
 import { normalize } from "node:path";
 
+import type { CollectionSyncResult } from "../ingestion";
 import type {
   FlushCollectionInput,
   FlushCollectionOutcome,
 } from "./watch-service-flush";
 
-import { defaultSyncService } from "../ingestion";
+import { defaultSyncService, isSourceAvailabilitySkip } from "../ingestion";
 import { hasFileLevelSyncError } from "./watch-reconciliation";
 import {
   contentChangedPaths,
   notifyCompletedSync,
 } from "./watch-service-flush-helpers";
+
+/** Failure codes from the store side of a sync: transient, worth a retry. */
+const STORE_SIDE_FAILURE_CODES = new Set(["QUERY_FAILED", "STORE_ERROR"]);
+const SOURCE_AVAILABILITY_PREFIX = "SOURCE_AVAILABILITY_";
+
+interface ReconcileFailures {
+  /** A collection-level failure (no path): the reconcile itself is incomplete. */
+  unscoped: boolean;
+  /** Every named failed path, from file receipts and walker errors alike. */
+  named: string[];
+  /** Named paths that failed in the store, not on the file's content. */
+  storeSide: string[];
+}
+
+/** Classify the failures of a completed full-collection sync. */
+function classifyReconcileFailures(
+  result: CollectionSyncResult
+): ReconcileFailures {
+  const named = new Set<string>();
+  const storeSide = new Set<string>();
+  let unscoped = false;
+  for (const file of result.files ?? []) {
+    if (file.status !== "error") continue;
+    named.add(file.relPath);
+    if (STORE_SIDE_FAILURE_CODES.has(file.errorCode ?? ""))
+      storeSide.add(file.relPath);
+  }
+  // A collection whose source availability cannot be proven fails the same
+  // way on every attempt until its config or volume changes (a config edit
+  // starts a new reconcile): record it once, like a content failure.
+  let unavailable = false;
+  // Walker failures (TOO_LARGE, PERMISSION...) appear only here.
+  for (const entry of result.errors) {
+    if (isSourceAvailabilitySkip(entry.code)) continue;
+    if (!entry.relPath) {
+      if (entry.code.startsWith(SOURCE_AVAILABILITY_PREFIX)) unavailable = true;
+      else unscoped = true;
+      continue;
+    }
+    named.add(entry.relPath);
+    if (STORE_SIDE_FAILURE_CODES.has(entry.code)) storeSide.add(entry.relPath);
+  }
+  // A failure count with nothing named is collection-level too.
+  if (named.size === 0 && !unavailable) unscoped = true;
+  return { unscoped, named: [...named], storeSide: [...storeSide] };
+}
 
 /**
  * When collection generation advanced during/before flush, run full
@@ -96,11 +143,38 @@ export async function runGenerationReconcile(
         contentChangedPaths(result);
 
       if (hasFileLevelSyncError(result)) {
-        // Notify completed sync once; keep durable generation work.
-        notifyCompletedSync(input, operationPaths, result, ownership);
         const error = new Error(
           "One or more paths failed during watcher generation reconcile"
         );
+        const failures = classifyReconcileFailures(result);
+        // The walk completed: the collection is reconciled except for the
+        // named failed paths (fn-211). Requeuing the whole generation
+        // re-walked the collection every backoff step for as long as one file
+        // kept failing. Store-side failures are transient and can leave a
+        // stale document, so only those paths are retried (exact paths,
+        // failure backoff). Content failures (unreadable, corrupt, too
+        // large...) are recorded once, as `gno update` and the daemon's
+        // initial sync do; the next edit to the file retries it. Keep the
+        // whole generation when any failure is collection-level (e.g. the
+        // document inventory failed) or this flush no longer owns the
+        // collection (its requeue would be dropped).
+        if (
+          !failures.unscoped &&
+          input.getCurrentGeneration() === input.ownerGeneration
+        ) {
+          input.invalidateSnapshot(stillCurrent);
+          notifyCompletedSync(input, operationPaths, result, ownership);
+          input.onSyncError(failures.named, error);
+          if (failures.storeSide.length > 0) {
+            input.requeue(failures.storeSide, []);
+            return { status: "failed", error };
+          }
+          completedGeneration = currentGeneration;
+          needsWork = input.getCurrentGeneration() !== completedGeneration;
+          continue;
+        }
+        // Notify completed sync once; keep durable generation work.
+        notifyCompletedSync(input, operationPaths, result, ownership);
         input.onSyncError([], error);
         input.requeueGeneration();
         return { status: "failed", error };

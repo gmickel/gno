@@ -16,6 +16,7 @@ import type { ProcInfo } from "./procfs";
 import type { Sandbox } from "./sandbox";
 
 import { THRESHOLDS } from "./config";
+import { ALWAYS_FAILING_COLLECTIONS } from "./corpus";
 import { getJson, residentPaths } from "./gno";
 import { isAlive } from "./procfs";
 import { lockIsFree, portIsFree } from "./sandbox";
@@ -473,6 +474,8 @@ export interface ConvergenceState {
   backlog: number | undefined;
   embedBusy: boolean;
   activeJob: boolean;
+  /** The resident's watcher still has queued or running syncs (startup catch-up included). */
+  watcherBusy: boolean;
   /** Harness bookkeeping drift (disk vs. what the harness thinks it wrote). */
   bookkeepingDrift: string[];
 }
@@ -527,10 +530,25 @@ export async function convergenceState(
     resident,
     "/api/jobs/active"
   );
+  const watcher = (
+    status as {
+      background?: {
+        watcher?: {
+          queuedCollections?: string[];
+          syncingCollections?: string[];
+        };
+      };
+    } | null
+  )?.background?.watcher;
+  const settling = (names: string[] | undefined): boolean =>
+    (names ?? []).some((name) => !ALWAYS_FAILING_COLLECTIONS.has(name));
   return {
     missing,
     extra,
     staleMarkers,
+    watcherBusy:
+      settling(watcher?.queuedCollections) ||
+      settling(watcher?.syncingCollections),
     backlog: findNumber(status, "embeddingBacklog"),
     embedBusy: Boolean(embed?.running) || embed?.nextRunAt != null,
     activeJob: Boolean(jobs?.activeJob),
@@ -545,7 +563,8 @@ function converged(state: ConvergenceState): boolean {
     state.staleMarkers.length === 0 &&
     (state.backlog ?? 0) === 0 &&
     !state.embedBusy &&
-    !state.activeJob
+    !state.activeJob &&
+    !state.watcherBusy
   );
 }
 
@@ -570,7 +589,7 @@ export async function checkConvergence(
     ok,
     ok
       ? `${label}: converged in ${took} s (${corpus.live.size} notes)`
-      : `${label}: not converged after ${took} s: missing ${state.missing.length}, extra ${state.extra.length}, stale ${state.staleMarkers.length}, backlog ${state.backlog}, embedBusy ${state.embedBusy}, activeJob ${state.activeJob}`,
+      : `${label}: not converged after ${took} s: missing ${state.missing.length}, extra ${state.extra.length}, stale ${state.staleMarkers.length}, backlog ${state.backlog}, embedBusy ${state.embedBusy}, activeJob ${state.activeJob}, watcherBusy ${state.watcherBusy}`,
     {
       ...state,
       missing: state.missing.slice(0, 20),

@@ -1,13 +1,20 @@
 {
   "branch_name": "fn-211-a-failing-file-makes-the-watcher-re",
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-10-06T22:25:28.701512Z",
   "created_at": "2026-10-06T21:54:45.934180Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-211-a-failing-file-makes-the-watcher-re",
+  "impl_review_rounds": {},
   "next_task": 1,
+  "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-211-a-failing-file-makes-the-watcher-re.md",
-  "status": "open",
+  "status": "done",
   "title": "A failing file makes the watcher re-sync the whole collection",
   "tracker": {
     "baseHashFlow": null,
@@ -20,5 +27,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-06T21:54:45.937116Z"
+  "updated_at": "2026-10-06T22:25:37.967834Z"
 }

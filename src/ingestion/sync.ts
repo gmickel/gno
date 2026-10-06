@@ -248,7 +248,7 @@ const UPDATE_CMD_WRAPPER = [
   // exit, then SIGKILLs whatever is left of the group (itself included).
   [
     "( trap '' TERM; read -r _ <&3; kill -TERM 0",
-    'i=0; while kill -0 "$cmd" 2>/dev/null && [ "$i" -lt 50 ]; do sleep 0.1; i=$((i + 1)); done',
+    'i=0; while kill -0 "$cmd" 2>/dev/null && [ "$i" -lt 10 ]; do sleep 0.5; i=$((i + 1)); done',
     "kill -KILL 0 ) &",
   ].join("; "),
   "exec 3<&-",

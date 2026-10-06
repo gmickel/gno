@@ -21,6 +21,7 @@ import { CollectionWatchService } from "../../src/serve/watch-service";
 import { safeRm } from "../helpers/cleanup";
 import { portableWatchOptions } from "./helpers/watch-portable-fixtures";
 
+const originalSyncPaths = defaultSyncService.syncPaths.bind(defaultSyncService);
 const originalSyncCollection =
   defaultSyncService.syncCollection.bind(defaultSyncService);
 const roots: string[] = [];
@@ -28,6 +29,7 @@ const services: CollectionWatchService[] = [];
 
 afterEach(async () => {
   defaultSyncService.syncCollection = originalSyncCollection;
+  defaultSyncService.syncPaths = originalSyncPaths;
   for (const service of services.splice(0)) await service.dispose();
   for (const root of roots.splice(0)) await safeRm(root);
 });
@@ -109,25 +111,138 @@ test("without reconcileOnStart the watcher only takes a baseline", async () => {
   expect(synced).toEqual([]);
 });
 
-test("a startup reconcile that keeps failing backs off", async () => {
-  let calls = 0;
+function failingFile(errorCode: string) {
+  return syncResult({
+    filesErrored: 1,
+    filesUnchanged: 0,
+    files: [{ relPath: "note.md", status: "error", errorCode }],
+  });
+}
+
+function recordRetries(errorCode: string): string[][] {
+  const retried: string[][] = [];
+  defaultSyncService.syncPaths = (async (
+    _collection: unknown,
+    _store: unknown,
+    paths: string[]
+  ) => {
+    retried.push(paths);
+    return failingFile(errorCode);
+  }) as unknown as typeof defaultSyncService.syncPaths;
+  return retried;
+}
+
+// fn-211: a completed reconcile with one failing file used to requeue the
+// whole collection with backoff, re-walking it every 5 minutes forever.
+test("a file that keeps failing on its content is recorded once, never re-walked", async () => {
+  let fullReconciles = 0;
+  const retried = recordRetries("PERMISSION");
+  const service = startService(
+    [await collection("alpha")],
+    async () => {
+      fullReconciles += 1;
+      return failingFile("PERMISSION");
+    },
+    { reconcileOnStart: true }
+  );
+  await Bun.sleep(2_700);
+  expect(fullReconciles).toBe(1);
+  expect(retried).toEqual([]);
+  expect(service.getState().queuedCollections).toEqual([]);
+});
+
+test("a walker-only failure (in errors, not file receipts) is recorded once", async () => {
+  let fullReconciles = 0;
+  const retried = recordRetries("TOO_LARGE");
   startService(
     [await collection("alpha")],
     async () => {
-      calls += 1;
+      fullReconciles += 1;
       return syncResult({
         filesErrored: 1,
-        filesUnchanged: 0,
-        files: [{ relPath: "note.md", status: "error" }],
+        files: [{ relPath: "ok.md", status: "unchanged" }],
+        errors: [{ relPath: "huge.md", code: "TOO_LARGE", message: "big" }],
       });
     },
     { reconcileOnStart: true }
   );
-  // Attempts at ~0, +0.5 s, +1.5 s, then +3.5 s. A fixed 500 ms retry would
+  await Bun.sleep(2_700);
+  expect(fullReconciles).toBe(1);
+  expect(retried).toEqual([]);
+});
+
+test("a collection-level store failure keeps the whole-collection retry", async () => {
+  let fullReconciles = 0;
+  recordRetries("PERMISSION");
+  startService(
+    [await collection("alpha")],
+    async () => {
+      fullReconciles += 1;
+      return syncResult({
+        filesErrored: 1,
+        filesUnchanged: 0,
+        files: [
+          { relPath: "note.md", status: "error", errorCode: "PERMISSION" },
+        ],
+        // e.g. the document inventory failed: deletions were not applied.
+        errors: [{ relPath: "", code: "QUERY_FAILED", message: "inventory" }],
+      });
+    },
+    { reconcileOnStart: true }
+  );
+  await Bun.sleep(2_700);
+  expect(fullReconciles).toBeGreaterThanOrEqual(2);
+});
+
+test("an unverifiable collection is recorded once, not retried on a timer", async () => {
+  let fullReconciles = 0;
+  startService(
+    [await collection("alpha")],
+    async () => {
+      fullReconciles += 1;
+      return syncResult({
+        filesErrored: 1,
+        filesUnchanged: 0,
+        files: [
+          {
+            relPath: ".",
+            status: "error",
+            errorCode: "SOURCE_AVAILABILITY_UNSUPPORTED",
+          },
+        ],
+        errors: [
+          {
+            relPath: "",
+            code: "SOURCE_AVAILABILITY_UNSUPPORTED",
+            message: "local availability cannot be verified",
+          },
+        ],
+      });
+    },
+    { reconcileOnStart: true }
+  );
+  await Bun.sleep(2_700);
+  expect(fullReconciles).toBe(1);
+});
+
+test("a store-side failure retries only that path, with backoff", async () => {
+  let fullReconciles = 0;
+  const retried = recordRetries("QUERY_FAILED");
+  startService(
+    [await collection("alpha")],
+    async () => {
+      fullReconciles += 1;
+      return failingFile("QUERY_FAILED");
+    },
+    { reconcileOnStart: true }
+  );
+  // Retries at ~+0.5 s and +1.5 s, then +3.5 s; a fixed 500 ms retry would
   // have made five or six attempts in this window.
   await Bun.sleep(2_700);
-  expect(calls).toBeGreaterThanOrEqual(2);
-  expect(calls).toBeLessThanOrEqual(3);
+  expect(fullReconciles).toBe(1);
+  expect(retried.length).toBeGreaterThanOrEqual(1);
+  expect(retried.length).toBeLessThanOrEqual(3);
+  expect(retried.every((paths) => paths.join() === "note.md")).toBe(true);
 });
 
 test("a collection that cannot be watched queues no startup work", async () => {

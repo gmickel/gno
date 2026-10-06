@@ -1,0 +1,38 @@
+{
+  "branch": "fn-211-a-failing-file-makes-the-watcher-re",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "6218b572dcad88567b1673c5aaef404022a1d84a",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-0cf8d51a66c09ff8fdb28b7fc171a2bc6ca2bce1cc5f89ff1e561786e019b9a2"
+  },
+  "head_sha": "6218b572dcad88567b1673c5aaef404022a1d84a",
+  "id": "fn-211-a-failing-file-makes-the-watcher-re",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 3,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      }
+    ],
+    "total": 3
+  },
+  "timestamp": "2026-10-06T22:25:29Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
