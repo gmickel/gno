@@ -16,7 +16,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-208-status-endpoint-stalls-while-the.md",
-  "status": "open",
+  "status": "done",
   "title": "Status endpoint stalls while the resident is busy",
   "tracker": {
     "baseHashFlow": null,
@@ -29,5 +29,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-06T18:12:43.996807Z"
+  "updated_at": "2026-10-06T18:54:28.507447Z"
 }
