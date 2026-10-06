@@ -14,7 +14,10 @@ Purpose:
 
 GNO owns:
 
-- child-process startup/shutdown for `gno serve`
+- child-process startup/shutdown for `gno serve` (`src/bun/serve-process.ts`):
+  serve gets a stdin pipe and `GNO_PARENT_LIFELINE=stdin`, so it shuts itself
+  down if the shell crashes or is force-quit; a normal quit holds until serve
+  has exited after SIGTERM, escalating to SIGKILL after 15 s
 - localhost control-port singleton handoff
 - route normalization from shell events into existing workspace URLs
 - packaging metadata fragments for URL/file associations

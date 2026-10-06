@@ -18,6 +18,7 @@ import {
   getPackagedRuntimeEntrypoint,
   getResourcesFolder,
 } from "../shared/runtime-layout";
+import { startServeProcess, stopServeProcess } from "./serve-process";
 
 const DEFAULT_PORT = 3927;
 const DEFAULT_CONTROL_PORT = 3928;
@@ -132,11 +133,9 @@ async function waitForServerReady(url: string): Promise<void> {
 }
 
 function startServer(target: ServeRuntimeTarget, port: number): Bun.Subprocess {
-  return Bun.spawn({
+  return startServeProcess({
     cmd: getServeCommand(target, port),
     cwd: target.cwd,
-    stdout: "inherit",
-    stderr: "inherit",
     env: {
       ...process.env,
       NODE_ENV: "production",
@@ -315,12 +314,33 @@ function getRuntimeConfig(
   };
 }
 
+let stopping: Promise<void> | null = null;
+let serveStopped = false;
+
 async function shutdown(): Promise<void> {
-  if (controlServer) {
-    void controlServer.stop(true);
-  }
-  serverProcess?.kill();
+  stopping ??= (async () => {
+    if (controlServer) {
+      void controlServer.stop(true);
+    }
+    if (serverProcess) {
+      await stopServeProcess(serverProcess);
+    }
+    serveStopped = true;
+  })();
+  return stopping;
 }
+
+// Quitting the app (menu, Cmd+Q, process.exit) holds the quit until serve has
+// exited, escalating to SIGKILL if it overruns; a crash or force quit is
+// covered by serve's stdin lifeline instead.
+Electrobun.events.on(
+  "before-quit",
+  (event: { response?: { allow: boolean } }) => {
+    if (serveStopped) return;
+    event.response = { allow: false };
+    void shutdown().finally(() => Utils.quit());
+  }
+);
 
 async function main(): Promise<void> {
   const config = await BuildConfig.get();
@@ -353,10 +373,10 @@ async function main(): Promise<void> {
 }
 
 process.once("SIGINT", () => {
-  void shutdown();
+  Utils.quit();
 });
 process.once("SIGTERM", () => {
-  void shutdown();
+  Utils.quit();
 });
 
 void main().catch(async (error) => {
