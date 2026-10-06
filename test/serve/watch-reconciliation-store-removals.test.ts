@@ -80,6 +80,57 @@ test("a moved directory removes notes indexed after the baseline", async () => {
   }
 });
 
+test("a root hint (event without a filename) also removes store-only notes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gno-watch-store-removals-"));
+  try {
+    await mkdir(join(root, "d4"), { recursive: true });
+    await writeFile(join(root, "d4", "old.md"), "old");
+    const previous = await baseline(root);
+    await writeFile(join(root, "d4", "new.md"), "new");
+    await rename(join(root, "d4"), join(root, "d9"));
+
+    const classified = await classifyDirtyHints({
+      snapshotOptions: { fs: createPortableWatcherFs() },
+      collection: collection(root),
+      store: storeWith(["d4/new.md", "d4/old.md"]),
+      rootAbs: root,
+      previous,
+      dirtyHints: [""],
+    });
+    expect(classified.status).toBe("ok");
+    if (classified.status !== "ok") throw new Error("expected ok");
+    expect(classified.removals.sort()).toEqual(["d4/new.md", "d4/old.md"]);
+  } finally {
+    await safeRm(root);
+  }
+});
+
+test("a store-only note replaced by a directory is removed", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gno-watch-store-removals-"));
+  try {
+    await mkdir(join(root, "d4"), { recursive: true });
+    await writeFile(join(root, "d4", "old.md"), "old");
+    const previous = await baseline(root);
+    // Indexed later as a file, now a directory of the same name.
+    await mkdir(join(root, "d4", "new.md"), { recursive: true });
+
+    const classified = await classifyDirtyHints({
+      snapshotOptions: { fs: createPortableWatcherFs() },
+      collection: collection(root),
+      store: storeWith(["d4/new.md", "d4/old.md"]),
+      rootAbs: root,
+      previous,
+      dirtyHints: ["d4"],
+    });
+    expect(classified.status).toBe("ok");
+    if (classified.status !== "ok") throw new Error("expected ok");
+    expect(classified.removals).toContain("d4/new.md");
+    expect(classified.removals).not.toContain("d4/old.md");
+  } finally {
+    await safeRm(root);
+  }
+});
+
 test("a replaced directory removes store-only notes and keeps notes still on disk", async () => {
   const root = await mkdtemp(join(tmpdir(), "gno-watch-store-removals-"));
   try {

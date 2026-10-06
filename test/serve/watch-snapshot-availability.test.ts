@@ -447,4 +447,47 @@ describe("watcher snapshot source-availability descent", () => {
     expect(observedMode).toBe("local");
     expect(snapshots.has("notes")).toBe(true);
   });
+
+  test("store-only notes under an unproven subtree are never removed (fn-209)", async () => {
+    const tree: Record<string, string[]> = {
+      "": ["cloud", "local.md"],
+      cloud: ["previously-indexed.md"],
+    };
+    const classifier = directoryClassifier((absPath) =>
+      absPath.endsWith(normalize("/cloud")) || absPath === "cloud"
+        ? { kind: "dataless", code: "DATALESS_DIRECTORY", message: "dataless" }
+        : { kind: "available" }
+    );
+    const fs = memoryFs(tree);
+    const built = await buildWatcherSnapshot("/", {
+      fs,
+      directoryAvailability: classifier,
+    });
+    expect(built.status).toBe("ok");
+    if (built.status !== "ok") return;
+
+    const classified = await classifyDirtyHints({
+      collection: {
+        name: "notes",
+        path: "/",
+        pattern: "**/*.md",
+        include: [],
+        exclude: [],
+        sourceAvailability: "local",
+      },
+      store: {
+        listActiveSourcePaths: async () => ({
+          ok: true,
+          value: ["cloud/store-only.md", "local.md"],
+        }),
+      } as unknown as SqliteAdapter,
+      rootAbs: "/",
+      previous: built.snapshot,
+      dirtyHints: [""],
+      snapshotOptions: { fs, directoryAvailability: classifier },
+    });
+    expect(classified.status).toBe("ok");
+    if (classified.status !== "ok") return;
+    expect(classified.removals).not.toContain("cloud/store-only.md");
+  });
 });
