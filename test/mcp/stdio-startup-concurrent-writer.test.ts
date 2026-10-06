@@ -101,7 +101,7 @@ test("gno mcp answers initialize while another process commits a write during it
     stderr: "pipe",
   });
   try {
-    mcp.stdin.write(
+    void mcp.stdin.write(
       `${JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
