@@ -151,6 +151,49 @@ test("a file that keeps failing on its content is recorded once, never re-walked
   expect(service.getState().queuedCollections).toEqual([]);
 });
 
+test("a walker-only failure (in errors, not file receipts) is recorded once", async () => {
+  let fullReconciles = 0;
+  const retried = recordRetries("TOO_LARGE");
+  startService(
+    [await collection("alpha")],
+    async () => {
+      fullReconciles += 1;
+      return syncResult({
+        filesErrored: 1,
+        files: [{ relPath: "ok.md", status: "unchanged" }],
+        errors: [{ relPath: "huge.md", code: "TOO_LARGE", message: "big" }],
+      });
+    },
+    { reconcileOnStart: true }
+  );
+  await Bun.sleep(2_700);
+  expect(fullReconciles).toBe(1);
+  expect(retried).toEqual([]);
+});
+
+test("a collection-level store failure keeps the whole-collection retry", async () => {
+  let fullReconciles = 0;
+  recordRetries("PERMISSION");
+  startService(
+    [await collection("alpha")],
+    async () => {
+      fullReconciles += 1;
+      return syncResult({
+        filesErrored: 1,
+        filesUnchanged: 0,
+        files: [
+          { relPath: "note.md", status: "error", errorCode: "PERMISSION" },
+        ],
+        // e.g. the document inventory failed: deletions were not applied.
+        errors: [{ relPath: "", code: "QUERY_FAILED", message: "inventory" }],
+      });
+    },
+    { reconcileOnStart: true }
+  );
+  await Bun.sleep(2_700);
+  expect(fullReconciles).toBeGreaterThanOrEqual(2);
+});
+
 test("a store-side failure retries only that path, with backoff", async () => {
   let fullReconciles = 0;
   const retried = recordRetries("QUERY_FAILED");
