@@ -69,9 +69,14 @@ const request = () => ({
 
 test("an import that overruns its timeout is killed", async () => {
   const started = Date.now();
-  await expect(
-    importInChildProcess(request(), { timeoutMs: 300 })
-  ).rejects.toThrow("session import timed out");
+  const error = await importInChildProcess(request(), {
+    timeoutMs: 300,
+  }).then(
+    () => null,
+    (cause: unknown) => cause
+  );
+  expect(error).toBeInstanceOf(Error);
+  expect((error as Error).message).toContain("session import timed out");
   expect(Date.now() - started).toBeLessThan(5_000);
 }, 30_000);
 
@@ -80,7 +85,11 @@ test("resident shutdown kills a running import child", async () => {
   await Bun.sleep(500);
   const started = Date.now();
   killImportChildren();
-  await expect(importing).rejects.toThrow();
+  const error = await importing.then(
+    () => null,
+    (cause: unknown) => cause
+  );
+  expect(error).toBeInstanceOf(Error);
   expect(Date.now() - started).toBeLessThan(5_000);
 }, 30_000);
 

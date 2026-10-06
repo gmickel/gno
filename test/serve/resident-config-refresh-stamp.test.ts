@@ -86,7 +86,12 @@ test("an unchanged config file is read once; an edit or a broken file is not mis
   ]);
 
   await Bun.write(configPath, "version: [not valid\n");
-  await expect(refresh()).rejects.toThrow();
+  const failed = async (): Promise<boolean> =>
+    await Promise.resolve(refresh()).then(
+      () => false,
+      () => true
+    );
+  expect(await failed()).toBe(true);
   // Still an error on the next request, never the stale config.
-  await expect(refresh()).rejects.toThrow();
+  expect(await failed()).toBe(true);
 });
