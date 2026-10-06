@@ -21,6 +21,7 @@ import { CollectionWatchService } from "../../src/serve/watch-service";
 import { safeRm } from "../helpers/cleanup";
 import { portableWatchOptions } from "./helpers/watch-portable-fixtures";
 
+const originalSyncPaths = defaultSyncService.syncPaths.bind(defaultSyncService);
 const originalSyncCollection =
   defaultSyncService.syncCollection.bind(defaultSyncService);
 const roots: string[] = [];
@@ -28,6 +29,7 @@ const services: CollectionWatchService[] = [];
 
 afterEach(async () => {
   defaultSyncService.syncCollection = originalSyncCollection;
+  defaultSyncService.syncPaths = originalSyncPaths;
   for (const service of services.splice(0)) await service.dispose();
   for (const root of roots.splice(0)) await safeRm(root);
 });
@@ -109,12 +111,27 @@ test("without reconcileOnStart the watcher only takes a baseline", async () => {
   expect(synced).toEqual([]);
 });
 
-test("a startup reconcile that keeps failing backs off", async () => {
-  let calls = 0;
+test("a file that keeps failing is retried alone, never the whole collection", async () => {
+  // fn-211: a completed reconcile with one failing file used to requeue the
+  // whole collection with backoff, re-walking it every 5 minutes forever.
+  let fullReconciles = 0;
+  const retried: string[][] = [];
+  defaultSyncService.syncPaths = (async (
+    _collection: unknown,
+    _store: unknown,
+    paths: string[]
+  ) => {
+    retried.push(paths);
+    return syncResult({
+      filesErrored: 1,
+      filesUnchanged: 0,
+      files: paths.map((relPath) => ({ relPath, status: "error" as const })),
+    });
+  }) as unknown as typeof defaultSyncService.syncPaths;
   startService(
     [await collection("alpha")],
     async () => {
-      calls += 1;
+      fullReconciles += 1;
       return syncResult({
         filesErrored: 1,
         filesUnchanged: 0,
@@ -123,11 +140,13 @@ test("a startup reconcile that keeps failing backs off", async () => {
     },
     { reconcileOnStart: true }
   );
-  // Attempts at ~0, +0.5 s, +1.5 s, then +3.5 s. A fixed 500 ms retry would
-  // have made five or six attempts in this window.
+  // Retries of the failing path at ~+0.5 s and +1.5 s, then +3.5 s; a fixed
+  // 500 ms retry would have made five or six attempts in this window.
   await Bun.sleep(2_700);
-  expect(calls).toBeGreaterThanOrEqual(2);
-  expect(calls).toBeLessThanOrEqual(3);
+  expect(fullReconciles).toBe(1);
+  expect(retried.length).toBeGreaterThanOrEqual(1);
+  expect(retried.length).toBeLessThanOrEqual(3);
+  expect(retried.every((paths) => paths.join() === "note.md")).toBe(true);
 });
 
 test("a collection that cannot be watched queues no startup work", async () => {
