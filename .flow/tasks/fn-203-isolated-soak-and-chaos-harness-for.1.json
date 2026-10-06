@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-203-isolated-soak-and-chaos-harness-for",
   "spec_path": ".flow/tasks/fn-203-isolated-soak-and-chaos-harness-for.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement isolated soak and chaos harness",
   "updated_at": "2026-10-06T11:07:06.825925Z"
 }
