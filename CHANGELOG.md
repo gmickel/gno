@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A note could stay in search after its folder was moved or deleted while `gno serve` or `gno daemon` was running. It happened when the note had been created shortly before: GNO tracked it, but its record of the folder's contents had not caught up yet, so moving or deleting the folder removed every other note in it and left that one behind until the next full sync. Moving or deleting a folder now also removes every indexed note under it that is no longer on disk.
+
+### Fixed
+
 - `gno mcp` and other commands no longer fail at startup with `database is locked` while `gno serve`, `gno daemon` or the desktop app is writing to the same index. Startup syncs the collection list from the config, and when another process committed a write at the same moment, the sync failed immediately instead of waiting. It now waits its turn. An agent that starts `gno mcp` beside a busy GNO used to see the MCP server exit.
 - `gno daemon --stop` and `gno serve --stop` no longer hang for 12 seconds and then force-kill a process that was stopped while still starting up, for example right after `--detach` returned. The stop signal was caught before the shutdown handler existed and then ignored. A process stopped during startup now exits at once, and `--stop` removes its pid file when the process could not.
 - `gno serve`, which the desktop app runs, now catches up on notes added, edited or deleted while it was not running. It used to index only changes it saw happen, so offline edits stayed out of search until a manual sync or the next time the file changed. At startup it now reconciles each watched folder with the disk in the background, the way `gno daemon` already did with its initial sync. Search and status stay available meanwhile, and a folder that keeps failing backs off like any other watcher sync.

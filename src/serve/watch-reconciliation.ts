@@ -14,6 +14,7 @@ import { WATCHER_ACTIVE_SOURCE_PATH_MAX } from "../store/types";
 import { fallbackClassifyDirtyHints } from "./watch-reconciliation-fallback";
 import {
   filterEligiblePaths,
+  inspectPathPresence,
   type ClassificationResult,
 } from "./watch-reconciliation-shared";
 import {
@@ -47,6 +48,68 @@ export {
   type PathPresence,
   type WatcherEventClassification,
 } from "./watch-reconciliation-shared";
+
+type StoreOnlyRemovals =
+  | { status: "ok"; paths: string[] }
+  | { status: "overflow" }
+  | { status: "error"; cause: unknown };
+
+/**
+ * Store-known active paths under the dirty directory hints that are gone from
+ * disk. The snapshot only knows what it scanned: a note indexed from its own
+ * exact event after the baseline is in the store but not the snapshot, and
+ * when its directory is then moved or replaced (one directory event) the
+ * snapshot diff alone would leave it active (fn-209). A path the fresh
+ * snapshot lists is present; any other is confirmed absent on disk before it
+ * counts. A failed check never infers a delete.
+ */
+async function storeOnlyRemovals(options: {
+  store: SqliteAdapter;
+  collection: Collection;
+  rootAbs: string;
+  dirtyHints: readonly string[];
+  next: WatcherSnapshot | null;
+  sourcePathMax: number;
+}): Promise<StoreOnlyRemovals> {
+  const { store, collection, rootAbs, next, sourcePathMax } = options;
+  if (typeof store.listActiveDescendantSourcePaths !== "function") {
+    return { status: "ok", paths: [] };
+  }
+  const hints = [...new Set(options.dirtyHints)]
+    .filter((hint) => hint !== "")
+    .sort();
+  // A hint under another hint is covered by the outer descendant lookup.
+  const roots = hints.filter(
+    (hint, index) =>
+      !hints.slice(0, index).some((outer) => hint.startsWith(`${outer}/`))
+  );
+  const removals: string[] = [];
+  let seen = 0;
+  for (const dir of roots) {
+    const listed = await store.listActiveDescendantSourcePaths(
+      collection.name,
+      dir,
+      Math.max(1, sourcePathMax - seen)
+    );
+    if (!listed.ok) {
+      if (listed.error.code === "OVERFLOW") return { status: "overflow" };
+      // Not a directory path the store can scope (e.g. escapes the root).
+      if (listed.error.code === "INVALID_INPUT") continue;
+      return { status: "error", cause: new Error(listed.error.message) };
+    }
+    seen += listed.value.length;
+    if (seen > sourcePathMax) return { status: "overflow" };
+    for (const path of listed.value) {
+      const slash = path.lastIndexOf("/");
+      const parent = slash === -1 ? "" : path.slice(0, slash);
+      const name = path.slice(slash + 1);
+      if (next?.directories.get(parent)?.has(name)) continue;
+      const presence = await inspectPathPresence(rootAbs, path);
+      if (presence.status === "missing") removals.push(path);
+    }
+  }
+  return { status: "ok", paths: removals };
+}
 
 /**
  * Snapshot-first classification of dirty hints. On overflow/scan/metadata
@@ -96,10 +159,31 @@ export async function classifyDirtyHints(options: {
       snapshotOptions
     );
     if (diff.status === "ok") {
+      const storeRemovals = await storeOnlyRemovals({
+        store,
+        collection,
+        rootAbs,
+        dirtyHints,
+        next: diff.nextSnapshot,
+        sourcePathMax,
+      });
+      if (storeRemovals.status === "overflow") {
+        return { status: "full_reconcile", reason: "budget_overflow" };
+      }
+      if (storeRemovals.status === "error") {
+        return {
+          status: "error",
+          cause: storeRemovals.cause,
+          stage: "store",
+        };
+      }
       return {
         status: "ok",
         candidates: filterEligiblePaths(diff.candidates, collection),
-        removals: filterEligiblePaths(diff.removals, collection),
+        removals: filterEligiblePaths(
+          [...new Set([...diff.removals, ...storeRemovals.paths])],
+          collection
+        ),
         nextSnapshot: diff.nextSnapshot,
         usedFallback: false,
       };
