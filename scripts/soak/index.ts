@@ -153,6 +153,12 @@ function reexecContained(): never | void {
       "--fork",
       "--kill-child",
       "--mount-proc",
+      // bash, not the harness, is PID 1: it reaps orphans that re-parent to
+      // it (bun would leave them as zombies). Two commands keep bash from exec'ing.
+      "bash",
+      "-c",
+      '"$@"; exit $?',
+      "_",
       process.execPath,
       import.meta.path,
       ...process.argv.slice(2),

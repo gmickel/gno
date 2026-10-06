@@ -224,8 +224,16 @@ export async function checkOrphans(
   const deadline = Date.now() + THRESHOLDS.orphanGraceMs;
   let left: ProcInfo[] = [];
   do {
-    left = (await monitor.taggedProcesses()).filter(
-      (info) => !expected.has(info.pid)
+    const tagged = await monitor.taggedProcesses();
+    const liveTagged = new Set(
+      tagged.filter((info) => info.state !== "Z").map((info) => info.pid)
+    );
+    // A zombie is GNO's fault only when a live GNO process failed to reap it;
+    // one parented by the harness or namespace init is not a GNO leftover.
+    left = tagged.filter(
+      (info) =>
+        !expected.has(info.pid) &&
+        (info.state !== "Z" || liveTagged.has(info.ppid))
     );
     if (left.length === 0) break;
     await Bun.sleep(250);

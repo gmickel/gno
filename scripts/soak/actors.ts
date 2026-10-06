@@ -388,46 +388,54 @@ export interface SseHerd {
   close(): Promise<void>;
 }
 
-/** Open `count` /api/events subscribers; abandoned ones stop reading but stay connected. */
+/**
+ * Open `count` /api/events subscribers over raw sockets (not fetch, whose
+ * client pool would also starve the harness's own status probes).
+ * "Abandoned" subscribers stay connected and keep receiving, but nothing
+ * reacts to their data - Bun sockets cannot stop reading, so this exercises
+ * held connections rather than true backpressure.
+ */
 export async function sseHerd(
   resident: Resident,
   count: number
 ): Promise<SseHerd> {
-  const controllers: AbortController[] = [];
-  const readers: ReadableStreamDefaultReader<Uint8Array>[] = [];
-  const paused = new Set<number>();
+  const sockets: { end(): void }[] = [];
+  let open = 0;
+  const request = `GET /api/events HTTP/1.1\r\nHost: 127.0.0.1:${resident.port}\r\nAccept: text/event-stream\r\n\r\n`;
   for (let i = 0; i < count; i += 1) {
-    const controller = new AbortController();
-    controllers.push(controller);
     try {
-      const response = await fetch(`${resident.baseUrl}/api/events`, {
-        signal: controller.signal,
+      let headersSeen = false;
+      const socket = await Bun.connect({
+        hostname: "127.0.0.1",
+        port: resident.port,
+        socket: {
+          data(_socket, chunk) {
+            if (
+              !headersSeen &&
+              new TextDecoder().decode(chunk).startsWith("HTTP/1.1 200")
+            ) {
+              headersSeen = true;
+              open += 1;
+            }
+          },
+        },
       });
-      const reader = response.body?.getReader();
-      if (!reader) continue;
-      readers.push(reader);
-      const index = readers.length - 1;
-      void (async () => {
-        while (!controller.signal.aborted) {
-          if (paused.has(index)) {
-            await Bun.sleep(1_000);
-            continue;
-          }
-          const { done } = await reader.read().catch(() => ({ done: true }));
-          if (done) break;
-        }
-      })();
+      socket.write(request);
+      sockets.push(socket);
     } catch {
-      // Refused: counted by the caller from `open`.
+      // Refused connections show up as a lower `open` count.
     }
   }
+  await Bun.sleep(1_000);
   return {
-    open: readers.length,
-    abandon(n) {
-      for (let i = 0; i < Math.min(n, readers.length); i += 1) paused.add(i);
+    get open() {
+      return open;
+    },
+    abandon() {
+      // See the doc comment: held, not backpressured.
     },
     async close() {
-      for (const controller of controllers) controller.abort();
+      for (const socket of sockets) socket.end();
       await Bun.sleep(200);
     },
   };

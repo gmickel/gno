@@ -217,6 +217,7 @@ const signals: Runner = async (ctx) => {
         signal === "SIGKILL" ? "I9" : "I8"
       );
       await bringDown(ctx, recovered, "SIGTERM", `recovered after ${label}`);
+      await resetBaseline(ctx, label);
     }
   }
 };
@@ -354,19 +355,38 @@ const updateCmd: Runner = async (ctx) => {
         pattern: "**/*",
         include: [],
         exclude: [],
+        // updateCmd counts as remote egress; the collection must opt in.
+        egressPolicy: "remote",
         updateCmd: "sleep 600",
       },
     ],
   });
   await writeConfig(ctx.sandbox.configDir, config);
   for (const signal of ["SIGKILL", "SIGTERM"] as NodeJS.Signals[]) {
-    const update = spawnTagged(ctx.sandbox, gnoCmd("update", "scripted"));
-    await Bun.sleep(4_000);
+    const update = spawnTagged(
+      ctx.sandbox,
+      gnoCmd("index", "scripted", "--no-embed")
+    );
+    let started = false;
+    for (let i = 0; i < 40 && !started; i += 1) {
+      await Bun.sleep(500);
+      started = (await ctx.monitor.taggedProcesses()).some((info) =>
+        /\bsleep 600\b/.test(info.command)
+      );
+    }
+    ctx.monitor.event(
+      "update-cmd",
+      `updateCmd running before ${signal}: ${started}`
+    );
+    if (!started)
+      ctx.notes.push(
+        `update-cmd (${signal}): updateCmd never started; the orphan check below is not meaningful`
+      );
     update.kill(signal);
     await update.exited;
     ctx.monitor.event(
       "fault",
-      `gno update with hanging updateCmd killed with ${signal}`
+      `gno index with hanging updateCmd killed with ${signal}`
     );
     const left = await checkOrphans(
       ctx.verdicts,
@@ -533,7 +553,16 @@ const mcpLifecycle: Runner = async (ctx) => {
 const staleLocks: Runner = async (ctx) => {
   const paths = residentPaths(ctx.sandbox);
   // Stale detach pid file naming a dead pid.
-  await Bun.write(paths.servePid, "999999\n");
+  await Bun.write(
+    paths.servePid,
+    JSON.stringify({
+      pid: 999_999,
+      cmd: "serve",
+      version: "0.0.0",
+      started_at: new Date(Date.now() - 3_600_000).toISOString(),
+      port: 1,
+    })
+  );
   const port = freePort();
   const start = await runGno(
     ctx.sandbox,
@@ -687,21 +716,38 @@ export const TORTURE_RUNNERS: Record<TortureClass, Runner> = {
   "disk-full": diskFull,
 };
 
+/** Reindex with no resident running so each class starts from a converged index (setup, not measured). */
+export async function resetBaseline(
+  ctx: RunContext,
+  label: string
+): Promise<void> {
+  const result = await runGno(ctx.sandbox, ["index"], {
+    timeoutMs: 15 * 60_000,
+  });
+  ctx.monitor.event(
+    "baseline",
+    `${label}: gno index exit ${result.code} in ${(result.ms / 1000).toFixed(0)} s`
+  );
+}
+
 export async function runTorture(
   ctx: RunContext,
   classes: readonly TortureClass[]
 ): Promise<void> {
-  for (const name of classes) {
+  for (const [index, name] of classes.entries()) {
     ctx.verdicts.scenario = `torture/${name}`;
     ctx.monitor.event("torture", name);
+    await resetBaseline(ctx, name);
     try {
-      await withTimeout(TORTURE_RUNNERS[name](ctx), 20 * 60_000, name);
+      await withTimeout(TORTURE_RUNNERS[name](ctx), 45 * 60_000, name);
     } catch (error) {
+      // A timed-out runner keeps running in the background; stop everything
+      // rather than let it overlap the next class.
+      const skipped = classes.slice(index + 1);
       ctx.notes.push(
-        `torture/${name} aborted: ${error instanceof Error ? error.message : String(error)}`
+        `torture/${name} aborted: ${error instanceof Error ? error.message : String(error)}${skipped.length ? `; skipped ${skipped.join(", ")}` : ""}`
       );
       ctx.monitor.event("error", `${name}: ${String(error)}`);
-      // Leave nothing running into the next class.
       if (ctx.monitor.resident && isAlive(ctx.monitor.resident.pid)) {
         await stopResident(ctx.monitor.resident, "SIGKILL", 5_000);
       }
@@ -713,6 +759,7 @@ export async function runTorture(
         hang: false,
         down: false,
       });
+      break;
     }
   }
 }
