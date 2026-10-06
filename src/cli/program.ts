@@ -5564,8 +5564,16 @@ function installPidFileCleanup(pidFile: string): void {
       // Already gone or permission-denied — nothing actionable here.
     }
   };
-  process.once("SIGINT", cleanup);
-  process.once("SIGTERM", cleanup);
+  // Registering a listener disables the default terminate action. A signal
+  // that arrives before the daemon/server installs its own shutdown handler
+  // (still starting up) would otherwise be swallowed, and `--stop` would wait
+  // out its grace period and SIGKILL. With no other listener, exit now.
+  const onSignal = (signal: "SIGINT" | "SIGTERM", exitCode: number) => () => {
+    cleanup();
+    if (process.listenerCount(signal) === 0) process.exit(exitCode);
+  };
+  process.once("SIGINT", onSignal("SIGINT", 130));
+  process.once("SIGTERM", onSignal("SIGTERM", 143));
   // Also run on a clean (`exit(0)`) path so crashes leave a stale pid-file
   // that `--status` can detect via liveness check, but orderly shutdown
   // (e.g. startServer returned) still cleans up.

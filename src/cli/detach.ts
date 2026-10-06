@@ -943,12 +943,23 @@ async function waitForExit(
 /**
  * Stop a detached process: SIGTERM → poll → SIGKILL → poll → error.
  *
- * The pid-file is **not** unlinked on success by this helper — we let the
- * target's own signal handler clean it up (see `createSignalPromise` in
- * `src/cli/commands/daemon.ts`). Callers may unlink the file as a fallback
- * when liveness is `false` after the kill sequence; `stopProcess` itself only
- * unlinks stale pid-files it discovers on entry.
+ * The target's own signal handler normally removes the pid-file. A target
+ * killed before that handler existed (SIGTERM during early startup, or the
+ * SIGKILL escalation) cannot, so once the exit is confirmed this helper
+ * removes the pid-file if it still names the pid it stopped.
  */
+/** Remove the pid-file only if it still names `pid` (never a newer instance's). */
+async function removePidFileIfOwnedBy(
+  pidFile: string,
+  pid: number
+): Promise<void> {
+  const current = await readPidFile(pidFile).catch(() => null);
+  if (current?.pid !== pid) return;
+  await unlink(pidFile).catch(() => {
+    /* already gone */
+  });
+}
+
 export async function stopProcess(options: StopOptions): Promise<StopOutcome> {
   const timeoutMs = options.timeoutMs ?? RESIDENT_STOP_GRACE_MS;
   const pollIntervalMs = options.pollIntervalMs ?? 100;
@@ -1004,6 +1015,7 @@ export async function stopProcess(options: StopOptions): Promise<StopOutcome> {
     sleep
   );
   if (exitedOnSigterm) {
+    await removePidFileIfOwnedBy(options.pidFile, payload.pid);
     return { kind: "stopped", pid: payload.pid, signal: "SIGTERM" };
   }
 
@@ -1011,6 +1023,7 @@ export async function stopProcess(options: StopOptions): Promise<StopOutcome> {
     kill(payload.pid, "SIGKILL");
   } catch (error) {
     if (isErrnoException(error) && error.code === "ESRCH") {
+      await removePidFileIfOwnedBy(options.pidFile, payload.pid);
       return { kind: "stopped", pid: payload.pid, signal: "SIGTERM" };
     }
     throw error;
@@ -1025,6 +1038,7 @@ export async function stopProcess(options: StopOptions): Promise<StopOutcome> {
     sleep
   );
   if (exitedOnSigkill) {
+    await removePidFileIfOwnedBy(options.pidFile, payload.pid);
     return { kind: "stopped", pid: payload.pid, signal: "SIGKILL" };
   }
 
