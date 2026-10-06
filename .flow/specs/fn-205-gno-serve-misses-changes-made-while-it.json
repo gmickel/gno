@@ -1,0 +1,24 @@
+{
+  "branch_name": "fn-205-gno-serve-misses-changes-made-while-it",
+  "created_at": "2026-10-06T14:01:29.695042Z",
+  "depends_on_epics": [],
+  "id": "fn-205-gno-serve-misses-changes-made-while-it",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-205-gno-serve-misses-changes-made-while-it.md",
+  "status": "open",
+  "title": "gno serve misses changes made while it was not running",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-10-06T14:01:29.697933Z"
+}
