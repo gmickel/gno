@@ -174,6 +174,7 @@ run, not the global 70. Add a new strict eval to that map and to a dedicated
 | `sessions-eval-fixtures.ts`       | Re-pins the session eval fixture hashes in `evals/fixtures/sessions/manifest.json` after a reviewed fixture edit (`bun scripts/sessions-eval-fixtures.ts`).                                                                    |
 | `memory-eval-fixtures.ts`         | Refreshes the memory eval fixture pins in `evals/fixtures/memory/manifest.json`; `--golden` also regenerates `agent-day.golden.json` from a fresh run (`bun run eval:memory:fixtures`). |
 | `session-import-benchmark.ts`    | Imports a synthetic Codex session corpus (placeholder text) at several sizes (default 30/90/300 threads of 200 turns) in an isolated temp root and reports import time, per-turn cost and peak RSS (`bun run bench:session-import`). |
+| `soak/` (`bun run soak`)         | Isolated soak and chaos harness (fn-203): runs real `serve`/`daemon`/`mcp`/CLI processes in a sealed sandbox (own HOME/XDG/GNO dirs, offline, loopback fake model server) under seeded load and faults, and checks nine invariants (idle CPU/wakeups, no orphans or zombies, locks released, status latency, shutdown budget, bounded growth, bounded retries, convergence, kill recovery). Tiers: `smoke` (~7 min), `torture` (each fault class), `soak` (hours). Writes `report.json`/`report.md`; `--replay` reruns a seed. Thresholds live in `scripts/soak/config.ts`; never loosen one to pass a run, file the finding. |
 | `og-screenshots.ts`               | Generates PNG screenshots from OG image HTML templates using Playwright.                                                                                                           |
 | `sync-assets.ts`                  | Syncs all website assets: OG images, screenshots, README hero. Run before release.                                                                                                 |
 
@@ -188,6 +189,10 @@ bun run bench:cpu-embeddings:native-batch-probe
 bun run bench:ast-chunking -- --fixture canonical --write
 bun run website:sync-assets        # Sync all website assets (OG, screenshots, hero)
 bun run website:sync-assets --og   # OG images only
+bun run soak --tier smoke          # Soak harness: one lifecycle cycle (~7 min)
+bun run soak --tier torture --classes signals,lease-held   # Selected fault classes
+bun run soak --tier soak --duration 4h --contain             # Long seeded run (Linux: PID namespace)
+bun run soak --replay /tmp/gno-soak-reports/<run>/report.json
 ```
 
 ## Website Screenshots

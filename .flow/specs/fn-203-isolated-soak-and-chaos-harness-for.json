@@ -1,11 +1,20 @@
 {
   "branch_name": "fn-203-isolated-soak-and-chaos-harness-for",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
   "created_at": "2026-10-06T00:05:04.162354Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-203-isolated-soak-and-chaos-harness-for",
+  "impl_review_rounds": {},
   "next_task": 1,
+  "no_plan": true,
+  "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "ready": true,
   "spec_path": ".flow/specs/fn-203-isolated-soak-and-chaos-harness-for.md",
   "status": "open",
   "title": "Isolated soak and chaos harness for resident GNO",
@@ -20,5 +29,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-06T00:05:04.165075Z"
+  "updated_at": "2026-10-06T11:06:55.245688Z"
 }
