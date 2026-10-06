@@ -16,7 +16,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-207-child-processes-outlive-a-killed-parent.md",
-  "status": "open",
+  "status": "done",
   "title": "Child processes outlive a killed parent",
   "tracker": {
     "baseHashFlow": null,
@@ -29,5 +29,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-06T17:08:06.800211Z"
+  "updated_at": "2026-10-06T18:07:19.719975Z"
 }
