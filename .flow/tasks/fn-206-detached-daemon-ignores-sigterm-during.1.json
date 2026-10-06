@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-206-detached-daemon-ignores-sigterm-during",
   "spec_path": ".flow/tasks/fn-206-detached-daemon-ignores-sigterm-during.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Stop a detached resident cleanly during startup",
   "updated_at": "2026-10-06T15:52:31.365510Z"
 }
