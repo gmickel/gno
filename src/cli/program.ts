@@ -25,6 +25,7 @@ import {
   formatFindingsRunStatusLine,
   readFindingsRunStatus,
 } from "../core/findings-run-state";
+import { residentShutdownHandlerInstalled } from "../core/resident-shutdown-handler";
 import { parseAndValidateTagFilter } from "../core/tags";
 import {
   formatWriteLeaseBusyJson,
@@ -5567,13 +5568,13 @@ function installPidFileCleanup(pidFile: string): void {
   // Registering a listener disables the default terminate action. A signal
   // that arrives before the daemon/server installs its own shutdown handler
   // (still starting up) would otherwise be swallowed, and `--stop` would wait
-  // out its grace period and SIGKILL. With no other listener, exit now.
-  const onSignal = (signal: "SIGINT" | "SIGTERM", exitCode: number) => () => {
+  // out its grace period and SIGKILL. Until that handler exists, exit now.
+  const onSignal = (exitCode: number) => () => {
     cleanup();
-    if (process.listenerCount(signal) === 0) process.exit(exitCode);
+    if (!residentShutdownHandlerInstalled()) process.exit(exitCode);
   };
-  process.once("SIGINT", onSignal("SIGINT", 130));
-  process.once("SIGTERM", onSignal("SIGTERM", 143));
+  process.once("SIGINT", onSignal(130));
+  process.once("SIGTERM", onSignal(143));
   // Also run on a clean (`exit(0)`) path so crashes leave a stale pid-file
   // that `--status` can detect via liveness check, but orderly shutdown
   // (e.g. startServer returned) still cleans up.

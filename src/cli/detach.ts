@@ -510,6 +510,17 @@ function acquireStartLock(pidFile: string, kind: DetachKind): string {
   );
 }
 
+/** Take the start lock if it is free right now; null when someone holds it. */
+function tryAcquireStartLock(pidFile: string): string | null {
+  const lockPath = startLockPath(pidFile);
+  try {
+    closeSync(openSync(lockPath, "wx"));
+    return lockPath;
+  } catch {
+    return null;
+  }
+}
+
 function releaseStartLock(lockPath: string): void {
   try {
     unlinkSync(lockPath);
@@ -948,16 +959,28 @@ async function waitForExit(
  * SIGKILL escalation) cannot, so once the exit is confirmed this helper
  * removes the pid-file if it still names the pid it stopped.
  */
-/** Remove the pid-file only if it still names `pid` (never a newer instance's). */
+/**
+ * Remove the pid-file only if it still names `pid` (never a newer instance's).
+ * The check and the unlink run under the start lock, so a concurrent
+ * `--detach` cannot write its pid-file in between. If a start holds the lock,
+ * the file is left alone: `guardDoubleStart` already treats a dead pid as
+ * stale.
+ */
 async function removePidFileIfOwnedBy(
   pidFile: string,
   pid: number
 ): Promise<void> {
-  const current = await readPidFile(pidFile).catch(() => null);
-  if (current?.pid !== pid) return;
-  await unlink(pidFile).catch(() => {
-    /* already gone */
-  });
+  const lockPath = tryAcquireStartLock(pidFile);
+  if (!lockPath) return;
+  try {
+    const current = await readPidFile(pidFile).catch(() => null);
+    if (current?.pid !== pid) return;
+    await unlink(pidFile).catch(() => {
+      /* already gone */
+    });
+  } finally {
+    releaseStartLock(lockPath);
+  }
 }
 
 export async function stopProcess(options: StopOptions): Promise<StopOutcome> {
