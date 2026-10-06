@@ -49,7 +49,11 @@ import {
 } from "./watch-service-lifecycle";
 import { runOwnedCollectionFlush } from "./watch-service-run-flush";
 import { beginSnapshotInit } from "./watch-service-snapshot";
-import { pendingHasWork, type CollectionPending } from "./watch-service-state";
+import {
+  emptyPending,
+  pendingHasWork,
+  type CollectionPending,
+} from "./watch-service-state";
 
 export interface CollectionWatchState {
   expectedCollections: string[];
@@ -111,6 +115,12 @@ interface CollectionWatchServiceOptions {
   snapshotEntryCeiling?: number;
   /** Shared writer lease taken (no wait) around each flush's writes. */
   acquireWriteLease?: () => Promise<(() => Promise<void>) | null>;
+  /**
+   * Queue a full reconcile of every watched collection at start, so changes
+   * made while no resident ran reach the index. Off for the daemon, whose
+   * initial sync (unless --no-sync-on-start) covers the same ground.
+   */
+  reconcileOnStart?: boolean;
 }
 
 export class CollectionWatchService {
@@ -152,6 +162,7 @@ export class CollectionWatchService {
   readonly #snapshotFs: WatcherSnapshotFs | undefined;
   readonly #snapshotEntryCeiling: number | undefined;
   readonly #acquireWriteLease: CollectionWatchServiceOptions["acquireWriteLease"];
+  readonly #reconcileOnStart: boolean;
   #nextCollectionGeneration = 0;
   #disposed = false;
   #lastEventAt: string | null = null;
@@ -176,11 +187,24 @@ export class CollectionWatchService {
     this.#snapshotFs = options.snapshotFs;
     this.#snapshotEntryCeiling = options.snapshotEntryCeiling;
     this.#acquireWriteLease = options.acquireWriteLease;
+    this.#reconcileOnStart = options.reconcileOnStart ?? false;
   }
 
   start(): void {
-    if (!this.#disposed) {
-      this.updateCollections(this.#collections);
+    if (this.#disposed) {
+      return;
+    }
+    this.updateCollections(this.#collections);
+    if (!this.#reconcileOnStart) {
+      return;
+    }
+    // Generation work waits for the snapshot baseline, then runs a full
+    // syncCollection through the normal flush path (write lease, failure
+    // backoff, source availability). Unwatchable collections queue nothing.
+    for (const name of this.#watchers.keys()) {
+      const pending = this.#pendingByCollection.get(name) ?? emptyPending();
+      pending.generationReconcile = true;
+      this.#pendingByCollection.set(name, pending);
     }
   }
 

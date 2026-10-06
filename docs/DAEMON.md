@@ -299,6 +299,10 @@ item, or your service manager.
 - `gno daemon`: headless continuous indexing, `/mcp`, and redacted lifecycle
   status only
 
+Both catch up on changes made while no resident ran: the daemon with its
+initial sync (skipped by `--no-sync-on-start`), `gno serve` with a background
+reconcile of each watched folder at startup.
+
 Only one resident owner may use a data directory. Starting the other mode
 against the same `GNO_DATA_DIR` fails with the current owner hint; stop the
 owner before switching modes.
