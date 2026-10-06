@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-208-status-endpoint-stalls-while-the",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-10-06T18:12:43.996797Z",
   "created_at": "2026-10-06T14:01:30.682187Z",
   "default_impl": null,
   "default_review": null,
@@ -29,5 +29,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-06T15:15:14.263176Z"
+  "updated_at": "2026-10-06T18:12:43.996807Z"
 }
