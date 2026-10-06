@@ -13,6 +13,15 @@
  * @module scripts/soak/corpus
  */
 
+/**
+ * Collections built to fail on every sync. A watcher event in one keeps a
+ * backoff retry pending (fn-202, checked by I7), so convergence does not wait
+ * for their watcher work to drain.
+ */
+export const ALWAYS_FAILING_COLLECTIONS: ReadonlySet<string> = new Set([
+  "cloudish",
+]);
+
 // node:fs/promises — directory structure, chmod, symlink and rename have no Bun equivalent
 import { chmod, mkdir, readdir, rename, rm, symlink } from "node:fs/promises";
 // node:path — Bun has no path utilities

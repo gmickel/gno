@@ -16,6 +16,7 @@ import type { ProcInfo } from "./procfs";
 import type { Sandbox } from "./sandbox";
 
 import { THRESHOLDS } from "./config";
+import { ALWAYS_FAILING_COLLECTIONS } from "./corpus";
 import { getJson, residentPaths } from "./gno";
 import { isAlive } from "./procfs";
 import { lockIsFree, portIsFree } from "./sandbox";
@@ -533,19 +534,21 @@ export async function convergenceState(
     status as {
       background?: {
         watcher?: {
-          queuedCollections?: unknown[];
-          syncingCollections?: unknown[];
+          queuedCollections?: string[];
+          syncingCollections?: string[];
         };
       };
     } | null
   )?.background?.watcher;
+  const settling = (names: string[] | undefined): boolean =>
+    (names ?? []).some((name) => !ALWAYS_FAILING_COLLECTIONS.has(name));
   return {
     missing,
     extra,
     staleMarkers,
     watcherBusy:
-      (watcher?.queuedCollections?.length ?? 0) > 0 ||
-      (watcher?.syncingCollections?.length ?? 0) > 0,
+      settling(watcher?.queuedCollections) ||
+      settling(watcher?.syncingCollections),
     backlog: findNumber(status, "embeddingBacklog"),
     embedBusy: Boolean(embed?.running) || embed?.nextRunAt != null,
     activeJob: Boolean(jobs?.activeJob),
