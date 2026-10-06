@@ -9,8 +9,11 @@
  * store connection: the archive import lock, receipts and error codes are
  * unchanged.
  *
- * The child reads one request from stdin and writes one JSON result line to
- * stdout. The request carries the caller's loaded config: the child opens
+ * The child reads one request line from stdin and writes one JSON result line
+ * to stdout. The parent keeps stdin open for the child's lifetime: EOF means
+ * the parent died, and the child exits instead of importing on as an orphan.
+ * A resident kills its import children when it shuts down, and every import
+ * has a timeout. The request carries the caller's loaded config: the child opens
  * the index without syncing any config into it and imports with exactly the
  * config the server holds. From source the child runs this module; a
  * compiled executable re-runs itself with `IMPORT_CHILD_ENV` set, which the
@@ -87,12 +90,24 @@ async function importInThisProcess(
   }
 }
 
+/** Longest a single import may run before its child is killed. */
+export const SESSION_IMPORT_TIMEOUT_MS = 30 * 60_000;
+
+/** Import children still running in this process. */
+const liveChildren = new Set<Bun.Subprocess>();
+
+/** Kill every running import child (resident shutdown). */
+export function killImportChildren(): void {
+  for (const child of liveChildren) child.kill("SIGKILL");
+}
+
 /**
  * Import a registered source without blocking the caller's event loop.
  * Throws a `SessionsError` for typed failures and a plain `Error` otherwise.
  */
 export async function importInChildProcess(
-  request: ImportChildRequest
+  request: ImportChildRequest,
+  options: { timeoutMs?: number } = {}
 ): Promise<SessionImportReceipt> {
   // A compiled executable cannot run an external TS entry: it re-runs itself.
   // Shared check: covers the POSIX `/$bunfs/` and Windows `B:/~BUN/` roots.
@@ -100,15 +115,38 @@ export async function importInChildProcess(
   const child = Bun.spawn({
     cmd: compiled ? [process.execPath] : [process.execPath, import.meta.path],
     env: compiled ? { ...process.env, [IMPORT_CHILD_ENV]: "1" } : process.env,
-    stdin: new Blob([JSON.stringify(request)]),
+    // The request line, then held open as the child's lifeline.
+    stdin: "pipe",
     stdout: "pipe",
     stderr: "pipe",
   });
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(child.stdout).text(),
-    new Response(child.stderr).text(),
-    child.exited,
-  ]);
+  liveChildren.add(child);
+  const timeoutMs = options.timeoutMs ?? SESSION_IMPORT_TIMEOUT_MS;
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    child.kill("SIGKILL");
+  }, timeoutMs);
+  let output: [string, string, number];
+  try {
+    void child.stdin.write(`${JSON.stringify(request)}\n`);
+    void child.stdin.flush();
+    output = await Promise.all([
+      new Response(child.stdout).text(),
+      new Response(child.stderr).text(),
+      child.exited,
+    ]);
+  } finally {
+    clearTimeout(timer);
+    liveChildren.delete(child);
+    void Promise.resolve(child.stdin.end()).catch(() => undefined);
+  }
+  const [stdout, stderr, exitCode] = output;
+  if (timedOut) {
+    throw new Error(
+      `session import timed out after ${Math.round(timeoutMs / 1000)} s`
+    );
+  }
   const line = stdout.trim().split("\n").at(-1) ?? "";
   let result: ImportChildResult | null = null;
   try {
@@ -126,15 +164,43 @@ export async function importInChildProcess(
   throw new Error(result.message);
 }
 
-/** Child entry: one request on stdin, one JSON result line on stdout. */
+/** Read the request line; afterwards stdin is only the lifeline. */
+async function readRequestLine(
+  reader: ReadableStreamDefaultReader<Uint8Array>
+): Promise<string> {
+  const decoder = new TextDecoder();
+  let text = "";
+  while (!text.includes("\n")) {
+    const chunk = await reader.read();
+    if (chunk.done) break;
+    text += decoder.decode(chunk.value, { stream: true });
+  }
+  return text.split("\n")[0] ?? "";
+}
+
+/** Child entry: one request line on stdin, one JSON result line on stdout. */
 export async function runImportChild(): Promise<void> {
   // Nothing this child starts may re-enter child mode.
   delete process.env[IMPORT_CHILD_ENV];
+  const reader = Bun.stdin.stream().getReader();
+  let finished = false;
   let result: ImportChildResult;
   try {
     const request = JSON.parse(
-      await new Response(Bun.stdin.stream()).text()
+      await readRequestLine(reader)
     ) as ImportChildRequest;
+    // The parent holds stdin open until it has our result; EOF before that
+    // means it died. Noticed between import steps.
+    void (async () => {
+      try {
+        while (!(await reader.read()).done) {
+          // nothing is written after the request
+        }
+      } catch {
+        // a broken pipe is the same as EOF
+      }
+      if (!finished) process.exit(1);
+    })();
     result = { ok: true, receipt: await importInThisProcess(request) };
   } catch (error) {
     result =
@@ -146,7 +212,9 @@ export async function runImportChild(): Promise<void> {
             message: error instanceof Error ? error.message : String(error),
           };
   }
+  finished = true;
   process.stdout.write(`${JSON.stringify(result)}\n`);
+  void reader.cancel().catch(() => undefined);
 }
 
 if (import.meta.main) await runImportChild();

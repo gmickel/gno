@@ -854,17 +854,18 @@ collections.
 
 ### Collection Fields
 
-| Field           | Type            | Default     | Description                                                            |
-| --------------- | --------------- | ----------- | ---------------------------------------------------------------------- |
-| `name`          | string          | required    | Unique identifier (lowercase)                                          |
-| `path`          | string          | required    | Absolute path to directory                                             |
-| `pattern`       | glob            | `**/*`      | File matching pattern                                                  |
-| `include`       | array           | see below   | Extension allowlist                                                    |
-| `exclude`       | array           | see below   | Patterns to skip                                                       |
-| `updateCmd`     | string          | -           | Shell command before indexing                                          |
-| `languageHint`  | string          | -           | BCP-47 language code                                                   |
-| `models`        | object          | -           | Per-collection model overrides                                         |
-| `workspaceRoot` | path or `false` | auto-detect | Link workspace for wiki links; see [Link workspaces](#link-workspaces) |
+| Field                | Type            | Default     | Description                                                            |
+| -------------------- | --------------- | ----------- | ---------------------------------------------------------------------- |
+| `name`               | string          | required    | Unique identifier (lowercase)                                          |
+| `path`               | string          | required    | Absolute path to directory                                             |
+| `pattern`            | glob            | `**/*`      | File matching pattern                                                  |
+| `include`            | array           | see below   | Extension allowlist                                                    |
+| `exclude`            | array           | see below   | Patterns to skip                                                       |
+| `updateCmd`          | string          | -           | Shell command before indexing                                          |
+| `updateCmdTimeoutMs` | number          | `600000`    | Stop `updateCmd` after this many milliseconds                          |
+| `languageHint`       | string          | -           | BCP-47 language code                                                   |
+| `models`             | object          | -           | Per-collection model overrides                                         |
+| `workspaceRoot`      | path or `false` | auto-detect | Link workspace for wiki links; see [Link workspaces](#link-workspaces) |
 
 ### Default Include Extensions
 
@@ -949,6 +950,11 @@ exclude:
   path: /Users/you/wiki
   updateCmd: "git pull"
 ```
+
+The command runs in the collection's root directory before each `gno update`
+or `gno index`. It stops when gno exits or is interrupted, and after
+`updateCmdTimeoutMs` (10 minutes by default), together with anything it
+started, so a hung `git` or `rsync` never keeps running on its own.
 
 ## Contexts
 

@@ -16,6 +16,7 @@ import {
   SHUTDOWN_ABORT_MS,
   SHUTDOWN_EXIT_MS,
 } from "../core/shutdown-budget";
+import { killImportChildren } from "../sessions/import-child";
 
 interface ResidentShutdownResources {
   options: ResidentRuntimeOptions;
@@ -78,6 +79,9 @@ export async function disposeResidentResources(
         (error: unknown) => console.error("Resident cleanup failed:", error)
       );
   stopFindings();
+  // A session import runs in a child that would outlive this process and hold
+  // up the drain below; cutting it short is safe (one transaction per file).
+  killImportChildren();
   const schedulerDrain = observe(() =>
     scheduler.stop ? scheduler.stop() : scheduler.dispose()
   );

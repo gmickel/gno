@@ -138,6 +138,9 @@ export const CollectionSchema = z.object({
   /** Optional shell command to run before indexing */
   updateCmd: z.string().optional(),
 
+  /** Kill `updateCmd` (and anything it started) after this long; default 10 min */
+  updateCmdTimeoutMs: z.number().int().positive().optional(),
+
   /** Optional BCP-47 language hint */
   languageHint: z
     .string()
