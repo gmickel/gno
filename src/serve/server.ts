@@ -3,6 +3,7 @@ import type { RequestPeerServer } from "./request-locality";
 import type { ResidentRuntime } from "./resident-runtime";
 import type { ContextHolder } from "./routes/api";
 
+import { markResidentShutdownHandlerInstalled } from "../core/resident-shutdown-handler";
 import { getActivePreset } from "../llm/registry";
 import {
   isHttpGatewayLoopbackBind,
@@ -479,6 +480,7 @@ export async function startServer(
 
   process.once("SIGINT", shutdown);
   process.once("SIGTERM", shutdown);
+  markResidentShutdownHandlerInstalled();
   // A launcher that owns this process (the desktop shell) closes our stdin
   // when it exits or is killed; shut down instead of running orphaned.
   const stopLifeline = watchParentLifeline(() => {

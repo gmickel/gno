@@ -1,0 +1,14 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-10-06T16:30:19.044321Z",
+  "depends_on": [],
+  "id": "fn-205-gno-serve-misses-changes-made-while-it.1",
+  "priority": null,
+  "spec": "fn-205-gno-serve-misses-changes-made-while-it",
+  "spec_path": ".flow/tasks/fn-205-gno-serve-misses-changes-made-while-it.1.md",
+  "status": "done",
+  "title": "Reconcile watched collections when gno serve starts",
+  "updated_at": "2026-10-06T16:30:19.044321Z"
+}
