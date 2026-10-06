@@ -1585,6 +1585,44 @@ describe("detach integration (Unix)", () => {
     },
     40_000
   );
+
+  // fn-206: a stop sent while the detached child is still starting up must
+  // land as SIGTERM, not wait out the 12 s grace and escalate to SIGKILL.
+  for (const kind of ["daemon", "serve"] as const) {
+    test(
+      `${kind} --stop right after --detach stops on SIGTERM without escalation`,
+      async () => {
+        await initSampleCollection(testDir, env);
+        const spawned =
+          kind === "daemon"
+            ? await spawnDaemonDetached(testDir, env)
+            : await spawnServeDetached(testDir, env);
+        spawnedPids.add(spawned.pid);
+
+        const started = performance.now();
+        const stop = await runCli(
+          [
+            kind,
+            "--stop",
+            "--pid-file",
+            spawned.pidFile,
+            "--log-file",
+            spawned.logFile,
+          ],
+          env,
+          { timeoutMs: 20_000 }
+        );
+        const elapsed = performance.now() - started;
+
+        expect(stop.code).toBe(0);
+        expect(stop.stdout).toMatch(/SIGTERM/);
+        expect(elapsed).toBeLessThan(6_000);
+        await waitForExit(spawned.pid, 5_000);
+        expect(await pathExists(spawned.pidFile)).toBe(false);
+      },
+      SIGKILL_TEST_TIMEOUT_MS
+    );
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
