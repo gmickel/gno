@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- GNO no longer leaves processes running after the process that started them is gone. The desktop app now stops `gno serve` when it quits, waiting for it and force-stopping it if needed, and `serve` shuts itself down if the app crashes or is force-quit; it used to keep running, holding its port so the next launch failed. A session import started by `gno serve`, `gno daemon` or MCP now stops when its parent dies or shuts down, and gives up after 30 minutes. A collection's `updateCmd` (for example `git pull`) now stops, together with anything it started, when `gno index` or `gno update` exits or is killed, and after 10 minutes; set `updateCmdTimeoutMs` on the collection to change the limit.
+
+### Fixed
+
 - `gno mcp` and other commands no longer fail at startup with `database is locked` while `gno serve`, `gno daemon` or the desktop app is writing to the same index. Startup syncs the collection list from the config, and when another process committed a write at the same moment, the sync failed immediately instead of waiting. It now waits its turn. An agent that starts `gno mcp` beside a busy GNO used to see the MCP server exit.
 
 ## [2.9.1] - 2026-10-06
