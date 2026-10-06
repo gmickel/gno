@@ -1585,6 +1585,61 @@ describe("detach integration (Unix)", () => {
     },
     40_000
   );
+
+  // fn-206: a stop sent while the detached child is still starting up must
+  // land as SIGTERM, not wait out the 12 s grace and escalate to SIGKILL.
+  for (const kind of ["daemon", "serve"] as const) {
+    test.skipIf(IS_WIN)(
+      `${kind} --stop right after --detach stops on SIGTERM without escalation`,
+      async () => {
+        await initSampleCollection(testDir, env);
+        const spawned =
+          kind === "daemon"
+            ? await spawnDaemonDetached(testDir, env)
+            : await spawnServeDetached(testDir, env);
+        spawnedPids.add(spawned.pid);
+
+        const started = performance.now();
+        const stop = await runCli(
+          [
+            kind,
+            "--stop",
+            "--pid-file",
+            spawned.pidFile,
+            "--log-file",
+            spawned.logFile,
+          ],
+          env,
+          { timeoutMs: 20_000 }
+        );
+        const elapsed = performance.now() - started;
+
+        expect(stop.code).toBe(0);
+        expect(stop.stdout).toMatch(/SIGTERM/);
+        expect(elapsed).toBeLessThan(6_000);
+        await waitForExit(spawned.pid, 5_000);
+        expect(await pathExists(spawned.pidFile)).toBe(false);
+      },
+      SIGKILL_TEST_TIMEOUT_MS
+    );
+  }
+
+  // The CLI bootstrap always has a SIGINT listener of its own, so an early
+  // SIGINT must not be mistaken for one the resident will handle.
+  test.skipIf(IS_WIN)(
+    "daemon exits on SIGINT right after --detach",
+    async () => {
+      await initSampleCollection(testDir, env);
+      const spawned = await spawnDaemonDetached(testDir, env);
+      spawnedPids.add(spawned.pid);
+      // ~100 ms in: past the pid-file cleanup listener, before the daemon's
+      // own handler (the window where SIGINT used to be swallowed).
+      await Bun.sleep(100);
+      process.kill(spawned.pid, "SIGINT");
+      await waitForExit(spawned.pid, 5_000);
+    },
+    SIGKILL_TEST_TIMEOUT_MS
+  );
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
