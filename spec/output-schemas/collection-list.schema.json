@@ -36,6 +36,11 @@
         "type": "string",
         "description": "Optional shell command to run before indexing"
       },
+      "updateCmdTimeoutMs": {
+        "type": "integer",
+        "minimum": 1,
+        "description": "Optional limit for updateCmd in milliseconds; gno stops the command (and anything it started) after this long. Absent means the 10 minute default."
+      },
       "languageHint": {
         "type": "string",
         "description": "BCP-47 language hint for the collection"

@@ -231,22 +231,26 @@ async function gitPull(path: string): Promise<void> {
  */
 /** Default cap on a collection's updateCmd; `updateCmdTimeoutMs` overrides it. */
 export const UPDATE_CMD_TIMEOUT_MS = 10 * 60_000;
-/** SIGTERM-to-SIGKILL grace for an updateCmd that overran its timeout. */
-const UPDATE_CMD_KILL_GRACE_MS = 5_000;
-
 /**
  * POSIX wrapper run as `sh -c WRAPPER sh <updateCmd>` in a new process group
  * (detached spawn). It runs the command with stdin from /dev/null and blocks
  * a subshell on gno's stdin pipe: when gno exits or is killed, by any signal
- * including SIGKILL, the pipe closes and the subshell kills the whole group,
- * so no part of the command (a hung `git` or `rsync`) outlives gno. The pipe
- * goes through fd 3 because an asynchronous list's stdin is /dev/null.
+ * including SIGKILL, the pipe closes and the subshell stops the whole group,
+ * so no part of the command (a hung `git` or `rsync`) outlives gno; anything
+ * still running 5 s after SIGTERM gets SIGKILL. The pipe goes through fd 3
+ * because an asynchronous list's stdin is /dev/null.
  */
 const UPDATE_CMD_WRAPPER = [
   "exec 3<&0",
   '"$0" -c "$1" </dev/null 3<&- &',
   "cmd=$!",
-  "( read -r _ <&3; kill -TERM 0 ) &",
+  // The watcher ignores the TERM it sends, gives the command up to 5 s to
+  // exit, then SIGKILLs whatever is left of the group (itself included).
+  [
+    "( trap '' TERM; read -r _ <&3; kill -TERM 0",
+    'i=0; while kill -0 "$cmd" 2>/dev/null && [ "$i" -lt 50 ]; do sleep 0.1; i=$((i + 1)); done',
+    "kill -KILL 0 ) &",
+  ].join("; "),
   "exec 3<&-",
   'wait "$cmd"',
 ].join("\n");
@@ -281,20 +285,15 @@ async function runUpdateCmd(
       // already gone
     }
   };
-  let escalation: ReturnType<typeof setTimeout> | undefined;
-  const timer = setTimeout(() => {
-    signalAll("SIGTERM");
-    escalation = setTimeout(
-      () => signalAll("SIGKILL"),
-      UPDATE_CMD_KILL_GRACE_MS
-    );
-  }, timeoutMs);
+  // On timeout, TERM the group. POSIX: that ends the wrapper, the finally
+  // below closes the lifeline, and the wrapper's watcher escalates whatever
+  // ignores TERM to SIGKILL. On Windows SIGTERM already terminates.
+  const timer = setTimeout(() => signalAll("SIGTERM"), timeoutMs);
   try {
     // Ignore update command failures (non-zero exit, timeout).
     await child.exited;
   } finally {
     clearTimeout(timer);
-    clearTimeout(escalation);
     // Closing the lifeline also reaps anything the command left running.
     await Promise.resolve(child.stdin.end()).catch(() => undefined);
   }

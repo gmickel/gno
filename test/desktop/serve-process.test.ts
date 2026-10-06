@@ -36,19 +36,23 @@ test("a serve that exits on SIGTERM is stopped without escalation", async () => 
   expect(child.signalCode).toBe("SIGTERM");
 });
 
-test("a serve that overruns its grace period is SIGKILLed", async () => {
-  const child = startServeProcess({
-    cmd: script(
-      `process.on("SIGTERM", () => {}); console.log("ready"); setInterval(() => {}, 1000);`
-    ),
-    stdio: "ignore",
-  });
-  await Bun.sleep(300);
-  const started = Date.now();
-  expect(await stopServeProcess(child, 500)).toBe("killed");
-  expect(Date.now() - started).toBeLessThan(5_000);
-  expect(child.signalCode).toBe("SIGKILL");
-});
+// Windows has no catchable SIGTERM: kill() terminates at once.
+test.skipIf(process.platform === "win32")(
+  "a serve that overruns its grace period is SIGKILLed",
+  async () => {
+    const child = startServeProcess({
+      cmd: script(
+        `process.on("SIGTERM", () => {}); console.log("ready"); setInterval(() => {}, 1000);`
+      ),
+      stdio: "ignore",
+    });
+    await Bun.sleep(300);
+    const started = Date.now();
+    expect(await stopServeProcess(child, 500)).toBe("killed");
+    expect(Date.now() - started).toBeLessThan(5_000);
+    expect(child.signalCode).toBe("SIGKILL");
+  }
+);
 
 test("stopping an already-exited serve is a no-op", async () => {
   const child = startServeProcess({ cmd: script(""), stdio: "ignore" });

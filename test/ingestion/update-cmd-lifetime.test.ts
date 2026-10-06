@@ -39,7 +39,10 @@ function pidsMatching(marker: string): number[] {
     .map((line) => Number(line.trim().split(/\s+/)[0]));
 }
 
-async function fixture(updateCmdTimeoutMs?: number) {
+async function fixture(
+  options: { updateCmdTimeoutMs?: number; ignoreTerm?: boolean } = {}
+) {
+  const { updateCmdTimeoutMs, ignoreTerm = false } = options;
   const root = await mkdtemp(join(tmpdir(), "gno-update-cmd-"));
   roots.push(root);
   const notes = join(root, "notes");
@@ -62,7 +65,8 @@ async function fixture(updateCmdTimeoutMs?: number) {
           exclude: [],
           // updateCmd counts as remote egress; the collection must opt in.
           egressPolicy: "remote",
-          updateCmd: `sleep ${marker}`,
+          // Ignoring TERM is inherited by sleep: only SIGKILL stops it.
+          updateCmd: `${ignoreTerm ? "trap '' TERM; " : ""}sleep ${marker}`,
           ...(updateCmdTimeoutMs ? { updateCmdTimeoutMs } : {}),
         },
       ],
@@ -86,11 +90,17 @@ async function waitFor(predicate: () => boolean, ms: number): Promise<boolean> {
   return predicate();
 }
 
-for (const signal of ["SIGKILL", "SIGTERM"] as const) {
+const cases = [
+  { signal: "SIGKILL", ignoreTerm: false },
+  { signal: "SIGTERM", ignoreTerm: false },
+  { signal: "SIGKILL", ignoreTerm: true },
+] as const;
+
+for (const { signal, ignoreTerm } of cases) {
   test.skipIf(IS_WIN)(
-    `a CLI killed with ${signal} during updateCmd leaves no command running`,
+    `a CLI killed with ${signal} during updateCmd leaves no command running${ignoreTerm ? " (command ignores SIGTERM)" : ""}`,
     async () => {
-      const { env, marker } = await fixture();
+      const { env, marker } = await fixture({ ignoreTerm });
       const cli = Bun.spawn({
         cmd: [process.execPath, "src/index.ts", "index", "notes", "--no-embed"],
         cwd: REPO_ROOT,
@@ -105,9 +115,10 @@ for (const signal of ["SIGKILL", "SIGTERM"] as const) {
       expect(started).toBe(true);
       cli.kill(signal);
       await cli.exited;
+      // A command that ignores SIGTERM gets SIGKILL after a 5 s grace.
       const gone = await waitFor(
         () => pidsMatching(marker).length === 0,
-        3_000
+        ignoreTerm ? 9_000 : 3_000
       );
       strays.push(...pidsMatching(marker));
       expect(gone).toBe(true);
@@ -116,21 +127,30 @@ for (const signal of ["SIGKILL", "SIGTERM"] as const) {
   );
 }
 
-test.skipIf(IS_WIN)(
-  "an updateCmd that overruns updateCmdTimeoutMs is stopped",
-  async () => {
-    const { env, marker } = await fixture(500);
-    const started = Date.now();
-    const cli = Bun.spawnSync({
-      cmd: [process.execPath, "src/index.ts", "index", "notes", "--no-embed"],
-      cwd: REPO_ROOT,
-      env,
-      timeout: 30_000,
-    });
-    expect(cli.exitCode).toBe(0);
-    expect(Date.now() - started).toBeLessThan(15_000);
-    strays.push(...pidsMatching(marker));
-    expect(pidsMatching(marker)).toEqual([]);
-  },
-  40_000
-);
+for (const ignoreTerm of [false, true]) {
+  test.skipIf(IS_WIN)(
+    `an updateCmd that overruns updateCmdTimeoutMs is stopped${ignoreTerm ? " (command ignores SIGTERM)" : ""}`,
+    async () => {
+      const { env, marker } = await fixture({
+        updateCmdTimeoutMs: 500,
+        ignoreTerm,
+      });
+      const started = Date.now();
+      const cli = Bun.spawnSync({
+        cmd: [process.execPath, "src/index.ts", "index", "notes", "--no-embed"],
+        cwd: REPO_ROOT,
+        env,
+        timeout: 30_000,
+      });
+      expect(cli.exitCode).toBe(0);
+      expect(Date.now() - started).toBeLessThan(15_000);
+      const gone = await waitFor(
+        () => pidsMatching(marker).length === 0,
+        ignoreTerm ? 9_000 : 1_000
+      );
+      strays.push(...pidsMatching(marker));
+      expect(gone).toBe(true);
+    },
+    40_000
+  );
+}

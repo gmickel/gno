@@ -1,7 +1,7 @@
 /**
  * fn-207 R1: a `gno serve` started with the stdin parent lifeline (as the
  * desktop shell starts it) exits when its launcher is SIGKILLed, instead of
- * running on holding the owner lock and port. Without the opt-in it keeps
+ * continuing to hold the owner lock and port. Without the opt-in it keeps
  * running, so `nohup gno serve` is unaffected.
  */
 
@@ -103,9 +103,15 @@ test("serve exits when its lifeline launcher is SIGKILLed", async () => {
   expect(reachable).toBe(false);
 }, 60_000);
 
-test("serve without the lifeline keeps running when its launcher dies", async () => {
-  const { launcher, servePid } = await launch(false);
-  launcher.kill("SIGKILL");
-  await launcher.exited;
-  expect(await waitGone(servePid, 2_000)).toBe(false);
-}, 60_000);
+// Windows ends a killed launcher's children with it, so there is nothing to
+// keep running there.
+test.skipIf(process.platform === "win32")(
+  "serve without the lifeline keeps running when its launcher dies",
+  async () => {
+    const { launcher, servePid } = await launch(false);
+    launcher.kill("SIGKILL");
+    await launcher.exited;
+    expect(await waitGone(servePid, 2_000)).toBe(false);
+  },
+  60_000
+);
