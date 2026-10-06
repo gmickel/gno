@@ -1,0 +1,54 @@
+{
+  "branch": "fn-203-isolated-soak-and-chaos-harness-for",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "7ceb3eb889a3f41b9e43e0d0dbacabbea91c2037",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-034b204bfe09d3d969d917d2ce0283eea2ee9961200785678b16f471c69132b2"
+  },
+  "head_sha": "7ceb3eb889a3f41b9e43e0d0dbacabbea91c2037",
+  "id": "fn-203-isolated-soak-and-chaos-harness-for",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 7,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      },
+      {
+        "coverage": "live",
+        "id": "R7"
+      }
+    ],
+    "total": 7
+  },
+  "timestamp": "2026-10-06T14:19:26Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
