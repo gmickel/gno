@@ -1,0 +1,38 @@
+{
+  "branch": "fn-209-a-deleted-note-intermittently-stays",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "3052560f939bef8d362999458646f70277d21d72",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-8099cdb27bc5016e2447e457d32ff3fc0aefebf60c7534420b4dbc947bfef0af"
+  },
+  "head_sha": "3052560f939bef8d362999458646f70277d21d72",
+  "id": "fn-209-a-deleted-note-intermittently-stays",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 3,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      }
+    ],
+    "total": 3
+  },
+  "timestamp": "2026-10-06T20:54:37Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
