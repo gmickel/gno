@@ -1,0 +1,38 @@
+{
+  "branch": "fn-204-stdio-gno-mcp-fails-to-start-while-a",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "6d93f9e7ba755255e7069029447cf5019e32de74",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-f77a5c537dab9d4749799d59602a69bbfa053a2a5399a1cf75b464c5ab5015df"
+  },
+  "head_sha": "6d93f9e7ba755255e7069029447cf5019e32de74",
+  "id": "fn-204-stdio-gno-mcp-fails-to-start-while-a",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 3,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      }
+    ],
+    "total": 3
+  },
+  "timestamp": "2026-10-06T15:41:24Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
