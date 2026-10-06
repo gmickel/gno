@@ -92,14 +92,19 @@ export async function runSmoke(
     }
   );
   const pidFile = residentPaths(ctx.sandbox).daemonPid;
-  const pid = Number.parseInt(
-    (
-      await Bun.file(pidFile)
-        .text()
-        .catch(() => "")
-    ).trim(),
-    10
-  );
+  // The pid file is JSON ({ pid, cmd, version, started_at }).
+  const pidRecord = (await Bun.file(pidFile)
+    .json()
+    .catch(() => null)) as { pid?: unknown } | null;
+  const pid = typeof pidRecord?.pid === "number" ? pidRecord.pid : Number.NaN;
+  if (start.code !== 0 || !Number.isFinite(pid) || !isAlive(pid)) {
+    verdicts.observe(
+      "I5",
+      false,
+      `daemon --detach did not leave a running daemon (exit ${start.code}, pid ${pid}): ${start.stderr.trim().slice(0, 200)}`
+    );
+    return;
+  }
   monitor.event("detach", `daemon --detach exit ${start.code} pid ${pid}`);
   const status = await runGno(ctx.sandbox, ["daemon", "--status", "--json"], {
     timeoutMs: 30_000,
@@ -112,12 +117,9 @@ export async function runSmoke(
   const stopMs = performance.now() - stopStarted;
   checkShutdown(verdicts, "daemon --stop", {
     signal: "SIGTERM",
-    exitMs:
-      stop.code === 0 && !(Number.isFinite(pid) && isAlive(pid))
-        ? stopMs
-        : null,
+    exitMs: stop.code === 0 && !isAlive(pid) ? stopMs : null,
     exitCode: stop.code,
-    escalated: stop.code !== 0 || (Number.isFinite(pid) && isAlive(pid)),
+    escalated: stop.code !== 0 || isAlive(pid),
   });
   await checkOrphans(verdicts, monitor, "after daemon --stop");
   await checkReleased(verdicts, ctx.sandbox, "after daemon --stop", port, {

@@ -174,6 +174,8 @@ export async function openMcp(
     sandbox.logDir,
     `mcp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.log`
   );
+  if (sandbox.closed)
+    throw new Error("sandbox is closed: no new processes after teardown");
   const proc = Bun.spawn({
     cmd: gnoCmd("mcp", ...args),
     env: sandbox.env,

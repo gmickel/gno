@@ -83,7 +83,9 @@ export async function bringDown(
   if (signal !== "SIGKILL" && options.checkShutdownBudget !== false)
     checkShutdown(ctx.verdicts, label, result);
   await checkOrphans(ctx.verdicts, ctx.monitor, `${label} (after ${signal})`);
-  await checkReleased(ctx.verdicts, ctx.sandbox, label, resident.port);
+  await checkReleased(ctx.verdicts, ctx.sandbox, label, resident.port, {
+    afterKill: signal === "SIGKILL",
+  });
 }
 
 /** Wait for convergence, then measure a quiet window for I1. */

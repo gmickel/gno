@@ -47,7 +47,7 @@ function table(rows: string[][]): string {
   const [head, ...rest] = rows;
   if (!head) return "";
   const line = (cells: string[]) =>
-    `| ${cells.map((c) => c.replace(/\|/g, "\\|")).join(" | ")} |`;
+    `| ${cells.map((c) => c.replace(/\\/g, "\\\\").replace(/\|/g, "\\|")).join(" | ")} |`;
   return [line(head), line(head.map(() => "---")), ...rest.map(line)].join(
     "\n"
   );

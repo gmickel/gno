@@ -31,6 +31,8 @@ export interface Sandbox {
   env: Record<string, string>;
   /** Pids the harness itself manages (excluded from orphan sweeps while live). */
   owned: Set<number>;
+  /** Set at teardown: no new processes may start after this. */
+  closed: boolean;
 }
 
 export interface SpawnOptions {
@@ -76,7 +78,7 @@ export async function createSandbox(
     [RUN_MARKER]: runId,
   };
   await mkdir(env.TMPDIR as string, { recursive: true });
-  return { runId, root, ...dirs, env, owned: new Set() };
+  return { runId, root, ...dirs, env, owned: new Set(), closed: false };
 }
 
 /** Spawn a process carrying the run marker. */
@@ -85,6 +87,8 @@ export function spawnTagged(
   cmd: string[],
   options: SpawnOptions = {}
 ): Bun.Subprocess<"pipe" | "ignore", "pipe" | "ignore", "pipe" | "ignore"> {
+  if (sandbox.closed)
+    throw new Error("sandbox is closed: no new processes after teardown");
   const log = options.logFile ? Bun.file(options.logFile) : null;
   const proc = Bun.spawn({
     cmd,
@@ -117,6 +121,8 @@ export async function runGno(
   ms: number;
   timedOut: boolean;
 }> {
+  if (sandbox.closed)
+    throw new Error("sandbox is closed: no new processes after teardown");
   const started = performance.now();
   const proc = Bun.spawn({
     cmd: gnoCmd(...args),

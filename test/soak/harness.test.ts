@@ -149,22 +149,26 @@ describe("fake model server", () => {
 });
 
 describe("sandbox", () => {
-  test("tagged processes are found by the run marker and killed at teardown", async () => {
-    const sandbox = await createSandbox(`test-${Date.now().toString(36)}`);
-    sandboxes.push(sandbox);
-    expect(sandbox.env.HOME?.startsWith(sandbox.root)).toBe(true);
-    expect(sandbox.env.GNO_DATA_DIR?.startsWith(sandbox.root)).toBe(true);
-    // A grandchild the harness never saw: still found through the marker.
-    const parent = spawnTagged(sandbox, ["sh", "-c", "sleep 60 & wait"]);
-    await Bun.sleep(300);
-    const found = await sweepTagged(sandbox);
-    expect(found.length).toBeGreaterThanOrEqual(2);
-    expect(found.some((info) => info.pid === parent.pid)).toBe(true);
-    const killed = await killAllTagged(sandbox);
-    expect(killed.length).toBe(found.length);
-    for (const info of killed) expect(isAlive(info.pid)).toBe(false);
-    expect(await sweepTagged(sandbox)).toHaveLength(0);
-  });
+  // The harness is POSIX-only (/proc or ps, sh, lockf/flock).
+  test.skipIf(process.platform === "win32")(
+    "tagged processes are found by the run marker and killed at teardown",
+    async () => {
+      const sandbox = await createSandbox(`test-${Date.now().toString(36)}`);
+      sandboxes.push(sandbox);
+      expect(sandbox.env.HOME?.startsWith(sandbox.root)).toBe(true);
+      expect(sandbox.env.GNO_DATA_DIR?.startsWith(sandbox.root)).toBe(true);
+      // A grandchild the harness never saw: still found through the marker.
+      const parent = spawnTagged(sandbox, ["sh", "-c", "sleep 60 & wait"]);
+      await Bun.sleep(300);
+      const found = await sweepTagged(sandbox);
+      expect(found.length).toBeGreaterThanOrEqual(2);
+      expect(found.some((info) => info.pid === parent.pid)).toBe(true);
+      const killed = await killAllTagged(sandbox);
+      expect(killed.length).toBe(found.length);
+      for (const info of killed) expect(isAlive(info.pid)).toBe(false);
+      expect(await sweepTagged(sandbox)).toHaveLength(0);
+    }
+  );
 });
 
 describe("corpus", () => {

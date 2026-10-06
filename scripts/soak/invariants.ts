@@ -262,15 +262,20 @@ export async function checkZombies(
   monitor: Monitor,
   label: string
 ): Promise<void> {
-  const zombies = (await monitor.taggedProcesses()).filter(
-    (info) => info.state === "Z"
+  const tagged = await monitor.taggedProcesses();
+  const liveTagged = new Set(
+    tagged.filter((info) => info.state !== "Z").map((info) => info.pid)
+  );
+  // Same rule as checkOrphans: only zombies a live GNO process failed to reap.
+  const zombies = tagged.filter(
+    (info) => info.state === "Z" && liveTagged.has(info.ppid)
   );
   verdicts.observe(
     "I2",
     zombies.length === 0,
     zombies.length === 0
       ? `${label}: no zombies`
-      : `${label}: zombies ${zombies.map((z) => z.pid).join(",")}`
+      : `${label}: zombies ${zombies.map((z) => `${z.pid} (parent ${z.ppid})`).join(",")}`
   );
 }
 
@@ -279,19 +284,33 @@ export async function checkReleased(
   sandbox: Sandbox,
   label: string,
   port: number,
-  options: { pidFile?: string } = {}
+  options: { pidFile?: string; afterKill?: boolean } = {}
 ): Promise<void> {
   const paths = residentPaths(sandbox);
   const problems: string[] = [];
+  // A SIGKILLed process cannot remove its metadata; the kernel still frees
+  // its locks and port. After a kill, leftover metadata is reported, not
+  // failed: recovery from it is what the stale-locks torture class checks.
+  const stale: string[] = [];
+  const metadata = options.afterKill ? stale : problems;
   if (!lockIsFree(paths.writeLock)) problems.push("write lock held");
   if (!lockIsFree(paths.ownerLock)) problems.push("owner lock held");
+  if (await Bun.file(`${paths.writeLock}.holder.json`).exists())
+    metadata.push("write-lease holder sidecar left");
   if (options.pidFile && (await Bun.file(options.pidFile).exists()))
-    problems.push("pid file left");
+    metadata.push("pid file left");
+  if (
+    options.pidFile &&
+    (await Bun.file(`${options.pidFile}.startlock`).exists())
+  )
+    metadata.push("detach start-lock left");
   if (!(await portIsFree(port))) problems.push(`port ${port} still bound`);
+  const staleNote =
+    stale.length > 0 ? ` (after kill, stale: ${stale.join(", ")})` : "";
   verdicts.observe(
     "I3",
     problems.length === 0,
-    `${label}: ${problems.length === 0 ? "locks, pid file and port released" : problems.join(", ")}`
+    `${label}: ${problems.length === 0 ? "locks, holder sidecar, pid file, start-lock and port released" : problems.join(", ")}${staleNote}`
   );
 }
 

@@ -56,8 +56,7 @@ export type TortureClass =
   | "mcp-lifecycle"
   | "stale-locks"
   | "config-edit"
-  | "macos-ps-sampler"
-  | "disk-full";
+  | "macos-ps-sampler";
 
 export const TORTURE_CLASSES: TortureClass[] = [
   "failing-collection",
@@ -73,7 +72,6 @@ export const TORTURE_CLASSES: TortureClass[] = [
   "stale-locks",
   "config-edit",
   "macos-ps-sampler",
-  "disk-full",
 ];
 
 type Runner = (ctx: RunContext) => Promise<void>;
@@ -442,11 +440,15 @@ const sessionImportKill: Runner = async (ctx) => {
       collection: "sessions",
     });
   } finally {
-    Object.assign(process.env, {
-      GNO_CONFIG_DIR: previous.config,
-      GNO_DATA_DIR: previous.data,
-      GNO_CACHE_DIR: previous.cache,
-    });
+    // Assigning undefined to process.env stores the string "undefined".
+    for (const [key, value] of [
+      ["GNO_CONFIG_DIR", previous.config],
+      ["GNO_DATA_DIR", previous.data],
+      ["GNO_CACHE_DIR", previous.cache],
+    ] as const) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
   }
   const resident = await startResident(ctx.sandbox, {
     port: freePort(),
@@ -692,13 +694,6 @@ const macosPsSampler: Runner = async (ctx) => {
   );
 };
 
-const diskFull: Runner = async (ctx) => {
-  ctx.verdicts.skip(
-    "I9",
-    "disk-full: needs a small dedicated filesystem (tmpfs/loop mount needs root); pass --disk-dir to a mounted small FS to enable"
-  );
-};
-
 export const TORTURE_RUNNERS: Record<TortureClass, Runner> = {
   "failing-collection": failingCollection,
   "lease-held": leaseHeld,
@@ -713,7 +708,6 @@ export const TORTURE_RUNNERS: Record<TortureClass, Runner> = {
   "stale-locks": staleLocks,
   "config-edit": configEdit,
   "macos-ps-sampler": macosPsSampler,
-  "disk-full": diskFull,
 };
 
 /** Reindex with no resident running so each class starts from a converged index (setup, not measured). */

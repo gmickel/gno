@@ -17,7 +17,12 @@ import type { Sandbox } from "./sandbox";
 
 import { SAMPLE_INTERVAL_MS, STATUS_PROBE_MS } from "./config";
 import { probeStatus } from "./gno";
-import { hasEnvMarker, listProcesses, type ProcInfo } from "./procfs";
+import {
+  hasEnvMarker,
+  listProcesses,
+  markerValues,
+  type ProcInfo,
+} from "./procfs";
 import { RUN_MARKER } from "./sandbox";
 
 export interface Sample {
@@ -104,8 +109,19 @@ export class Monitor {
   async taggedProcesses(): Promise<ProcInfo[]> {
     const all = await listProcesses();
     const live = new Set(all.map((info) => info.pid));
+    // Forget exited pids in both caches so a reused pid is classified afresh.
     for (const pid of this.untagged)
       if (!live.has(pid)) this.untagged.delete(pid);
+    for (const pid of this.tagged) if (!live.has(pid)) this.tagged.delete(pid);
+    if (process.platform !== "linux") {
+      // macOS: one `ps -E` per sample instead of one ps per unknown pid.
+      const markers = await markerValues(RUN_MARKER);
+      return all.filter(
+        (info) =>
+          info.pid !== process.pid &&
+          markers.get(info.pid) === this.sandbox.runId
+      );
+    }
     const out: ProcInfo[] = [];
     for (const info of all) if (await this.isTagged(info)) out.push(info);
     return out;

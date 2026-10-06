@@ -182,19 +182,44 @@ export async function hasEnvMarker(
   return proc.stdout.toString().includes(needle);
 }
 
+/**
+ * pid -> value of env var `name` for every process that has it. Linux reads
+ * each /proc/<pid>/environ; macOS asks `ps -E` once for all processes (the
+ * user's own processes show their environment).
+ */
+export async function markerValues(name: string): Promise<Map<number, string>> {
+  const out = new Map<number, string>();
+  if (IS_LINUX) {
+    for (const entry of await readdir("/proc")) {
+      if (!/^\d+$/.test(entry)) continue;
+      const value = await envValue(Number(entry), name);
+      if (value !== null) out.set(Number(entry), value);
+    }
+    return out;
+  }
+  const proc = Bun.spawnSync(["ps", "-axwwE", "-o", "pid=,command="]);
+  const pattern = new RegExp(`(?:^|\\s)${name}=(\\S+)`);
+  for (const line of proc.stdout.toString().split("\n")) {
+    const match = line.trim().match(/^(\d+)\s+(.*)$/);
+    const value = match?.[2]?.match(pattern)?.[1];
+    if (match && value) out.set(Number(match[1]), value);
+  }
+  return out;
+}
+
 /** Every live process tagged with the run marker, excluding `except`. */
 export async function findTagged(
   name: string,
   value: string,
   except: ReadonlySet<number> = new Set()
 ): Promise<ProcInfo[]> {
-  const all = await listProcesses();
-  const tagged: ProcInfo[] = [];
-  for (const info of all) {
-    if (except.has(info.pid) || info.pid === process.pid) continue;
-    if (await hasEnvMarker(info.pid, name, value)) tagged.push(info);
-  }
-  return tagged;
+  const markers = await markerValues(name);
+  return (await listProcesses()).filter(
+    (info) =>
+      !except.has(info.pid) &&
+      info.pid !== process.pid &&
+      markers.get(info.pid) === value
+  );
 }
 
 /** Value of env var `name` in a process, or null (Linux reads environ; macOS uses `ps eww`). */

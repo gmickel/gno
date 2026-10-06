@@ -35,7 +35,7 @@ import { buildConfig, Corpus, writeConfig } from "./corpus";
 import { fakePreset, startFakeLlm } from "./fake-llm";
 import { Verdicts } from "./invariants";
 import { Monitor } from "./monitor";
-import { envValue, listProcesses } from "./procfs";
+import { findTagged, listProcesses, markerValues } from "./procfs";
 import {
   type Report,
   type RunOptions,
@@ -192,21 +192,41 @@ function watchLifeline(): void {
 /** Processes left by earlier (crashed) runs: anything carrying a run marker. */
 async function sweepEarlierRuns(currentRun: string): Promise<string[]> {
   const found: string[] = [];
-  for (const info of await listProcesses()) {
-    if (info.pid === process.pid) continue;
-    const value = await envValue(info.pid, RUN_MARKER);
-    if (!value || value === currentRun) continue;
-    // Only reparented processes (their harness is gone); a concurrent run's
-    // children still have live parents and are left alone.
-    const orphaned = info.ppid === 1;
-    found.push(
-      `run ${value}: pid ${info.pid}${orphaned ? " (orphaned, killed)" : " (live run, left alone)"} ${info.command.slice(0, 100)}`
-    );
-    if (!orphaned) continue;
-    try {
-      process.kill(info.pid, "SIGKILL");
-    } catch {
-      // gone
+  const markers = await markerValues(RUN_MARKER);
+  const processes = await listProcesses();
+  // A run is stale when any of its processes was re-parented to init (its
+  // harness is gone). Kill every process of a stale run, descendants
+  // included; a concurrent live run has no orphans and is left alone.
+  const staleRuns = new Set(
+    processes
+      .filter((info) => info.ppid === 1)
+      .map((info) => markers.get(info.pid))
+      .filter((run): run is string => run !== undefined && run !== currentRun)
+  );
+  for (const run of staleRuns) {
+    for (let pass = 0; pass < 5; pass += 1) {
+      const members = await findTagged(RUN_MARKER, run);
+      if (members.length === 0) break;
+      for (const info of members) {
+        if (pass === 0)
+          found.push(
+            `run ${run}: pid ${info.pid} killed ${info.command.slice(0, 100)}`
+          );
+        try {
+          process.kill(info.pid, "SIGKILL");
+        } catch {
+          // gone
+        }
+      }
+      await Bun.sleep(200);
+    }
+  }
+  for (const info of processes) {
+    const run = markers.get(info.pid);
+    if (run && run !== currentRun && !staleRuns.has(run)) {
+      found.push(
+        `run ${run}: pid ${info.pid} (live run, left alone) ${info.command.slice(0, 100)}`
+      );
     }
   }
   return found;
@@ -321,6 +341,8 @@ export async function main(argv: string[]): Promise<number> {
   } finally {
     monitor.stop();
     verdicts.scenario = "teardown";
+    // A timed-out scenario may still be running; it can start nothing new now.
+    sandbox.closed = true;
     const leftovers = await killAllTagged(sandbox);
     verdicts.observe(
       "I2",
