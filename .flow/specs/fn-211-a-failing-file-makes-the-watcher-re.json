@@ -14,7 +14,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-211-a-failing-file-makes-the-watcher-re.md",
-  "status": "open",
+  "status": "done",
   "title": "A failing file makes the watcher re-sync the whole collection",
   "tracker": {
     "baseHashFlow": null,
@@ -27,5 +27,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-06T22:25:28.701519Z"
+  "updated_at": "2026-10-06T22:25:37.967834Z"
 }
