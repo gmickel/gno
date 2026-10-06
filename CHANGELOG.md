@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `gno mcp` and other commands no longer fail at startup with `database is locked` while `gno serve`, `gno daemon` or the desktop app is writing to the same index. Startup syncs the collection list from the config, and when another process committed a write at the same moment, the sync failed immediately instead of waiting. It now waits its turn. An agent that starts `gno mcp` beside a busy GNO used to see the MCP server exit.
+
 ## [2.9.1] - 2026-10-06
 
 ### Fixed
