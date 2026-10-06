@@ -16,7 +16,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-204-stdio-gno-mcp-fails-to-start-while-a.md",
-  "status": "open",
+  "status": "done",
   "title": "Stdio gno mcp fails to start while a resident is writing",
   "tracker": {
     "baseHashFlow": null,
@@ -29,5 +29,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-06T15:41:23.662529Z"
+  "updated_at": "2026-10-06T15:42:35.348591Z"
 }

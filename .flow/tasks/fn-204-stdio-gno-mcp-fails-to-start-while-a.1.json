@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-204-stdio-gno-mcp-fails-to-start-while-a",
   "spec_path": ".flow/tasks/fn-204-stdio-gno-mcp-fails-to-start-while-a.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Fix stdio gno mcp startup under concurrent writes",
   "updated_at": "2026-10-06T15:22:25.329902Z"
 }
