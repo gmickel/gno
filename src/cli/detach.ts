@@ -472,7 +472,7 @@ function acquireStartLock(pidFile: string, kind: DetachKind): string {
   const lockPath = startLockPath(pidFile);
   // "wx" = O_CREAT | O_EXCL | O_WRONLY — atomic create-or-fail.
   try {
-    const fd = openSync(lockPath, "wx", 0o600);
+    const fd = openSync(lockPath, "wx");
     closeSync(fd);
     return lockPath;
   } catch (error) {
@@ -493,7 +493,7 @@ function acquireStartLock(pidFile: string, kind: DetachKind): string {
         /* race with another cleanup — fall through */
       }
       try {
-        const fd = openSync(lockPath, "wx", 0o600);
+        const fd = openSync(lockPath, "wx");
         closeSync(fd);
         return lockPath;
       } catch {
