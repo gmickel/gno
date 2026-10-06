@@ -16,7 +16,7 @@
   "plan_reviewed_at": null,
   "ready": true,
   "spec_path": ".flow/specs/fn-209-a-deleted-note-intermittently-stays.md",
-  "status": "open",
+  "status": "done",
   "title": "A deleted note intermittently stays indexed",
   "tracker": {
     "baseHashFlow": null,
@@ -29,5 +29,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-06T20:54:37.101745Z"
+  "updated_at": "2026-10-06T20:54:49.812780Z"
 }
