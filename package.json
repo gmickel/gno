@@ -1,6 +1,6 @@
 {
   "name": "@gmickel/gno",
-  "version": "2.9.2",
+  "version": "2.10.0",
   "description": "Local semantic search for your documents. Index Markdown, PDF, and Office files with hybrid BM25 + vector search.",
   "keywords": [
     "embeddings",

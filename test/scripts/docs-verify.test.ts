@@ -53,6 +53,17 @@ describe("documentation doctor exit validation", () => {
     );
   });
 
+  test("accepts informational doctor checks as exit-safe", () => {
+    const result = {
+      healthy: true,
+      checks: [
+        { name: "config", status: "ok" },
+        { name: "mcp-runtime", status: "info" },
+      ],
+    };
+    expect(validateDoctorExit(0, result)).toBeNull();
+  });
+
   test("rejects doctor output without valid emitted checks", () => {
     expect(validateDoctorExit(0, { healthy: true })).toBe(
       "missing checks field"
