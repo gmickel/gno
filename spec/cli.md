@@ -3407,6 +3407,19 @@ MCP Server Status
 }
 ```
 
+An entry is reported (and offered to the connector verifier) only when its
+keys are the launch keys (`command`, `args`, `env`; OpenCode `type: "local"`,
+`command`, `environment`) plus inert client settings: `type: "stdio"`, numeric
+`timeout` / `startup_timeout_sec` / `tool_timeout_sec`, a string
+`description`, string-array `autoApprove` / `alwaysAllow`, and boolean
+`enabled` / `disabled` (OpenCode: numeric `timeout` and `enabled`).
+`serverEntry` carries only the launch keys. An entry with `enabled: false` or
+`disabled: true` is `configured: false` without an error. Any other key or
+value, including `cwd`, another transport `type`, `url`, `headers`, and
+environment variables other than `GNO_DATA_DIR` / `GNO_CACHE_DIR`, makes the
+entry `configured: false` with `error: "Malformed MCP server entry"`, and the
+connector verifier reports it as `connector_unsupported_config`.
+
 **Exit Codes:**
 
 - 0: Success
