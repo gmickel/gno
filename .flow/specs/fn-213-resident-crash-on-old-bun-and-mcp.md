@@ -61,6 +61,20 @@ Same family as the unattended-operation hang inventory in fn-180 (closed): long-
 
 R6 keeps today's refuse-without-`--force` behavior so a plain re-run never silently rewrites a user's entry; `--force` changes from replace to merge so a repair cannot drop a tool profile, write flags or environment. [inferred]
 
+## Implementation Notes
+<!-- scope: technical -->
+
+- [measured] How Bun delivers a deserialize failure (probed on Bun 1.3.11 and 1.4.2):
+  - Child backend (IPC, `serialization: "advanced"`): a malformed frame written in either direction makes Bun close the channel on both ends. No error event and no `ipc` callback fire; the parent sees `onDisconnect` and the child sees `disconnect`. The parent cannot tell which direction failed, so the child backend reports `direction: unknown`. The child's exit can arrive before Bun's `onDisconnect` callback; since the child exits with 0 only after its channel closes and a crash never exits cleanly, a clean exit while not stopping is the signal.
+  - Worker backend: no JavaScript value fails to deserialize through `postMessage` (Blob, BunFile, File, CryptoKey and WebAssembly.Module all round-trip on both versions), so a real failure cannot be forced from a test. Negative result, recorded as R1 allows. Bun 1.4.0 (the worker rewrite, oven-sh/bun#37075) catches a deserialize failure on the receiving side and dispatches `messageerror`; 1.3.11 throws `TypeError: Unable to deserialize data.`, matching the crash log. The worker tests dispatch the real `messageerror` event on each side through a test-only hook.
+  - Inside a worker, Bun never calls the `onmessageerror` property; only `addEventListener("messageerror")` fires, on both versions.
+- [measured] The desktop app bundles the Bun named in the root `devDependencies.bun` (1.4.2), above the floor. CI's watcher matrix now runs the floor (1.4.1) instead of 1.3.11.
+- [inferred] R6 applies to `gno mcp install --force` only. The web UI's connector reinstall keeps replacing the entry, because it writes the read-only connector shape on purpose.
+- [measured] Connector verification compares real paths, so a version-independent link (mise `latest`) that resolves to the running Bun still verifies.
+- [measured] `findBunPath` also builds the Claude Code session hook command, so the hook gets the version-independent path too (its ownership check ignores the runtime path).
+- [inferred] For a resident started by another GNO version, the repair names `kill <pid>`: `--stop` keeps refusing to signal it, which is unchanged. A resident stopped that way removes its own pid-file.
+- [measured] Follow-up, not changed: `gno mcp status` and the connector verifier treat an entry with any key GNO does not write (for example `timeout`, or Claude Code's `type`) as malformed, so an entry that keeps such a key after a `--force` repair still shows as malformed there, as it did before the repair.
+
 ## Resolved via Codebase
 
 - File processor and worker messaging: `src/ingestion/file-processor.ts` (`startWorker`, `startChild` with `serialization: "advanced"`), `src/ingestion/prepare-worker.ts`. Each job posts a `SharedArrayBuffer`-backed phase slot; there is no `onmessageerror`.

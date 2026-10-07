@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-213-resident-crash-on-old-bun-and-mcp",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-10-07T20:18:01.169489Z",
   "created_at": "2026-10-07T19:22:53.925020Z",
   "default_impl": null,
   "default_review": null,
@@ -177,5 +177,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-07T19:36:55.828136Z"
+  "updated_at": "2026-10-07T20:18:01.169496Z"
 }
