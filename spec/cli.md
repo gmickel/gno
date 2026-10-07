@@ -3098,7 +3098,7 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--e
 | ---------------- | ------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--target`       | string  | claude-desktop | Target client (see table below)                                                                                                                             |
 | `--scope`        | string  | target default | Scope: `user` or `project`; LibreChat defaults to project                                                                                                   |
-| `--force`        | boolean | false          | Overwrite existing gno configuration                                                                                                                        |
+| `--force`        | boolean | false          | Repair an existing gno entry: rewrite its Bun and GNO paths, keep its other arguments, environment and keys, and apply only the options passed explicitly   |
 | `--dry-run`      | boolean | false          | Show what would be done without changes                                                                                                                     |
 | `--enable-write` | boolean | false          | Start the registered server with write tools enabled                                                                                                        |
 | `--tool-profile` | string  | full           | Advertised tool set written into the registration: `core` (7 read tools, plus capture and remember with `--enable-write`) or `full`; omitted writes no flag |
@@ -3136,6 +3136,25 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--e
 | amp            | user    | `~/.config/amp/settings.json`                                     | `~/.config/amp/settings.json`                 | `~/.config/amp/settings.json`                 |
 | lmstudio       | user    | `~/.lmstudio/mcp.json`                                            | `~/.lmstudio/mcp.json`                        | `~/.lmstudio/mcp.json`                        |
 | librechat      | project | `./librechat.yaml`                                                | `./librechat.yaml`                            | `./librechat.yaml`                            |
+
+**Launch paths and repair:** the command is the running Bun, the first
+argument after `run` the running package's `src/index.ts`. When either sits in
+a version manager's versioned install directory (mise, asdf or proto
+`installs/bun/<version>/` or `tools/bun/<version>/`, Homebrew
+`Cellar/bun/<version>/`), the manager's version-independent link
+(`installs/bun/latest/...`, `opt/bun/...`) is written instead, but only if it
+resolves to the same file; otherwise the versioned path is kept, the text
+output adds a note, and `--json` adds `installed.pinnedPaths`. Shims that pick
+a version from the shell environment are never written. A standalone compiled
+executable is written as is. With `--force` over an existing entry that
+launches GNO (`run <entrypoint> ... mcp ...`, or a `gno` executable), only the
+launch prefix is rewritten; `--index`, `--config`, `--tool-profile` and
+`--enable-write` change only when passed in this invocation, existing
+environment values win over the installer's data and cache directories, and
+keys GNO does not write are kept in every format, Codex TOML included;
+`installed.repaired` is `true`. A Codex key that the TOML writer cannot express
+stops the command before anything is written. An entry that does not launch GNO
+is replaced as before. Without `--force` an existing entry is refused.
 
 **Config Formats:**
 

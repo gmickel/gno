@@ -5,6 +5,7 @@ import { isAbsolute, join } from "node:path";
 import { installMcp } from "../../src/cli/commands/mcp/install";
 import {
   buildMcpServerEntry,
+  findBunPath,
   getDefaultTargetScope,
   getTargetScopes,
   MCP_SERVER_NAME,
@@ -83,7 +84,8 @@ describe("MCP CLI commands", () => {
     });
 
     expect(entry).toEqual({
-      command: process.execPath,
+      // A version-independent link to this Bun when a manager keeps one.
+      command: findBunPath(),
       args: [
         "run",
         getCurrentGnoEntrypoint(),

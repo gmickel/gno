@@ -2583,7 +2583,12 @@ executable runs the current package's `src/index.ts`, followed by the active
 `--index` and canonical absolute `--config` before `mcp`. It also persists
 absolute `GNO_DATA_DIR` and `GNO_CACHE_DIR` values (`env` for standard clients
 and Codex, `environment` for OpenCode). This is intentional; desktop clients
-need not share the shell's `PATH` or GNO environment variables. Codex writes
+need not share the shell's `PATH` or GNO environment variables. Under a
+version manager (mise, asdf, proto, Homebrew) the entry names the manager's
+version-independent link to the same Bun and GNO when one exists, so upgrades
+reach the registration; otherwise the output notes that the entry stays on the
+current version. With `--force` on an existing entry, GNO rewrites only the Bun
+and GNO paths and keeps the other settings unless you pass them again. Codex writes
 native `~/.codex/config.toml` or project `.codex/config.toml` tables. Use
 `gno mcp install --dry-run --json` to inspect the exact command, arguments, and
 workspace values. If the target already has GNO configured, add `--force` to

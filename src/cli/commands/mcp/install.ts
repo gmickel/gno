@@ -29,14 +29,22 @@ import {
 } from "./config.js";
 import {
   buildMcpServerEntry,
+  resolveLaunchPaths,
   getDefaultTargetScope,
   getTargetScopes,
   getTargetDisplayName,
+  type McpConfigFormat,
   type McpScope,
   type McpServerEntry,
   type McpTarget,
   resolveMcpConfigPath,
 } from "./paths.js";
+import {
+  type ExplicitInstallValues,
+  readExistingRegistration,
+  type RepairedRegistration,
+  repairRegistration,
+} from "./repair-entry.js";
 import { normalizeMcpServerEntryForInstall } from "./server-entry.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -71,6 +79,8 @@ export interface McpInstallResult {
   configPath: string;
   action: "created" | "updated" | "dry_run_create" | "dry_run_update";
   serverEntry: McpServerEntry;
+  /** `--force` kept the existing entry's settings and repaired its launch path. */
+  repaired?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -89,6 +99,12 @@ export async function installMcpToTarget(
     dryRun?: boolean;
     cwd?: string;
     homeDir?: string;
+    /**
+     * With `force` over an existing entry: keep its settings and apply only
+     * these explicit options (repair-entry.ts). Without it, the entry is
+     * replaced.
+     */
+    preserveExisting?: ExplicitInstallValues;
   }
 ): Promise<McpInstallResult> {
   const { force = false, dryRun = false, cwd, homeDir } = options;
@@ -120,23 +136,45 @@ export async function installMcpToTarget(
     );
   }
 
-  const entry = buildEntry(
-    normalizedEntry.command,
-    normalizedEntry.args,
-    configFormat,
-    normalizedEntry.env
-  );
-  const standardEntry = {
-    command: normalizedEntry.command,
-    args: normalizedEntry.args,
-    ...(normalizedEntry.env ? { env: normalizedEntry.env } : {}),
-  };
-  const updated =
-    configFormat === "codex_toml"
-      ? setTomlServerEntry(content, configPath, standardEntry)
-      : configFormat === "yaml_standard"
-        ? setYamlServerEntry(content, configPath, serversKey, standardEntry)
-        : setJsoncServerEntry(content, configPath, serversKey, entry);
+  const existing =
+    alreadyExists && options.preserveExisting
+      ? readExistingRegistration(parsed.entry, configFormat)
+      : null;
+  const repaired =
+    existing && options.preserveExisting
+      ? repairRegistration(existing, normalizedEntry, options.preserveExisting)
+      : null;
+  if (repaired) {
+    // Same structural rules as a fresh entry for what this command writes.
+    normalizeMcpServerEntryForInstall({
+      command: repaired.command,
+      args: repaired.args,
+    });
+  }
+  const updated = repaired
+    ? writeRepairedEntry(
+        content,
+        configPath,
+        configFormat,
+        serversKey,
+        repaired
+      )
+    : writeFreshEntry(
+        content,
+        configPath,
+        configFormat,
+        serversKey,
+        normalizedEntry
+      );
+  const writtenEntry: McpServerEntry = repaired
+    ? {
+        command: repaired.command,
+        args: repaired.args,
+        ...(Object.keys(repaired.env).length > 0
+          ? { env: repaired.env as McpServerEntry["env"] }
+          : {}),
+      }
+    : normalizedEntry;
 
   const wouldCreate = !alreadyExists;
   if (dryRun) {
@@ -145,7 +183,8 @@ export async function installMcpToTarget(
       scope,
       configPath,
       action: wouldCreate ? "dry_run_create" : "dry_run_update",
-      serverEntry: normalizedEntry,
+      serverEntry: writtenEntry,
+      ...(repaired ? { repaired: true } : {}),
     };
   }
 
@@ -157,8 +196,73 @@ export async function installMcpToTarget(
     scope,
     configPath,
     action,
-    serverEntry: normalizedEntry,
+    serverEntry: writtenEntry,
+    ...(repaired ? { repaired: true } : {}),
   };
+}
+
+function writeFreshEntry(
+  content: string,
+  configPath: string,
+  configFormat: McpConfigFormat,
+  serversKey: string,
+  normalizedEntry: McpServerEntry
+): string {
+  const standardEntry = {
+    command: normalizedEntry.command,
+    args: normalizedEntry.args,
+    ...(normalizedEntry.env ? { env: normalizedEntry.env } : {}),
+  };
+  if (configFormat === "codex_toml") {
+    return setTomlServerEntry(content, configPath, standardEntry);
+  }
+  if (configFormat === "yaml_standard") {
+    return setYamlServerEntry(content, configPath, serversKey, standardEntry);
+  }
+  const entry = buildEntry(
+    normalizedEntry.command,
+    normalizedEntry.args,
+    configFormat,
+    normalizedEntry.env
+  );
+  return setJsoncServerEntry(content, configPath, serversKey, entry);
+}
+
+/** Write a repaired entry, keeping the keys GNO does not manage. */
+function writeRepairedEntry(
+  content: string,
+  configPath: string,
+  configFormat: McpConfigFormat,
+  serversKey: string,
+  repaired: RepairedRegistration
+): string {
+  const hasEnv = Object.keys(repaired.env).length > 0;
+  if (configFormat === "codex_toml") {
+    return setTomlServerEntry(
+      content,
+      configPath,
+      { command: repaired.command, args: repaired.args },
+      { env: repaired.env, extra: repaired.extra }
+    );
+  }
+  if (configFormat === "mcp") {
+    return setJsoncServerEntry(content, configPath, serversKey, {
+      type: "local",
+      enabled: true,
+      ...repaired.extra,
+      command: [repaired.command, ...repaired.args],
+      ...(hasEnv ? { environment: repaired.env } : {}),
+    });
+  }
+  const entry = {
+    ...repaired.extra,
+    command: repaired.command,
+    args: repaired.args,
+    ...(hasEnv ? { env: repaired.env } : {}),
+  };
+  return configFormat === "yaml_standard"
+    ? setYamlServerEntry(content, configPath, serversKey, entry)
+    : setJsoncServerEntry(content, configPath, serversKey, entry);
 }
 
 /**
@@ -200,6 +304,14 @@ export async function installMcp(opts: InstallOptions = {}): Promise<void> {
     opts.configPath ?? paths.configFile,
     opts.cwd
   );
+  // Only what the user passed overrides an existing entry under --force;
+  // the defaults above never do.
+  const explicit: ExplicitInstallValues = {
+    ...(opts.indexName !== undefined ? { indexName } : {}),
+    ...(opts.configPath !== undefined ? { configPath } : {}),
+    ...(toolProfile !== undefined ? { toolProfile } : {}),
+    ...(opts.enableWrite ? { enableWrite: true } : {}),
+  };
   const globals = safeGetGlobals();
   const json = opts.json ?? globals.json;
   const quiet = opts.quiet ?? globals.quiet;
@@ -228,11 +340,18 @@ export async function installMcp(opts: InstallOptions = {}): Promise<void> {
     dryRun,
     cwd: opts.cwd,
     homeDir: opts.homeDir,
+    preserveExisting: explicit,
   });
+  const launch = resolveLaunchPaths();
+  const pinnedPaths = [launch.bun, launch.entrypoint]
+    .filter((path) => path.pinned)
+    .map((path) => path.path);
 
   // Output
   if (json) {
-    process.stdout.write(`${JSON.stringify({ installed: result }, null, 2)}\n`);
+    process.stdout.write(
+      `${JSON.stringify({ installed: { ...result, ...(pinnedPaths.length > 0 ? { pinnedPaths } : {}) } }, null, 2)}\n`
+    );
     return;
   }
 
@@ -247,8 +366,9 @@ export async function installMcp(opts: InstallOptions = {}): Promise<void> {
       `Would ${dryRunVerb} gno in ${getTargetDisplayName(target)}:\n`
     );
     process.stdout.write(`  Config: ${result.configPath}\n`);
-    process.stdout.write(`  Command: ${serverEntry.command}\n`);
-    process.stdout.write(`  Args: ${serverEntry.args.join(" ")}\n`);
+    process.stdout.write(`  Command: ${result.serverEntry.command}\n`);
+    process.stdout.write(`  Args: ${result.serverEntry.args.join(" ")}\n`);
+    writePinNote(pinnedPaths);
     return;
   }
 
@@ -256,8 +376,23 @@ export async function installMcp(opts: InstallOptions = {}): Promise<void> {
   process.stdout.write(
     `${verb} gno MCP server in ${getTargetDisplayName(target)}.\n`
   );
-  process.stdout.write(`  Config: ${result.configPath}\n\n`);
+  process.stdout.write(`  Config: ${result.configPath}\n`);
+  if (result.repaired) {
+    process.stdout.write(
+      "  Kept the existing settings; updated the Bun and GNO paths.\n"
+    );
+  }
+  writePinNote(pinnedPaths);
   process.stdout.write(
-    `Restart ${getTargetDisplayName(target)} to load the server.\n`
+    `\nRestart ${getTargetDisplayName(target)} to load the server.\n`
   );
+}
+
+/** Say when a launch path stays on one installed version. */
+function writePinNote(pinnedPaths: string[]): void {
+  for (const path of pinnedPaths) {
+    process.stdout.write(
+      `  Note: ${path} is inside a versioned install directory with no version-independent link to it; this registration keeps using that version after an upgrade. Run gno mcp install --force again after upgrading (gno doctor reports it).\n`
+    );
+  }
 }

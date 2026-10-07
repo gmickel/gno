@@ -537,8 +537,14 @@ gno mcp install --target cursor --tool-profile core --enable-write --force
 
 `--tool-profile` accepts `core` or `full`. Omit it and the registration is
 unchanged from earlier releases (no flag written, `full` at runtime). Rerun
-with `--force` to switch an existing registration; nothing migrates on its
-own.
+with `--force --tool-profile <profile>` to switch an existing registration;
+nothing migrates on its own.
+
+`--force` on an existing GNO entry repairs it rather than replacing it: the
+Bun and GNO paths are rewritten, and the rest of the entry (index, config, tool
+profile, write flag, environment, and any keys you added such as timeouts)
+stays as it is unless you pass that option again. Use it after upgrading Bun or
+GNO, or when `gno doctor` reports a registration on an old or missing runtime.
 
 Every install pins the workspace that was active when the command ran. The
 generated entry uses the absolute Bun executable, `run`, the current installed
@@ -546,7 +552,12 @@ package's absolute `src/index.ts`, then `--index <active>` and
 `--config <absolute>` before `mcp`. It also stores absolute `GNO_DATA_DIR` and
 `GNO_CACHE_DIR` values (`env`, or OpenCode's `environment`). This keeps desktop
 clients on the same index, config, database, and model cache even when they do
-not inherit your shell environment. Codex uses its native
+not inherit your shell environment. When Bun or GNO comes from a version
+manager (mise, asdf, proto, Homebrew), the entry names the manager's
+version-independent link, such as mise's `installs/bun/latest` or Homebrew's
+`opt/bun`, so a Bun upgrade reaches the registration. If no such link points
+at the running Bun, the install output says the entry stays on that version.
+Codex uses its native
 `~/.codex/config.toml` or project `.codex/config.toml` tables. Run
 `gno mcp install --dry-run --json` to inspect the exact command, arguments, and
 workspace values before writing them. If the target already has GNO configured,
