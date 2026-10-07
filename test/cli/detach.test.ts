@@ -370,6 +370,8 @@ describe("detach helper", () => {
           version: VERSION,
           started_at: result.payload.started_at,
           port: 4242,
+          // The child runs on this Bun (fn-213).
+          bun_version: Bun.version,
         });
 
         // Best-effort: terminate the child so we don't leak a process.

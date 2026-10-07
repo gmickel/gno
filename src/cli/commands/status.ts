@@ -44,6 +44,12 @@ import {
   resolveProcessPaths,
   statusProcess,
 } from "../detach";
+import {
+  checkRegistrationRuntimes,
+  checkResidentRuntimes,
+  formatRuntimeIssue,
+  type RuntimeIssue,
+} from "../runtime-health";
 
 /**
  * Options for status command.
@@ -70,6 +76,8 @@ export type StatusResult =
       contentTypeBoost: ContentTypeBoostStatus;
       memory: MemoryStatus;
       backgroundIssues: ResidentBackgroundIssue[];
+      /** Registrations and residents on a missing, old or other Bun (fn-213). */
+      runtimeIssues?: RuntimeIssue[];
       /** Files whose latest conversion stopped at the per-file budget. */
       budgetStops: BudgetStop[];
     }
@@ -433,6 +441,10 @@ export async function status(
       contentTypeBoost: buildContentTypeBoostStatus(config.contentTypes ?? []),
       memory: await buildMemoryStatus(store, config.collections),
       backgroundIssues: await collectResidentIssues(),
+      runtimeIssues: [
+        ...(await checkRegistrationRuntimes()),
+        ...(await checkResidentRuntimes()),
+      ],
       budgetStops: await collectBudgetStops(store),
     };
   } finally {
@@ -486,6 +498,9 @@ export function formatStatus(
         ...(result.backgroundIssues.length
           ? { backgroundIssues: result.backgroundIssues }
           : {}),
+        ...(result.runtimeIssues?.length
+          ? { runtimeIssues: result.runtimeIssues }
+          : {}),
       },
       null,
       2
@@ -524,5 +539,14 @@ export function formatStatus(
         ]
       : []),
     ...(issueLines.length ? ["", "Background issues:", ...issueLines] : []),
+    ...(result.runtimeIssues?.length
+      ? [
+          "",
+          "Bun runtime:",
+          ...result.runtimeIssues.map(
+            (issue) => `  [${issue.severity}] ${formatRuntimeIssue(issue)}`
+          ),
+        ]
+      : []),
   ].join("\n");
 }

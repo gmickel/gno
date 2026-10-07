@@ -1157,6 +1157,24 @@ The serve/daemon log is append-only across runs, so repeated `GNO server
 running` / `Shutting down...` blocks are separate starts and stops, not a
 restart loop.
 
+### A resident or MCP server keeps running an old Bun
+
+A running `serve` or `daemon` keeps the Bun it started with, and a client
+registration keeps the Bun path written when it was installed. `gno status`
+lists both under `Bun runtime:`, and `gno doctor` reports them as
+`resident-runtime` and `mcp-runtime`, each with its repair:
+
+- Registration on an old or missing Bun: run the printed
+  `gno mcp install --target <client> --scope <scope> --force`. It rewrites only
+  the Bun and GNO paths and keeps the rest of the entry.
+- Resident on an old Bun: restart it with `gno serve --stop` and
+  `gno serve --detach` (or `gno daemon`). A resident started by an older GNO
+  version is not signalled by `--stop`; stop it with the printed `kill <pid>`,
+  then start it again.
+
+GNO needs Bun 1.4.1 or later; `gno serve`, `gno daemon` and `gno mcp` print a
+warning when they start on an older Bun.
+
 ### Corrupted Database
 
 ```bash

@@ -2241,6 +2241,14 @@ Checks include:
   (`vector-partitions`, warns when anything beyond one healthy partition exists)
 - per-collection corpus-derived lexical retrieval proof
 - passive projection of explicit connector proof receipts
+- MCP registrations whose Bun or GNO path is missing or whose Bun is older
+  than the supported minimum (`mcp-runtime`, error), or that use a different
+  Bun than the one running doctor (information); each names the
+  `gno mcp install --force` command that repairs it
+- a running `serve` or `daemon` on a Bun older than the supported minimum
+  (`resident-runtime`, error) or older than the current one (warning), with
+  the steps to restart it; this also covers a resident started by an older
+  GNO version, which `--stop` will not signal
 
 Doctor exits 2 when lexical activation fails. A collection with no documents
 yet is not a failure: doctor shows it as informational (`i`) with its

@@ -393,6 +393,13 @@ is alive but did not answer its status request within 500ms). Each resident is
 asked once with that 500ms budget, so `gno status` never waits on a hung
 resident. Terminal output lists the same issues under `Background issues:`.
 
+When an MCP client registration or a running resident uses a missing, old or
+other Bun, JSON output adds `runtimeIssues` (absent otherwise) and terminal
+output lists them under `Bun runtime:`. Each item has `kind`
+(`registration` or `resident`), `severity` (`error`, `warn` or `info`),
+`subject`, `message` and `repair`, the same findings as the doctor checks
+`mcp-runtime` and `resident-runtime` below.
+
 Local activation fingerprints use active-document identifiers and source/mirror
 hashes plus schema, tokenizer, and owned FTS synchronization metadata. Passive
 status never selects or compares stored markdown or FTS bodies. On a receipt
@@ -3023,6 +3030,30 @@ gno doctor [--json|--md]
   ]
 }
 ```
+
+The `mcp-runtime` check reads every MCP client registration GNO can install
+(all targets and scopes) and reports one `error` when a registration's Bun or
+GNO entrypoint no longer exists or its Bun is below the supported minimum
+(`engines.bun`), and `info` when it resolves to a different Bun than the one
+running doctor. A Bun version comes from a version manager's install path when
+the interpreter resolves into one, else from `<interpreter> --version` under a
+2-second limit; a probe that fails or times out reports the version as unknown.
+The registered MCP command itself is never started. A registration that runs
+the `gno` launcher finds Bun on `PATH` and is only checked for existence. Each
+detail names the client, scope and file, and the repair
+`gno mcp install --target <target> --scope <scope> --force`.
+
+The `resident-runtime` check reads the `serve` and `daemon` pid-files. A live
+resident's Bun comes from the pid-file's `bun_version` (written since this
+release) or, when absent, from `bootstrap.runtime.currentVersion` of
+`GET /api/status` on its recorded port (2-second limit; trusted only when the
+response is a GNO status payload). It is an `error` below the supported
+minimum, a `warn` when older than the Bun running doctor, and `info` when a
+resident from another GNO version does not report its Bun. The check never
+signals a process. Its repair restarts the resident: `gno <kind> --stop` then
+start it again, or, for a resident started by another GNO version (which
+`--stop` refuses), `kill <pid>` (`taskkill /PID <pid>` on Windows) and start it
+again.
 
 The `findings-pass` check reports the daemon's scheduled findings pass from
 its persisted run state: `ok` when disabled or the last run succeeded, `warn`
