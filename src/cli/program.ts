@@ -2644,7 +2644,7 @@ function wireMcpCommand(program: Command): void {
       "advertised tool set the registration starts with: core (7 read tools + capture/remember with --enable-write) or full (default)"
     )
     .option("--json", "JSON output")
-    .action(async (cmdOpts: Record<string, unknown>) => {
+    .action(async (cmdOpts: Record<string, unknown>, command: Command) => {
       const target = cmdOpts.target as string;
       const toolProfile = parseToolProfileOption(cmdOpts.toolProfile);
       const requestedScope = cmdOpts.scope;
@@ -2687,9 +2687,14 @@ function wireMcpCommand(program: Command): void {
         scope: scope as "user" | "project",
         force: Boolean(cmdOpts.force),
         dryRun: Boolean(cmdOpts.dryRun),
-        enableWrite: Boolean(cmdOpts.enableWrite),
+        // Only options the user passed: --force keeps the rest of an
+        // existing registration (--index has a default, so check its source).
+        enableWrite: cmdOpts.enableWrite === true ? true : undefined,
         toolProfile,
-        indexName: globals.index,
+        indexName:
+          command.getOptionValueSourceWithGlobals("index") === "cli"
+            ? globals.index
+            : undefined,
         configPath: globals.config,
         // Pass undefined if not set, so global --json can take effect
         json: cmdOpts.json === true ? true : undefined,

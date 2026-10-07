@@ -3,6 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
 import { installMcp } from "../../src/cli/commands/mcp/install";
+import { findBunPath } from "../../src/cli/commands/mcp/paths";
 import { checkMcpTargetStatus } from "../../src/cli/commands/mcp/status";
 import { uninstallMcp } from "../../src/cli/commands/mcp/uninstall";
 import { safeRm } from "../helpers/cleanup";
@@ -120,7 +121,7 @@ describe("Codex native TOML MCP config", () => {
       mcp_servers: {
         other: { command: "/usr/bin/other", args: ["serve"] },
         gno: {
-          command: process.execPath,
+          command: findBunPath(),
           args: expect.arrayContaining(["--index", "research", "mcp"]),
         },
       },

@@ -62,6 +62,22 @@ export const NETWORK_BOUNDARY_INVENTORY = [
     enforcement: "no_collection_data",
   },
   {
+    id: "registration-bun-version-probe",
+    key: "src/cli/runtime-health.ts::child_process#1",
+    path: "src/cli/runtime-health.ts",
+    primitive: "child_process",
+    action: null,
+    enforcement: "no_collection_data",
+  },
+  {
+    id: "resident-bun-version-probe",
+    key: "src/cli/runtime-health.ts::fetch#1",
+    path: "src/cli/runtime-health.ts",
+    primitive: "fetch",
+    action: null,
+    enforcement: "no_collection_data",
+  },
+  {
     id: "terminal-pager",
     key: "src/cli/pager.ts::child_process#1",
     path: "src/cli/pager.ts",

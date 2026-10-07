@@ -56,6 +56,8 @@ export interface PidFilePayload {
   version: string;
   started_at: string;
   port?: number | null;
+  /** Bun the resident runs on (fn-213); absent in older pid-files. */
+  bun_version?: string;
 }
 
 /** Result of a `--status` call (matches process-status@1.0). */
@@ -246,6 +248,9 @@ export async function readPidFile(
     version: record.version,
     started_at: record.started_at,
     port,
+    ...(typeof record.bun_version === "string" && record.bun_version
+      ? { bun_version: record.bun_version }
+      : {}),
   };
 }
 
@@ -610,6 +615,11 @@ export async function spawnDetached(
       version: VERSION,
       started_at: new Date().toISOString(),
       port: options.port ?? null,
+      // The child runs on this process's Bun unless a caller replaced the
+      // command.
+      ...(options.cmdPrefix || options.execPath
+        ? {}
+        : { bun_version: Bun.version }),
     };
 
     // If the pid-file write fails (disk full, permission race, bad path on

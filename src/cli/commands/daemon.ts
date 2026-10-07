@@ -5,6 +5,7 @@ import type { FindingsPassResult } from "../../serve/findings-pass";
 import type { ResidentRuntime } from "../../serve/resident-runtime";
 import type { SessionAutomationRunResult } from "../../sessions/types";
 
+import { warnIfBunBelowFloor } from "../../app/bun-runtime";
 import {
   enforceCollectionEgress,
   EGRESS_DENIED_MESSAGE,
@@ -202,6 +203,8 @@ export async function daemon(
       console.error(message);
     },
   };
+
+  warnIfBunBelowFloor("daemon", logger.error);
 
   const runtimeResult: BackgroundRuntimeResult = await (
     deps.startBackgroundRuntime ?? startBackgroundRuntime

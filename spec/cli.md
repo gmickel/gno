@@ -393,6 +393,13 @@ is alive but did not answer its status request within 500ms). Each resident is
 asked once with that 500ms budget, so `gno status` never waits on a hung
 resident. Terminal output lists the same issues under `Background issues:`.
 
+When an MCP client registration or a running resident uses a missing, old or
+other Bun, JSON output adds `runtimeIssues` (absent otherwise) and terminal
+output lists them under `Bun runtime:`. Each item has `kind`
+(`registration` or `resident`), `severity` (`error`, `warn` or `info`),
+`subject`, `message` and `repair`, the same findings as the doctor checks
+`mcp-runtime` and `resident-runtime` below.
+
 Local activation fingerprints use active-document identifiers and source/mirror
 hashes plus schema, tokenizer, and owned FTS synchronization metadata. Passive
 status never selects or compares stored markdown or FTS bodies. On a receipt
@@ -1507,7 +1514,12 @@ executable, which cannot start the worker, runs the phases in a child process
 of itself (internal environment flag) under the same limits; the child's
 resident memory counts toward `conversion.maxMemoryMb` (Linux `/proc`, `ps`
 elsewhere; time only on Windows). A processor that cannot start fails the file
-with `ISOLATION_UNAVAILABLE`; nothing is prepared without the budget. The
+with `ISOLATION_UNAVAILABLE`; nothing is prepared without the budget. A
+message to or from the processor that cannot be deserialized fails the file
+with `PROCESSOR_MESSAGE_FAILED` (details: `direction` `job`, `result`, or
+`unknown` for the child backend, whose channel Bun closes on both ends;
+`backend`; `phase`), replaces the processor, and writes one stderr line naming
+the direction, backend, `<collection>/<relPath>` and phase. The
 child is SIGKILLed on process exit, SIGTERM, SIGINT (via the CLI's exit
 path) and resident shutdown; on Linux it also carries a parent-death signal,
 so it dies with a SIGKILLed parent, and elsewhere it exits at its next step
@@ -3019,6 +3031,30 @@ gno doctor [--json|--md]
 }
 ```
 
+The `mcp-runtime` check reads every MCP client registration GNO can install
+(all targets and scopes) and reports one `error` when a registration's Bun or
+GNO entrypoint no longer exists or its Bun is below the supported minimum
+(`engines.bun`), and `info` when it resolves to a different Bun than the one
+running doctor. A Bun version comes from a version manager's install path when
+the interpreter resolves into one, else from `<interpreter> --version` under a
+2-second limit; a probe that fails or times out reports the version as unknown.
+The registered MCP command itself is never started. A registration that runs
+the `gno` launcher finds Bun on `PATH` and is only checked for existence. Each
+detail names the client, scope and file, and the repair
+`gno mcp install --target <target> --scope <scope> --force`.
+
+The `resident-runtime` check reads the `serve` and `daemon` pid-files. A live
+resident's Bun comes from the pid-file's `bun_version` (written since this
+release) or, when absent, from `bootstrap.runtime.currentVersion` of
+`GET /api/status` on its recorded port (2-second limit; trusted only when the
+response is a GNO status payload). It is an `error` below the supported
+minimum, a `warn` when older than the Bun running doctor, and `info` when a
+resident from another GNO version does not report its Bun. The check never
+signals a process. Its repair restarts the resident: `gno <kind> --stop` then
+start it again, or, for a resident started by another GNO version (which
+`--stop` refuses), `kill <pid>` (`taskkill /PID <pid>` on Windows) and start it
+again.
+
 The `findings-pass` check reports the daemon's scheduled findings pass from
 its persisted run state: `ok` when disabled or the last run succeeded, `warn`
 on `skipped_lease` / `overdue` / no recorded run, `error` on `failed` or a
@@ -3093,7 +3129,7 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--e
 | ---------------- | ------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--target`       | string  | claude-desktop | Target client (see table below)                                                                                                                             |
 | `--scope`        | string  | target default | Scope: `user` or `project`; LibreChat defaults to project                                                                                                   |
-| `--force`        | boolean | false          | Overwrite existing gno configuration                                                                                                                        |
+| `--force`        | boolean | false          | Repair an existing gno entry: rewrite its Bun and GNO paths, keep its other arguments, environment and keys, and apply only the options passed explicitly   |
 | `--dry-run`      | boolean | false          | Show what would be done without changes                                                                                                                     |
 | `--enable-write` | boolean | false          | Start the registered server with write tools enabled                                                                                                        |
 | `--tool-profile` | string  | full           | Advertised tool set written into the registration: `core` (7 read tools, plus capture and remember with `--enable-write`) or `full`; omitted writes no flag |
@@ -3131,6 +3167,25 @@ gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--e
 | amp            | user    | `~/.config/amp/settings.json`                                     | `~/.config/amp/settings.json`                 | `~/.config/amp/settings.json`                 |
 | lmstudio       | user    | `~/.lmstudio/mcp.json`                                            | `~/.lmstudio/mcp.json`                        | `~/.lmstudio/mcp.json`                        |
 | librechat      | project | `./librechat.yaml`                                                | `./librechat.yaml`                            | `./librechat.yaml`                            |
+
+**Launch paths and repair:** the command is the running Bun, the first
+argument after `run` the running package's `src/index.ts`. When either sits in
+a version manager's versioned install directory (mise, asdf or proto
+`installs/bun/<version>/` or `tools/bun/<version>/`, Homebrew
+`Cellar/bun/<version>/`), the manager's version-independent link
+(`installs/bun/latest/...`, `opt/bun/...`) is written instead, but only if it
+resolves to the same file; otherwise the versioned path is kept, the text
+output adds a note, and `--json` adds `installed.pinnedPaths`. Shims that pick
+a version from the shell environment are never written. A standalone compiled
+executable is written as is. With `--force` over an existing entry that
+launches GNO (`run <entrypoint> ... mcp ...`, or a `gno` executable), only the
+launch prefix is rewritten; `--index`, `--config`, `--tool-profile` and
+`--enable-write` change only when passed in this invocation, existing
+environment values win over the installer's data and cache directories, and
+keys GNO does not write are kept in every format, Codex TOML included;
+`installed.repaired` is `true`. A Codex key that the TOML writer cannot express
+stops the command before anything is written. An entry that does not launch GNO
+is replaced as before. Without `--force` an existing entry is refused.
 
 **Config Formats:**
 

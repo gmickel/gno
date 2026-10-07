@@ -1,0 +1,72 @@
+{
+  "branch": "fn-213-resident-crash-on-old-bun-and-mcp",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "2586bf25dea1460435473be4b0a4090ed0a8c4cc",
+    "items": [
+      {
+        "body": "At 375px the dashboard's 'Download missing models' button ends at 382px, so the page scrolls sideways by 7px (measured twice). The button predates this spec (872bbdd5). (surface: src/serve/public/components/BootstrapStatus.tsx)",
+        "classification": "pre_existing",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-f7f7a9f7819a2c48ae4b46c86b186f620a8015330cc1f47ec21a42470985516d",
+        "id": "finding-a2a922a441a41a4420ce5e3acc8ab908",
+        "lastSeenReceiptId": "review-f7f7a9f7819a2c48ae4b46c86b186f620a8015330cc1f47ec21a42470985516d",
+        "ordinal": 1,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "P2-mobile-download-button"
+      }
+    ],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-f7f7a9f7819a2c48ae4b46c86b186f620a8015330cc1f47ec21a42470985516d"
+  },
+  "head_sha": "2586bf25dea1460435473be4b0a4090ed0a8c4cc",
+  "id": "fn-213-resident-crash-on-old-bun-and-mcp",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 8,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      },
+      {
+        "coverage": "live",
+        "id": "R7"
+      },
+      {
+        "coverage": "live",
+        "id": "R8"
+      }
+    ],
+    "total": 8
+  },
+  "timestamp": "2026-10-07T20:22:39Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

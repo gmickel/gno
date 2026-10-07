@@ -19,6 +19,14 @@
  * If no backend can start, the file fails closed with
  * ISOLATION_UNAVAILABLE; it is never prepared unbounded.
  *
+ * A message that cannot be deserialized on the way to or from the processor
+ * (fn-213) fails the file with PROCESSOR_MESSAGE_FAILED and replaces the
+ * processor, and one stderr line names the direction, backend, file and
+ * step. Bun 1.4.0 and later report it as a `messageerror` event on the
+ * receiving side of a worker; over the child's IPC channel Bun closes the
+ * channel on both ends instead, so the child backend cannot tell which
+ * direction failed.
+ *
  * One processor is reused across files (starting one costs about a third of
  * a second of module loading). It is replaced after an overrun, after a
  * file that leaves memory above half the budget, and after a short idle
@@ -78,7 +86,25 @@ export interface ReadyMessage {
   type: "ready";
 }
 
+/** Posted by the worker when a job it was sent could not be deserialized. */
+export interface UndeliverableJobMessage {
+  type: "undeliverable-job";
+}
+
+/** Which message could not be delivered; the child backend cannot tell. */
+export type DeliveryDirection = "job" | "result" | "unknown";
+
+/** Why a processor stopped working. */
+interface ProcessorFailure {
+  reason: string;
+  /** Set when a message could not be delivered. */
+  delivery?: DeliveryDirection;
+}
+
 export type FileProcessorBackendKind = "worker" | "child";
+
+/** Error code of a file whose message to or from the processor was lost. */
+export const PROCESSOR_MESSAGE_FAILED = "PROCESSOR_MESSAGE_FAILED";
 
 /** Error codes of a file stopped at its budget. */
 export const BUDGET_ERROR_CODES: ReadonlySet<string> = new Set([
@@ -149,7 +175,7 @@ interface Processor {
   /** Settles once the processor has loaded and can take a file. */
   readonly ready: Promise<void>;
   /** Settles, with a reason, if the processor dies or errors. */
-  readonly failed: Promise<string>;
+  readonly failed: Promise<ProcessorFailure>;
   /** Send one file; its messages go to `onMessage`. */
   run(
     request: PrepareFileRequest,
@@ -164,6 +190,8 @@ interface Processor {
   /** Child process id (child backend), for shutdown and tests. */
   readonly pid: number | null;
   stop(): void;
+  /** Tests only: raise the event Bun raises for an undeliverable message. */
+  simulateUndeliverable?(direction: "job" | "result"): void;
 }
 
 const phaseName = (index: number): string => PREPARE_PHASES[index] ?? "startup";
@@ -176,25 +204,38 @@ function startWorker(): Processor {
   const phaseSlot = new Int32Array(new SharedArrayBuffer(4));
   let onMessage: ((message: FileWorkerMessage) => void) | null = null;
   let markReady: () => void = () => undefined;
-  let markFailed: (reason: string) => void = () => undefined;
+  let markFailed: (failure: ProcessorFailure) => void = () => undefined;
   let dead = false;
   const ready = new Promise<void>((resolve) => {
     markReady = resolve;
   });
-  const failed = new Promise<string>((resolve) => {
-    markFailed = (reason) => {
+  const failed = new Promise<ProcessorFailure>((resolve) => {
+    markFailed = (failure) => {
       dead = true;
-      resolve(reason);
+      resolve(failure);
     };
   });
   worker.onmessage = (
-    event: MessageEvent<FileWorkerMessage | ReadyMessage>
+    event: MessageEvent<
+      FileWorkerMessage | ReadyMessage | UndeliverableJobMessage
+    >
   ) => {
     if (event.data.type === "ready") markReady();
-    else onMessage?.(event.data);
+    else if (event.data.type === "undeliverable-job") {
+      markFailed({
+        reason: "the file worker could not deserialize its job",
+        delivery: "job",
+      });
+    } else onMessage?.(event.data);
+  };
+  worker.onmessageerror = () => {
+    markFailed({
+      reason: "a message from the file worker could not be deserialized",
+      delivery: "result",
+    });
   };
   worker.onerror = (event: ErrorEvent) => {
-    markFailed(event.message || "file worker failed");
+    markFailed({ reason: event.message || "file worker failed" });
   };
   return {
     kind: "worker",
@@ -212,7 +253,12 @@ function startWorker(): Processor {
     pid: null,
     stop() {
       worker.terminate();
-      markFailed("file processor was stopped");
+      markFailed({ reason: "file processor was stopped" });
+    },
+    simulateUndeliverable(direction) {
+      if (direction === "result") {
+        worker.dispatchEvent(new MessageEvent("messageerror"));
+      } else worker.postMessage({ simulateUndeliverable: true });
     },
   };
 }
@@ -267,12 +313,21 @@ function startChild(): Processor {
   child.unref();
   liveChildren.add(child);
   ensureShutdownHooks();
-  const failed = child.exited.then((code) => {
+  const failed = child.exited.then((code): ProcessorFailure => {
     exited = true;
     liveChildren.delete(child);
-    return stopping
-      ? "file processor was stopped"
-      : `file processor child exited (${code})`;
+    if (stopping) return { reason: "file processor was stopped" };
+    // Bun closes the channel on both ends when either side receives a
+    // message it cannot deserialize. The child exits cleanly only once its
+    // channel is gone (file-child.ts), and a crash never exits cleanly; the
+    // exit can be reported before Bun's own disconnect callback.
+    if (code === 0) {
+      return {
+        reason: "the IPC channel to the file processor child closed",
+        delivery: "unknown",
+      };
+    }
+    return { reason: `file processor child exited (${code})` };
   });
   return {
     kind: "child",
@@ -367,6 +422,19 @@ export function activeFileProcessorPid(): number | null {
   return processor?.pid ?? null;
 }
 
+/**
+ * Tests only: make the running worker processor raise the event Bun raises
+ * when a message cannot be deserialized (a real payload cannot be made to
+ * fail from JavaScript). False when no worker processor is running.
+ */
+export function simulateUndeliverableMessage(
+  direction: "job" | "result"
+): boolean {
+  if (!processor?.simulateUndeliverable) return false;
+  processor.simulateUndeliverable(direction);
+  return true;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Processor lifecycle
 // ─────────────────────────────────────────────────────────────────────────────
@@ -429,10 +497,29 @@ const awaitReady = (active: Processor): Promise<string | null> => {
   });
   return Promise.race([
     active.ready.then(() => null),
-    active.failed,
+    active.failed.then((failure) => failure.reason),
     timedOut,
   ]).finally(() => clearTimeout(timer));
 };
+
+/** Failure of a file whose message to or from the processor was lost. */
+function undeliverableFailure(
+  request: PrepareFileRequest,
+  kind: FileProcessorBackendKind,
+  phase: string,
+  failure: ProcessorFailure
+): PrepareFailure {
+  const direction = failure.delivery ?? "unknown";
+  const file = `${request.input.collection}/${request.input.relativePath}`;
+  console.error(
+    `gno: file processor message lost (direction ${direction}, backend ${kind}) for ${file} during ${phase}: ${failure.reason}; the processor was replaced`
+  );
+  return {
+    code: PROCESSOR_MESSAGE_FAILED,
+    message: `The file processor could not deliver a message during ${phase} (${failure.reason}); the processor was replaced`,
+    details: { direction, backend: kind, phase },
+  };
+}
 
 const runOne = async (
   request: PrepareFileRequest,
@@ -511,9 +598,23 @@ const runOne = async (
     const sampler = setInterval(() => {
       void checkMemory();
     }, MEMORY_SAMPLE_INTERVAL_MS);
-    void active.failed.then((reason) =>
-      finish({ ok: false, error: { code: "INTERNAL", message: reason } }, false)
-    );
+    void active.failed.then((failure) => {
+      if (settled) return;
+      finish(
+        {
+          ok: false,
+          error: failure.delivery
+            ? undeliverableFailure(
+                request,
+                active.kind,
+                active.phase(),
+                failure
+              )
+            : { code: "INTERNAL", message: failure.reason },
+        },
+        false
+      );
+    });
     // A process already over the budget does not start another file.
     const rss = process.memoryUsage.rss();
     if (rss > budget.maxMemoryBytes) {

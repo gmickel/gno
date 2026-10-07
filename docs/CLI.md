@@ -2241,6 +2241,14 @@ Checks include:
   (`vector-partitions`, warns when anything beyond one healthy partition exists)
 - per-collection corpus-derived lexical retrieval proof
 - passive projection of explicit connector proof receipts
+- MCP registrations whose Bun or GNO path is missing or whose Bun is older
+  than the supported minimum (`mcp-runtime`, error), or that use a different
+  Bun than the one running doctor (information); each names the
+  `gno mcp install --force` command that repairs it
+- a running `serve` or `daemon` on a Bun older than the supported minimum
+  (`resident-runtime`, error) or older than the current one (warning), with
+  the steps to restart it; this also covers a resident started by an older
+  GNO version, which `--stop` will not signal
 
 Doctor exits 2 when lexical activation fails. A collection with no documents
 yet is not a failure: doctor shows it as informational (`i`) with its
@@ -2583,7 +2591,12 @@ executable runs the current package's `src/index.ts`, followed by the active
 `--index` and canonical absolute `--config` before `mcp`. It also persists
 absolute `GNO_DATA_DIR` and `GNO_CACHE_DIR` values (`env` for standard clients
 and Codex, `environment` for OpenCode). This is intentional; desktop clients
-need not share the shell's `PATH` or GNO environment variables. Codex writes
+need not share the shell's `PATH` or GNO environment variables. Under a
+version manager (mise, asdf, proto, Homebrew) the entry names the manager's
+version-independent link to the same Bun and GNO when one exists, so upgrades
+reach the registration; otherwise the output notes that the entry stays on the
+current version. With `--force` on an existing entry, GNO rewrites only the Bun
+and GNO paths and keeps the other settings unless you pass them again. Codex writes
 native `~/.codex/config.toml` or project `.codex/config.toml` tables. Use
 `gno mcp install --dry-run --json` to inspect the exact command, arguments, and
 workspace values. If the target already has GNO configured, add `--force` to

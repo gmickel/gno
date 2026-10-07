@@ -46,6 +46,12 @@ import { getStoredEmbeddingFingerprint } from "../../store/vector/freshness";
 import { currentOwnerCount } from "../../store/vector/runtime-compat";
 import { storedVectorPartition } from "../../store/vector/status";
 import {
+  checkRegistrationRuntimes,
+  checkResidentRuntimes,
+  formatRuntimeIssue,
+  type RuntimeIssue,
+} from "../runtime-health";
+import {
   buildDoctorActivation,
   checkConnectorActivation,
   checkRetrievalActivation,
@@ -622,6 +628,58 @@ async function checkSqliteExtensions(): Promise<DoctorCheck[]> {
  * Report the daemon's scheduled findings pass from its persisted state so a
  * misconfigured, starved, or failing scheduler is visible without the daemon.
  */
+const SEVERITY_RANK: Record<RuntimeIssue["severity"], number> = {
+  info: 0,
+  warn: 1,
+  error: 2,
+};
+
+function runtimeCheck(
+  name: string,
+  issues: RuntimeIssue[],
+  okMessage: string
+): DoctorCheck {
+  if (issues.length === 0) {
+    return { name, status: "ok", message: okMessage };
+  }
+  const worst = issues.reduce((current, issue) =>
+    SEVERITY_RANK[issue.severity] > SEVERITY_RANK[current.severity]
+      ? issue
+      : current
+  );
+  return {
+    name,
+    status: worst.severity,
+    message:
+      issues.length === 1
+        ? `${worst.subject}: ${worst.message}`
+        : `${issues.length} need attention; first: ${worst.subject}: ${worst.message}`,
+    details: issues.map(formatRuntimeIssue),
+  };
+}
+
+/** Bun used by MCP registrations and by running residents. */
+export async function checkRuntimes(
+  overrides: { cwd?: string; homeDir?: string } = {}
+): Promise<DoctorCheck[]> {
+  const [registrations, residents] = await Promise.all([
+    checkRegistrationRuntimes(overrides),
+    checkResidentRuntimes(),
+  ]);
+  return [
+    runtimeCheck(
+      "mcp-runtime",
+      registrations,
+      "MCP registrations launch an existing, supported Bun"
+    ),
+    runtimeCheck(
+      "resident-runtime",
+      residents,
+      "No running resident is on an older Bun"
+    ),
+  ];
+}
+
 export async function checkFindingsPass(
   config: Config,
   indexName?: string
@@ -726,6 +784,9 @@ export async function doctor(
 
   // Scheduled findings pass (daemon-only, opt-in)
   checks.push(await checkFindingsPass(config, options.indexName));
+
+  // Which Bun client registrations and running residents use (fn-213)
+  checks.push(...(await checkRuntimes()));
 
   const activation = await buildDoctorActivation(config, options);
   checks.push(checkRetrievalActivation(activation));

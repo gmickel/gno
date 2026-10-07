@@ -18,6 +18,8 @@ import {
   type McpToolProfile,
   isMcpToolProfile,
 } from "../../../mcp/tool-profile.js";
+import { isBunfsPath } from "../../../serve/spa-production-build";
+import { type LaunchPath, stableLaunchPath } from "./launch-path.js";
 import { getTargetDisplayName } from "./target-display.js";
 
 export { getTargetDisplayName } from "./target-display.js";
@@ -448,13 +450,34 @@ export function resolveAllMcpPaths(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * The Bun and GNO paths a registration launches, preferring links that
+ * follow version-manager upgrades (see launch-path.ts). A standalone
+ * compiled executable is left alone: its execPath is GNO itself.
+ */
+export function resolveLaunchPaths(): {
+  bun: LaunchPath;
+  entrypoint: LaunchPath;
+} {
+  const entrypoint = getCurrentGnoEntrypoint();
+  if (isBunfsPath(import.meta.path)) {
+    return {
+      bun: { path: process.execPath, pinned: false },
+      entrypoint: { path: entrypoint, pinned: false },
+    };
+  }
+  return {
+    bun: stableLaunchPath(process.execPath),
+    entrypoint: stableLaunchPath(entrypoint),
+  };
+}
+
+/**
  * Find absolute path to bun executable.
- * Cross-platform: uses process.execPath since we're already running under Bun.
+ * Cross-platform: starts from process.execPath since we're already running
+ * under Bun, then prefers a version-independent link to the same binary.
  */
 export function findBunPath(): string {
-  // process.execPath is the absolute path to the Bun binary running this process.
-  // This is cross-platform and doesn't require shelling out to `which`.
-  return process.execPath;
+  return resolveLaunchPaths().bun.path;
 }
 
 /**
@@ -467,8 +490,9 @@ export function buildMcpServerEntry(
   if (options.indexName !== undefined) {
     assertValidIndexName(options.indexName);
   }
-  const bunPath = findBunPath();
-  const args = ["run", getCurrentGnoEntrypoint()];
+  const launch = resolveLaunchPaths();
+  const bunPath = launch.bun.path;
+  const args = ["run", launch.entrypoint.path];
   appendMcpArguments(args, options);
   const dirs = resolveDirs();
   return {

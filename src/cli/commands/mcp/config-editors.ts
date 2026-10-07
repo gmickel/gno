@@ -371,19 +371,66 @@ function tomlString(value: string): string {
   return JSON.stringify(value);
 }
 
-function serializeTomlEntry(entry: StandardMcpEntry, newline: string): string {
+const TOML_BARE_KEY = /^[A-Za-z0-9_-]+$/;
+
+function tomlKey(key: string): string {
+  return TOML_BARE_KEY.test(key) ? key : tomlString(key);
+}
+
+/** A kept key's value as TOML; null for values this writer cannot express. */
+function tomlValue(value: unknown): string | null {
+  if (typeof value === "string") {
+    return tomlString(value);
+  }
+  if (
+    typeof value === "boolean" ||
+    (typeof value === "number" && Number.isFinite(value))
+  ) {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    const items = value.map(tomlValue);
+    return items.every((item) => item !== null)
+      ? `[${items.join(", ")}]`
+      : null;
+  }
+  return null;
+}
+
+/** Keys of an existing GNO entry kept by a repair (see repair-entry.ts). */
+export interface TomlEntryExtras {
+  env?: Record<string, string>;
+  extra?: Record<string, unknown>;
+}
+
+function serializeTomlEntry(
+  entry: StandardMcpEntry,
+  newline: string,
+  configPath: string,
+  extras: TomlEntryExtras = {}
+): string {
   const args = entry.args.map(tomlString).join(", ");
   const lines = [
     "[mcp_servers.gno]",
     `command = ${tomlString(entry.command)}`,
     `args = [${args}]`,
   ];
-  if (entry.env && Object.keys(entry.env).length > 0) {
+  for (const [key, value] of Object.entries(extras.extra ?? {})) {
+    const serialized = tomlValue(value);
+    if (serialized === null) {
+      throw new CliError(
+        "RUNTIME",
+        `Cannot keep "${key}" of the GNO MCP entry in ${configPath}; remove the entry with gno mcp uninstall, or edit the key, then install again.`
+      );
+    }
+    lines.push(`${tomlKey(key)} = ${serialized}`);
+  }
+  const env = { ...entry.env, ...extras.env };
+  if (Object.keys(env).length > 0) {
     lines.push("", "[mcp_servers.gno.env]");
-    for (const key of ["GNO_DATA_DIR", "GNO_CACHE_DIR"] as const) {
-      const value = entry.env[key];
+    for (const [key, value] of Object.entries(env)) {
       if (value) {
-        lines.push(`${key} = ${tomlString(value)}`);
+        lines.push(`${tomlKey(key)} = ${tomlString(value)}`);
       }
     }
   }
@@ -393,7 +440,8 @@ function serializeTomlEntry(entry: StandardMcpEntry, newline: string): string {
 export function setTomlServerEntry(
   content: string,
   configPath: string,
-  entry: StandardMcpEntry
+  entry: StandardMcpEntry,
+  extras?: TomlEntryExtras
 ): string {
   const parsed = getTomlServerEntry(content, configPath);
   const removed = removeTomlGnoSections(content, configPath);
@@ -405,8 +453,8 @@ export function setTomlServerEntry(
   }
   const prefix = removed.content.trimEnd();
   const updated = prefix
-    ? `${prefix}${removed.newline}${removed.newline}${serializeTomlEntry(entry, removed.newline)}`
-    : serializeTomlEntry(entry, removed.newline);
+    ? `${prefix}${removed.newline}${removed.newline}${serializeTomlEntry(entry, removed.newline, configPath, extras)}`
+    : serializeTomlEntry(entry, removed.newline, configPath, extras);
   parseTomlRoot(updated, configPath);
   return updated;
 }

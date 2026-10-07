@@ -12,6 +12,7 @@ import type {
   SuggestedCollection,
 } from "./status-model";
 
+import { BUN_ENGINE_RANGE } from "../app/bun-runtime";
 import { getModelsCachePath } from "../app/constants";
 import { buildContentTypeBoostStatus } from "../config/content-types";
 import { isEmptyActivationCollection } from "../core/activation-empty";
@@ -513,7 +514,7 @@ async function buildBootstrapState(
       kind: "bun",
       strategy: "manual-install-beta",
       currentVersion: Bun.version,
-      requiredVersion: ">=1.3.0",
+      requiredVersion: BUN_ENGINE_RANGE,
       ready: true,
       managedByApp: false,
       summary: `This beta runs on Bun ${Bun.version}.`,

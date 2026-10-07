@@ -6,7 +6,7 @@ keywords: install gno, bun install gno, local knowledge workspace install, hybri
 
 # Installation
 
-GNO requires [Bun](https://bun.sh/) 1.3.0 or later as its JavaScript runtime.
+GNO requires [Bun](https://bun.sh/) 1.4.1 or later as its JavaScript runtime. On an older Bun, `gno serve`, `gno daemon` and `gno mcp` still start but print a warning: older runtimes have worker-messaging bugs that can crash a long-running process.
 GNO does not bundle Bun, so install it first. The Web UI dashboard shows the
 Bun version it detected and whether it meets the requirement.
 
@@ -131,7 +131,7 @@ agent setup.
 
 | Component | Version | Notes                                       |
 | --------- | ------- | ------------------------------------------- |
-| Bun       | 1.3.0+  | JavaScript runtime                          |
+| Bun       | 1.4.1+  | JavaScript runtime                          |
 | macOS     | 12+     | Homebrew SQLite required for vector search  |
 | Linux     | x64     | CLI supported; desktop remains experimental |
 | Windows   | 11+ x64 | CLI supported; desktop packaging in beta    |

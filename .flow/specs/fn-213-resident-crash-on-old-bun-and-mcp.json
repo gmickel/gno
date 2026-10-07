@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-213-resident-crash-on-old-bun-and-mcp",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-10-07T20:18:01.169489Z",
   "created_at": "2026-10-07T19:22:53.925020Z",
   "default_impl": null,
   "default_review": null,
@@ -10,6 +10,7 @@
   "id": "fn-213-resident-crash-on-old-bun-and-mcp",
   "impl_review_rounds": {},
   "next_task": 1,
+  "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "ship",
   "plan_reviewed_at": "2026-10-07T19:34:48.745836Z",
@@ -163,7 +164,7 @@
     "plan": 0
   },
   "spec_path": ".flow/specs/fn-213-resident-crash-on-old-bun-and-mcp.md",
-  "status": "open",
+  "status": "done",
   "title": "Resident crash on old Bun and MCP registrations pinned to a versioned Bun",
   "tracker": {
     "baseHashFlow": null,
@@ -176,5 +177,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-07T19:34:48.746324Z"
+  "updated_at": "2026-10-07T20:23:24.558250Z"
 }
