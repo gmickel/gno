@@ -1,0 +1,38 @@
+{
+  "branch": "fn-210-residents-ignore-sighup-and-exit",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "d3df44ccf08bb75acbb528d8bca91e1328fcb1d3",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-4ad0106d131f7dd1994481cc614d5850255882451561718d096e86cfacc2cbf2"
+  },
+  "head_sha": "d3df44ccf08bb75acbb528d8bca91e1328fcb1d3",
+  "id": "fn-210-residents-ignore-sighup-and-exit",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 3,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      }
+    ],
+    "total": 3
+  },
+  "timestamp": "2026-10-07T00:15:58Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

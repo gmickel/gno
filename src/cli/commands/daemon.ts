@@ -11,6 +11,7 @@ import {
   EgressDeniedError,
 } from "../../core/egress-enforcement";
 import { markResidentShutdownHandlerInstalled } from "../../core/resident-shutdown-handler";
+import { sighupHandlerAllowed } from "../../core/sighup-disposition";
 import {
   DEFAULT_HTTP_GATEWAY_PORT,
   isHttpGatewayLoopbackBind,
@@ -165,6 +166,7 @@ function createSignalPromise(
       signal?.removeEventListener("abort", onAbort);
       process.off("SIGINT", onSigint);
       process.off("SIGTERM", onSigterm);
+      process.off("SIGHUP", onSighup);
       if (message && !quiet) {
         logger.log(message);
       }
@@ -175,10 +177,15 @@ function createSignalPromise(
     const onSigint = (): void => complete("Received SIGINT. Shutting down...");
     const onSigterm = (): void =>
       complete("Received SIGTERM. Shutting down...");
+    // A closed terminal or logout: shut down cleanly, as on SIGTERM, unless
+    // SIGHUP was ignored at start (nohup), which must keep working.
+    const handleSighup = sighupHandlerAllowed();
+    const onSighup = (): void => complete("Received SIGHUP. Shutting down...");
 
     signal?.addEventListener("abort", onAbort, { once: true });
     process.once("SIGINT", onSigint);
     process.once("SIGTERM", onSigterm);
+    if (handleSighup) process.once("SIGHUP", onSighup);
     markResidentShutdownHandlerInstalled();
   });
 }

@@ -373,7 +373,11 @@ the foreground process with a service supervisor (NSSM, sc.exe).
 
 ## Shutdown
 
-`gno daemon` and `gno serve` use one shutdown clock: up to five seconds to drain,
+`gno daemon` and `gno serve` shut down gracefully on `SIGINT`, `SIGTERM` and
+`SIGHUP` (a closed terminal or logout). Started with `nohup`, they keep
+ignoring `SIGHUP` and stay up when the terminal closes.
+
+They use one shutdown clock: up to five seconds to drain,
 five seconds for cancellation to settle, then at most one second to confirm
 owned native-child exit. Request/job admission and new scheduling stop first.
 Listener cleanup, watcher work, accepted jobs and the embedding scheduler share

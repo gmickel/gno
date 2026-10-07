@@ -1,13 +1,20 @@
 {
   "branch_name": "fn-210-residents-ignore-sighup-and-exit",
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-10-07T00:15:58.199270Z",
   "created_at": "2026-10-06T19:32:17.386138Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-210-residents-ignore-sighup-and-exit",
+  "impl_review_rounds": {},
   "next_task": 1,
+  "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-210-residents-ignore-sighup-and-exit.md",
-  "status": "open",
+  "status": "done",
   "title": "Residents ignore SIGHUP and exit without cleanup",
   "tracker": {
     "baseHashFlow": null,
@@ -20,5 +27,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-06T19:32:17.388862Z"
+  "updated_at": "2026-10-07T00:16:07.369098Z"
 }
