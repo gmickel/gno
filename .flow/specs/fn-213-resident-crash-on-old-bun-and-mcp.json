@@ -11,9 +11,157 @@
   "impl_review_rounds": {},
   "next_task": 1,
   "plan_review_rounds": 0,
-  "plan_review_status": "unknown",
-  "plan_reviewed_at": null,
+  "plan_review_status": "ship",
+  "plan_reviewed_at": "2026-10-07T19:34:48.745836Z",
   "ready": true,
+  "review_attempts": [
+    {
+      "artifact_sha256": "9ca7d9e8974909eeb6b092974164889c8100663ec51f4bbee0f35edc1d04698f",
+      "backend": "codex",
+      "base_sha": "70e1358fbfdaad9bb31c63a30b7226b8bb3c36ff",
+      "counter_kind": "plan",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "complete"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-1d40509931509ff8009048f8beb43fb4",
+            "classification": "introduced",
+            "findingId": "finding-1d40509931509ff8009048f8beb43fb4",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-a297f1ee17f924b0c1527d9ccfef4571",
+            "classification": "introduced",
+            "findingId": "finding-a297f1ee17f924b0c1527d9ccfef4571",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-1dabc26fd9ceede005a8933fa46d61a3",
+            "classification": "introduced",
+            "findingId": "finding-1dabc26fd9ceede005a8933fa46d61a3",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-e67e82555897ba3316639be140a40d7c",
+            "classification": "introduced",
+            "findingId": "finding-e67e82555897ba3316639be140a40d7c",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "plan"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "70e1358fbfdaad9bb31c63a30b7226b8bb3c36ff",
+      "head_sha_observed": true,
+      "kind": "plan",
+      "model": "gpt-6.1-sol",
+      "outcome": "verdict",
+      "output_bytes": 345148,
+      "output_sha256": "ed8b7c55ede273bc5342ee9e83ce4675a16d48c4972c24388351d7fe0bc15d79",
+      "reservation_id": "293a8f290d3a45a5b1b01bf309f7b828",
+      "round_consumed": true,
+      "scope": "plan",
+      "superseded_by": null,
+      "task": null,
+      "timestamp": "2026-10-07T19:33:16.776318Z",
+      "tool_calls": 27,
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "faf707f6f44a5839b61ed5925c7768ce7ebe067b81e44e79f2e5ab228e1aa499",
+      "backend": "codex",
+      "base_sha": "70e1358fbfdaad9bb31c63a30b7226b8bb3c36ff",
+      "counter_kind": "plan",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "complete"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-1d40509931509ff8009048f8beb43fb4",
+            "classification": "introduced",
+            "findingId": "finding-1d40509931509ff8009048f8beb43fb4",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-a297f1ee17f924b0c1527d9ccfef4571",
+            "classification": "introduced",
+            "findingId": "finding-a297f1ee17f924b0c1527d9ccfef4571",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-1dabc26fd9ceede005a8933fa46d61a3",
+            "classification": "introduced",
+            "findingId": "finding-1dabc26fd9ceede005a8933fa46d61a3",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-e67e82555897ba3316639be140a40d7c",
+            "classification": "introduced",
+            "findingId": "finding-e67e82555897ba3316639be140a40d7c",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          }
+        ],
+        "reviewKind": "plan"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "70e1358fbfdaad9bb31c63a30b7226b8bb3c36ff",
+      "head_sha_observed": true,
+      "kind": "plan",
+      "model": "gpt-6.1-sol",
+      "outcome": "verdict",
+      "output_bytes": 1282,
+      "output_sha256": "4375d272fc80ed98aab4bda331ee1349017ad10764983f21f0dc0cc458a35284",
+      "reservation_id": "65c625199be042d39369f33113923a6c",
+      "round_consumed": true,
+      "scope": "plan",
+      "superseded_by": null,
+      "task": null,
+      "timestamp": "2026-10-07T19:34:48.743495Z",
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "plan": 1,
+    "plan#completion": 0
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "plan": 0
+  },
   "spec_path": ".flow/specs/fn-213-resident-crash-on-old-bun-and-mcp.md",
   "status": "open",
   "title": "Resident crash on old Bun and MCP registrations pinned to a versioned Bun",
@@ -28,5 +176,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-07T19:22:57.184142Z"
+  "updated_at": "2026-10-07T19:34:48.746324Z"
 }
