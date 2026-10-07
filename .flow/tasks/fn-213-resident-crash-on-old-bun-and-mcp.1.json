@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-213-resident-crash-on-old-bun-and-mcp",
   "spec_path": ".flow/tasks/fn-213-resident-crash-on-old-bun-and-mcp.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Resident crash on an old Bun, and MCP registrations pinned to a versioned Bun",
   "updated_at": "2026-10-07T19:37:05.632411Z"
 }

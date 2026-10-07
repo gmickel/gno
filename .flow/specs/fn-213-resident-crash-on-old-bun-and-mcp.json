@@ -164,7 +164,7 @@
     "plan": 0
   },
   "spec_path": ".flow/specs/fn-213-resident-crash-on-old-bun-and-mcp.md",
-  "status": "open",
+  "status": "done",
   "title": "Resident crash on old Bun and MCP registrations pinned to a versioned Bun",
   "tracker": {
     "baseHashFlow": null,
@@ -177,5 +177,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-07T20:18:01.169496Z"
+  "updated_at": "2026-10-07T20:23:24.558250Z"
 }
