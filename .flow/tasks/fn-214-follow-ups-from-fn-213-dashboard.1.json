@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-214-follow-ups-from-fn-213-dashboard",
   "spec_path": ".flow/tasks/fn-214-follow-ups-from-fn-213-dashboard.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Follow-ups from fn-213",
   "updated_at": "2026-10-07T21:14:58.335954Z"
 }

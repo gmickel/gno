@@ -15,7 +15,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-214-follow-ups-from-fn-213-dashboard.md",
-  "status": "open",
+  "status": "done",
   "title": "Follow-ups from fn-213: dashboard overflow, inert MCP entry keys, stale flow config",
   "tracker": {
     "baseHashFlow": null,
@@ -28,5 +28,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-07T21:27:25.069082Z"
+  "updated_at": "2026-10-07T21:27:55.972223Z"
 }
