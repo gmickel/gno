@@ -4,6 +4,7 @@ import type { ResidentRuntime } from "./resident-runtime";
 import type { ContextHolder } from "./routes/api";
 
 import { markResidentShutdownHandlerInstalled } from "../core/resident-shutdown-handler";
+import { sighupHandlerAllowed } from "../core/sighup-disposition";
 import { getActivePreset } from "../llm/registry";
 import {
   isHttpGatewayLoopbackBind,
@@ -480,8 +481,10 @@ export async function startServer(
 
   process.once("SIGINT", shutdown);
   process.once("SIGTERM", shutdown);
-  // A closed terminal or logout: shut down cleanly, as on SIGTERM.
-  process.once("SIGHUP", shutdown);
+  // A closed terminal or logout: shut down cleanly, as on SIGTERM, unless
+  // SIGHUP was ignored at start (nohup), which must keep working.
+  const handleSighup = sighupHandlerAllowed();
+  if (handleSighup) process.once("SIGHUP", shutdown);
   markResidentShutdownHandlerInstalled();
   // A launcher that owns this process (the desktop shell) closes our stdin
   // when it exits or is killed; shut down instead of running orphaned.
@@ -492,7 +495,7 @@ export async function startServer(
   const removeShutdownHandlers = (): void => {
     process.off("SIGINT", shutdown);
     process.off("SIGTERM", shutdown);
-    process.off("SIGHUP", shutdown);
+    if (handleSighup) process.off("SIGHUP", shutdown);
     stopLifeline();
   };
 
