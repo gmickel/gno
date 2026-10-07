@@ -666,7 +666,7 @@ caller's response omits them (see
       "kind": "bun",
       "strategy": "manual-install-beta",
       "currentVersion": "1.3.6",
-      "requiredVersion": ">=1.3.0",
+      "requiredVersion": ">=1.4.1",
       "ready": true,
       "managedByApp": false,
       "summary": "This beta runs on Bun 1.3.6.",

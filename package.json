@@ -268,7 +268,7 @@
     "file-type": "22.0.2"
   },
   "engines": {
-    "bun": ">=1.3.0"
+    "bun": ">=1.4.1"
   },
   "trustedDependencies": [
     "bun",

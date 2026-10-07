@@ -332,7 +332,7 @@ Manage the detached process with `gno daemon --status` and `gno daemon --stop`.
 
 <!-- public-truth:runtime -->
 
-Requires [Bun](https://bun.sh/) >=1.3.0.
+Requires [Bun](https://bun.sh/) >=1.4.1.
 
 <!-- /public-truth -->
 
