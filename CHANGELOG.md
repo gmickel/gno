@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- GNO now needs Bun 1.4.1 or later. Older Bun releases have bugs in how worker messages are copied that can crash a long-running `gno serve` or `gno daemon` after days of uptime. `gno serve`, `gno daemon` and `gno mcp` still start on an older Bun, but print a one-line warning.
+- `gno mcp install --force` on an existing GNO entry now repairs it instead of replacing it. It updates the Bun and GNO paths and keeps the rest of the entry: index, config, tool profile, write access, environment, and keys you added such as timeouts. Options you pass, such as `--tool-profile core`, still change their values.
+
+### Added
+
+- `gno doctor` and `gno status` report MCP client registrations whose Bun or GNO path no longer exists, or whose Bun is older than 1.4.1, each with the `gno mcp install ... --force` command that repairs it. They also report a running `gno serve` or `gno daemon` on an older Bun, including one started by an earlier GNO version, with the steps to restart it.
+
+### Fixed
+
+- MCP registrations now follow Bun upgrades under version managers. `gno mcp install` used to write the versioned path of the Bun running it, such as `~/.local/share/mise/installs/bun/1.3.14/bin/bun`, so Claude Desktop, Claude Code, Codex and other clients kept starting that old Bun after an upgrade and failed once it was removed. When a version manager keeps a version-independent link to the same Bun (mise's `latest`, Homebrew's `opt/bun`), the registration now names that link; otherwise the install output says the registration stays on that version. The Claude Code session hook gets the same path.
+- A message that GNO cannot read back while indexing a file now fails just that file, with the code `PROCESSOR_MESSAGE_FAILED` and one log line naming the file and step. The worker or child process is replaced and indexing continues. Previously the only trace was an unexplained `Unable to deserialize data` line in the log.
+
 ## [2.9.2] - 2026-10-07
 
 ### Fixed
