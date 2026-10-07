@@ -8,6 +8,7 @@ import type {
   FileWorkerMessage,
   FileWorkerRequest,
   ReadyMessage,
+  UndeliverableJobMessage,
 } from "./file-processor";
 
 import { defaultChunker } from "./chunker";
@@ -16,14 +17,31 @@ import { PREPARE_PHASES, prepareFile } from "./prepare-file";
 
 declare const self: Worker;
 
-const post = (message: FileWorkerMessage | ReadyMessage): void => {
+const post = (
+  message: FileWorkerMessage | ReadyMessage | UndeliverableJobMessage
+): void => {
   self.postMessage(message);
 };
 
-self.onmessage = async (event: MessageEvent<FileWorkerRequest>) => {
+// A job that cannot be deserialized never reaches onmessage (Bun 1.4.0+
+// raises messageerror instead); tell the parent so the file fails at once.
+// A listener, not `onmessageerror`: Bun's worker scope never calls that
+// property.
+self.addEventListener("messageerror", () => {
+  post({ type: "undeliverable-job" });
+});
+
+self.onmessage = async (
+  event: MessageEvent<FileWorkerRequest | { simulateUndeliverable: true }>
+) => {
   // Only the parent that created this worker may drive it; a Bun Worker sees
   // its parent's messages with an empty origin.
   if (event.origin !== "") return;
+  if ("simulateUndeliverable" in event.data) {
+    // Tests only (simulateUndeliverableMessage): raise the real event.
+    self.dispatchEvent(new MessageEvent("messageerror"));
+    return;
+  }
   const { request, phaseSlot } = event.data;
   const outcome = await prepareFile(request, {
     convert: convertForPreparation,

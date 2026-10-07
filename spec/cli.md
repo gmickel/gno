@@ -1507,7 +1507,12 @@ executable, which cannot start the worker, runs the phases in a child process
 of itself (internal environment flag) under the same limits; the child's
 resident memory counts toward `conversion.maxMemoryMb` (Linux `/proc`, `ps`
 elsewhere; time only on Windows). A processor that cannot start fails the file
-with `ISOLATION_UNAVAILABLE`; nothing is prepared without the budget. The
+with `ISOLATION_UNAVAILABLE`; nothing is prepared without the budget. A
+message to or from the processor that cannot be deserialized fails the file
+with `PROCESSOR_MESSAGE_FAILED` (details: `direction` `job`, `result`, or
+`unknown` for the child backend, whose channel Bun closes on both ends;
+`backend`; `phase`), replaces the processor, and writes one stderr line naming
+the direction, backend, `<collection>/<relPath>` and phase. The
 child is SIGKILLed on process exit, SIGTERM, SIGINT (via the CLI's exit
 path) and resident shutdown; on Linux it also carries a parent-death signal,
 so it dies with a SIGKILLed parent, and elsewhere it exits at its next step

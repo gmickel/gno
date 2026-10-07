@@ -10,6 +10,7 @@
   "id": "fn-213-resident-crash-on-old-bun-and-mcp",
   "impl_review_rounds": {},
   "next_task": 1,
+  "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "ship",
   "plan_reviewed_at": "2026-10-07T19:34:48.745836Z",
@@ -176,5 +177,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-07T19:34:48.746324Z"
+  "updated_at": "2026-10-07T19:36:55.828136Z"
 }
