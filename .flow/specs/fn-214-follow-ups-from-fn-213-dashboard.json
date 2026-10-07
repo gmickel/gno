@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-214-follow-ups-from-fn-213-dashboard",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-10-07T21:27:25.069076Z",
   "created_at": "2026-10-07T21:14:52.131536Z",
   "default_impl": null,
   "default_review": null,
@@ -28,5 +28,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-07T21:14:58.019309Z"
+  "updated_at": "2026-10-07T21:27:25.069082Z"
 }
