@@ -166,7 +166,11 @@ export async function checkRegistrationRuntimes(
       entry === undefined
         ? null
         : readExistingRegistration(entry, paths.configFormat);
-    if (!registration || registration.extra.enabled === false) {
+    if (
+      !registration ||
+      registration.extra.enabled === false ||
+      registration.extra.disabled === true
+    ) {
       continue;
     }
     const { command, args } = registration;

@@ -101,6 +101,54 @@ interface StatusResult {
 // Config Reading
 // ─────────────────────────────────────────────────────────────────────────────
 
+const isStringArray = (value: unknown): boolean =>
+  Array.isArray(value) && value.every((item) => typeof item === "string");
+
+/**
+ * Client settings that never change how the command runs: timeouts, labels
+ * and approval prompts. Anything else (cwd, url, headers, another transport,
+ * unknown keys) keeps an entry fail-closed, because the connector verifier
+ * starts the registered command.
+ */
+const INERT_ENTRY_KEYS: Record<string, (value: unknown) => boolean> = {
+  type: (value) => value === "stdio",
+  timeout: (value) => typeof value === "number",
+  startup_timeout_sec: (value) => typeof value === "number",
+  tool_timeout_sec: (value) => typeof value === "number",
+  description: (value) => typeof value === "string",
+  autoApprove: isStringArray,
+  alwaysAllow: isStringArray,
+  enabled: (value) => typeof value === "boolean",
+  disabled: (value) => typeof value === "boolean",
+};
+
+/** Keys other than the launch keys are all known and inert. */
+function hasOnlyInertExtras(
+  record: Record<string, unknown>,
+  launchKeys: readonly string[],
+  allowed: Record<string, (value: unknown) => boolean>
+): boolean {
+  return Object.entries(record).every(
+    ([key, value]) =>
+      launchKeys.includes(key) || (allowed[key]?.(value) ?? false)
+  );
+}
+
+/** OpenCode writes `type: "local"` and `enabled` itself. */
+const OPENCODE_INERT_KEYS: Record<string, (value: unknown) => boolean> = {
+  timeout: (value) => typeof value === "number",
+  enabled: (value) => typeof value === "boolean",
+};
+
+/** A registration the client has switched off. */
+function isDisabledEntry(entry: unknown): boolean {
+  if (!entry || typeof entry !== "object") {
+    return false;
+  }
+  const record = entry as Record<string, unknown>;
+  return record.enabled === false || record.disabled === true;
+}
+
 /**
  * Normalize entry to standard format for display.
  */
@@ -120,12 +168,10 @@ function normalizeEntry(
       !Array.isArray(record.command) ||
       record.command.length === 0 ||
       !record.command.every((part) => typeof part === "string") ||
-      Object.keys(record).some(
-        (key) =>
-          key !== "type" &&
-          key !== "command" &&
-          key !== "enabled" &&
-          key !== "environment"
+      !hasOnlyInertExtras(
+        record,
+        ["type", "command", "environment"],
+        OPENCODE_INERT_KEYS
       )
     ) {
       return null;
@@ -149,9 +195,7 @@ function normalizeEntry(
     record.command.length === 0 ||
     !Array.isArray(record.args) ||
     !record.args.every((argument) => typeof argument === "string") ||
-    Object.keys(record).some(
-      (key) => key !== "command" && key !== "args" && key !== "env"
-    )
+    !hasOnlyInertExtras(record, ["command", "args", "env"], INERT_ENTRY_KEYS)
   ) {
     return null;
   }
@@ -211,12 +255,8 @@ export async function checkMcpTargetStatus(
       return { target, scope, configPath, configured: false };
     }
     const entry = parsed.entry;
-    if (
-      configFormat === "mcp" &&
-      entry &&
-      typeof entry === "object" &&
-      (entry as { enabled?: unknown }).enabled === false
-    ) {
+    // A registration the client has switched off is not configured.
+    if (isDisabledEntry(entry)) {
       return { target, scope, configPath, configured: false };
     }
     const configIdentity = entryIdentity(entry);
