@@ -65,8 +65,8 @@ export function BootstrapStatus({
 
   return (
     <section className="space-y-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <div className="mb-2 flex items-center gap-2">
             <PackageIcon className="size-4 text-primary" />
             <h2 className="font-semibold text-2xl">Bootstrap & Storage</h2>
@@ -77,7 +77,7 @@ export function BootstrapStatus({
           </p>
         </div>
         {missingModels > 0 && !bootstrap.models.downloading && (
-          <Button onClick={onDownloadModels} size="sm">
+          <Button className="self-start" onClick={onDownloadModels} size="sm">
             <DownloadIcon className="mr-2 size-4" />
             Download missing models
           </Button>
