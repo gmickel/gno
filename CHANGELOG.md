@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.9.2] - 2026-10-07
+
 ### Fixed
 
 - Closing the terminal that runs `gno serve` or `gno daemon` now shuts it down cleanly, as Ctrl-C or `--stop` do. It used to be killed on the spot, leaving work cut off and a stale lock note behind until the next start. A server started with `nohup` still keeps running when the terminal closes.
@@ -2946,7 +2948,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.9.1...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.9.2...HEAD
+[2.9.2]: https://github.com/gmickel/gno/compare/v2.9.1...v2.9.2
 [2.9.1]: https://github.com/gmickel/gno/compare/v2.9.0...v2.9.1
 [2.9.0]: https://github.com/gmickel/gno/compare/v2.8.5...v2.9.0
 [2.8.5]: https://github.com/gmickel/gno/compare/v2.8.4...v2.8.5
