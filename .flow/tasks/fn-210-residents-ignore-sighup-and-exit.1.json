@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-210-residents-ignore-sighup-and-exit",
   "spec_path": ".flow/tasks/fn-210-residents-ignore-sighup-and-exit.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Shut residents down gracefully on SIGHUP",
   "updated_at": "2026-10-07T00:15:56.939874Z"
 }

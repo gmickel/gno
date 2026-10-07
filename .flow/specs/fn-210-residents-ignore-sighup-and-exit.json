@@ -14,7 +14,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-210-residents-ignore-sighup-and-exit.md",
-  "status": "open",
+  "status": "done",
   "title": "Residents ignore SIGHUP and exit without cleanup",
   "tracker": {
     "baseHashFlow": null,
@@ -27,5 +27,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-07T00:15:58.199278Z"
+  "updated_at": "2026-10-07T00:16:07.369098Z"
 }
