@@ -1,25 +1,12 @@
 {
   "$schema": "https://flow-next.dev/schema/flow-config.schema.json",
-  "artifacts": {
-    "html": {
-      "enabled": false
-    }
-  },
   "chart": {
     "claimStaleAfter": 24,
     "maxDecisions": 12
   },
   "land": {
-    "automatedReviewers": "",
-    "ciFixBudget": 3,
-    "cleanReviewCommentPattern": "(Didn'?t find any( major)? issues|No( major)? issues found).*Reviewed commit|\\*\\*Code Review\\*\\*.*\\*\\*Completed\\*\\*",
     "mergeVerdictCommand": "",
-    "patienceMinutes": 0,
-    "patienceMinutesAfterReview": null,
-    "release": true,
-    "requestReviewers": "",
-    "reviewSignal": "silence",
-    "reviewTrigger": ""
+    "patienceMinutes": 0
   },
   "memory": {
     "enabled": true
@@ -29,7 +16,6 @@
     "gateClasses": []
   },
   "pipeline": {
-    "chainStages": "off",
     "qa": "on"
   },
   "planSync": {

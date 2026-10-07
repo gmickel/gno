@@ -1,0 +1,42 @@
+{
+  "branch": "fn-214-follow-ups-from-fn-213-dashboard",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "dce8ad376fb8cbc8abd19fb0a363f1dbd4bb2ad4",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-174b9f0ea87e6517e2dee385719f2386046b9c49333c7d835fde78c0511767a2"
+  },
+  "head_sha": "dce8ad376fb8cbc8abd19fb0a363f1dbd4bb2ad4",
+  "id": "fn-214-follow-ups-from-fn-213-dashboard",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 4,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      }
+    ],
+    "total": 4
+  },
+  "timestamp": "2026-10-07T21:27:36Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

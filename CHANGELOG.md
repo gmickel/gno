@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - MCP registrations now follow Bun upgrades under version managers. `gno mcp install` used to write the versioned path of the Bun running it, such as `~/.local/share/mise/installs/bun/1.3.14/bin/bun`, so Claude Desktop, Claude Code, Codex and other clients kept starting that old Bun after an upgrade and failed once it was removed. When a version manager keeps a version-independent link to the same Bun (mise's `latest`, Homebrew's `opt/bun`), the registration now names that link; otherwise the install output says the registration stays on that version. The Claude Code session hook gets the same path.
+- `gno mcp status` no longer reports a GNO registration as malformed because it carries harmless client settings such as Claude Code's `type: "stdio"`, a `timeout`, a `description` or an approval list. A registration switched off with `enabled: false` or `disabled: true` shows as not configured. Settings that change how the server starts, such as `cwd`, a URL or extra environment variables, are still reported as malformed and are not verified.
+- On a phone-width screen the dashboard's "Download missing models" button no longer runs past the edge of the page; the Bootstrap & Storage header now stacks.
 - A message that GNO cannot read back while indexing a file now fails just that file, with the code `PROCESSOR_MESSAGE_FAILED` and one log line naming the file and step. The worker or child process is replaced and indexing continues. Previously the only trace was an unexplained `Unable to deserialize data` line in the log.
 
 ## [2.9.2] - 2026-10-07

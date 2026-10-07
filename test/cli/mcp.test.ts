@@ -789,7 +789,76 @@ describe("MCP CLI commands", () => {
     });
   });
 
-  test.each([["cwd", "/alternate/project"]])(
+  test("accepts inert client settings and projects only the launch keys", async () => {
+    await Bun.write(
+      join(FAKE_HOME, ".claude.json"),
+      JSON.stringify({
+        mcpServers: {
+          gno: {
+            type: "stdio",
+            command: "/usr/local/bin/gno",
+            args: ["mcp"],
+            timeout: 30_000,
+            startup_timeout_sec: 20,
+            tool_timeout_sec: 60,
+            description: "local notes",
+            autoApprove: ["gno_search"],
+            alwaysAllow: ["gno_get"],
+            enabled: true,
+            disabled: false,
+          },
+        },
+      })
+    );
+
+    const status = await checkMcpTargetStatus("claude-code", "user", {
+      homeDir: FAKE_HOME,
+      cwd: FAKE_CWD,
+    });
+    expect(status.configured).toBe(true);
+    expect(status.error).toBeUndefined();
+    expect(status.serverEntry).toEqual({
+      command: "/usr/local/bin/gno",
+      args: ["mcp"],
+    });
+    const projected = toMcpConnectorVerificationTarget("claude-code", status);
+    expect(projected.configError).toBeUndefined();
+    expect(projected.serverEntry).toEqual({
+      command: "/usr/local/bin/gno",
+      args: ["mcp"],
+    });
+  });
+
+  test.each([
+    ["enabled", false],
+    ["disabled", true],
+  ])("reports an entry with %s: %p as not configured", async (field, value) => {
+    await Bun.write(
+      join(FAKE_HOME, ".claude.json"),
+      JSON.stringify({
+        mcpServers: {
+          gno: { command: "/usr/local/bin/gno", args: ["mcp"], [field]: value },
+        },
+      })
+    );
+    const status = await checkMcpTargetStatus("claude-code", "user", {
+      homeDir: FAKE_HOME,
+      cwd: FAKE_CWD,
+    });
+    expect(status.configured).toBe(false);
+    expect(status.error).toBeUndefined();
+  });
+
+  test.each([
+    ["cwd", "/alternate/project"],
+    ["type", "sse"],
+    ["url", "http://127.0.0.1:3000/mcp"],
+    ["headers", { Authorization: "x" }],
+    ["timeout", "30s"],
+    ["autoApprove", "gno_search"],
+    ["unknownKey", true],
+    ["env", { GNO_DATA_DIR: "/tmp/data", BUN_OPTIONS: "--preload /tmp/x.js" }],
+  ])(
     "fails closed for standard entries with %s execution semantics",
     async (field, value) => {
       const entry = {
@@ -961,6 +1030,36 @@ describe("MCP CLI commands", () => {
     expect(status.error).toBeUndefined();
     expect(toMcpConnectorVerificationTarget("opencode", status)).toMatchObject({
       configured: false,
+    });
+  });
+
+  test("accepts an OpenCode entry with a timeout; other extra keys fail closed", async () => {
+    const configPath = join(FAKE_HOME, ".config/opencode/opencode.json");
+    await mkdir(join(FAKE_HOME, ".config/opencode"), { recursive: true });
+    const write = (extra: Record<string, unknown>) =>
+      Bun.write(
+        configPath,
+        JSON.stringify({
+          mcp: {
+            gno: {
+              type: "local",
+              command: ["/usr/local/bin/gno", "mcp"],
+              ...extra,
+            },
+          },
+        })
+      );
+    const read = () =>
+      checkMcpTargetStatus("opencode", "user", {
+        homeDir: FAKE_HOME,
+        cwd: FAKE_CWD,
+      });
+    await write({ timeout: 10_000 });
+    expect(await read()).toMatchObject({ configured: true });
+    await write({ cwd: "/alternate/project" });
+    expect(await read()).toMatchObject({
+      configured: false,
+      error: "Malformed MCP server entry",
     });
   });
 
