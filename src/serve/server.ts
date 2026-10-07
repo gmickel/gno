@@ -403,7 +403,7 @@ export function loopbackHttpOrigin(host: string, port: number): string {
 
 /**
  * Start the web server.
- * Opens DB once, closes on SIGINT/SIGTERM.
+ * Opens DB once, closes on SIGINT/SIGTERM/SIGHUP.
  */
 export async function startServer(
   options: ServeOptions = {},
@@ -480,6 +480,8 @@ export async function startServer(
 
   process.once("SIGINT", shutdown);
   process.once("SIGTERM", shutdown);
+  // A closed terminal or logout: shut down cleanly, as on SIGTERM.
+  process.once("SIGHUP", shutdown);
   markResidentShutdownHandlerInstalled();
   // A launcher that owns this process (the desktop shell) closes our stdin
   // when it exits or is killed; shut down instead of running orphaned.
@@ -490,6 +492,7 @@ export async function startServer(
   const removeShutdownHandlers = (): void => {
     process.off("SIGINT", shutdown);
     process.off("SIGTERM", shutdown);
+    process.off("SIGHUP", shutdown);
     stopLifeline();
   };
 

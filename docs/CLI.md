@@ -2411,7 +2411,7 @@ Options:
 - Unsupported anchored handles or bounded reconciliation overflow escalate to
   full collection sync; no network/removable filesystem guarantee is implied
 - Runs an initial sync by default, then embeds backlog immediately
-- Foreground: stays in the foreground until `SIGINT` / `SIGTERM`
+- Foreground: stays in the foreground until `SIGINT` / `SIGTERM` / `SIGHUP`, then shuts down gracefully
 - Detached: parent prints `PID <pid>` and exits 0; child writes to `{data}/daemon.log` (or `--log-file`) in append mode
 - Hosts `/mcp` without the Web UI or browser REST routes
 - Hosts `GET /api/resident/status` alongside `/mcp`; full `GET /api/status`
