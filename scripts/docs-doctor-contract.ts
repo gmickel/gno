@@ -1,5 +1,6 @@
 interface DoctorCheckJson {
-  status: "ok" | "warn" | "error";
+  /** `info` reports a state that needs no repair (doctor never fails on it). */
+  status: "ok" | "info" | "warn" | "error";
 }
 
 function isDoctorCheckJson(value: unknown): value is DoctorCheckJson {
@@ -8,7 +9,12 @@ function isDoctorCheckJson(value: unknown): value is DoctorCheckJson {
   }
 
   const status = (value as { status?: unknown }).status;
-  return status === "ok" || status === "warn" || status === "error";
+  return (
+    status === "ok" ||
+    status === "info" ||
+    status === "warn" ||
+    status === "error"
+  );
 }
 
 export function validateDoctorExit(
