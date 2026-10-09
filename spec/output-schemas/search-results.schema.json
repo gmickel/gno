@@ -454,6 +454,12 @@
           "type": "string",
           "description": "Collection filter if applied"
         },
+        "collections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Collection allowlist if applied; documents from any listed collection, filtered before the limit"
+        },
         "intent": {
           "type": "string",
           "description": "Disambiguating context used to steer retrieval without being searched directly"

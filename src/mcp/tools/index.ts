@@ -167,6 +167,28 @@ import {
 // Shared Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Opt-in multi-collection allowlist; applied before the result limit. */
+const collectionsInputSchema = z
+  .array(z.string().min(1))
+  .min(1)
+  .max(100)
+  .optional()
+  .describe(
+    "Filter to documents in ANY of these collections (applied before the limit)"
+  );
+
+/** Throw for the first named collection that is not configured. */
+export function assertCollectionsExist(
+  ctx: { collections: { name: string }[] },
+  names: (string | undefined)[]
+): void {
+  for (const name of names) {
+    if (name && !ctx.collections.some((c) => c.name === name)) {
+      throw new Error(`Collection not found: ${name}`);
+    }
+  }
+}
+
 /**
  * Normalize and dedupe tag filter arrays.
  * Returns undefined if empty, normalized array otherwise.
@@ -255,6 +277,7 @@ export const searchInputSchema = z.object({
     .string()
     .optional()
     .describe("Filter to a single collection name"),
+  collections: collectionsInputSchema,
   limit: z
     .number()
     .int()
@@ -496,6 +519,7 @@ export const vsearchInputSchema = z.object({
     .string()
     .optional()
     .describe("Filter to a single collection name"),
+  collections: collectionsInputSchema,
   limit: z
     .number()
     .int()
@@ -570,6 +594,7 @@ export const queryInputSchema = z.object({
     .string()
     .optional()
     .describe("Filter to a single collection name"),
+  collections: collectionsInputSchema,
   limit: z
     .number()
     .int()
@@ -672,15 +697,17 @@ export const queryInputSchema = z.object({
   tagsAny: z.array(z.string()).optional().describe("Require ANY of these tags"),
 });
 
-export const queryDiagnoseInputSchema = queryInputSchema.extend({
-  target: z
-    .string()
-    .trim()
-    .min(1, "Target reference cannot be empty")
-    .describe(
-      "Target document reference to diagnose (gno URI, docid, or collection/path)"
-    ),
-});
+export const queryDiagnoseInputSchema = queryInputSchema
+  .omit({ collections: true })
+  .extend({
+    target: z
+      .string()
+      .trim()
+      .min(1, "Target reference cannot be empty")
+      .describe(
+        "Target document reference to diagnose (gno URI, docid, or collection/path)"
+      ),
+  });
 
 const getInputSchema = z.object({
   ref: z

@@ -718,6 +718,12 @@ export interface DocumentEligibilityOptions {
   exclude?: string[];
   /** Filter by collection */
   collection?: string;
+  /**
+   * Filter to documents in ANY of these collections, before ranking and LIMIT.
+   * Undefined is unrestricted; an empty array denies all. Intersects with
+   * `collection` when both are set.
+   */
+  collections?: string[];
   /** Internal exact relative-path boundary applied before ranking and LIMIT. */
   relPathPrefix?: string;
   /** Filter to docs with ANY of these tags */

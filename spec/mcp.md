@@ -603,6 +603,16 @@ opaque remote hints. The server never stats, realpaths, discovers repositories,
 or infers its cwd from them; remote hints produce redacted zero-affinity
 metadata and no ranking change.
 
+`gno_search`, `gno_vsearch`, and `gno_query` also accept optional
+`collections: string[]` (1-100 names). Results come only from documents in any
+listed collection; the allowlist is applied before `limit`, so other
+collections never take result slots. Every name must be a configured
+collection, otherwise the call fails with `Collection not found: <name>`. When
+`collection` is also set, both apply (the intersection). Responses echo the
+allowlist as `meta.collections`; with `collections` omitted, inputs and
+outputs are unchanged. `gno_query_diagnose` keeps the single `collection`
+filter.
+
 **Input Schema:**
 
 ```json
@@ -616,6 +626,13 @@ metadata and no ranking change.
     "collection": {
       "type": "string",
       "description": "Optional collection name to filter results"
+    },
+    "collections": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "maxItems": 100,
+      "description": "Filter to documents in ANY of these collections (applied before the limit)"
     },
     "limit": {
       "type": "integer",
@@ -738,6 +755,13 @@ Vector semantic search over indexed documents.
       "type": "string",
       "description": "Optional collection name to filter results"
     },
+    "collections": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "maxItems": 100,
+      "description": "Filter to documents in ANY of these collections (applied before the limit)"
+    },
     "limit": {
       "type": "integer",
       "description": "Maximum number of results (1-100)",
@@ -821,6 +845,13 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
     "collection": {
       "type": "string",
       "description": "Optional collection name to filter results"
+    },
+    "collections": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "maxItems": 100,
+      "description": "Filter to documents in ANY of these collections (applied before the limit)"
     },
     "limit": {
       "type": "integer",

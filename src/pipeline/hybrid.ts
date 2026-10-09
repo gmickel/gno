@@ -150,6 +150,7 @@ async function checkBm25Strength(
   query: string,
   options?: {
     collection?: string;
+    collections?: string[];
     lang?: string;
     tagsAll?: string[];
     tagsAny?: string[];
@@ -168,6 +169,7 @@ async function checkBm25Strength(
   const result = await store.searchFts(query, {
     limit: 5,
     collection: options?.collection,
+    collections: options?.collections,
     relPathPrefix: options?.relPathPrefix,
     language: options?.lang,
     chunkLanguage: options?.lang,
@@ -225,6 +227,7 @@ async function searchFtsChunks(
   options: {
     limit: number;
     collection?: string;
+    collections?: string[];
     lang?: string;
     tagsAll?: string[];
     tagsAny?: string[];
@@ -243,6 +246,7 @@ async function searchFtsChunks(
   const result = await store.searchFts(query, {
     limit: options.limit,
     collection: options.collection,
+    collections: options.collections,
     relPathPrefix: options.relPathPrefix,
     language: options.lang,
     chunkLanguage: options.lang,
@@ -500,6 +504,7 @@ async function searchHybridWithHydration(
       ? false
       : await checkBm25Strength(store, query, {
           collection: options.collection,
+          collections: options.collections,
           lang: options.lang,
           memoryScopesAny: options.memoryFilter?.scopes,
           excludeSuperseded: options.memoryFilter?.excludeSuperseded,
@@ -550,6 +555,7 @@ async function searchHybridWithHydration(
 
   const vectorEligibility: VectorSearchOptions["eligibility"] = {
     collection: options.collection,
+    collections: options.collections,
     memoryScopesAny: options.memoryFilter?.scopes,
     excludeSuperseded: options.memoryFilter?.excludeSuperseded,
     relPathPrefix: options.retrievalScope?.relPathPrefix,
@@ -575,6 +581,7 @@ async function searchHybridWithHydration(
     exclude: options.exclude,
     allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
     collection: options.collection,
+    collections: options.collections,
     lang: options.lang,
     tagsAll: options.tagsAll,
     tagsAny: options.tagsAny,
@@ -615,6 +622,7 @@ async function searchHybridWithHydration(
           exclude: options.exclude,
           allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
           collection: options.collection,
+          collections: options.collections,
           lang: options.lang,
           tagsAll: options.tagsAll,
           tagsAny: options.tagsAny,
@@ -806,7 +814,7 @@ async function searchHybridWithHydration(
     fusedCandidates,
     {
       collection: options.collection,
-      collections: options.graphCollections,
+      collections: options.graphCollections ?? options.collections,
       includeSimilar: vectorAvailable,
       eligibility: vectorEligibility,
       limit,
@@ -1394,6 +1402,7 @@ async function searchHybridWithHydration(
       intent: options.intent,
       exclude: options.exclude,
       collection: options.collection,
+      collections: options.collections,
       lang: options.lang,
       since: temporalRange.since,
       until: temporalRange.until,

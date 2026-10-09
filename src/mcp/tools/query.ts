@@ -49,12 +49,18 @@ import { diagnoseQueryTarget } from "../../pipeline/diagnose";
 import { type HybridSearchDeps, searchHybrid } from "../../pipeline/hybrid";
 import { createLazyVectorIndex } from "../../store/vector/lazy";
 import { appendRetrievalWarnings } from "../retrieval-warnings";
-import { normalizeTagFilters, runTool, type ToolResult } from "./index";
+import {
+  assertCollectionsExist,
+  normalizeTagFilters,
+  runTool,
+  type ToolResult,
+} from "./index";
 
 interface QueryInput {
   query: string;
   projectHints?: string[];
   collection?: string;
+  collections?: string[];
   limit?: number;
   minScore?: number;
   lang?: string;
@@ -78,7 +84,7 @@ interface QueryInput {
   explain?: boolean;
 }
 
-interface QueryDiagnoseInput extends QueryInput {
+interface QueryDiagnoseInput extends Omit<QueryInput, "collections"> {
   target: string;
 }
 
@@ -191,13 +197,11 @@ export function handleQuery(
     "gno_query",
     // oxlint-disable-next-line max-lines-per-function -- query with validation and result formatting
     async () => {
-      // Validate collection exists if specified
-      if (args.collection) {
-        const exists = ctx.collections.some((c) => c.name === args.collection);
-        if (!exists) {
-          throw new Error(`Collection not found: ${args.collection}`);
-        }
-      }
+      // Validate collections exist if specified
+      assertCollectionsExist(ctx, [
+        args.collection,
+        ...(args.collections ?? []),
+      ]);
 
       const normalizedInput = normalizeStructuredQueryInput(
         args.query,
@@ -251,6 +255,7 @@ export function handleQuery(
         limit: args.limit ?? 5,
         minScore: args.minScore,
         collection: args.collection,
+        collections: args.collections,
         queryLanguageHint: args.lang,
         intent: args.intent,
         candidateLimit: depthPolicy.candidateLimit,
@@ -291,7 +296,7 @@ export function handleQuery(
         const llm = ctx.getModelAdapter?.() ?? new LlmAdapter(ctx.config);
         const egressCollections = args.collection
           ? [args.collection]
-          : ("all" as const);
+          : (args.collections ?? ("all" as const));
 
         // Resolve download policy from env (MCP has no CLI flags)
         const policy = resolveDownloadPolicy(process.env, {});

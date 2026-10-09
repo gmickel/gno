@@ -114,6 +114,8 @@ export interface SearchMeta {
   totalResults: number;
   intent?: string;
   collection?: string;
+  /** Collection allowlist applied to this request; present only when set. */
+  collections?: string[];
   lang?: string;
   /** Detected/overridden query language for prompt selection (typically BCP-47; may be user-provided via --lang) */
   queryLanguage?: string;
@@ -193,6 +195,11 @@ export interface SearchOptions extends InferenceOptions {
   minScore?: number;
   /** Filter by collection */
   collection?: string;
+  /**
+   * Filter to documents in ANY of these collections, before candidate limits.
+   * Undefined is unrestricted; an empty array denies all.
+   */
+  collections?: string[];
   /**
    * Internal graph allowlist for a request partitioned into one retrieval per
    * collection (Context Capsules, replay): graph neighbours may come from any

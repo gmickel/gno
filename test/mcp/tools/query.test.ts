@@ -9,6 +9,8 @@ import {
   MCP_TOOL_DESCRIPTIONS,
   queryDiagnoseInputSchema,
   queryInputSchema,
+  searchInputSchema,
+  vsearchInputSchema,
 } from "../../../src/mcp/tools/index";
 
 describe("gno_query schema", () => {
@@ -125,5 +127,27 @@ describe("gno_query schema", () => {
   test("new tool descriptions explain when to diagnose/query graph", () => {
     expect(MCP_TOOL_DESCRIPTIONS.queryDiagnose).toContain("missing");
     expect(MCP_TOOL_DESCRIPTIONS.queryDiagnose).toContain("stage-by-stage");
+  });
+});
+
+describe("collections allowlist schema", () => {
+  test.each([
+    ["gno_query", queryInputSchema],
+    ["gno_search", searchInputSchema],
+    ["gno_vsearch", vsearchInputSchema],
+  ] as const)(
+    "%s accepts collections and rejects an empty list",
+    (_, schema) => {
+      const parsed = schema.safeParse({ query: "x", collections: ["a", "b"] });
+      expect(parsed.success).toBe(true);
+      if (parsed.success) expect(parsed.data.collections).toEqual(["a", "b"]);
+      expect(schema.safeParse({ query: "x", collections: [] }).success).toBe(
+        false
+      );
+    }
+  );
+
+  test("gno_query_diagnose keeps a single collection", () => {
+    expect("collections" in queryDiagnoseInputSchema.shape).toBe(false);
   });
 });

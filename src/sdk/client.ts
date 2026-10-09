@@ -541,6 +541,7 @@ class GnoClientImpl implements GnoClient {
     answer?: boolean;
     rerank?: boolean;
     collection?: string;
+    collections?: string[];
     requiredEmbed?: boolean;
     requiredExpand?: boolean;
     requiredAnswer?: boolean;
@@ -553,7 +554,7 @@ class GnoClientImpl implements GnoClient {
     this.assertOpen();
     const egressCollections = options.collection
       ? [options.collection]
-      : ("all" as const);
+      : (options.collections ?? ("all" as const));
 
     let embedPort: EmbeddingPort | null = null;
     let expandPort: GenerationPort | null = null;
@@ -823,6 +824,7 @@ class GnoClientImpl implements GnoClient {
         requiredEmbed: true,
         embedModel: options.model,
         collection: options.collection,
+        collections: options.collections,
       });
       if (!ports.embedPort || !ports.vectorIndex) {
         throw sdkError(
@@ -956,6 +958,7 @@ class GnoClientImpl implements GnoClient {
         genModel: options.genModel,
         rerankModel: options.rerankModel,
         collection: options.collection,
+        collections: options.collections,
       });
       return attachRetrievalTraceMetadata(
         this.decorateSearchResults(
