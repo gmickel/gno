@@ -23,8 +23,9 @@ import { parseRef } from "../../core/ref-parser";
 import { supersedingUris } from "../../pipeline/result-context";
 import { openScopedIndexStore } from "../../store/sqlite/scoped-index";
 import {
+  isDocumentAllowed,
   isDocumentServable,
-  mcpAccessScope,
+  resolveMcpAccess,
   supersessionScope,
 } from "./access";
 import { runTool, type ToolResult } from "./index";
@@ -169,7 +170,7 @@ export function handleMultiGet(
 
       // In access mode an unreadable document is skipped exactly like a
       // missing one, and patterns only see servable documents.
-      const scope = mcpAccessScope(ctx);
+      const scope = await resolveMcpAccess(ctx);
       let refs: string[] = args.refs ?? [];
       const resolution = resolveEffectiveIndex(refs, ctx.indexName);
       if (!resolution.ok) {
@@ -203,10 +204,15 @@ export function handleMultiGet(
           const regexPattern = escaped.replace(/\*/g, ".*").replace(/\?/g, ".");
           const regex = new RegExp(`^${regexPattern}$`);
 
-          refs = listResult.value
+          let matched = listResult.value
             .filter((d) => !scope || isDocumentServable(scope, d))
-            .filter((d) => regex.test(d.uri) || regex.test(d.relPath))
-            .map((d) => d.uri);
+            .filter((d) => regex.test(d.uri) || regex.test(d.relPath));
+          if (scope?.check) {
+            // A denied document must not even appear as a skipped ref.
+            const allowed = await scope.check(matched);
+            matched = matched.filter((d) => allowed.has(d.id));
+          }
+          refs = matched.map((d) => d.uri);
         }
 
         // Process each reference
@@ -218,7 +224,7 @@ export function handleMultiGet(
           }
 
           const doc = await lookupDocument(scoped.store, parsed);
-          if (!doc || (scope && !isDocumentServable(scope, doc))) {
+          if (!doc || (scope && !(await isDocumentAllowed(scope, doc)))) {
             skipped.push({ ref, reason: "Not found" });
             continue;
           }

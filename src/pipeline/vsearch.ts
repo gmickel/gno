@@ -34,7 +34,11 @@ import {
 import { formatQueryForEmbedding } from "./contextual";
 import { attachSearchResultEgressLineage } from "./egress-lineage";
 import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
-import { typedMetadataWarnings, typedMetadataFilterReason } from "./filters";
+import {
+  resolveAccessAllowlist,
+  typedMetadataWarnings,
+  typedMetadataFilterReason,
+} from "./filters";
 import { selectBestChunkForSteering } from "./intent";
 import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
@@ -131,8 +135,9 @@ async function searchVectorWithEmbeddingOwned(
   );
   const projectAffinityActive = hasProjectAffinity(options.projectAffinity);
   const recencySort = shouldSortByRecency(query);
+  // Access hook: overfetch so denied documents do not empty the page.
   const retrievalLimit =
-    recencySort || projectAffinityActive ? limit * 3 : limit;
+    recencySort || projectAffinityActive || options.access ? limit * 3 : limit;
   const temporalRange = resolveTemporalRange(
     query,
     options.since,
@@ -199,7 +204,20 @@ async function searchVectorWithEmbeddingOwned(
     return err("QUERY_FAILED", searchResult.error.message);
   }
 
-  const vecResults = searchResult.value;
+  let vecResults = searchResult.value;
+  if (options.access) {
+    // Access hook gate: a hash passes only when every document holding it is
+    // allowed (vector hits carry no document id).
+    const allowlist = await resolveAccessAllowlist(
+      store,
+      vecResults.map((v) => v.mirrorHash),
+      options.access
+    );
+    if (!allowlist.ok) return err("QUERY_FAILED", "Access check failed");
+    vecResults = vecResults.filter((v) =>
+      allowlist.value.hashes.has(v.mirrorHash)
+    );
+  }
   const uniqueHashes = [...new Set(vecResults.map((v) => v.mirrorHash))];
 
   // Get collection paths for absPath resolution

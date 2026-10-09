@@ -335,16 +335,38 @@ collections:
     path: ~/wiki/ops
     access:
       accessRef: { sys: sp, ref: "drives/b!x/root" }
-      firmwide: true # stored; not served until an access hook exists
+      firmwide: true # served only when the access hook allows the ref
 ```
 
 A principal without `admin: true` reads only collections whose rule admits
 the request's `GNO-Subject` and `GNO-Context`. A collection with no `access`
-is never served to it. An `accessRef` collection, `firmwide` or not, is not
-served yet: it waits for an access hook that can check the reference.
+is never served to it. An `accessRef` collection is served only when an
+access hook is configured and allows its reference.
 Notes served this way also need `gno.metadata.derived_from` (a list of
 `<system>:<reference>` strings); `gno audit provenance` lists the ones that
-lack it.
+lack it. A collection can name a different key with
+`access: { ..., provenanceKey: sources }`.
+
+### Access hook
+
+```yaml
+gateway:
+  accessHook:
+    url: http://hook/check
+    unix: /run/my-hook.sock # optional, recommended
+    timeoutMs: 2000 # optional
+```
+
+With an access hook, GNO asks your service which sources the user may read.
+It sends `POST {subject, ctx, request_id, refs: [{sys, ref}]}` and expects
+`200 {allow: [indexes]}`. A note is served only if the hook allows every
+source in its `derived_from`; an `accessRef` collection is readable only if
+the hook allows its `accessRef` (in shared conversations only `firmwide`
+ones are asked about). Anything not listed, a slow answer, an error or an
+unreachable hook means "no". GNO never interprets the references; your hook
+decides. Denied notes never reach the reranker, graph expansion, capsules,
+counts or warnings, and asking for one gives the same `NOT_FOUND` as a
+missing note.
 
 ## Link workspaces
 

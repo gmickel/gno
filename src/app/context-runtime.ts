@@ -126,6 +126,7 @@ export const buildContextCapsule = async (
               : {}),
             ...(deps.supersession ? { supersession: deps.supersession } : {}),
             ...(deps.readable ? { readable: deps.readable } : {}),
+            ...(deps.access ? { access: deps.access } : {}),
             ...(deps.accessScoped ? { accessScoped: true } : {}),
             projectAffinity: deps.projectAffinity,
             traceSession: deps.traceSession,

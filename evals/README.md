@@ -662,6 +662,23 @@ remains null because the reused generation port does not expose decoder token
 usage; no byte heuristic is presented as actual output-token usage. Older
 observation bundles without these fields replay with explicit null values.
 
+## Access-hook leak gate
+
+`bun evals/acceptance/access-leak.ts --output /tmp/access-leak.json` runs a
+pinned, offline leak gate for gateway access mode at 100, 1,000 and 10,000
+documents. Subjects x collection rules (`public`, `owner`, `accessRef`,
+`firmwide`, a custom `provenanceKey`) x provenance kinds (allowed, denied,
+mixed, malformed, missing) are checked against an exhaustive oracle, with a
+fake hook on a unix socket (one subject's hook always fails). It requires
+search results to equal the allowed set, no denied document's marker in any
+result, snippet, count, warning, reranker input, graph candidate, capsule or
+`multi_get` output, and byte-identical `NOT_FOUND` for denied and missing
+documents and collections. Fixtures live in `evals/fixtures/access-leak/`.
+
+Add `--negative-control` with a different output path to drop the
+per-document hook check; the gate must then fail (exit 1). Output paths must
+be new.
+
 ## Typed metadata eligibility gate
 
 `bun evals/acceptance/typed-metadata.ts --output /tmp/typed-metadata.json`

@@ -60,7 +60,11 @@ import {
   explainTimings,
   explainVector,
 } from "./explain";
-import { evaluateDocumentChunkFilters, typedMetadataWarnings } from "./filters";
+import {
+  evaluateDocumentChunkFilters,
+  resolveAccessAllowlist,
+  typedMetadataWarnings,
+} from "./filters";
 import { type RankedInput, rrfFuse, toRankedInput } from "./fusion";
 import { expandGraphCandidates } from "./graph-retrieval";
 import { RequestHydration } from "./hydration";
@@ -471,9 +475,34 @@ async function searchHybridWithHydration(
     options.categories?.length ||
     options.author ||
     temporalRange.since ||
-    temporalRange.until
+    temporalRange.until ||
+    // Access hook: overfetch so denied documents do not empty the page.
+    options.access
   );
   const retrievalMultiplier = hasPostFilters || recencySort ? 3 : 1;
+  // Access hook gate: drop candidates whose documents it does not allow.
+  const accessCounts = { checked: 0, denied: 0 };
+  const applyAccess = async <
+    T extends { mirrorHash: string; documentId?: number },
+  >(
+    candidates: T[]
+  ): Promise<T[] | null> => {
+    if (!options.access) return candidates;
+    const allowlist = await resolveAccessAllowlist(
+      hydration,
+      candidates.map((candidate) => candidate.mirrorHash),
+      options.access
+    );
+    if (!allowlist.ok) return null;
+    const kept = candidates.filter((candidate) =>
+      candidate.documentId === undefined
+        ? allowlist.value.hashes.has(candidate.mirrorHash)
+        : allowlist.value.ids.has(candidate.documentId)
+    );
+    accessCounts.checked += candidates.length;
+    accessCounts.denied += candidates.length - kept.length;
+    return kept;
+  };
 
   // ─────────────────────────────────────────────────────────────────────────
   // 0. Detect query language for PROMPT SELECTION only
@@ -819,6 +848,12 @@ async function searchHybridWithHydration(
     await resolveFusionOwners(rankedInputs, store, hydration, query, options),
     pipelineConfig.rrf
   );
+  if (options.access) {
+    // Before graph seeds: a denied document never seeds expansion.
+    const allowed = await applyAccess(fusedCandidates);
+    if (!allowed) return err("QUERY_FAILED", "Access check failed");
+    fusedCandidates = allowed;
+  }
   diagnoseTrace?.stages.push({
     id: "fusion",
     status: "active",
@@ -855,6 +890,7 @@ async function searchHybridWithHydration(
       author: options.author,
       filter: options.filter,
       readable: options.readable,
+      access: options.access,
       accessScoped: options.accessScoped,
     },
     hydration
@@ -867,6 +903,12 @@ async function searchHybridWithHydration(
       await resolveFusionOwners(rankedInputs, store, hydration, query, options),
       pipelineConfig.rrf
     );
+    if (options.access) {
+      // Graph neighbours (and re-fused seeds) pass the hook before rerank.
+      const allowed = await applyAccess(fusedCandidates);
+      if (!allowed) return err("QUERY_FAILED", "Access check failed");
+      fusedCandidates = allowed;
+    }
     timings.fusionMs += performance.now() - graphFusionStartedAt;
   }
   // Enforce the intersected request scope before anything reaches the
@@ -920,6 +962,12 @@ async function searchHybridWithHydration(
       ? `seeds=${graphExpansion.meta.seedCount}, candidates=${graphExpansion.meta.candidateCount}/${graphExpansion.meta.maxCandidates}, explicit=${graphExpansion.meta.edgeConfidence.explicit}, inferred=${graphExpansion.meta.edgeConfidence.inferred}, ambiguous=${graphExpansion.meta.edgeConfidence.ambiguous}, similarity=${graphExpansion.meta.edgeConfidence.similarity}`
       : `skipped (${graphExpansion.meta.fallbackReasons.join(", ") || "disabled"})`,
   });
+  if (options.access) {
+    explainLines.push({
+      stage: "access",
+      message: `checked=${accessCounts.checked}, denied=${accessCounts.denied}, overfetch=x${retrievalMultiplier}`,
+    });
+  }
   explainLines.push(
     explainFusion(pipelineConfig.rrf.k, fusedCandidates.length)
   );

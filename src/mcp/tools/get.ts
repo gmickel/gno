@@ -32,8 +32,8 @@ import {
 import { supersedingUri } from "../../pipeline/result-context";
 import { openScopedIndexStore } from "../../store/sqlite/scoped-index";
 import {
-  isDocumentServable,
-  mcpAccessScope,
+  isDocumentAllowed,
+  resolveMcpAccess,
   supersessionScope,
 } from "./access";
 import { runTool, type ToolResult } from "./index";
@@ -151,7 +151,7 @@ export function handleGet(
     // oxlint-disable-next-line max-lines-per-function -- document retrieval with multiple ref formats
     async () => {
       // In access mode every miss, refusal and malformed ref is one NOT_FOUND.
-      const scope = mcpAccessScope(ctx);
+      const scope = await resolveMcpAccess(ctx);
       // Parse reference
       const parsed = parseRef(args.ref);
       if ("error" in parsed) {
@@ -176,7 +176,7 @@ export function handleGet(
       try {
         // Lookup document
         const doc = await lookupDocument(scoped.store, parsed);
-        if (scope && !(doc && isDocumentServable(scope, doc))) {
+        if (scope && !(doc && (await isDocumentAllowed(scope, doc)))) {
           throw accessNotFound();
         }
         if (!doc) {

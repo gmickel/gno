@@ -86,6 +86,18 @@ export const NETWORK_BOUNDARY_INVENTORY = [
     enforcement: "local_process_only",
   },
   {
+    // Opt-in `gateway.accessHook`: POSTs the request's subject, context,
+    // request id and the opaque `{sys, ref}` source refs to the
+    // operator-configured hook. No document text, snippet, title or path is
+    // sent; every failure denies (fail closed).
+    id: "gateway-access-hook",
+    key: "src/core/access-hook.ts::fetch#1",
+    path: "src/core/access-hook.ts",
+    primitive: "fetch",
+    action: null,
+    enforcement: "no_collection_data",
+  },
+  {
     id: "file-lock-process-probe",
     key: "src/core/file-lock.ts::child_process#1",
     path: "src/core/file-lock.ts",

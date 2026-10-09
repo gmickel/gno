@@ -4,6 +4,7 @@
  * @module src/pipeline/graph-retrieval
  */
 
+import type { DocumentAccessCheck } from "../core/access-hook";
 import type { MetadataPredicate } from "../core/typed-metadata";
 import type {
   ChunkRow,
@@ -321,6 +322,12 @@ export async function expandGraphCandidates(
      */
     readable?: ReadableDocumentsCheck;
     /**
+     * Access hook check (gateway access mode, so always with
+     * `accessScoped`): neighbours it does not allow are dropped before
+     * ranking.
+     */
+    access?: DocumentAccessCheck;
+    /**
      * The request is confined to a caller's readable corpus: seeds come only
      * from the allowlist, edge counts cover only eligible neighbours, and "no
      * usable neighbour" has one fallback reason, so a link to a document the
@@ -516,7 +523,11 @@ export async function expandGraphCandidates(
         sourceRelPath(doc).startsWith(`${options.relPathPrefix}/`)) &&
       matchesDocumentFilters(doc, options)
   );
-  const docs = await filterDocsByTags(store, metadataFilteredDocs, options);
+  let docs = await filterDocsByTags(store, metadataFilteredDocs, options);
+  if (options.access) {
+    const allowed = await options.access(docs);
+    docs = docs.filter((doc) => allowed.has(doc.id));
+  }
   if (options.accessScoped) {
     // Count only edges to neighbours that survived every filter.
     const kept = new Set(docs.map((doc) => doc.docid));

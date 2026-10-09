@@ -45,7 +45,7 @@ import { resolveModelUri } from "../../llm/registry";
 import { createLazyVectorIndex } from "../../store/vector/lazy";
 import {
   accessRetrievalOptions,
-  mcpAccessScope,
+  resolveMcpAccess,
   visibleEgressLineage,
 } from "./access";
 
@@ -221,7 +221,7 @@ export const handleContext = (
   context: ToolContext
 ): Promise<ToolResult> =>
   runContextTool(context, async () => {
-    const scope = mcpAccessScope(context);
+    const scope = await resolveMcpAccess(context);
     const parsed = parseContextBuildSurfaceInput(args, context.indexName);
     if (scope) {
       // Access mode: unreadable collections fail exactly like unknown ones,
@@ -233,7 +233,10 @@ export const handleContext = (
       }
       parsed.input.collections ??= scope.collections;
       parsed.input.filter = normalizeMetadataPredicate(
-        withDerivedFromRequired(parsed.input.filter)
+        withDerivedFromRequired(
+          parsed.input.filter,
+          scope.collections.map(scope.provenanceKeyOf)
+        )
       );
     }
     // This guard is intentionally before any model construction/download.
@@ -310,6 +313,7 @@ export const handleContext = (
                 visibleEgressLineage(scope, lineage),
             }
           : {}),
+        ...(scope?.check ? { access: scope.check } : {}),
         store: context.store,
         config: context.config,
         indexName: context.indexName,

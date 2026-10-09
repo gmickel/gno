@@ -28,7 +28,7 @@ import { appendRetrievalWarnings } from "../retrieval-warnings";
 import {
   accessRetrievalOptions,
   finishScopedRetrieval,
-  mcpAccessScope,
+  resolveMcpAccess,
   scopeRetrievalArgs,
 } from "./access";
 import {
@@ -128,7 +128,7 @@ export function handleSearch(
     ctx,
     "gno_search",
     async () => {
-      const scope = mcpAccessScope(ctx);
+      const scope = await resolveMcpAccess(ctx);
       const callerCollections = requestArgs.collections;
       const args = scope ? scopeRetrievalArgs(scope, requestArgs) : requestArgs;
       // Validate collections exist if specified
@@ -163,6 +163,7 @@ export function handleSearch(
         contentTypeRules: normalizeContentTypes(ctx.config.contentTypes ?? [])
           .rules,
         ...(scope ? await accessRetrievalOptions(scope, ctx.store) : {}),
+        ...(scope?.check ? { access: scope.check } : {}),
       };
       let traceSession: RetrievalTraceSession | undefined;
       try {

@@ -19,12 +19,20 @@ import type {
 import type { ToolContext } from "../server";
 
 import {
+  createAccessHookSession,
+  createDocumentAccessCheck,
+  type AccessHookFetch,
+  type DocumentAccessCheck,
+} from "../../core/access-hook";
+import {
   type AccessRequest,
   accessNotFound,
   accessRuleAdmitsWrite,
   authorizedCollectionNames,
   derivedFromIssue,
+  hookCheckedAccessRefCollections,
   isAccessMode,
+  provenanceKeyOf,
   withDerivedFromRequired,
 } from "../../core/access-scope";
 import {
@@ -36,6 +44,14 @@ import {
 export interface McpAccessScope {
   collections: string[];
   canRead(collection: string): boolean;
+  /** Typed-metadata key holding a collection's sources. */
+  provenanceKeyOf: (collection: string) => string;
+  /**
+   * Per-document access hook check; set only when `gateway.accessHook` is
+   * configured. Retrieval drops documents it does not allow before graph
+   * expansion, reranking and counts.
+   */
+  check?: DocumentAccessCheck;
 }
 
 export const accessRequestOf = (ctx: ToolContext): AccessRequest => ({
@@ -50,8 +66,85 @@ export const mcpAccessScope = (ctx: ToolContext): McpAccessScope | null => {
     accessRequestOf(ctx)
   );
   if (names === undefined) return null;
+  return scopeOf(ctx, names);
+};
+
+const scopeOf = (
+  ctx: ToolContext,
+  names: string[],
+  check?: DocumentAccessCheck
+): McpAccessScope => {
   const allowed = new Set(names);
-  return { collections: names, canRead: (name) => allowed.has(name) };
+  const keys = new Map(
+    ctx.collections.map((c) => [c.name, provenanceKeyOf(c.access)])
+  );
+  return {
+    collections: names,
+    canRead: (name) => allowed.has(name),
+    provenanceKeyOf: (name) => keys.get(name) ?? provenanceKeyOf(undefined),
+    ...(check ? { check } : {}),
+  };
+};
+
+/**
+ * The request's access scope with the access hook applied, or null when the
+ * request is not in access mode. Without `gateway.accessHook` this equals
+ * `mcpAccessScope`. With it, the hook is asked once for the `accessRef`
+ * collections this context may reach (allowed ones become readable) and the
+ * returned scope carries a per-document `check`. Hook answers are cached for
+ * the rest of this request only.
+ */
+export const resolveMcpAccess = async (
+  ctx: ToolContext,
+  fetchImpl?: AccessHookFetch
+): Promise<McpAccessScope | null> => {
+  const request = accessRequestOf(ctx);
+  const base = mcpAccessScope(ctx);
+  const hook = ctx.config.gateway?.accessHook;
+  if (!base || !hook) return base;
+  const session = createAccessHookSession(
+    hook,
+    {
+      subject: request.subject?.id ?? "",
+      ctx: request.subject?.context ?? "public_only",
+      requestId: crypto.randomUUID(),
+    },
+    fetchImpl
+  );
+  const candidates = hookCheckedAccessRefCollections(ctx.collections, request);
+  const refs = candidates.flatMap((collection) =>
+    collection.access && "accessRef" in collection.access
+      ? [collection.access.accessRef]
+      : []
+  );
+  const allowedRefs = await session.allowed(refs);
+  const admitted = new Set(
+    candidates
+      .filter(
+        (collection) =>
+          collection.access &&
+          "accessRef" in collection.access &&
+          allowedRefs.has(
+            `${collection.access.accessRef.sys}:${collection.access.accessRef.ref}`
+          )
+      )
+      .map((collection) => collection.name)
+  );
+  // Keep config order.
+  const names = ctx.collections
+    .map((collection) => collection.name)
+    .filter((name) => base.canRead(name) || admitted.has(name));
+  const readable = new Set(names);
+  const keyed = scopeOf(ctx, names);
+  return scopeOf(
+    ctx,
+    names,
+    createDocumentAccessCheck({
+      session,
+      canRead: (name) => readable.has(name),
+      provenanceKeyOf: keyed.provenanceKeyOf,
+    })
+  );
 };
 
 /** In access mode, only the owner may write into an `owner` collection. */
@@ -95,7 +188,21 @@ export const isDocumentServable = (
   doc.active &&
   scope.canRead(doc.collection) &&
   doc.mirrorHash !== null &&
-  derivedFromIssue(doc.typedMetadata, doc.metadataError) === null;
+  derivedFromIssue(
+    doc.typedMetadata,
+    doc.metadataError,
+    scope.provenanceKeyOf(doc.collection)
+  ) === null;
+
+/** Servable and, when an access hook is set, allowed by it. */
+export const isDocumentAllowed = async (
+  scope: McpAccessScope,
+  doc: Parameters<typeof isDocumentServable>[1] & { id: number }
+): Promise<boolean> => {
+  if (!isDocumentServable(scope, doc)) return false;
+  if (!scope.check) return true;
+  return (await scope.check([doc])).has(doc.id);
+};
 
 /**
  * Pre-limit corpus scope that keeps documents with an invalid `derived_from`
@@ -112,6 +219,7 @@ export const provenanceRetrievalScope = async (
 ): Promise<{ retrievalScope?: { allowedMirrorHashes: string[] } }> => {
   const servable = new Set<string>();
   const invalid = new Set<string>();
+  const keys = [...new Set(scope.collections.map(scope.provenanceKeyOf))];
   for (const name of scope.collections) {
     const docs = await store.listDocuments(name);
     if (!docs.ok) throw new Error(docs.error.message);
@@ -120,7 +228,11 @@ export const provenanceRetrievalScope = async (
       if (isDocumentServable(scope, doc)) servable.add(doc.mirrorHash);
       else if (
         !doc.metadataError &&
-        derivedFromIssue(doc.typedMetadata) === "invalid"
+        // Present under some scope key (passes the presence filter) but not
+        // servable under its own collection's key.
+        keys.some(
+          (key) => derivedFromIssue(doc.typedMetadata, null, key) !== "missing"
+        )
       ) {
         invalid.add(doc.mirrorHash);
       }
@@ -213,7 +325,10 @@ export const scopeRetrievalArgs = <T extends RetrievalArgs>(
       args.collection === undefined && args.collections === undefined
         ? scope.collections
         : args.collections,
-    filter: withDerivedFromRequired(args.filter),
+    filter: withDerivedFromRequired(
+      args.filter,
+      scope.collections.map(scope.provenanceKeyOf)
+    ),
   };
   if ("explain" in args) scoped.explain = undefined;
   return scoped as T;
@@ -275,7 +390,7 @@ export const finishScopedRetrieval = async <T extends RetrievalResult>(
   const results: T["results"] = [];
   for (const result of value.results) {
     const doc = await store.getDocumentByDocid(result.docid);
-    if (doc.ok && doc.value && isDocumentServable(scope, doc.value)) {
+    if (doc.ok && doc.value && (await isDocumentAllowed(scope, doc.value))) {
       results.push(
         result.egressLineage
           ? {

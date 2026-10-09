@@ -6,6 +6,7 @@
  */
 
 import type { NormalizedContentTypeRule } from "../config/content-types";
+import type { DocumentAccessCheck } from "../core/access-hook";
 import type {
   ContextCapsuleV1,
   ContextCapsuleVerification,
@@ -215,6 +216,12 @@ export interface SearchOptions extends InferenceOptions {
    * of these collections, never from others. Defaults to `[collection]`.
    */
   graphCollections?: string[];
+  /**
+   * Opt-in access hook check (gateway access mode). Documents it does not
+   * allow are dropped after fusion, before graph seeds, reranking, assembly,
+   * counts and warnings; the candidate pool is overfetched to compensate.
+   */
+  access?: DocumentAccessCheck;
   /** Internal exact corpus scope used by deterministic retrieval replay. */
   retrievalScope?: {
     relPathPrefix?: string;

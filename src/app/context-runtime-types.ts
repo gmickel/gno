@@ -1,4 +1,5 @@
 import type { Config } from "../config/types";
+import type { DocumentAccessCheck } from "../core/access-hook";
 import type { ContextCapsuleV1 } from "../core/context-capsule";
 import type { ContextEvidenceCompilerDeps } from "../core/context-evidence";
 import type { ContextVerifierDeps } from "../core/context-verifier";
@@ -80,6 +81,8 @@ export interface ContextCapsuleRuntimeDeps {
    * after the retrieval trace has recorded the complete lineage.
    */
   egressLineageView?: (lineage: EgressLineage) => EgressLineage;
+  /** Access hook check applied to every retrieval (gateway access mode). */
+  access?: DocumentAccessCheck;
 }
 
 export type ContextRuntimeErrorCode =

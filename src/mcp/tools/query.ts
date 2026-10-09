@@ -52,7 +52,7 @@ import { appendRetrievalWarnings } from "../retrieval-warnings";
 import {
   accessRetrievalOptions,
   finishScopedRetrieval,
-  mcpAccessScope,
+  resolveMcpAccess,
   scopeRetrievalArgs,
 } from "./access";
 import {
@@ -203,7 +203,7 @@ export function handleQuery(
     "gno_query",
     // oxlint-disable-next-line max-lines-per-function -- query with validation and result formatting
     async () => {
-      const scope = mcpAccessScope(ctx);
+      const scope = await resolveMcpAccess(ctx);
       const args = scope ? scopeRetrievalArgs(scope, requestArgs) : requestArgs;
       // Validate collections exist if specified
       assertCollectionsExist(ctx, [
@@ -286,6 +286,7 @@ export function handleQuery(
         projectAffinity,
         explain: args.explain,
         ...(scope ? await accessRetrievalOptions(scope, ctx.store) : {}),
+        ...(scope?.check ? { access: scope.check } : {}),
       };
 
       try {

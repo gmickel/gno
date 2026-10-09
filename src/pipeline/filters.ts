@@ -4,7 +4,13 @@
  * @module src/pipeline/filters
  */
 
-import type { ChunkRow, DocumentRow, StorePort } from "../store/types";
+import type { DocumentAccessCheck } from "../core/access-hook";
+import type {
+  ChunkRow,
+  DocumentRow,
+  StorePort,
+  StoreResult,
+} from "../store/types";
 import type { HybridSearchOptions } from "./types";
 
 import {
@@ -254,4 +260,51 @@ export async function typedMetadataWarnings(
         },
       ]
     : undefined;
+}
+
+/** What the access hook allows among a set of mirror hashes. */
+export interface AccessAllowlist {
+  /** Allowed document ids. */
+  ids: ReadonlySet<number>;
+  /** Allowed document docids. */
+  docids: ReadonlySet<string>;
+  /** Hashes whose every active document is allowed (fail closed). */
+  hashes: ReadonlySet<string>;
+}
+
+/**
+ * Ask the access check about every active document holding one of these
+ * mirror hashes, in one batch. A candidate without a document id passes only
+ * when its hash is in `hashes`.
+ */
+export async function resolveAccessAllowlist(
+  lookup: Pick<StorePort, "getDocumentsByMirrorHashes">,
+  mirrorHashes: readonly string[],
+  access: DocumentAccessCheck
+): Promise<StoreResult<AccessAllowlist>> {
+  const unique = [...new Set(mirrorHashes)];
+  if (unique.length === 0) {
+    return {
+      ok: true,
+      value: { ids: new Set(), docids: new Set(), hashes: new Set() },
+    };
+  }
+  const documents = await lookup.getDocumentsByMirrorHashes(unique, {
+    activeOnly: true,
+  });
+  if (!documents.ok) return documents;
+  const ids = await access(documents.value);
+  const docids = new Set<string>();
+  const deniedHashes = new Set<string>();
+  const seenHashes = new Set<string>();
+  for (const document of documents.value) {
+    if (!document.mirrorHash) continue;
+    seenHashes.add(document.mirrorHash);
+    if (ids.has(document.id)) docids.add(document.docid);
+    else deniedHashes.add(document.mirrorHash);
+  }
+  const hashes = new Set(
+    [...seenHashes].filter((hash) => !deniedHashes.has(hash))
+  );
+  return { ok: true, value: { ids, docids, hashes } };
 }

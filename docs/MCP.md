@@ -495,6 +495,13 @@ collections whose `access` rule lets its user in (see
   resources are empty. Set `gateway.toolProfile: scoped` so the tool list
   matches.
 
+With `gateway.accessHook` set (see
+[Access hook](CONFIGURATION.md#access-hook)), GNO also asks your hook, per
+request, which of a note's sources the user may read: a note is served only
+when every source is allowed, and `accessRef` collections open only when the
+hook allows them. Anything the hook does not allow, including a slow or
+failed answer, is treated like a missing note.
+
 Admin principals, plain `tokenFile` callers and stdio see everything, as
 before.
 

@@ -28,7 +28,7 @@ import {
 } from "./content-type-boost";
 import { attachSearchResultEgressLineage } from "./egress-lineage";
 import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
-import { typedMetadataWarnings } from "./filters";
+import { resolveAccessAllowlist, typedMetadataWarnings } from "./filters";
 import { selectBestChunkForSteering } from "./intent";
 import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
@@ -325,8 +325,9 @@ export async function searchBm25(
   );
   const projectAffinityActive = hasProjectAffinity(options.projectAffinity);
   const recencySort = shouldSortByRecency(query);
+  // Access hook: overfetch so denied documents do not empty the page.
   const retrievalLimit =
-    recencySort || projectAffinityActive ? limit * 3 : limit;
+    recencySort || projectAffinityActive || options.access ? limit * 3 : limit;
   const temporalRange = resolveTemporalRange(
     query,
     options.since,
@@ -366,6 +367,20 @@ export async function searchBm25(
       return err("INVALID_INPUT", `Invalid search query: ${message}`);
     }
     return err("QUERY_FAILED", message, cause);
+  }
+  if (options.access) {
+    // Access hook gate before any row is ranked, counted or rendered.
+    const allowlist = await resolveAccessAllowlist(
+      store,
+      ftsResult.value.map((row) => row.mirrorHash),
+      options.access
+    );
+    if (!allowlist.ok) return err("QUERY_FAILED", "Access check failed");
+    ftsResult.value = ftsResult.value.filter((row) =>
+      row.docid === undefined
+        ? allowlist.value.hashes.has(row.mirrorHash)
+        : allowlist.value.docids.has(row.docid)
+    );
   }
 
   // Get collection paths for absPath resolution

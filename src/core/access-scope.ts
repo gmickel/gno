@@ -8,8 +8,9 @@
  * `tokenFile` caller) and admin principals are unrestricted, so nothing
  * changes unless `gateway.principals` is configured.
  *
- * `accessRef` collections stay denied until an access hook can check them;
- * that keeps the rule fail-closed.
+ * `accessRef` collections stay denied unless `gateway.accessHook` is set and
+ * the hook allows the collection's ref for this request (see
+ * `access-hook.ts`); that keeps the rule fail-closed.
  *
  * @module src/core/access-scope
  */
@@ -55,9 +56,34 @@ export const accessRuleAdmits = (
     return context === "1to1" && request.subject?.id === access.owner;
   }
   // accessRef (firm-wide or not) needs the access hook to check the subject
-  // against the referenced source. No hook exists yet, so it is denied.
+  // against the referenced source; the static rule alone denies it.
   return false;
 };
+
+/**
+ * `accessRef` collections the access hook may admit for this request: any in
+ * a 1:1 conversation, only `firmwide` ones in a shared conversation, none for
+ * `public_only` or outside access mode. The hook still decides each one.
+ */
+export const hookCheckedAccessRefCollections = <
+  T extends Pick<Collection, "name" | "access">,
+>(
+  collections: readonly T[],
+  request: AccessRequest
+): T[] => {
+  if (!isAccessMode(request)) return [];
+  const context = effectiveContext(request);
+  return collections.filter((collection) => {
+    const access = collection.access;
+    if (!access || !("accessRef" in access)) return false;
+    if (context === "1to1") return true;
+    return context === "shared" && access.firmwide === true;
+  });
+};
+
+/** Provenance key of a collection: `access.provenanceKey` or `derived_from`. */
+export const provenanceKeyOf = (access: CollectionAccess | undefined): string =>
+  access?.provenanceKey ?? DERIVED_FROM_KEY;
 
 /**
  * Whether this request may write into the collection (memory writes): only
@@ -91,11 +117,12 @@ export const authorizedCollectionNames = (
  */
 export const derivedFromIssue = (
   metadata: TypedMetadata | null | undefined,
-  metadataError?: string | null
+  metadataError?: string | null,
+  key: string = DERIVED_FROM_KEY
 ): "missing" | "invalid" | null => {
   if (metadataError) return "invalid";
-  if (!metadata || !Object.hasOwn(metadata, DERIVED_FROM_KEY)) return "missing";
-  const value = metadata[DERIVED_FROM_KEY];
+  if (!metadata || !Object.hasOwn(metadata, key)) return "missing";
+  const value = metadata[key];
   if (!Array.isArray(value) || value.length === 0) return "invalid";
   return value.every(
     (member) => typeof member === "string" && DERIVED_FROM_MEMBER.test(member)
@@ -111,8 +138,30 @@ export const DERIVED_FROM_PRESENT: MetadataPredicate = {
   value: true,
 };
 
-/** AND the caller's filter with the `derived_from` presence requirement. */
-export const withDerivedFromRequired = (filter: unknown): unknown =>
-  filter === undefined
-    ? DERIVED_FROM_PRESENT
-    : { op: "and", predicates: [filter, DERIVED_FROM_PRESENT] };
+/**
+ * AND the caller's filter with the provenance presence requirement. With
+ * several provenance keys in scope any one must be present; the per-collection
+ * key is then enforced by the retrieval allowlist.
+ */
+export const withDerivedFromRequired = (
+  filter: unknown,
+  keys: readonly string[] = [DERIVED_FROM_KEY]
+): unknown => {
+  const unique = keys.length > 0 ? [...new Set(keys)] : [DERIVED_FROM_KEY];
+  const present: MetadataPredicate =
+    unique.length === 1 && unique[0] === DERIVED_FROM_KEY
+      ? DERIVED_FROM_PRESENT
+      : unique.length === 1
+        ? { op: "exists", key: unique[0]!, value: true }
+        : {
+            op: "or",
+            predicates: unique.map((key) => ({
+              op: "exists" as const,
+              key,
+              value: true,
+            })),
+          };
+  return filter === undefined
+    ? present
+    : { op: "and", predicates: [filter, present] };
+};

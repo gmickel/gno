@@ -102,6 +102,18 @@ describe("network boundary enforcement inventory", () => {
     expect(names.sort()).toEqual(Object.keys(MCP_HTTP_EGRESS_TOOLS).sort());
   });
 
+  test("registers the access hook call as a transport without collection data", () => {
+    const hook = NETWORK_BOUNDARY_INVENTORY.find(
+      ({ key }) => key === "src/core/access-hook.ts::fetch#1"
+    );
+    expect(hook).toMatchObject({
+      id: "gateway-access-hook",
+      primitive: "fetch",
+      action: null,
+      enforcement: "no_collection_data",
+    });
+  });
+
   test("documents disabled remote/private paths explicitly", () => {
     const disabled = NETWORK_BOUNDARY_INVENTORY.filter(
       ({ enforcement }) => enforcement === "disabled"

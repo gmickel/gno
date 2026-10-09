@@ -128,11 +128,33 @@ const AccessRefSchema = z
  * Collection read access for non-admin gateway principals. Exactly one of
  * `public`, `owner` or `accessRef`. `firmwide` applies to `accessRef` only.
  */
+/**
+ * Typed-metadata key holding a document's sources (default `derived_from`),
+ * sent to the access hook when `gateway.accessHook` is set.
+ */
+const ProvenanceKeySchema = z.string().regex(/^[a-z][a-z0-9_]{0,63}$/, {
+  message: "provenanceKey must match [a-z][a-z0-9_]{0,63}",
+});
+
 export const CollectionAccessSchema = z.union([
-  z.object({ public: z.literal(true) }).strict(),
-  z.object({ owner: z.string().min(1).max(256) }).strict(),
   z
-    .object({ accessRef: AccessRefSchema, firmwide: z.boolean().optional() })
+    .object({
+      public: z.literal(true),
+      provenanceKey: ProvenanceKeySchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      owner: z.string().min(1).max(256),
+      provenanceKey: ProvenanceKeySchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      accessRef: AccessRefSchema,
+      firmwide: z.boolean().optional(),
+      provenanceKey: ProvenanceKeySchema.optional(),
+    })
     .strict(),
 ]);
 
@@ -534,6 +556,29 @@ export const HttpGatewayPrincipalSchema = z.object({
 
 export type HttpGatewayPrincipal = z.infer<typeof HttpGatewayPrincipalSchema>;
 
+/**
+ * Fail-closed access hook for non-admin principals: GNO POSTs
+ * `{subject, ctx, request_id, refs}` and serves only the refs the hook lists
+ * in `{allow: [index]}`. Off unless set.
+ */
+export const HttpGatewayAccessHookSchema = z
+  .object({
+    /** Hook endpoint (`http:` or `https:`); the host is ignored with `unix`. */
+    url: z
+      .string()
+      .url()
+      .refine((value) => /^https?:\/\//.test(value), {
+        message: "accessHook.url must be http(s)",
+      }),
+    /** Unix socket path to reach the hook through (recommended). */
+    unix: z.string().min(1).optional(),
+    /** Deadline per hook call; a late answer denies. Default 2000. */
+    timeoutMs: z.number().int().min(10).max(30_000).optional(),
+  })
+  .strict();
+
+export type HttpGatewayAccessHook = z.infer<typeof HttpGatewayAccessHookSchema>;
+
 export const HttpGatewayConfigSchema = z.object({
   /** Literal listen address. Defaults to IPv4 loopback. */
   host: z.string().min(1).optional(),
@@ -548,6 +593,8 @@ export const HttpGatewayConfigSchema = z.object({
   /** Advertised MCP tool set (`core` | `full`); read at listener start. */
   toolProfile: z.enum(MCP_TOOL_PROFILES).optional(),
   limits: HttpGatewayLimitsSchema.optional(),
+  /** Per-request access hook for non-admin principals; off unless set. */
+  accessHook: HttpGatewayAccessHookSchema.optional(),
   /** Named bearer tokens; off unless set. Names and token files are unique. */
   principals: z
     .array(HttpGatewayPrincipalSchema)

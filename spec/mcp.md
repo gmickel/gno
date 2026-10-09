@@ -342,9 +342,9 @@ collections:
   opaque reference and never interprets it.
 - Readable collections, by the request's `GNO-Context` (missing subject or
   context = `public_only`): `public` in every context; `owner` only for that
-  subject in `1to1`. Every `accessRef` collection, `firmwide` or not, is
-  denied until an access hook can check it, and a collection without
-  `access` is always denied.
+  subject in `1to1`. An `accessRef` collection is denied unless
+  `gateway.accessHook` is set and the hook allows its ref (see "Access
+  hook" below), and a collection without `access` is always denied.
 - `gno_query` and `gno_search`: a named `collection`/`collections` the
   request cannot read fails exactly like an unknown collection; without one
   the search covers every readable collection (none denies all). Both run
@@ -463,6 +463,60 @@ redacted statuses: 401 (authentication), 403 (peer/Host/Origin/write), 413
 (shutdown, revoked credentials, or unavailable runtime). Defaults are 1 MiB per
 POST body, 120 requests/minute per actual peer, 64 active requests, 16 queued
 requests, 32 sessions, and a five-minute idle session timeout.
+
+#### Access hook
+
+Off unless `gateway.accessHook` is set; only access-mode requests use it.
+
+```yaml
+gateway:
+  principals: [...]
+  accessHook:
+    url: http://hook/check # host ignored with `unix`
+    unix: /run/fabric/hook.sock # optional; recommended
+    timeoutMs: 2000 # optional, 10..30000, default 2000
+collections:
+  - name: keyed
+    access: { public: true, provenanceKey: sources } # default derived_from
+```
+
+- Request: `POST <url>` with JSON
+  `{"subject": "<GNO-Subject>", "ctx": "1to1"|"shared"|"public_only",
+"request_id": "<uuid per tool call>", "refs": [{"sys": "...", "ref": "..."}]}`.
+  Response: `200 {"allow": [<index into refs>, ...]}`.
+- Fail closed: a ref whose index is not listed, a non-200 status, malformed
+  JSON, a missing `allow` array, a transport error, or no answer within
+  `timeoutMs` denies. Non-integer or out-of-range indexes are ignored.
+- Within one tool call each distinct ref is asked once; answers are not kept
+  across calls or subjects.
+- Collection check (once per call, before retrieval): the `accessRef` of
+  every `accessRef` collection the context may reach (any in `1to1`,
+  `firmwide` only in `shared`, none in `public_only`). An allowed ref makes
+  the collection readable for that call. Collection scope stays a SQL
+  filter applied before the limit.
+- Document check: every document served needs a valid provenance list under
+  its collection's `access.provenanceKey` (default `derived_from`) and the
+  hook must allow every ref in it; otherwise it is dropped. This applies to
+  all access-mode documents, `public` and `owner` collections included.
+  - `gno_search` (BM25) and vector search: on the candidate rows, before
+    ranking, the limit and counts.
+  - `gno_query`: on fused candidates before graph expansion (so denied
+    documents never seed it), on graph neighbours before they are ranked,
+    and again after graph fusion, before reranking. Candidates are
+    overfetched (x3) so the page stays full; `explain` (when enabled) shows
+    `access: checked=N, denied=M, overfetch=x3`.
+  - `gno_context` and anything built on its retrieval inherit both checks;
+    capsule omissions only describe retrieved, allowed evidence.
+  - `gno_get`: a denied document is `NOT_FOUND`, byte-identical to a missing
+    one. `gno_multi_get`: denied refs are skipped as `Not found`, and a
+    `pattern` never lists a denied document.
+  - Metadata-coverage warnings are not emitted in access mode (their counts
+    include documents the hook may deny). With no usable graph neighbour the
+    graph fallback reason is always `graph_no_new_candidates`, and edge counts
+    cover only allowed neighbours.
+- Links, backlinks, similar, graph and `gno_vsearch` are outside the scoped
+  tool set, so non-admin principals get `NOT_FOUND` for them already.
+- Without `accessHook` the static rules above apply unchanged.
 
 ### Cancellation and accepted jobs
 
