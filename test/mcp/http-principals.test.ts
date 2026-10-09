@@ -209,6 +209,42 @@ describe("gateway principals boundary", () => {
     expect(restored.ok && restored.value.principal?.name).toBe("plugin");
   });
 
+  test("a clash stays refused while a concurrent request rotates the plain token", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "gno-http-principals-"));
+    testDirs.push(dir);
+    const plainPath = await tokenFile(dir, "plain", PLAIN_TOKEN);
+    const pluginPath = await tokenFile(dir, "plugin", PLUGIN_TOKEN);
+    let concurrent: Promise<unknown> | undefined;
+    const security = new HttpMcpSecurity(
+      resolveHttpGatewayConfig({
+        tokenFile: plainPath,
+        principals: [
+          { name: "plugin", tokenFile: pluginPath },
+          {
+            name: "reader",
+            tokenFile: await tokenFile(dir, "reader", READER_TOKEN),
+          },
+        ],
+      }),
+      {
+        // Runs while request A is between its plain-token read and its
+        // clash check: request B rotates the plain token to a new value.
+        onCredentialsChanged: async () => {
+          if (concurrent) return;
+          await tokenFile(dir, "plain", "n".repeat(64));
+          concurrent = security.authorize(request("n".repeat(64), {}), peer);
+          await concurrent;
+        },
+      }
+    );
+    await security.initialize();
+    // Request A: the plugin principal has been rotated onto the plain token.
+    await tokenFile(dir, "plugin", PLAIN_TOKEN);
+    const result = await security.authorize(request(PLAIN_TOKEN, {}), peer);
+    expect(concurrent).toBeDefined();
+    expect(result.ok ? 200 : result.response.status).toBe(401);
+  });
+
   test("a principal without mayAssertSubject that sends GNO-Subject gets 403", async () => {
     const security = await principalSecurity(true);
     for (const [token, headers] of [

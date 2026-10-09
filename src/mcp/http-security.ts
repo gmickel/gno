@@ -491,9 +491,12 @@ export class HttpMcpSecurity {
       !isHttpGatewayLoopbackBind(this.#config.host) ||
       this.#config.tokenFile !== undefined ||
       this.#config.principals !== undefined;
+    // One credential snapshot per request: the plain token read here is the
+    // one checked for clashes and the one authenticated against, even if a
+    // concurrent request reloads the files in between.
     const refreshedToken = await this.#refreshTokenState();
     const { active: principalStates, ambiguous } =
-      await this.#refreshPrincipalStates();
+      await this.#refreshPrincipalStates(refreshedToken);
     // A plain token that a principal token now equals (for example after a
     // rotation) is ambiguous too: refuse it rather than accept it unscoped.
     const tokenState =
@@ -599,8 +602,10 @@ export class HttpMcpSecurity {
    * Reload every principal token; a broken file disables only that principal.
    * `ambiguous` holds every digest shared by two credentials (principals or
    * the plain token); none of them authenticates until the clash is fixed.
+   * `plainToken` is the caller's snapshot of the plain token, never the shared
+   * field, which a concurrent request may already have replaced.
    */
-  async #refreshPrincipalStates(): Promise<{
+  async #refreshPrincipalStates(plainToken: TokenState | undefined): Promise<{
     active: Array<{
       principal: ResolvedHttpGatewayPrincipal;
       state: TokenState;
@@ -635,11 +640,8 @@ export class HttpMcpSecurity {
     const counts = new Map<string, number>();
     for (const { state } of active)
       counts.set(state.digest, (counts.get(state.digest) ?? 0) + 1);
-    if (this.#tokenState)
-      counts.set(
-        this.#tokenState.digest,
-        (counts.get(this.#tokenState.digest) ?? 0) + 1
-      );
+    if (plainToken)
+      counts.set(plainToken.digest, (counts.get(plainToken.digest) ?? 0) + 1);
     const ambiguous = new Set(
       [...counts].flatMap(([digest, count]) => (count > 1 ? [digest] : []))
     );

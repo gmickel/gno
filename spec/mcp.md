@@ -288,7 +288,10 @@ gateway:
   (or a principal and `tokenFile`) with the same token fail startup; if a
   rotation makes them collide, neither authenticates (the plain `tokenFile`
   included: it is never accepted as the unnamed caller while a principal
-  holds the same token) until one of them is rotated again. A broken token file
+  holds the same token) until one of them is rotated again. Each request reads
+  the token files once and uses that one snapshot for both the clash check and
+  authentication, so a rotation by a concurrent request cannot let a clashing
+  token through as the unnamed caller. A broken token file
   disables only that principal and revokes authenticated sessions, as for
   `tokenFile`.
 - `GNO-Subject: <id>` names the end user the caller acts for and
