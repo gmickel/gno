@@ -635,6 +635,34 @@ The equivalent MCP fields are `maxAgeDays`, `orphanRoots`, and
 does not change them. Do not confuse its content-bearing local findings with
 the content-free egress policy receipts above.
 
+### Link policy and path rules
+
+Three opt-in collection keys add rules to `gno audit links`. They change
+nothing else: retrieval, indexing and links still work as before. With none
+set, audit reports are unchanged.
+
+```yaml
+collections:
+  - name: team-pages
+    path: /Users/you/wiki/team
+    linkPolicy:
+      mayLinkTo: [org-pages] # other collections these pages may link to
+      externalUrls: deny # report http(s)://, ftp:// and mailto: URLs
+    pathPattern: '^[a-z0-9-]{1,80}\.md$' # every page path must match
+```
+
+- `linkPolicy.mayLinkTo`: a link to a document in any other collection is a
+  `links.policy` finding. Links inside the collection are always allowed. An
+  empty list allows no other collection.
+- `linkPolicy.externalUrls: deny`: each external URL in a Markdown page
+  (outside frontmatter and code) is a `links.external-url` finding. `allow`
+  or omitted means no check.
+- `pathPattern`: a regex matched against each document's path inside the
+  collection; a path that does not match is a `paths.pattern` finding. Add
+  `^` and `$` to match the whole path.
+
+Findings from these rules make `gno audit` exit 4, like other link findings.
+
 ## Scheduled findings pass
 
 `gno daemon` can run the read-only audit on a cadence and write each finding as
@@ -870,18 +898,20 @@ remove` deletes them at once.
 
 ### Collection Fields
 
-| Field                | Type            | Default     | Description                                                            |
-| -------------------- | --------------- | ----------- | ---------------------------------------------------------------------- |
-| `name`               | string          | required    | Unique identifier (lowercase)                                          |
-| `path`               | string          | required    | Absolute path to directory                                             |
-| `pattern`            | glob            | `**/*`      | File matching pattern                                                  |
-| `include`            | array           | see below   | Extension allowlist                                                    |
-| `exclude`            | array           | see below   | Patterns to skip                                                       |
-| `updateCmd`          | string          | -           | Shell command before indexing                                          |
-| `updateCmdTimeoutMs` | number          | `600000`    | Stop `updateCmd` after this many milliseconds                          |
-| `languageHint`       | string          | -           | BCP-47 language code                                                   |
-| `models`             | object          | -           | Per-collection model overrides                                         |
-| `workspaceRoot`      | path or `false` | auto-detect | Link workspace for wiki links; see [Link workspaces](#link-workspaces) |
+| Field                | Type            | Default     | Description                                                                                         |
+| -------------------- | --------------- | ----------- | --------------------------------------------------------------------------------------------------- |
+| `name`               | string          | required    | Unique identifier (lowercase)                                                                       |
+| `path`               | string          | required    | Absolute path to directory                                                                          |
+| `pattern`            | glob            | `**/*`      | File matching pattern                                                                               |
+| `include`            | array           | see below   | Extension allowlist                                                                                 |
+| `exclude`            | array           | see below   | Patterns to skip                                                                                    |
+| `updateCmd`          | string          | -           | Shell command before indexing                                                                       |
+| `updateCmdTimeoutMs` | number          | `600000`    | Stop `updateCmd` after this many milliseconds                                                       |
+| `languageHint`       | string          | -           | BCP-47 language code                                                                                |
+| `models`             | object          | -           | Per-collection model overrides                                                                      |
+| `workspaceRoot`      | path or `false` | auto-detect | Link workspace for wiki links; see [Link workspaces](#link-workspaces)                              |
+| `linkPolicy`         | object          | -           | Opt-in audit link rules; see [Link policy and path rules](#link-policy-and-path-rules)              |
+| `pathPattern`        | regex           | -           | Opt-in audit rule for document paths; see [Link policy and path rules](#link-policy-and-path-rules) |
 
 ### Default Include Extensions
 

@@ -111,6 +111,16 @@ export function isValidLanguageHint(hint: string): boolean {
  */
 const COLLECTION_NAME_REGEX = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 
+/** True when `pattern` compiles as a Unicode regex (collection `pathPattern`). */
+export function isValidPathPattern(pattern: string): boolean {
+  try {
+    new RegExp(pattern, "u");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Collection scope key pattern: name (1-64 chars) followed by colon */
 const COLLECTION_SCOPE_REGEX = /^[a-z0-9][a-z0-9_-]{0,63}:$/;
 
@@ -183,6 +193,41 @@ export const CollectionSchema = z.object({
    * Omitted means false; ordinary retrieval is unaffected either way.
    */
   memoryManaged: z.boolean().optional(),
+
+  /**
+   * Opt-in link rules checked by `gno audit links`. `mayLinkTo` lists the
+   * other collections this collection's documents may link to (own
+   * collection always allowed); `externalUrls: "deny"` reports external URLs.
+   * Omitted means no policy and no extra audit rules.
+   */
+  linkPolicy: z
+    .object({
+      mayLinkTo: z
+        .array(
+          z
+            .string()
+            .regex(
+              COLLECTION_NAME_REGEX,
+              "mayLinkTo entries must be collection names"
+            )
+        )
+        .optional(),
+      externalUrls: z.enum(["allow", "deny"]).optional(),
+    })
+    .strict()
+    .optional(),
+
+  /**
+   * Opt-in regex every collection-relative document path must match, checked
+   * by the `paths.pattern` audit rule. Unanchored unless the pattern anchors.
+   */
+  pathPattern: z
+    .string()
+    .min(1)
+    .refine(isValidPathPattern, {
+      message: "pathPattern must be a valid regex",
+    })
+    .optional(),
 
   /** Optional per-collection model overrides */
   models: z

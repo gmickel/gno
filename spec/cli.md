@@ -1055,6 +1055,29 @@ it is wrapped in angle brackets. `[x](<my note.md>)` and `[x](my%20note.md)`
 both link to `my note.md`; a link title (`[x](note.md "Title")`) is not part
 of the target.
 
+Three opt-in link-category rules run only when an audited document's
+collection sets the matching key; with none set the rule list, findings and
+fingerprints are unchanged. Each fails (exit 4) on findings, all `warning`:
+
+- `links.policy` (collection `linkPolicy.mayLinkTo: [names]`): a link from a
+  document in that collection to a document in another collection not named
+  in `mayLinkTo`. The target collection is the resolved target's collection,
+  or the prefix of an explicit `collection:` link that does not resolve.
+  Links within the collection are always allowed; ambiguous and other
+  unresolved links are not policy findings. Evidence kind `link-policy`; its
+  `detail` JSON carries `sourceCollection`, `targetCollection`, `target` and
+  the sorted `mayLinkTo`.
+- `links.external-url` (collection `linkPolicy.externalUrls: deny`): a
+  `scheme://` URL or `mailto:` address in the indexed text of a Markdown
+  document, outside frontmatter, code and HTML comments. `gno://` URIs are
+  internal and allowed. Trailing sentence punctuation is not part of the URL.
+  Evidence kind `external-url`; location is the line and column in the
+  indexed text.
+- `paths.pattern` (collection `pathPattern`): a document whose
+  collection-relative path does not match the collection's regex (Unicode
+  flag; unanchored unless the pattern anchors itself). Evidence kind
+  `path-pattern` with the `pattern` in `detail`.
+
 The JSON contract is versioned as `gno://schemas/audit-report@1.0`. Finding IDs
 are stable SHA-256 identities derived from rule, normalized subject/location,
 and load-bearing evidence. Wall-clock timing and traversal order do not affect
