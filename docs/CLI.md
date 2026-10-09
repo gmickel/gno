@@ -952,11 +952,16 @@ gno ls notes              # Documents in 'notes' collection
 gno ls gno://notes/proj   # Documents under path prefix
 gno ls --json
 gno ls --files
+gno ls --filter '{"op":"in","key":"derived_from","values":["sp:drives/d1/items/i1"]}'
 ```
 
 Options:
 
 - `[scope]` - Filter by collection name or URI prefix
+- `--filter <json>` - Typed metadata predicate, same as `gno search --filter`
+  (see [Typed metadata filters](TYPED-METADATA.md)). Documents with invalid or
+  not yet extracted metadata never match. `meta.total` counts matching
+  documents only.
 
 ## Collection Commands
 

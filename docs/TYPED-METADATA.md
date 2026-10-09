@@ -34,7 +34,7 @@ gno context build "Atlas rollout" --filter '{"op":"all","key":"reviewers","value
 ```
 
 `--filter` accepts JSON on search, vector search, hybrid/structured query,
-query diagnosis, ask, and Context Capsule building. SDK, MCP, and REST inputs
+query diagnosis, ask, Context Capsule building, and `gno ls`. SDK, MCP, and REST inputs
 accept the same object in `filter`. It intersects collection/path, exclusions,
 authority, egress, and memory visibility before candidate limits. It cannot
 expand access. No model or background service is needed to extract metadata.
@@ -119,6 +119,42 @@ Use `gno query diagnose "rollout" --target <uri-or-path> --filter '<JSON>'`
 before relaxing a predicate: metadata backfill, invalid metadata, and predicate
 mismatch are distinct eligibility reasons. Diagnostics do not echo excluded
 field values.
+
+## Listing by metadata
+
+`gno ls --filter` lists every active document that matches a predicate, sorted
+by URI, with the usual scope, `--limit`, and `--offset`. It runs no retrieval,
+so it suits maintenance jobs such as "every note built from this source".
+
+## Convention: `derived_from` provenance
+
+Notes generated from other systems can record their sources in one string
+array, `derived_from`. Each member is `<system>:<reference>`, for example
+`sp:drives/d1/items/i1` or `jira:PROJ-42`. GNO does not interpret the members;
+it only stores and filters them like any other typed metadata.
+
+```markdown
+---
+title: Atlas rollout summary
+gno:
+  metadata:
+    derived_from:
+      - sp:drives/d1/items/i1
+      - jira:PROJ-42
+---
+```
+
+List every note built from one source, for example to rebuild them after the
+source changes:
+
+```bash
+gno ls --json --filter '{"op":"in","key":"derived_from","values":["sp:drives/d1/items/i1"]}'
+```
+
+`in` matches when any member equals any requested value. The normal limits
+apply: at most 128 members of at most 4,096 characters each. Members must all be
+strings; a list of objects is invalid metadata, so that note matches no filter
+until it is fixed.
 
 ## Limits and persisted context
 

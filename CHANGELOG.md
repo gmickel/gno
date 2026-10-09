@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `gno ls --filter '<JSON>'` lists the documents whose typed metadata matches a predicate, using the same predicate as `gno search --filter`. Paired with the documented `derived_from` convention (a list of `<system>:<reference>` strings in `gno.metadata`), it lists every note built from a given source, for example `gno ls --filter '{"op":"in","key":"derived_from","values":["sp:drives/d1/items/i1"]}'`.
+
 ## [2.12.0] - 2026-10-12
 
 ### Changed

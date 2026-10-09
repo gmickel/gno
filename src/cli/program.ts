@@ -2556,6 +2556,7 @@ function wireRetrievalCommands(program: Command): void {
       "Skip first N results",
       parsePositiveInt.bind(null, "offset")
     )
+    .option("--filter <json>", "typed custom metadata predicate (JSON)")
     .option("--json", "JSON output")
     .option("--files", "File protocol output")
     .option("--md", "Markdown output")
@@ -2571,6 +2572,7 @@ function wireRetrievalCommands(program: Command): void {
           indexName: globals.index,
           limit: cmdOpts.limit as number | undefined,
           offset: cmdOpts.offset as number | undefined,
+          filter: parseCliMetadataFilter(cmdOpts.filter),
           json: format === "json",
           files: format === "files",
           md: format === "md",
