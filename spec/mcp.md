@@ -286,7 +286,9 @@ gateway:
   loopback included, and satisfies the non-loopback token requirement. A plain
   `tokenFile`, if also set, stays valid as an unnamed caller. Two principals
   (or a principal and `tokenFile`) with the same token fail startup; if a
-  rotation makes them collide, neither authenticates. A broken token file
+  rotation makes them collide, neither authenticates (the plain `tokenFile`
+  included: it is never accepted as the unnamed caller while a principal
+  holds the same token) until one of them is rotated again. A broken token file
   disables only that principal and revokes authenticated sessions, as for
   `tokenFile`.
 - `GNO-Subject: <id>` names the end user the caller acts for and

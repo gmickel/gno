@@ -456,6 +456,8 @@ configured, every request needs a token, even on loopback. Only a principal
 with `mayAssertSubject: true` may send `GNO-Subject: <user id>` and
 `GNO-Context: 1to1`, `shared` or `public_only`; anyone else who sends them gets 403. GNO records the principal and the user with the request (the user only
 as a hash in request receipts). They do not yet change what tools return.
+Every principal and the plain `tokenFile` need different tokens: if a rotation
+makes two of them equal, neither is accepted until one is rotated again.
 Without `principals`, nothing changes.
 
 Authentication does not authorize writes. Set `gateway.enableWrite: true` or

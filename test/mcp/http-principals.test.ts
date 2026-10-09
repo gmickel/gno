@@ -183,6 +183,32 @@ describe("gateway principals boundary", () => {
     expect(wrong.ok ? 200 : wrong.response.status).toBe(401);
   });
 
+  test("a principal token rotated to equal the plain token fails closed", async () => {
+    const security = await principalSecurity(true);
+    const plain = await security.authorize(request(PLAIN_TOKEN, {}), peer);
+    expect(plain.ok).toBe(true);
+    const plugin = testDirs.at(-1);
+    if (!plugin) throw new Error("missing principal dir");
+    // Rotate the plugin principal onto the plain token.
+    await tokenFile(plugin, "plugin", PLAIN_TOKEN);
+    for (const token of [PLAIN_TOKEN, PLUGIN_TOKEN]) {
+      const result = await security.authorize(request(token, {}), peer);
+      expect(result.ok ? 200 : result.response.status).toBe(401);
+    }
+    // An unrelated principal keeps working.
+    const reader = await security.authorize(request(READER_TOKEN, {}), peer);
+    expect(reader.ok && reader.value.principal?.name).toBe("reader");
+    // Rotating away from the clash restores both credentials.
+    await tokenFile(plugin, "plugin", PLUGIN_TOKEN);
+    const restoredPlain = await security.authorize(
+      request(PLAIN_TOKEN, {}),
+      peer
+    );
+    expect(restoredPlain.ok && restoredPlain.value.principal).toBeUndefined();
+    const restored = await security.authorize(request(PLUGIN_TOKEN, {}), peer);
+    expect(restored.ok && restored.value.principal?.name).toBe("plugin");
+  });
+
   test("a principal without mayAssertSubject that sends GNO-Subject gets 403", async () => {
     const security = await principalSecurity(true);
     for (const [token, headers] of [

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- The resident MCP gateway can give named callers their own tokens with `gateway.principals`. A principal marked `mayAssertSubject` can say which user a request is for with the `GNO-Subject` and `GNO-Context` headers; any other caller that sends them gets 403. GNO keeps the principal and the user with each request, and stores the user only as a hash in request receipts. Tool results do not change yet. Without `principals`, the gateway behaves exactly as before.
+- The resident MCP gateway can give named callers their own tokens with `gateway.principals`. A principal marked `mayAssertSubject` can say which user a request is for with the `GNO-Subject` and `GNO-Context` headers; any other caller that sends them gets 403. GNO keeps the principal and the user with each request, and stores the user only as a hash in request receipts. Tool results do not change yet. Without `principals`, the gateway behaves exactly as before. If a token rotation makes two credentials equal, including a principal and the plain `tokenFile`, neither is accepted until one is rotated again.
 
 ## [2.12.0] - 2026-10-12
 

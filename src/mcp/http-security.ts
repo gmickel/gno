@@ -491,8 +491,15 @@ export class HttpMcpSecurity {
       !isHttpGatewayLoopbackBind(this.#config.host) ||
       this.#config.tokenFile !== undefined ||
       this.#config.principals !== undefined;
-    const tokenState = await this.#refreshTokenState();
-    const principalStates = await this.#refreshPrincipalStates();
+    const refreshedToken = await this.#refreshTokenState();
+    const { active: principalStates, ambiguous } =
+      await this.#refreshPrincipalStates();
+    // A plain token that a principal token now equals (for example after a
+    // rotation) is ambiguous too: refuse it rather than accept it unscoped.
+    const tokenState =
+      refreshedToken && !ambiguous.has(refreshedToken.digest)
+        ? refreshedToken
+        : undefined;
     let identity = "loopback";
     let authenticated = false;
     let principal: RequestPrincipal | undefined;
@@ -588,10 +595,18 @@ export class HttpMcpSecurity {
     return state.count <= this.#config.limits.maxRequestsPerMinute;
   }
 
-  /** Reload every principal token; a broken file disables only that principal. */
-  async #refreshPrincipalStates(): Promise<
-    Array<{ principal: ResolvedHttpGatewayPrincipal; state: TokenState }>
-  > {
+  /**
+   * Reload every principal token; a broken file disables only that principal.
+   * `ambiguous` holds every digest shared by two credentials (principals or
+   * the plain token); none of them authenticates until the clash is fixed.
+   */
+  async #refreshPrincipalStates(): Promise<{
+    active: Array<{
+      principal: ResolvedHttpGatewayPrincipal;
+      state: TokenState;
+    }>;
+    ambiguous: ReadonlySet<string>;
+  }> {
     const principals = this.#config.principals ?? [];
     const active: Array<{
       principal: ResolvedHttpGatewayPrincipal;
@@ -615,7 +630,8 @@ export class HttpMcpSecurity {
       }
     }
     if (changed) await this.#onCredentialsChanged();
-    // Two principals sharing a token after rotation would be ambiguous: refuse both.
+    // Two credentials sharing a token after rotation would be ambiguous:
+    // refuse every one of them, the plain token included.
     const counts = new Map<string, number>();
     for (const { state } of active)
       counts.set(state.digest, (counts.get(state.digest) ?? 0) + 1);
@@ -624,7 +640,13 @@ export class HttpMcpSecurity {
         this.#tokenState.digest,
         (counts.get(this.#tokenState.digest) ?? 0) + 1
       );
-    return active.filter(({ state }) => counts.get(state.digest) === 1);
+    const ambiguous = new Set(
+      [...counts].flatMap(([digest, count]) => (count > 1 ? [digest] : []))
+    );
+    return {
+      active: active.filter(({ state }) => !ambiguous.has(state.digest)),
+      ambiguous,
+    };
   }
 
   async #refreshTokenState(): Promise<TokenState | undefined> {
