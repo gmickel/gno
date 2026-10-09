@@ -434,6 +434,30 @@ Never pass the token on the command line; clients send
 `Authorization: Bearer <token>`. Rotation, deletion, invalid contents, or
 permission relaxation invalidates authenticated sessions.
 
+#### Named principals (optional)
+
+A front end that serves many people through one gateway, such as a chat
+assistant, can get its own named token and say which user each request is for:
+
+```yaml
+# ~/.config/gno/index.yml
+gateway:
+  principals:
+    - name: assistant
+      tokenFile: ~/.config/gno/tokens/assistant
+      mayAssertSubject: true
+    - name: ops
+      tokenFile: ~/.config/gno/tokens/ops
+      admin: true
+```
+
+Each principal sends `Authorization: Bearer <its token>`. Once principals are
+configured, every request needs a token, even on loopback. Only a principal
+with `mayAssertSubject: true` may send `GNO-Subject: <user id>` and
+`GNO-Context: 1to1`, `shared` or `public_only`; anyone else who sends them gets 403. GNO records the principal and the user with the request (the user only
+as a hash in request receipts). They do not yet change what tools return.
+Without `principals`, nothing changes.
+
 Authentication does not authorize writes. Set `gateway.enableWrite: true` or
 pass `--mcp-enable-write` separately. Without that opt-in, HTTP calls to write
 tools return a redacted HTTP 403 before SDK dispatch.

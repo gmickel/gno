@@ -58,6 +58,8 @@ export async function createMcpHttpGateway(
     return transport.handleRequest(authorization.value.request, {
       authenticated: authorization.value.authenticated,
       identity: authorization.value.identity,
+      principal: authorization.value.principal,
+      subject: authorization.value.subject,
       parsedBody: authorization.value.parsedBody,
       peerClassification: authorization.value.peerClassification,
     });

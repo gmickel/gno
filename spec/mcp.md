@@ -266,6 +266,46 @@ errors. Rotation, deletion, invalid content, or permission relaxation revokes
 existing authenticated sessions. Session IDs are bound to the identity that
 initialized them, preventing reuse with a different bearer token.
 
+#### Gateway principals and asserted subject
+
+Off unless `gateway.principals` is set; with no principals the boundary, its
+responses, and every tool output are unchanged (the two headers below are
+only removed before dispatch).
+
+```yaml
+gateway:
+  principals:
+    - name: assistant # [a-z0-9][a-z0-9._-]{0,63}, unique
+      tokenFile: ~/.config/gno/tokens/assistant # unique, 0600, created if missing
+      mayAssertSubject: true # default false
+      admin: false # default false
+```
+
+- Each principal is a named bearer token with the same file rules as
+  `tokenFile`. Configuring principals requires a bearer token on every request,
+  loopback included, and satisfies the non-loopback token requirement. A plain
+  `tokenFile`, if also set, stays valid as an unnamed caller. Two principals
+  (or a principal and `tokenFile`) with the same token fail startup; if a
+  rotation makes them collide, neither authenticates. A broken token file
+  disables only that principal and revokes authenticated sessions, as for
+  `tokenFile`.
+- `GNO-Subject: <id>` names the end user the caller acts for and
+  `GNO-Context: 1to1|shared|public_only` the conversation it acts in. Only a
+  `mayAssertSubject` principal may send them. Any other caller that sends
+  either header, a subject outside `[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}`, an
+  unknown context, or a context without a subject gets the redacted 403
+  `Forbidden` boundary error. Both headers are removed before SDK dispatch;
+  subject assertion is never read from `Forwarded`/`X-Forwarded-*` or from
+  tool arguments.
+- The tool context of each request carries the principal
+  (`name`, `admin`, `mayAssertSubject`) and the subject
+  (`id`, `context`, `hash` = SHA-256 hex of `id`). Request receipts for an
+  asserted subject live in a namespace derived from the principal identity and
+  the subject hash, so the raw subject is never stored there and two subjects
+  cannot replay each other's request IDs.
+- This is plumbing only: no tool changes what it returns because of the
+  principal, `admin`, or the subject.
+
 Because `gno serve` shares this listener with its Web UI and REST API, it
 remains loopback-only. Use the headless `gno daemon` command for an explicitly
 authenticated non-loopback MCP listener.

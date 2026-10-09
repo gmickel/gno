@@ -52,6 +52,26 @@ export class Mutex implements AsyncMutex {
   }
 }
 
+/** Gateway principal that authenticated the current HTTP request. */
+export interface RequestPrincipal {
+  name: string;
+  admin: boolean;
+  mayAssertSubject: boolean;
+}
+
+/** Conversation context an asserting principal declared for the subject. */
+export type RequestSubjectContext = "1to1" | "shared" | "public_only";
+
+/**
+ * End user an asserting principal acts for. `hash` is the SHA-256 hex of
+ * `id`; request receipts store only the hash.
+ */
+export interface RequestSubject {
+  id: string;
+  context?: RequestSubjectContext;
+  hash: string;
+}
+
 export interface ToolContextSnapshot {
   config: Config;
   collections: Collection[];
@@ -68,12 +88,18 @@ export interface ToolContextSnapshot {
   requestIdentity?: string;
   /** Stable request-receipt namespace of the authorized HTTP identity. */
   requestNamespace?: string;
+  /** Named gateway principal; absent unless `gateway.principals` is set. */
+  principal?: RequestPrincipal;
+  /** Subject asserted by a `mayAssertSubject` principal for this request. */
+  subject?: RequestSubject;
 }
 
 export interface RequestScope {
   egress: NonNullable<ToolContextSnapshot["egress"]>;
   requestIdentity?: string;
   requestNamespace?: string;
+  principal?: RequestPrincipal;
+  subject?: RequestSubject;
 }
 
 export interface ToolContext {
@@ -112,6 +138,10 @@ export interface ToolContext {
   getRequestIdentity?: () => string | undefined;
   /** Request-receipt namespace of the current HTTP caller; absent on stdio. */
   getRequestNamespace?: () => string | undefined;
+  /** Named gateway principal of the current HTTP request, if any. */
+  getRequestPrincipal?: () => RequestPrincipal | undefined;
+  /** Subject asserted for the current HTTP request, if any. */
+  getRequestSubject?: () => RequestSubject | undefined;
   runWithEgressContext?<T>(
     egress: NonNullable<ToolContextSnapshot["egress"]>,
     operation: () => Promise<T>,
@@ -231,6 +261,8 @@ export function createToolContext(
     getEgressContext: () => requestSnapshot.getStore()?.egress,
     getRequestIdentity: () => requestSnapshot.getStore()?.requestIdentity,
     getRequestNamespace: () => requestSnapshot.getStore()?.requestNamespace,
+    getRequestPrincipal: () => requestSnapshot.getStore()?.principal,
+    getRequestSubject: () => requestSnapshot.getStore()?.subject,
     runWithEgressContext<T>(
       egress: NonNullable<ToolContextSnapshot["egress"]>,
       operation: () => Promise<T>,
@@ -244,6 +276,8 @@ export function createToolContext(
           egress,
           requestIdentity: scope?.requestIdentity,
           requestNamespace: scope?.requestNamespace,
+          principal: scope?.principal,
+          subject: scope?.subject,
         },
         operation
       );
@@ -258,6 +292,8 @@ export function createToolContext(
           egress: current?.egress,
           requestIdentity: current?.requestIdentity,
           requestNamespace: current?.requestNamespace,
+          principal: current?.principal,
+          subject: current?.subject,
         },
         operation
       );
