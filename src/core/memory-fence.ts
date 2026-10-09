@@ -24,8 +24,11 @@ import type {
 
 import {
   invalidMemoryScopeReason,
+  isMemorySubjectScope,
   MEMORY_MAX_FACT_BYTES,
   MEMORY_MAX_SCOPES,
+  MEMORY_SUBJECT_SCOPE_PREFIX,
+  normalizeMemoryRefs,
   normalizeMemoryScopes,
   validateMemoryRecord,
 } from "./memory-record";
@@ -100,6 +103,46 @@ export function requireScopes(scopes: unknown): string[] {
     if (reason) throw new MemoryError("MEMORY_SCOPES_INVALID", reason);
   }
   return normalized;
+}
+
+/**
+ * Caller scopes under gateway subject scoping: the `subject:` prefix is
+ * server-owned, so a caller may not name one. Returns the scopes to filter
+ * retrieval by (the owner scope alone when a subject was asserted) and the
+ * scopes a write stores (caller scopes plus the owner scope).
+ */
+export function requireSubjectScopes(
+  deps: MemoryServiceDeps,
+  scopes: unknown
+): { caller: string[]; query: string[]; write: string[] } {
+  const caller = requireScopes(scopes);
+  const scoping = deps.subjectScoping;
+  if (!scoping) return { caller, query: caller, write: caller };
+  if (caller.some(isMemorySubjectScope)) {
+    throw new MemoryError(
+      "MEMORY_SCOPES_INVALID",
+      `Scopes starting with "${MEMORY_SUBJECT_SCOPE_PREFIX}" are set by the server, not the caller.`
+    );
+  }
+  const owner = scoping.ownerScope;
+  if (!owner) return { caller, query: caller, write: caller };
+  return {
+    caller,
+    query: [owner],
+    write: requireScopes([...caller, owner]),
+  };
+}
+
+export function requireRefs(refs: unknown): string[] {
+  if (refs === undefined || refs === null) return [];
+  if (!Array.isArray(refs)) {
+    throw new MemoryError("MEMORY_REFS_INVALID", "refs must be a list.");
+  }
+  const result = normalizeMemoryRefs(refs);
+  if ("reason" in result) {
+    throw new MemoryError("MEMORY_REFS_INVALID", result.reason);
+  }
+  return result.refs;
 }
 
 export function requireManagedCollection(
@@ -235,5 +278,6 @@ export async function readFact(
     contentHash: frontmatter.contentHash,
     supersedes,
     ...(frontmatter.source ? { source: frontmatter.source } : {}),
+    ...(frontmatter.refs ? { refs: frontmatter.refs } : {}),
   };
 }

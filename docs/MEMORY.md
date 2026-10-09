@@ -98,6 +98,11 @@ Deploys go out from the main branch only.
   receipts.
 - `source` is the optional free-text evidence given at write time (`--source`,
   `source`); it is stored verbatim and echoed on the record in every result.
+- `refs` is an optional list of `<system>:<reference>` strings (for example
+  `sp:drives/d1/items/i1`), at most 20, that only a gateway principal allowed
+  to assert a subject can set over MCP. It is stored as `refs: [...]` under
+  `memory:` and returned on the record and on every recalled fact. See
+  [Subject-owned memory](#subject-owned-memory).
 - `relations.supersedes` is the existing typed-edge mechanism; ingestion
   projects it into `doc_edges` like any other relation. There is no separate
   memory store.
@@ -125,6 +130,25 @@ scope name that several callers agree on (`--scope shared`), never a default.
 - Scope filtering runs inside the retrieval query, not as a post-filter over a
   bounded candidate window, so a scope with few facts never comes back
   falsely empty behind a busier scope.
+
+### Subject-owned memory
+
+When the MCP gateway runs with `gateway.principals` and a principal asserts a
+user with `GNO-Subject` (see `docs/MCP.md`), memory becomes owner-only for that
+user:
+
+- GNO adds `subject:<first 32 hex chars of the subject hash>` to every fact the
+  user remembers, and recall returns only facts carrying that scope that also
+  match the scopes the caller asked for. Another user's facts never appear in
+  recall, candidates, or duplicate matching, and cannot be superseded.
+- Callers cannot send scopes starting with `subject:` (`MEMORY_SCOPES_INVALID`),
+  so they can neither reach another user's facts nor strip their own scope.
+  A principal that asserts no user sees no user's facts.
+- The assistant may pass `refs` with a fact; they are written in the same file
+  and come back on recall, including after a reindex.
+
+Without principals, or from the CLI, REST, SDK, or stdio MCP, nothing changes,
+and a local operator can still read every fact file directly.
 
 Scopes are a visibility partition, not an access-control boundary. Anyone who
 can read the collection's files can read every fact; egress policy, not
@@ -339,6 +363,7 @@ security boundary.
 | `MEMORY_COLLECTION_REQUIRED`, `MEMORY_COLLECTION_UNMANAGED` | No collection, or one without `memoryManaged: true` | 1        | 400  |
 | `MEMORY_COLLECTION_NOT_FOUND`                               | Unknown collection name                             | 1        | 404  |
 | `MEMORY_SCOPES_REQUIRED`, `MEMORY_SCOPES_INVALID`           | No scopes, more than 8, or a malformed scope        | 1        | 400  |
+| `MEMORY_REFS_INVALID`                                       | More than 20 refs, or one not `<system>:<ref>`      | 1        | 400  |
 | `MEMORY_IDENTITY_REQUIRED`                                  | Missing caller or session                           | 1        | 400  |
 | `MEMORY_DECISION_INVALID`, `MEMORY_PREDECESSOR_REQUIRED`    | Bad decision, or supersede without URI + hash       | 1        | 400  |
 | `MEMORY_PREDECESSOR_NOT_FOUND`                              | Predecessor URI is not a current memory record      | 1        | 404  |
@@ -350,7 +375,8 @@ security boundary.
 | `MEMORY_SUPERSEDE_PROJECTION_FAILED`                        | Successor written but its edge did not project      | 2        | 500  |
 
 MCP returns the code in `structuredContent.error` (plus `WRITE_DISABLED`
-when the server runs without `--enable-write`); the SDK throws `GnoSdkError`
+when the server runs without `--enable-write`, and `MEMORY_REFS_FORBIDDEN`
+when a caller that may not assert a subject sends `refs`); the SDK throws `GnoSdkError`
 with the code in `details.code` and the `MemoryError` as `cause`.
 
 A write that carries a request ID can also fail with a `REQUEST_*` code; see

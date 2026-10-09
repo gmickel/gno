@@ -25,9 +25,10 @@ import {
   readFact,
   requireIdentity,
   requireManagedCollection,
-  requireScopes,
+  requireSubjectScopes,
   utf8Bytes,
 } from "./memory-fence";
+import { memorySubjectVisible } from "./memory-record";
 import {
   MEMORY_EMPTY_RECALL_HINT,
   MEMORY_NO_MATCH_RECALL_HINT,
@@ -342,8 +343,10 @@ function fuseLegs(legs: RetrievalLeg[]): SearchResult[] {
 
 async function materializeFacts(
   deps: MemoryServiceDeps,
-  ranked: SearchResult[]
+  ranked: SearchResult[],
+  callerScopes: string[]
 ): Promise<Array<{ fact: RecalledFact; rank: number }>> {
+  const scoping = deps.subjectScoping;
   const materialized: Array<{ fact: RecalledFact; rank: number }> = [];
   for (const [index, result] of ranked.entries()) {
     if (!result.conversion?.mirrorHash || !result.egressLineage) continue;
@@ -353,6 +356,14 @@ async function materializeFacts(
       mirrorHash: result.conversion.mirrorHash,
     });
     if (!fact) continue;
+    // Subject scoping: retrieval ran on the owner scope; the caller
+    // scopes and the ownership rule apply here, before budgeting.
+    if (
+      scoping &&
+      !memorySubjectVisible(fact.scopes, callerScopes, scoping.ownerScope)
+    ) {
+      continue;
+    }
     materialized.push({
       rank: index + 1,
       fact: {
@@ -447,7 +458,8 @@ export async function recallFacts(
     deps.collections,
     rawInput.collection
   );
-  const scopes = requireScopes(rawInput.scopes);
+  const subjectScopes = requireSubjectScopes(deps, rawInput.scopes);
+  const scopes = subjectScopes.query;
   const maxFacts = rawInput.maxFacts ?? MEMORY_RECALL_MAX_FACTS;
   const maxTokens = rawInput.maxTokens ?? MEMORY_RECALL_MAX_TOKENS;
   if (
@@ -467,7 +479,11 @@ export async function recallFacts(
     collection: collection.name,
     scopes,
   });
-  const materialized = await materializeFacts(deps, fuseLegs(legs));
+  const materialized = await materializeFacts(
+    deps,
+    fuseLegs(legs),
+    subjectScopes.caller
+  );
   const facts = selectWithinBudget(materialized, maxFacts, maxTokens);
   const usedTokens = facts.reduce(
     (sum, fact) => sum + estimateTokens(fact.text),

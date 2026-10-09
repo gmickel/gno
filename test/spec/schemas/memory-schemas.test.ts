@@ -51,7 +51,11 @@ describe("memory-remember schema", () => {
       "added",
       {
         outcome: "added",
-        record: { ...fact, source: "Said in standup 2026-09-03" },
+        record: {
+          ...fact,
+          source: "Said in standup 2026-09-03",
+          refs: ["sp:drives/d1/items/i1", "self:u-1"],
+        },
         absPath: "/tmp/memory/mem-abc.md",
         sync: { status: "completed" },
         matching: {
@@ -134,6 +138,14 @@ describe("memory-remember schema", () => {
       },
     ],
     [
+      "record with a ref that is not <system>:<reference>",
+      {
+        outcome: "existing",
+        record: { ...fact, refs: ["no system here"] },
+        matching: { mode: "lexical", threshold: 0.5 },
+      },
+    ],
+    [
       "candidate without match class",
       {
         outcome: "candidates",
@@ -156,6 +168,7 @@ describe("memory-recall schema", () => {
   const recalled = {
     ...fact,
     source: "Said in standup 2026-09-03",
+    refs: ["sp:drives/d1/items/i1"],
     score: 0.016,
     spanHash: SHA,
     egressLineage: lineage,

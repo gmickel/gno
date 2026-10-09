@@ -97,6 +97,16 @@
           "minLength": 1,
           "description": "Free-text evidence recorded with the fact, when one was given."
         },
+        "refs": {
+          "type": "array",
+          "maxItems": 20,
+          "description": "<system>:<reference> refs stored with the fact by an asserting gateway principal; absent when none were given.",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,31}:\\S+$",
+            "maxLength": 512
+          }
+        },
         "supersedes": {
           "type": "array",
           "description": "Predecessor gno:// virtual URIs (empty for an added fact).",
@@ -135,6 +145,16 @@
           "type": "string",
           "minLength": 1,
           "description": "Free-text evidence recorded with the fact, when one was given."
+        },
+        "refs": {
+          "type": "array",
+          "maxItems": 20,
+          "description": "<system>:<reference> refs stored with the fact by an asserting gateway principal; absent when none were given.",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,31}:\\S+$",
+            "maxLength": 512
+          }
         },
         "supersedes": {
           "type": "array",

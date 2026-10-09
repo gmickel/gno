@@ -23,7 +23,10 @@ import {
   type RememberInput,
 } from "../../src/core/memory";
 import { buildMemoryStatus } from "../../src/core/memory-diagnostics";
-import { hashMemoryText } from "../../src/core/memory-record";
+import {
+  hashMemoryText,
+  memorySubjectScope,
+} from "../../src/core/memory-record";
 import { SyncService } from "../../src/ingestion";
 import { searchBm25 } from "../../src/pipeline/search";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
@@ -1010,5 +1013,168 @@ describe("malformed memory files", () => {
         .filter((finding) => finding.ruleId === "provenance.memory-record")
         .map((finding) => finding.location)
     ).toContain("MEMORY_RECORD_ID_INVALID");
+  });
+});
+
+describe("subject-owned memory and refs", () => {
+  let harness: Harness;
+  const ownerA = memorySubjectScope("a".repeat(64));
+  const ownerB = memorySubjectScope("b".repeat(64));
+
+  function serviceFor(
+    target: Harness,
+    subjectScoping: { ownerScope?: string } | undefined
+  ): MemoryService {
+    return new MemoryService({
+      store: target.store,
+      config: target.config,
+      collections: target.collections,
+      lockPath: target.lockPath,
+      lockWaitMs: 5_000,
+      subjectScoping,
+    });
+  }
+
+  const asA = () => serviceFor(harness, { ownerScope: ownerA });
+  const asB = () => serviceFor(harness, { ownerScope: ownerB });
+  const recallInput = (scopes: string[]) => ({
+    ...IDENTITY,
+    query: "parking spot",
+    collection: "memory",
+    scopes,
+  });
+
+  beforeAll(async () => {
+    harness = await createHarness("memory-subject");
+  });
+
+  afterAll(async () => {
+    await harness.store.close();
+    await safeRm(harness.root);
+  });
+
+  test("subject B never recalls, matches, or supersedes subject A's facts", async () => {
+    const added = await asA().remember({
+      ...IDENTITY,
+      text: "My parking spot is P2-14.",
+      collection: "memory",
+      scopes: SCOPE,
+      decision: "add",
+    });
+    expect(added.outcome).toBe("added");
+    if (added.outcome !== "added") return;
+    expect(added.record.scopes).toEqual([...SCOPE, ownerA]);
+
+    expect((await asA().recall(recallInput(SCOPE))).facts).toHaveLength(1);
+    expect((await asB().recall(recallInput(SCOPE))).facts).toEqual([]);
+    // Caller scopes cannot name an owner scope, A's or anyone's.
+    await expectMemoryError(
+      asB().recall(recallInput([...SCOPE, ownerA])),
+      "MEMORY_SCOPES_INVALID"
+    );
+    await expectMemoryError(
+      asB().remember({
+        ...IDENTITY,
+        text: "Injected into A.",
+        collection: "memory",
+        scopes: [ownerA],
+        decision: "add",
+      }),
+      "MEMORY_SCOPES_INVALID"
+    );
+    // A principal acting for nobody sees no subject's facts.
+    expect(
+      (await serviceFor(harness, {}).recall(recallInput(SCOPE))).facts
+    ).toEqual([]);
+
+    // The same text from B is B's own fact, not A's existing record.
+    const proposal = await asB().remember({
+      ...IDENTITY,
+      text: "My parking spot is P2-14.",
+      collection: "memory",
+      scopes: SCOPE,
+    });
+    expect(proposal.outcome).toBe("candidates");
+    if (proposal.outcome === "candidates") {
+      expect(proposal.candidates).toEqual([]);
+    }
+    await expectMemoryError(
+      asB().remember({
+        ...IDENTITY,
+        text: "My parking spot is P3-01.",
+        collection: "memory",
+        scopes: SCOPE,
+        decision: "supersede",
+        predecessorUri: added.record.uri,
+        predecessorHash: added.record.contentHash,
+      }),
+      "MEMORY_PREDECESSOR_NOT_FOUND"
+    );
+
+    // Without subject scoping (CLI, stdio, no principals) nothing changes.
+    expect(
+      (await harness.service.recall(recallInput(SCOPE))).facts
+    ).toHaveLength(1);
+  });
+
+  test("refs survive a fresh index rebuilt from the fact files", async () => {
+    const refs = ["sp:drives/d1/items/i1", "self:u-a", "sp:drives/d1/items/i1"];
+    const added = await asA().remember({
+      ...IDENTITY,
+      text: "The Q3 board pack is due on Friday.",
+      collection: "memory",
+      scopes: SCOPE,
+      decision: "add",
+      refs,
+    });
+    expect(added.outcome).toBe("added");
+    if (added.outcome !== "added") return;
+    const stored = ["sp:drives/d1/items/i1", "self:u-a"];
+    expect(added.record.refs).toEqual(stored);
+    expect(await Bun.file(added.absPath).text()).toContain(
+      `  refs: ["sp:drives/d1/items/i1", "self:u-a"]`
+    );
+
+    // Restart: a brand-new index over the same files.
+    const fresh = new SqliteAdapter();
+    expect(
+      (await fresh.open(join(harness.root, "rebuilt.sqlite"), "porter")).ok
+    ).toBe(true);
+    try {
+      expect((await fresh.syncCollections(harness.collections)).ok).toBe(true);
+      await new SyncService().syncCollection(harness.collections[0]!, fresh);
+      const rebuilt = { ...harness, store: fresh };
+      const recall = await serviceFor(rebuilt, { ownerScope: ownerA }).recall({
+        ...recallInput(SCOPE),
+        query: "board pack",
+      });
+      expect(recall.facts.map((fact) => fact.refs)).toEqual([stored]);
+      const other = await serviceFor(rebuilt, { ownerScope: ownerB }).recall({
+        ...recallInput(SCOPE),
+        query: "board pack",
+      });
+      expect(other.facts).toEqual([]);
+    } finally {
+      await fresh.close();
+    }
+  });
+
+  test("malformed or too many refs are refused before any write", async () => {
+    await expectMemoryError(
+      remember(harness, {
+        text: "A fact with a bad ref.",
+        decision: "add",
+        refs: ["no system"],
+      }),
+      "MEMORY_REFS_INVALID"
+    );
+    await expectMemoryError(
+      remember(harness, {
+        text: "A fact with too many refs.",
+        decision: "add",
+        refs: Array.from({ length: 21 }, (_, index) => `sp:item-${index}`),
+      }),
+      "MEMORY_REFS_INVALID"
+    );
   });
 });
