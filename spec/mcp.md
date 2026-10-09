@@ -1566,7 +1566,9 @@ subject hash>`. `gno_remember` stores it with the caller's scopes (the total
   `MEMORY_REFS_FORBIDDEN`. A malformed list returns `MEMORY_REFS_INVALID`.
   `refs` are provenance to return, separate from the `derivedFrom` fence
   input, and an exact duplicate returns the stored record without merging
-  refs.
+  refs. The HTTP egress check does not read
+  `gno_remember.refs` as document references; the write is scoped by its
+  `collection`.
 
 ---
 
