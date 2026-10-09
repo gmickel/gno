@@ -1072,7 +1072,10 @@ fingerprints are unchanged. Each fails (exit 4) on findings, all `warning`:
   document, outside frontmatter, code and HTML comments. `gno://` URIs are
   internal and allowed. Trailing sentence punctuation is not part of the URL.
   Evidence kind `external-url`; location is the line and column in the
-  indexed text.
+  indexed text. A Markdown document in such a collection whose indexed text
+  is missing (not yet mirrored, or its content row is gone) cannot be
+  checked, so it is a finding too: evidence kind `external-url-unchecked`,
+  no location. The rule never passes a document it could not read.
 - `paths.pattern` (collection `pathPattern`): a document whose
   collection-relative path does not match the collection's regex (Unicode
   flag; unanchored unless the pattern anchors itself). Evidence kind

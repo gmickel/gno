@@ -164,6 +164,49 @@ describe("opt-in collection link rules", () => {
     expect(on.exit).toBe("findings");
   });
 
+  test("a denying collection fails links.external-url when indexed content is missing", async () => {
+    fixture = await openLinkWorkspaceFixture();
+    await fixture.write("plain", "Gone.md", "# Gone\n\nhttps://gone.example\n");
+    await fixture.write(
+      "plain",
+      "Pending.md",
+      "# Pending\n\nhttps://p.example\n"
+    );
+    await fixture.sync();
+    const db = fixture.store.getRawDb();
+    const hashOf = (relPath: string): string =>
+      db
+        .query<{ mirror_hash: string }, [string]>(
+          "SELECT mirror_hash FROM documents WHERE collection = 'plain' AND rel_path = ?"
+        )
+        .get(relPath)?.mirror_hash ?? "";
+    // Gone.md: content row removed. Pending.md: not yet mirrored.
+    const gone = hashOf("Gone.md");
+    expect(gone).not.toBe("");
+    db.exec("PRAGMA foreign_keys = OFF");
+    db.query("DELETE FROM content WHERE mirror_hash = ?").run(gone);
+    db.exec("PRAGMA foreign_keys = ON");
+    db.query(
+      "UPDATE documents SET mirror_hash = NULL WHERE collection = 'plain' AND rel_path = ?"
+    ).run("Pending.md");
+    const result = await audit(
+      fixture,
+      withRules(fixture, { plain: { linkPolicy: { externalUrls: "deny" } } })
+    );
+    const rule = result.report.rules.find(
+      ({ ruleId }) => ruleId === "links.external-url"
+    );
+    expect(rule?.status).toBe("fail");
+    const unchecked = findingsOf(result, "links.external-url").filter(
+      ({ evidence }) => evidence[0]?.kind === "external-url-unchecked"
+    );
+    expect(unchecked.map(({ subject }) => subject).sort()).toEqual([
+      "gno://plain/Gone.md",
+      "gno://plain/Pending.md",
+    ]);
+    expect(result.exit).toBe("findings");
+  });
+
   test("paths.pattern reports document paths that do not match", async () => {
     fixture = await openLinkWorkspaceFixture();
     await fixture.write("plain", "good-slug.md", "# Good\n\n[[Home]]\n");

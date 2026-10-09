@@ -92,7 +92,11 @@ interface WorkspaceSnapshot {
   truncated: boolean;
 }
 
-/** Indexed markdown of selected Markdown documents in the given collections. */
+/**
+ * Indexed markdown of selected Markdown documents in the given collections.
+ * A document without indexed content is kept with `markdown: null` so the
+ * external-URL rule reports it instead of passing it unchecked.
+ */
 const loadExternalUrlDocuments = async (
   store: SqliteAdapter,
   documents: readonly DocumentRow[],
@@ -102,18 +106,24 @@ const loadExternalUrlDocuments = async (
   const wanted = documents.filter(
     (document) =>
       collections.has(document.collection) &&
-      document.mirrorHash !== null &&
       MARKDOWN_SOURCE_EXTENSIONS.has(document.sourceExt.toLowerCase())
   );
   if (wanted.length === 0) return [];
   const contents = await store.getContentBatch([
-    ...new Set(wanted.map(({ mirrorHash }) => mirrorHash as string)),
+    ...new Set(
+      wanted.flatMap(({ mirrorHash }) =>
+        mirrorHash === null ? [] : [mirrorHash]
+      )
+    ),
   ]);
   if (!contents.ok) throw new Error(contents.error.message);
-  return wanted.flatMap((document) => {
-    const markdown = contents.value.get(document.mirrorHash as string);
-    return markdown === undefined ? [] : [{ id: document.id, markdown }];
-  });
+  return wanted.map((document) => ({
+    id: document.id,
+    markdown:
+      document.mirrorHash === null
+        ? null
+        : (contents.value.get(document.mirrorHash) ?? null),
+  }));
 };
 
 const normalizeValues = (values: readonly string[] | undefined): string[] =>

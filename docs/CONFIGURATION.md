@@ -655,8 +655,9 @@ collections:
   `links.policy` finding. Links inside the collection are always allowed. An
   empty list allows no other collection.
 - `linkPolicy.externalUrls: deny`: each external URL in a Markdown page
-  (outside frontmatter and code) is a `links.external-url` finding. `allow`
-  or omitted means no check.
+  (outside frontmatter and code) is a `links.external-url` finding. A page
+  whose indexed text is missing is reported as unchecked instead of passing;
+  run `gno update` and audit again. `allow` or omitted means no check.
 - `pathPattern`: a regex matched against each document's path inside the
   collection; a path that does not match is a `paths.pattern` finding. Add
   `^` and `$` to match the whole path.

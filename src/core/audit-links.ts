@@ -416,10 +416,14 @@ export interface AuditExternalUrl {
   column: number;
 }
 
-/** Markdown text of one audited document in a collection that denies URLs. */
+/**
+ * Markdown text of one audited document in a collection that denies URLs.
+ * `markdown` is null when the indexed content is missing; the document is
+ * then reported as unchecked instead of passing.
+ */
 export interface AuditExternalUrlDocument {
   id: number;
-  markdown: string;
+  markdown: string | null;
 }
 
 /** Scheme URLs (`https://…`, `ftp://…`) and `mailto:`; `gno://` is internal. */
@@ -569,6 +573,25 @@ export const evaluateCollectionLinkRules = (
       if (!document || !auditedIds.has(id)) continue;
       if (!hasExternalUrlRule(byName.get(document.collection) ?? { name: "" }))
         continue;
+      if (markdown === null) {
+        // Missing content cannot prove the document has no URLs: fail closed.
+        urlFindings.push({
+          subject: document.uri,
+          location: null,
+          severity: "warning",
+          message: `Content is missing from the index, so external URLs were not checked in collection ${document.collection}: ${document.relPath}`,
+          evidence: [
+            {
+              kind: "external-url-unchecked",
+              summary: "indexed content missing",
+              uri: document.uri,
+              path: document.relPath,
+            },
+          ],
+          guidance: ["Run gno update to index the document, then audit again"],
+        });
+        continue;
+      }
       for (const found of findExternalUrls(markdown)) {
         urlFindings.push({
           subject: document.uri,
