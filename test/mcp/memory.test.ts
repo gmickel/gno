@@ -666,8 +666,11 @@ describe("2026-07-28 sessionless leg: memory identity is per caller", () => {
 });
 
 describe("subject-owned memory and refs over MCP", () => {
-  const assistant = { name: "assistant", admin: false, mayAssertSubject: true };
-  const reader = { name: "reader", admin: false, mayAssertSubject: false };
+  // Admin principals: subject-owned memory applies to every principal, and
+  // collection access rules (which restrict only non-admin principals) must
+  // not hide what these tests check, the subject scope and the refs rule.
+  const assistant = { name: "assistant", admin: true, mayAssertSubject: true };
+  const reader = { name: "reader", admin: true, mayAssertSubject: false };
   const subject = (id: string) => ({
     id,
     context: "1to1" as const,

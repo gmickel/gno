@@ -1542,8 +1542,9 @@ never carry identity.
 #### Subject-owned memory
 
 Applies only to gateway requests authenticated by a named principal
-(`gateway.principals`); stdio, CLI, REST, SDK and a gateway without principals
-behave exactly as above.
+(`gateway.principals`), `admin` or not; stdio, CLI, REST, SDK and a gateway
+without principals behave exactly as above. These rules hold on their own and
+do not depend on any collection-level access rule.
 
 - **Owner scope.** When a `mayAssertSubject` principal sends `GNO-Subject`,
   the server derives the owner scope `subject:<first 32 hex chars of the
