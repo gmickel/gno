@@ -18,6 +18,7 @@ async function loadAllSchemas(): Promise<void> {
     "search-results",
     "status",
     "peek",
+    "convert",
     "doctor",
     "audit-report",
     "metadata-summary",

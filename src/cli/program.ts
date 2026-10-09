@@ -1833,6 +1833,31 @@ function wireOnboardingCommands(program: Command): void {
       );
     });
 
+  // convert - Convert one file to Markdown without indexing
+  program
+    .command("convert <file>")
+    .description("Convert one file to Markdown without indexing it")
+    .option(
+      "--max-bytes <n>",
+      "max input size in bytes (default: 100MB)",
+      parsePositiveInt.bind(null, "max-bytes")
+    )
+    .option("--json", "JSON output")
+    .action(async (file: string, cmdOpts: Record<string, unknown>) => {
+      const json = getFormat(cmdOpts) === "json";
+      const { convertFile, formatConvert, formatConvertWarnings } =
+        await import("./commands/convert");
+      const result = await convertFile(file, {
+        maxBytes: cmdOpts.maxBytes as number | undefined,
+      });
+      if (!json) {
+        for (const line of formatConvertWarnings(result)) {
+          process.stderr.write(`${line}\n`);
+        }
+      }
+      process.stdout.write(`${formatConvert(result, { json })}\n`);
+    });
+
   // doctor - Diagnose configuration issues
   program
     .command("doctor")

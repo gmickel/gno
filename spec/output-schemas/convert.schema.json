@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/convert@1.0",
+  "title": "GNO Convert Result",
+  "description": "One file converted to canonical Markdown by gno convert, without indexing",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "source",
+    "converter",
+    "title",
+    "languageHint",
+    "markdown",
+    "mirrorHash",
+    "warnings"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "convert@1.0",
+      "description": "Convert result schema version"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "mime", "ext", "sizeBytes"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Absolute path of the converted file"
+        },
+        "mime": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Detected MIME type"
+        },
+        "ext": {
+          "type": "string",
+          "description": "File extension including the dot, or empty"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Input size in bytes"
+        }
+      }
+    },
+    "converter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "title": {
+      "type": ["string", "null"],
+      "description": "Title extracted by the converter, if any"
+    },
+    "languageHint": {
+      "type": ["string", "null"],
+      "description": "BCP-47 language hint from the converter, if any"
+    },
+    "markdown": {
+      "type": "string",
+      "description": "Canonical Markdown, identical to what indexing stores for the same bytes"
+    },
+    "mirrorHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 hex of the canonical Markdown"
+    },
+    "warnings": {
+      "type": "array",
+      "description": "Non-fatal conversion warnings",
+      "items": {
+        "type": "object",
+        "required": ["code", "message"],
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "LOSSY",
+              "TRUNCATED",
+              "PARTIAL",
+              "UNSUPPORTED_FEATURE",
+              "LOW_CONFIDENCE"
+            ]
+          },
+          "message": { "type": "string" },
+          "details": { "type": "object", "additionalProperties": true }
+        }
+      }
+    }
+  }
+}

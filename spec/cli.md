@@ -66,6 +66,7 @@ equivalent files fail closed as ambiguous.
 | ------------------ | ------ | ------- | ----- | ---- | ----- | -------- |
 | status             | yes    | no      | no    | yes  | no    | terminal |
 | peek               | yes    | no      | no    | no   | no    | terminal |
+| convert            | yes    | no      | no    | no   | no    | Markdown |
 | init               | no     | no      | no    | no   | no    | terminal |
 | setup              | yes    | no      | no    | no   | no    | terminal |
 | profile check      | yes    | no      | no    | no   | no    | terminal |
@@ -526,6 +527,77 @@ Bare payload (no `ok` envelope). Schema
 - `0`: Success, including uninitialized
 - `1`: Validation error (unsupported format)
 - `2`: Locked or failed database read, or any partial subquery failure
+
+---
+
+### gno convert
+
+Convert one file to canonical Markdown without indexing it. Uses the same
+converters, canonicalization and limits as indexing, so `markdown` and
+`mirrorHash` match what `gno update` stores for the same bytes. Needs no config,
+index, or model; never writes to the store.
+
+**Synopsis:**
+
+```bash
+gno convert <file> [--max-bytes <n>] [--json]
+```
+
+**Arguments:**
+| Arg | Type | Description |
+|-----|------|-------------|
+| `<file>` | string | Path to a file of any supported type (PDF, DOCX, PPTX, XLSX, Markdown, text, ...) |
+
+**Options:**
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--max-bytes` | integer | 104857600 (100 MB) | Refuse files larger than this, before reading them |
+
+The conversion timeout (60 s) and output cap (50M characters) are the indexing
+defaults.
+
+**Output (terminal):** the canonical Markdown on stdout. Warnings go to stderr,
+one per line as `Warning [<code>]: <message>`.
+
+**Output (JSON):**
+
+Bare payload (no `ok` envelope). Schema
+[`convert@1.0`](./output-schemas/convert.schema.json).
+
+```json
+{
+  "schemaVersion": "convert@1.0",
+  "source": {
+    "path": "/home/user/docs/report.pdf",
+    "mime": "application/pdf",
+    "ext": ".pdf",
+    "sizeBytes": 48213
+  },
+  "converter": { "id": "adapter/markitdown-ts", "version": "0.0.10" },
+  "title": "Report",
+  "languageHint": null,
+  "markdown": "# Report\n\n...",
+  "mirrorHash": "3f2a...64 hex chars",
+  "warnings": [{ "code": "LOSSY", "message": "Images dropped" }]
+}
+```
+
+**Errors:** the standard error envelope with `details.reason` set to the
+conversion error code. `details` also carries `path`, and for `TOO_LARGE`
+`size` and `limit`.
+
+| `details.reason`                                                        | Error code   | Exit |
+| ----------------------------------------------------------------------- | ------------ | ---- |
+| `NOT_FOUND` (missing path or not a regular file)                        | `VALIDATION` | 1    |
+| `TOO_LARGE` (input over `--max-bytes`)                                  | `VALIDATION` | 1    |
+| `UNSUPPORTED` (no converter for the type)                               | `VALIDATION` | 1    |
+| `CORRUPT`, `TIMEOUT`, `PERMISSION`, `IO`, `ADAPTER_FAILURE`, `INTERNAL` | `RUNTIME`    | 2    |
+
+**Exit Codes:**
+
+- `0`: Success
+- `1`: Missing file, over the size limit, or unsupported type
+- `2`: Conversion failed
 
 ---
 
