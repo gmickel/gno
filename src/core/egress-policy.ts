@@ -4,6 +4,9 @@ import {
   type EgressPolicy,
   type EgressPolicySource,
 } from "../config/types";
+import { EGRESS_MAX_COLLECTIONS } from "./egress-limits";
+
+export { EGRESS_MAX_COLLECTIONS };
 
 export const EGRESS_ACTIONS = [
   "retrieve",
@@ -38,9 +41,6 @@ export const EGRESS_CONTENT_CLASSES = [
   "retrieval_trace",
 ] as const;
 export type EgressContentClass = (typeof EGRESS_CONTENT_CLASSES)[number];
-
-/** Hard cap for one decision and its bounded audit projection. */
-export const EGRESS_MAX_COLLECTIONS = 64;
 
 export const EGRESS_REASON_CODES = [
   "LOCAL_DESTINATION",
@@ -420,6 +420,15 @@ function evaluateSnapshot(snapshot: EgressEvaluationSnapshot): EgressDecision {
   return decision(true, "REMOTE_POLICY_AUTHENTICATED", audit);
 }
 
+/**
+ * The fixed, content-free denial for a scope above `EGRESS_MAX_COLLECTIONS`.
+ * Boundaries that size a scope before resolving it use this so an oversized
+ * configuration is refused as a policy decision, never as a server error.
+ */
+export function collectionLimitExceededDecision(): EgressDecision {
+  return decision(false, "COLLECTION_LIMIT_EXCEEDED", limitExceededAudit());
+}
+
 export function evaluateEgressPolicy(input: unknown): EgressDecision {
   try {
     const result = snapshotInput(input);
@@ -427,7 +436,7 @@ export function evaluateEgressPolicy(input: unknown): EgressDecision {
       return decision(false, "INVALID_INPUT", invalidInputAudit());
     }
     if (result.kind === "limit_exceeded") {
-      return decision(false, "COLLECTION_LIMIT_EXCEEDED", limitExceededAudit());
+      return collectionLimitExceededDecision();
     }
     return evaluateSnapshot(result.value);
   } catch {

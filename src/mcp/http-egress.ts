@@ -12,7 +12,11 @@ import {
   EGRESS_DENIED_MESSAGE,
   EgressDeniedError,
 } from "../core/egress-enforcement";
-import { evaluateEgressPolicy } from "../core/egress-policy";
+import { EGRESS_MAX_COLLECTIONS } from "../core/egress-limits";
+import {
+  collectionLimitExceededDecision,
+  evaluateEgressPolicy,
+} from "../core/egress-policy";
 
 export const MCP_HTTP_EGRESS_TOOLS = {
   gno_add_collection: "metadata",
@@ -229,6 +233,17 @@ const enforceMessage = (
   }
 
   const names = requestedCollections(message.params, collections);
+  // Size the scope before resolving it: an oversized configuration or
+  // request is a policy denial (403), not an unhandled lineage error (500).
+  if (
+    collections.length > EGRESS_MAX_COLLECTIONS ||
+    names.length > EGRESS_MAX_COLLECTIONS
+  ) {
+    throw new HttpMcpEgressDeniedError(
+      new EgressDeniedError(collectionLimitExceededDecision()),
+      message.id
+    );
+  }
   const scoped = collectionEgressStates(collections, names);
   const decision = evaluateEgressPolicy({
     collections: scoped.length > 0 ? scoped : [SYSTEM_EGRESS_STATE],

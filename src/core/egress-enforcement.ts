@@ -13,6 +13,7 @@ import type { EgressLineage, EgressLineageInput } from "./egress-provenance";
 
 import { resolveConfiguredEgressPolicy } from "../config/types";
 import { EgressAuditService } from "./egress-audit";
+import { EGRESS_MAX_COLLECTIONS } from "./egress-limits";
 import { evaluateEgressPolicy } from "./egress-policy";
 import {
   EgressProvenanceError,
@@ -59,7 +60,7 @@ const collectionLineageInputs = (
       );
     }
     const { length } = collections;
-    if (!Number.isSafeInteger(length) || length > 128) {
+    if (!Number.isSafeInteger(length) || length > EGRESS_MAX_COLLECTIONS) {
       throw new EgressProvenanceError(
         "INVALID_EGRESS_LINEAGE",
         "Collection policy scope must be a readable dense bounded array"
