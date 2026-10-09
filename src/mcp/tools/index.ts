@@ -44,6 +44,7 @@ import { staleCollectionsMessage } from "../../store/sqlite/adapter";
 import { MCP_ACTIVATION_VERIFICATION_ENV } from "../activation-verification-mode";
 import { exposesHostPaths } from "../context";
 import { profileToolDescription } from "../tool-descriptions-core";
+import { runWithToolLease } from "../tool-lease";
 import {
   createProfileToolRegistrar,
   DEFAULT_MCP_TOOL_PROFILE,
@@ -1043,38 +1044,39 @@ export async function runTool<T>(
     };
   }
 
-  // Sequential execution via mutex
+  // Sequential execution via mutex. The lease lets external waits (the
+  // access hook) release it for their duration; see `../tool-lease`.
   const release = await acquireInferencePermit(() => ctx.toolMutex.acquire());
-  try {
-    assertConfiguredCollections(ctx, name);
-    assertInferenceActive();
-    const raw = await (ctx.runWithSnapshot?.(fn) ?? fn());
-    assertInferenceActive();
-    const traceMetadata =
-      raw !== null && typeof raw === "object"
-        ? (raw as Record<PropertyKey, unknown>)[RETRIEVAL_TRACE_METADATA]
-        : undefined;
-    const data = forCaller(ctx, raw);
-    return {
-      content: [{ type: "text", text: formatText(data) }],
-      structuredContent: data as { [x: string]: unknown },
-      ...(traceMetadata
-        ? { _meta: { gno: { retrievalTrace: traceMetadata } } }
-        : {}),
-    };
-  } catch (e) {
-    // Exception firewall: never throw, always return isError
-    const message = e instanceof Error ? e.message : String(e);
-    console.error(`[MCP] ${name} error:`, message);
-    const parsedError = parseErrorMessage(message);
-    return {
-      isError: true,
-      content: [{ type: "text", text: `Error: ${message}` }],
-      structuredContent: parsedError,
-    };
-  } finally {
-    release();
-  }
+  return runWithToolLease(ctx.toolMutex, release, async () => {
+    try {
+      assertConfiguredCollections(ctx, name);
+      assertInferenceActive();
+      const raw = await (ctx.runWithSnapshot?.(fn) ?? fn());
+      assertInferenceActive();
+      const traceMetadata =
+        raw !== null && typeof raw === "object"
+          ? (raw as Record<PropertyKey, unknown>)[RETRIEVAL_TRACE_METADATA]
+          : undefined;
+      const data = forCaller(ctx, raw);
+      return {
+        content: [{ type: "text", text: formatText(data) }],
+        structuredContent: data as { [x: string]: unknown },
+        ...(traceMetadata
+          ? { _meta: { gno: { retrievalTrace: traceMetadata } } }
+          : {}),
+      };
+    } catch (e) {
+      // Exception firewall: never throw, always return isError
+      const message = e instanceof Error ? e.message : String(e);
+      console.error(`[MCP] ${name} error:`, message);
+      const parsedError = parseErrorMessage(message);
+      return {
+        isError: true,
+        content: [{ type: "text" as const, text: `Error: ${message}` }],
+        structuredContent: parsedError,
+      };
+    }
+  });
 }
 
 /**

@@ -11,6 +11,12 @@
  * `200 {allow: [index]}`. Fail closed: an index the hook does not list, a
  * late answer, a non-200 status, malformed JSON or a transport error denies.
  *
+ * Concurrency: at most `maxConcurrent` hook calls (default 16) are in flight
+ * per hook; the rest queue in order. A call's deadline starts when it is
+ * sent, so queueing never turns into a timeout denial. The MCP layer awaits
+ * hook calls with the tool mutex released (`waitOutside`), so one slow hook
+ * answer does not hold other callers' tool calls.
+ *
  * @module src/core/access-hook
  */
 
@@ -20,6 +26,7 @@ import type { TypedMetadata } from "./typed-metadata";
 import { type AccessContext, DERIVED_FROM_KEY } from "./access-scope";
 
 export const DEFAULT_ACCESS_HOOK_TIMEOUT_MS = 2000;
+export const DEFAULT_ACCESS_HOOK_MAX_CONCURRENT = 16;
 
 /** One opaque source reference, as sent to the hook. */
 export interface AccessRef {
@@ -89,17 +96,69 @@ export type AccessHookFetch = (
   init: RequestInit & { unix?: string }
 ) => Promise<Response>;
 
+/** First-in, first-out bound on the hook calls in flight. */
+class HookCallLimiter {
+  #active = 0;
+  readonly #queue: Array<() => void> = [];
+
+  constructor(readonly max: number) {}
+
+  /** Number of calls currently sent and not yet answered (for tests). */
+  get active(): number {
+    return this.#active;
+  }
+
+  async run<T>(operation: () => Promise<T>): Promise<T> {
+    if (this.#active < this.max) this.#active += 1;
+    // A released slot passes straight to the next waiter (no decrement).
+    else await new Promise<void>((resolve) => this.#queue.push(resolve));
+    try {
+      return await operation();
+    } finally {
+      const next = this.#queue.shift();
+      if (next) next();
+      else this.#active -= 1;
+    }
+  }
+}
+
+/** One limiter per hook endpoint and bound, shared by every request. */
+const limiters = new Map<string, HookCallLimiter>();
+
+const limiterFor = (hook: HttpGatewayAccessHook): HookCallLimiter => {
+  const max = hook.maxConcurrent ?? DEFAULT_ACCESS_HOOK_MAX_CONCURRENT;
+  const key = JSON.stringify([hook.url, hook.unix ?? null, max]);
+  let limiter = limiters.get(key);
+  if (!limiter) {
+    limiter = new HookCallLimiter(max);
+    limiters.set(key, limiter);
+  }
+  return limiter;
+};
+
 /**
  * One hook call. Resolves to one boolean per ref (true = allowed); never
- * rejects, every failure denies all refs.
+ * rejects, every failure denies all refs. Waits for a slot under the hook's
+ * `maxConcurrent` bound first; the deadline covers only the exchange.
  */
-export async function callAccessHook(
+export function callAccessHook(
   hook: HttpGatewayAccessHook,
   request: AccessHookRequest,
   fetchImpl: AccessHookFetch = fetch as AccessHookFetch
 ): Promise<boolean[]> {
   const denied = request.refs.map(() => false);
-  if (request.refs.length === 0) return denied;
+  if (request.refs.length === 0) return Promise.resolve(denied);
+  return limiterFor(hook).run(() =>
+    exchangeWithHook(hook, request, fetchImpl, denied)
+  );
+}
+
+async function exchangeWithHook(
+  hook: HttpGatewayAccessHook,
+  request: AccessHookRequest,
+  fetchImpl: AccessHookFetch,
+  denied: boolean[]
+): Promise<boolean[]> {
   const timeoutMs = hook.timeoutMs ?? DEFAULT_ACCESS_HOOK_TIMEOUT_MS;
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -151,11 +210,22 @@ export interface AccessHookSession {
   readonly calls: number;
 }
 
+export interface AccessHookSessionOptions {
+  /**
+   * Runs around each hook wait. The MCP layer passes `yieldToolMutex` so a
+   * request awaits its hook answer without holding the tool mutex.
+   */
+  waitOutside?: <T>(wait: () => Promise<T>) => Promise<T>;
+}
+
 export function createAccessHookSession(
   hook: HttpGatewayAccessHook,
   identity: { subject: string; ctx: AccessContext; requestId: string },
-  fetchImpl?: AccessHookFetch
+  fetchImpl?: AccessHookFetch,
+  options: AccessHookSessionOptions = {}
 ): AccessHookSession {
+  const waitOutside =
+    options.waitOutside ?? (<T>(wait: () => Promise<T>) => wait());
   const decided = new Map<string, boolean>();
   let calls = 0;
   return {
@@ -171,15 +241,17 @@ export function createAccessHookSession(
       if (pending.size > 0) {
         const batch = [...pending.values()];
         calls += 1;
-        const verdicts = await callAccessHook(
-          hook,
-          {
-            subject: identity.subject,
-            ctx: identity.ctx,
-            request_id: identity.requestId,
-            refs: batch,
-          },
-          fetchImpl
+        const verdicts = await waitOutside(() =>
+          callAccessHook(
+            hook,
+            {
+              subject: identity.subject,
+              ctx: identity.ctx,
+              request_id: identity.requestId,
+              refs: batch,
+            },
+            fetchImpl
+          )
         );
         batch.forEach((ref, index) =>
           decided.set(accessRefKey(ref), verdicts[index] === true)

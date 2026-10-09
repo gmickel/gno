@@ -43,6 +43,7 @@ import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
 import { resolveModelUri } from "../../llm/registry";
 import { createLazyVectorIndex } from "../../store/vector/lazy";
+import { runWithToolLease } from "../tool-lease";
 import {
   accessRetrievalOptions,
   resolveMcpAccess,
@@ -92,14 +93,14 @@ const runContextTool = async (
     );
   }
   const release = await context.toolMutex.acquire();
-  try {
-    const data = await (context.runWithSnapshot?.(operation) ?? operation());
-    return asToolResult(data);
-  } catch (error) {
-    return asToolError(error);
-  } finally {
-    release();
-  }
+  return runWithToolLease(context.toolMutex, release, async () => {
+    try {
+      const data = await (context.runWithSnapshot?.(operation) ?? operation());
+      return asToolResult(data);
+    } catch (error) {
+      return asToolError(error);
+    }
+  });
 };
 
 interface McpModelPorts {

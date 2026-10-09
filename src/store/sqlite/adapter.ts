@@ -862,6 +862,18 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     db.exec(`PRAGMA busy_timeout = ${Math.min(current, remaining)}`);
   }
 
+  /**
+   * True while a store transaction is open on this connection. Callers that
+   * would let other work run on the shared connection (yielding the MCP tool
+   * mutex) must not do so then: that work would join the open transaction.
+   */
+  hasOpenTransaction(): boolean {
+    return (
+      this.activeTransaction !== undefined ||
+      this.txContext.getStore() !== undefined
+    );
+  }
+
   /** Revoke suspended transaction callbacks before closing their connection. */
   fenceForShutdown(): void {
     this.shutdownFenced = true;

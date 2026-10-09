@@ -39,6 +39,7 @@ import {
   createEgressLineage,
   mergeEgressLineages,
 } from "../../core/egress-provenance";
+import { yieldToolMutex } from "../tool-lease";
 
 /** Collections the current request may read; absent when unrestricted. */
 export interface McpAccessScope {
@@ -111,7 +112,16 @@ export const resolveMcpAccess = async (
       // The caller's turn id (GNO-Request-Id) when sent; else one per call.
       requestId: request.subject?.requestId ?? crypto.randomUUID(),
     },
-    fetchImpl
+    fetchImpl,
+    // Hook answers are awaited with the tool mutex released, so one slow
+    // answer does not queue every other caller's tool call behind it. Never
+    // inside an open store transaction: other tools would join it.
+    {
+      waitOutside: (wait) =>
+        ctx.store.hasOpenTransaction?.() === false
+          ? yieldToolMutex(wait)
+          : wait(),
+    }
   );
   const candidates = hookCheckedAccessRefCollections(ctx.collections, request);
   const refs = candidates.flatMap((collection) =>

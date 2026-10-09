@@ -355,6 +355,7 @@ gateway:
     url: http://hook/check
     unix: /run/my-hook.sock # optional, recommended
     timeoutMs: 2000 # optional
+    maxConcurrent: 16 # optional, hook calls in flight at once
 ```
 
 With an access hook, GNO asks your service which sources the user may read.
@@ -369,6 +370,12 @@ unreachable hook means "no". GNO never interprets the references; your hook
 decides. Denied notes never reach the reranker, graph expansion, capsules,
 counts or warnings, and asking for one gives the same `NOT_FOUND` as a
 missing note.
+
+While a request waits for your hook, other requests keep running, so a slow
+hook adds its own latency to each request but no longer queues every other
+user behind it. GNO sends at most `maxConcurrent` hook calls at once
+(default 16) and queues the rest in order; the `timeoutMs` deadline starts
+when a call is sent, so waiting in that queue never counts as "no".
 
 ## Link workspaces
 

@@ -477,6 +477,7 @@ gateway:
     url: http://hook/check # host ignored with `unix`
     unix: /run/fabric/hook.sock # optional; recommended
     timeoutMs: 2000 # optional, 10..30000, default 2000
+    maxConcurrent: 16 # optional, 1..256, default 16
 collections:
   - name: keyed
     access: { public: true, provenanceKey: sources } # default derived_from
@@ -493,6 +494,13 @@ collections:
   `timeoutMs` denies. Non-integer or out-of-range indexes are ignored.
 - Within one tool call each distinct ref is asked once; answers are not kept
   across calls or subjects.
+- Concurrency: MCP tool calls still run one at a time, but a tool call
+  awaits each hook answer with the tool mutex released and takes it back
+  before continuing, so other callers' tool calls run during the wait (not
+  while a store transaction is open). At most `maxConcurrent` hook calls are
+  in flight per hook across all requests; further calls queue first in,
+  first out, and `timeoutMs` starts when a call is sent. Verdicts stay per
+  tool call and subject, and every failure mode above still denies.
 - Collection check (once per call, before retrieval): the `accessRef` of
   every `accessRef` collection the context may reach (any in `1to1`,
   `firmwide` only in `shared`, none in `public_only`). An allowed ref makes
