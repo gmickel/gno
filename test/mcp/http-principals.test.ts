@@ -277,6 +277,21 @@ describe("gateway principals boundary", () => {
     expect(result.value.request.headers.has("gno-subject")).toBe(false);
     expect(result.value.request.headers.has("gno-context")).toBe(false);
 
+    const withTurn = await security.authorize(
+      request(PLUGIN_TOKEN, {
+        "GNO-Subject": "u:alice",
+        "GNO-Context": "1to1",
+        "GNO-Request-Id": "3f2a9c0e8b7d4e6f9a1b2c3d4e5f6a7b",
+      }),
+      peer
+    );
+    expect(withTurn.ok && withTurn.value.subject?.requestId).toBe(
+      "3f2a9c0e8b7d4e6f9a1b2c3d4e5f6a7b"
+    );
+    expect(
+      withTurn.ok && withTurn.value.request.headers.has("gno-request-id")
+    ).toBe(false);
+
     const noHeaders = await security.authorize(request(PLUGIN_TOKEN, {}), peer);
     expect(noHeaders.ok && noHeaders.value.subject).toBeUndefined();
   });
@@ -288,6 +303,9 @@ describe("gateway principals boundary", () => {
       { "GNO-Subject": "" },
       { "GNO-Subject": "u:alice", "GNO-Context": "everyone" },
       { "GNO-Context": "1to1" },
+      { "GNO-Request-Id": "r1" },
+      { "GNO-Subject": "u:alice", "GNO-Request-Id": "bad id" },
+      { "GNO-Subject": "u:alice", "GNO-Request-Id": "" },
     ];
     for (const headers of cases) {
       const result = await security.authorize(

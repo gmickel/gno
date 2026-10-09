@@ -359,7 +359,9 @@ gateway:
 
 With an access hook, GNO asks your service which sources the user may read.
 It sends `POST {subject, ctx, request_id, refs: [{sys, ref}]}` and expects
-`200 {allow: [indexes]}`. A note is served only if the hook allows every
+`200 {allow: [indexes]}`. `request_id` is the caller's `GNO-Request-Id`
+header when it sends one (so your hook can match its own turn), else a new
+UUID per tool call. A note is served only if the hook allows every
 source in its `derived_from`; an `accessRef` collection is readable only if
 the hook allows its `accessRef` (in shared conversations only `firmwide`
 ones are asked about). Anything not listed, a slow answer, an error or an

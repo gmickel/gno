@@ -69,6 +69,12 @@ export type RequestSubjectContext = "1to1" | "shared" | "public_only";
 export interface RequestSubject {
   id: string;
   context?: RequestSubjectContext;
+  /**
+   * `GNO-Request-Id`: the caller's id for this turn. Every access hook call
+   * for the request carries it as `request_id`, so the hook can match its own
+   * turn state.
+   */
+  requestId?: string;
   hash: string;
 }
 

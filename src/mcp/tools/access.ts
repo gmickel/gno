@@ -92,7 +92,8 @@ const scopeOf = (
  * `mcpAccessScope`. With it, the hook is asked once for the `accessRef`
  * collections this context may reach (allowed ones become readable) and the
  * returned scope carries a per-document `check`. Hook answers are cached for
- * the rest of this request only.
+ * the rest of this request only. Every hook call of the request carries the
+ * same `request_id`: the asserted `GNO-Request-Id`, else a fresh UUID.
  */
 export const resolveMcpAccess = async (
   ctx: ToolContext,
@@ -107,7 +108,8 @@ export const resolveMcpAccess = async (
     {
       subject: request.subject?.id ?? "",
       ctx: request.subject?.context ?? "public_only",
-      requestId: crypto.randomUUID(),
+      // The caller's turn id (GNO-Request-Id) when sent; else one per call.
+      requestId: request.subject?.requestId ?? crypto.randomUUID(),
     },
     fetchImpl
   );

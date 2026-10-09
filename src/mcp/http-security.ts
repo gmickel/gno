@@ -36,7 +36,10 @@ const VISIBLE_ASCII = /^[\x21-\x7e]+$/;
 /** Request headers only a `mayAssertSubject` principal may send. */
 export const GNO_SUBJECT_HEADER = "gno-subject";
 export const GNO_CONTEXT_HEADER = "gno-context";
+/** Caller's id for the turn this request belongs to; sent to the access hook. */
+export const GNO_REQUEST_ID_HEADER = "gno-request-id";
 const SUBJECT_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$/;
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const SUBJECT_CONTEXTS: readonly RequestSubjectContext[] = [
   "1to1",
   "shared",
@@ -248,7 +251,8 @@ export function hashGatewaySubject(subject: string): string {
 
 /**
  * Read the subject headers. Only a `mayAssertSubject` principal may send them;
- * anyone else, a malformed value, or a context without a subject is refused.
+ * anyone else, a malformed value, or a context or request id without a subject
+ * is refused.
  */
 function readSubjectAssertion(
   headers: Headers,
@@ -256,13 +260,17 @@ function readSubjectAssertion(
 ): { ok: true; subject?: RequestSubject } | { ok: false } {
   const id = headers.get(GNO_SUBJECT_HEADER);
   const context = headers.get(GNO_CONTEXT_HEADER);
-  if (id === null && context === null) return { ok: true };
+  const requestId = headers.get(GNO_REQUEST_ID_HEADER);
+  if (id === null && context === null && requestId === null)
+    return { ok: true };
   if (!principal?.mayAssertSubject || id === null || !SUBJECT_PATTERN.test(id))
     return { ok: false };
   if (
     context !== null &&
     !SUBJECT_CONTEXTS.includes(context as RequestSubjectContext)
   )
+    return { ok: false };
+  if (requestId !== null && !REQUEST_ID_PATTERN.test(requestId))
     return { ok: false };
   return {
     ok: true,
@@ -271,6 +279,7 @@ function readSubjectAssertion(
       ...(context === null
         ? {}
         : { context: context as RequestSubjectContext }),
+      ...(requestId === null ? {} : { requestId }),
       hash: hashGatewaySubject(id),
     },
   };
@@ -556,6 +565,7 @@ export class HttpMcpSecurity {
     sanitizedHeaders.delete("transfer-encoding");
     sanitizedHeaders.delete(GNO_SUBJECT_HEADER);
     sanitizedHeaders.delete(GNO_CONTEXT_HEADER);
+    sanitizedHeaders.delete(GNO_REQUEST_ID_HEADER);
     const forwardedHeaderNames: string[] = [];
     for (const name of sanitizedHeaders.keys())
       if (name.startsWith("x-forwarded-")) forwardedHeaderNames.push(name);

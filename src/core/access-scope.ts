@@ -23,7 +23,7 @@ export type AccessContext = "1to1" | "shared" | "public_only";
 /** The parts of the request snapshot access decisions read. */
 export interface AccessRequest {
   principal?: { admin: boolean };
-  subject?: { id: string; context?: AccessContext };
+  subject?: { id: string; context?: AccessContext; requestId?: string };
 }
 
 /** One error for missing, unreadable and unauthorized targets alike. */

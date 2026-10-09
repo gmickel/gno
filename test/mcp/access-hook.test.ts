@@ -223,6 +223,30 @@ describe("access hook in MCP reads", () => {
     ]);
   });
 
+  test("every hook call of a request carries the caller's GNO-Request-Id", async () => {
+    // Contract with a stateful hook: it matches request_id to the
+    // turn it registered, so collection and document checks must reuse it.
+    subject = {
+      id: "u:a",
+      context: "1to1",
+      requestId: "3f2a9c0e8b7d4e6f9a1b2c3d4e5f6a7b",
+      hash: "h",
+    };
+    calls.length = 0;
+    await searchUris();
+    expect(calls.length).toBeGreaterThanOrEqual(2);
+    expect(new Set(calls.map((call) => call.request_id))).toEqual(
+      new Set(["3f2a9c0e8b7d4e6f9a1b2c3d4e5f6a7b"])
+    );
+    // Without the header: one fresh id per tool call, still shared by its calls.
+    subject = { id: "u:a", context: "1to1", hash: "h" };
+    calls.length = 0;
+    await searchUris();
+    const ids = new Set(calls.map((call) => call.request_id));
+    expect(ids.size).toBe(1);
+    expect([...ids][0]).not.toBe("3f2a9c0e8b7d4e6f9a1b2c3d4e5f6a7b");
+  });
+
   test("search serves only pages whose every ref is allowed, counts included", async () => {
     subject = { id: "u:a", context: "1to1", hash: "h" };
     const { uris, meta } = await searchUris();

@@ -306,7 +306,9 @@ gateway:
   `mayAssertSubject` principal may send them. Any other caller that sends
   either header, a subject outside `[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}`, an
   unknown context, or a context without a subject gets the redacted 403
-  `Forbidden` boundary error. Both headers are removed before SDK dispatch;
+  `Forbidden` boundary error. `GNO-Request-Id: <id>` (optional, same
+  principals, needs `GNO-Subject`, `[A-Za-z0-9][A-Za-z0-9._:-]{0,127}`, else 403) is the caller's id for the turn; the access hook receives it as
+  `request_id`. The headers are removed before SDK dispatch;
   subject assertion is never read from `Forwarded`/`X-Forwarded-*` or from
   tool arguments.
 - The tool context of each request carries the principal
@@ -482,7 +484,9 @@ collections:
 
 - Request: `POST <url>` with JSON
   `{"subject": "<GNO-Subject>", "ctx": "1to1"|"shared"|"public_only",
-"request_id": "<uuid per tool call>", "refs": [{"sys": "...", "ref": "..."}]}`.
+"request_id": "<GNO-Request-Id, else a uuid per tool call>", "refs": [{"sys": "...", "ref": "..."}]}`.
+  Every hook call of one tool call (collection check and document checks)
+  carries the same `request_id`.
   Response: `200 {"allow": [<index into refs>, ...]}`.
 - Fail closed: a ref whose index is not listed, a non-200 status, malformed
   JSON, a missing `allow` array, a transport error, or no answer within
