@@ -107,6 +107,12 @@ export function buildEligibleDocumentQuery(
     );
     params.push(...options.memoryScopesAny);
   }
+  if (options.memoryScopeRequired !== undefined) {
+    conditions.push(
+      "EXISTS (SELECT 1 FROM doc_memory_scopes ms WHERE ms.document_id = d.id AND ms.scope = ?)"
+    );
+    params.push(options.memoryScopeRequired);
+  }
   if (options.excludeSuperseded) {
     conditions.push(
       "NOT EXISTS (SELECT 1 FROM doc_edges se JOIN documents sd ON sd.id = se.src_doc_id AND sd.active = 1 WHERE se.dst_doc_id = d.id AND se.edge_type = 'supersedes')"

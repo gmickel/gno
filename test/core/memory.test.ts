@@ -1159,6 +1159,55 @@ describe("subject-owned memory and refs", () => {
     }
   });
 
+  test("caller scopes apply before the retrieval limit under a subject", async () => {
+    const owner = memorySubjectScope("c".repeat(64));
+    const asC = () => serviceFor(harness, { ownerScope: owner });
+    const add = async (text: string, scopes: string[]) => {
+      const result = await asC().remember({
+        ...IDENTITY,
+        text,
+        collection: "memory",
+        scopes,
+        decision: "add",
+      });
+      expect(result.outcome).toBe("added");
+    };
+    // More owner facts in another scope than the recall window (32) and the
+    // candidate pool (16), each ranking above the target fact.
+    for (let index = 0; index < 40; index += 1) {
+      await add(`Rollout step ${index}.`, ["project:noisy"]);
+    }
+    await add(
+      "The billing service rollout waits for the finance sign-off every quarter.",
+      ["project:quiet"]
+    );
+    const recalled = await asC().recall({
+      ...IDENTITY,
+      query: "rollout",
+      collection: "memory",
+      scopes: ["project:quiet"],
+    });
+    expect(recalled.facts.map((fact) => fact.text)).toEqual([
+      "The billing service rollout waits for the finance sign-off every quarter.",
+    ]);
+
+    // Dedupe: the same text in 20 other scopes must not hide the existing
+    // record in the requested scope from the candidate pool.
+    const text = "Standup moves to 09:30 on Mondays.";
+    for (let index = 0; index < 20; index += 1) {
+      await add(text, [`team:t${index}`]);
+    }
+    await add(text, ["team:target"]);
+    const again = await asC().remember({
+      ...IDENTITY,
+      text,
+      collection: "memory",
+      scopes: ["team:target"],
+      decision: "add",
+    });
+    expect(again.outcome).toBe("existing");
+  });
+
   test("malformed or too many refs are refused before any write", async () => {
     await expectMemoryError(
       remember(harness, {

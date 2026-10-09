@@ -232,6 +232,8 @@ export interface SearchOptions extends InferenceOptions {
    */
   memoryFilter?: {
     scopes: string[];
+    /** A scope every document must also carry (gateway subject owner). */
+    requiredScope?: string;
     excludeSuperseded: boolean;
   };
   /** Internal: match any positive lexical term (OR) instead of all (AND). */

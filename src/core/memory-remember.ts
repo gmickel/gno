@@ -86,16 +86,19 @@ async function loadCandidatePool(
   input: CandidateQuery
 ): Promise<MemoryFact[]> {
   const { store } = deps;
-  // Subject scoping: retrieve by the owner scope, then keep only facts
-  // this subject may see. Without it the caller scopes filter as before.
+  // Subject scoping: the store query requires a caller scope and the owner
+  // scope before the pool limit; the ownership rule is checked again below.
   const scoping = deps.subjectScoping;
-  const scopes = scoping
+  const scopes: { caller: string[]; query: string[]; owner?: string } = scoping
     ? requireSubjectScopes(deps, input.scopes)
     : { caller: input.scopes, query: input.scopes };
   const ftsResult = await store.searchFts(normalizeMemoryText(input.text), {
     limit: MEMORY_CANDIDATE_POOL,
     collection: input.collection,
     memoryScopesAny: scopes.query,
+    ...(scopes.owner === undefined
+      ? {}
+      : { memoryScopeRequired: scopes.owner }),
     excludeSuperseded: true,
     anyTerm: true,
   });

@@ -223,6 +223,18 @@ function recallContentQuery(query: string): string {
 }
 
 /**
+ * Retrieval scope: facts carrying any caller scope and, under subject
+ * scoping, the owner scope too. Both apply inside the store query, before the
+ * retrieval limit.
+ */
+interface RetrievalInput {
+  query: string;
+  collection: string;
+  scopes: string[];
+  ownerScope?: string;
+}
+
+/**
  * Lexical leg: BM25 over the content terms, every term required first. When
  * no fact carries all of them (a question-shaped turn), fall back to
  * any-term matching so facts sharing a content term still rank, best BM25
@@ -231,14 +243,20 @@ function recallContentQuery(query: string): string {
  */
 async function searchLexical(
   deps: MemoryServiceDeps,
-  input: { query: string; collection: string; scopes: string[] }
+  input: RetrievalInput
 ): Promise<SearchResult[] | null> {
   const contentQuery = recallContentQuery(input.query);
   const run = async (anyTerm: boolean) => {
     const bm25 = await searchBm25(deps.store, contentQuery, {
       collection: input.collection,
       limit: MEMORY_RECALL_RETRIEVAL_LIMIT,
-      memoryFilter: { scopes: input.scopes, excludeSuperseded: true },
+      memoryFilter: {
+        scopes: input.scopes,
+        ...(input.ownerScope === undefined
+          ? {}
+          : { requiredScope: input.ownerScope }),
+        excludeSuperseded: true,
+      },
       ...(anyTerm
         ? {
             anyTerm,
@@ -263,10 +281,10 @@ async function searchLexical(
  */
 async function retrieveLegs(
   deps: MemoryServiceDeps,
-  input: { query: string; collection: string; scopes: string[] }
+  input: RetrievalInput
 ): Promise<{ legs: RetrievalLeg[]; retrieval: RecallResult["retrieval"] }> {
   const { store, config } = deps;
-  const { query, collection, scopes } = input;
+  const { query, collection, scopes, ownerScope } = input;
   const legs: RetrievalLeg[] = [];
   const lexical = await searchLexical(deps, input);
   if (lexical) {
@@ -286,6 +304,7 @@ async function retrieveLegs(
   const eligible = await store.listMemoryEligibleDocuments({
     collection,
     scopes,
+    ...(ownerScope === undefined ? {} : { requiredScope: ownerScope }),
     excludeSuperseded: true,
   });
   if (!eligible.ok) {
@@ -356,8 +375,8 @@ async function materializeFacts(
       mirrorHash: result.conversion.mirrorHash,
     });
     if (!fact) continue;
-    // Subject scoping: retrieval ran on the owner scope; the caller
-    // scopes and the ownership rule apply here, before budgeting.
+    // Subject scoping: retrieval already required the caller and owner
+    // scopes; the full ownership rule is checked again here.
     if (
       scoping &&
       !memorySubjectVisible(fact.scopes, callerScopes, scoping.ownerScope)
@@ -429,12 +448,20 @@ function selectWithinBudget(
  */
 async function emptyRecallHint(
   deps: MemoryServiceDeps,
-  input: { collection: string; scopes: string[]; matched: number }
+  input: {
+    collection: string;
+    scopes: string[];
+    ownerScope?: string;
+    matched: number;
+  }
 ): Promise<string> {
   if (input.matched > 0) return MEMORY_OVER_BUDGET_RECALL_HINT;
   const eligible = await deps.store.listMemoryEligibleDocuments({
     collection: input.collection,
     scopes: input.scopes,
+    ...(input.ownerScope === undefined
+      ? {}
+      : { requiredScope: input.ownerScope }),
     excludeSuperseded: true,
   });
   if (!eligible.ok) {
@@ -460,6 +487,7 @@ export async function recallFacts(
   );
   const subjectScopes = requireSubjectScopes(deps, rawInput.scopes);
   const scopes = subjectScopes.query;
+  const ownerScope = subjectScopes.owner;
   const maxFacts = rawInput.maxFacts ?? MEMORY_RECALL_MAX_FACTS;
   const maxTokens = rawInput.maxTokens ?? MEMORY_RECALL_MAX_TOKENS;
   if (
@@ -478,6 +506,7 @@ export async function recallFacts(
     query,
     collection: collection.name,
     scopes,
+    ownerScope,
   });
   const materialized = await materializeFacts(
     deps,
@@ -517,6 +546,7 @@ export async function recallFacts(
           hint: await emptyRecallHint(deps, {
             collection: collection.name,
             scopes,
+            ownerScope,
             matched: materialized.length,
           }),
         }),

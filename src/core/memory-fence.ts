@@ -107,14 +107,20 @@ export function requireScopes(scopes: unknown): string[] {
 
 /**
  * Caller scopes under gateway subject scoping: the `subject:` prefix is
- * server-owned, so a caller may not name one. Returns the scopes to filter
- * retrieval by (the owner scope alone when a subject was asserted) and the
+ * server-owned, so a caller may not name one. Returns the caller scopes
+ * retrieval filters by, the owner scope retrieval must also require when a
+ * subject was asserted (both in the store query, before any limit), and the
  * scopes a write stores (caller scopes plus the owner scope).
  */
 export function requireSubjectScopes(
   deps: MemoryServiceDeps,
   scopes: unknown
-): { caller: string[]; query: string[]; write: string[] } {
+): {
+  caller: string[];
+  query: string[];
+  owner?: string;
+  write: string[];
+} {
   const caller = requireScopes(scopes);
   const scoping = deps.subjectScoping;
   if (!scoping) return { caller, query: caller, write: caller };
@@ -128,7 +134,8 @@ export function requireSubjectScopes(
   if (!owner) return { caller, query: caller, write: caller };
   return {
     caller,
-    query: [owner],
+    query: caller,
+    owner,
     write: requireScopes([...caller, owner]),
   };
 }

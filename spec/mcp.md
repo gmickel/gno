@@ -1550,9 +1550,10 @@ do not depend on any collection-level access rule.
   the server derives the owner scope `subject:<first 32 hex chars of the
 subject hash>`. `gno_remember` stores it with the caller's scopes (the total
   must still be at most 8). `gno_recall` and remember's candidate and
-  duplicate matching retrieve only facts that carry it, then apply the
-  caller's scopes; a fact that carries another subject's owner scope is never
-  returned. Superseding another subject's fact returns
+  duplicate matching retrieve only facts that carry it and at least one of
+  the caller's scopes, both inside the retrieval query and before its limit,
+  so facts in the owner's other scopes never crowd out the requested ones; a
+  fact that carries another subject's owner scope is never returned. Superseding another subject's fact returns
   `MEMORY_PREDECESSOR_NOT_FOUND`.
 - **Reserved prefix.** Under a principal, caller scopes starting with
   `subject:` return `MEMORY_SCOPES_INVALID`, so a caller can neither name

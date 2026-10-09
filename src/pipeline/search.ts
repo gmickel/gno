@@ -353,6 +353,7 @@ export async function searchBm25(
     author: options.author,
     filter: options.filter,
     memoryScopesAny: options.memoryFilter?.scopes,
+    memoryScopeRequired: options.memoryFilter?.requiredScope,
     excludeSuperseded: options.memoryFilter?.excludeSuperseded,
     anyTerm: options.anyTerm,
     minRelativeScore: options.minRelativeScore,
