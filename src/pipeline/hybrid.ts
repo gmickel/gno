@@ -403,6 +403,22 @@ export async function searchHybrid(
 }
 
 // oxlint-disable-next-line max-lines-per-function -- search orchestration with BM25, vector, fusion, reranking
+/**
+ * Effective collection scope of a request: `collection` intersected with the
+ * `collections` allowlist. Undefined means unrestricted; empty denies all.
+ */
+function requestCollectionScope(
+  options: Pick<HybridSearchOptions, "collection" | "collections">
+): string[] | undefined {
+  if (options.collections === undefined) {
+    return options.collection === undefined ? undefined : [options.collection];
+  }
+  if (options.collection === undefined) return options.collections;
+  return options.collections.includes(options.collection)
+    ? [options.collection]
+    : [];
+}
+
 async function searchHybridWithHydration(
   deps: HybridSearchDeps,
   query: string,
@@ -814,7 +830,13 @@ async function searchHybridWithHydration(
     fusedCandidates,
     {
       collection: options.collection,
-      collections: options.graphCollections ?? options.collections,
+      // A request allowlist is intersected with `collection` before graph
+      // expansion; only the internal graphCollections may widen past it.
+      collections:
+        options.graphCollections ??
+        (options.collections === undefined
+          ? undefined
+          : requestCollectionScope(options)),
       includeSimilar: vectorAvailable,
       eligibility: vectorEligibility,
       limit,
@@ -841,6 +863,34 @@ async function searchHybridWithHydration(
       pipelineConfig.rrf
     );
     timings.fusionMs += performance.now() - graphFusionStartedAt;
+  }
+  // Enforce the intersected request scope before anything reaches the
+  // reranker: no candidate outside `collection` ∩ `collections` may be sent
+  // to the model, whichever stage produced it.
+  if (
+    options.collections !== undefined &&
+    options.graphCollections === undefined
+  ) {
+    const scope = new Set(requestCollectionScope(options));
+    const scopeDocsResult = await hydration.getDocumentsByMirrorHashes(
+      [...new Set(fusedCandidates.map((candidate) => candidate.mirrorHash))],
+      { collection: options.collection, activeOnly: true }
+    );
+    if (!scopeDocsResult.ok) {
+      return err("QUERY_FAILED", scopeDocsResult.error.message);
+    }
+    const inScopeHashes = new Set<string>();
+    const inScopeIds = new Set<number>();
+    for (const document of scopeDocsResult.value) {
+      if (!document.mirrorHash || !scope.has(document.collection)) continue;
+      inScopeHashes.add(document.mirrorHash);
+      inScopeIds.add(document.id);
+    }
+    fusedCandidates = fusedCandidates.filter((candidate) =>
+      candidate.documentId === undefined
+        ? inScopeHashes.has(candidate.mirrorHash)
+        : inScopeIds.has(candidate.documentId)
+    );
   }
   diagnoseTrace?.stages.push({
     id: "graph",
