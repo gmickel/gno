@@ -604,7 +604,8 @@ or infers its cwd from them; remote hints produce redacted zero-affinity
 metadata and no ranking change.
 
 `gno_search`, `gno_vsearch`, and `gno_query` also accept optional
-`collections: string[]` (1-100 names). Results come only from documents in any
+`collections: string[]` (1-1024 names, the same bound as collection
+egress). Results come only from documents in any
 listed collection; the allowlist is applied before `limit`, so other
 collections never take result slots. Every name must be a configured
 collection, otherwise the call fails with `Collection not found: <name>`. When
@@ -631,7 +632,7 @@ filter.
       "type": "array",
       "items": { "type": "string", "minLength": 1 },
       "minItems": 1,
-      "maxItems": 100,
+      "maxItems": 1024,
       "description": "Filter to documents in ANY of these collections (applied before the limit)"
     },
     "limit": {
@@ -759,7 +760,7 @@ Vector semantic search over indexed documents.
       "type": "array",
       "items": { "type": "string", "minLength": 1 },
       "minItems": 1,
-      "maxItems": 100,
+      "maxItems": 1024,
       "description": "Filter to documents in ANY of these collections (applied before the limit)"
     },
     "limit": {
@@ -850,7 +851,7 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
       "type": "array",
       "items": { "type": "string", "minLength": 1 },
       "minItems": 1,
-      "maxItems": 100,
+      "maxItems": 1024,
       "description": "Filter to documents in ANY of these collections (applied before the limit)"
     },
     "limit": {

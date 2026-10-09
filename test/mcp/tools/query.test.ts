@@ -4,6 +4,7 @@
 
 import { describe, expect, test } from "bun:test";
 
+import { MAX_REQUEST_COLLECTIONS } from "../../../src/core/collection-limits";
 import {
   graphQueryInputSchema,
   MCP_TOOL_DESCRIPTIONS,
@@ -144,6 +145,30 @@ describe("collections allowlist schema", () => {
       expect(schema.safeParse({ query: "x", collections: [] }).success).toBe(
         false
       );
+    }
+  );
+
+  test.each([
+    ["gno_query", queryInputSchema],
+    ["gno_search", searchInputSchema],
+    ["gno_vsearch", vsearchInputSchema],
+  ] as const)(
+    "%s accepts several hundred collections up to the shared bound",
+    (_, schema) => {
+      const names = (count: number): string[] =>
+        Array.from({ length: count }, (_, i) => `c${i}`);
+      expect(MAX_REQUEST_COLLECTIONS).toBe(1024);
+      for (const count of [180, 500, MAX_REQUEST_COLLECTIONS]) {
+        expect(
+          schema.safeParse({ query: "x", collections: names(count) }).success
+        ).toBe(true);
+      }
+      expect(
+        schema.safeParse({
+          query: "x",
+          collections: names(MAX_REQUEST_COLLECTIONS + 1),
+        }).success
+      ).toBe(false);
     }
   );
 

@@ -57,6 +57,7 @@ import {
   type EgressRelaxationConfirmation,
 } from "../../core/collection-egress-policy-service";
 import { parsePolicySetBody } from "../../core/collection-egress-policy-validation";
+import { MAX_REQUEST_COLLECTIONS } from "../../core/collection-limits";
 import {
   type ConnectorVerificationCode,
   getConnectorVerificationRemediation,
@@ -652,7 +653,17 @@ function parseRestCollections(
       ),
     };
   }
-  return { ok: true, collections: [...new Set(value as string[])] };
+  const collections = [...new Set(value as string[])];
+  if (collections.length > MAX_REQUEST_COLLECTIONS) {
+    return {
+      ok: false,
+      response: errorResponse(
+        "VALIDATION",
+        `collections accepts at most ${MAX_REQUEST_COLLECTIONS} names`
+      ),
+    };
+  }
+  return { ok: true, collections };
 }
 
 function parseRestMetadataFilter(

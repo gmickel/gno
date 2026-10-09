@@ -14,6 +14,7 @@ import {
   contextVerifySurfaceSchema,
 } from "../../app/context-surface";
 import { CAPTURE_MAX_TEXT_BYTES } from "../../core/capture";
+import { MAX_REQUEST_COLLECTIONS } from "../../core/collection-limits";
 import {
   compiledContextPreviewInputSchema,
   compiledContextCheckInputSchema,
@@ -171,7 +172,7 @@ import {
 const collectionsInputSchema = z
   .array(z.string().min(1))
   .min(1)
-  .max(100)
+  .max(MAX_REQUEST_COLLECTIONS)
   .optional()
   .describe(
     "Filter to documents in ANY of these collections (applied before the limit)"
