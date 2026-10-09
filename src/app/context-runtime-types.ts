@@ -62,6 +62,8 @@ export interface ContextCapsuleRuntimeDeps {
   traceSession?: RetrievalTraceSession;
   /** Internal non-canonical retrieval explanation request. */
   explain?: boolean;
+  /** Internal corpus allowlist applied to every retrieval before the limit. */
+  retrievalScope?: { allowedMirrorHashes: string[] };
 }
 
 export type ContextRuntimeErrorCode =

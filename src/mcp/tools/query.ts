@@ -52,6 +52,7 @@ import { appendRetrievalWarnings } from "../retrieval-warnings";
 import {
   finishScopedRetrieval,
   mcpAccessScope,
+  provenanceRetrievalScope,
   scopeRetrievalArgs,
 } from "./access";
 import {
@@ -284,6 +285,7 @@ export function handleQuery(
         tagsAny: normalizeTagFilters(args.tagsAny),
         projectAffinity,
         explain: args.explain,
+        ...(scope ? await provenanceRetrievalScope(scope, ctx.store) : {}),
       };
 
       try {

@@ -43,7 +43,7 @@ import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
 import { resolveModelUri } from "../../llm/registry";
 import { createLazyVectorIndex } from "../../store/vector/lazy";
-import { mcpAccessScope } from "./access";
+import { mcpAccessScope, provenanceRetrievalScope } from "./access";
 
 interface ContextToolResultData {
   structuredContent: Record<string, unknown>;
@@ -221,8 +221,9 @@ export const handleContext = (
     const parsed = parseContextBuildSurfaceInput(args, context.indexName);
     if (scope) {
       // Access mode: unreadable collections fail exactly like unknown ones,
-      // no collection means every readable one, and documents must declare
-      // `derived_from`. A scope with nothing readable has no evidence.
+      // no collection means every readable one, and documents must carry
+      // a valid `derived_from` (presence filter here, allowlist below, both
+      // before the limit). A scope with nothing readable has no evidence.
       if (scope.collections.length === 0) {
         throw new ContextCapsuleContractError("no_evidence", "No evidence");
       }
@@ -298,6 +299,7 @@ export const handleContext = (
         ? await createMcpModelPorts(context, parsed.input.collections)
         : null;
       const capsule = await buildContextCapsule(parsed.input, {
+        ...(scope ? await provenanceRetrievalScope(scope, context.store) : {}),
         store: context.store,
         config: context.config,
         indexName: context.indexName,

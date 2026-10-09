@@ -54,14 +54,9 @@ export const accessRuleAdmits = (
   if ("owner" in access) {
     return context === "1to1" && request.subject?.id === access.owner;
   }
-  // accessRef: firm-wide collections serve every subject in 1:1 and shared
-  // conversations; any other accessRef needs the access hook (not yet
-  // available), so it is denied.
-  return (
-    access.firmwide === true &&
-    request.subject !== undefined &&
-    (context === "1to1" || context === "shared")
-  );
+  // accessRef (firm-wide or not) needs the access hook to check the subject
+  // against the referenced source. No hook exists yet, so it is denied.
+  return false;
 };
 
 /**

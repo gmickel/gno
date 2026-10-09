@@ -121,6 +121,9 @@ export const buildContextCapsule = async (
           {
             ...request,
             noRerank: requestNoRerank,
+            ...(deps.retrievalScope
+              ? { retrievalScope: deps.retrievalScope }
+              : {}),
             projectAffinity: deps.projectAffinity,
             traceSession: deps.traceSession,
           }

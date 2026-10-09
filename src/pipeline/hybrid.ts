@@ -574,6 +574,9 @@ async function searchHybridWithHydration(
     collections: options.collections,
     memoryScopesAny: options.memoryFilter?.scopes,
     excludeSuperseded: options.memoryFilter?.excludeSuperseded,
+    // Graph neighbours hydrate through this eligibility, so the internal
+    // allowlist bounds them as well as the vector legs.
+    allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
     relPathPrefix: options.retrievalScope?.relPathPrefix,
     tagsAll: options.tagsAll,
     tagsAny: options.tagsAny,

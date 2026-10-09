@@ -86,6 +86,43 @@ export const isDocumentServable = (
   doc.mirrorHash !== null &&
   derivedFromIssue(doc.typedMetadata, doc.metadataError) === null;
 
+/**
+ * Pre-limit corpus scope that keeps documents with an invalid `derived_from`
+ * out of retrieval: candidates, graph neighbours, the reranker and the limit.
+ * The `derived_from` presence filter already drops documents without the key,
+ * so this returns an empty object (no extra restriction) unless a readable
+ * collection holds a document whose `derived_from` is present but invalid.
+ * Then it returns an allowlist of the servable documents' mirror hashes, minus
+ * any hash an invalid document shares (fail closed).
+ */
+export const provenanceRetrievalScope = async (
+  scope: McpAccessScope,
+  store: Pick<StorePort, "listDocuments">
+): Promise<{ retrievalScope?: { allowedMirrorHashes: string[] } }> => {
+  const servable = new Set<string>();
+  const invalid = new Set<string>();
+  for (const name of scope.collections) {
+    const docs = await store.listDocuments(name);
+    if (!docs.ok) throw new Error(docs.error.message);
+    for (const doc of docs.value) {
+      if (!doc.active || doc.mirrorHash === null) continue;
+      if (isDocumentServable(scope, doc)) servable.add(doc.mirrorHash);
+      else if (
+        !doc.metadataError &&
+        derivedFromIssue(doc.typedMetadata) === "invalid"
+      ) {
+        invalid.add(doc.mirrorHash);
+      }
+    }
+  }
+  if (invalid.size === 0) return {};
+  return {
+    retrievalScope: {
+      allowedMirrorHashes: [...servable].filter((hash) => !invalid.has(hash)),
+    },
+  };
+};
+
 interface RetrievalArgs {
   collection?: string;
   collections?: string[];
@@ -125,8 +162,8 @@ interface RetrievalResult {
 }
 
 /**
- * Drop results whose document is no longer servable (an invalid
- * `derived_from` passes the pre-limit presence check) and hide the
+ * Backstop after retrieval: drop any result whose document is not servable
+ * (e.g. it changed since `provenanceRetrievalScope` ran) and hide the
  * collection list the scope injected.
  */
 export const finishScopedRetrieval = async <T extends RetrievalResult>(

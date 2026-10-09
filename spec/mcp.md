@@ -342,9 +342,9 @@ collections:
   opaque reference and never interprets it.
 - Readable collections, by the request's `GNO-Context` (missing subject or
   context = `public_only`): `public` in every context; `owner` only for that
-  subject in `1to1`; `firmwide: true` for any subject in `1to1` and `shared`.
-  Any other `accessRef` collection is denied until an access hook can check
-  it, and a collection without `access` is always denied.
+  subject in `1to1`. Every `accessRef` collection, `firmwide` or not, is
+  denied until an access hook can check it, and a collection without
+  `access` is always denied.
 - `gno_query` and `gno_search`: a named `collection`/`collections` the
   request cannot read fails exactly like an unknown collection; without one
   the search covers every readable collection (none denies all). Both run
@@ -363,9 +363,9 @@ collections:
   `owner` collection, for its owner, in `1to1`. Otherwise `NOT_FOUND`.
 - Provenance: a document is served only when its typed metadata has
   `derived_from` as a non-empty list of `<system>:<reference>` strings
-  (docs/TYPED-METADATA.md). Presence is required before the limit; documents
-  with malformed members are dropped from results afterwards (they never
-  reach the caller; `meta.totalResults` counts what is returned). Memory
+  (docs/TYPED-METADATA.md). Documents without it, or with a malformed value,
+  are excluded before candidate selection, graph expansion, reranking and
+  the limit, in `gno_search`, `gno_query` and `gno_context`. Memory
   recall is not subject to this check.
 - Every tool outside the scoped set (`gno_changes`, links, backlinks,
   similar, graph, tags, status, jobs, traces, diagnostics, writes other than

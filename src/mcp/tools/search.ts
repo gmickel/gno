@@ -28,6 +28,7 @@ import { appendRetrievalWarnings } from "../retrieval-warnings";
 import {
   finishScopedRetrieval,
   mcpAccessScope,
+  provenanceRetrievalScope,
   scopeRetrievalArgs,
 } from "./access";
 import {
@@ -161,6 +162,7 @@ export function handleSearch(
         projectAffinity,
         contentTypeRules: normalizeContentTypes(ctx.config.contentTypes ?? [])
           .rules,
+        ...(scope ? await provenanceRetrievalScope(scope, ctx.store) : {}),
       };
       let traceSession: RetrievalTraceSession | undefined;
       try {

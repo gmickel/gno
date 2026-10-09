@@ -335,13 +335,13 @@ collections:
     path: ~/wiki/ops
     access:
       accessRef: { sys: sp, ref: "drives/b!x/root" }
-      firmwide: true # every user in 1:1 and shared conversations
+      firmwide: true # stored; not served until an access hook exists
 ```
 
 A principal without `admin: true` reads only collections whose rule admits
 the request's `GNO-Subject` and `GNO-Context`. A collection with no `access`
-is never served to it. An `accessRef` collection that is not `firmwide` is
-not served yet: it waits for an access hook that can check the reference.
+is never served to it. An `accessRef` collection, `firmwide` or not, is not
+served yet: it waits for an access hook that can check the reference.
 Notes served this way also need `gno.metadata.derived_from` (a list of
 `<system>:<reference>` strings); `gno audit provenance` lists the ones that
 lack it.

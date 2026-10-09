@@ -22,6 +22,8 @@ import { TYPED_METADATA_INGEST_VERSION } from "../../src/core/typed-metadata";
 import {
   assertMemoryReadable,
   assertMemoryWritable,
+  mcpAccessScope,
+  provenanceRetrievalScope,
 } from "../../src/mcp/tools/access";
 import { handleGet } from "../../src/mcp/tools/get";
 import { handleMultiGet } from "../../src/mcp/tools/multi-get";
@@ -171,29 +173,50 @@ describe("access rules", () => {
     ).toBeUndefined();
   });
 
-  test("per context: public, firm-wide, owner; accessRef and no access denied", () => {
+  test("per context: public, owner; accessRef (even firm-wide) and no access denied", () => {
     expect(
       authorizedCollectionNames(COLLECTIONS, request("u:alice", "1to1"))
-    ).toEqual(["pub", "firm", "mine"]);
+    ).toEqual(["pub", "mine"]);
     expect(
       authorizedCollectionNames(COLLECTIONS, request("u:alice", "shared"))
-    ).toEqual(["pub", "firm"]);
+    ).toEqual(["pub"]);
     expect(
       authorizedCollectionNames(COLLECTIONS, request("u:alice", "public_only"))
     ).toEqual(["pub"]);
     expect(
       authorizedCollectionNames(COLLECTIONS, request("u:bob", "1to1"))
-    ).toEqual(["pub", "firm"]);
+    ).toEqual(["pub"]);
     expect(authorizedCollectionNames(COLLECTIONS, request(undefined))).toEqual([
       "pub",
     ]);
-    // A non-firm-wide accessRef stays denied until an access hook exists.
+    // Every accessRef, firm-wide or not, stays denied until an access hook
+    // exists.
+    for (const firmwide of [undefined, true]) {
+      for (const context of ["1to1", "shared"] as const) {
+        expect(
+          accessRuleAdmits(
+            { accessRef: { sys: "sp", ref: "drives/x/root" }, firmwide },
+            request("u:alice", context)
+          )
+        ).toBe(false);
+      }
+    }
+  });
+
+  test("retrieval allowlist leaves out invalid derived_from before the limit", async () => {
+    as({}, "u:bob", "1to1");
+    const scope = mcpAccessScope(ctx());
+    if (!scope) throw new Error("expected access mode");
+    // pub holds a.md (valid, mirror-0), nosrc.md (mirror-1), bad.md (mirror-2).
+    expect(await provenanceRetrievalScope(scope, store)).toEqual({
+      retrievalScope: { allowedMirrorHashes: ["mirror-0"] },
+    });
+    as({}, "u:alice", "1to1");
+    const clean = mcpAccessScope(ctx());
+    if (!clean) throw new Error("expected access mode");
     expect(
-      accessRuleAdmits(
-        { accessRef: { sys: "sp", ref: "drives/x/root" } },
-        request("u:alice", "1to1")
-      )
-    ).toBe(false);
+      await provenanceRetrievalScope({ ...clean, collections: ["mine"] }, store)
+    ).toEqual({});
   });
 
   test("derived_from must be a non-empty <sys>:<ref> string array", () => {
@@ -259,8 +282,9 @@ describe("scoped MCP reads", () => {
       documents: { uri: string }[];
       skipped: { ref: string; reason: string }[];
     };
-    expect(data.documents.map((doc) => doc.uri)).toEqual(["gno://firm/f.md"]);
+    expect(data.documents).toEqual([]);
     expect(data.skipped.map((skip) => skip.reason)).toEqual([
+      "Not found",
       "Not found",
       "Not found",
     ]);
@@ -269,7 +293,7 @@ describe("scoped MCP reads", () => {
       (
         pattern.structuredContent as { documents: { uri: string }[] }
       ).documents.map((doc) => doc.uri)
-    ).toEqual(["gno://pub/a.md", "gno://firm/f.md"]);
+    ).toEqual(["gno://pub/a.md"]);
   });
 
   test("search serves only readable collections and valid derived_from", async () => {
@@ -286,11 +310,15 @@ describe("scoped MCP reads", () => {
       results: { uri: string }[];
       meta: { totalResults: number; collections?: string[] };
     };
-    expect(data.results.map((r) => r.uri).sort()).toEqual([
-      "gno://firm/f.md",
-      "gno://pub/a.md",
-    ]);
-    expect(data.meta.totalResults).toBe(2);
+    expect(data.results.map((r) => r.uri).sort()).toEqual(["gno://pub/a.md"]);
+    expect(data.meta.totalResults).toBe(1);
+
+    // An invalid derived_from is excluded before the limit, so it cannot take
+    // the only slot.
+    const top = (await uris({ limit: 1 })).structuredContent as {
+      results: { uri: string }[];
+    };
+    expect(top.results.map((r) => r.uri)).toEqual(["gno://pub/a.md"]);
     expect(data.meta.collections).toBeUndefined();
 
     const denied = await uris({ collection: "secret" });
