@@ -318,6 +318,34 @@ Mixed evidence and derived artifacts use the most restrictive participating
 collection. Explicit partial checks disclose every omitted collection and
 reason; normal operations never silently drop restricted evidence.
 
+## Collection access
+
+Only for a shared gateway with named principals (`gateway.principals`, see
+[MCP](MCP.md#named-principals-optional)). It does nothing otherwise.
+
+```yaml
+collections:
+  - name: pub
+    path: ~/wiki/pub
+    access: { public: true } # every user, every conversation
+  - name: p-alice
+    path: ~/wiki/personal/alice
+    access: { owner: "u:alice" } # only u:alice, only in 1:1
+  - name: ops
+    path: ~/wiki/ops
+    access:
+      accessRef: { sys: sp, ref: "drives/b!x/root" }
+      firmwide: true # every user in 1:1 and shared conversations
+```
+
+A principal without `admin: true` reads only collections whose rule admits
+the request's `GNO-Subject` and `GNO-Context`. A collection with no `access`
+is never served to it. An `accessRef` collection that is not `firmwide` is
+not served yet: it waits for an access hook that can check the reference.
+Notes served this way also need `gno.metadata.derived_from` (a list of
+`<system>:<reference>` strings); `gno audit provenance` lists the ones that
+lack it.
+
 ## Link workspaces
 
 If you index one Obsidian vault as several collections (for example one per
@@ -870,18 +898,19 @@ remove` deletes them at once.
 
 ### Collection Fields
 
-| Field                | Type            | Default     | Description                                                            |
-| -------------------- | --------------- | ----------- | ---------------------------------------------------------------------- |
-| `name`               | string          | required    | Unique identifier (lowercase)                                          |
-| `path`               | string          | required    | Absolute path to directory                                             |
-| `pattern`            | glob            | `**/*`      | File matching pattern                                                  |
-| `include`            | array           | see below   | Extension allowlist                                                    |
-| `exclude`            | array           | see below   | Patterns to skip                                                       |
-| `updateCmd`          | string          | -           | Shell command before indexing                                          |
-| `updateCmdTimeoutMs` | number          | `600000`    | Stop `updateCmd` after this many milliseconds                          |
-| `languageHint`       | string          | -           | BCP-47 language code                                                   |
-| `models`             | object          | -           | Per-collection model overrides                                         |
-| `workspaceRoot`      | path or `false` | auto-detect | Link workspace for wiki links; see [Link workspaces](#link-workspaces) |
+| Field                | Type            | Default     | Description                                                                         |
+| -------------------- | --------------- | ----------- | ----------------------------------------------------------------------------------- |
+| `name`               | string          | required    | Unique identifier (lowercase)                                                       |
+| `path`               | string          | required    | Absolute path to directory                                                          |
+| `pattern`            | glob            | `**/*`      | File matching pattern                                                               |
+| `include`            | array           | see below   | Extension allowlist                                                                 |
+| `exclude`            | array           | see below   | Patterns to skip                                                                    |
+| `updateCmd`          | string          | -           | Shell command before indexing                                                       |
+| `updateCmdTimeoutMs` | number          | `600000`    | Stop `updateCmd` after this many milliseconds                                       |
+| `languageHint`       | string          | -           | BCP-47 language code                                                                |
+| `models`             | object          | -           | Per-collection model overrides                                                      |
+| `workspaceRoot`      | path or `false` | auto-detect | Link workspace for wiki links; see [Link workspaces](#link-workspaces)              |
+| `access`             | object          | -           | Who non-admin gateway principals serve; see [Collection access](#collection-access) |
 
 ### Default Include Extensions
 

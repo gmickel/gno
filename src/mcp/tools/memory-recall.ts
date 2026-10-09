@@ -17,6 +17,7 @@ import {
   MEMORY_RECALL_MAX_TOKENS,
   type RecallResult,
 } from "../../core/memory";
+import { assertMemoryReadable } from "./access";
 import { runTool, type ToolResult } from "./index";
 import {
   createMcpMemoryService,
@@ -103,6 +104,7 @@ export function handleRecall(
     ctx,
     "gno_recall",
     async () => {
+      assertMemoryReadable(ctx, args.collection);
       const service = createMcpMemoryService(ctx);
       try {
         return await service.recall({

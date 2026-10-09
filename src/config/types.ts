@@ -114,6 +114,28 @@ const COLLECTION_NAME_REGEX = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 /** Collection scope key pattern: name (1-64 chars) followed by colon */
 const COLLECTION_SCOPE_REGEX = /^[a-z0-9][a-z0-9_-]{0,63}:$/;
 
+/** Opaque external reference: a system tag and an id in that system. */
+const AccessRefSchema = z
+  .object({
+    sys: z.string().regex(/^[a-z][a-z0-9_-]{0,31}$/, {
+      message: "accessRef.sys must match [a-z][a-z0-9_-]{0,31}",
+    }),
+    ref: z.string().min(1).max(4096),
+  })
+  .strict();
+
+/**
+ * Collection read access for non-admin gateway principals. Exactly one of
+ * `public`, `owner` or `accessRef`. `firmwide` applies to `accessRef` only.
+ */
+export const CollectionAccessSchema = z.union([
+  z.object({ public: z.literal(true) }).strict(),
+  z.object({ owner: z.string().min(1).max(256) }).strict(),
+  z
+    .object({ accessRef: AccessRefSchema, firmwide: z.boolean().optional() })
+    .strict(),
+]);
+
 export const CollectionSchema = z.object({
   /** Unique collection identifier (lowercase) */
   name: z
@@ -160,6 +182,13 @@ export const CollectionSchema = z.object({
    * start at zero; guarded mutations advance it under the config write lock.
    */
   egressPolicyRevision: z.number().int().nonnegative().optional(),
+
+  /**
+   * Who may read this collection through a non-admin gateway principal.
+   * Ignored unless `gateway.principals` is set; such a principal is denied
+   * every collection without it. See `src/core/access-scope.ts`.
+   */
+  access: CollectionAccessSchema.optional(),
 
   /**
    * Source content availability policy for indexing. Distinct from egress:
@@ -211,6 +240,7 @@ export const CollectionSchema = z.object({
 });
 
 export type Collection = z.infer<typeof CollectionSchema>;
+export type CollectionAccess = NonNullable<Collection["access"]>;
 export type CollectionModelOverrides = NonNullable<Collection["models"]>;
 
 /** Resolve config input without erasing whether the user made an explicit choice. */

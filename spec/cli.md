@@ -1055,6 +1055,16 @@ it is wrapped in angle brackets. `[x](<my note.md>)` and `[x](my%20note.md)`
 both link to `my note.md`; a link title (`[x](note.md "Title")`) is not part
 of the target.
 
+`provenance.required-metadata` runs only when an audited document's collection
+sets `access` (see spec/mcp.md "Collection access"); with none set the rule
+list, findings and fingerprints are unchanged. It fails (exit 4) on a
+`warning` finding for each document in such a collection whose typed metadata
+lacks `derived_from` (`missing`) or whose `derived_from` is not a non-empty
+list of `<system>:<reference>` strings, or whose metadata is invalid
+(`invalid`). Evidence kind `required-metadata`, summary
+`derived_from:<missing|invalid>`. Non-admin gateway principals are not served
+these documents.
+
 The JSON contract is versioned as `gno://schemas/audit-report@1.0`. Finding IDs
 are stable SHA-256 identities derived from rule, normalized subject/location,
 and load-bearing evidence. Wall-clock timing and traversal order do not affect
@@ -3200,7 +3210,7 @@ Install gno as an MCP server in client configurations.
 **Synopsis:**
 
 ```bash
-gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--enable-write] [--tool-profile <core|full>] [--json]
+gno mcp install [--target <target>] [--scope <scope>] [--force] [--dry-run] [--enable-write] [--tool-profile <core|full|scoped>] [--json]
 ```
 
 **Options:**

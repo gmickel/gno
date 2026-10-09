@@ -1150,6 +1150,13 @@ contract, and each malformed file yields one warning per diagnostic code
 `MEMORY_CONTENT_HASH_MISMATCH`, ...). Malformed files stay visible to ordinary
 search but are excluded from managed recall until repaired.
 
+When a collection sets `access` (see
+[Collection access](CONFIGURATION.md#collection-access)), the `provenance`
+category also runs `provenance.required-metadata`: each note in that
+collection without a valid `gno.metadata.derived_from` list of
+`<system>:<reference>` strings is a warning, because non-admin gateway
+principals are not served it.
+
 ### gno embed
 
 Generate embeddings for all collections or one collection.
@@ -2486,7 +2493,7 @@ Options:
 - `--host`, `--mcp-token-file`, repeatable `--mcp-allowed-host` /
   `--mcp-allowed-origin`, and `--mcp-enable-write` - see
   [Resident HTTP MCP security](MCP.md#resident-http-transport)
-- `--mcp-tool-profile <core|full>` - advertised MCP tool set; overrides
+- `--mcp-tool-profile <core|full|scoped>` - advertised MCP tool set; overrides
   `gateway.toolProfile`, default `full`, read at listener start - see
   [Tool Profiles](MCP.md#tool-profiles)
 - `--detach` / `--status` / `--stop` / `--pid-file <path>` / `--log-file <path>` - see [shared management contract](#long-running-processes) above
@@ -2561,7 +2568,7 @@ Options:
 - `--host`, `--mcp-token-file`, repeatable `--mcp-allowed-host` /
   `--mcp-allowed-origin`, and `--mcp-enable-write` - see
   [Resident HTTP MCP security](MCP.md#resident-http-transport)
-- `--mcp-tool-profile <core|full>` - advertised MCP tool set; overrides
+- `--mcp-tool-profile <core|full|scoped>` - advertised MCP tool set; overrides
   `gateway.toolProfile`, default `full`, read at listener start - see
   [Tool Profiles](MCP.md#tool-profiles)
 - `--detach` / `--status` / `--stop` / `--pid-file <path>` / `--log-file <path>` - see [shared management contract](#long-running-processes) above
@@ -2662,8 +2669,9 @@ gno mcp --tool-profile core
 Options:
 
 - `--enable-write` - Register the write tools (see [Write Tool Gating](MCP.md#write-tool-gating))
-- `--tool-profile <core|full>` - Advertised tool set (default `full`); `core` is the 7-tool
-  playbook set plus `gno_capture`/`gno_remember` with `--enable-write` - see
+- `--tool-profile <core|full|scoped>` - Advertised tool set (default `full`); `core` is the 7-tool
+  playbook set plus `gno_capture`/`gno_remember` with `--enable-write`; `scoped`
+  is the set a non-admin gateway principal may call - see
   [Tool Profiles](MCP.md#tool-profiles)
 
 See [MCP Integration](MCP.md) for setup details.

@@ -10,7 +10,11 @@ import type { DocumentRow, StorePort } from "../../store/types";
 import type { ToolContext } from "../server";
 
 import { decorateUriForIndex, parseUri } from "../../app/constants";
-import { resolveEffectiveIndex } from "../../core/indexed-reference";
+import { accessNotFound } from "../../core/access-scope";
+import {
+  indexesMatch,
+  resolveEffectiveIndex,
+} from "../../core/indexed-reference";
 import {
   projectRecordEvidenceMetadata,
   type RecordEvidenceMetadata,
@@ -18,6 +22,7 @@ import {
 import { parseRef } from "../../core/ref-parser";
 import { supersedingUri } from "../../pipeline/result-context";
 import { openScopedIndexStore } from "../../store/sqlite/scoped-index";
+import { isDocumentServable, mcpAccessScope } from "./access";
 import { runTool, type ToolResult } from "./index";
 
 interface MultiGetInput {
@@ -156,10 +161,16 @@ export function handleMultiGet(
       const documents: DocumentResult[] = [];
       const skipped: Array<{ ref: string; reason: string }> = [];
 
+      // In access mode an unreadable document is skipped exactly like a
+      // missing one, and patterns only see servable documents.
+      const scope = mcpAccessScope(ctx);
       let refs: string[] = args.refs ?? [];
       const resolution = resolveEffectiveIndex(refs, ctx.indexName);
       if (!resolution.ok) {
-        throw new Error(resolution.error);
+        throw scope ? accessNotFound() : new Error(resolution.error);
+      }
+      if (scope && !indexesMatch(resolution.value.indexName, ctx.indexName)) {
+        throw accessNotFound();
       }
       const scoped = await openScopedIndexStore({
         activeStore: ctx.store,
@@ -187,6 +198,7 @@ export function handleMultiGet(
           const regex = new RegExp(`^${regexPattern}$`);
 
           refs = listResult.value
+            .filter((d) => !scope || isDocumentServable(scope, d))
             .filter((d) => regex.test(d.uri) || regex.test(d.relPath))
             .map((d) => d.uri);
         }
@@ -195,12 +207,12 @@ export function handleMultiGet(
         for (const ref of refs) {
           const parsed = parseRef(ref);
           if ("error" in parsed) {
-            skipped.push({ ref, reason: parsed.error });
+            skipped.push({ ref, reason: scope ? "Not found" : parsed.error });
             continue;
           }
 
           const doc = await lookupDocument(scoped.store, parsed);
-          if (!doc) {
+          if (!doc || (scope && !isDocumentServable(scope, doc))) {
             skipped.push({ ref, reason: "Not found" });
             continue;
           }

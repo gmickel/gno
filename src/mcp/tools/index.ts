@@ -1162,7 +1162,9 @@ function parseErrorMessage(message: string): { [x: string]: unknown } {
 export function registerTools(server: McpServer, ctx: ToolContext): void {
   // Tool IDs use underscores (MCP pattern: ^[a-zA-Z0-9_-]{1,64}$)
   const profile = ctx.toolProfile ?? DEFAULT_MCP_TOOL_PROFILE;
-  const registerTool = createProfileToolRegistrar(server, profile);
+  const registerTool = createProfileToolRegistrar(server, profile, () =>
+    ctx.getRequestPrincipal?.()
+  );
   // The core profile serves micro-instruction variants; full keeps the
   // original strings verbatim (legacy golden + tool-profile byte-compat).
   const describe = (name: string, fullDescription: string) =>

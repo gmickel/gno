@@ -50,6 +50,11 @@ import { type HybridSearchDeps, searchHybrid } from "../../pipeline/hybrid";
 import { createLazyVectorIndex } from "../../store/vector/lazy";
 import { appendRetrievalWarnings } from "../retrieval-warnings";
 import {
+  finishScopedRetrieval,
+  mcpAccessScope,
+  scopeRetrievalArgs,
+} from "./access";
+import {
   assertCollectionsExist,
   normalizeTagFilters,
   runTool,
@@ -189,7 +194,7 @@ function formatQueryDiagnoseResult(data: QueryDiagnoseResult): string {
  * Handle gno_query tool call.
  */
 export function handleQuery(
-  args: QueryInput,
+  requestArgs: QueryInput,
   ctx: ToolContext
 ): Promise<ToolResult> {
   return runTool(
@@ -197,6 +202,8 @@ export function handleQuery(
     "gno_query",
     // oxlint-disable-next-line max-lines-per-function -- query with validation and result formatting
     async () => {
+      const scope = mcpAccessScope(ctx);
+      const args = scope ? scopeRetrievalArgs(scope, requestArgs) : requestArgs;
       // Validate collections exist if specified
       assertCollectionsExist(ctx, [
         args.collection,
@@ -365,15 +372,24 @@ export function handleQuery(
           throw new Error(result.error.message);
         }
 
+        const value = scope
+          ? await finishScopedRetrieval(
+              scope,
+              ctx.store,
+              requestArgs.collections,
+              result.value
+            )
+          : result.value;
+
         // Enrich with absPath
-        const enrichedResults = enrichWithAbsPath(result.value.results, ctx);
+        const enrichedResults = enrichWithAbsPath(value.results, ctx);
 
         return attachRetrievalTraceMetadata(
           {
-            ...result.value,
+            ...value,
             results: enrichedResults,
             meta: {
-              ...result.value.meta,
+              ...value.meta,
               // Add queryLanguage hint if provided
               ...(args.lang ? { queryLanguage: args.lang } : {}),
             },

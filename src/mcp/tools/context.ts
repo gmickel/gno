@@ -28,6 +28,7 @@ import {
   parseContextVerifySurfaceInput,
 } from "../../app/context-surface";
 import { createNonTtyProgressRenderer } from "../../cli/progress";
+import { withDerivedFromRequired } from "../../core/access-scope";
 import { ContextCapsuleContractError } from "../../core/context-capsule";
 import {
   ProjectAffinityInputError,
@@ -37,10 +38,12 @@ import {
   finishRetrievalTraceAfterError,
   startRetrievalTraceRequest,
 } from "../../core/retrieval-trace-request";
+import { normalizeMetadataPredicate } from "../../core/typed-metadata";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
 import { resolveModelUri } from "../../llm/registry";
 import { createLazyVectorIndex } from "../../store/vector/lazy";
+import { mcpAccessScope } from "./access";
 
 interface ContextToolResultData {
   structuredContent: Record<string, unknown>;
@@ -214,12 +217,27 @@ export const handleContext = (
   context: ToolContext
 ): Promise<ToolResult> =>
   runContextTool(context, async () => {
+    const scope = mcpAccessScope(context);
     const parsed = parseContextBuildSurfaceInput(args, context.indexName);
+    if (scope) {
+      // Access mode: unreadable collections fail exactly like unknown ones,
+      // no collection means every readable one, and documents must declare
+      // `derived_from`. A scope with nothing readable has no evidence.
+      if (scope.collections.length === 0) {
+        throw new ContextCapsuleContractError("no_evidence", "No evidence");
+      }
+      parsed.input.collections ??= scope.collections;
+      parsed.input.filter = normalizeMetadataPredicate(
+        withDerivedFromRequired(parsed.input.filter)
+      );
+    }
     // This guard is intentionally before any model construction/download.
     validateContextCapsuleBuildInput(
       parsed.input,
       context.indexName,
-      context.config.collections.map((collection) => collection.name)
+      scope
+        ? scope.collections
+        : context.config.collections.map((collection) => collection.name)
     );
     const useModels = parsed.input.depthPolicy !== "fast";
     const collection =

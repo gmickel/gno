@@ -10,11 +10,15 @@ import type { DocumentRow, StorePort } from "../../store/types";
 import type { ToolContext } from "../server";
 
 import { decorateUriForIndex, parseUri } from "../../app/constants";
+import { accessNotFound } from "../../core/access-scope";
 import {
   getDocumentCapabilities,
   type DocumentCapabilities,
 } from "../../core/document-capabilities";
-import { resolveEffectiveIndex } from "../../core/indexed-reference";
+import {
+  indexesMatch,
+  resolveEffectiveIndex,
+} from "../../core/indexed-reference";
 import {
   projectRecordEvidenceMetadata,
   type RecordEvidenceMetadata,
@@ -27,6 +31,7 @@ import {
 } from "../../core/retrieval-trace-session";
 import { supersedingUri } from "../../pipeline/result-context";
 import { openScopedIndexStore } from "../../store/sqlite/scoped-index";
+import { isDocumentServable, mcpAccessScope } from "./access";
 import { runTool, type ToolResult } from "./index";
 
 interface GetInput {
@@ -141,15 +146,20 @@ export function handleGet(
     "gno_get",
     // oxlint-disable-next-line max-lines-per-function -- document retrieval with multiple ref formats
     async () => {
+      // In access mode every miss, refusal and malformed ref is one NOT_FOUND.
+      const scope = mcpAccessScope(ctx);
       // Parse reference
       const parsed = parseRef(args.ref);
       if ("error" in parsed) {
-        throw new Error(parsed.error);
+        throw scope ? accessNotFound() : new Error(parsed.error);
       }
 
       const resolution = resolveEffectiveIndex([args.ref], ctx.indexName);
       if (!resolution.ok) {
-        throw new Error(resolution.error);
+        throw scope ? accessNotFound() : new Error(resolution.error);
+      }
+      if (scope && !indexesMatch(resolution.value.indexName, ctx.indexName)) {
+        throw accessNotFound();
       }
       const scoped = await openScopedIndexStore({
         activeStore: ctx.store,
@@ -162,6 +172,9 @@ export function handleGet(
       try {
         // Lookup document
         const doc = await lookupDocument(scoped.store, parsed);
+        if (scope && !(doc && isDocumentServable(scope, doc))) {
+          throw accessNotFound();
+        }
         if (!doc) {
           throw new Error(`Document not found: ${args.ref}`);
         }

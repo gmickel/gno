@@ -26,6 +26,11 @@ import {
 import { searchBm25 } from "../../pipeline/search";
 import { appendRetrievalWarnings } from "../retrieval-warnings";
 import {
+  finishScopedRetrieval,
+  mcpAccessScope,
+  scopeRetrievalArgs,
+} from "./access";
+import {
   assertCollectionsExist,
   normalizeTagFilters,
   runTool,
@@ -115,13 +120,16 @@ function formatSearchResults(data: SearchResults): string {
  * Handle gno_search tool call.
  */
 export function handleSearch(
-  args: SearchInput,
+  requestArgs: SearchInput,
   ctx: ToolContext
 ): Promise<ToolResult> {
   return runTool(
     ctx,
     "gno_search",
     async () => {
+      const scope = mcpAccessScope(ctx);
+      const callerCollections = requestArgs.collections;
+      const args = scope ? scopeRetrievalArgs(scope, requestArgs) : requestArgs;
       // Validate collections exist if specified
       assertCollectionsExist(ctx, [
         args.collection,
@@ -171,10 +179,18 @@ export function handleSearch(
           traceSession,
         });
         if (!result.ok) throw new Error(result.error.message);
+        const value = scope
+          ? await finishScopedRetrieval(
+              scope,
+              ctx.store,
+              callerCollections,
+              result.value
+            )
+          : result.value;
         return attachRetrievalTraceMetadata(
           {
-            ...result.value,
-            results: enrichWithAbsPath(result.value.results, ctx),
+            ...value,
+            results: enrichWithAbsPath(value.results, ctx),
           },
           traceSession
         );

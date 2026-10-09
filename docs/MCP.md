@@ -316,6 +316,7 @@ today's whole surface, byte-for-byte.
 | ---------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------- |
 | `full` (default) | all 38                                                                                                | all 22 write-gated tools      |
 | `core`           | `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`, `gno_changes`, `gno_recall` (7) | `gno_capture`, `gno_remember` |
+| `scoped`         | `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`, `gno_recall` (6)                | `gno_remember`                |
 
 Write tools stay behind `--enable-write` in both profiles; a profile never
 widens the write gate. `gno_job_status` is not in `core` because neither core
@@ -455,10 +456,29 @@ Each principal sends `Authorization: Bearer <its token>`. Once principals are
 configured, every request needs a token, even on loopback. Only a principal
 with `mayAssertSubject: true` may send `GNO-Subject: <user id>` and
 `GNO-Context: 1to1`, `shared` or `public_only`; anyone else who sends them gets 403. GNO records the principal and the user with the request (the user only
-as a hash in request receipts). They do not yet change what tools return.
-Every principal and the plain `tokenFile` need different tokens: if a rotation
-makes two of them equal, neither is accepted until one is rotated again.
-Without `principals`, nothing changes.
+as a hash in request receipts). Every principal and the plain `tokenFile`
+need different tokens: if a rotation makes two of them equal, neither is
+accepted until one is rotated again. Without `principals`, nothing changes.
+
+#### Collection access (optional)
+
+Once principals are configured, a principal without `admin: true` reads only
+collections whose `access` rule lets its user in (see
+[Collection access](CONFIGURATION.md#collection-access)). For such a caller:
+
+- search, query and context cover only readable collections, and only notes
+  whose `gno.metadata.derived_from` lists their sources as
+  `<system>:<reference>` strings;
+- a note it may not read and a note that does not exist give the same
+  `NOT_FOUND` answer, byte for byte;
+- only `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`,
+  `gno_recall` and `gno_remember` work. Every other tool, including
+  `gno_changes`, links and status, answers `NOT_FOUND`, and `gno://`
+  resources are empty. Set `gateway.toolProfile: scoped` so the tool list
+  matches.
+
+Admin principals, plain `tokenFile` callers and stdio see everything, as
+before.
 
 Authentication does not authorize writes. Set `gateway.enableWrite: true` or
 pass `--mcp-enable-write` separately. Without that opt-in, HTTP calls to write

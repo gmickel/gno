@@ -196,8 +196,8 @@ never hands out a job ID to poll. If a future core write becomes async,
 
 Selection and precedence (highest first):
 
-1. CLI flag: `gno mcp --tool-profile core|full` (stdio); `gno serve --mcp-tool-profile core|full` or `gno daemon --mcp-tool-profile core|full` (resident gateway). An unknown value fails with `VALIDATION` before any listener starts.
-2. Config: `gateway.toolProfile: core|full` under the root `gateway` key (resident gateway only; stdio has no config key).
+1. CLI flag: `gno mcp --tool-profile core|full|scoped` (stdio); `gno serve --mcp-tool-profile core|full|scoped` or `gno daemon --mcp-tool-profile core|full|scoped` (resident gateway). An unknown value fails with `VALIDATION` before any listener starts.
+2. Config: `gateway.toolProfile: core|full|scoped` under the root `gateway` key (resident gateway only; stdio has no config key).
 3. Default: `full`.
 
 The profile is read once when the listener starts (stdio process start, or
@@ -206,6 +206,13 @@ changing it requires restarting the server. `--detach` re-executes the same
 argv, so the flag carries over to the detached child. Calling a tool outside
 the active profile answers JSON-RPC `-32602` exactly like an unregistered
 tool.
+
+`scoped` advertises the tools a non-admin gateway principal may call:
+`gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`,
+`gno_recall`, and `gno_remember` (still behind `--enable-write`). It uses the
+`core` descriptions. Unlike `core` it has no `gno_changes`, which lists
+documents across every collection. See
+[Collection access](#collection-access-and-the-scoped-profile).
 
 Default-profile decision (deferred): the default stays `full`. `core` ships as
 opt-in so existing clients, installers, and skills see an unchanged surface,
@@ -310,6 +317,62 @@ gateway:
   cannot replay each other's request IDs.
 - This is plumbing only: no tool changes what it returns because of the
   principal, `admin`, or the subject.
+
+#### Collection access and the scoped profile
+
+Off unless `gateway.principals` is set. Requests from stdio, `gno serve`
+without principals, a plain `tokenFile` caller and an `admin` principal are
+unrestricted and their outputs are unchanged. A request from a non-admin
+principal is in **access mode**:
+
+```yaml
+collections:
+  - name: pub
+    access: { public: true }
+  - name: p-alice
+    access: { owner: "u:alice" }
+  - name: sp-ops-docs
+    access: { accessRef: { sys: sp, ref: "drives/b!x/root" }, firmwide: true }
+  - name: sp-client-x
+    access: { accessRef: { sys: sp, ref: "drives/b!y/root" } }
+```
+
+- `access` is exactly one of `{public: true}`, `{owner: <subject id>}`, or
+  `{accessRef: {sys, ref}, firmwide?: bool}`. GNO stores `accessRef` as an
+  opaque reference and never interprets it.
+- Readable collections, by the request's `GNO-Context` (missing subject or
+  context = `public_only`): `public` in every context; `owner` only for that
+  subject in `1to1`; `firmwide: true` for any subject in `1to1` and `shared`.
+  Any other `accessRef` collection is denied until an access hook can check
+  it, and a collection without `access` is always denied.
+- `gno_query` and `gno_search`: a named `collection`/`collections` the
+  request cannot read fails exactly like an unknown collection; without one
+  the search covers every readable collection (none denies all). Both run
+  before the result limit. `explain` is ignored, and `meta.collections` shows
+  only what the caller sent.
+- `gno_context`: the same collection rule (an unreadable collection is an
+  unknown one); with nothing readable it answers `no_evidence`.
+- `gno_get`: a missing document, an unreadable or unknown collection, a
+  document without indexed content, an invalid ref, and a ref to another index
+  all return the same error, byte for byte: `isError: true`, text
+  `Error: NOT_FOUND: Not found`, `structuredContent`
+  `{"error":"NOT_FOUND","message":"Not found"}`.
+- `gno_multi_get`: such refs are skipped with reason `Not found`; `pattern`
+  matches only documents the request may read.
+- `gno_recall` needs a readable collection; `gno_remember` writes only into an
+  `owner` collection, for its owner, in `1to1`. Otherwise `NOT_FOUND`.
+- Provenance: a document is served only when its typed metadata has
+  `derived_from` as a non-empty list of `<system>:<reference>` strings
+  (docs/TYPED-METADATA.md). Presence is required before the limit; documents
+  with malformed members are dropped from results afterwards (they never
+  reach the caller; `meta.totalResults` counts what is returned). Memory
+  recall is not subject to this check.
+- Every tool outside the scoped set (`gno_changes`, links, backlinks,
+  similar, graph, tags, status, jobs, traces, diagnostics, writes other than
+  `gno_remember`) returns the same `NOT_FOUND` result for a non-admin
+  principal, whatever the profile advertises. Set `toolProfile: scoped` so
+  the listing matches. `gno://` resources list nothing and read as
+  `NOT_FOUND`.
 
 Because `gno serve` shares this listener with its Web UI and REST API, it
 remains loopback-only. Use the headless `gno daemon` command for an explicitly
