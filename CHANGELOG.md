@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `gno search`, `gno vsearch` and `gno query` can search several collections at once: repeat `-c` (`-c work -c notes`). Results come only from those collections, and other collections no longer take result slots before the limit. The MCP tools `gno_search`, `gno_vsearch` and `gno_query`, the `/api/search` and `/api/query` endpoints, and the SDK accept the same filter as `collections: [...]`. A single `-c` or `collection` works as before. Passing both `collection` and `collections` searches only their intersection, including graph neighbours and reranker input. One `collections` list takes up to 1024 names over MCP and REST, the same bound as collection egress, so a caller scoped to several hundred collections fits in one request.
+- `gno search`, `gno vsearch` and `gno query` can search several collections at once: repeat `-c` (`-c work -c notes`). Results come only from those collections, and other collections no longer take result slots before the limit. The MCP tools `gno_search`, `gno_vsearch` and `gno_query`, the `/api/search` and `/api/query` endpoints, and the SDK accept the same filter as `collections: [...]`. A single `-c` or `collection` works as before. Passing both `collection` and `collections` searches only their intersection, including graph neighbours and reranker input. One `collections` list takes up to 1024 names over MCP and REST, the same bound as collection egress, so a caller scoped to several hundred collections fits in one request. Over the HTTP MCP gateway, egress policy is checked on the listed collections, not on every configured collection.
 
 ## [2.12.0] - 2026-10-12
 
