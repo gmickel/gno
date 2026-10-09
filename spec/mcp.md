@@ -499,7 +499,9 @@ collections:
   before continuing, so other callers' tool calls run during the wait (not
   while a store transaction is open). At most `maxConcurrent` hook calls are
   in flight per hook across all requests; further calls queue first in,
-  first out, and `timeoutMs` starts when a call is sent. Verdicts stay per
+  first out. `timeoutMs` is one absolute deadline per call, set before the
+  call queues: a call still queued at the deadline leaves the queue unsent
+  and denies, and an answer after the deadline denies. Verdicts stay per
   tool call and subject, and every failure mode above still denies.
 - Collection check (once per call, before retrieval): the `accessRef` of
   every `accessRef` collection the context may reach (any in `1to1`,

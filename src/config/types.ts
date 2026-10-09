@@ -572,11 +572,14 @@ export const HttpGatewayAccessHookSchema = z
       }),
     /** Unix socket path to reach the hook through (recommended). */
     unix: z.string().min(1).optional(),
-    /** Deadline per hook call; a late answer denies. Default 2000. */
+    /**
+     * Deadline per hook call, counted from when the call queues; a call
+     * still queued at it, or a later answer, denies. Default 2000.
+     */
     timeoutMs: z.number().int().min(10).max(30_000).optional(),
     /**
      * Hook calls in flight at once across all requests; further calls queue
-     * (first in, first out) and their deadline starts when they are sent.
+     * (first in, first out); queue time counts toward `timeoutMs`.
      * Default 16.
      */
     maxConcurrent: z.number().int().min(1).max(256).optional(),

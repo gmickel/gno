@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- A slow access hook no longer queues every MCP caller behind it. GNO runs MCP tool calls one at a time, and the hook calls happened inside that turn, so each caller waited for every other caller's hook answers: with a 250 ms hook, 20 concurrent users saw a p95 of about 11 s. A tool call now waits for its hook answer without holding the turn and takes it back before it continues, so hook waits overlap while tool code still runs one call at a time. New `gateway.accessHook.maxConcurrent` (default 16) caps the hook calls in flight; further calls queue in order, and `timeoutMs` starts when a call is sent. Verdicts and fail-closed behavior do not change.
+- A slow access hook no longer queues every MCP caller behind it. GNO runs MCP tool calls one at a time, and the hook calls happened inside that turn, so each caller waited for every other caller's hook answers: with a 250 ms hook, 20 concurrent users saw a p95 of about 11 s. A tool call now waits for its hook answer without holding the turn and takes it back before it continues, so hook waits overlap while tool code still runs one call at a time. New `gateway.accessHook.maxConcurrent` (default 16) caps the hook calls in flight; further calls queue in order. `timeoutMs` covers queue time: a call still queued at its deadline is not sent and denies, as does any later answer. Verdicts and fail-closed behavior do not change.
 
 ## [2.12.0] - 2026-10-12
 

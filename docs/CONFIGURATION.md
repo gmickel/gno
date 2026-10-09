@@ -374,8 +374,10 @@ missing note.
 While a request waits for your hook, other requests keep running, so a slow
 hook adds its own latency to each request but no longer queues every other
 user behind it. GNO sends at most `maxConcurrent` hook calls at once
-(default 16) and queues the rest in order; the `timeoutMs` deadline starts
-when a call is sent, so waiting in that queue never counts as "no".
+(default 16) and queues the rest in order. The `timeoutMs` deadline starts
+when a call joins that queue, so time spent waiting counts: a call still
+queued at its deadline is never sent and counts as "no", like a late answer.
+Size `maxConcurrent` for your peak load so queueing stays short.
 
 ## Link workspaces
 

@@ -121,6 +121,46 @@ describe("callAccessHook", () => {
     ).toEqual([true, false]);
   });
 
+  test("queue time counts toward the deadline", async () => {
+    // One slot, 150 ms answers, 250 ms deadline. The fake ignores abort, so
+    // a sent call holds its slot until it answers.
+    let sent = 0;
+    const slowFetch = async () => {
+      sent += 1;
+      await Bun.sleep(150);
+      return Response.json({ allow: [0] });
+    };
+    const limited = {
+      url: "http://hook/queue-deadline",
+      timeoutMs: 250,
+      maxConcurrent: 1,
+    };
+    const started = performance.now();
+    const [first, second] = await Promise.all([
+      callAccessHook(limited, request("ok", ["sp:a"]), slowFetch),
+      callAccessHook(limited, request("ok", ["sp:a"]), slowFetch),
+    ]);
+    // The second answer would land at about 300 ms, past its deadline.
+    expect(first).toEqual([true]);
+    expect(second).toEqual([false]);
+    expect(performance.now() - started).toBeLessThan(290);
+
+    // A call still queued at its deadline is never sent.
+    sent = 0;
+    const longFetch = async () => {
+      sent += 1;
+      await Bun.sleep(400);
+      return Response.json({ allow: [0] });
+    };
+    const queued = { ...limited, url: "http://hook/queue-expiry" };
+    const verdicts = await Promise.all([
+      callAccessHook(queued, request("ok", ["sp:a"]), longFetch),
+      callAccessHook(queued, request("ok", ["sp:a"]), longFetch),
+    ]);
+    expect(verdicts).toEqual([[false], [false]]);
+    expect(sent).toBe(1);
+  });
+
   test("an unreachable hook denies", async () => {
     expect(
       await callAccessHook(

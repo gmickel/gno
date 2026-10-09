@@ -187,12 +187,12 @@ describe("access hook concurrency", () => {
     );
   });
 
-  test("maxConcurrent bounds hook calls in flight; queueing is not a timeout", async () => {
-    // Queue time (USERS x 2 calls / 2 slots x delay = 1200 ms) far exceeds
-    // the 400 ms deadline: the deadline starts when a call is sent.
+  test("maxConcurrent bounds hook calls in flight", async () => {
+    // Queue time (USERS x 2 calls / 2 slots x delay = 1200 ms) stays inside
+    // the 2000 ms deadline, which counts queue time.
     const { subjects, results } = await burst(new Mutex(), {
       maxConcurrent: 2,
-      timeoutMs: 400,
+      timeoutMs: 2000,
     });
     expect(maxInFlight).toBeLessThanOrEqual(2);
     subjects.forEach((subject, k) =>

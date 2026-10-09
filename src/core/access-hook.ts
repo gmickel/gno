@@ -12,8 +12,10 @@
  * late answer, a non-200 status, malformed JSON or a transport error denies.
  *
  * Concurrency: at most `maxConcurrent` hook calls (default 16) are in flight
- * per hook; the rest queue in order. A call's deadline starts when it is
- * sent, so queueing never turns into a timeout denial. The MCP layer awaits
+ * per hook; the rest queue in order. A call's `timeoutMs` deadline starts
+ * when the call is asked for, before it queues: a call still queued at its
+ * deadline leaves the queue unsent, and any answer after it denies. The MCP
+ * layer awaits
  * hook calls with the tool mutex released (`waitOutside`), so one slow hook
  * answer does not hold other callers' tool calls.
  *
@@ -108,17 +110,36 @@ class HookCallLimiter {
     return this.#active;
   }
 
-  async run<T>(operation: () => Promise<T>): Promise<T> {
-    if (this.#active < this.max) this.#active += 1;
-    // A released slot passes straight to the next waiter (no decrement).
-    else await new Promise<void>((resolve) => this.#queue.push(resolve));
-    try {
-      return await operation();
-    } finally {
-      const next = this.#queue.shift();
-      if (next) next();
-      else this.#active -= 1;
+  /**
+   * Take a slot, waiting in order. Resolves false, without a slot, when
+   * `signal` aborts first (the call's deadline passed while it queued).
+   */
+  acquire(signal: AbortSignal): Promise<boolean> {
+    if (signal.aborted) return Promise.resolve(false);
+    if (this.#active < this.max) {
+      this.#active += 1;
+      return Promise.resolve(true);
     }
+    return new Promise<boolean>((resolve) => {
+      const grant = () => {
+        signal.removeEventListener("abort", expire);
+        resolve(true);
+      };
+      const expire = () => {
+        const index = this.#queue.indexOf(grant);
+        if (index >= 0) this.#queue.splice(index, 1);
+        resolve(false);
+      };
+      this.#queue.push(grant);
+      signal.addEventListener("abort", expire, { once: true });
+    });
+  }
+
+  release(): void {
+    // A released slot passes straight to the next waiter (no decrement).
+    const next = this.#queue.shift();
+    if (next) next();
+    else this.#active -= 1;
   }
 }
 
@@ -138,27 +159,18 @@ const limiterFor = (hook: HttpGatewayAccessHook): HookCallLimiter => {
 
 /**
  * One hook call. Resolves to one boolean per ref (true = allowed); never
- * rejects, every failure denies all refs. Waits for a slot under the hook's
- * `maxConcurrent` bound first; the deadline covers only the exchange.
+ * rejects, every failure denies all refs. The `timeoutMs` deadline is set
+ * before the call waits for a slot under the hook's `maxConcurrent` bound, so
+ * it covers queue time and the exchange: a call still queued at the deadline
+ * is never sent, and an answer after it denies.
  */
-export function callAccessHook(
+export async function callAccessHook(
   hook: HttpGatewayAccessHook,
   request: AccessHookRequest,
   fetchImpl: AccessHookFetch = fetch as AccessHookFetch
 ): Promise<boolean[]> {
   const denied = request.refs.map(() => false);
-  if (request.refs.length === 0) return Promise.resolve(denied);
-  return limiterFor(hook).run(() =>
-    exchangeWithHook(hook, request, fetchImpl, denied)
-  );
-}
-
-async function exchangeWithHook(
-  hook: HttpGatewayAccessHook,
-  request: AccessHookRequest,
-  fetchImpl: AccessHookFetch,
-  denied: boolean[]
-): Promise<boolean[]> {
+  if (request.refs.length === 0) return denied;
   const timeoutMs = hook.timeoutMs ?? DEFAULT_ACCESS_HOOK_TIMEOUT_MS;
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -168,38 +180,59 @@ async function exchangeWithHook(
       resolve(null);
     }, timeoutMs);
   });
+  const limiter = limiterFor(hook);
   const exchange = (async (): Promise<unknown> => {
-    const response = await fetchImpl(hook.url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(request),
-      signal: controller.signal,
-      redirect: "error",
-      ...(hook.unix ? { unix: hook.unix } : {}),
-    });
-    if (response.status !== 200) return null;
-    return response.json();
+    if (!(await limiter.acquire(controller.signal))) return null;
+    try {
+      return await exchangeWithHook(hook, request, fetchImpl, controller);
+    } finally {
+      limiter.release();
+    }
   })().catch(() => null);
   try {
     const body = await Promise.race([exchange, deadline]);
-    if (!body || typeof body !== "object") return denied;
-    const allow = (body as { allow?: unknown }).allow;
-    if (!Array.isArray(allow)) return denied;
-    const result = [...denied];
-    for (const index of allow) {
-      if (
-        typeof index === "number" &&
-        Number.isInteger(index) &&
-        index >= 0 &&
-        index < result.length
-      ) {
-        result[index] = true;
-      }
-    }
-    return result;
+    if (controller.signal.aborted) return denied;
+    return verdictsFrom(body, denied);
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function exchangeWithHook(
+  hook: HttpGatewayAccessHook,
+  request: AccessHookRequest,
+  fetchImpl: AccessHookFetch,
+  controller: AbortController
+): Promise<unknown> {
+  const response = await fetchImpl(hook.url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(request),
+    signal: controller.signal,
+    redirect: "error",
+    ...(hook.unix ? { unix: hook.unix } : {}),
+  });
+  if (response.status !== 200) return null;
+  return response.json();
+}
+
+/** `{allow: [index]}` -> one boolean per ref; anything else denies all. */
+function verdictsFrom(body: unknown, denied: boolean[]): boolean[] {
+  if (!body || typeof body !== "object") return denied;
+  const allow = (body as { allow?: unknown }).allow;
+  if (!Array.isArray(allow)) return denied;
+  const result = [...denied];
+  for (const index of allow) {
+    if (
+      typeof index === "number" &&
+      Number.isInteger(index) &&
+      index >= 0 &&
+      index < result.length
+    ) {
+      result[index] = true;
+    }
+  }
+  return result;
 }
 
 /** Refs checked within one request; each distinct ref is asked once. */
