@@ -45,6 +45,16 @@ bun test test/cli/search.test.ts
 bun test --watch
 ```
 
+## Temporary Files
+
+`test/preload/temp-dir.ts` gives every `bun test` run its own directory and
+points TMPDIR (TEMP/TMP on Windows) at it; the directory is removed when the
+run ends. Create test files under `tmpdir()`, never a literal `/tmp`, so they
+go with the run, and still remove large trees (copied packages, imports) in a
+`finally` so one long run does not pile them up. Set `GNO_TEST_KEEP_TMP=1` to
+keep the run directory for inspection. `bun run test:tmp-check` runs the suite
+and fails when anything escapes the sweep.
+
 ## Test Patterns
 
 ### Basic Test

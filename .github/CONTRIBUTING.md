@@ -88,6 +88,11 @@ explicitly asks or when changing retrieval/answer quality behavior.
 excludes immutable `.flow/artifacts/` snapshots and local `notes/` experiments;
 reproduce those only with their recorded commands and pinned inputs.
 
+Each `bun test` run writes its temporary files under its own TMPDIR and removes
+it at the end (`test/preload/temp-dir.ts`). The Linux and macOS CI test step
+runs the suite through `bun run test:tmp-check`, which fails when anything is
+left in the TMPDIR the run started with.
+
 **Release:** follow [RELEASING.md](../RELEASING.md): release PR, tag on the
 merge commit, publish checks, gno.sh propagation, and the post-publish site
 deploy.
