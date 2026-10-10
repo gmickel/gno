@@ -2,6 +2,10 @@
 plugins = ["bun-plugin-tailwind"]
 
 [test]
-preload = ["./test/preload/happy-dom.ts", "./test/preload/env-guard.ts"]
+preload = [
+  "./test/preload/temp-dir.ts",
+  "./test/preload/happy-dom.ts",
+  "./test/preload/env-guard.ts",
+]
 # Frozen evidence and local experiments are not the executable regression suite.
 pathIgnorePatterns = [".flow/artifacts/**", "notes/**"]

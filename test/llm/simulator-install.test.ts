@@ -6,6 +6,7 @@ import {
   mkdtemp,
   readdir,
   realpath,
+  rm,
   symlink,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -75,24 +76,28 @@ test("dependency source and version drift fail closed", async () => {
     await mkdtemp(join(tmpdir(), "gno-simulator-drift-"))
   );
   await mkdir(join(root, "dist/gguf/insights"), { recursive: true });
-  const entry = pathToFileURL(join(root, "dist/index.js")).href;
-  for (const version of ["3.19.1", "3.20.0"]) {
-    await Bun.write(
-      join(root, "package.json"),
-      JSON.stringify({ name: "node-llama-cpp", version })
-    );
-    await Bun.write(
-      join(root, "dist/gguf/insights/GgufInsights.js"),
-      "unexpected source"
-    );
-    const failure = await verifySimulatorPackage(entry).then(
-      () => null,
-      (error: unknown) => error
-    );
-    expect(failure).toBeInstanceOf(Error);
-    expect((failure as Error).message).toContain(
-      "Unsupported node-llama-cpp simulator source"
-    );
+  try {
+    const entry = pathToFileURL(join(root, "dist/index.js")).href;
+    for (const version of ["3.19.1", "3.20.0"]) {
+      await Bun.write(
+        join(root, "package.json"),
+        JSON.stringify({ name: "node-llama-cpp", version })
+      );
+      await Bun.write(
+        join(root, "dist/gguf/insights/GgufInsights.js"),
+        "unexpected source"
+      );
+      const failure = await verifySimulatorPackage(entry).then(
+        () => null,
+        (error: unknown) => error
+      );
+      expect(failure).toBeInstanceOf(Error);
+      expect((failure as Error).message).toContain(
+        "Unsupported node-llama-cpp simulator source"
+      );
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
   }
 });
 
@@ -100,61 +105,70 @@ test("factory installs from an extracted GNO location with a nested dependency c
   const root = await realpath(
     await mkdtemp(join(tmpdir(), "gno simulator package-"))
   );
-  const repository = fileURLToPath(new URL("../../", import.meta.url));
-  const modules = join(root, "node_modules");
-  const gno = join(modules, "@gmickel/gno");
-  const nested = join(gno, "node_modules/node-llama-cpp");
-  await mkdir(join(gno, "src/llm/nodeLlamaCpp"), { recursive: true });
-  await mkdir(nested, { recursive: true });
-  const installed = fileURLToPath(
-    new URL("../", import.meta.resolve("node-llama-cpp"))
-  );
-  await cp(join(installed, "dist"), join(nested, "dist"), { recursive: true });
-  await cp(join(installed, "llama"), join(nested, "llama"), {
-    recursive: true,
-  });
-  await cp(join(installed, "package.json"), join(nested, "package.json"));
-  for (const name of await readdir(join(repository, "node_modules"))) {
-    if (name === "@gmickel" || name.startsWith(".")) continue;
-    await symlink(
-      join(repository, "node_modules", name),
-      join(modules, name),
-      process.platform === "win32" ? "junction" : "dir"
+  // Each run copies ~40 MB of node-llama-cpp into this folder.
+  try {
+    const repository = fileURLToPath(new URL("../../", import.meta.url));
+    const modules = join(root, "node_modules");
+    const gno = join(modules, "@gmickel/gno");
+    const nested = join(gno, "node_modules/node-llama-cpp");
+    await mkdir(join(gno, "src/llm/nodeLlamaCpp"), { recursive: true });
+    await mkdir(nested, { recursive: true });
+    const installed = fileURLToPath(
+      new URL("../", import.meta.resolve("node-llama-cpp"))
     );
-  }
-  for (const name of [
-    "simulator-install.ts",
-    "simulator-session.ts",
-    "simulator-handle.ts",
-    "simulator-types.ts",
-  ]) {
-    await cp(
-      join(repository, "src/llm/nodeLlamaCpp", name),
-      join(gno, "src/llm/nodeLlamaCpp", name)
+    await cp(join(installed, "dist"), join(nested, "dist"), {
+      recursive: true,
+    });
+    await cp(join(installed, "llama"), join(nested, "llama"), {
+      recursive: true,
+    });
+    await cp(join(installed, "package.json"), join(nested, "package.json"));
+    for (const name of await readdir(join(repository, "node_modules"))) {
+      if (name === "@gmickel" || name.startsWith(".")) continue;
+      await symlink(
+        join(repository, "node_modules", name),
+        join(modules, name),
+        process.platform === "win32" ? "junction" : "dir"
+      );
+    }
+    for (const name of [
+      "simulator-install.ts",
+      "simulator-session.ts",
+      "simulator-handle.ts",
+      "simulator-types.ts",
+    ]) {
+      await cp(
+        join(repository, "src/llm/nodeLlamaCpp", name),
+        join(gno, "src/llm/nodeLlamaCpp", name)
+      );
+    }
+    const script = join(gno, "probe.ts");
+    await Bun.write(
+      script,
+      `
+  import {installSimulatorLifetimeGuard,verifySimulatorPackage} from './src/llm/nodeLlamaCpp/simulator-install';
+  await installSimulatorLifetimeGuard();
+  const {GgufInsights}=await import('node-llama-cpp');
+  console.log(JSON.stringify({entry:await verifySimulatorPackage(),guarded:GgufInsights.prototype[Symbol.for('gno.node-llama-cpp.simulator-lifetime.v1')]===GgufInsights.prototype._createSimulatorSession}));
+  `
     );
+    const child = Bun.spawn([process.execPath, "--no-env-file", script], {
+      cwd: root,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const [stdout, stderr, code] = await Promise.all([
+      new Response(child.stdout).text(),
+      new Response(child.stderr).text(),
+      child.exited,
+    ]);
+    expect({ code, stderr }).toEqual({ code: 0, stderr: "" });
+    const result = JSON.parse(stdout) as { entry: string; guarded: boolean };
+    expect(result.guarded).toBe(true);
+    expect(result.entry).toBe(
+      pathToFileURL(join(nested, "dist/index.js")).href
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
   }
-  const script = join(gno, "probe.ts");
-  await Bun.write(
-    script,
-    `
-import {installSimulatorLifetimeGuard,verifySimulatorPackage} from './src/llm/nodeLlamaCpp/simulator-install';
-await installSimulatorLifetimeGuard();
-const {GgufInsights}=await import('node-llama-cpp');
-console.log(JSON.stringify({entry:await verifySimulatorPackage(),guarded:GgufInsights.prototype[Symbol.for('gno.node-llama-cpp.simulator-lifetime.v1')]===GgufInsights.prototype._createSimulatorSession}));
-`
-  );
-  const child = Bun.spawn([process.execPath, "--no-env-file", script], {
-    cwd: root,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const [stdout, stderr, code] = await Promise.all([
-    new Response(child.stdout).text(),
-    new Response(child.stderr).text(),
-    child.exited,
-  ]);
-  expect({ code, stderr }).toEqual({ code: 0, stderr: "" });
-  const result = JSON.parse(stdout) as { entry: string; guarded: boolean };
-  expect(result.guarded).toBe(true);
-  expect(result.entry).toBe(pathToFileURL(join(nested, "dist/index.js")).href);
 }, 15000);

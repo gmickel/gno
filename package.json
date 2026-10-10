@@ -72,6 +72,7 @@
     "test:e2e:install": "bunx playwright install chromium",
     "test:package": "bun scripts/package-smoke.ts",
     "test:package:clipper": "bun scripts/package-smoke-clipper-cli.ts",
+    "test:tmp-check": "bun scripts/test-tmp-check.ts",
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",
     "test:coverage:html": "bun test --coverage --html",

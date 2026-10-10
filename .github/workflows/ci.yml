@@ -139,8 +139,10 @@ jobs:
       - name: Test
         # Explicit bash so GitHub adds -o pipefail; the TTY-workaround pipe
         # to cat otherwise swallows bun test's exit code (false-green CI).
+        # test:tmp-check runs bun test under a fresh TMPDIR and fails when
+        # the run leaves anything in it.
         shell: bash
-        run: bun test | cat
+        run: bun run test:tmp-check | cat
         env:
           CI: "true"
 
