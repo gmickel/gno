@@ -198,7 +198,7 @@
     "impl:fn-219-metadata-discovery-and-evidence-currency.1": 0
   },
   "spec_path": ".flow/specs/fn-219-metadata-discovery-and-evidence-currency.md",
-  "status": "open",
+  "status": "done",
   "title": "Metadata discovery and evidence currency",
   "tracker": {
     "baseHashFlow": null,
@@ -211,5 +211,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-11T23:38:33.592833Z"
+  "updated_at": "2026-10-11T23:48:23.840249Z"
 }
