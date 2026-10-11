@@ -1,0 +1,38 @@
+{
+  "branch": "fn-218-hybrid-ranking-and-answer-quality",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "465fce249e7905dc39acddcf0b668bb77323271c",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-6580eeae8599cd56262c9992fb5f9b85c501cefb016c187e990ffecb1088f552"
+  },
+  "head_sha": "465fce249e7905dc39acddcf0b668bb77323271c",
+  "id": "fn-218-hybrid-ranking-and-answer-quality",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 3,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      }
+    ],
+    "total": 3
+  },
+  "timestamp": "2026-10-11T22:24:07Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
