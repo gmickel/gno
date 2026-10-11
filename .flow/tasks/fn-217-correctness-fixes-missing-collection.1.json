@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-217-correctness-fixes-missing-collection",
   "spec_path": ".flow/tasks/fn-217-correctness-fixes-missing-collection.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Correctness fixes: missing collection roots and unknown MCP arguments",
   "updated_at": "2026-10-11T20:49:55.160044Z"
 }
