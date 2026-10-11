@@ -227,6 +227,9 @@ const formatMarkdown = (data: AskResult, opts: FormatOptions = {}): string => {
           `${index + 1}. **${evidence.title || evidence.uri}**`,
           `   - URI: \`${exactSpan(evidence.uri, evidence.startLine, evidence.endLine)}\``
         );
+        if (evidence.supersededBy) {
+          lines.push(`   - Superseded by: \`${evidence.supersededBy}\``);
+        }
       }
     } else {
       for (const [index, result] of data.results.entries()) {
@@ -234,6 +237,9 @@ const formatMarkdown = (data: AskResult, opts: FormatOptions = {}): string => {
           `${index + 1}. **${result.title || result.source.relPath}**`
         );
         lines.push(`   - URI: \`${result.uri}\``);
+        if (result.supersededBy) {
+          lines.push(`   - Superseded by: \`${result.supersededBy}\``);
+        }
         lines.push(`   - Score: ${result.score.toFixed(2)}`);
       }
       if (data.results.length === 0) lines.push("*No relevant sources found.*");

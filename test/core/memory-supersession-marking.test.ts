@@ -14,6 +14,7 @@ import { join } from "node:path";
 
 import type { Collection } from "../../src/config/types";
 import type { ContextCapsuleV1 } from "../../src/core/context-capsule";
+import type { AskResult } from "../../src/pipeline/types";
 
 import {
   decorateResultUris,
@@ -23,6 +24,7 @@ import {
   buildContextCapsule,
   verifyContextCapsuleRuntime,
 } from "../../src/app/context-runtime";
+import { formatAsk } from "../../src/cli/commands/ask-format";
 import { formatSearchResults } from "../../src/cli/format/search-results";
 import { createDefaultConfig } from "../../src/config/defaults";
 import { MemoryService } from "../../src/core/memory";
@@ -224,6 +226,26 @@ test("text output names the successor", async () => {
   if (!result.ok) throw new Error(result.error.message);
   for (const format of ["terminal", "md", "xml"] as const) {
     expect(formatSearchResults(result.value, { format })).toContain(latest);
+  }
+});
+
+test("ask sources name the successor in markdown and terminal output", async () => {
+  const result = await searchBm25(store, "launch review", {
+    collection: "memory",
+    limit: 10,
+  });
+  if (!result.ok) throw new Error(result.error.message);
+  const data = {
+    query: "When is the launch review?",
+    mode: "bm25_only",
+    queryLanguage: "en",
+    results: result.value.results,
+    meta: { expanded: false, reranked: false, vectorsUsed: false },
+  } as unknown as AskResult;
+  for (const md of [true, false]) {
+    expect(
+      formatAsk({ success: true, data }, { md, showSources: true })
+    ).toContain(`Superseded by: ${md ? "`" : ""}${latest}`);
   }
 });
 
