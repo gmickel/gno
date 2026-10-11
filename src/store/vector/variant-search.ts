@@ -82,6 +82,32 @@ export function vectorSearchUnavailableMessage(
   }`;
 }
 
+const MAX_CACHED_PROOFS = 100_000;
+const proofCaches = new WeakMap<
+  Database,
+  { marker: string; proofs: Map<string, boolean> }
+>();
+
+/**
+ * Input-hash proofs cached per connection. Any committed write, from this
+ * connection or another, changes the marker and drops the cache, so a cached
+ * proof never outlives the titles and chunk text it was computed from.
+ */
+function provenOwners(db: Database): Map<string, boolean> {
+  const { version, changes } = db
+    .query<{ version: number; changes: number }, []>(
+      "SELECT (SELECT data_version FROM pragma_data_version) AS version, total_changes() AS changes"
+    )
+    .get()!;
+  const marker = `${version}:${changes}`;
+  let cache = proofCaches.get(db);
+  if (cache?.marker !== marker || cache.proofs.size > MAX_CACHED_PROOFS) {
+    cache = { marker, proofs: new Map() };
+    proofCaches.set(db, cache);
+  }
+  return cache.proofs;
+}
+
 /** Null means legacy authority. Once promoted, unavailable provenance fails closed. */
 function searchVectorVariantsInSnapshot(
   db: Database,
@@ -197,11 +223,12 @@ function searchVectorVariantsInSnapshot(
   >(`
     SELECT d.id, d.title, c.text FROM documents d
     JOIN content_chunks c ON c.mirror_hash = ? AND c.seq = ?
-    WHERE d.id IN (SELECT value FROM json_each(?)) ORDER BY d.id
+    WHERE d.id IN (SELECT value FROM json_each(?))
   `);
   // A vector counts only while it matches its owner's current formatted
   // input. Proving candidates in rank order and skipping unproven owners
   // returns exactly what filtering every owner before ranking would.
+  const proofs = provenOwners(db);
   const queryVector = encodeEmbedding(embedding);
   let limit = k;
   let results: VectorSearchResult[] = [];
@@ -215,15 +242,25 @@ function searchVectorVariantsInSnapshot(
     );
     results = [];
     for (const row of rows) {
-      const proven = owners
-        .all(row.mirrorHash, row.seq, row.documentIds)
-        .filter(
-          (owner) =>
+      const documentIds = JSON.parse(row.documentIds) as number[];
+      const key = (id: number) =>
+        `${model}\0${id}\0${row.mirrorHash}\0${row.seq}\0${row.inputHash}`;
+      const unknown = documentIds.filter((id) => !proofs.has(key(id)));
+      if (unknown.length > 0) {
+        for (const owner of owners.all(
+          row.mirrorHash,
+          row.seq,
+          JSON.stringify(unknown)
+        )) {
+          proofs.set(
+            key(owner.id),
             embeddingInputHash(
               formatDocForEmbedding(owner.text, owner.title ?? undefined, model)
             ) === row.inputHash
-        )
-        .map((owner) => owner.id);
+          );
+        }
+      }
+      const proven = documentIds.filter((id) => proofs.get(key(id)));
       if (proven.length === 0) continue;
       results.push({
         mirrorHash: row.mirrorHash,

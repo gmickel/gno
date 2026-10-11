@@ -138,9 +138,7 @@ function referenceSearch(
       mirrorHash: row.mirrorHash,
       seq: row.seq,
       distance: row.distance,
-      documentIds: (JSON.parse(row.documentIds) as number[]).toSorted(
-        (a, b) => a - b
-      ),
+      documentIds: JSON.parse(row.documentIds) as number[],
     }));
 }
 
@@ -222,6 +220,11 @@ beforeAll(async () => {
       .map((owner) => ({ owner, embedding: vector(random) }))
   );
   store.activate(store.epoch());
+  // Rebinding a shared-body owner moves it to the end of its variant's owner
+  // rows, so owner order is not simply ascending document ids.
+  store.release(8);
+  store.write(store.pending().map((owner) => ({ owner })));
+  store.activate(store.epoch());
   // Retitled owners keep stale vectors; both implementations must skip them.
   db.run(
     "UPDATE documents SET title = 'Retitled' WHERE id IN (SELECT id FROM documents ORDER BY id LIMIT 12 OFFSET 30)"
@@ -297,4 +300,22 @@ test("a disagreeing vec0 mirror never changes results and vec sync repairs it", 
       dimensions: DIMENSIONS,
     })
   ).toEqual({ added: 3, removed: 0 });
+});
+
+test("a write from another connection invalidates cached input proofs", () => {
+  const query = vector(prng(5));
+  const options = { partitionId: store.partitionId };
+  const search = () =>
+    searchVectorVariants(db, identity.model, DIMENSIONS, query, 500, options);
+  const owner = search()![0]!.documentIds![0]!;
+  const other = new Database(db.filename);
+  try {
+    other.run("UPDATE documents SET title = 'Moved on' WHERE id = ?", [owner]);
+  } finally {
+    other.close();
+  }
+  expect(search()!.flatMap((row) => row.documentIds)).not.toContain(owner);
+  expect(search()).toEqual(
+    referenceSearch(db, store.partitionId, query, 500, {})
+  );
 });

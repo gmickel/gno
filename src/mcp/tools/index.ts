@@ -172,7 +172,7 @@ export const MCP_TOOL_DESCRIPTIONS = {
   search:
     "BM25 keyword search. Fast exact-term lookup for names, identifiers, error text, and known phrases. Structured results include uri/docid, line when available, and optional user-configured context guidance; use gno_get with fromLine/lineCount or gno_multi_get for full context. For natural-language questions use gno_query (fast=true first).",
   vsearch:
-    "Vector semantic search. Finds conceptually similar docs with different wording. Structured results preserve optional user-configured context guidance. Best after embeddings are current; use intent to disambiguate short terms. Use gno_query for default hybrid retrieval.",
+    "Vector semantic search. Finds conceptually similar docs with different wording. Structured results preserve optional user-configured context guidance. Best after embeddings are current; use intent to disambiguate short terms. For questions, gno_query with fast=true adds keyword matching at about the same cost.",
   query:
     "Hybrid search (BM25 + vector + default bounded graph expansion + optional query expansion/reranking). Recommended default for natural-language questions: start with fast=true (hybrid without expansion/rerank, typically under a second on a warm server); when that misses, retry without fast (adds expansion and reranking, a few seconds); thorough=true when recall matters. Structured results preserve optional user-configured context guidance with source identity. Use intent for ambiguous terms, queryModes to combine term/intent/hyde strategies, graph=false to skip graph expansion, and candidateLimit to trade latency for coverage.",
   queryDiagnose:

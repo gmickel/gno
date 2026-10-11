@@ -105,7 +105,8 @@ default `full` profile. Pick the profile once per client at install time with
 switch an existing registration); `gno mcp status` shows the profile each
 registration carries.
 
-For normal questions, start with `gno_query`, then read targeted snippets with
+For normal questions, start with `gno_query` and `fast: true`; when that
+misses, call it again without `fast`. Then read targeted snippets with
 `gno_get` or batch refs with `gno_multi_get`. Use `gno_context` for one bounded,
 exact evidence handoff. Use `gno_ask` only when a local closed-evidence answer
 is specifically useful, and pass the literal boolean `verify: true`; it

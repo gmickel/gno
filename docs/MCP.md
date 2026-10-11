@@ -1301,10 +1301,12 @@ explain: true
 - `fast: true`: Skip query expansion, graph expansion, and reranking (~0.2s with models loaded)
 - `thorough: true`: Query expansion + graph expansion + wider rerank pool (~5-8s)
 
-**Agent retry strategy**: Use default mode first. If no relevant results:
+**Agent retry strategy**: For a natural-language question, use `fast: true`
+first. If no relevant results:
 
-1. Rephrase the query (free, often effective)
-2. Then try `thorough: true` for better recall
+1. Run the default mode (adds expansion and reranking)
+2. Rephrase the query (free, often effective)
+3. Then try `thorough: true` for better recall
 
 Recency intent (`latest`, `newest`, `recent`) sorts results newest-first by canonical frontmatter date when present, with file modified time as fallback.
 
