@@ -1174,6 +1174,8 @@ export class SyncService {
     const directoryAvailability = memoizeDirectoryAvailability(
       this.directoryAvailabilityFactory(availabilityMode)
     );
+    // "" = root resolved; a message = root unavailable; undefined = unchecked.
+    let rootUnavailable: string | undefined;
 
     for (const relPath of relPaths) {
       const recordDocumentsResult = await store.listRecordDocuments(
@@ -1282,6 +1284,21 @@ export class SyncService {
             errorCode: "STAT_FAILED",
             errorMessage:
               error instanceof Error ? error.message : "Failed to stat file",
+          });
+          continue;
+        }
+        // A file is only proven deleted while its collection root resolves.
+        rootUnavailable ??= await realpath(collection.path).then(
+          () => "",
+          (cause: unknown) =>
+            `Collection root could not be resolved (${cause instanceof Error ? cause.message : String(cause)}); indexed documents were kept`
+        );
+        if (rootUnavailable) {
+          results.push({
+            relPath,
+            status: "skipped",
+            errorCode: "SOURCE_AVAILABILITY_UNKNOWN",
+            errorMessage: rootUnavailable,
           });
           continue;
         }

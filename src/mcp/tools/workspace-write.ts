@@ -53,43 +53,51 @@ const refactorPreviewActionSchema = z.literal("preview");
 const refactorApplyActionSchema = z.literal("apply");
 
 export const renameNoteInputSchema = z.discriminatedUnion("action", [
-  z.object({
-    action: refactorPreviewActionSchema,
-    ref: z.string().min(1, "ref cannot be empty"),
-    name: z.string().min(1, "name cannot be empty"),
-  }),
-  z.object({
-    action: refactorApplyActionSchema,
-    ref: z.string().min(1, "ref cannot be empty"),
-    name: z.string().min(1, "name cannot be empty"),
-    schemaVersion: z.literal(FILE_REFACTOR_SCHEMA_VERSION),
-    planDigest: z
-      .string()
-      .regex(/^[a-f0-9]{64}$/, "planDigest must be a lowercase SHA-256"),
-    confirmation: z.literal(FILE_REFACTOR_APPLY_CONFIRMATION),
-    confirm: z.literal(true),
-  }),
+  z
+    .object({
+      action: refactorPreviewActionSchema,
+      ref: z.string().min(1, "ref cannot be empty"),
+      name: z.string().min(1, "name cannot be empty"),
+    })
+    .strict(),
+  z
+    .object({
+      action: refactorApplyActionSchema,
+      ref: z.string().min(1, "ref cannot be empty"),
+      name: z.string().min(1, "name cannot be empty"),
+      schemaVersion: z.literal(FILE_REFACTOR_SCHEMA_VERSION),
+      planDigest: z
+        .string()
+        .regex(/^[a-f0-9]{64}$/, "planDigest must be a lowercase SHA-256"),
+      confirmation: z.literal(FILE_REFACTOR_APPLY_CONFIRMATION),
+      confirm: z.literal(true),
+    })
+    .strict(),
 ]);
 
 export const moveNoteInputSchema = z.discriminatedUnion("action", [
-  z.object({
-    action: refactorPreviewActionSchema,
-    ref: z.string().min(1, "ref cannot be empty"),
-    folderPath: z.string().min(1, "folderPath cannot be empty"),
-    name: z.string().optional(),
-  }),
-  z.object({
-    action: refactorApplyActionSchema,
-    ref: z.string().min(1, "ref cannot be empty"),
-    folderPath: z.string().min(1, "folderPath cannot be empty"),
-    name: z.string().optional(),
-    schemaVersion: z.literal(FILE_REFACTOR_SCHEMA_VERSION),
-    planDigest: z
-      .string()
-      .regex(/^[a-f0-9]{64}$/, "planDigest must be a lowercase SHA-256"),
-    confirmation: z.literal(FILE_REFACTOR_APPLY_CONFIRMATION),
-    confirm: z.literal(true),
-  }),
+  z
+    .object({
+      action: refactorPreviewActionSchema,
+      ref: z.string().min(1, "ref cannot be empty"),
+      folderPath: z.string().min(1, "folderPath cannot be empty"),
+      name: z.string().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      action: refactorApplyActionSchema,
+      ref: z.string().min(1, "ref cannot be empty"),
+      folderPath: z.string().min(1, "folderPath cannot be empty"),
+      name: z.string().optional(),
+      schemaVersion: z.literal(FILE_REFACTOR_SCHEMA_VERSION),
+      planDigest: z
+        .string()
+        .regex(/^[a-f0-9]{64}$/, "planDigest must be a lowercase SHA-256"),
+      confirmation: z.literal(FILE_REFACTOR_APPLY_CONFIRMATION),
+      confirm: z.literal(true),
+    })
+    .strict(),
 ]);
 
 export type RenameNoteInput = z.infer<typeof renameNoteInputSchema>;

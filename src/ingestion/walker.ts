@@ -289,9 +289,17 @@ export class FileWalker implements WalkerPort {
     let rootReal: string;
     try {
       rootReal = await realpath(rootAbs);
-    } catch {
-      // Root doesn't exist
-      return { entries: [], skipped: [] };
+    } catch (error) {
+      // An unmounted drive or offline sync folder proves nothing about its
+      // files, so the root is an unproven prefix, never an empty listing.
+      skipped.push({
+        absPath: rootAbs,
+        relPath: "",
+        reason: "SOURCE_AVAILABILITY_UNKNOWN",
+        unprovenPrefix: true,
+        message: `Collection root could not be resolved (${error instanceof Error ? error.message : String(error)}); indexed documents were kept`,
+      });
+      return { entries, skipped };
     }
 
     const matches = new Set<string>();

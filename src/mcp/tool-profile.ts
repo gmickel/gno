@@ -17,6 +17,8 @@ import type {
  * @module src/mcp/tool-profile
  */
 
+import { z } from "zod";
+
 import { withInferenceScope } from "../llm/inference-scope";
 
 export const MCP_TOOL_PROFILES = ["core", "full"] as const;
@@ -129,6 +131,19 @@ export function createProfileToolRegistrar(
             : (cb as ToolCallback<StandardSchemaWithJSON>)(args[0], request)
       );
     };
-    server.registerTool(name, config, wrapped as unknown as typeof cb);
+    server.registerTool(
+      name,
+      { ...config, inputSchema: rejectUnknownKeys(config.inputSchema) },
+      wrapped as unknown as typeof cb
+    );
   };
+}
+
+/**
+ * Unknown argument keys fail validation with the key named instead of being
+ * dropped: a misspelled scope or receipt key must not silently widen a read
+ * or skip a write fence.
+ */
+function rejectUnknownKeys<T>(schema: T): T {
+  return (schema instanceof z.ZodObject ? schema.strict() : schema) as T;
 }

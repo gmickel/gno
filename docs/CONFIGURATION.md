@@ -524,6 +524,16 @@ find their default stores; GNO sets none of them.
 | `any`   | Default. GNO reads every matching file the way it always has.                                                                                                                                           |
 | `local` | Opt-in. GNO indexes only content already on this machine and never makes a cloud provider download a file. Works with the macOS File Provider setups listed below; any other setup fails with an error. |
 
+In either mode, a collection root that cannot be resolved (an unmounted
+drive, an offline sync folder, a network share that is down) is not treated as
+an empty folder. `gno update`, `gno index`, the watcher in `gno serve` and
+`gno daemon`, and targeted syncs keep that collection's documents as they are
+and report `[SOURCE_AVAILABILITY_UNKNOWN] Collection root could not be
+resolved (...)` with the path and the original error. `gno cleanup` run in the
+meantime keeps their content, chunks and vectors. Once the root is back, the
+next sync picks up real changes, including deletions. A root that exists but
+is empty still counts as empty: its documents are marked inactive.
+
 **What `local` does on macOS File Provider:**
 
 - Reads only content that is already on disk. GNO never triggers a download of

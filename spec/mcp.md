@@ -7,7 +7,10 @@
 **Transport:** JSON-RPC 2.0 over stdio or resident Streamable HTTP
 **SDK:** `@modelcontextprotocol/server` 2.x (tool `inputSchema` /
 `outputSchema` carry the JSON Schema 2020-12 `$schema` stamp; an unknown tool
-name answers JSON-RPC `-32602`)
+name answers JSON-RPC `-32602`). Tool inputs are closed objects: an argument
+key a tool does not declare fails validation with an error naming the key, and
+the tool does not run. Each `inputSchema` advertises `additionalProperties:
+false` (per `oneOf` member for the discriminated-union inputs).
 
 This document specifies the MCP server interface for GNO.
 

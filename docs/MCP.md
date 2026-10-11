@@ -1229,6 +1229,10 @@ The server uses stdio transport (JSON-RPC 2.0 over stdin/stdout).
 
 ## Available Tools
 
+Every tool rejects argument names it does not declare. A misspelled key such
+as `colection` or `derived_from` returns an error naming that key, and the
+tool does nothing, so a typo cannot widen a search or skip a write check.
+
 ### gno_search
 
 BM25 keyword search.
