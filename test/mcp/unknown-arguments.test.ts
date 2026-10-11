@@ -71,9 +71,13 @@ test.each([
 });
 
 test("declared aliases still validate", async () => {
+  // edgeType and relation are both declared; the handler, not the schema,
+  // reports their mismatch, so both keys passed validation.
   const result = (await client.callTool({
-    name: "gno_query",
-    arguments: { query: "deploy", noGraph: true, fast: true },
+    name: "gno_graph_query",
+    arguments: { ref: "notes/a.md", edgeType: "mentions", relation: "cites" },
   })) as { content: { text?: string }[] };
-  expect(result.content[0]?.text ?? "").not.toContain("Unrecognized key");
+  const text = result.content[0]?.text ?? "";
+  expect(text).not.toContain("Unrecognized key");
+  expect(text).toContain("aliases and must match");
 });
