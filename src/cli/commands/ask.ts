@@ -15,7 +15,7 @@ import type {
 } from "../../llm/types";
 import type { AskOptions, AskResult, Citation } from "../../pipeline/types";
 
-import { decorateUriForIndex } from "../../app/constants";
+import { decorateResultUris } from "../../app/constants";
 import { buildVerifiedAsk } from "../../app/verified-ask";
 import { resolveCliProjectAffinity } from "../../core/project-affinity-surface";
 import {
@@ -89,10 +89,9 @@ export function decorateAskUris(
   result: AskResult,
   indexName: string | undefined
 ): AskResult {
-  const decorate = <T extends { uri: string }>(item: T): T => ({
-    ...item,
-    uri: decorateUriForIndex(item.uri, indexName),
-  });
+  const decorate = <T extends { uri: string; supersededBy?: string }>(
+    item: T
+  ): T => decorateResultUris(item, indexName);
   const answerContext = result.meta.answerContext;
   return {
     ...result,

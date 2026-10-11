@@ -88,6 +88,9 @@ function formatTerminal(data: SearchResults, options: FormatOptions): string {
     if (r.title) {
       lines.push(`  ${r.title}`);
     }
+    if (r.supersededBy) {
+      lines.push(`  Superseded by: ${r.supersededBy}`);
+    }
     if (r.snippet) {
       const content = options.full
         ? r.snippet
@@ -175,6 +178,9 @@ function formatMarkdown(data: SearchResults, options: FormatOptions): string {
     lines.push(`- **URI**: \`${r.uri}\``);
     lines.push(`- **Score**: ${r.score.toFixed(2)}`);
     lines.push(`- **DocID**: \`${r.docid}\``);
+    if (r.supersededBy) {
+      lines.push(`- **Superseded by**: \`${r.supersededBy}\``);
+    }
     if (r.snippet) {
       const content = options.full
         ? r.snippet
@@ -223,6 +229,11 @@ function formatXml(data: SearchResults, options: FormatOptions): string {
       lines.push(`    <title>${escapeXml(r.title)}</title>`);
     }
     lines.push(`    <relPath>${escapeXml(r.source.relPath)}</relPath>`);
+    if (r.supersededBy) {
+      lines.push(
+        `    <supersededBy>${escapeXml(r.supersededBy)}</supersededBy>`
+      );
+    }
     if (r.snippet) {
       const content = options.full
         ? r.snippet

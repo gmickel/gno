@@ -146,6 +146,9 @@ const formatTerminal = (data: AskResult, opts: FormatOptions = {}): string => {
           ? ""
           : `:L${citation.startLine}${citation.endLine === undefined || citation.endLine === citation.startLine ? "" : `-L${citation.endLine}`}`;
       lines.push(`  [${index + 1}] ${citation.uri}${range}`);
+      if (citation.supersededBy) {
+        lines.push(`      Superseded by: ${citation.supersededBy}`);
+      }
     }
     lines.push("");
   }
@@ -158,12 +161,18 @@ const formatTerminal = (data: AskResult, opts: FormatOptions = {}): string => {
         `  [${evidence.docid}] ${exactSpan(evidence.uri, evidence.startLine, evidence.endLine)}`
       );
       if (evidence.title) lines.push(`    ${evidence.title}`);
+      if (evidence.supersededBy) {
+        lines.push(`    Superseded by: ${evidence.supersededBy}`);
+      }
     }
   } else if (showAllSources && data.results.length > 0) {
     lines.push(hasAnswer ? "All Retrieved Sources:" : "Sources:");
     for (const result of data.results) {
       lines.push(`  [${result.docid}] ${result.uri}`);
       if (result.title) lines.push(`    ${result.title}`);
+      if (result.supersededBy) {
+        lines.push(`    Superseded by: ${result.supersededBy}`);
+      }
     }
   } else if (hasAnswer && data.results.length > 0) {
     const citedCount = data.citations?.length ?? 0;
@@ -196,7 +205,9 @@ const formatMarkdown = (data: AskResult, opts: FormatOptions = {}): string => {
         citation.startLine === undefined
           ? ""
           : `:L${citation.startLine}${citation.endLine === undefined || citation.endLine === citation.startLine ? "" : `-L${citation.endLine}`}`;
-      lines.push(`**[${index + 1}]** \`${citation.uri}${range}\``);
+      lines.push(
+        `**[${index + 1}]** \`${citation.uri}${range}\`${citation.supersededBy ? ` (superseded by \`${citation.supersededBy}\`)` : ""}`
+      );
     }
     lines.push("");
   }

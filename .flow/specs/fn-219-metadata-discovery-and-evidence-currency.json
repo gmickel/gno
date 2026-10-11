@@ -10,13 +10,107 @@
     "fn-218-hybrid-ranking-and-answer-quality"
   ],
   "id": "fn-219-metadata-discovery-and-evidence-currency",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-219-metadata-discovery-and-evidence-currency.1": 1
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "ready": true,
+  "review_attempts": [
+    {
+      "artifact_sha256": "641edc54ef4f31a7ecc7a38744fae9bae45b8de9e323166ed325fdd745ee200a",
+      "backend": "codex",
+      "base_sha": "1e413632a9ebdf2cbabc6a1bd09bc85d49ed4ef3",
+      "counter_kind": "impl",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-32e7bcb362e8cf8a8dc9d436506ee06d",
+            "classification": "introduced",
+            "findingId": "finding-32e7bcb362e8cf8a8dc9d436506ee06d",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-57bc829b7600a4fc2d3fe6c894796bb9",
+            "classification": "introduced",
+            "findingId": "finding-57bc829b7600a4fc2d3fe6c894796bb9",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-3874bc9b25a32f31520a3af781c419b0",
+            "classification": "introduced",
+            "findingId": "finding-3874bc9b25a32f31520a3af781c419b0",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-d1cfd2defbd2455d02b496c2c151065d",
+            "classification": "introduced",
+            "findingId": "finding-d1cfd2defbd2455d02b496c2c151065d",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-53eef792bd3149d74482077ed9540020",
+            "classification": "introduced",
+            "findingId": "finding-53eef792bd3149d74482077ed9540020",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-06df313fb71fd3e4e3c5dcdddb0386ff",
+            "classification": "introduced",
+            "findingId": "finding-06df313fb71fd3e4e3c5dcdddb0386ff",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "b5d7f6379409b5402263cdd60e07b51014d7703b",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6.1-sol",
+      "outcome": "verdict",
+      "output_bytes": 4243,
+      "output_sha256": "96035ad24860643c581fefaeb1f847641a1c5e8bebf12aabea7e5b88e76433c1",
+      "reservation_id": "24b69f5e844045b0b6406f0304a417f3",
+      "round_consumed": true,
+      "scope": "impl:fn-219-metadata-discovery-and-evidence-currency.1",
+      "superseded_by": null,
+      "task": "fn-219-metadata-discovery-and-evidence-currency.1",
+      "timestamp": "2026-10-11T23:36:03.018937Z",
+      "verdict": "NEEDS_WORK"
+    }
+  ],
+  "review_hash_epoch": {},
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-219-metadata-discovery-and-evidence-currency.1": 0
+  },
   "spec_path": ".flow/specs/fn-219-metadata-discovery-and-evidence-currency.md",
   "status": "open",
   "title": "Metadata discovery and evidence currency",
@@ -31,5 +125,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-11T19:33:35.231696Z"
+  "updated_at": "2026-10-11T23:36:03.021856Z"
 }

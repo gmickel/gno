@@ -78,6 +78,7 @@ import {
   refreshContextFile,
 } from "../app/compiled-context-files";
 import {
+  decorateResultUris,
   decorateUriForIndex,
   DEFAULT_INDEX_NAME,
   getIndexDbPath,
@@ -702,10 +703,9 @@ class GnoClientImpl implements GnoClient {
   private decorateSearchResults(results: SearchResults): SearchResults {
     return {
       ...results,
-      results: results.results.map((result) => ({
-        ...result,
-        uri: decorateUriForIndex(result.uri, this.indexName),
-      })),
+      results: results.results.map((result) =>
+        decorateResultUris(result, this.indexName)
+      ),
     };
   }
 

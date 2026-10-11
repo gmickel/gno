@@ -508,8 +508,8 @@ evidence used by the verifier.
 The semantic verifier fails closed. An unavailable, incapable, failed, or
 malformed verifier cannot turn a claim into supported evidence; unresolved
 claims become uncertain and the answer abstains. A claim that quotes its
-source in double quotes (two words or more) must quote it exactly, apart from
-whitespace, quote style and letter case; otherwise the claim is `uncertain`
+source (in double or single quotes, even a single word) must quote it exactly,
+apart from whitespace, quote style and letter case; otherwise the claim is `uncertain`
 with `rationaleCode: "quote_not_in_evidence"`, whatever the semantic judge
 says, and the answer abstains. Verified synthesis also checks
 the retained evidence's source and mirror freshness before trusting a support

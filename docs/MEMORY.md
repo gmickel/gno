@@ -200,7 +200,8 @@ Superseded facts stay on disk and in ordinary search; `recall` excludes them
 inside the query. Everywhere else they are marked: search, vector search,
 hybrid query, `get`, multi-get, `ask` citations and Context Capsule evidence
 carry `supersededBy` with the URI of the current fact (the end of the
-supersession chain). The answer model sees the same mark and is told not to
+supersession chain), and text output prints a `Superseded by:` line (`gno get`
+prints it on stderr so piped content stays exact). The answer model sees the same mark and is told not to
 present a superseded fact as current, and verifying a saved Capsule that cites
 a fact superseded since reports that evidence as stale (`superseded`). Nothing is ever deleted by the memory contract (see
 [What memory does not do](#what-memory-does-not-do)).

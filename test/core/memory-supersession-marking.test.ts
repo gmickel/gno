@@ -16,15 +16,21 @@ import type { Collection } from "../../src/config/types";
 import type { ContextCapsuleV1 } from "../../src/core/context-capsule";
 
 import {
+  decorateResultUris,
+  decorateUriForIndex,
+} from "../../src/app/constants";
+import {
   buildContextCapsule,
   verifyContextCapsuleRuntime,
 } from "../../src/app/context-runtime";
+import { formatSearchResults } from "../../src/cli/format/search-results";
 import { createDefaultConfig } from "../../src/config/defaults";
 import { MemoryService } from "../../src/core/memory";
 import { generateGroundedAnswer } from "../../src/pipeline/answer";
 import { searchBm25 } from "../../src/pipeline/search";
 import { getDocumentByRef } from "../../src/sdk/documents";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
+import { err } from "../../src/store/types";
 import { safeRm } from "../helpers/cleanup";
 
 const IDENTITY = { caller: "codex", session: "session-1" };
@@ -195,5 +201,43 @@ test("a Capsule marks superseded evidence and an older Capsule citing it is stal
   expect(old).toMatchObject({
     contentStatus: "stale",
     contentCode: "superseded",
+  });
+});
+
+test("lookups accept named-index URIs and output decorates the successor", async () => {
+  const decorated = decorateUriForIndex(original, "work");
+  const successors = await store.getSupersedingUris([decorated]);
+  expect(successors.ok && successors.value.get(decorated)).toBe(latest);
+  expect(
+    decorateResultUris({ uri: original, supersededBy: latest }, "work")
+  ).toEqual({
+    uri: decorated,
+    supersededBy: decorateUriForIndex(latest, "work"),
+  });
+});
+
+test("text output names the successor", async () => {
+  const result = await searchBm25(store, "launch review", {
+    collection: "memory",
+    limit: 10,
+  });
+  if (!result.ok) throw new Error(result.error.message);
+  for (const format of ["terminal", "md", "xml"] as const) {
+    expect(formatSearchResults(result.value, { format })).toContain(latest);
+  }
+});
+
+test("verification fails closed when the supersession lookup fails", async () => {
+  const failing = new Proxy(store, {
+    get: (target, key, receiver) =>
+      key === "getSupersedingUris"
+        ? async () => err("QUERY_FAILED", "lookup failed")
+        : Reflect.get(target, key, receiver),
+  });
+  await expect(
+    verifyContextCapsuleRuntime(capsuleBefore, { ...deps(), store: failing })
+  ).rejects.toMatchObject({
+    code: "document_load_failed",
+    message: expect.stringContaining("supersession"),
   });
 });

@@ -20,7 +20,7 @@ import type {
 import type { VectorIndexPort } from "../../store/vector";
 import type { ToolContext } from "../server";
 
-import { decorateUriForIndex, parseUri } from "../../app/constants";
+import { decorateResultUris, parseUri } from "../../app/constants";
 import { createNonTtyProgressRenderer } from "../../cli/progress";
 import {
   fingerprintContentTypeMetadataRules,
@@ -103,8 +103,7 @@ function enrichWithAbsPath(
     }
 
     return {
-      ...r,
-      uri: decorateUriForIndex(r.uri, ctx.indexName),
+      ...decorateResultUris(r, ctx.indexName),
       source: {
         ...r.source,
         absPath: pathJoin(collection.path, r.source.relPath),
@@ -143,6 +142,9 @@ function formatSearchResults(data: SearchResults): string {
     lines.push(`[${r.docid}] ${r.uri} (score: ${r.score.toFixed(3)})`);
     if (r.title) {
       lines.push(`  Title: ${r.title}`);
+    }
+    if (r.supersededBy) {
+      lines.push(`  Superseded by: ${r.supersededBy}`);
     }
     if (r.snippet) {
       const snippetPreview = r.snippet.slice(0, 200).replace(/\n/g, " ");

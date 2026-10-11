@@ -336,8 +336,17 @@ const judgmentForClaim = (
 };
 
 /** Straight or curly double-quoted spans of at least two words. */
-const QUOTATION_PATTERN = /["\u201C]([^"\u201C\u201D]+)["\u201D]/g;
-const MIN_QUOTED_WORDS = 2;
+/**
+ * Quotations by delimiter pair. A single quote opens only after the start, a
+ * space or a bracket and closes only before the end, a space, punctuation or
+ * a bracket, so apostrophes (it's, users') never delimit a quotation.
+ */
+const QUOTATION_PATTERNS = [
+  /"([^"]+)"/g,
+  /\u201C([^\u201C\u201D]+)\u201D/g,
+  /(?<=^|[\s([{])'(.+?)'(?=$|[\s.,;:!?)\]}])/g,
+  /(?<=^|[\s([{])\u2018(.+?)\u2019(?=$|[\s.,;:!?)\]}])/g,
+] as const;
 
 /** Whitespace, quote style and case differences are not misquotes. */
 const normalizeQuoted = (text: string): string =>
@@ -354,11 +363,13 @@ const quotesFoundInEvidence = (
   evidence: readonly Evidence[]
 ): boolean => {
   const haystacks = evidence.map((item) => normalizeQuoted(item.text));
-  for (const match of claimText.matchAll(QUOTATION_PATTERN)) {
-    // Closing punctuation inside a quote often ends the claim's sentence.
-    const quoted = normalizeQuoted(match[1] ?? "").replace(/[.,;:!?]+$/, "");
-    if (quoted.split(" ").length < MIN_QUOTED_WORDS) continue;
-    if (!haystacks.some((text) => text.includes(quoted))) return false;
+  for (const pattern of QUOTATION_PATTERNS) {
+    for (const match of claimText.matchAll(pattern)) {
+      // Closing punctuation inside a quote often ends the claim's sentence.
+      const quoted = normalizeQuoted(match[1] ?? "").replace(/[.,;:!?]+$/, "");
+      if (quoted === "") continue;
+      if (!haystacks.some((text) => text.includes(quoted))) return false;
+    }
   }
   return true;
 };

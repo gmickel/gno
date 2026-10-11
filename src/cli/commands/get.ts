@@ -474,6 +474,9 @@ function formatMarkdown(data: GetResponse, options: GetCommandOptions): string {
   lines.push("");
   lines.push(`- **URI**: \`${data.uri}\``);
   lines.push(`- **DocID**: \`${data.docid}\``);
+  if (data.supersededBy) {
+    lines.push(`- **Superseded by**: \`${data.supersededBy}\``);
+  }
   if (data.returnedLines) {
     lines.push(
       `- **Lines**: ${data.returnedLines.start}-${data.returnedLines.end} of ${data.totalLines}`

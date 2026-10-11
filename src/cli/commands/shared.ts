@@ -11,7 +11,7 @@ import type { SearchResults } from "../../pipeline/types";
 
 import {
   DEFAULT_INDEX_NAME,
-  decorateUriForIndex,
+  decorateResultUris,
   getIndexDbPath,
 } from "../../app/constants";
 import {
@@ -164,10 +164,9 @@ export function decorateSearchResultsForIndex(
   }
   return {
     ...data,
-    results: data.results.map((result) => ({
-      ...result,
-      uri: decorateUriForIndex(result.uri, indexName),
-    })),
+    results: data.results.map((result) =>
+      decorateResultUris(result, indexName)
+    ),
   };
 }
 

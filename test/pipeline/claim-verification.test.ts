@@ -537,4 +537,26 @@ describe("explicit quotations", () => {
       true
     );
   });
+  test.each([
+    ["a single misquoted word", () => '"absolutelynever"'],
+    ["a single-quoted misquote", () => "'absolutely never said'"],
+    [
+      "a misquote nested in a curly quotation",
+      (text: string) =>
+        `\u201C${words(text).slice(0, 2).join(" ")} "absolutely never"\u201D`,
+    ],
+  ])("%s is rejected", async (_label, quote) => {
+    const { claim } = await verifyQuoted(quote);
+    expect(claim).toMatchObject({
+      status: "uncertain",
+      rationaleCode: "quote_not_in_evidence",
+    });
+  });
+
+  test("single-quoted verbatim text and apostrophes are not misquotes", async () => {
+    const { claim } = await verifyQuoted(
+      (text) => `(it's the users' note) '${words(text).slice(0, 3).join(" ")}'`
+    );
+    expect(claim.status).toBe("supported");
+  });
 });

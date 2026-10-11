@@ -2481,6 +2481,11 @@ function wireRetrievalCommands(program: Command): void {
         );
       }
 
+      // Terminal output is the raw content; the mark goes to stderr so
+      // piping the document stays byte-exact.
+      if (format === "terminal" && result.data.supersededBy) {
+        process.stderr.write(`Superseded by: ${result.data.supersededBy}\n`);
+      }
       process.stdout.write(
         `${formatGet(result, {
           lineNumbers: Boolean(cmdOpts.lineNumbers),

@@ -429,6 +429,9 @@ function formatMarkdown(
   for (const doc of data.documents) {
     lines.push(`## ${doc.title || doc.source.relPath}`);
     lines.push(`- **URI**: \`${doc.uri}\``);
+    if (doc.supersededBy) {
+      lines.push(`- **Superseded by**: \`${doc.supersededBy}\``);
+    }
     if (doc.truncated) {
       lines.push(`- **Truncated**: yes (max ${data.meta.maxBytes} bytes)`);
     }
@@ -457,6 +460,9 @@ function formatTerminal(
 
   for (const doc of data.documents) {
     lines.push(`=== ${doc.uri} ===`);
+    if (doc.supersededBy) {
+      lines.push(`Superseded by: ${doc.supersededBy}`);
+    }
     lines.push(formatContent(doc.content, Boolean(options.lineNumbers)));
     lines.push("");
   }

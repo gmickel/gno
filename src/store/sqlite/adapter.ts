@@ -3693,8 +3693,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   }
 
   /**
-   * Get tag counts across all active documents.
-   * Optionally filter by collection or tag prefix.
+   * Map each superseded memory fact's URI to the end of its supersession
+   * chain. Input URIs may carry `?index=`; keys are the URIs as given and
+   * successors are canonical (undecorated).
    */
   async getSupersedingUris(
     uris: string[]
@@ -3712,23 +3713,30 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         WHERE p.uri IN (SELECT value FROM json_each(?))
         ORDER BY s.id
       `);
-      const result = new Map<string, string>();
-      let frontier = [...new Set(uris)];
+      const canonical = new Map(uris.map((uri) => [uri, stripUriIndex(uri)]));
       const next = new Map<string, string>();
-      // Follow chains a bounded number of hops to the current successor.
-      for (let hop = 0; hop < 16 && frontier.length > 0; hop += 1) {
-        const rows = successorOf.all(JSON.stringify(frontier));
-        if (rows.length === 0) break;
-        for (const row of rows) next.set(row.uri, row.successor);
-        frontier = [...new Set(rows.map((row) => row.successor))].filter(
-          (uri) => !next.has(uri)
-        );
+      const seen = new Set(canonical.values());
+      let frontier = [...seen];
+      while (frontier.length > 0) {
+        const discovered: string[] = [];
+        for (const row of successorOf.all(JSON.stringify(frontier))) {
+          next.set(row.uri, row.successor);
+          if (!seen.has(row.successor)) {
+            seen.add(row.successor);
+            discovered.push(row.successor);
+          }
+        }
+        frontier = discovered;
       }
-      for (const uri of uris) {
+      const result = new Map<string, string>();
+      for (const [input, uri] of canonical) {
+        const visited = new Set([uri]);
         let current = next.get(uri);
-        for (let hop = 0; current && next.has(current) && hop < 16; hop += 1)
+        while (current && next.has(current) && !visited.has(current)) {
+          visited.add(current);
           current = next.get(current);
-        if (current) result.set(uri, current);
+        }
+        if (current && current !== uri) result.set(input, current);
       }
       return ok(result);
     } catch (cause) {

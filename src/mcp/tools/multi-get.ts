@@ -111,6 +111,9 @@ function formatMultiGetResponse(data: MultiGetResponse): string {
     if (doc.title) {
       lines.push(`Title: ${doc.title}`);
     }
+    if (doc.supersededBy) {
+      lines.push(`Superseded by: ${doc.supersededBy}`);
+    }
     lines.push(
       `Lines: ${doc.totalLines}${doc.truncated ? " (truncated)" : ""}`
     );

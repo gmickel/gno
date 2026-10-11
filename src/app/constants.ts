@@ -362,6 +362,22 @@ export function decorateUriForIndex(uri: string, indexName?: string): string {
 }
 
 /**
+ * Decorate a result's URI and, when present, its successor URI for the index
+ * it came from.
+ */
+export function decorateResultUris<
+  T extends { uri: string; supersededBy?: string },
+>(item: T, indexName?: string): T {
+  return {
+    ...item,
+    uri: decorateUriForIndex(item.uri, indexName),
+    ...(item.supersededBy
+      ? { supersededBy: decorateUriForIndex(item.supersededBy, indexName) }
+      : {}),
+  };
+}
+
+/**
  * Remove output-only index metadata from a gno:// URI.
  */
 export function stripUriIndex(uri: string): string {

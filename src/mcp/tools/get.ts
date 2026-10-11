@@ -107,6 +107,9 @@ function formatGetResponse(data: GetResponse): string {
   if (data.title) {
     lines.push(`Title: ${data.title}`);
   }
+  if (data.supersededBy) {
+    lines.push(`Superseded by: ${data.supersededBy}`);
+  }
   lines.push(`Lines: ${data.totalLines}`);
   if (data.source.absPath) {
     lines.push(`Path: ${data.source.absPath}`);
