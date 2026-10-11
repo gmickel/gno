@@ -1,22 +1,154 @@
 {
   "branch_name": "fn-217-correctness-fixes-missing-collection",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-10-11T21:24:11.891977Z",
   "created_at": "2026-10-11T15:12:15.050139Z",
   "default_impl": null,
   "default_review": "codex:gpt-6.1-sol:high",
   "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-217-correctness-fixes-missing-collection",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-217-correctness-fixes-missing-collection.1": 0
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "ready": true,
+  "review_attempts": [
+    {
+      "artifact_sha256": "f14632178cc035536e1789349f5b01d4eb07b43a200b999ac5d75cd55d7c91d5",
+      "backend": "codex",
+      "base_sha": "8cb8b5742fc4f4a83cf7cd209a14005c0a7831f5",
+      "counter_kind": "impl",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-13789d7446ec3e87dbff74d947a3ab39",
+            "classification": "introduced",
+            "findingId": "finding-13789d7446ec3e87dbff74d947a3ab39",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-f9e9ba9ebdb261e65214b5d36ddfc7df",
+            "classification": "introduced",
+            "findingId": "finding-f9e9ba9ebdb261e65214b5d36ddfc7df",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-e356e834a8be98aa1669c9a1c7921121",
+            "classification": "introduced",
+            "findingId": "finding-e356e834a8be98aa1669c9a1c7921121",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "f1dd54a7e57f28048f00a177310ba247db380f50",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6.1-sol",
+      "outcome": "verdict",
+      "output_bytes": 2746,
+      "output_sha256": "e9776fe0369ec6e13e6192535f59354717abebad9451454a6f608b1205a6f386",
+      "reservation_id": "d848353bd7954fddaa427c9c298b00f1",
+      "round_consumed": true,
+      "scope": "impl:fn-217-correctness-fixes-missing-collection.1",
+      "superseded_by": null,
+      "task": "fn-217-correctness-fixes-missing-collection.1",
+      "timestamp": "2026-10-11T21:21:50.267831Z",
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "57317afc93a2c71b02ac0639668eafb2fb2dd5cab79423c58692e36e1bddb555",
+      "backend": "codex",
+      "base_sha": "8cb8b5742fc4f4a83cf7cd209a14005c0a7831f5",
+      "counter_kind": "impl",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-13789d7446ec3e87dbff74d947a3ab39",
+            "classification": "introduced",
+            "findingId": "finding-13789d7446ec3e87dbff74d947a3ab39",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-f9e9ba9ebdb261e65214b5d36ddfc7df",
+            "classification": "introduced",
+            "findingId": "finding-f9e9ba9ebdb261e65214b5d36ddfc7df",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-e356e834a8be98aa1669c9a1c7921121",
+            "classification": "introduced",
+            "findingId": "finding-e356e834a8be98aa1669c9a1c7921121",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "bb89119e263c54577d8cadd9fec5491d4a68b15a",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6.1-sol",
+      "outcome": "verdict",
+      "output_bytes": 1554,
+      "output_sha256": "c194efe4e1afad63887edf57395b30bfeda68c941e097e2368631fc86e4607fa",
+      "reservation_id": "4843311b377443f3a8138dd671c1c676",
+      "round_consumed": true,
+      "scope": "impl:fn-217-correctness-fixes-missing-collection.1",
+      "superseded_by": null,
+      "task": "fn-217-correctness-fixes-missing-collection.1",
+      "timestamp": "2026-10-11T21:23:43.164873Z",
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "impl:fn-217-correctness-fixes-missing-collection.1": 1
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-217-correctness-fixes-missing-collection.1": 0
+  },
   "spec_path": ".flow/specs/fn-217-correctness-fixes-missing-collection.md",
-  "status": "open",
+  "status": "done",
   "title": "Correctness fixes: missing collection roots and unknown MCP arguments",
   "tracker": {
     "baseHashFlow": null,
@@ -29,5 +161,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-11T19:33:34.639786Z"
+  "updated_at": "2026-10-11T21:30:21.764216Z"
 }

@@ -217,10 +217,13 @@ export function formatSyncResultLines(
       lines.push(`  ${c.filesErrored} errors`);
     }
     // A file stopped at its conversion budget is always named, not only in
-    // verbose output: it stays unindexed until a later run finishes it.
+    // verbose output: it stays unindexed until a later run finishes it. So is
+    // a collection-level error such as an unavailable root.
     if (!options.verbose) {
       for (const err of c.errors) {
-        if (BUDGET_ERROR_CODES.has(err.code)) {
+        if (err.relPath === "") {
+          lines.push(`    [${err.code}] ${err.message}`);
+        } else if (BUDGET_ERROR_CODES.has(err.code)) {
           lines.push(`    [${err.code}] ${err.relPath}: ${err.message}`);
         }
       }

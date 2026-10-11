@@ -136,6 +136,17 @@ pin, evict, or download as product behavior; metadata/provider bookkeeping may
 still occur. Use `sourceAvailability: any` (default) for legacy reads, or make
 content available locally in the provider UI before indexing under `local`.
 
+### "Collection root could not be resolved" after an update
+
+`gno update` (or the watcher) printed
+`[SOURCE_AVAILABILITY_UNKNOWN] Collection root could not be resolved (...)`
+for a collection. Its folder was missing when the sync ran: an unmounted
+drive, an offline Google Drive or other sync folder, or a network share that
+was down. GNO kept the collection's documents searchable and changed nothing.
+Bring the folder back (mount the drive, start the sync client) and run
+`gno update` again. If the folder moved for good, point the collection at the
+new path, or remove the collection with `gno collection remove`.
+
 ### Retrieval activation failed
 
 Inspect the exact collection, stage, code, and remediation:

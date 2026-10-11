@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bun run bench:vector-search` times one vector search (unscoped, collection-scoped, metadata-filtered) on a seeded synthetic index or a copy of a real index.
 
+### Fixed
+
+- A collection whose folder is missing during a sync (an unmounted drive, an offline Google Drive or other sync folder, a network share that is down) no longer loses its documents. `gno update`, `gno index`, the `gno serve` / `gno daemon` watcher and targeted syncs used to treat the missing folder as empty and mark every document inactive, so search returned nothing for that collection until the folder came back; `gno cleanup` in that window could then remove their content. They now keep the documents and print `[SOURCE_AVAILABILITY_UNKNOWN] Collection root could not be resolved (...)` with the path and the original error, without needing `--verbose`. A folder that exists but is empty still counts as empty.
+- MCP tools reject argument names they do not declare and name the offending key. A misspelled key such as `derived_from` on `gno_remember` or `colection` on `gno_search` used to be dropped silently, so a remember could skip its receipt check and a search could run across every collection. Each tool's input schema now advertises `additionalProperties: false`.
+
 ## [2.10.1] - 2026-10-11
 
 ### Fixed
