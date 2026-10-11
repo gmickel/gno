@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-218-hybrid-ranking-and-answer-quality",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-10-11T22:21:59.830994Z",
   "created_at": "2026-10-11T15:12:15.398338Z",
   "default_impl": null,
   "default_review": "codex:gpt-6.1-sol:high",
@@ -11,7 +11,7 @@
   ],
   "id": "fn-218-hybrid-ranking-and-answer-quality",
   "impl_review_rounds": {
-    "fn-218-hybrid-ranking-and-answer-quality.1": 1
+    "fn-218-hybrid-ranking-and-answer-quality.1": 0
   },
   "next_task": 1,
   "no_plan": true,
@@ -79,9 +79,71 @@
       "task": "fn-218-hybrid-ranking-and-answer-quality.1",
       "timestamp": "2026-10-11T22:20:42.008160Z",
       "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "683a1737ae5b4cb861b12bfd5f11b9119f2de2d6fb7450ad6bb4f542b48da94b",
+      "backend": "codex",
+      "base_sha": "007f8c8f589561fbe144ff0693c672b4ed1b9361",
+      "counter_kind": "impl",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-8a2b2b34797fd638b72e52bc03d0edff",
+            "classification": "introduced",
+            "findingId": "finding-8a2b2b34797fd638b72e52bc03d0edff",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-6dad08c25e6e7d84ab7462e1f78d1172",
+            "classification": "introduced",
+            "findingId": "finding-6dad08c25e6e7d84ab7462e1f78d1172",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-e0613e08299197366caa2511afad6b23",
+            "classification": "introduced",
+            "findingId": "finding-e0613e08299197366caa2511afad6b23",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "b2e032df4fbfe226192319becabd6a78dd9cc667",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6.1-sol",
+      "outcome": "verdict",
+      "output_bytes": 1084,
+      "output_sha256": "6bec39d71cf32ff9233f7f07e98a8ec0ce8b74dd03decd28a3ccd4b3f75357bf",
+      "reservation_id": "fa3a65cc50e4470fb6c27363dd5aae90",
+      "round_consumed": true,
+      "scope": "impl:fn-218-hybrid-ranking-and-answer-quality.1",
+      "superseded_by": null,
+      "task": "fn-218-hybrid-ranking-and-answer-quality.1",
+      "timestamp": "2026-10-11T22:21:39.907076Z",
+      "verdict": "SHIP"
     }
   ],
-  "review_hash_epoch": {},
+  "review_hash_epoch": {
+    "impl:fn-218-hybrid-ranking-and-answer-quality.1": 1
+  },
   "review_pending_rounds": {},
   "review_reservations": {},
   "review_transport_failures": {
@@ -101,5 +163,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-11T22:20:42.010256Z"
+  "updated_at": "2026-10-11T22:21:59.831001Z"
 }
