@@ -12,6 +12,9 @@ let collectionDir: string;
 let stdoutData = "";
 let stderrData = "";
 
+// Progress notice from reportSlowConversion (src/cli/commands/shared.ts).
+const SLOW_CONVERSION_NOTICE =
+  /^Still converting \S+ after [\d.]+s \(budget [\d.]+s\)\r?\n/gm;
 const originalStdoutWrite = process.stdout.write.bind(process.stdout);
 const originalStderrWrite = process.stderr.write.bind(process.stderr);
 const originalConsoleLog = console.log.bind(console);
@@ -125,7 +128,9 @@ describe("gno index with password-protected files", () => {
     );
 
     expect(code).toBe(0);
-    expect(stderr).toBe("");
+    // A slow runner may print the slow-conversion progress notice; anything
+    // else on stderr (stack traces, exception names) is a failure.
+    expect(stderr.replace(SLOW_CONVERSION_NOTICE, "")).toBe("");
     expect(stdout).toContain("Indexing complete.");
     expect(stdout).toContain("docs:");
     expect(stdout).toContain("1 added, 0 updated, 0 unchanged");
