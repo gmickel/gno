@@ -504,6 +504,10 @@ when every source is allowed, and `accessRef` collections open only when the
 hook allows them. Anything the hook does not allow, including a slow or
 failed answer, is treated like a missing note.
 
+Before each scoped search, query or context call, GNO lists the documents of
+every readable collection to leave out notes without a valid `derived_from`.
+Results are unaffected, but latency grows with the readable corpus.
+
 Admin principals, plain `tokenFile` callers and stdio see everything, as
 before.
 
