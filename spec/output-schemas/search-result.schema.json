@@ -50,6 +50,10 @@
       "type": "string",
       "description": "Resolved user-configured retrieval guidance, ordered from global to collection to matching path prefixes"
     },
+    "supersededBy": {
+      "type": "string",
+      "description": "URI of the current fact when a newer memory fact superseded this result"
+    },
     "snippet": {
       "type": "string",
       "description": "Matching text snippet from document mirror"

@@ -1940,6 +1940,27 @@ paths or session content.
 archive lock; `SESSIONS_RUNTIME_FAILURE` (fixed, path-free message) for filesystem or
 index failures.
 
+### gno_list_metadata
+
+List the typed metadata keys indexed documents carry, with observed types,
+document counts and most common values (array members count individually).
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "collection": { "type": "string" },
+    "values": { "type": "integer", "minimum": 1, "maximum": 100 }
+  }
+}
+```
+
+**Output Schema:** `gno://schemas/metadata-summary`. Text content is the same
+summary as `gno metadata`. Full profile only.
+
 ### gno_list_tags
 
 List all tags with document counts.

@@ -924,7 +924,12 @@
           "enum": ["local_only", "lan", "remote", "unclassified", "unavailable"]
         },
         "egressLineage": { "$ref": "#/definitions/egressLineage" },
-        "record": { "$ref": "#/definitions/recordEvidenceMetadata" }
+        "record": { "$ref": "#/definitions/recordEvidenceMetadata" },
+        "supersededBy": {
+          "type": "string",
+          "pattern": "^gno://",
+          "description": "Current successor when a newer memory fact superseded this one"
+        }
       }
     },
     "coverage": {

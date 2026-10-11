@@ -83,6 +83,7 @@ import {
   handleSetPreset,
   handleStatus,
   handleSync,
+  handleMetadata,
   handleTags,
   handleTrashDoc,
   handleUpdateCollection,
@@ -1329,6 +1330,17 @@ export async function startServer(
               admitted.finish();
               throw error;
             }
+          },
+        },
+        "/api/metadata": {
+          GET: async (req: Request) => {
+            const url = new URL(req.url);
+            return withSecurityHeaders(
+              await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                handleMetadata(store, url)
+              ),
+              isDev
+            );
           },
         },
         "/api/tags": {

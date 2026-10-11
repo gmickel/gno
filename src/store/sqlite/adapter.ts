@@ -3696,6 +3696,50 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
    * Get tag counts across all active documents.
    * Optionally filter by collection or tag prefix.
    */
+  async getSupersedingUris(
+    uris: string[]
+  ): Promise<StoreResult<Map<string, string>>> {
+    try {
+      const db = this.ensureOpen();
+      const successorOf = db.query<
+        { uri: string; successor: string },
+        [string]
+      >(`
+        SELECT p.uri AS uri, s.uri AS successor
+        FROM documents p
+        JOIN doc_edges e ON e.dst_doc_id = p.id AND e.edge_type = 'supersedes'
+        JOIN documents s ON s.id = e.src_doc_id AND s.active = 1
+        WHERE p.uri IN (SELECT value FROM json_each(?))
+        ORDER BY s.id
+      `);
+      const result = new Map<string, string>();
+      let frontier = [...new Set(uris)];
+      const next = new Map<string, string>();
+      // Follow chains a bounded number of hops to the current successor.
+      for (let hop = 0; hop < 16 && frontier.length > 0; hop += 1) {
+        const rows = successorOf.all(JSON.stringify(frontier));
+        if (rows.length === 0) break;
+        for (const row of rows) next.set(row.uri, row.successor);
+        frontier = [...new Set(rows.map((row) => row.successor))].filter(
+          (uri) => !next.has(uri)
+        );
+      }
+      for (const uri of uris) {
+        let current = next.get(uri);
+        for (let hop = 0; current && next.has(current) && hop < 16; hop += 1)
+          current = next.get(current);
+        if (current) result.set(uri, current);
+      }
+      return ok(result);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to read supersession",
+        cause
+      );
+    }
+  }
+
   async getTypedMetadataDocuments(options?: {
     collection?: string;
   }): Promise<StoreResult<{ documents: number; metadata: string[] }>> {

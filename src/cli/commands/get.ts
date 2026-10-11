@@ -29,6 +29,7 @@ import {
   evidenceFromExactDocument,
   RetrievalTraceSession as TraceSession,
 } from "../../core/retrieval-trace-session";
+import { supersedingUri } from "../../pipeline/result-context";
 import { parseRef } from "./ref-parser";
 import { initStore } from "./shared";
 
@@ -90,6 +91,8 @@ export interface GetResponse {
     mirrorHash?: string;
   };
   record?: RecordEvidenceMetadata;
+  /** URI of the current fact when a newer memory fact superseded this one. */
+  supersededBy?: string;
   capabilities: DocumentCapabilities;
 }
 
@@ -269,7 +272,7 @@ async function fetchDocument(
     return { success: false, error: "Mirror content unavailable" };
   }
 
-  return buildResponse({
+  const response = buildResponse({
     doc,
     fullContent: contentResult.value,
     parsed,
@@ -277,6 +280,10 @@ async function fetchDocument(
     config,
     indexName,
   });
+  const successor = await supersedingUri(store, doc.uri);
+  if (response.success && successor)
+    response.data.supersededBy = decorateUriForIndex(successor, indexName);
+  return response;
 }
 
 interface BuildResponseContext {

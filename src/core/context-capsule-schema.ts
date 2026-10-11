@@ -365,6 +365,8 @@ export const contextCapsuleEvidenceSchema = z
     ]),
     egressLineage: egressLineageSchema.optional(),
     record: recordEvidenceMetadataSchema.optional(),
+    /** Current successor when a newer memory fact superseded this one. */
+    supersededBy: contextCapsuleGnoUriSchema.optional(),
   })
   .strict()
   .superRefine((value, context) => {

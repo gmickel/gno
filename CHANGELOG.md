@@ -18,9 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `bun run bench:vector-search` times one vector search (unscoped, collection-scoped, metadata-filtered) on a seeded synthetic index or a copy of a real index.
 - `bun run eval:ranking-ablation` compares ranking variants on the judged retrieval cases with real expansion, vector and rerank stages.
+- `gno metadata` lists the typed metadata keys your documents carry, with their types, how many documents carry each, and the most common values (`--collection`, `--values`). The same summary is MCP `gno_list_metadata`, REST `GET /api/metadata` and SDK `listMetadata`, so an agent can see which keys exist before writing a `filter`.
 
 ### Fixed
 
+- A memory fact that a newer fact superseded no longer looks current outside `recall`. Search, vector search, hybrid query, `get`, multi-get, `ask` citations and Context Capsule evidence now carry `supersededBy` with the current fact's URI; the answer model is told not to present a superseded fact as current; and verifying a saved Capsule that cites a fact superseded since reports that evidence as stale (`superseded`).
+- `gno ask --verify` rejects a claim that misquotes its source. A double-quoted passage of two or more words must appear in the cited evidence (whitespace, quote style and case aside); otherwise the claim is `uncertain` with `quote_not_in_evidence` and the answer abstains, even when the semantic judge accepted it.
 - A collection whose folder is missing during a sync (an unmounted drive, an offline Google Drive or other sync folder, a network share that is down) no longer loses its documents. `gno update`, `gno index`, the `gno serve` / `gno daemon` watcher and targeted syncs used to treat the missing folder as empty and mark every document inactive, so search returned nothing for that collection until the folder came back; `gno cleanup` in that window could then remove their content. They now keep the documents and print `[SOURCE_AVAILABILITY_UNKNOWN] Collection root could not be resolved (...)` with the path and the original error, without needing `--verbose`. A folder that exists but is empty still counts as empty.
 - MCP tools reject argument names they do not declare and name the offending key. A misspelled key such as `derived_from` on `gno_remember` or `colection` on `gno_search` used to be dropped silently, so a remember could skip its receipt check and a search could run across every collection. Each tool's input schema now advertises `additionalProperties: false`.
 

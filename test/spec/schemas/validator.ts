@@ -20,6 +20,7 @@ async function loadAllSchemas(): Promise<void> {
     "peek",
     "doctor",
     "audit-report",
+    "metadata-summary",
     "get",
     "multi-get",
     "ask",

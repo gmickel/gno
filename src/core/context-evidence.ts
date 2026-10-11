@@ -502,6 +502,7 @@ export const materializeContextEvidenceCandidates = async (
           ...(projectRecordEvidenceMetadata(document)
             ? { record: projectRecordEvidenceMetadata(document) }
             : {}),
+          ...(result.supersededBy ? { supersededBy: result.supersededBy } : {}),
         },
       },
     };

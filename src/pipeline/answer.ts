@@ -564,6 +564,7 @@ export async function generateGroundedAnswer(
       content: passage.text,
       guidance: r.context,
       date: r.source.documentDate,
+      supersededBy: r.supersededBy,
     });
     citations.push(
       attachCitationTraceMetadata(
@@ -572,6 +573,7 @@ export async function generateGroundedAnswer(
           uri: r.uri,
           startLine: passage.startLine,
           endLine: passage.endLine,
+          ...(r.supersededBy ? { supersededBy: r.supersededBy } : {}),
         },
         {
           sourceHash,

@@ -30,6 +30,7 @@ import {
   evidenceFromExactDocument,
   RetrievalTraceSession,
 } from "../core/retrieval-trace-session";
+import { supersedingUri } from "../pipeline/result-context";
 import { sdkError } from "./errors";
 
 const URI_PREFIX_PATTERN = /^gno:\/\/[^/]+\//;
@@ -177,6 +178,8 @@ export async function getDocumentByRef(
   options: GnoGetOptions = {}
 ): Promise<GetResponse> {
   const response = await getDocumentByRefUntraced(store, config, ref, options);
+  const successor = await supersedingUri(store, response.uri);
+  if (successor) response.supersededBy = successor;
   if (!options.traceId) return response;
   const resumed = await RetrievalTraceSession.resume({
     store,
@@ -325,7 +328,9 @@ export async function multiGetDocuments(
     );
     const coll = config.collections.find((c) => c.name === doc.collection);
     const sourceRelPath = doc.recordSourcePath ?? doc.relPath;
+    const successor = await supersedingUri(store, doc.uri);
     documents.push({
+      ...(successor ? { supersededBy: successor } : {}),
       docid: doc.docid,
       uri: doc.uri,
       title: doc.title ?? undefined,

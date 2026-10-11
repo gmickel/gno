@@ -21,6 +21,7 @@ import {
   projectRecordEvidenceMetadata,
   type RecordEvidenceMetadata,
 } from "../../core/record-metadata";
+import { supersedingUri } from "../../pipeline/result-context";
 import { isGlobPattern, parseRef, splitRefs } from "./ref-parser";
 import { initStore } from "./shared";
 
@@ -58,6 +59,8 @@ export interface MultiGetDocument {
   totalLines?: number;
   source: { absPath?: string; relPath: string; mime: string; ext: string };
   record?: RecordEvidenceMetadata;
+  /** URI of the current fact when a newer memory fact superseded this one. */
+  supersededBy?: string;
 }
 
 export interface SkippedDoc {
@@ -236,7 +239,11 @@ async function fetchSingleDocument(
   const coll = ctx.config.collections.find((c) => c.name === doc.collection);
 
   const sourceRelPath = doc.recordSourcePath ?? doc.relPath;
+  const successor = await supersedingUri(ctx.store, doc.uri);
   ctx.documents.push({
+    ...(successor
+      ? { supersededBy: decorateUriForIndex(successor, ctx.indexName) }
+      : {}),
     docid: doc.docid,
     uri: decorateUriForIndex(doc.uri, ctx.indexName),
     title: doc.title ?? undefined,

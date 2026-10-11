@@ -1229,7 +1229,8 @@
             "chunk_missing",
             "chunk_corrupt",
             "source_missing",
-            "mirror_missing"
+            "mirror_missing",
+            "superseded"
           ]
         },
         "rankingStatus": {
@@ -1273,7 +1274,8 @@
                   "mirror_corrupt",
                   "passage_stale",
                   "chunk_missing",
-                  "chunk_corrupt"
+                  "chunk_corrupt",
+                  "superseded"
                 ]
               },
               "currentSourceHash": { "$ref": "#/definitions/sha256" },

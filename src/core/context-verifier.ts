@@ -35,6 +35,7 @@ type ContextVerifierStore = Pick<
   | "getCollections"
   | "getContexts"
   | "getDocumentsByDocids"
+  | "getSupersedingUris"
 > &
   Required<Pick<StorePort, "getContentBatch">>;
 
@@ -127,6 +128,8 @@ interface LoadedEvidence {
   chunksByHash: Map<string, ChunkRow[]>;
   documents: DocumentRow[];
   snapshot: ContextEvidenceSnapshot;
+  /** Current successor URI of evidence whose memory fact was superseded. */
+  successors: ReadonlyMap<string, string>;
 }
 
 const missingReceipt = (evidence: Evidence): EvidenceReceipt => ({
@@ -229,6 +232,8 @@ const verifyContent = (
     contentCode = "chunk_missing";
   } else if (!chunkValid) {
     contentCode = "chunk_corrupt";
+  } else if (loaded.successors.has(evidence.uri)) {
+    contentCode = "superseded";
   }
 
   return {
@@ -374,16 +379,19 @@ export const verifyContextCapsule = async (
       )
     ),
   ];
-  const [documentResult, contentResult, chunkResult, rankResult] =
+  const [documentResult, contentResult, chunkResult, rankResult, successors] =
     await Promise.all([
       deps.store.getDocumentsByDocids(docids, { activeOnly: true }),
       deps.store.getContentBatch(mirrorHashes),
       deps.store.getChunksBatch(mirrorHashes),
       deps.resolveCurrentRanks?.(structuredClone(capsule)).catch(() => null) ??
         Promise.resolve(null),
+      deps.store.getSupersedingUris?.([...evidenceUris]) ??
+        Promise.resolve(null),
     ]);
   const loaded: LoadedEvidence = {
     snapshot: before,
+    successors: successors?.ok ? successors.value : new Map(),
     documents: unwrapStore(
       documentResult,
       "document_load_failed",

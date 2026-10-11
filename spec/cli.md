@@ -3812,6 +3812,32 @@ gno agents uninstall [--target <...>] [--extra-dir <path>]... [--dry-run] [--jso
 
 ---
 
+### gno metadata
+
+List the typed metadata keys active documents carry.
+
+**Synopsis:**
+
+```bash
+gno metadata [-c, --collection <name>] [--values <n>] [--json] [--md]
+```
+
+**Options:**
+
+| Option             | Type    | Description                                      |
+| ------------------ | ------- | ------------------------------------------------ |
+| `-c, --collection` | string  | Only documents in this collection                |
+| `--values`         | integer | Common values listed per key (1-100, default 10) |
+| `--json`           | flag    | JSON output (`gno://schemas/metadata-summary`)   |
+| `--md`             | flag    | Markdown output                                  |
+
+**Exit Codes:**
+
+- 0: Success
+- 1: `--values` out of range
+
+---
+
 ### gno tags list
 
 List all tags with document counts.

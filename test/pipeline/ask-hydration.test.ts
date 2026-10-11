@@ -134,15 +134,16 @@ test("SDK Ask owns exactly one hydration through generation and releases on succ
 });
 
 /**
- * The answer prompt states today's date (fn-218), so the three generating
+ * The answer prompt states today's date (fn-218) and how to treat superseded
+ * facts (fn-219), so the three generating
  * cases legitimately differ from the frozen capture. Each delta pins both
  * complete records at a fixed clock; any other difference still fails.
  */
 const ASK_DATE_PROMPT_CANDIDATES: Record<string, string> = {
-  raw: "62a0d50c16b9c4685e42946504d7e3559ce6140d1f3f7382ebbe8412a7e96a78",
-  verified: "ff9c7626ec5e7c2aff11da5cd4411845c789a6f4a075614010654350df1d2733",
+  raw: "dc15a32dda1ce88197d3844bd7620395a67b3677384acc770b6a713af2972576",
+  verified: "a40da54b587e77b583f81f96d3dc861b2b29c244c3fea207590ba50a53b37cf0",
   unsupported:
-    "64dd6d04ade4978aac9a0a99ef27f8fc761895ac0800e0ba0e0c5c3b4a987e5e",
+    "922b0ec66104d2a26b6316564ce6a00611949f8a0efd52515b423d944ecca2f7",
 };
 
 test("Ask retains frozen before-source output, citation provenance and actual model arguments", async () => {
@@ -166,7 +167,7 @@ test("Ask retains frozen before-source output, citation provenance and actual mo
   const intendedDeltas = Object.entries(ASK_DATE_PROMPT_CANDIDATES).map(
     ([caseId, candidateRecordSha256]) => ({
       caseId,
-      reason: "answer prompt states today's date",
+      reason: "answer prompt states today's date and superseded facts",
       oracleSha256: candidateRecordSha256,
       baselineRecordSha256: deterministicRecordFingerprint(
         before.runs.find((run) => run.record.caseId === caseId)!.record

@@ -394,6 +394,11 @@ export interface GnoClient {
   list(
     options?: GnoListOptions
   ): Promise<import("../cli/commands/ls").LsResponse>;
+  /** Typed metadata keys with types, document counts and common values. */
+  listMetadata(options?: {
+    collection?: string;
+    values?: number;
+  }): Promise<import("../core/metadata-discovery").MetadataSummary>;
   changes(options?: ListKnowledgeChangesInput): Promise<KnowledgeChangesResult>;
   diff(ref: string, changeId?: string): Promise<KnowledgeDiffResult>;
   impact(

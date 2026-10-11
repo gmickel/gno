@@ -39,6 +39,31 @@ accept the same object in `filter`. It intersects collection/path, exclusions,
 authority, egress, and memory visibility before candidate limits. It cannot
 expand access. No model or background service is needed to extract metadata.
 
+## Discover keys and values
+
+To see which keys exist before writing a filter, list them. Each key shows its
+observed types, how many documents carry it, and its most common values (array
+members count one by one):
+
+```bash
+gno metadata --collection notes
+gno metadata --collection notes --values 20 --json
+```
+
+```text
+2 of 3 documents in notes carry typed metadata:
+
+project [string] 2 docs: "atlas" (1), "borealis" (1)
+status [string] 2 docs: "approved" (2)
+```
+
+`--values` lists 1 to 100 values per key (default 10); `valuesTruncated` tells
+you when more exist. The same summary is MCP `gno_list_metadata`, REST
+`GET /api/metadata?collection=notes&values=20`, and SDK
+`client.listMetadata({ collection: "notes" })`. It reads the index as it is, so
+documents not yet updated to the current metadata format do not count until
+`gno update` runs; an unknown collection reports zero documents.
+
 ## Types and operators
 
 Strings match exactly, including case. `0.9` is a number; `"0.9"` is a string.

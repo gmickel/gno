@@ -25,6 +25,7 @@ import {
   evidenceFromExactDocument,
   RetrievalTraceSession,
 } from "../../core/retrieval-trace-session";
+import { supersedingUri } from "../../pipeline/result-context";
 import { openScopedIndexStore } from "../../store/sqlite/scoped-index";
 import { runTool, type ToolResult } from "./index";
 
@@ -59,6 +60,8 @@ interface GetResponse {
     mirrorHash?: string;
   };
   record?: RecordEvidenceMetadata;
+  /** URI of the current fact when a newer memory fact superseded this one. */
+  supersededBy?: string;
   capabilities: DocumentCapabilities;
 }
 
@@ -226,7 +229,11 @@ export function handleGet(
           }
         }
 
+        const successor = await supersedingUri(scoped.store, doc.uri);
         const response: GetResponse = {
+          ...(successor
+            ? { supersededBy: decorateUriForIndex(successor, scoped.indexName) }
+            : {}),
           docid: doc.docid,
           uri: decorateUriForIndex(doc.uri, scoped.indexName),
           title: doc.title ?? undefined,

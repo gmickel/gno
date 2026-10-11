@@ -5,7 +5,6 @@
  * @module src/serve/routes/api
  */
 
-// node:fs/promises structure ops + realpath have no Bun equivalent
 import { readdir, realpath } from "node:fs/promises";
 // node:path has no Bun equivalent
 import { posix as pathPosix } from "node:path";
@@ -90,6 +89,7 @@ import {
   type RecallInput,
   type RememberInput,
 } from "../../core/memory";
+import { readMetadataSummary } from "../../core/metadata-discovery";
 import {
   hasContentMutation,
   recordContentMutation,
@@ -167,6 +167,8 @@ import {
 import { diagnoseQueryTarget } from "../../pipeline/diagnose";
 import { searchHybrid } from "../../pipeline/hybrid";
 import { validateQueryModes } from "../../pipeline/query-modes";
+// node:fs/promises structure ops + realpath have no Bun equivalent
+import { supersedingUri } from "../../pipeline/result-context";
 import { searchBm25 } from "../../pipeline/search";
 import {
   derivePublishArtifactFilename,
@@ -2146,7 +2148,9 @@ export async function handleDoc(
   const record = projectRecordEvidenceMetadata(doc);
   const relPath = doc.recordSourcePath ?? doc.relPath;
 
+  const successor = await supersedingUri(store, doc.uri);
   const responseData = {
+    ...(successor ? { supersededBy: successor } : {}),
     docid: doc.docid,
     uri: doc.uri,
     title: doc.title,
@@ -2463,6 +2467,30 @@ export async function handleDocAsset(
  * Query params: collection, prefix
  * Returns tag list with document counts.
  */
+export async function handleMetadata(
+  store: Pick<StorePort, "getTypedMetadataDocuments">,
+  url: URL
+): Promise<Response> {
+  const collection = url.searchParams.get("collection") ?? undefined;
+  const valuesParam = url.searchParams.get("values");
+  try {
+    return jsonResponse(
+      await readMetadataSummary(store, {
+        collection,
+        values: valuesParam === null ? undefined : Number(valuesParam),
+      })
+    );
+  } catch (cause) {
+    return cause instanceof RangeError
+      ? errorResponse("VALIDATION", cause.message)
+      : errorResponse(
+          "RUNTIME",
+          cause instanceof Error ? cause.message : String(cause),
+          500
+        );
+  }
+}
+
 export async function handleTags(
   store: SqliteAdapter,
   url: URL

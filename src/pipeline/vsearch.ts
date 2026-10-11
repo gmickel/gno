@@ -38,7 +38,10 @@ import { typedMetadataWarnings, typedMetadataFilterReason } from "./filters";
 import { selectBestChunkForSteering } from "./intent";
 import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
-import { attachSearchResultContexts } from "./result-context";
+import {
+  attachSearchResultContexts,
+  attachSupersession,
+} from "./result-context";
 import { cleanDisplaySnippet } from "./snippet";
 import {
   resolveRecencyTimestamp,
@@ -520,6 +523,7 @@ async function searchVectorWithEmbeddingOwned(
     if (metadata) metadata.retrievalRank = index + 1;
   }
   await attachSearchResultContexts(store, finalResults);
+  await attachSupersession(store, finalResults);
   const lineageResult = await attachSearchResultEgressLineage(
     store,
     finalResults,

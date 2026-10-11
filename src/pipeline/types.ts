@@ -94,6 +94,8 @@ export interface SearchResult {
   record?: RecordEvidenceMetadata;
   /** Complete, most-restrictive collection ownership for this derived result. */
   egressLineage?: EgressLineage;
+  /** URI of the current fact when a newer memory fact superseded this one. */
+  supersededBy?: string;
   [SEARCH_RESULT_PLANNER_METADATA]?: SearchResultPlannerMetadata;
 }
 
@@ -455,6 +457,8 @@ export interface Citation {
   uri: string;
   startLine?: number;
   endLine?: number;
+  /** URI of the current fact when a newer memory fact superseded the cited one. */
+  supersededBy?: string;
   [CITATION_TRACE_METADATA]?: CitationTraceMetadata;
 }
 

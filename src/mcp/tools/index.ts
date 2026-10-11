@@ -21,6 +21,11 @@ import {
   compiledContextCheckSchema,
 } from "../../core/compiled-context";
 import { withoutHostPaths } from "../../core/host-paths";
+import {
+  formatMetadataSummary,
+  MAX_METADATA_VALUE_LIMIT,
+  readMetadataSummary,
+} from "../../core/metadata-discovery";
 import { NOTE_PRESETS, type NotePresetId } from "../../core/note-presets";
 import { RETRIEVAL_TRACE_METADATA } from "../../core/retrieval-trace-session";
 import { normalizeTag } from "../../core/tags";
@@ -756,6 +761,20 @@ const listJobsInputSchema = z.object({
     .describe("Max jobs to return"),
 });
 
+const listMetadataInputSchema = z.object({
+  collection: z
+    .string()
+    .optional()
+    .describe("Only documents in this collection"),
+  values: z
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_METADATA_VALUE_LIMIT)
+    .optional()
+    .describe("Common values listed per key (default 10)"),
+});
+
 const listTagsInputSchema = z.object({
   collection: z
     .string()
@@ -1371,6 +1390,22 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       inputSchema: traceShowInputSchema,
     },
     (args) => handleTraceShow(args, ctx)
+  );
+
+  registerTool(
+    "gno_list_metadata",
+    {
+      description:
+        "List the typed metadata keys indexed documents carry, with observed types, document counts and the most common values. Call before writing a filter predicate on custom metadata you have not seen.",
+      inputSchema: listMetadataInputSchema,
+    },
+    (args) =>
+      runTool(
+        ctx,
+        "gno_list_metadata",
+        () => readMetadataSummary(ctx.store, args),
+        formatMetadataSummary
+      )
   );
 
   registerTool(

@@ -51,6 +51,7 @@ export const contextCapsuleVerificationEvidenceSchema = z
       "chunk_corrupt",
       "source_missing",
       "mirror_missing",
+      "superseded",
     ]),
     rankingStatus: z.enum(["unchanged", "reranked", "unavailable"]),
     rankingCode: z.enum([
@@ -82,6 +83,7 @@ export const contextCapsuleVerificationEvidenceSchema = z
           "passage_stale",
           "chunk_missing",
           "chunk_corrupt",
+          "superseded",
         ].includes(value.contentCode) &&
         hashes.every((hash) => hash !== null)) ||
       (value.contentStatus === "missing" &&

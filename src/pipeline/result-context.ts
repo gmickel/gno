@@ -57,3 +57,32 @@ export async function attachSearchResultContexts(
     // the historical result shape and are reported by config validation.
   }
 }
+
+/**
+ * Mark results whose memory fact a newer fact superseded, naming the current
+ * successor. Fail-open like context guidance: a lookup failure marks nothing.
+ */
+export async function attachSupersession(
+  store: StorePort,
+  results: { uri: string; supersededBy?: string }[]
+): Promise<void> {
+  if (results.length === 0 || !store.getSupersedingUris) return;
+  const successors = await store.getSupersedingUris(
+    results.map((result) => result.uri)
+  );
+  if (!successors.ok) return;
+  for (const result of results) {
+    const successor = successors.value.get(result.uri);
+    if (successor) result.supersededBy = successor;
+  }
+}
+
+/** Current successor URI of one document's superseded memory fact, if any. */
+export async function supersedingUri(
+  store: StorePort,
+  uri: string
+): Promise<string | undefined> {
+  if (!store.getSupersedingUris) return undefined;
+  const successors = await store.getSupersedingUris([uri]);
+  return successors.ok ? successors.value.get(uri) : undefined;
+}

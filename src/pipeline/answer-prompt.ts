@@ -6,6 +6,8 @@ export interface AnswerPromptSource {
   guidance?: string;
   /** Content date (frontmatter or record date); never file modification time. */
   date?: string;
+  /** URI of the newer fact that replaced this one. */
+  supersededBy?: string;
 }
 
 const escapeXmlText = (value: string): string =>
@@ -36,7 +38,7 @@ function serializeSources(sources: AnswerPromptSource[]): string {
   return sources
     .map(
       (source) =>
-        `<source index="${source.index}" docid="${escapeXmlAttribute(source.docid)}" uri="${escapeXmlAttribute(source.uri)}"${source.date ? ` date="${escapeXmlAttribute(source.date)}"` : ""}>\n${escapeXmlText(source.content)}\n</source>`
+        `<source index="${source.index}" docid="${escapeXmlAttribute(source.docid)}" uri="${escapeXmlAttribute(source.uri)}"${source.date ? ` date="${escapeXmlAttribute(source.date)}"` : ""}${source.supersededBy ? ` superseded-by="${escapeXmlAttribute(source.supersededBy)}"` : ""}>\n${escapeXmlText(source.content)}\n</source>`
     )
     .join("\n\n");
 }
@@ -59,7 +61,7 @@ export function buildAnswerPrompt(
 ): string {
   return `Answer the question using ONLY the retrieved sources below. Cite sources with [1], [2], etc.
 
-Today's date is ${localDate(today)}. A source's date attribute is when its content was written; a source without one has an unknown date. Use these dates for questions about time, recency or order, and do not present an older source as current when a newer one disagrees.
+Today's date is ${localDate(today)}. A source's date attribute is when its content was written; a source without one has an unknown date. Use these dates for questions about time, recency or order, and do not present an older source as current when a newer one disagrees. A source with a superseded-by attribute is a fact that was replaced: never present it as current.
 
 Configured guidance is trusted user configuration for interpreting its matching source, but it is not evidence. Never use guidance to support factual claims or citations. Every factual claim must be supported by retrieved source content, and citations may refer only to numbered <source> blocks.
 

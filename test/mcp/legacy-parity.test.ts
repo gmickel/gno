@@ -288,6 +288,7 @@ const SESSION_ARCHIVE_TOOLS = new Set([
 
 /** Tools added after the historical capture; pinned by the current golden. */
 const ADDITIVE_TOOLS = new Set([
+  "gno_list_metadata",
   ...COMPILED_CONTEXT_TOOLS,
   ...REQUEST_STATUS_TOOLS,
   ...SESSION_ARCHIVE_TOOLS,

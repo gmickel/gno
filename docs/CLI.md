@@ -507,7 +507,11 @@ evidence used by the verifier.
 
 The semantic verifier fails closed. An unavailable, incapable, failed, or
 malformed verifier cannot turn a claim into supported evidence; unresolved
-claims become uncertain and the answer abstains. Verified synthesis also checks
+claims become uncertain and the answer abstains. A claim that quotes its
+source in double quotes (two words or more) must quote it exactly, apart from
+whitespace, quote style and letter case; otherwise the claim is `uncertain`
+with `rationaleCode: "quote_not_in_evidence"`, whatever the semantic judge
+says, and the answer abstains. Verified synthesis also checks
 the retained evidence's source and mirror freshness before trusting a support
 judgment.
 
@@ -1915,6 +1919,21 @@ gno agents uninstall --dry-run
 Manage document tags. Tags are extracted from markdown frontmatter during sync.
 
 **Tag format**: lowercase alphanumeric, hyphens, dots, slashes for hierarchy (e.g., `project/web`, `status.active`).
+
+### gno metadata
+
+List the typed metadata keys documents carry, with observed types, document
+counts and most common values. See
+[Typed metadata filters](TYPED-METADATA.md#discover-keys-and-values).
+
+```bash
+gno metadata                         # All active documents
+gno metadata --collection notes      # One collection
+gno metadata --values 20 --json      # Up to 20 values per key, JSON
+```
+
+Options: `-c, --collection <name>`, `--values <n>` (1-100, default 10),
+`--json`, `--md`.
 
 ### gno tags
 

@@ -49,6 +49,10 @@
               "ext": { "type": "string", "pattern": "^\\.[a-zA-Z0-9]+$" }
             }
           },
+          "supersededBy": {
+            "type": "string",
+            "description": "URI of the current fact when a newer memory fact superseded this document"
+          },
           "record": {
             "type": "object",
             "additionalProperties": false,

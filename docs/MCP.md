@@ -1805,6 +1805,17 @@ Check async job status.
 
 List active and recent jobs.
 
+### gno_list_metadata
+
+List the typed metadata keys documents carry, with observed types, document
+counts and most common values. Call it before writing a `filter` on custom
+metadata you have not seen.
+
+```
+collection: "notes"  # Optional: one collection
+values: 20           # Optional: values listed per key (1-100, default 10)
+```
+
 ### gno_list_tags
 
 List all tags with document counts.

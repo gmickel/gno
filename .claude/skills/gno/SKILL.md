@@ -605,6 +605,8 @@ existing notes. They work only on a collection with `memoryManaged: true`.
   re-stored as a new fact.
 - `remember` without a decision returns candidates and writes nothing; decide
   with `--add` or `--supersede <uri> --predecessor-hash <hash>` from recall.
+- A result, document or citation with `supersededBy` is a replaced fact: use
+  the fact at that URI, never present the old one as current.
 - Details, error codes, and the fence's paraphrase limit: `docs/MEMORY.md`,
   [cli-reference.md](cli-reference.md), [mcp-reference.md](mcp-reference.md).
 
@@ -747,8 +749,10 @@ MCP-equivalent write tool:
 
 Use fixed flags for existing collection/tag/date/author/category fields. Custom
 fields must be indexed from nested YAML `gno.metadata`; arbitrary frontmatter
-keys are not automatically custom fields. CLI retrieval accepts `--filter`
-JSON; MCP/SDK/REST accept the same `filter` object:
+keys are not automatically custom fields. Run `gno metadata --collection <c>`
+(MCP `gno_list_metadata`) first to see which keys, types and values exist.
+CLI retrieval accepts `--filter` JSON; MCP/SDK/REST accept the same `filter`
+object:
 
 ```json
 {

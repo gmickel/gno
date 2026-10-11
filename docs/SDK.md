@@ -375,6 +375,7 @@ truthful SQLite/WAL physical-cleanup state.
 const doc = await client.get("notes/README.md");
 const many = await client.multiGet(["notes/README.md", "notes/api/auth.md"]);
 const listed = await client.list({ limit: 20 });
+const metadata = await client.listMetadata({ collection: "notes", values: 20 });
 ```
 
 `get()` returns source metadata plus capability metadata, so embedded apps can tell whether a document is editable in place or should be treated as read-only converted source material.

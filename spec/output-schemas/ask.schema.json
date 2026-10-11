@@ -169,6 +169,10 @@
           "description": "Resolved user-configured retrieval guidance, ordered from global to collection to matching path prefixes"
         },
         "egressLineage": { "$ref": "#/$defs/egressLineage" },
+        "supersededBy": {
+          "type": "string",
+          "description": "URI of the current fact when a newer memory fact superseded this result"
+        },
         "snippet": {
           "type": "string",
           "description": "Matching text snippet from document mirror"
@@ -447,6 +451,10 @@
             "type": "integer",
             "description": "Citation end line",
             "minimum": 1
+          },
+          "supersededBy": {
+            "type": "string",
+            "description": "URI of the current fact when a newer memory fact superseded the cited one"
           }
         }
       }

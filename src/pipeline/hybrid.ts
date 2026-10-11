@@ -73,7 +73,10 @@ import {
   summarizeQueryModes,
 } from "./query-modes";
 import { rerankCandidates } from "./rerank";
-import { attachSearchResultContexts } from "./result-context";
+import {
+  attachSearchResultContexts,
+  attachSupersession,
+} from "./result-context";
 import { cleanDisplaySnippet } from "./snippet";
 import {
   isWithinTemporalRange,
@@ -1364,6 +1367,7 @@ async function searchHybridWithHydration(
       }
     : undefined;
   await attachSearchResultContexts(store, finalResults);
+  await attachSupersession(store, finalResults);
   const lineageResult = await attachSearchResultEgressLineage(
     store,
     finalResults,

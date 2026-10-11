@@ -108,6 +108,7 @@ CLI.
 | `/api/graph`                           | GET    | Knowledge graph of links                                    |
 | `/api/graph/query`                     | POST   | Bounded typed-edge graph traversal                          |
 | `/api/tags`                            | GET    | List tags with counts                                       |
+| `/api/metadata`                        | GET    | List typed metadata keys, types, counts and common values   |
 | `/api/search`                          | POST   | BM25 keyword search                                         |
 | `/api/query`                           | POST   | Hybrid search                                               |
 | `/api/query/diagnose`                  | POST   | Diagnose why a target document does or does not retrieve    |
@@ -1369,6 +1370,19 @@ server is idle.
 
 Use this when a client needs the active job id without scraping it out of a
 `409 CONFLICT` message.
+
+---
+
+### List Typed Metadata
+
+```http
+GET /api/metadata?collection=notes&values=20
+```
+
+Returns `{ collection, documents, documentsWithMetadata, keys }`; each key has
+`key`, `types`, `documents`, `values` (`{ value, documents }`) and
+`valuesTruncated`. `values` must be 1-100 (default 10); anything else returns
+`400 VALIDATION`.
 
 ---
 

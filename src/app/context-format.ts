@@ -98,6 +98,7 @@ const evidenceBlock = (
     `- Selection rank: ${item.selectionRank}`,
     `- Modified: ${nullable(item.modifiedAt)}`,
     `- Document date: ${nullable(item.documentDate)}`,
+    ...(item.supersededBy ? [`- Superseded by: ${item.supersededBy}`] : []),
     `- Observed: ${nullable(item.observedAt)}`,
     `- Facets: ${item.facets.length > 0 ? item.facets.join(", ") : "none"}`,
     `- Trust: ${item.trust}`,

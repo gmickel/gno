@@ -1203,6 +1203,7 @@ gno completion output <bash|zsh|fish>
 ## Custom metadata filters
 
 ```bash
+gno metadata --collection docs --values 20   # keys, types, counts, common values
 gno search "rollout" --filter '{"op":"eq","key":"status","value":"approved"}'
 gno query diagnose "rollout" --target gno://docs/decision.md --filter '{"op":"gte","key":"confidence","value":0.8}'
 ```

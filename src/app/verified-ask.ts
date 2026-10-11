@@ -50,6 +50,7 @@ const generationSources = (capsule: ContextCapsuleV1) => {
       })
       .join("\n"),
     date: evidence.documentDate ?? undefined,
+    supersededBy: evidence.supersededBy,
   }));
 };
 
