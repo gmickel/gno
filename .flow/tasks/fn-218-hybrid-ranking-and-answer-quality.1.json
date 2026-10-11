@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-218-hybrid-ranking-and-answer-quality",
   "spec_path": ".flow/tasks/fn-218-hybrid-ranking-and-answer-quality.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Hybrid ranking and answer quality",
   "updated_at": "2026-10-11T21:31:49.708310Z"
 }

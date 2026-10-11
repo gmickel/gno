@@ -150,7 +150,7 @@
     "impl:fn-218-hybrid-ranking-and-answer-quality.1": 0
   },
   "spec_path": ".flow/specs/fn-218-hybrid-ranking-and-answer-quality.md",
-  "status": "open",
+  "status": "done",
   "title": "Hybrid ranking and answer quality",
   "tracker": {
     "baseHashFlow": null,
@@ -163,5 +163,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-11T22:21:59.831001Z"
+  "updated_at": "2026-10-11T22:25:17.732288Z"
 }
