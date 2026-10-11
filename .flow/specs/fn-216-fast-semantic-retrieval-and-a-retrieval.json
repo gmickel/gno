@@ -164,7 +164,7 @@
     "impl:fn-216-fast-semantic-retrieval-and-a-retrieval.1": 0
   },
   "spec_path": ".flow/specs/fn-216-fast-semantic-retrieval-and-a-retrieval.md",
-  "status": "open",
+  "status": "done",
   "title": "Fast semantic retrieval and a retrieval ladder that uses it",
   "tracker": {
     "baseHashFlow": null,
@@ -177,5 +177,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-11T20:36:08.485569Z"
+  "updated_at": "2026-10-11T20:47:02.562483Z"
 }

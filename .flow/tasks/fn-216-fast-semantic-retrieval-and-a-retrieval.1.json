@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-216-fast-semantic-retrieval-and-a-retrieval",
   "spec_path": ".flow/tasks/fn-216-fast-semantic-retrieval-and-a-retrieval.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Fast semantic retrieval and a retrieval ladder that uses it",
   "updated_at": "2026-10-11T19:34:11.600602Z"
 }
