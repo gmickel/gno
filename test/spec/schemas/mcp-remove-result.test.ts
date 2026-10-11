@@ -15,7 +15,7 @@ describe("mcp-remove-result schema", () => {
       collection: "notes",
       configUpdated: true,
       indexedDataRetained: true,
-      note: "Documents remain in index until next full reindex or manual cleanup",
+      note: "Collection removed from config and its documents deleted from the index. Content, chunks and vectors stay until gno cleanup.",
     };
     expect(assertValid(result, schema)).toBe(true);
   });

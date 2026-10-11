@@ -997,11 +997,16 @@ Run `gno cleanup` afterwards to reclaim the space its content and vectors used.
 
 ### gno collection rename
 
-Rename a collection.
+Rename a collection, then index it under the new name.
 
 ```bash
 gno collection rename notes work-notes
+gno update
 ```
+
+The collection has no documents until `gno update` (or `gno index`) runs.
+Content and embeddings from before the rename are reused unless `gno cleanup`
+ran in between.
 
 ### gno collection clear-embeddings
 

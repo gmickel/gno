@@ -2894,15 +2894,35 @@ function wireManagementCommands(program: Command): void {
     throwIfWriteLeaseBusy(result, false);
   });
 
-  collectionCmd
-    .command("rename <old> <new>")
-    .description("Rename a collection")
-    .action(async (oldName: string, newName: string) => {
+  addWriteLeaseFlags(
+    collectionCmd
+      .command("rename <old> <new>")
+      .description("Rename a collection (run gno update afterwards)")
+  ).action(
+    async (
+      oldName: string,
+      newName: string,
+      cmdOpts: Record<string, unknown>
+    ) => {
       const { collectionRename } = await import("./commands/collection");
-      await collectionRename(oldName, newName, {
-        configPath: getGlobals().config,
-      });
-    });
+      const lease = parseWriteLeaseFlags(cmdOpts);
+      const result = await withCliWriteLease(
+        {
+          indexName: getGlobals().index,
+          lockWaitMs: lease.lockWaitMs,
+          noWait: lease.noWait,
+        },
+        async () => {
+          await collectionRename(oldName, newName, {
+            configPath: getGlobals().config,
+            indexName: getGlobals().index,
+          });
+          return { success: true as const };
+        }
+      );
+      throwIfWriteLeaseBusy(result, false);
+    }
+  );
 
   addWriteLeaseFlags(
     collectionCmd

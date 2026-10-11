@@ -21,6 +21,7 @@ interface RemoveCollectionResult {
   removed: true;
   collection: string;
   configUpdated: true;
+  /** Documents are deleted; content, chunks and vectors stay until cleanup. */
   indexedDataRetained: true;
   note: string;
 }
@@ -101,7 +102,7 @@ export function handleRemoveCollection(
           collection: name,
           configUpdated: true,
           indexedDataRetained: true,
-          note: "Documents remain in index until next full reindex or manual cleanup",
+          note: "Collection removed from config and its documents deleted from the index. Content, chunks and vectors stay until gno cleanup.",
         };
 
         return result;

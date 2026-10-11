@@ -1044,7 +1044,7 @@ curl -X POST http://localhost:3000/api/collections \
 DELETE /api/collections/:name
 ```
 
-Remove a collection from the config. Indexed documents remain in DB but won't appear in searches.
+Remove a collection from the config and delete its documents from the index. Content, chunks and vectors stay until `gno cleanup`.
 
 **Response**:
 
@@ -1052,7 +1052,7 @@ Remove a collection from the config. Indexed documents remain in DB but won't ap
 {
   "success": true,
   "collection": "notes",
-  "note": "Collection removed from config. Indexed documents remain in DB."
+  "note": "Collection removed from config and its documents deleted from the index. Content, chunks and vectors stay until gno cleanup."
 }
 ```
 

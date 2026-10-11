@@ -28,12 +28,12 @@
     },
     "indexedDataRetained": {
       "type": "boolean",
-      "description": "Indexed data retention flag",
+      "description": "Always true: the collection's documents are deleted, but content, chunks and vectors stay in the index until gno cleanup",
       "const": true
     },
     "note": {
       "type": "string",
-      "description": "Explanation of retained data"
+      "description": "What was deleted and what stays until gno cleanup"
     }
   }
 }

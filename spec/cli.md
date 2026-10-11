@@ -1138,7 +1138,7 @@ Rename a collection.
 **Synopsis:**
 
 ```bash
-gno collection rename <old> <new>
+gno collection rename <old> <new> [--lock-wait <duration>] [--no-wait]
 ```
 
 **Arguments:**
@@ -1147,10 +1147,22 @@ gno collection rename <old> <new>
 | `<old>` | string | Current collection name |
 | `<new>` | string | New collection name |
 
+**Behavior:**
+
+- Renames the collection in config and rewrites contexts scoped to it
+- Syncs the index in the same config write. Documents are keyed by collection
+  name, so the old name's documents are deleted at once and the collection is
+  empty until the next `gno update` (or `gno index`) indexes its files under
+  the new name; content and vectors not yet removed by `gno cleanup` are reused
+- Prints `Run: gno update to index it under the new name`
+- Waits for the index write lease (`--lock-wait`, default 120s; `--no-wait`
+  fails at once)
+
 **Exit Codes:**
 
 - 0: Success
-- 1: Old name not found or new name already exists
+- 1: Old name not found, new name already exists, or new name invalid
+- 2: Config save or index sync failure, or write lease busy
 
 ---
 

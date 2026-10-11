@@ -356,6 +356,38 @@ test("gno collection remove clears the collection from the index at once", async
   );
 }, 30_000);
 
+test("gno collection rename drops the old name's documents at once", async () => {
+  await withIsolatedGno(
+    "gno-status-renamed-",
+    async ({ testDir, cli, readOutput }) => {
+      await indexTwoCollections(testDir, cli);
+
+      expect(await cli("collection", "rename", "gone", "moved")).toBe(0);
+      expect(readOutput()).toContain("Run: gno update");
+
+      expect(goneRows(testDir)).toEqual({ collections: 0, documents: 0 });
+      expect(await cli("status", "--json")).toBe(0);
+      let parsed = JSON.parse(readOutput());
+      expect(
+        parsed.collections.map((c: { name: string; documentCount: number }) => [
+          c.name,
+          c.documentCount,
+        ])
+      ).toEqual([
+        ["keep", 1],
+        ["moved", 0],
+      ]);
+      expect(parsed.embeddingBacklog).toBe(1);
+
+      expect(await cli("update")).toBe(0);
+      expect(await cli("status", "--json")).toBe(0);
+      parsed = JSON.parse(readOutput());
+      expect(parsed.totalDocuments).toBe(2);
+      expect(parsed.embeddingBacklog).toBe(2);
+    }
+  );
+}, 30_000);
+
 test("status ignores and cleanup purges a collection removed by editing the config", async () => {
   await withIsolatedGno(
     "gno-status-hand-removed-",

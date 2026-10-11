@@ -1776,7 +1776,7 @@ Equivalent to CLI `gno index`. Runs sync then embed as single job.
 
 ### gno_remove_collection
 
-Remove a collection from config (requires `--enable-write`). Indexed data is retained.
+Remove a collection from config and delete its documents from the index (requires `--enable-write`). Content, chunks and vectors stay until `gno cleanup`.
 
 ### gno_clear_collection_embeddings
 

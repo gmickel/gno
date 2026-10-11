@@ -1574,9 +1574,8 @@ export async function handleImportPreview(
 
 /**
  * DELETE /api/collections/:name
- * Remove a collection from config.
- * Note: Does NOT remove indexed documents - they remain in DB until re-sync
- * or manual cleanup. This preserves data for potential recovery.
+ * Remove a collection from config. The config sync deletes the collection
+ * row and its documents; content, chunks and vectors stay until cleanup.
  */
 export async function handleDeleteCollection(
   ctxHolder: ContextHolder,
@@ -1612,7 +1611,7 @@ export async function handleDeleteCollection(
   return jsonResponse({
     success: true,
     collection: name,
-    note: "Collection removed from config. Indexed documents remain in DB.",
+    note: "Collection removed from config and its documents deleted from the index. Content, chunks and vectors stay until gno cleanup.",
   });
 }
 

@@ -2830,7 +2830,7 @@ Full index: sync files + generate embeddings (write-enabled). Runs as background
 
 ### gno_remove_collection
 
-Remove a collection from config (write-enabled). Indexed data is retained.
+Remove a collection from config and delete its documents from the index (write-enabled). Content, chunks and vectors stay until `gno cleanup`; `indexedDataRetained` is always `true` for that reason.
 
 **Input Schema:**
 
