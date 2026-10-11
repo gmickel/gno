@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `gno collection remove` now deletes the collection's documents from the index straight away. It used to change only the config, so the collection's documents stayed in the index until the next `gno update` or `gno index`, and `gno status` kept reporting their unembedded chunks as an embedding backlog that `gno cleanup` did not clear. Like other index writers, the command now waits for the index write lease (`--lock-wait`, `--no-wait`). Run `gno cleanup` afterwards to reclaim the space the content and vectors used.
+- `gno status` counts the embedding backlog for configured collections only, matching its document and chunk totals, so a collection deleted by editing the config file no longer leaves a backlog behind.
+- `gno cleanup` now also removes the documents of collections that are no longer in the config before it removes orphaned content, chunks and vectors.
+
 ## [2.10.0] - 2026-10-07
 
 ### Changed

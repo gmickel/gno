@@ -2870,13 +2870,29 @@ function wireManagementCommands(program: Command): void {
       });
     });
 
-  collectionCmd
-    .command("remove <name>")
-    .description("Remove a collection")
-    .action(async (name: string) => {
-      const { collectionRemove } = await import("./commands/collection");
-      await collectionRemove(name, { configPath: getGlobals().config });
-    });
+  addWriteLeaseFlags(
+    collectionCmd
+      .command("remove <name>")
+      .description("Remove a collection and its indexed documents")
+  ).action(async (name: string, cmdOpts: Record<string, unknown>) => {
+    const { collectionRemove } = await import("./commands/collection");
+    const lease = parseWriteLeaseFlags(cmdOpts);
+    const result = await withCliWriteLease(
+      {
+        indexName: getGlobals().index,
+        lockWaitMs: lease.lockWaitMs,
+        noWait: lease.noWait,
+      },
+      async () => {
+        await collectionRemove(name, {
+          configPath: getGlobals().config,
+          indexName: getGlobals().index,
+        });
+        return { success: true as const };
+      }
+    );
+    throwIfWriteLeaseBusy(result, false);
+  });
 
   collectionCmd
     .command("rename <old> <new>")
@@ -3620,7 +3636,11 @@ function wireManagementCommands(program: Command): void {
         lockWaitMs: lease.lockWaitMs,
         noWait: lease.noWait,
       },
-      () => cleanup({ indexName: getGlobals().index })
+      () =>
+        cleanup({
+          configPath: getGlobals().config,
+          indexName: getGlobals().index,
+        })
     );
     throwIfWriteLeaseBusy(result, false);
 

@@ -1,6 +1,7 @@
 /**
  * gno cleanup command implementation.
- * Remove orphaned content, chunks, vectors not referenced by active documents.
+ * Remove documents of collections no longer configured, then orphaned
+ * content, chunks and vectors not referenced by active documents.
  *
  * @module src/cli/commands/cleanup
  */
@@ -61,6 +62,13 @@ export async function cleanup(
   }
 
   try {
+    // Drop collections no longer in the config first (their documents follow
+    // by cascade), so their content, chunks and vectors count as orphans.
+    const syncResult = await store.syncCollections(config.collections);
+    if (!syncResult.ok) {
+      return { success: false, error: syncResult.error.message };
+    }
+
     const cleanupResult = await store.cleanupOrphans();
     if (!cleanupResult.ok) {
       return { success: false, error: cleanupResult.error.message };

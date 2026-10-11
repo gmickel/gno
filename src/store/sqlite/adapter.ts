@@ -6124,18 +6124,25 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           )
           .get(configuredJson, configuredJson)?.count ?? 0;
 
-      // Embedding backlog: chunks from active docs without vectors
-      // Uses EXISTS to avoid duplicates when multiple docs share mirror_hash
+      // Embedding backlog: chunks from active docs of configured collections
+      // without vectors. DISTINCT avoids duplicates when docs share mirror_hash.
       const backlogRow = db
         .query<
           { count: number },
-          [string | null, string | null, string | null]
+          [
+            string | null,
+            string | null,
+            string | null,
+            string | null,
+            string | null,
+          ]
         >(
           `
           WITH active_mirrors AS (
             SELECT DISTINCT mirror_hash
             FROM documents
             WHERE active = 1 AND mirror_hash IS NOT NULL
+              AND (? IS NULL OR collection IN (SELECT value FROM json_each(?)))
           ),
           matching_vectors AS (
             SELECT mirror_hash, seq, MAX(embedded_at) AS embedded_at
@@ -6155,7 +6162,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           WHERE mv.mirror_hash IS NULL
         `
         )
-        .get(embedModel, embedModel, embedFingerprint);
+        .get(
+          configuredJson,
+          configuredJson,
+          embedModel,
+          embedModel,
+          embedFingerprint
+        );
 
       // Recent errors (last 24h)
       const recentErrorsRow = db

@@ -1,3 +1,4 @@
+import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -7,6 +8,7 @@ import type { StatusResult } from "../../src/cli/commands/status";
 
 import { formatStatus } from "../../src/cli/commands/status";
 import { runCli } from "../../src/cli/run";
+import { loadConfigFromPath, saveConfigToPath } from "../../src/config";
 import { safeRm } from "../helpers/cleanup";
 
 function statusResult(): StatusResult {
@@ -253,8 +255,15 @@ describe("gno status activation output", () => {
   });
 });
 
-test("gno status stops listing a collection after gno collection remove (fn-139)", async () => {
-  const testDir = await mkdtemp(join(tmpdir(), "gno-status-removed-"));
+async function withIsolatedGno(
+  prefix: string,
+  run: (ctx: {
+    testDir: string;
+    cli: (...args: string[]) => Promise<number>;
+    readOutput: () => string;
+  }) => Promise<void>
+): Promise<void> {
+  const testDir = await mkdtemp(join(tmpdir(), prefix));
   const originalStdoutWrite = process.stdout.write.bind(process.stdout);
   const previousEnv = {
     config: process.env.GNO_CONFIG_DIR,
@@ -271,26 +280,14 @@ test("gno status stops listing a collection after gno collection remove (fn-139)
   };
 
   try {
-    for (const name of ["keep", "gone"]) {
-      await Bun.write(join(testDir, name, `${name}.md`), `# ${name}\n\nbody\n`);
-    }
-    const cli = (...args: string[]) => runCli(["bun", "gno", ...args]);
-    expect(await cli("init", join(testDir, "keep"), "--name", "keep")).toBe(0);
-    expect(
-      await cli("collection", "add", join(testDir, "gone"), "--name", "gone")
-    ).toBe(0);
-    expect(await cli("update")).toBe(0);
-    // Config-only removal: the rows of "gone" stay active until the next update.
-    expect(await cli("collection", "remove", "gone")).toBe(0);
-
-    output = "";
-    expect(await cli("status", "--json")).toBe(0);
-    const parsed = JSON.parse(output);
-    expect(parsed.collections.map((c: { name: string }) => c.name)).toEqual([
-      "keep",
-    ]);
-    expect(parsed.totalDocuments).toBe(1);
-    expect(parsed.totalChunks).toBe(1);
+    await run({
+      testDir,
+      cli: (...args: string[]) => {
+        output = "";
+        return runCli(["bun", "gno", ...args]);
+      },
+      readOutput: () => output,
+    });
   } finally {
     process.stdout.write = originalStdoutWrite;
     setOptionalEnv("GNO_CONFIG_DIR", previousEnv.config);
@@ -298,6 +295,92 @@ test("gno status stops listing a collection after gno collection remove (fn-139)
     setOptionalEnv("GNO_CACHE_DIR", previousEnv.cache);
     await safeRm(testDir);
   }
+}
+
+/** Index "keep" and "gone" without embedding, so each leaves one backlog chunk. */
+async function indexTwoCollections(
+  testDir: string,
+  cli: (...args: string[]) => Promise<number>
+): Promise<void> {
+  for (const name of ["keep", "gone"]) {
+    await Bun.write(join(testDir, name, `${name}.md`), `# ${name}\n\nbody\n`);
+  }
+  expect(await cli("init", join(testDir, "keep"), "--name", "keep")).toBe(0);
+  expect(
+    await cli("collection", "add", join(testDir, "gone"), "--name", "gone")
+  ).toBe(0);
+  expect(await cli("update")).toBe(0);
+}
+
+function goneRows(testDir: string): { collections: number; documents: number } {
+  const db = new Database(join(testDir, "data", "index-default.sqlite"), {
+    readonly: true,
+  });
+  try {
+    const count = (sql: string): number =>
+      db.query<{ n: number }, []>(sql).get()?.n ?? 0;
+    return {
+      collections: count(
+        "SELECT COUNT(*) AS n FROM collections WHERE name = 'gone'"
+      ),
+      documents: count(
+        "SELECT COUNT(*) AS n FROM documents WHERE collection = 'gone'"
+      ),
+    };
+  } finally {
+    db.close();
+  }
+}
+
+test("gno collection remove clears the collection from the index at once", async () => {
+  await withIsolatedGno(
+    "gno-status-removed-",
+    async ({ testDir, cli, readOutput }) => {
+      await indexTwoCollections(testDir, cli);
+      expect(await cli("status", "--json")).toBe(0);
+      expect(JSON.parse(readOutput()).embeddingBacklog).toBe(2);
+
+      expect(await cli("collection", "remove", "gone")).toBe(0);
+
+      // No other command runs between the removal and these checks.
+      expect(goneRows(testDir)).toEqual({ collections: 0, documents: 0 });
+      expect(await cli("status", "--json")).toBe(0);
+      const parsed = JSON.parse(readOutput());
+      expect(parsed.collections.map((c: { name: string }) => c.name)).toEqual([
+        "keep",
+      ]);
+      expect(parsed.totalDocuments).toBe(1);
+      expect(parsed.totalChunks).toBe(1);
+      expect(parsed.embeddingBacklog).toBe(1);
+    }
+  );
+}, 30_000);
+
+test("status ignores and cleanup purges a collection removed by editing the config", async () => {
+  await withIsolatedGno(
+    "gno-status-hand-removed-",
+    async ({ testDir, cli, readOutput }) => {
+      await indexTwoCollections(testDir, cli);
+      const configPath = join(testDir, "config", "index.yml");
+      const loaded = await loadConfigFromPath(configPath);
+      if (!loaded.ok) throw new Error(loaded.error.message);
+      loaded.value.collections = loaded.value.collections.filter(
+        (c) => c.name !== "gone"
+      );
+      const saved = await saveConfigToPath(loaded.value, configPath);
+      if (!saved.ok) throw new Error(saved.error.message);
+
+      // Rows of "gone" are still in the index, but status reads the config.
+      expect(goneRows(testDir)).toEqual({ collections: 1, documents: 1 });
+      expect(await cli("status", "--json")).toBe(0);
+      const parsed = JSON.parse(readOutput());
+      expect(parsed.totalDocuments).toBe(1);
+      expect(parsed.embeddingBacklog).toBe(1);
+
+      expect(await cli("cleanup")).toBe(0);
+      expect(goneRows(testDir)).toEqual({ collections: 0, documents: 0 });
+    }
+  );
 }, 30_000);
 
 function setOptionalEnv(name: string, value: string | undefined): void {
