@@ -148,14 +148,9 @@ function searchVectorVariantsInSnapshot(
   const tableName = `vec_v1_${partitionId}`;
   if (!db.query("SELECT 1 FROM sqlite_master WHERE name = ?").get(tableName))
     throw new Error("Activated variant index unavailable; run gno embed");
-  if (
-    db
-      .query(
-        `SELECT 1 FROM vector_variants v LEFT JOIN ${tableName} x ON x.variant_id = v.variant_id WHERE v.partition_id = ? AND (x.variant_id IS NULL OR x.embedding != v.embedding) LIMIT 1`
-      )
-      .get(partitionId)
-  )
-    throw new Error("Activated variant index inconsistent; run gno embed");
+  // The vec0 mirror is written in the same transactions as vector_variants and
+  // checked at activation and by `gno vec sync`; ranking below reads only
+  // vector_variants, so the mirror is never trusted here.
   const eligible = buildEligibleDocumentQuery(
     { ...options.eligibility, semanticMetadata: true },
     db
@@ -170,75 +165,81 @@ function searchVectorVariantsInSnapshot(
     conditions.push("o.mirror_hash IN (SELECT value FROM json_each(?))");
     params.push(JSON.stringify(options.allowedMirrorHashes));
   }
-  const bindings = db
-    .query<
-      {
-        document_id: number;
-        seq: number;
-        text: string;
-        title: string | null;
-        input_hash: string;
-      },
-      (string | number)[]
-    >(`
-    SELECT o.document_id, o.seq, c.text, d.title, v.input_hash
-    FROM vector_owners o
-    JOIN (${eligible.sql}) e ON e.id = o.document_id AND e.mirror_hash = o.mirror_hash
-    JOIN documents d ON d.id = o.document_id
-    JOIN content_chunks c ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
-    JOIN vector_variants v ON v.variant_id = o.variant_id AND v.partition_id = o.partition_id
-    WHERE ${conditions.join(" AND ")}
-  `)
-    .all(...eligible.params, ...params);
-  const proven = bindings
-    .filter(
-      (row) =>
-        row.input_hash ===
-        embeddingInputHash(
-          formatDocForEmbedding(row.text, row.title ?? undefined, model)
-        )
-    )
-    .map((row) => `${row.document_id}:${row.seq}`);
-  // Both owner eligibility and formatted-input validation precede ranking/LIMIT.
-  const rows = db
-    .query<
-      {
-        mirrorHash: string;
-        seq: number;
-        distance: number;
-        documentIds: string;
-      },
-      (Uint8Array | string | number)[]
-    >(`
-    SELECT o.mirror_hash AS mirrorHash, o.seq, vec_distance_cosine(v.embedding, ?) AS distance,
-      json_group_array(o.document_id) AS documentIds
-    FROM vector_owners o
-    JOIN (${eligible.sql}) e ON e.id = o.document_id AND e.mirror_hash = o.mirror_hash
-    JOIN documents d ON d.id = o.document_id
-    JOIN content_chunks c ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
-    JOIN vector_variants v ON v.variant_id = o.variant_id AND v.partition_id = o.partition_id
-    JOIN ${tableName} x ON x.variant_id = v.variant_id AND x.embedding = v.embedding
-    WHERE ${conditions.join(" AND ")}
-      AND (o.document_id || ':' || o.seq) IN (SELECT value FROM json_each(?))
-    GROUP BY v.variant_id, o.mirror_hash, o.seq
-    ORDER BY distance, o.mirror_hash, o.seq, v.variant_id LIMIT ?
-  `)
-    .all(
-      encodeEmbedding(embedding),
+  // Owner eligibility precedes ranking/LIMIT. Grouping before the distance
+  // keeps embedding blobs out of the group sorter.
+  const ranked = db.query<
+    {
+      mirrorHash: string;
+      seq: number;
+      inputHash: string;
+      distance: number;
+      documentIds: string;
+    },
+    (Uint8Array | string | number)[]
+  >(`
+    SELECT g.mirrorHash, g.seq, v.input_hash AS inputHash,
+      vec_distance_cosine(v.embedding, ?) AS distance, g.documentIds
+    FROM (
+      SELECT o.variant_id AS variantId, o.mirror_hash AS mirrorHash, o.seq,
+        json_group_array(o.document_id) AS documentIds
+      FROM vector_owners o
+      JOIN (${eligible.sql}) e ON e.id = o.document_id AND e.mirror_hash = o.mirror_hash
+      JOIN content_chunks c ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
+      WHERE ${conditions.join(" AND ")}
+      GROUP BY o.variant_id, o.mirror_hash, o.seq
+    ) g
+    JOIN vector_variants v ON v.variant_id = g.variantId AND v.partition_id = ?
+    ORDER BY distance, g.mirrorHash, g.seq, g.variantId LIMIT ?
+  `);
+  const owners = db.query<
+    { id: number; title: string | null; text: string },
+    [string, number, string]
+  >(`
+    SELECT d.id, d.title, c.text FROM documents d
+    JOIN content_chunks c ON c.mirror_hash = ? AND c.seq = ?
+    WHERE d.id IN (SELECT value FROM json_each(?)) ORDER BY d.id
+  `);
+  // A vector counts only while it matches its owner's current formatted
+  // input. Proving candidates in rank order and skipping unproven owners
+  // returns exactly what filtering every owner before ranking would.
+  const queryVector = encodeEmbedding(embedding);
+  let limit = k;
+  let results: VectorSearchResult[] = [];
+  for (;;) {
+    const rows = ranked.all(
+      queryVector,
       ...eligible.params,
       ...params,
-      JSON.stringify(proven),
-      k
+      partitionId,
+      limit
     );
-  return rows
-    .filter(
-      (row) =>
-        options.minScore === undefined || 1 - row.distance >= options.minScore
-    )
-    .map((row) => ({
-      ...row,
-      documentIds: JSON.parse(row.documentIds) as number[],
-    }));
+    results = [];
+    for (const row of rows) {
+      const proven = owners
+        .all(row.mirrorHash, row.seq, row.documentIds)
+        .filter(
+          (owner) =>
+            embeddingInputHash(
+              formatDocForEmbedding(owner.text, owner.title ?? undefined, model)
+            ) === row.inputHash
+        )
+        .map((owner) => owner.id);
+      if (proven.length === 0) continue;
+      results.push({
+        mirrorHash: row.mirrorHash,
+        seq: row.seq,
+        distance: row.distance,
+        documentIds: proven,
+      });
+      if (results.length === k) break;
+    }
+    if (results.length === k || rows.length < limit) break;
+    limit *= 4;
+  }
+  return results.filter(
+    (row) =>
+      options.minScore === undefined || 1 - row.distance >= options.minScore
+  );
 }
 
 /** Keep eligibility, provenance validation and ranking on one SQLite snapshot. */

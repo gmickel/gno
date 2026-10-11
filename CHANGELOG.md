@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Semantic search is much faster on indexes embedded since 2.7. Each vector search used to re-check the whole vector index against the stored embeddings, which took about 17 seconds on a 17,600-chunk index; it now takes about 70 ms unscoped and less when scoped to a collection or filter. On that index `gno vsearch` and `gno query --fast` dropped from about 20 seconds to about 2 seconds as one-off commands (most of it model loading) and about 0.2 seconds through MCP or `gno serve`; balanced `gno query` went from about 78 seconds to about 6 seconds one-off and 2-3 seconds with models loaded. Results are unchanged: filters still apply before the top results are picked, and a stored vector is used only while it matches its chunk's current text and title.
+- The `gno agents` block (v4) and the `gno` skill now send any natural-language question to `gno query --fast` first, keep `gno search` for exact identifiers, quotes and error text, and retry with balanced `gno query` before diagnosing or falling back to grep. Run `gno agents update` and `gno skill install --force` to pick up the new guidance. The MCP `gno_query`, `gno_search` and `gno_vsearch` tool descriptions steer the same way, and the skill's timing table carries measured numbers.
+
+### Added
+
+- `bun run bench:vector-search` times one vector search (unscoped, collection-scoped, metadata-filtered) on a seeded synthetic index or a copy of a real index.
+
 ## [2.10.1] - 2026-10-11
 
 ### Fixed

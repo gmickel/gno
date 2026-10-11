@@ -580,12 +580,12 @@ Full guide: [SDK docs](https://gno.sh/docs/sdk)
 
 ## Search Modes
 
-| Command            | Mode                | Best For                                  |
-| :----------------- | :------------------ | :---------------------------------------- |
-| `gno search`       | Document-level BM25 | Exact phrases, code identifiers           |
-| `gno vsearch`      | Contextual Vector   | Natural language, concepts                |
-| `gno query`        | Hybrid              | Best accuracy (BM25 + vector + reranking) |
-| `gno ask --answer` | RAG                 | Direct answers with citations             |
+| Command            | Mode                | Best For                                    |
+| :----------------- | :------------------ | :------------------------------------------ |
+| `gno search`       | Document-level BM25 | Exact phrases, code identifiers             |
+| `gno vsearch`      | Contextual Vector   | Similar concepts, different wording         |
+| `gno query`        | Hybrid              | Natural-language questions (`--fast` first) |
+| `gno ask --answer` | RAG                 | Direct answers with citations               |
 
 **BM25** indexes full documents (not chunks) with Snowball stemming, so "running" matches "run".
 **Vector** embeds chunks with document titles for context awareness.

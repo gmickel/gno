@@ -330,7 +330,7 @@ Hybrid search combining BM25 and vector results. This is the recommended search 
 gno query "database optimization"
 gno query --query-file /run/user/1000/gno-recall/q.XXXX --json
 gno query "API design patterns" --explain
-gno query "auth" --fast              # Fastest: ~0.7s
+gno query "auth" --fast              # First try for questions: ~2s one-off, ~0.2s resident
 gno query "auth" --thorough          # Full pipeline: ~5-8s
 gno query "auth" --tags-all work,backend   # Filter by tags
 gno query "performance" --intent "web performance and latency"
@@ -342,9 +342,13 @@ gno query $'auth flow\nterm: "refresh token"\nintent: token rotation'
 
 **Search modes**:
 
-- **Default** (~2-3s on slim): Preset-aware balanced mode. On `slim` / `slim-tuned`, uses expansion + reranking; on larger presets, keeps reranking on and expansion off by default.
-- `--fast` (~0.7s): Skip query expansion and reranking. Use for quick lookups.
-- `--thorough` (~5-8s): Expansion + reranking with a wider candidate pool. Best recall.
+Timings below were measured on a 17.6k-chunk index with an RTX 4090. A one-off
+CLI call includes loading its models; through MCP or `gno serve` the models stay
+loaded ("resident"). CPU-only machines are slower.
+
+- **Default** (~6s one-off, ~2-3s resident on slim): Preset-aware balanced mode. On `slim` / `slim-tuned`, uses expansion + reranking; on larger presets, keeps reranking on and expansion off by default.
+- `--fast` (~2s one-off, ~0.2s resident): Skip query expansion and reranking. Use first for natural-language questions; run the default mode when it misses.
+- `--thorough` (~7s one-off): Expansion + reranking with a wider candidate pool. Best recall.
 
 **Pipeline features**:
 
@@ -361,7 +365,7 @@ gno query $'auth flow\nterm: "refresh token"\nintent: token rotation'
 Additional options:
 
 - `--query-file <path>` - Same as `gno search`. Invalid with a positional query and invalid on `query diagnose`.
-- `--fast` - Skip query expansion and reranking (fastest, ~0.7s)
+- `--fast` - Skip query expansion and reranking (fastest; ~2s one-off, ~0.2s resident)
 - `--thorough` - Use the widest retrieval/rerank budget (slower, best recall)
 - `--no-expand` - Disable query expansion
 - `--no-rerank` - Disable cross-encoder reranking

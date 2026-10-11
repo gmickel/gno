@@ -424,11 +424,11 @@ gno query <query> [options]
 
 **Search modes** (pick one):
 
-| Flag         | Time  | Description                    |
-| ------------ | ----- | ------------------------------ |
-| `--fast`     | ~0.7s | Skip expansion, graph, rerank  |
-| (default)    | ~2-3s | Balanced, graph + reranking    |
-| `--thorough` | ~5-8s | Wider expansion + graph/rerank |
+| Flag         | Time                     | Description                    |
+| ------------ | ------------------------ | ------------------------------ |
+| `--fast`     | ~2s CLI / ~0.2s resident | Skip expansion, graph, rerank  |
+| (default)    | ~6s CLI / ~2-3s resident | Balanced, graph + reranking    |
+| `--thorough` | ~7s CLI                  | Wider expansion + graph/rerank |
 
 Additional options:
 

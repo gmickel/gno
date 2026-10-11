@@ -397,18 +397,22 @@ gno --config ~/gno-sessions/archive.yml --index sessions get "gno://sessions-wor
 
 ### Search Modes
 
-| Command                | Time    | Use When                     |
-| ---------------------- | ------- | ---------------------------- |
-| `gno search`           | instant | Exact keyword matching       |
-| `gno vsearch`          | ~0.5s   | Finding similar concepts     |
-| `gno query --fast`     | ~0.7s   | Quick lookups                |
-| `gno query`            | ~2-3s   | Default, balanced            |
-| `gno query --thorough` | ~5-8s   | Best recall, complex queries |
+| Command                | Resident | One-off CLI | Use When                            |
+| ---------------------- | -------- | ----------- | ----------------------------------- |
+| `gno search`           | ~0.2s    | ~0.2s       | Exact identifiers, quotes, errors   |
+| `gno vsearch`          | ~0.2s    | ~2s         | Finding similar concepts            |
+| `gno query --fast`     | ~0.2s    | ~2s         | First try for any question          |
+| `gno query`            | ~2-3s    | ~6s         | `--fast` missed; expansion + rerank |
+| `gno query --thorough` | -        | ~7s         | Best recall, complex queries        |
 
-**Agent retry strategy**: Use default mode first. If no results:
+Measured on a 17.6k-chunk index (RTX 4090); resident means MCP or `gno serve`
+with models loaded.
 
-1. Rephrase the query (free, often helps)
-2. Try `--thorough` for better recall
+**Agent retry strategy**: `gno query --fast` first. If no good results:
+
+1. Run balanced `gno query` (adds expansion and reranking)
+2. Rephrase the query (free, often helps)
+3. Try `--thorough` for better recall
 
 ### Output formats
 

@@ -297,7 +297,7 @@ User query
     │
     ▼ Document-level BM25 Search (FTS5 + Snowball stemmer, weighted title/path/body)
     │
-    ▼ Chunk-level Vector Search (sqlite-vec KNN)
+    ▼ Chunk-level Vector Search (exact cosine scan over eligible chunks)
     │
     ▼ [Optional] Bounded graph expansion (top seeds → one-hop neighbors)
     │
@@ -309,6 +309,18 @@ User query
     │
     ▼ [Optional] Answer stage (adaptive source selection + citation hygiene)
 ```
+
+Vector search on an activated partition is exact: collection, tag,
+typed-metadata, exclusion and language filters select the eligible chunks
+first, then every eligible chunk's stored vector is scored by cosine distance
+and the top results are kept, so a selective filter never loses results to
+candidate truncation. A stored vector counts only while it matches its chunk's
+current embedding input (chunk text with title context); ranked candidates are
+checked in rank order and a stale one is skipped. The `vec_v1_*` index is kept
+in step with `vector_variants` in the same write transactions, checked at
+activation and repaired by `gno vec sync`; the search itself does not read it.
+On a 17.6k-chunk index one vector search takes about 70 ms unscoped and less
+when scoped; `bun run bench:vector-search` re-measures it.
 
 Plain lexical and vector retrieval batch-load only the exact selected chunk
 sequences (sequence zero for document-level BM25). Intent steering and
@@ -461,7 +473,7 @@ CLI/MCP/Web UI/SDK → new Adapter() → adapter.createPort() → Port interface
 | vector_partitions | One vector space per embedding identity (model, weights, context size, truncation); searched once active |
 | vector_variants   | Chunk embeddings, one per exact embedded input (chunk text with title context)                           |
 | vector_owners     | Binds each document chunk to its variant within a partition                                              |
-| `vec_v1_*`        | sqlite-vec KNN index of one partition                                                                    |
+| `vec_v1_*`        | sqlite-vec index mirroring one partition's variants (kept in sync; not read by search)                   |
 | content_vectors   | Legacy chunk embeddings; read only by indexes that have not activated a partition                        |
 | doc_tags          | Document tags (frontmatter and user-added)                                                               |
 | doc_links         | Wiki and markdown links between documents                                                                |

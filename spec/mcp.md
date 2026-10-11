@@ -907,7 +907,7 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
     },
     "fast": {
       "type": "boolean",
-      "description": "Fast mode: skip expansion and reranking (~0.7s)",
+      "description": "Fast mode: skip expansion and reranking (typically under a second on a warm server)",
       "default": false
     },
     "thorough": {
