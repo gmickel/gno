@@ -38,7 +38,9 @@
  *    `gno_audit.maxFindings` to 1-100000 or "all" and adds the optional
  *    `gno_impact.collections` scope. fn-216 rewords the retrieval-ladder
  *    guidance in the `gno_search`, `gno_vsearch` and `gno_query` descriptions and the
- *    `gno_query.fast` property description. All are
+ *    `gno_query.fast` property description. fn-217 closes every tool input
+ *    (`additionalProperties: false`), dropped from both sides of the frozen
+ *    comparison. All are
  *    pinned by the current golden and removed only for the historical
  *    comparison.
  */
@@ -401,6 +403,12 @@ function withHistoricalLadderDescriptions(line: string): string {
   );
 }
 
+/** fn-217 closed every tool input; the historical capture left most open. */
+function withoutClosedInput(schema: Record<string, unknown>): unknown {
+  const { additionalProperties, ...rest } = schema;
+  return additionalProperties === false ? rest : schema;
+}
+
 function normalizeToolsList(line: string): string {
   line = withHistoricalLadderDescriptions(line);
   const envelope = parseJsonRpc<ToolsListEnvelope>(line);
@@ -417,10 +425,12 @@ function normalizeToolsList(line: string): string {
         ...rest,
         inputSchema: SDK_V1_UNION_PLACEHOLDER_TOOLS.has(tool.name)
           ? "<sdk-v1 union placeholder>"
-          : withoutSdkDeltas(
-              withoutTypedFilterExtension(
-                withoutRequestIdExtension(withoutAuditCapExtension(tool))
-              )
+          : withoutClosedInput(
+              withoutSdkDeltas(
+                withoutTypedFilterExtension(
+                  withoutRequestIdExtension(withoutAuditCapExtension(tool))
+                )
+              ) as Record<string, unknown>
             ),
         ...(outputSchema
           ? { outputSchema: withoutSdkDeltas(outputSchema) }
