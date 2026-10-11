@@ -1,0 +1,42 @@
+{
+  "branch": "fn-219-metadata-discovery-and-evidence-currency",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "3b1a0641a8eda5e186f7df1b1cac3b1133da4a0c",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-6f97be2494338bab0518f1c3639cc2d892934be165c91ee6bc55968eb31ad187"
+  },
+  "head_sha": "3b1a0641a8eda5e186f7df1b1cac3b1133da4a0c",
+  "id": "fn-219-metadata-discovery-and-evidence-currency",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 4,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      }
+    ],
+    "total": 4
+  },
+  "timestamp": "2026-10-11T23:48:06Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
