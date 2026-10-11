@@ -98,12 +98,44 @@ test("watcher-style path syncs keep documents while the root is missing", async 
   await rename(root, `${root}.offline`);
   const result = await service.syncPaths(collection, store, ["n1.md", "n2.md"]);
   expect(result.filesMarkedInactive).toBe(0);
-  expect(result.files?.map((file) => file.errorCode)).toEqual([
-    "SOURCE_AVAILABILITY_UNKNOWN",
-    "SOURCE_AVAILABILITY_UNKNOWN",
-  ]);
+  expect(result.files?.map((file) => file.status)).toEqual(["error", "error"]);
+  expect(result.errors[0]).toMatchObject({
+    relPath: "",
+    code: "SOURCE_AVAILABILITY_UNKNOWN",
+  });
+  expect(result.errors[0]?.message).toContain(root);
   expect(await hits()).toBe(3);
 });
+
+test("a root that goes offline mid-batch keeps the rest", async () => {
+  await unlink(join(root, "n3.md"));
+  // Each path lists its record documents first; the drive drops right
+  // before the second path is examined.
+  const list = store.listRecordDocuments.bind(store);
+  let calls = 0;
+  store.listRecordDocuments = async (...args) => {
+    calls += 1;
+    if (calls === 2) await rename(root, `${root}.offline`);
+    return list(...args);
+  };
+  const result = await service.syncPaths(collection, store, ["n3.md", "n1.md"]);
+  expect(result.filesMarkedInactive).toBe(1);
+  expect(result.files?.[1]?.errorCode).toBe("SOURCE_AVAILABILITY_UNKNOWN");
+  expect(await hits()).toBe(2);
+});
+
+test.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+  "a root that cannot be listed keeps absent files",
+  async () => {
+    await unlink(join(root, "n1.md"));
+    await chmod(root, 0o111);
+    const result = await service.syncPaths(collection, store, ["n1.md"]);
+    expect(result.filesMarkedInactive).toBe(0);
+    expect(result.errors[0]?.message).toContain("EACCES");
+    await chmod(root, 0o755);
+    expect(await hits()).toBe(3);
+  }
+);
 
 test("a root that exists but is empty still deletes", async () => {
   for (const index of [1, 2, 3]) await unlink(join(root, `n${index}.md`));

@@ -99,7 +99,11 @@ export function logSessionAutomationResult(
 }
 
 function formatCollectionSyncSummary(result: CollectionSyncResult): string {
-  return `${result.collection}: ${result.filesAdded} added, ${result.filesUpdated} updated, ${result.filesUnchanged} unchanged, ${result.filesErrored} errors`;
+  const collectionErrors = result.errors
+    .filter((error) => error.relPath === "")
+    .map((error) => `; [${error.code}] ${error.message}`)
+    .join("");
+  return `${result.collection}: ${result.filesAdded} added, ${result.filesUpdated} updated, ${result.filesUnchanged} unchanged, ${result.filesErrored} errors${collectionErrors}`;
 }
 
 export const authorizeDaemonStatus = async (

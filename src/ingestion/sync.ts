@@ -1,5 +1,6 @@
 // node:fs/promises for realpath/stat (no Bun equivalent for canonical paths or file stats)
-import { realpath, stat } from "node:fs/promises";
+// opendir proves a root can be listed; Bun has no directory-handle API.
+import { opendir, realpath, stat } from "node:fs/promises";
 /**
  * Sync service - orchestrates file ingestion.
  * Walks collections, converts files, chunks content, updates store.
@@ -386,6 +387,22 @@ class Semaphore {
     } else {
       this.permits += 1;
     }
+  }
+}
+
+/** Null when the collection root can be listed; otherwise why it cannot. */
+async function unavailableRootMessage(root: string): Promise<string | null> {
+  try {
+    const directory = await opendir(root);
+    try {
+      // The open is lazy; the first read is what needs list permission.
+      await directory.read();
+    } finally {
+      await directory.close();
+    }
+    return null;
+  } catch (cause) {
+    return `Collection root could not be resolved (${cause instanceof Error ? cause.message : String(cause)}); indexed documents were kept`;
   }
 }
 
@@ -1174,8 +1191,7 @@ export class SyncService {
     const directoryAvailability = memoizeDirectoryAvailability(
       this.directoryAvailabilityFactory(availabilityMode)
     );
-    // "" = root resolved; a message = root unavailable; undefined = unchecked.
-    let rootUnavailable: string | undefined;
+    let rootUnavailable: string | null = null;
 
     for (const relPath of relPaths) {
       const recordDocumentsResult = await store.listRecordDocuments(
@@ -1287,18 +1303,16 @@ export class SyncService {
           });
           continue;
         }
-        // A file is only proven deleted while its collection root resolves.
-        rootUnavailable ??= await realpath(collection.path).then(
-          () => "",
-          (cause: unknown) =>
-            `Collection root could not be resolved (${cause instanceof Error ? cause.message : String(cause)}); indexed documents were kept`
-        );
-        if (rootUnavailable) {
+        // A file is only proven deleted while its collection root can be
+        // listed. Checked per absence: the root can vanish mid-batch.
+        const rootError = await unavailableRootMessage(collection.path);
+        if (rootError) {
+          rootUnavailable = rootError;
           results.push({
             relPath,
-            status: "skipped",
+            status: "error",
             errorCode: "SOURCE_AVAILABILITY_UNKNOWN",
-            errorMessage: rootUnavailable,
+            errorMessage: rootError,
           });
           continue;
         }
@@ -1453,6 +1467,23 @@ export class SyncService {
       syncOptions.projectTypedEdges === false
         ? []
         : await this.projectTypedEdges(store, syncOptions, projectionSourceIds);
+    if (rootUnavailable) {
+      // Collection-level, as a full sync reports it, so status, summaries and
+      // the watcher's error path all carry the root and the original error.
+      errors.unshift({
+        relPath: "",
+        code: "SOURCE_AVAILABILITY_UNKNOWN",
+        message: rootUnavailable,
+      });
+      await store
+        .recordError({
+          collection: collection.name,
+          relPath: "",
+          code: "SOURCE_AVAILABILITY_UNKNOWN",
+          message: rootUnavailable,
+        })
+        .catch(() => undefined);
+    }
     return {
       ...summarizePathResults(
         collection.name,
