@@ -104,6 +104,8 @@ absent signals preserve exact v1.0 bytes.
 │                                                               │
 │  Weights: original=2.0, variants=1.0, HyDE=1.4                │
 │  Tiered bonus: +0.05 for #1, +0.02 for #2-3                   │
+│  Candidates are documents; each list counts a document once,  │
+│  at the rank of its best chunk                                │
 └───────────────────────────────┬───────────────────────────────┘
                                 │
                                 ▼
@@ -334,6 +336,13 @@ Where:
 - `k = 60` (dampening constant, reduces impact of exact rank)
 - `rank_i` = position in result list i (1-indexed)
 - `weight_i` = importance of that result list
+
+GNO fuses documents, not chunks. BM25 ranks whole documents while vector
+search ranks chunks, so each list contributes once per document, at the rank
+of that document's best chunk, and the best-ranked vector chunk represents the
+document downstream. A document that BM25 ranks first through its title and
+vector search ranks first through a passage gets both votes instead of being
+split into two weaker candidates.
 
 ### Why RRF Works
 

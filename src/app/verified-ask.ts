@@ -49,6 +49,7 @@ const generationSources = (capsule: ContextCapsuleV1) => {
         return text ? [text] : [];
       })
       .join("\n"),
+    date: evidence.documentDate ?? undefined,
   }));
 };
 

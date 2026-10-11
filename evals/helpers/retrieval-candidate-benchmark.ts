@@ -15,7 +15,7 @@ import type {
   GenerationPort,
   RerankPort,
 } from "../../src/llm/types";
-import type { ExplainLine } from "../../src/pipeline/types";
+import type { ExplainLine, PipelineConfig } from "../../src/pipeline/types";
 import type { SearchResult } from "../../src/pipeline/types";
 import type { VectorIndexPort, VectorRow } from "../../src/store/vector/types";
 
@@ -196,7 +196,7 @@ export interface RetrievalCandidateBenchmarkSummary {
   };
 }
 
-interface BenchmarkRuntime {
+export interface BenchmarkRuntime {
   config: Config;
   llm: LlmAdapter;
   embedPort: EmbeddingPort;
@@ -423,7 +423,7 @@ async function getChunkRows(db: Database): Promise<ChunkRow[]> {
     .all() as ChunkRow[];
 }
 
-async function ensureVectorIndex(runtime: {
+export async function ensureVectorIndex(runtime: {
   llm: LlmAdapter;
   config: Config;
   store: Awaited<ReturnType<typeof getSharedEvalDb>>["adapter"];
@@ -616,9 +616,10 @@ async function benchmarkExpansionSmoke(
   return { smoke, firstResponseMs, rssDeltaBytes, peakRssBytes };
 }
 
-async function benchmarkRetrieval(
+export async function benchmarkRetrieval(
   runtime: BenchmarkRuntime,
-  genPort: GenerationPort
+  genPort: GenerationPort,
+  pipelineConfig?: PipelineConfig
 ): Promise<CandidateBenchmarkResult["retrieval"]> {
   const cases: RetrievalCaseResult[] = [];
 
@@ -632,6 +633,7 @@ async function benchmarkRetrieval(
         embedPort: runtime.vectorIndex ? runtime.embedPort : null,
         expandPort: genPort,
         rerankPort: runtime.rerankPort,
+        ...(pipelineConfig ? { pipelineConfig } : {}),
       },
       testCase.query,
       {

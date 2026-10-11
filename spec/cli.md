@@ -1697,7 +1697,7 @@ active with `sourceCount: 1`.
 [explain] bm25: 45 candidates
 [explain] vector: 38 candidates
 [explain] graph: seeds=5, candidates=4/20, explicit=3, inferred=1, ambiguous=0, similarity=0
-[explain] fusion: RRF k=60, 52 unique candidates
+[explain] fusion: RRF k=60, 52 unique documents (best rank per list)
 [explain] rerank: top 20 reranked
 [explain] result 1: score=0.92 (bm25=0.85, vec=0.78, rerank=0.95)
 ```

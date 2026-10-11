@@ -563,6 +563,7 @@ export async function generateGroundedAnswer(
       uri: r.uri,
       content: passage.text,
       guidance: r.context,
+      date: r.source.documentDate,
     });
     citations.push(
       attachCitationTraceMetadata(

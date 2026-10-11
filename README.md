@@ -1109,7 +1109,7 @@ graph TD
 0. **Strong Signal Check**: Skip expansion if BM25 has confident match (saves 1-3s)
 1. **Query Expansion**: LLM generates lexical variants, semantic rephrases, and a [HyDE](https://arxiv.org/abs/2212.10496) passage
 2. **Parallel Retrieval**: Document-level BM25 + chunk-level vector search on all variants
-3. **Fusion**: RRF with 2× weight for original query, tiered bonus for top ranks
+3. **Fusion**: RRF over documents (each list counts a document once, at its best chunk's rank), 2× weight for original query, tiered bonus for top ranks
 4. **Reranking**: Qwen3-Reranker scores best chunk per document (4K), blended with fusion
 
 > **Deep dive**: [How Search Works](https://gno.sh/docs/how-search-works)

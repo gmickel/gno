@@ -35,6 +35,15 @@ function rrfContribution(rank: number, k: number, weight: number): number {
   return weight / (k + rank);
 }
 
+/**
+ * Candidates are documents: BM25 ranks whole documents while vector search
+ * ranks chunks, so a chunk-level key would split one document's votes across
+ * its chunks. Each list counts a document once, at its best rank.
+ */
+function fusionKey(result: RankedInput["results"][number]): string {
+  return `${result.documentId ?? result.mirrorHash}`;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Fusion Implementation
 // ─────────────────────────────────────────────────────────────────────────────
@@ -51,7 +60,7 @@ export function rrfFuse(
   inputs: RankedInput[],
   config: RrfConfig
 ): FusionCandidate[] {
-  // Map: "mirrorHash:seq" -> FusionCandidate
+  // Map: document key -> FusionCandidate
   const candidates = new Map<string, FusionCandidate>();
 
   // Separate inputs by type for weight assignment
@@ -74,8 +83,11 @@ export function rrfFuse(
         ? config.bm25Weight * 2.0
         : config.bm25Weight * 0.5;
 
+    const countedInInput = new Set<string>();
     for (const result of input.results) {
-      const key = `${result.mirrorHash}:${result.seq}:${result.documentId ?? ""}`;
+      const key = fusionKey(result);
+      if (countedInInput.has(key)) continue;
+      countedInInput.add(key);
       let candidate = candidates.get(key);
 
       if (!candidate) {
@@ -116,8 +128,11 @@ export function rrfFuse(
       weight = config.vecWeight * 0.7;
     }
 
+    const countedInInput = new Set<string>();
     for (const result of input.results) {
-      const key = `${result.mirrorHash}:${result.seq}:${result.documentId ?? ""}`;
+      const key = fusionKey(result);
+      if (countedInInput.has(key)) continue;
+      countedInInput.add(key);
       let candidate = candidates.get(key);
 
       if (!candidate) {
@@ -137,6 +152,8 @@ export function rrfFuse(
 
       // Track best vector rank
       if (candidate.vecRank === null || result.rank < candidate.vecRank) {
+        // The best-ranked chunk represents the document downstream.
+        candidate.seq = result.seq;
         candidate.vecRank = result.rank;
       }
 
@@ -152,8 +169,11 @@ export function rrfFuse(
   for (const input of graphInputs) {
     const weight = config.bm25Weight * 0.8;
 
+    const countedInInput = new Set<string>();
     for (const result of input.results) {
-      const key = `${result.mirrorHash}:${result.seq}:${result.documentId ?? ""}`;
+      const key = fusionKey(result);
+      if (countedInInput.has(key)) continue;
+      countedInInput.add(key);
       let candidate = candidates.get(key);
 
       if (!candidate) {

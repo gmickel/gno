@@ -15,7 +15,10 @@ import type {
 
 import { compareAcceptance } from "../../evals/acceptance/compare";
 import { acceptanceManifestFingerprint } from "../../evals/acceptance/manifest";
-import { deterministicRecordSchema } from "../../evals/acceptance/records";
+import {
+  deterministicRecordFingerprint,
+  deterministicRecordSchema,
+} from "../../evals/acceptance/records";
 /**
  * Regression tests for hybrid search document lookup path.
  * Ensures targeted doc fetch is used instead of full scans.
@@ -32,6 +35,10 @@ import {
   SEARCH_RESULT_PLANNER_METADATA,
 } from "../../src/pipeline/types";
 import baselineHydration from "../fixtures/pipeline/hybrid-hydration-baseline.json";
+
+/** Complete deterministic record after document-level fusion (fn-218). */
+const HYBRID_FUSION_CANDIDATE_SHA256 =
+  "35201364250555c6a0be345be7e5f56c841aff8f7b88abcccd6ba6af17c38045";
 
 const NOW = "2026-02-22T00:00:00.000Z";
 
@@ -1852,7 +1859,20 @@ test("hybrid complete hydration matches frozen model inputs and outputs with few
         configuration: {},
       },
     ],
-    intendedDeltas: [],
+    // Document-level fusion (fn-218) merges a document's chunks into one
+    // candidate, so the frozen output legitimately changes. The delta pins
+    // both complete records; any other difference still fails.
+    intendedDeltas: [
+      {
+        caseId: "hybrid",
+        reason: "document-level fusion",
+        oracleSha256: HYBRID_FUSION_CANDIDATE_SHA256,
+        baselineRecordSha256: deterministicRecordFingerprint(
+          deterministicRecordSchema.parse(baselineHydration.deterministic)
+        ),
+        candidateRecordSha256: HYBRID_FUSION_CANDIDATE_SHA256,
+      },
+    ],
   });
   const deterministic: DeterministicRecord = {
     scope: { outputs },

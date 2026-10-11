@@ -149,4 +149,46 @@ describe("rrfFuse", () => {
     expect(result[1]?.mirrorHash).toBe("docA");
     expect(result[2]?.mirrorHash).toBe("docB");
   });
+
+  test("a document's BM25 and vector votes meet on one candidate", () => {
+    // BM25 ranks the document (seq 0); vector ranks one of its chunks.
+    const result = rrfFuse(
+      [
+        toRankedInput("bm25", [
+          { mirrorHash: "docA", seq: 0, documentIds: [1] },
+          { mirrorHash: "docB", seq: 0, documentIds: [2] },
+        ]),
+        toRankedInput("vector", [
+          { mirrorHash: "docB", seq: 4, documentIds: [2] },
+          { mirrorHash: "docA", seq: 3, documentIds: [1] },
+        ]),
+      ],
+      DEFAULT_RRF_CONFIG
+    );
+    expect(result).toHaveLength(2);
+    const docA = result.find((candidate) => candidate.documentId === 1);
+    expect(docA).toMatchObject({ bm25Rank: 1, vecRank: 2, seq: 3 });
+    expect(docA?.sources).toEqual(["bm25", "vector"]);
+  });
+
+  test("each list counts a document once, at its best chunk's rank", () => {
+    const result = rrfFuse(
+      [
+        toRankedInput("vector", [
+          { mirrorHash: "docA", seq: 2, documentIds: [1] },
+          { mirrorHash: "docB", seq: 0, documentIds: [2] },
+          { mirrorHash: "docA", seq: 5, documentIds: [1] },
+        ]),
+      ],
+      DEFAULT_RRF_CONFIG
+    );
+    const docA = result.find((candidate) => candidate.documentId === 1);
+    expect(docA?.seq).toBe(2);
+    expect(docA?.vecRank).toBe(1);
+    expect(docA?.fusionScore).toBeCloseTo(
+      (DEFAULT_RRF_CONFIG.vecWeight * 2) / (DEFAULT_RRF_CONFIG.k + 1) +
+        DEFAULT_RRF_CONFIG.topRankBonus,
+      6
+    );
+  });
 });

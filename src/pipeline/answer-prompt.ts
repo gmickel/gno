@@ -4,6 +4,8 @@ export interface AnswerPromptSource {
   uri: string;
   content: string;
   guidance?: string;
+  /** Content date (frontmatter or record date); never file modification time. */
+  date?: string;
 }
 
 const escapeXmlText = (value: string): string =>
@@ -34,9 +36,15 @@ function serializeSources(sources: AnswerPromptSource[]): string {
   return sources
     .map(
       (source) =>
-        `<source index="${source.index}" docid="${escapeXmlAttribute(source.docid)}" uri="${escapeXmlAttribute(source.uri)}">\n${escapeXmlText(source.content)}\n</source>`
+        `<source index="${source.index}" docid="${escapeXmlAttribute(source.docid)}" uri="${escapeXmlAttribute(source.uri)}"${source.date ? ` date="${escapeXmlAttribute(source.date)}"` : ""}>\n${escapeXmlText(source.content)}\n</source>`
     )
     .join("\n\n");
+}
+
+/** Calendar date in the local time zone, as the person asking sees it. */
+function localDate(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 /**
@@ -46,9 +54,12 @@ function serializeSources(sources: AnswerPromptSource[]): string {
  */
 export function buildAnswerPrompt(
   query: string,
-  sources: AnswerPromptSource[]
+  sources: AnswerPromptSource[],
+  today: Date = new Date()
 ): string {
   return `Answer the question using ONLY the retrieved sources below. Cite sources with [1], [2], etc.
+
+Today's date is ${localDate(today)}. A source's date attribute is when its content was written; a source without one has an unknown date. Use these dates for questions about time, recency or order, and do not present an older source as current when a newer one disagrees.
 
 Configured guidance is trusted user configuration for interpreting its matching source, but it is not evidence. Never use guidance to support factual claims or citations. Every factual claim must be supported by retrieved source content, and citations may refer only to numbered <source> blocks.
 

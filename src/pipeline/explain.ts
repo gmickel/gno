@@ -161,7 +161,7 @@ export function explainVector(
 export function explainFusion(k: number, uniqueCount: number): ExplainLine {
   return {
     stage: "fusion",
-    message: `RRF k=${k}, ${uniqueCount} unique candidates`,
+    message: `RRF k=${k}, ${uniqueCount} unique documents (best rank per list)`,
   };
 }
 

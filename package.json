@@ -101,6 +101,7 @@
     "bench:cpu-embeddings": "bun scripts/cpu-embed-autoresearch.ts",
     "bench:cpu-embeddings:native-batch-probe": "bun scripts/native-embedding-batch-probe.ts",
     "bench:cjk-lexical": "bun scripts/cjk-lexical-benchmark.ts",
+    "eval:ranking-ablation": "bun scripts/ranking-ablation.ts",
     "eval:retrieval-candidates": "bun scripts/retrieval-candidate-benchmark.ts",
     "eval:retrieval-candidates:write": "bun scripts/retrieval-candidate-benchmark.ts --write",
     "eval:agentic": "bun evals/agentic/cli.ts",

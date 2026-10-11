@@ -1,9 +1,11 @@
-import { expect, spyOn, test } from "bun:test";
+import { expect, setSystemTime, spyOn, test } from "bun:test";
 
 import type { AcceptanceManifest } from "../../evals/acceptance/manifest";
 import type { AcceptanceRecord } from "../../evals/acceptance/records";
 
 import { compareAcceptance } from "../../evals/acceptance/compare";
+import { acceptanceManifestFingerprint } from "../../evals/acceptance/manifest";
+import { deterministicRecordFingerprint } from "../../evals/acceptance/records";
 import { hydrationLongDocument } from "../../evals/fixtures/acceptance/hydration-long-doc/fixture";
 import pin from "../../evals/fixtures/acceptance/hydration-long-doc/manifest.json";
 import {
@@ -131,7 +133,20 @@ test("SDK Ask owns exactly one hydration through generation and releases on succ
   }
 });
 
+/**
+ * The answer prompt states today's date (fn-218), so the three generating
+ * cases legitimately differ from the frozen capture. Each delta pins both
+ * complete records at a fixed clock; any other difference still fails.
+ */
+const ASK_DATE_PROMPT_CANDIDATES: Record<string, string> = {
+  raw: "62a0d50c16b9c4685e42946504d7e3559ce6140d1f3f7382ebbe8412a7e96a78",
+  verified: "ff9c7626ec5e7c2aff11da5cd4411845c789a6f4a075614010654350df1d2733",
+  unsupported:
+    "64dd6d04ade4978aac9a0a99ef27f8fc761895ac0800e0ba0e0c5c3b4a987e5e",
+};
+
 test("Ask retains frozen before-source output, citation provenance and actual model arguments", async () => {
+  setSystemTime(new Date("2026-10-11T12:00:00Z"));
   const before = (await Bun.file(baselinePath).json()) as {
     manifest: AcceptanceManifest;
     runs: {
@@ -145,15 +160,38 @@ test("Ask retains frozen before-source output, citation provenance and actual mo
   // ask-before.json was captured at index schema 29. Hold only that identity
   // field constant so this test remains an exact hydration/ranking/input gate.
   for (const caseId of askCases) after.push(await captureAsk(caseId, true, 29));
+  setSystemTime();
   const records = after.map((run) => run.record);
-  expect(
+  const intendedDeltas = Object.entries(ASK_DATE_PROMPT_CANDIDATES).map(
+    ([caseId, candidateRecordSha256]) => ({
+      caseId,
+      reason: "answer prompt states today's date",
+      oracleSha256: candidateRecordSha256,
+      baselineRecordSha256: deterministicRecordFingerprint(
+        before.runs.find((run) => run.record.caseId === caseId)!.record
+          .deterministic
+      ),
+      candidateRecordSha256,
+    })
+  );
+  const baselineManifest = { ...before.manifest, intendedDeltas };
+  const candidateManifest = { ...askManifest("candidate"), intendedDeltas };
+  const stamp = (manifest: AcceptanceManifest, items: AcceptanceRecord[]) =>
+    items.map((item) => ({
+      ...item,
+      manifestSha256: acceptanceManifestFingerprint(manifest),
+    }));
+  const compare = (candidateRecords: AcceptanceRecord[]) =>
     compareAcceptance(
-      before.manifest,
-      askManifest("candidate"),
-      before.runs.map((run) => run.record),
-      records
-    )
-  ).toMatchObject({ passed: true, comparedCases: 6 });
+      baselineManifest,
+      candidateManifest,
+      stamp(
+        baselineManifest,
+        before.runs.map((run) => run.record)
+      ),
+      stamp(candidateManifest, candidateRecords)
+    );
+  expect(compare(records)).toMatchObject({ passed: true, comparedCases: 6 });
   // Complete inputs and evidence are compared above; no candidate count reduction.
   expect(after[0]?.counts).toEqual({ reads: 2, rows: 1001, bytes: 4_638_789 });
   expect(before.runs[0]?.counts).toEqual({
@@ -169,24 +207,10 @@ test("Ask retains frozen before-source output, citation provenance and actual mo
   });
   const shortened = structuredClone(records);
   shortened[0]!.deterministic.modelInputs[0]!.input = "truncated";
-  expect(
-    compareAcceptance(
-      before.manifest,
-      askManifest("candidate"),
-      before.runs.map((run) => run.record),
-      shortened
-    ).passed
-  ).toBe(false);
+  expect(compare(shortened).passed).toBe(false);
   const falseEvidence = structuredClone(records);
   falseEvidence[1]!.deterministic.scope.completeOutput = { citations: [] };
-  expect(
-    compareAcceptance(
-      before.manifest,
-      askManifest("candidate"),
-      before.runs.map((run) => run.record),
-      falseEvidence
-    ).passed
-  ).toBe(false);
+  expect(compare(falseEvidence).passed).toBe(false);
 });
 
 test("freshness verification bypasses cached content, chunks and document snapshots", async () => {

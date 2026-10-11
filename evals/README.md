@@ -338,6 +338,48 @@ See [scores.md](scores.md) for latest results. Updated automatically by `bun run
 - `bun run eval:hybrid` should be used to validate quality after blend tuning.
 - `bun run eval:hybrid:baseline` snapshots current metrics for later delta checks.
 - `bun run eval:hybrid:delta` prints quality/latency deltas against `hybrid-baseline/latest.json`.
+- `eval:hybrid` runs without vectors and reranking, so it cannot judge blend or
+  fusion changes. Use `bun run eval:ranking-ablation` (real expansion, vector and
+  rerank stages on the default preset) for those.
+
+## Ranking Ablation
+
+`bun run eval:ranking-ablation` runs the 45 judged retrieval-benchmark cases
+(baseline, adversarial, multilingual, ask) through the full hybrid pipeline with
+the default preset's real models, once per ranking variant, after a warm-up pass
+that fills the expansion cache so variants differ only in ranking. `--cases`
+also lists every case whose nDCG@10 differs from the first variant. Results are
+deterministic across runs.
+
+Results from 2026-10-11 (RTX 4090), comparing the variants below. Fusion was
+chunk-level at the time; the first five rows use it.
+
+| Variant                                           |   nDCG@10 |       MRR |       R@5 |      R@10 | multilingual nDCG |   ask R@5 |
+| ------------------------------------------------- | --------: | --------: | --------: | --------: | ----------------: | --------: |
+| Tiered blend, chunk fusion (then default)         |     0.973 |     1.000 |     0.956 |     0.956 |             0.876 |     0.938 |
+| Monotonic blend 0.5/0.5                           |     0.973 |     1.000 |     0.956 |     0.956 |             0.883 |     0.938 |
+| Monotonic blend 0.3/0.7                           |     0.972 |     1.000 |     0.956 |     0.956 |             0.870 |     0.938 |
+| Rerank first, fusion tie-break                    |     0.958 |     0.989 |     0.944 |     0.944 |             0.870 |     0.875 |
+| Document fusion, every chunk counted              |     0.986 |     0.989 |     1.000 |     1.000 |             0.969 |     1.000 |
+| **Document fusion, best rank per list (shipped)** | **0.990** | **1.000** | **1.000** | **1.000** |         **0.966** | **1.000** |
+
+- **Shipped: document-level fusion, best rank per list.** Four cases improve
+  (ml2 0.787 → 0.956, ml3 0.745 → 0.936, adv6 0.812 → 0.950, ask4 0.613 →
+  0.877) and none regress. Counting every chunk of a document instead
+  regressed three cases (q8, adv5, adv6) and lowered MRR, so each list counts a
+  document once.
+- **Not shipped: monotonic blends.** Neutral on these cases: 0.5/0.5 moves
+  three cases by under 0.05 in both directions; 0.3/0.7 is slightly worse. The
+  tiered blend stays.
+- **Not shipped: rerank first.** Worse on every aggregate; ask1 drops 1.000 →
+  0.613 and q19 1.000 → 0.834.
+- **Inconclusive, not changed: query-inferred dates as a soft signal or off.**
+  None of the judged cases contains a date phrase, and the fixture documents'
+  dates are checkout times, so appending date words would measure the checkout
+  date, not ranking. Explicit `--since`/`--until` stay hard filters and
+  inference is unchanged.
+- The corpus is small (9 documents, 45 cases) and the baseline is near the
+  ceiling; treat these as direction, not effect size.
 
 ## Retrieval Candidate Benchmark
 

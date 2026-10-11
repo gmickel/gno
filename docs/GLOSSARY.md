@@ -180,7 +180,7 @@ gno query "topic" --no-rerank  # disable for speed
 
 Algorithm for combining multiple ranked lists. Score = Σ(weight / (k + rank)) where k=60.
 
-GNO applies **2× weight** to original query results to prevent dilution by LLM-generated variants.
+GNO applies **2× weight** to original query results to prevent dilution by LLM-generated variants, and fuses documents rather than chunks: each list counts a document once, at its best chunk's rank.
 
 See [How Search Works](HOW-SEARCH-WORKS.md) for detailed explanation.
 

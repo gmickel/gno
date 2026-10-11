@@ -301,7 +301,7 @@ User query
     │
     ▼ [Optional] Bounded graph expansion (top seeds → one-hop neighbors)
     │
-    ▼ RRF Fusion (k=60, 2× weight for original, tiered bonus)
+    ▼ RRF Fusion by document (k=60, 2× weight for original, tiered bonus)
     │
     ▼ [Optional] Rerank best chunk per document (Qwen3, 4K chars)
     │
