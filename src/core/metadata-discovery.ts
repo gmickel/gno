@@ -162,7 +162,7 @@ export function formatMetadataSummary(summary: MetadataSummary): string {
       .map((item) => `${JSON.stringify(item.value)} (${item.documents})`)
       .join(", ");
     lines.push(
-      `${key.key} [${key.types.join(", ")}] ${key.documents} docs${values ? `: ${values}${key.valuesTruncated ? ", ..." : ""}` : ""}`
+      `${key.key} [${key.types.join(", ")}] ${key.documents} ${key.documents === 1 ? "doc" : "docs"}${values ? `: ${values}${key.valuesTruncated ? ", ..." : ""}` : ""}`
     );
   }
   return lines.join("\n");
