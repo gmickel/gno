@@ -104,6 +104,7 @@ const emptyStoreCallMap = (): ProjectAffinityStoreCallMap => ({
   getContextGeneration: 0,
   getContexts: 0,
   getDocumentsByMirrorHashes: 0,
+  getSupersedingUris: 0,
   getTagsBatch: 0,
   listDocuments: 0,
 });

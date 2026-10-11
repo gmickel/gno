@@ -10,6 +10,7 @@ export const PROJECT_AFFINITY_STORE_CALL_LIMITS = {
   getContextGeneration: 2,
   getContexts: 1,
   getDocumentsByMirrorHashes: 1,
+  getSupersedingUris: 1,
   getTagsBatch: 0,
   listDocuments: 0,
 } as const;

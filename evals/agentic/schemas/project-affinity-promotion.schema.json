@@ -469,11 +469,18 @@
             "getCollections",
             "getContextGeneration",
             "getContexts",
+            "getSupersedingUris",
             "getTagsBatch",
             "listDocuments"
           ],
           "properties": {
             "getDocumentsByMirrorHashes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "getSupersedingUris": {
+              "description": "Batch lookup marking superseded memory facts in the result set.",
               "type": "integer",
               "minimum": 0,
               "maximum": 1

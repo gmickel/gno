@@ -48,6 +48,7 @@ export const MCP_HTTP_EGRESS_TOOLS = {
   gno_job_status: "metadata",
   gno_links: "metadata",
   gno_list_jobs: "metadata",
+  gno_list_metadata: "metadata",
   gno_list_tags: "metadata",
   gno_move_note: "metadata",
   gno_multi_get: "source",
