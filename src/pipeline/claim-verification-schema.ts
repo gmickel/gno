@@ -85,6 +85,7 @@ const verifiedClaimSchema = z
       "semantic_contradiction",
       "no_valid_evidence",
       "semantic_judgment_unavailable",
+      "quote_not_in_evidence",
     ]),
     verifierFingerprint: sha256Schema.nullable(),
     evidence: z.array(evidenceReferenceSchema).max(256),
@@ -111,8 +112,12 @@ const verifiedClaimSchema = z
       value.status === "insufficient"
         ? value.evidence.length === 0
         : value.evidence.length > 0;
+    const rationaleValid =
+      value.rationaleCode === expectedRationale ||
+      (value.status === "uncertain" &&
+        value.rationaleCode === "quote_not_in_evidence");
     if (
-      value.rationaleCode !== expectedRationale ||
+      !rationaleValid ||
       !evidenceCountValid ||
       (semantic &&
         (value.confidence === null || value.verifierFingerprint === null)) ||

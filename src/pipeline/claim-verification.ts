@@ -85,7 +85,8 @@ export interface VerifiedClaim extends ClaimSpan {
     | "semantic_entailment"
     | "semantic_contradiction"
     | "no_valid_evidence"
-    | "semantic_judgment_unavailable";
+    | "semantic_judgment_unavailable"
+    | "quote_not_in_evidence";
   verifierFingerprint: string | null;
   evidence: ClaimEvidenceReference[];
   rejectedCitations: RejectedCitation[];
@@ -334,6 +335,34 @@ const judgmentForClaim = (
   return matches.length === 1 ? (matches[0] ?? null) : null;
 };
 
+/** Straight or curly double-quoted spans of at least two words. */
+const QUOTATION_PATTERN = /["\u201C]([^"\u201C\u201D]+)["\u201D]/g;
+const MIN_QUOTED_WORDS = 2;
+
+/** Whitespace, quote style and case differences are not misquotes. */
+const normalizeQuoted = (text: string): string =>
+  text
+    .normalize("NFKC")
+    .replaceAll(/[\u2018\u2019]/g, "'")
+    .replaceAll(/[\u201C\u201D]/g, '"')
+    .replaceAll(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+
+const quotesFoundInEvidence = (
+  claimText: string,
+  evidence: readonly Evidence[]
+): boolean => {
+  const haystacks = evidence.map((item) => normalizeQuoted(item.text));
+  for (const match of claimText.matchAll(QUOTATION_PATTERN)) {
+    // Closing punctuation inside a quote often ends the claim's sentence.
+    const quoted = normalizeQuoted(match[1] ?? "").replace(/[.,;:!?]+$/, "");
+    if (quoted.split(" ").length < MIN_QUOTED_WORDS) continue;
+    if (!haystacks.some((text) => text.includes(quoted))) return false;
+  }
+  return true;
+};
+
 const verifyClaim = (
   answer: string,
   claim: ClaimSpan,
@@ -353,6 +382,19 @@ const verifyClaim = (
       rationaleCode: "no_valid_evidence",
       verifierFingerprint: null,
       evidence: [],
+      rejectedCitations: citations.rejected,
+    };
+  }
+  // An explicit quotation must appear in the cited evidence; the semantic
+  // judgment cannot vouch for wording it never compared.
+  if (!quotesFoundInEvidence(claim.text, citations.accepted)) {
+    return {
+      ...claim,
+      status: "uncertain",
+      confidence: null,
+      rationaleCode: "quote_not_in_evidence",
+      verifierFingerprint: null,
+      evidence: references,
       rejectedCitations: citations.rejected,
     };
   }

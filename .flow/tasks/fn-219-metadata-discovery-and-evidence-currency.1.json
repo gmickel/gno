@@ -1,0 +1,15 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-10-11T22:37:44.342638Z",
+  "depends_on": [],
+  "id": "fn-219-metadata-discovery-and-evidence-currency.1",
+  "implicit_owner": true,
+  "priority": null,
+  "spec": "fn-219-metadata-discovery-and-evidence-currency",
+  "spec_path": ".flow/tasks/fn-219-metadata-discovery-and-evidence-currency.1.md",
+  "status": "todo",
+  "title": "Implement Metadata discovery and evidence currency",
+  "updated_at": "2026-10-11T22:37:44.342638Z"
+}

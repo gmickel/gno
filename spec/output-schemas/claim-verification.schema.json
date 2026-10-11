@@ -186,7 +186,8 @@
             "semantic_entailment",
             "semantic_contradiction",
             "no_valid_evidence",
-            "semantic_judgment_unavailable"
+            "semantic_judgment_unavailable",
+            "quote_not_in_evidence"
           ]
         },
         "verifierFingerprint": {
@@ -260,7 +261,12 @@
           "if": { "properties": { "status": { "const": "uncertain" } } },
           "then": {
             "properties": {
-              "rationaleCode": { "const": "semantic_judgment_unavailable" },
+              "rationaleCode": {
+                "enum": [
+                  "semantic_judgment_unavailable",
+                  "quote_not_in_evidence"
+                ]
+              },
               "evidence": { "type": "array", "minItems": 1 }
             }
           }

@@ -3696,6 +3696,34 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
    * Get tag counts across all active documents.
    * Optionally filter by collection or tag prefix.
    */
+  async getTypedMetadataDocuments(options?: {
+    collection?: string;
+  }): Promise<StoreResult<{ documents: number; metadata: string[] }>> {
+    try {
+      const db = this.ensureOpen();
+      const scope = options?.collection ? " AND collection = ?" : "";
+      const params = options?.collection ? [options.collection] : [];
+      const documents = db
+        .query<{ count: number }, string[]>(
+          `SELECT count(*) AS count FROM documents WHERE active = 1${scope}`
+        )
+        .get(...params)!.count;
+      const metadata = db
+        .query<{ typed_metadata: string }, string[]>(
+          `SELECT typed_metadata FROM documents WHERE active = 1 AND typed_metadata IS NOT NULL${scope}`
+        )
+        .all(...params)
+        .map((row) => row.typed_metadata);
+      return ok({ documents, metadata });
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to read metadata",
+        cause
+      );
+    }
+  }
+
   async getTagCounts(options?: {
     collection?: string;
     prefix?: string;

@@ -2246,6 +2246,14 @@ export interface StorePort {
   ): Promise<StoreResult<Map<number, TagRow[]>>>;
 
   /**
+   * Indexed typed metadata JSON of active documents, optionally in one
+   * collection, plus the active document count in that scope.
+   */
+  getTypedMetadataDocuments(options?: {
+    collection?: string;
+  }): Promise<StoreResult<{ documents: number; metadata: string[] }>>;
+
+  /**
    * Get tag counts across all active documents.
    * Optionally filter by collection or tag prefix.
    */
