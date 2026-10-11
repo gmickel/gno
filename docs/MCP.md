@@ -56,7 +56,7 @@ diagnose can emit the closed, redacted `query-diagnose@1.1` affinity metadata.
 ## Overview
 
 MCP (Model Context Protocol) allows AI assistants to access external tools and
-resources. GNO registers 37 tools in default read-only mode and 59 when writes
+resources. GNO registers 38 tools in default read-only mode and 60 when writes
 are explicitly enabled (the default `full` profile; the opt-in `core` profile
 advertises 7 read tools plus 2 write tools, see [Tool Profiles](#tool-profiles)):
 
@@ -294,8 +294,8 @@ gno mcp --enable-write
 GNO_MCP_ENABLE_WRITE=1 gno mcp
 ```
 
-Without this flag, the 37 read-only retrieval, verified-synthesis, memory
-recall, trace, graph, egress, status, and job-inspection tools are available.
+Without this flag, the 38 read-only retrieval, verified-synthesis, memory
+recall, trace, graph, egress, metadata, status, and job-inspection tools are available.
 Enabling writes adds 21 mutation tools (including `gno_remember`,
 `gno_sessions_import`, and `gno_sessions_automation_run`) and the read-only
 `gno_request_status` lookup, for 59
@@ -311,7 +311,7 @@ today's whole surface, byte-for-byte.
 
 | Profile          | Read tools                                                                                            | With `--enable-write` adds    |
 | ---------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------- |
-| `full` (default) | all 37                                                                                                | all 22 write-gated tools      |
+| `full` (default) | all 38                                                                                                | all 22 write-gated tools      |
 | `core`           | `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`, `gno_changes`, `gno_recall` (7) | `gno_capture`, `gno_remember` |
 
 Write tools stay behind `--enable-write` in both profiles; a profile never

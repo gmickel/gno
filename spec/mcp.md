@@ -156,7 +156,7 @@ the resident gateway applies one profile to every connected client.
 
 | Profile          | Without `--enable-write`                                                                              | With `--enable-write`                                   |
 | ---------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `full` (default) | Every read tool below (37)                                                                            | Every read tool plus every write tool (59)              |
+| `full` (default) | Every read tool below (38)                                                                            | Every read tool plus every write tool (60)              |
 | `core`           | `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`, `gno_changes`, `gno_recall` (7) | The 7 read tools plus `gno_capture`, `gno_remember` (9) |
 
 Both lists are exact: `core` advertises nothing else, and `full` is byte-for-byte

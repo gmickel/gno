@@ -715,10 +715,10 @@ Connect GNO to Claude Desktop, Cursor, Raycast, and more:
 
 ![GNO MCP](./assets/screenshots/mcp.jpg)
 
-GNO exposes 37 tools by default via [Model Context Protocol](https://modelcontextprotocol.io),
+GNO exposes 38 tools by default via [Model Context Protocol](https://modelcontextprotocol.io),
 including the core retrieval tools below. Starting MCP with `--enable-write`
 adds 21 opt-in mutation tools and the read-only `gno_request_status` lookup,
-for 59 total.
+for 60 total.
 
 | Tool                 | Description                                     |
 | :------------------- | :---------------------------------------------- |
@@ -1129,7 +1129,7 @@ graph TD
 | **Local LLM**        | AI answers via llama.cpp, no API keys                                                       |
 | **Remote Inference** | Optional HTTP endpoints for embedding, reranking, expansion, and generation                 |
 | **Privacy First**    | Fail-closed per-collection egress policy; no telemetry; explicit network use                |
-| **MCP Server**       | 10 automatic client targets; 37 read-only tools, 59 with writes enabled                     |
+| **MCP Server**       | 10 automatic client targets; 38 read-only tools, 60 with writes enabled                     |
 | **Integrity Audits** | Offline link, declared-provenance, and freshness reports with stable IDs                    |
 | **Knowledge Delta**  | Bounded metadata history, structural diffs, and dependency impact paths                     |
 | **Context Capsules** | Deterministic evidence bundles plus saved-file freshness reverification                     |
