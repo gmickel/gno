@@ -10,13 +10,83 @@
     "fn-216-fast-semantic-retrieval-and-a-retrieval"
   ],
   "id": "fn-218-hybrid-ranking-and-answer-quality",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-218-hybrid-ranking-and-answer-quality.1": 1
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "ready": true,
+  "review_attempts": [
+    {
+      "artifact_sha256": "76082dd82ae6366a3875a52748b3a4e1365f478a6bfcfcea42203d33b59d85b1",
+      "backend": "codex",
+      "base_sha": "007f8c8f589561fbe144ff0693c672b4ed1b9361",
+      "counter_kind": "impl",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-8a2b2b34797fd638b72e52bc03d0edff",
+            "classification": "introduced",
+            "findingId": "finding-8a2b2b34797fd638b72e52bc03d0edff",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-6dad08c25e6e7d84ab7462e1f78d1172",
+            "classification": "introduced",
+            "findingId": "finding-6dad08c25e6e7d84ab7462e1f78d1172",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-e0613e08299197366caa2511afad6b23",
+            "classification": "introduced",
+            "findingId": "finding-e0613e08299197366caa2511afad6b23",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "220d6f598e7a371f9bc7a9b51a74aebef0e2e303",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6.1-sol",
+      "outcome": "verdict",
+      "output_bytes": 2236,
+      "output_sha256": "e254724ee1d1d20152c728122fd6192b04e94f0410ff90a12a2b7240dd227355",
+      "reservation_id": "acfaf15b0f154d7084e717cc340a3570",
+      "round_consumed": true,
+      "scope": "impl:fn-218-hybrid-ranking-and-answer-quality.1",
+      "superseded_by": null,
+      "task": "fn-218-hybrid-ranking-and-answer-quality.1",
+      "timestamp": "2026-10-11T22:20:42.008160Z",
+      "verdict": "NEEDS_WORK"
+    }
+  ],
+  "review_hash_epoch": {},
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-218-hybrid-ranking-and-answer-quality.1": 0
+  },
   "spec_path": ".flow/specs/fn-218-hybrid-ranking-and-answer-quality.md",
   "status": "open",
   "title": "Hybrid ranking and answer quality",
@@ -31,5 +101,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-11T19:33:34.936045Z"
+  "updated_at": "2026-10-11T22:20:42.010256Z"
 }

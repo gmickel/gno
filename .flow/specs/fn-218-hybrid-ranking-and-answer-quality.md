@@ -39,5 +39,6 @@ Keep today's ranking and record the negative results. Candidate follow-ups, each
 <!-- scope: business -->
 
 - [inferred] No new ranking signals, models or a held-out corpus build; no public reference-date option (tests may inject the date).
+- [inferred] Deferred during implementation (2026-10-12): the query-inferred-date hypothesis in R1. None of the judged retrieval cases carries a date phrase, and dating the fixture documents to construct one would make the outcome a function of the chosen timestamps; with no held-out corpus allowed, inference stays as it is and the evaluation waits for a dated, judged case set. Recorded in `evals/README.md` (Ranking Ablation).
 - [inferred] Depends on the fast-semantic-retrieval spec: evaluating with vectors on is impractical at today's speeds, and that spec's parity test must compare unchanged ranking.
 - [user] Never name other products in code, specs, commits, docs or the site.

@@ -373,7 +373,7 @@ chunk-level at the time; the first five rows use it.
   tiered blend stays.
 - **Not shipped: rerank first.** Worse on every aggregate; ask1 drops 1.000 →
   0.613 and q19 1.000 → 0.834.
-- **Inconclusive, not changed: query-inferred dates as a soft signal or off.**
+- **Deferred, not changed: query-inferred dates as a soft signal or off.**
   None of the judged cases contains a date phrase, and the fixture documents'
   dates are checkout times, so appending date words would measure the checkout
   date, not ranking. Explicit `--since`/`--until` stay hard filters and

@@ -146,7 +146,8 @@ const ASK_DATE_PROMPT_CANDIDATES: Record<string, string> = {
 };
 
 test("Ask retains frozen before-source output, citation provenance and actual model arguments", async () => {
-  setSystemTime(new Date("2026-10-11T12:00:00Z"));
+  // A local calendar date: the prompt states the date in local time.
+  setSystemTime(new Date(2026, 9, 11, 12));
   const before = (await Bun.file(baselinePath).json()) as {
     manifest: AcceptanceManifest;
     runs: {

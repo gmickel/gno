@@ -48,6 +48,10 @@ const runtime: BenchmarkRuntime = {
   ...runtimeBase,
   ...(await ensureVectorIndex(runtimeBase)),
 };
+if (!runtime.vectorAvailable)
+  throw new Error(
+    "Vector search unavailable (sqlite-vec); a lexical-only run is not a hybrid comparison"
+  );
 const expandUri = DEFAULT_MODEL_PRESETS[0]?.expand;
 if (!expandUri) throw new Error("Default expansion model missing");
 const genResult = await llm.createGenerationPort(expandUri, {
