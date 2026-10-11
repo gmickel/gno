@@ -1,0 +1,50 @@
+{
+  "branch": "fn-216-fast-semantic-retrieval-and-a-retrieval",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "b07eb423f3c7bb2602602b760ec13f904aff3438",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-6a4465e16195b5bff16b4d5b1d7830936a53b61552697b4d7f2ff75e95d675e1"
+  },
+  "head_sha": "b07eb423f3c7bb2602602b760ec13f904aff3438",
+  "id": "fn-216-fast-semantic-retrieval-and-a-retrieval",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 6,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      }
+    ],
+    "total": 6
+  },
+  "timestamp": "2026-10-11T20:46:29Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
