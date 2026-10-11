@@ -11,10 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Semantic search is much faster on indexes embedded since 2.7. Each vector search used to re-check the whole vector index against the stored embeddings, which took about 17 seconds on a 17,600-chunk index; it now takes about 70 ms unscoped and less when scoped to a collection or filter. On that index `gno vsearch` and `gno query --fast` dropped from about 20 seconds to about 2 seconds as one-off commands (most of it model loading) and about 0.2 seconds through MCP or `gno serve`; balanced `gno query` went from about 78 seconds to about 6 seconds one-off and 2-3 seconds with models loaded. Results are unchanged: filters still apply before the top results are picked, and a stored vector is used only while it matches its chunk's current text and title.
 - The `gno agents` block (v4) and the `gno` skill now send any natural-language question to `gno query --fast` first, keep `gno search` for exact identifiers, quotes and error text, and retry with balanced `gno query` before diagnosing or falling back to grep. Run `gno agents update` and `gno skill install --force` to pick up the new guidance. The MCP `gno_query`, `gno_search` and `gno_vsearch` tool descriptions steer the same way, and the skill's timing table carries measured numbers.
+- Hybrid search (`gno query`, MCP `gno_query`, REST `/api/query`, SDK `query`) now fuses keyword and semantic results by document instead of by chunk. Keyword search ranks whole documents while semantic search ranks passages, so a document found first by both used to have its votes split across two weaker candidates; now each result list counts a document once, at the rank of its best passage. On GNO's judged retrieval cases with the real models this raised nDCG@10 from 0.973 to 0.990 and recall@5 from 0.956 to 1.000, with four cases better and none worse. `--explain` reports fused documents.
+- Answers from `gno ask` (and its MCP, REST and SDK forms, verified or not) are generated with today's date and each source's content date (its frontmatter or record date; never the file's modification time), so questions about time, recency or order can be answered from the sources.
 
 ### Added
 
 - `bun run bench:vector-search` times one vector search (unscoped, collection-scoped, metadata-filtered) on a seeded synthetic index or a copy of a real index.
+- `bun run eval:ranking-ablation` compares ranking variants on the judged retrieval cases with real expansion, vector and rerank stages.
 
 ### Fixed
 
