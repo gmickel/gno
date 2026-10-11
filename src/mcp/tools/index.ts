@@ -170,11 +170,11 @@ export function normalizeTagFilters(tags?: string[]): string[] | undefined {
 
 export const MCP_TOOL_DESCRIPTIONS = {
   search:
-    "BM25 keyword search. Fast exact-term lookup for names, identifiers, error text, and known phrases. Structured results include uri/docid, line when available, and optional user-configured context guidance; use gno_get with fromLine/lineCount or gno_multi_get for full context. Use gno_query when wording is uncertain.",
+    "BM25 keyword search. Fast exact-term lookup for names, identifiers, error text, and known phrases. Structured results include uri/docid, line when available, and optional user-configured context guidance; use gno_get with fromLine/lineCount or gno_multi_get for full context. For natural-language questions use gno_query (fast=true first).",
   vsearch:
-    "Vector semantic search. Finds conceptually similar docs with different wording. Structured results preserve optional user-configured context guidance. Best after embeddings are current; use intent to disambiguate short terms. Use gno_query for default hybrid retrieval.",
+    "Vector semantic search. Finds conceptually similar docs with different wording. Structured results preserve optional user-configured context guidance. Best after embeddings are current; use intent to disambiguate short terms. For questions, gno_query with fast=true adds keyword matching at about the same cost.",
   query:
-    "Hybrid search (BM25 + vector + default bounded graph expansion + optional query expansion/reranking). Recommended default. Structured results preserve optional user-configured context guidance with source identity. Use intent for ambiguous terms, queryModes to combine term/intent/hyde strategies, fast=true or graph=false for quick lookup, thorough=true when recall matters, and candidateLimit to trade latency for coverage.",
+    "Hybrid search (BM25 + vector + default bounded graph expansion + optional query expansion/reranking). Recommended default for natural-language questions: start with fast=true (hybrid without expansion/rerank, typically under a second on a warm server); when that misses, retry without fast (adds expansion and reranking, a few seconds); thorough=true when recall matters. Structured results preserve optional user-configured context guidance with source identity. Use intent for ambiguous terms, queryModes to combine term/intent/hyde strategies, graph=false to skip graph expansion, and candidateLimit to trade latency for coverage.",
   queryDiagnose:
     "Diagnose why one target document does or does not appear for a query. Use when an important doc is missing, a filter may exclude it, or you need stage-by-stage BM25/vector/fusion/graph/rerank evidence before changing retrieval strategy.",
   get: "Retrieve one document by gno:// URI, docid (#abc123), or collection/path. After search results include line, pass fromLine and lineCount to fetch only the relevant range before expanding to the full document.",
@@ -632,7 +632,7 @@ export const queryInputSchema = z.object({
     .boolean()
     .default(false)
     .describe(
-      "Skip query expansion, graph expansion, and reranking (~0.7s). Use for quick lookups"
+      "Skip query expansion, graph expansion, and reranking (typically under a second on a warm server). Use first for natural-language questions"
     ),
   thorough: z
     .boolean()

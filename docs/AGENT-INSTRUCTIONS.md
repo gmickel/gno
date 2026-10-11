@@ -7,7 +7,7 @@ supported harness, bounded by stable markers:
 
 ```
 <!-- gno:agents:begin -->
-<!-- gno-agents block v3 sha256:... — managed by `gno agents`; ... -->
+<!-- gno-agents block v4 sha256:... — managed by `gno agents`; ... -->
 ...ladder + writing contract...
 <!-- gno:agents:end -->
 ```
@@ -78,8 +78,10 @@ Inside an extra dir the installer manages the first existing of `CLAUDE.md`,
 
 ## Block content
 
-The block teaches the retrieval ladder (search → recall → query → context
-build → changes/diff/impact → ask --verify → diagnose-before-grep), the writing
+The block teaches the retrieval ladder (search for exact strings → recall
+for memory facts → `query --fast` for any other question → balanced
+`query` when that misses → context build → changes/diff/impact → ask
+--verify → diagnose-before-grep), the writing
 contract (retrieve first; edit canonical notes in place; `gno capture` for
 genuinely new notes; `gno remember` with the add/supersede decision and the
 recall receipt for facts that may change; reindex + verify after writes), and

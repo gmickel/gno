@@ -82,6 +82,32 @@ export function vectorSearchUnavailableMessage(
   }`;
 }
 
+const MAX_CACHED_PROOFS = 100_000;
+const proofCaches = new WeakMap<
+  Database,
+  { marker: string; proofs: Map<string, boolean> }
+>();
+
+/**
+ * Input-hash proofs cached per connection. Any committed write, from this
+ * connection or another, changes the marker and drops the cache, so a cached
+ * proof never outlives the titles and chunk text it was computed from.
+ */
+function provenOwners(db: Database): Map<string, boolean> {
+  const { version, changes } = db
+    .query<{ version: number; changes: number }, []>(
+      "SELECT (SELECT data_version FROM pragma_data_version) AS version, total_changes() AS changes"
+    )
+    .get()!;
+  const marker = `${version}:${changes}`;
+  let cache = proofCaches.get(db);
+  if (cache?.marker !== marker || cache.proofs.size > MAX_CACHED_PROOFS) {
+    cache = { marker, proofs: new Map() };
+    proofCaches.set(db, cache);
+  }
+  return cache.proofs;
+}
+
 /** Null means legacy authority. Once promoted, unavailable provenance fails closed. */
 function searchVectorVariantsInSnapshot(
   db: Database,
@@ -148,14 +174,9 @@ function searchVectorVariantsInSnapshot(
   const tableName = `vec_v1_${partitionId}`;
   if (!db.query("SELECT 1 FROM sqlite_master WHERE name = ?").get(tableName))
     throw new Error("Activated variant index unavailable; run gno embed");
-  if (
-    db
-      .query(
-        `SELECT 1 FROM vector_variants v LEFT JOIN ${tableName} x ON x.variant_id = v.variant_id WHERE v.partition_id = ? AND (x.variant_id IS NULL OR x.embedding != v.embedding) LIMIT 1`
-      )
-      .get(partitionId)
-  )
-    throw new Error("Activated variant index inconsistent; run gno embed");
+  // The vec0 mirror is written in the same transactions as vector_variants and
+  // checked at activation and by `gno vec sync`; ranking below reads only
+  // vector_variants, so the mirror is never trusted here.
   const eligible = buildEligibleDocumentQuery(
     { ...options.eligibility, semanticMetadata: true },
     db
@@ -170,75 +191,92 @@ function searchVectorVariantsInSnapshot(
     conditions.push("o.mirror_hash IN (SELECT value FROM json_each(?))");
     params.push(JSON.stringify(options.allowedMirrorHashes));
   }
-  const bindings = db
-    .query<
-      {
-        document_id: number;
-        seq: number;
-        text: string;
-        title: string | null;
-        input_hash: string;
-      },
-      (string | number)[]
-    >(`
-    SELECT o.document_id, o.seq, c.text, d.title, v.input_hash
-    FROM vector_owners o
-    JOIN (${eligible.sql}) e ON e.id = o.document_id AND e.mirror_hash = o.mirror_hash
-    JOIN documents d ON d.id = o.document_id
-    JOIN content_chunks c ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
-    JOIN vector_variants v ON v.variant_id = o.variant_id AND v.partition_id = o.partition_id
-    WHERE ${conditions.join(" AND ")}
-  `)
-    .all(...eligible.params, ...params);
-  const proven = bindings
-    .filter(
-      (row) =>
-        row.input_hash ===
-        embeddingInputHash(
-          formatDocForEmbedding(row.text, row.title ?? undefined, model)
-        )
-    )
-    .map((row) => `${row.document_id}:${row.seq}`);
-  // Both owner eligibility and formatted-input validation precede ranking/LIMIT.
-  const rows = db
-    .query<
-      {
-        mirrorHash: string;
-        seq: number;
-        distance: number;
-        documentIds: string;
-      },
-      (Uint8Array | string | number)[]
-    >(`
-    SELECT o.mirror_hash AS mirrorHash, o.seq, vec_distance_cosine(v.embedding, ?) AS distance,
-      json_group_array(o.document_id) AS documentIds
-    FROM vector_owners o
-    JOIN (${eligible.sql}) e ON e.id = o.document_id AND e.mirror_hash = o.mirror_hash
-    JOIN documents d ON d.id = o.document_id
-    JOIN content_chunks c ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
-    JOIN vector_variants v ON v.variant_id = o.variant_id AND v.partition_id = o.partition_id
-    JOIN ${tableName} x ON x.variant_id = v.variant_id AND x.embedding = v.embedding
-    WHERE ${conditions.join(" AND ")}
-      AND (o.document_id || ':' || o.seq) IN (SELECT value FROM json_each(?))
-    GROUP BY v.variant_id, o.mirror_hash, o.seq
-    ORDER BY distance, o.mirror_hash, o.seq, v.variant_id LIMIT ?
-  `)
-    .all(
-      encodeEmbedding(embedding),
+  // Owner eligibility precedes ranking/LIMIT. Grouping before the distance
+  // keeps embedding blobs out of the group sorter.
+  const ranked = db.query<
+    {
+      mirrorHash: string;
+      seq: number;
+      inputHash: string;
+      distance: number;
+      documentIds: string;
+    },
+    (Uint8Array | string | number)[]
+  >(`
+    SELECT g.mirrorHash, g.seq, v.input_hash AS inputHash,
+      vec_distance_cosine(v.embedding, ?) AS distance, g.documentIds
+    FROM (
+      SELECT o.variant_id AS variantId, o.mirror_hash AS mirrorHash, o.seq,
+        json_group_array(o.document_id) AS documentIds
+      FROM vector_owners o
+      JOIN (${eligible.sql}) e ON e.id = o.document_id AND e.mirror_hash = o.mirror_hash
+      JOIN content_chunks c ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
+      WHERE ${conditions.join(" AND ")}
+      GROUP BY o.variant_id, o.mirror_hash, o.seq
+    ) g
+    JOIN vector_variants v ON v.variant_id = g.variantId AND v.partition_id = ?
+    ORDER BY distance, g.mirrorHash, g.seq, g.variantId LIMIT ?
+  `);
+  const owners = db.query<
+    { id: number; title: string | null; text: string },
+    [string, number, string]
+  >(`
+    SELECT d.id, d.title, c.text FROM documents d
+    JOIN content_chunks c ON c.mirror_hash = ? AND c.seq = ?
+    WHERE d.id IN (SELECT value FROM json_each(?))
+  `);
+  // A vector counts only while it matches its owner's current formatted
+  // input. Proving candidates in rank order and skipping unproven owners
+  // returns exactly what filtering every owner before ranking would.
+  const proofs = provenOwners(db);
+  const queryVector = encodeEmbedding(embedding);
+  let limit = k;
+  let results: VectorSearchResult[] = [];
+  for (;;) {
+    const rows = ranked.all(
+      queryVector,
       ...eligible.params,
       ...params,
-      JSON.stringify(proven),
-      k
+      partitionId,
+      limit
     );
-  return rows
-    .filter(
-      (row) =>
-        options.minScore === undefined || 1 - row.distance >= options.minScore
-    )
-    .map((row) => ({
-      ...row,
-      documentIds: JSON.parse(row.documentIds) as number[],
-    }));
+    results = [];
+    for (const row of rows) {
+      const documentIds = JSON.parse(row.documentIds) as number[];
+      const key = (id: number) =>
+        `${model}\0${id}\0${row.mirrorHash}\0${row.seq}\0${row.inputHash}`;
+      const unknown = documentIds.filter((id) => !proofs.has(key(id)));
+      if (unknown.length > 0) {
+        for (const owner of owners.all(
+          row.mirrorHash,
+          row.seq,
+          JSON.stringify(unknown)
+        )) {
+          proofs.set(
+            key(owner.id),
+            embeddingInputHash(
+              formatDocForEmbedding(owner.text, owner.title ?? undefined, model)
+            ) === row.inputHash
+          );
+        }
+      }
+      const proven = documentIds.filter((id) => proofs.get(key(id)));
+      if (proven.length === 0) continue;
+      results.push({
+        mirrorHash: row.mirrorHash,
+        seq: row.seq,
+        distance: row.distance,
+        documentIds: proven,
+      });
+      if (results.length === k) break;
+    }
+    if (results.length === k || rows.length < limit) break;
+    limit *= 4;
+  }
+  return results.filter(
+    (row) =>
+      options.minScore === undefined || 1 - row.distance >= options.minScore
+  );
 }
 
 /** Keep eligibility, provenance validation and ranking on one SQLite snapshot. */

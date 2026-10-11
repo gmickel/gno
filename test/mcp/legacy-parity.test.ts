@@ -36,7 +36,9 @@
  *    (`gno_sessions_status` read, `gno_sessions_import` write) and fn-172 adds
  *    the `gno_sessions_automation_run` write tool. fn-178 widens
  *    `gno_audit.maxFindings` to 1-100000 or "all" and adds the optional
- *    `gno_impact.collections` scope. All are
+ *    `gno_impact.collections` scope. fn-216 rewords the retrieval-ladder
+ *    guidance in the `gno_search`, `gno_vsearch` and `gno_query` descriptions and the
+ *    `gno_query.fast` property description. All are
  *    pinned by the current golden and removed only for the historical
  *    comparison.
  */
@@ -369,7 +371,38 @@ function withoutAuditCapExtension(tool: WireTool): WireTool {
   };
 }
 
+/**
+ * fn-216 reworded the retrieval-ladder guidance; restore exactly the
+ * historical strings for the frozen comparison only.
+ */
+const LADDER_DESCRIPTION_DELTAS: [current: string, historical: string][] = [
+  [
+    "For questions, gno_query with fast=true adds keyword matching at about the same cost.",
+    "Use gno_query for default hybrid retrieval.",
+  ],
+  [
+    "For natural-language questions use gno_query (fast=true first).",
+    "Use gno_query when wording is uncertain.",
+  ],
+  [
+    "Recommended default for natural-language questions: start with fast=true (hybrid without expansion/rerank, typically under a second on a warm server); when that misses, retry without fast (adds expansion and reranking, a few seconds); thorough=true when recall matters. Structured results preserve optional user-configured context guidance with source identity. Use intent for ambiguous terms, queryModes to combine term/intent/hyde strategies, graph=false to skip graph expansion, and candidateLimit to trade latency for coverage.",
+    "Recommended default. Structured results preserve optional user-configured context guidance with source identity. Use intent for ambiguous terms, queryModes to combine term/intent/hyde strategies, fast=true or graph=false for quick lookup, thorough=true when recall matters, and candidateLimit to trade latency for coverage.",
+  ],
+  [
+    "Skip query expansion, graph expansion, and reranking (typically under a second on a warm server). Use first for natural-language questions",
+    "Skip query expansion, graph expansion, and reranking (~0.7s). Use for quick lookups",
+  ],
+];
+
+function withHistoricalLadderDescriptions(line: string): string {
+  return LADDER_DESCRIPTION_DELTAS.reduce(
+    (text, [current, historical]) => text.replaceAll(current, historical),
+    line
+  );
+}
+
 function normalizeToolsList(line: string): string {
+  line = withHistoricalLadderDescriptions(line);
   const envelope = parseJsonRpc<ToolsListEnvelope>(line);
   const tools = envelope.result.tools
     .filter((tool) => !ADDITIVE_TOOLS.has(tool.name))

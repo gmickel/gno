@@ -732,11 +732,11 @@ The AI will call GNO tools (gno_query, gno_get) and synthesize answers from your
 **Search depth**: ask for faster or more thorough searches:
 
 ```
-@gno quick search for TypeScript errors          # fast mode (~0.7s)
+@gno quick search for TypeScript errors          # fast mode (~0.2s warm)
 @gno do a thorough search for auth vulnerabilities  # thorough mode (~5-8s)
 ```
 
-The AI will pass `fast: true` or `thorough: true` to `gno_query` based on your request. Default mode balances speed and quality (~2-3s).
+The AI will pass `fast: true` or `thorough: true` to `gno_query` based on your request. Default mode balances speed and quality (~2-3s with models loaded). For natural-language questions, agents should try `fast: true` first and use the default mode when it misses.
 
 ### Model Quality Matters
 
@@ -1302,13 +1302,15 @@ explain: true
 **Search modes** (via parameters):
 
 - **Default**: Preset-aware balanced mode with bounded graph expansion. On `slim` / `slim-tuned`, query expansion + reranking; on larger presets, reranking only by default (~2-3s)
-- `fast: true`: Skip query expansion, graph expansion, and reranking (~0.7s)
+- `fast: true`: Skip query expansion, graph expansion, and reranking (~0.2s with models loaded)
 - `thorough: true`: Query expansion + graph expansion + wider rerank pool (~5-8s)
 
-**Agent retry strategy**: Use default mode first. If no relevant results:
+**Agent retry strategy**: For a natural-language question, use `fast: true`
+first. If no relevant results:
 
-1. Rephrase the query (free, often effective)
-2. Then try `thorough: true` for better recall
+1. Run the default mode (adds expansion and reranking)
+2. Rephrase the query (free, often effective)
+3. Then try `thorough: true` for better recall
 
 Recency intent (`latest`, `newest`, `recent`) sorts results newest-first by canonical frontmatter date when present, with file modified time as fallback.
 

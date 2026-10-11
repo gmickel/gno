@@ -1,22 +1,170 @@
 {
   "branch_name": "fn-216-fast-semantic-retrieval-and-a-retrieval",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-10-11T20:36:08.485564Z",
   "created_at": "2026-10-11T15:12:14.696613Z",
   "default_impl": null,
   "default_review": "codex:gpt-6.1-sol:high",
   "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-216-fast-semantic-retrieval-and-a-retrieval",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-216-fast-semantic-retrieval-and-a-retrieval.1": 0
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "ready": true,
+  "review_attempts": [
+    {
+      "artifact_sha256": "07ba175c4e47c4258f71b5bcc67d2d72534484443ba9c8748abe04eb3193832b",
+      "backend": "codex",
+      "base_sha": "a69b18d9692e579571c8dc4774ed26fe06eedcd5",
+      "counter_kind": "impl",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-053434f49e5ccad4f0f9ff7674a3398f",
+            "classification": "introduced",
+            "findingId": "finding-053434f49e5ccad4f0f9ff7674a3398f",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-b012667f0e9452eb446b4bf268bee998",
+            "classification": "introduced",
+            "findingId": "finding-b012667f0e9452eb446b4bf268bee998",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-94a00981028bcb32419a7f9ef37ab180",
+            "classification": "introduced",
+            "findingId": "finding-94a00981028bcb32419a7f9ef37ab180",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-03ebedbde8fa0be7bf384dc341d1939f",
+            "classification": "introduced",
+            "findingId": "finding-03ebedbde8fa0be7bf384dc341d1939f",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "4ef0a3181cc9057b3e3a0d73ef8eaceb548ea9e6",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6.1-sol",
+      "outcome": "verdict",
+      "output_bytes": 3603,
+      "output_sha256": "8ae94d7e03af0e3a52777a6337039ce51bfadfe54a932f001f7eac7570ef0436",
+      "reservation_id": "6d5c0d05bd57469e9497b19f54b0481b",
+      "round_consumed": true,
+      "scope": "impl:fn-216-fast-semantic-retrieval-and-a-retrieval.1",
+      "superseded_by": null,
+      "task": "fn-216-fast-semantic-retrieval-and-a-retrieval.1",
+      "timestamp": "2026-10-11T20:32:00.268058Z",
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "abe039d1fc6fe7fb0de469b6d4d5cc33da67e6e219ac7693529cae9d366daf20",
+      "backend": "codex",
+      "base_sha": "a69b18d9692e579571c8dc4774ed26fe06eedcd5",
+      "counter_kind": "impl",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-053434f49e5ccad4f0f9ff7674a3398f",
+            "classification": "introduced",
+            "findingId": "finding-053434f49e5ccad4f0f9ff7674a3398f",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-b012667f0e9452eb446b4bf268bee998",
+            "classification": "introduced",
+            "findingId": "finding-b012667f0e9452eb446b4bf268bee998",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-94a00981028bcb32419a7f9ef37ab180",
+            "classification": "introduced",
+            "findingId": "finding-94a00981028bcb32419a7f9ef37ab180",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-03ebedbde8fa0be7bf384dc341d1939f",
+            "classification": "introduced",
+            "findingId": "finding-03ebedbde8fa0be7bf384dc341d1939f",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "26e83cb38ed6e89fca1175f5732dffa6c3954847",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6.1-sol",
+      "outcome": "verdict",
+      "output_bytes": 1448,
+      "output_sha256": "327e3053305249e81d504029507b72ca44a8d4e5b24222f566f0428427887d25",
+      "reservation_id": "a0444d5feed74fa885eba6e6a1edbd39",
+      "round_consumed": true,
+      "scope": "impl:fn-216-fast-semantic-retrieval-and-a-retrieval.1",
+      "superseded_by": null,
+      "task": "fn-216-fast-semantic-retrieval-and-a-retrieval.1",
+      "timestamp": "2026-10-11T20:35:59.479128Z",
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "impl:fn-216-fast-semantic-retrieval-and-a-retrieval.1": 1
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-216-fast-semantic-retrieval-and-a-retrieval.1": 0
+  },
   "spec_path": ".flow/specs/fn-216-fast-semantic-retrieval-and-a-retrieval.md",
-  "status": "open",
+  "status": "done",
   "title": "Fast semantic retrieval and a retrieval ladder that uses it",
   "tracker": {
     "baseHashFlow": null,
@@ -29,5 +177,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-11T19:33:34.328825Z"
+  "updated_at": "2026-10-11T20:47:02.562483Z"
 }

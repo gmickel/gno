@@ -137,7 +137,12 @@ test("shadow retains legacy; promotion never falls back on identity loss, partit
   expect((await f.search()).ok).toBe(false);
   const reopened = await createVectorVariantStore(f.db, identity);
   expect(reopened.hasActivated()).toBe(true);
-  expect((await f.search()).ok).toBe(false);
+  // Ranking reads the authoritative variants, never the (now empty) vec0
+  // mirror or the legacy vectors.
+  expect(await f.search()).toMatchObject({
+    ok: true,
+    value: [{ documentIds: [2] }],
+  });
 });
 
 test("variant ranks remain separate per owner through RRF", () => {
