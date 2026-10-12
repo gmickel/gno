@@ -69,7 +69,11 @@ export interface ContextCapsuleRuntimeDeps {
   supersession?: SupersessionOptions;
   /** Internal: graph links resolve over the documents a caller may read. */
   readable?: ReadableDocumentsCheck;
-  /** Internal: retrievals are confined to a caller's readable corpus. */
+  /**
+   * Internal: retrievals are confined to a caller's readable corpus, and the
+   * Capsule's config, retrieval and index fingerprints cover only what that
+   * caller may read.
+   */
   accessScoped?: boolean;
   /**
    * Internal caller view of each retrieved result's policy lineage, applied

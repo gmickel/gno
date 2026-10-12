@@ -476,6 +476,9 @@ collections whose `access` rule lets its user in (see
   never shows up as a successor, and follows at most 32 supersession hops;
 - `egressLineage` lists only collections the caller may read, even when a
   collection it may not read holds the same content;
+- a Context Capsule's config, retrieval and index fingerprints cover only
+  the collections, contexts and notes the caller may read, so a change it may
+  not read never changes its Capsule;
 - typed-metadata coverage warnings are left out, because their counts would
   include notes the caller may not read, and graph expansion resolves and
   counts links over only the notes the caller may read;

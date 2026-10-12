@@ -380,6 +380,14 @@ collections:
   request may read. A result's content can also be held by a collection the
   request may not read; that collection is left out of the lineage and its
   `effectivePolicy`. Retrieval traces keep the complete lineage.
+- Context Capsule fingerprints cover only what the request may read, so a
+  collection, document or context it may not read never changes them:
+  `fingerprints.config` covers the config entries of the Capsule's
+  collections (without their `access` rules) and the contexts that apply to
+  them, `fingerprints.retrieval` uses those same contexts, and
+  `retrieval.indexSnapshot` covers the Capsule's collections and the
+  identities of its evidence. Verifying such a Capsule against the complete
+  config and index (`gno_context_verify`, an admin tool) reports them changed.
 - Typed-metadata coverage warnings (`METADATA_COVERAGE_UNKNOWN`,
   `METADATA_COVERAGE_INCOMPLETE`) are omitted from `gno_search`, `gno_query`
   and Context Capsule retrieval: their counts would include documents the
