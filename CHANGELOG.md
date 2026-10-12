@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Collections can opt in to three new `gno audit links` rules. `linkPolicy.mayLinkTo` lists the other collections a collection's documents may link to, and any other cross-collection link is a finding. `linkPolicy.externalUrls: deny` reports external URLs in its Markdown pages, and reports a page whose indexed text is missing as unchecked instead of passing it. `pathPattern` is a regex every document path in the collection must match. Without these keys, audit output is unchanged.
+
 ## [2.12.0] - 2026-10-12
 
 ### Changed

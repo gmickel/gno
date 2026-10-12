@@ -6,6 +6,7 @@ import type {
 } from "../store/sqlite/graph-link-resolver";
 import type { AuditFindingDraft, AuditRuleContribution } from "./audit";
 
+import { getExcludedRanges } from "../ingestion/strip";
 import { isTraversableResolution } from "../store/sqlite/graph-link-resolver";
 import {
   AUDIT_MAX_EVIDENCE_DETAIL_CHARS,
@@ -17,8 +18,9 @@ import {
  * 1.1: workspace-wide resolution and reference/resolution/scope evidence.
  * 1.2: `links.outside-index` for workspace files that are not indexed.
  * 1.3: relative Markdown links to such files are `outside-index` too.
+ * 1.4: opt-in `links.policy`, `links.external-url` and `paths.pattern`.
  */
-export const LINK_AUDIT_RULE_VERSION = "1.3" as const;
+export const LINK_AUDIT_RULE_VERSION = "1.4" as const;
 /** Default per-rule cap; runs pass the effective `maxFindings` instead. */
 export const LINK_AUDIT_MAX_FINDINGS_PER_RULE = 1000;
 
@@ -392,4 +394,271 @@ export const evaluateLinkAudit = (
       skipReason: null,
     },
   ];
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Opt-in collection link rules: links.policy, links.external-url, paths.pattern
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Per-collection opt-in rules (collection `linkPolicy` and `pathPattern`). */
+export interface AuditCollectionLinkRules {
+  name: string;
+  linkPolicy?: {
+    mayLinkTo?: readonly string[];
+    externalUrls?: "allow" | "deny";
+  };
+  pathPattern?: string;
+}
+
+export interface AuditExternalUrl {
+  url: string;
+  line: number;
+  column: number;
+}
+
+/**
+ * Markdown text of one audited document in a collection that denies URLs.
+ * `markdown` is null when the indexed content is missing; the document is
+ * then reported as unchecked instead of passing.
+ */
+export interface AuditExternalUrlDocument {
+  id: number;
+  markdown: string | null;
+}
+
+/** Scheme URLs (`https://…`, `ftp://…`) and `mailto:`; `gno://` is internal. */
+const EXTERNAL_URL_TEXT_REGEX =
+  /\b(?:[a-z][a-z0-9+.-]*:\/\/|mailto:)[^\s<>()[\]"'`]+/giu;
+const URL_TRAILING_PUNCTUATION_REGEX = /[.,;:!?]+$/u;
+const INTERNAL_URL_PREFIX = "gno://";
+
+/** External URLs outside frontmatter, code and HTML comments, in text order. */
+export const findExternalUrls = (markdown: string): AuditExternalUrl[] => {
+  const excluded = getExcludedRanges(markdown);
+  const urls: AuditExternalUrl[] = [];
+  for (const match of markdown.matchAll(EXTERNAL_URL_TEXT_REGEX)) {
+    const start = match.index;
+    const url = match[0].replace(URL_TRAILING_PUNCTUATION_REGEX, "");
+    if (url.toLowerCase().startsWith(INTERNAL_URL_PREFIX)) continue;
+    if (excluded.some((range) => range.start <= start && start < range.end)) {
+      continue;
+    }
+    const before = markdown.slice(0, start);
+    const lineStart = before.lastIndexOf("\n") + 1;
+    urls.push({
+      url,
+      line: before.split("\n").length,
+      column: start - lineStart + 1,
+    });
+  }
+  return urls;
+};
+
+const hasExternalUrlRule = (rules: AuditCollectionLinkRules): boolean =>
+  rules.linkPolicy?.externalUrls === "deny";
+
+/** Collections whose audited documents need markdown for `links.external-url`. */
+export const externalUrlCollections = (
+  rules: readonly AuditCollectionLinkRules[]
+): Set<string> =>
+  new Set(rules.filter(hasExternalUrlRule).map(({ name }) => name));
+
+/**
+ * Evaluate the opt-in collection rules over the same link snapshot. A rule is
+ * emitted only when an audited document's collection configures it, so with
+ * no rules configured the report is unchanged.
+ */
+export const evaluateCollectionLinkRules = (
+  snapshot: AuditLinkSnapshot,
+  rules: readonly AuditCollectionLinkRules[],
+  options: {
+    externalUrlDocuments?: readonly AuditExternalUrlDocument[];
+    maxFindingsPerRule?: number;
+  } = {}
+): AuditRuleContribution[] => {
+  const byName = new Map(rules.map((rule) => [rule.name, rule]));
+  const documents = new Map(snapshot.documents.map((doc) => [doc.id, doc]));
+  const auditedIds = new Set(
+    snapshot.auditedDocumentIds ?? snapshot.documents.map(({ id }) => id)
+  );
+  const audited = snapshot.documents.filter(({ id }) => auditedIds.has(id));
+  const auditedCollections = new Set(audited.map((doc) => doc.collection));
+  const configured = (pick: (rule: AuditCollectionLinkRules) => boolean) =>
+    [...auditedCollections].some((name) => {
+      const rule = byName.get(name);
+      return rule !== undefined && pick(rule);
+    });
+  const maxFindingsPerRule =
+    options.maxFindingsPerRule ?? LINK_AUDIT_MAX_FINDINGS_PER_RULE;
+  const partial = snapshot.truncated.documents || snapshot.truncated.links;
+  const contribution = (
+    ruleId: string,
+    findings: AuditFindingDraft[],
+    examinedCount: number,
+    message: string
+  ): AuditRuleContribution => ({
+    ruleId,
+    category: "links",
+    status: partial ? "inconclusive" : findings.length > 0 ? "fail" : "pass",
+    message: partial ? `${ruleId} scan was truncated` : message,
+    findings: boundedFindings(findings, maxFindingsPerRule),
+    findingCount: findings.length,
+    examinedCount,
+    durationMs: 0,
+    skipReason: partial ? "snapshot_truncated" : null,
+  });
+  const output: AuditRuleContribution[] = [];
+
+  if (configured((rule) => rule.linkPolicy?.mayLinkTo !== undefined)) {
+    const policyFindings: AuditFindingDraft[] = [];
+    let examined = 0;
+    for (const link of snapshot.links) {
+      if (!auditedIds.has(link.sourceId)) continue;
+      const allowed = byName.get(link.sourceCollection)?.linkPolicy?.mayLinkTo;
+      if (allowed === undefined) continue;
+      examined += 1;
+      const target = isTraversableResolution(link.resolved)
+        ? documents.get(link.resolved.targetId)
+        : undefined;
+      const targetCollection =
+        target?.collection ??
+        (link.explicitCollection === true ? link.targetCollection : undefined);
+      if (
+        targetCollection === undefined ||
+        targetCollection === link.sourceCollection ||
+        allowed.includes(targetCollection)
+      ) {
+        continue;
+      }
+      const targetRef = target?.relPath ?? link.targetRef;
+      policyFindings.push({
+        subject: link.sourceUri,
+        location: lineLocation(link.startLine, link.startCol),
+        severity: "warning",
+        message: `Link to collection ${targetCollection} is not allowed by the link policy of ${link.sourceCollection}: ${targetCollection}:${targetRef}`,
+        evidence: [
+          {
+            kind: "link-policy",
+            summary: `${link.sourceCollection} -> ${targetCollection}`,
+            uri: link.sourceUri,
+            path: link.sourceRelPath,
+            detail: JSON.stringify({
+              sourceCollection: link.sourceCollection,
+              targetCollection,
+              target: `${targetCollection}:${targetRef}`,
+              mayLinkTo: [...allowed].sort(compareAuditCodeUnits),
+            }),
+          },
+        ],
+        guidance: [
+          "Remove the link, or add the target collection to linkPolicy.mayLinkTo",
+        ],
+      });
+    }
+    output.push(
+      contribution(
+        "links.policy",
+        policyFindings,
+        examined,
+        `${policyFindings.length} links cross a collection link policy`
+      )
+    );
+  }
+
+  if (configured(hasExternalUrlRule)) {
+    const urlFindings: AuditFindingDraft[] = [];
+    const urlDocuments = options.externalUrlDocuments ?? [];
+    for (const { id, markdown } of urlDocuments) {
+      const document = documents.get(id);
+      if (!document || !auditedIds.has(id)) continue;
+      if (!hasExternalUrlRule(byName.get(document.collection) ?? { name: "" }))
+        continue;
+      if (markdown === null) {
+        // Missing content cannot prove the document has no URLs: fail closed.
+        urlFindings.push({
+          subject: document.uri,
+          location: null,
+          severity: "warning",
+          message: `Content is missing from the index, so external URLs were not checked in collection ${document.collection}: ${document.relPath}`,
+          evidence: [
+            {
+              kind: "external-url-unchecked",
+              summary: "indexed content missing",
+              uri: document.uri,
+              path: document.relPath,
+            },
+          ],
+          guidance: ["Run gno update to index the document, then audit again"],
+        });
+        continue;
+      }
+      for (const found of findExternalUrls(markdown)) {
+        urlFindings.push({
+          subject: document.uri,
+          location: lineLocation(found.line, found.column),
+          severity: "warning",
+          message: `External URL is not allowed in collection ${document.collection}: ${found.url}`,
+          evidence: [
+            {
+              kind: "external-url",
+              summary: found.url,
+              uri: document.uri,
+              path: document.relPath,
+            },
+          ],
+          guidance: ["Remove the URL or set linkPolicy.externalUrls to allow"],
+        });
+      }
+    }
+    output.push(
+      contribution(
+        "links.external-url",
+        urlFindings,
+        urlDocuments.length,
+        `${urlFindings.length} external URLs in collections that deny them`
+      )
+    );
+  }
+
+  if (configured((rule) => rule.pathPattern !== undefined)) {
+    const pathFindings: AuditFindingDraft[] = [];
+    const patterns = new Map<string, RegExp>();
+    let examined = 0;
+    for (const document of audited) {
+      const pattern = byName.get(document.collection)?.pathPattern;
+      if (pattern === undefined) continue;
+      examined += 1;
+      let regex = patterns.get(pattern);
+      if (!regex) {
+        regex = new RegExp(pattern, "u");
+        patterns.set(pattern, regex);
+      }
+      if (regex.test(document.relPath)) continue;
+      pathFindings.push({
+        subject: document.uri,
+        location: null,
+        severity: "warning",
+        message: `Path does not match the pathPattern of collection ${document.collection}: ${document.relPath}`,
+        evidence: [
+          {
+            kind: "path-pattern",
+            summary: document.relPath,
+            uri: document.uri,
+            path: document.relPath,
+            detail: JSON.stringify({ pattern }),
+          },
+        ],
+        guidance: ["Rename the file to match the collection pathPattern"],
+      });
+    }
+    output.push(
+      contribution(
+        "paths.pattern",
+        pathFindings,
+        examined,
+        `${pathFindings.length} document paths do not match pathPattern`
+      )
+    );
+  }
+  return output;
 };

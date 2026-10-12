@@ -31,7 +31,12 @@ import {
   runAudit,
 } from "./audit";
 import { evaluateFreshnessAudit } from "./audit-freshness";
-import { evaluateLinkAudit } from "./audit-links";
+import {
+  evaluateCollectionLinkRules,
+  evaluateLinkAudit,
+  externalUrlCollections,
+  type AuditExternalUrlDocument,
+} from "./audit-links";
 import { markOutsideIndexLinks } from "./audit-outside-index";
 import { evaluateProvenanceAudit } from "./audit-provenance";
 import {
@@ -82,8 +87,44 @@ interface WorkspaceDocumentSnapshot {
 interface WorkspaceSnapshot {
   documents: WorkspaceDocumentSnapshot[];
   links: AuditLinkSnapshot;
+  /** Indexed markdown for collections whose linkPolicy denies external URLs. */
+  externalUrlDocuments: AuditExternalUrlDocument[];
   truncated: boolean;
 }
+
+/**
+ * Indexed markdown of selected Markdown documents in the given collections.
+ * A document without indexed content is kept with `markdown: null` so the
+ * external-URL rule reports it instead of passing it unchecked.
+ */
+const loadExternalUrlDocuments = async (
+  store: SqliteAdapter,
+  documents: readonly DocumentRow[],
+  collections: ReadonlySet<string>
+): Promise<AuditExternalUrlDocument[]> => {
+  if (collections.size === 0) return [];
+  const wanted = documents.filter(
+    (document) =>
+      collections.has(document.collection) &&
+      MARKDOWN_SOURCE_EXTENSIONS.has(document.sourceExt.toLowerCase())
+  );
+  if (wanted.length === 0) return [];
+  const contents = await store.getContentBatch([
+    ...new Set(
+      wanted.flatMap(({ mirrorHash }) =>
+        mirrorHash === null ? [] : [mirrorHash]
+      )
+    ),
+  ]);
+  if (!contents.ok) throw new Error(contents.error.message);
+  return wanted.map((document) => ({
+    id: document.id,
+    markdown:
+      document.mirrorHash === null
+        ? null
+        : (contents.value.get(document.mirrorHash) ?? null),
+  }));
+};
 
 const normalizeValues = (values: readonly string[] | undefined): string[] =>
   [...new Set((values ?? []).map((value) => value.normalize("NFC").trim()))]
@@ -439,6 +480,13 @@ const loadWorkspaceSnapshot = async (
   );
   return {
     documents: observed,
+    externalUrlDocuments: options.categories.includes("links")
+      ? await loadExternalUrlDocuments(
+          options.store,
+          selected.documents,
+          externalUrlCollections(options.collections)
+        )
+      : [],
     links: options.categories.includes("links")
       ? await markOutsideIndexLinks(options.store.getRawDb(), links, {
           signal: options.signal,
@@ -516,11 +564,17 @@ const captureWorkspaceFingerprints = async (
       : null;
   return {
     config: hashAuditCanonical({
-      collections: options.collections.map(({ name, path, pattern }) => ({
-        name,
-        path,
-        pattern,
-      })),
+      // Opt-in link rules join the fingerprint only when set, so configs
+      // without them keep their existing fingerprint.
+      collections: options.collections.map(
+        ({ name, path, pattern, linkPolicy, pathPattern }) => ({
+          name,
+          path,
+          pattern,
+          ...(linkPolicy === undefined ? {} : { linkPolicy }),
+          ...(pathPattern === undefined ? {} : { pathPattern }),
+        })
+      ),
       filters,
     }),
     source: hashAuditCanonical({ sourceStats, total: selected.total }),
@@ -665,7 +719,15 @@ export const runWorkspaceAudit = async (
               rootUris: options.orphanRoots ?? [],
               ignorePathPrefixes: options.orphanIgnorePrefixes ?? [],
               maxFindingsPerRule,
-            })
+            }),
+            ...evaluateCollectionLinkRules(
+              snapshot.links,
+              options.collections,
+              {
+                externalUrlDocuments: snapshot.externalUrlDocuments,
+                maxFindingsPerRule,
+              }
+            )
           );
           await options.onProgress?.({
             phase: "rules",
