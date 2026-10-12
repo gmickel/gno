@@ -603,6 +603,21 @@ opaque remote hints. The server never stats, realpaths, discovers repositories,
 or infers its cwd from them; remote hints produce redacted zero-affinity
 metadata and no ranking change.
 
+`gno_search`, `gno_vsearch`, and `gno_query` also accept optional
+`collections: string[]` (1-1024 names, the same bound as collection
+egress). Results come only from documents in any
+listed collection; the allowlist is applied before `limit`, so other
+collections never take result slots. Every name must be a configured
+collection, otherwise the call fails with `Collection not found: <name>`. When
+`collection` is also set, both apply (the intersection). Responses echo the
+allowlist as `meta.collections`; with `collections` omitted, inputs and
+outputs are unchanged. `gno_query_diagnose` keeps the single `collection`
+filter and, like every tool, rejects undeclared arguments, so `collections`
+sent to it is a validation error. Over Streamable HTTP, egress policy is checked on the served scope: the
+listed collections, or `collection` when both are set and the list holds it.
+When both are set and the list does not hold it, nothing is served and the
+check covers `collection` and every listed collection.
+
 **Input Schema:**
 
 ```json
@@ -616,6 +631,13 @@ metadata and no ranking change.
     "collection": {
       "type": "string",
       "description": "Optional collection name to filter results"
+    },
+    "collections": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "maxItems": 1024,
+      "description": "Filter to documents in ANY of these collections (applied before the limit)"
     },
     "limit": {
       "type": "integer",
@@ -738,6 +760,13 @@ Vector semantic search over indexed documents.
       "type": "string",
       "description": "Optional collection name to filter results"
     },
+    "collections": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "maxItems": 1024,
+      "description": "Filter to documents in ANY of these collections (applied before the limit)"
+    },
     "limit": {
       "type": "integer",
       "description": "Maximum number of results (1-100)",
@@ -821,6 +850,13 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
     "collection": {
       "type": "string",
       "description": "Optional collection name to filter results"
+    },
+    "collections": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "maxItems": 1024,
+      "description": "Filter to documents in ANY of these collections (applied before the limit)"
     },
     "limit": {
       "type": "integer",

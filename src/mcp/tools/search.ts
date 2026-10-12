@@ -25,12 +25,18 @@ import {
 } from "../../core/typed-metadata";
 import { searchBm25 } from "../../pipeline/search";
 import { appendRetrievalWarnings } from "../retrieval-warnings";
-import { normalizeTagFilters, runTool, type ToolResult } from "./index";
+import {
+  assertCollectionsExist,
+  normalizeTagFilters,
+  runTool,
+  type ToolResult,
+} from "./index";
 
 interface SearchInput {
   query: string;
   projectHints?: string[];
   collection?: string;
+  collections?: string[];
   limit?: number;
   minScore?: number;
   lang?: string;
@@ -116,13 +122,11 @@ export function handleSearch(
     ctx,
     "gno_search",
     async () => {
-      // Validate collection exists if specified
-      if (args.collection) {
-        const exists = ctx.collections.some((c) => c.name === args.collection);
-        if (!exists) {
-          throw new Error(`Collection not found: ${args.collection}`);
-        }
-      }
+      // Validate collections exist if specified
+      assertCollectionsExist(ctx, [
+        args.collection,
+        ...(args.collections ?? []),
+      ]);
 
       const projectAffinity = await resolveRemoteProjectAffinity(
         ctx.config,
@@ -132,6 +136,7 @@ export function handleSearch(
         limit: args.limit ?? 5,
         minScore: args.minScore,
         collection: args.collection,
+        collections: args.collections,
         lang: args.lang,
         intent: args.intent,
         exclude: args.exclude,

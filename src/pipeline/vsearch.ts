@@ -176,6 +176,7 @@ async function searchVectorWithEmbeddingOwned(
         excludeMetadata: true,
         semanticMetadata: true,
         collection: options.collection,
+        collections: options.collections,
         memoryScopesAny: options.memoryFilter?.scopes,
         excludeSuperseded: options.memoryFilter?.excludeSuperseded,
         relPathPrefix: options.retrievalScope?.relPathPrefix,
@@ -215,6 +216,7 @@ async function searchVectorWithEmbeddingOwned(
   const { documents: docsByMirrorHash, ownershipDocuments } =
     await buildDocumentMap(store, {
       collection: options.collection,
+      collections: options.collections,
       relPathPrefix: options.retrievalScope?.relPathPrefix,
       tagsAll: options.tagsAll,
       tagsAny: options.tagsAny,
@@ -547,6 +549,7 @@ async function searchVectorWithEmbeddingOwned(
       intent: options.intent,
       exclude: options.exclude,
       collection: options.collection,
+      collections: options.collections,
       lang: options.lang,
       since: temporalRange.since,
       until: temporalRange.until,
@@ -666,6 +669,7 @@ interface DocumentInfo {
 
 interface DocumentMapOptions {
   collection?: string;
+  collections?: string[];
   relPathPrefix?: string;
   tagsAll?: string[];
   tagsAny?: string[];
@@ -718,11 +722,12 @@ async function buildDocumentMap(
   const ownershipDocuments = options.mirrorHashes
     ? docs.value.filter((d) => d.mirrorHash)
     : docs.value.filter((d) => d.mirrorHash && d.active);
-  const activeDocs = options.collection
-    ? ownershipDocuments.filter(
-        (document) => document.collection === options.collection
-      )
-    : ownershipDocuments;
+  const activeDocs = ownershipDocuments.filter(
+    (document) =>
+      (!options.collection || document.collection === options.collection) &&
+      (!options.collections ||
+        options.collections.includes(document.collection))
+  );
   const temporalRange: TemporalRange = {
     since: options.since,
     until: options.until,

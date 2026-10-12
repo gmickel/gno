@@ -341,6 +341,7 @@ export async function searchBm25(
   const ftsResult = await store.searchFts(query, {
     limit: retrievalLimit,
     collection: options.collection,
+    collections: options.collections,
     allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
     exclude: options.exclude,
     relPathPrefix: options.retrievalScope?.relPathPrefix,
@@ -621,6 +622,7 @@ export async function searchBm25(
       intent: options.intent,
       exclude: options.exclude,
       collection: options.collection,
+      collections: options.collections,
       lang: options.lang,
       since: temporalRange.since,
       until: temporalRange.until,

@@ -267,6 +267,7 @@ Options:
 - `--query-file <path>` - Read the query from a file (`-` reads stdin). Keeps the query off argv. Do not also pass a positional query.
 - `-n, --limit <n>` - Limit results (default: 5; 20 with --json/--files)
 - `--min-score <n>` - Minimum score threshold (0-1)
+- `-c, --collection <name>` - Filter by collection. Repeat to search several: `-c work -c notes` keeps documents from any named collection, filtered before `-n` (JSON echoes `meta.collections`). `gno query diagnose` accepts one.
 - `--full` - Show full document content (not just snippet)
 - `--line-numbers` - Show line numbers in snippets
 - `--lang <code>` - Filter by detected language in code blocks

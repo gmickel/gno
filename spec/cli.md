@@ -1472,7 +1472,7 @@ BM25 keyword search over indexed documents.
 **Synopsis:**
 
 ```bash
-gno search [query] [--query-file <path>] [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--json|--files|--csv|--md|--xml]
+gno search [query] [--query-file <path>] [-n <num>] [--min-score <num>] [-c <collection>]... [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--json|--files|--csv|--md|--xml]
 ```
 
 **Arguments:**
@@ -1488,7 +1488,7 @@ gno search [query] [--query-file <path>] [-n <num>] [--min-score <num>] [-c <col
 | `--query-file`          | string   | none                      | Read the query from a file; `-` reads stdin so the query never appears on argv. Do not also pass a positional query. |
 | `-n`                    | integer  | 5 (20 for --json/--files) | Max results                                                                                                          |
 | `--min-score`           | number   | 0                         | Minimum score threshold                                                                                              |
-| `-c, --collection`      | string   | all                       | Filter to collection                                                                                                 |
+| `-c, --collection`      | string[] | all                       | Filter to collection. Repeatable: documents from any named collection, filtered before `-n`                          |
 | `--since`               | string   | none                      | Modified-at lower bound (ISO date/time or relative token)                                                            |
 | `--until`               | string   | none                      | Modified-at upper bound (ISO date/time or relative token)                                                            |
 | `--category`            | string   | none                      | Filter to docs with matching category/content type (comma-separated)                                                 |
@@ -1502,6 +1502,13 @@ gno search [query] [--query-file <path>] [-n <num>] [--min-score <num>] [-c <col
 | `--full`                | boolean  | false                     | Include full mirror content instead of snippet                                                                       |
 | `--line-numbers`        | boolean  | false                     | Include line numbers in output                                                                                       |
 | `--lang`                | string   | auto                      | Language filter/hint (BCP-47)                                                                                        |
+
+**Collections:**
+
+- One `-c <name>` is unchanged: results come from that collection and JSON `meta.collection` echoes it.
+- Two or more (`-c work -c notes`) keep documents from any named collection. The allowlist is applied before the result limit, so other collections never take result slots. JSON output echoes it as `meta.collections` (de-duplicated, in the order given) and omits `meta.collection`.
+- Every name must be a configured collection; an unknown name fails the same way as an unknown single `-c` (`Collection not found: <name>`).
+- `gno vsearch` and `gno query` take the same repeatable flag. `gno query diagnose` accepts a single `-c`.
 
 **Scoring:**
 
@@ -1632,7 +1639,7 @@ Vector semantic search over indexed documents.
 **Synopsis:**
 
 ```bash
-gno vsearch <query> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--json|--files|--csv|--md|--xml]
+gno vsearch <query> [-n <num>] [--min-score <num>] [-c <collection>]... [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--json|--files|--csv|--md|--xml]
 ```
 
 **Options:** Same as `gno search` (including temporal/category/author, tag, and
@@ -1677,7 +1684,7 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
 **Synopsis:**
 
 ```bash
-gno query [query...] [--query-file <path>] [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [-C <num>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--no-expand] [--no-rerank] [--graph] [--no-graph] [--query-mode <mode:text>]... [--explain] [--json|--files|--csv|--md|--xml]
+gno query [query...] [--query-file <path>] [-n <num>] [--min-score <num>] [-c <collection>]... [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [-C <num>] [--tags-all <tags>] [--tags-any <tags>] [--full] [--line-numbers] [--lang <bcp47>] [--no-expand] [--no-rerank] [--graph] [--no-graph] [--query-mode <mode:text>]... [--explain] [--json|--files|--csv|--md|--xml]
 gno query diagnose <query> --target <doc> [-n <num>] [--min-score <num>] [-c <collection>] [--since <date>] [--until <date>] [--category <values>] [--author <text>] [--intent <text>] [--exclude <values>] [-C <num>] [--tags-all <tags>] [--tags-any <tags>] [--lang <bcp47>] [--no-expand] [--no-rerank] [--graph] [--no-graph] [--json]
 ```
 

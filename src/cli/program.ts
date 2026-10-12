@@ -53,6 +53,7 @@ import {
   CMD,
   collectRepeatableValue,
   getDefaultLimit,
+  parseCliCollectionScope,
   parseCliProjectAffinityOptions,
   parseCliMetadataFilter,
   parseOptionalFloat,
@@ -650,7 +651,11 @@ function wireSearchCommands(program: Command): void {
     )
     .option("-n, --limit <num>", "max results")
     .option("--min-score <num>", "minimum score threshold")
-    .option("-c, --collection <name>", "filter by collection")
+    .option(
+      "-c, --collection <name>",
+      "filter by collection (repeatable)",
+      collectRepeatableValue
+    )
     .option("--lang <code>", "language filter/hint (BCP-47)")
     .option(
       "--since <date>",
@@ -740,7 +745,7 @@ function wireSearchCommands(program: Command): void {
           indexName: globals.index,
           limit,
           minScore,
-          collection: cmdOpts.collection as string | undefined,
+          ...parseCliCollectionScope(cmdOpts.collection),
           lang: cmdOpts.lang as string | undefined,
           since: cmdOpts.since as string | undefined,
           until: cmdOpts.until as string | undefined,
@@ -790,7 +795,11 @@ function wireSearchCommands(program: Command): void {
     .description("Vector similarity search")
     .option("-n, --limit <num>", "max results")
     .option("--min-score <num>", "minimum score threshold")
-    .option("-c, --collection <name>", "filter by collection")
+    .option(
+      "-c, --collection <name>",
+      "filter by collection (repeatable)",
+      collectRepeatableValue
+    )
     .option("--lang <code>", "language filter/hint (BCP-47)")
     .option(
       "--since <date>",
@@ -870,7 +879,7 @@ function wireSearchCommands(program: Command): void {
         indexName: globals.index,
         limit,
         minScore,
-        collection: cmdOpts.collection as string | undefined,
+        ...parseCliCollectionScope(cmdOpts.collection),
         lang: cmdOpts.lang as string | undefined,
         since: cmdOpts.since as string | undefined,
         until: cmdOpts.until as string | undefined,
@@ -918,7 +927,11 @@ function wireSearchCommands(program: Command): void {
     )
     .option("-n, --limit <num>", "max results")
     .option("--min-score <num>", "minimum score threshold")
-    .option("-c, --collection <name>", "filter by collection")
+    .option(
+      "-c, --collection <name>",
+      "filter by collection (repeatable)",
+      collectRepeatableValue
+    )
     .option("--lang <code>", "language hint (BCP-47)")
     .option(
       "--since <date>",
@@ -1080,6 +1093,14 @@ function wireSearchCommands(program: Command): void {
         });
 
         if (isDiagnose) {
+          const diagnoseScope = parseCliCollectionScope(cmdOpts.collection);
+          if (diagnoseScope.collections) {
+            throw new CliError(
+              "VALIDATION",
+              "--target accepts a single --collection"
+            );
+          }
+          const diagnoseCollection = diagnoseScope.collection;
           const { queryDiagnose, formatQueryDiagnose } =
             await import("./commands/query");
           const result = await queryDiagnose(queryText, {
@@ -1088,7 +1109,7 @@ function wireSearchCommands(program: Command): void {
             target: cmdOpts.target as string,
             limit,
             minScore,
-            collection: cmdOpts.collection as string | undefined,
+            collection: diagnoseCollection,
             lang: cmdOpts.lang as string | undefined,
             since: cmdOpts.since as string | undefined,
             until: cmdOpts.until as string | undefined,
@@ -1125,7 +1146,7 @@ function wireSearchCommands(program: Command): void {
           indexName: globals.index,
           limit,
           minScore,
-          collection: cmdOpts.collection as string | undefined,
+          ...parseCliCollectionScope(cmdOpts.collection),
           lang: cmdOpts.lang as string | undefined,
           since: cmdOpts.since as string | undefined,
           until: cmdOpts.until as string | undefined,

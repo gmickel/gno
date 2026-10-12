@@ -1243,6 +1243,7 @@ BM25 keyword search.
 ```
 Query: "authentication"
 Collection: (optional)
+collections: ["work", "notes"]  # Optional: ANY of these, applied before the limit
 since: "last month"         # Optional temporal lower bound
 until: "today"              # Optional temporal upper bound
 categories: ["meeting"]     # Optional category/content-type filters
@@ -1251,6 +1252,16 @@ tagsAll: ["backend"]        # Optional: must have ALL tags
 tagsAny: ["urgent"]         # Optional: must have ANY tag
 Limit: 5 (default)
 ```
+
+`collections` (on `gno_search`, `gno_vsearch` and `gno_query`) keeps documents
+from any listed collection. It is applied before `limit`, so other collections
+never take result slots, and every name must be configured. Responses echo it as
+`meta.collections`. One list takes up to 1024 names (the collection egress
+bound); `gno_query_diagnose` keeps the single `collection` filter. Over
+Streamable HTTP, egress policy is checked on the listed collections only (on
+`collection` when both are set and the list holds it), so a list of `remote`
+collections is served to a remote caller even when another collection is
+`local_only`.
 
 Structured search results include per-result `contentType` and `categories`
 fields, alongside `tags`, `docid`, `uri`, scores, and source metadata. Use those
