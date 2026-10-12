@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.12.0] - 2026-10-12
+
 ### Changed
 
 - The `gno agents` block (v5), the `gno` skill and the MCP `gno_search` description narrow the exact-text rung: `gno search` is for a term, identifier, quote or error you already have verbatim, and a question, or a name or topic taken from it, goes to `gno query --fast`. In headless agent sessions given only the v4 block, one agent often ran `gno search` on a word or name lifted from a natural-language question and never reached semantic search; with the v5 wording its first retrieval call fit the question in 14 of 16 runs instead of 6 of 16, with no change for exact-phrase questions. Run `gno agents update` and `gno skill install --force` to pick it up.
@@ -3022,7 +3024,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.11.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.12.0...HEAD
+[2.12.0]: https://github.com/gmickel/gno/compare/v2.11.0...v2.12.0
 [2.11.0]: https://github.com/gmickel/gno/compare/v2.10.1...v2.11.0
 [2.10.1]: https://github.com/gmickel/gno/compare/v2.10.0...v2.10.1
 [2.10.0]: https://github.com/gmickel/gno/compare/v2.9.2...v2.10.0
