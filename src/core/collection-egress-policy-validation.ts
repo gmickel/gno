@@ -7,6 +7,7 @@ import type {
 } from "./collection-egress-policy-service";
 
 import { EGRESS_POLICIES } from "../config/types";
+import { EGRESS_MAX_COLLECTIONS } from "./egress-limits";
 import {
   EGRESS_ACTIONS,
   EGRESS_CONTENT_CLASSES,
@@ -14,7 +15,7 @@ import {
 } from "./egress-policy";
 
 const COLLECTION_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/u;
-const MAX_COLLECTIONS = 64;
+const MAX_COLLECTIONS = EGRESS_MAX_COLLECTIONS;
 const POLICIES = new Set<unknown>(EGRESS_POLICIES);
 const ACTIONS = new Set<unknown>(EGRESS_ACTIONS);
 const DESTINATIONS = new Set<unknown>(EGRESS_DESTINATION_ZONES);

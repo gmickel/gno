@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { EgressPolicy, EgressPolicySource } from "../config/types";
 
 import { EgressPolicySchema, EgressPolicySourceSchema } from "../config/types";
+import { EGRESS_MAX_COLLECTIONS } from "./egress-limits";
 
 export interface EgressLineageSource {
   collection: string;
@@ -25,7 +26,7 @@ export type EgressLineageInput = Readonly<{
 }>;
 
 const COLLECTION_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
-const MAX_EGRESS_LINEAGE_SOURCES = 128;
+const MAX_EGRESS_LINEAGE_SOURCES = EGRESS_MAX_COLLECTIONS;
 const POLICY_RESTRICTIVENESS: Readonly<Record<EgressPolicy, number>> = {
   local_only: 0,
   lan: 1,

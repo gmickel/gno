@@ -6,6 +6,7 @@ import {
   CollectionEgressPolicyService,
   collectionEgressPolicyEpoch,
 } from "../../src/core/collection-egress-policy-service";
+import { EGRESS_MAX_COLLECTIONS } from "../../src/core/egress-limits";
 
 const config = (): Config =>
   ({
@@ -284,7 +285,10 @@ describe("collection egress policy management", () => {
       service.check({
         action: "export",
         caller: { authenticated: true, operationAuthorized: true },
-        collections: Array.from({ length: 65 }, () => "notes"),
+        collections: Array.from(
+          { length: EGRESS_MAX_COLLECTIONS + 1 },
+          (_, index) => `c${index}`
+        ),
         contentClass: "retrieval_trace",
         destinationZone: "remote",
       })

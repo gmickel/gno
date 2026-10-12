@@ -9,6 +9,7 @@ import {
   EgressDeniedError,
   planCollectionEgress,
 } from "../../src/core/egress-enforcement";
+import { EGRESS_MAX_COLLECTIONS } from "../../src/core/egress-limits";
 import {
   createEgressLineage,
   EgressProvenanceError,
@@ -123,11 +124,14 @@ describe("derived egress policy lineage", () => {
       source: "explicit",
     };
     const sparse = Array<EgressLineageInput>(1);
-    const oversized = Array.from({ length: 129 }, (_, index) => ({
-      collection: `c${index}`,
-      policy: "remote" as const,
-      source: "explicit" as const,
-    }));
+    const oversized = Array.from(
+      { length: EGRESS_MAX_COLLECTIONS + 1 },
+      (_, index) => ({
+        collection: `c${index}`,
+        policy: "remote" as const,
+        source: "explicit" as const,
+      })
+    );
     const revoked = Proxy.revocable<EgressLineageInput[]>([sources[0]], {});
     revoked.revoke();
 
@@ -156,8 +160,9 @@ describe("derived egress policy lineage", () => {
       },
     };
     const sparse = Array<Collection>(1);
-    const oversized = Array.from({ length: 129 }, (_, index) =>
-      makeCollection(`c${index}`, "remote")
+    const oversized = Array.from(
+      { length: EGRESS_MAX_COLLECTIONS + 1 },
+      (_, index) => makeCollection(`c${index}`, "remote")
     );
     const revoked = Proxy.revocable<Collection[]>(
       [makeCollection("a", "remote")],

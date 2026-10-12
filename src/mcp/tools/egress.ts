@@ -8,6 +8,7 @@ import { projectCollectionEgressPolicy } from "../../core/collection-egress-poli
 import { CollectionEgressPolicyService } from "../../core/collection-egress-policy-service";
 import { applyConfigChange } from "../../core/config-mutation";
 import { EgressAuditService } from "../../core/egress-audit";
+import { EGRESS_MAX_COLLECTIONS } from "../../core/egress-limits";
 import { runTool, type ToolResult } from "./index";
 
 const policy = z.enum(["local_only", "lan", "remote"]);
@@ -37,7 +38,11 @@ export const egressPolicySetInputSchema = z
 
 export const egressCheckInputSchema = z
   .object({
-    collections: z.array(z.string().min(1).max(64)).min(1).max(64).optional(),
+    collections: z
+      .array(z.string().min(1).max(64))
+      .min(1)
+      .max(EGRESS_MAX_COLLECTIONS)
+      .optional(),
     action: z.enum([
       "retrieve",
       "serve",

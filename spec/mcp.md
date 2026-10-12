@@ -3290,8 +3290,13 @@ Read tools:
 - `gno_egress_check` accepts exact collection scope, action, destination zone,
   caller authentication/authorization, content class, and partial mode. It
   performs no action and returns the canonical decision/explanation contract.
-  An explicit scope is a non-empty, duplicate-free list of at most 64 canonical
-  collection names; omitted scope means all configured collections.
+  An explicit scope is a non-empty, duplicate-free list of at most 1024
+  canonical collection names; omitted scope means all configured collections.
+  1024 (`EGRESS_MAX_COLLECTIONS`) is the one collection bound of every egress
+  decision, resolved policy scope and policy lineage. A Streamable HTTP request
+  whose scope (or, unscoped, whose configured collection set) exceeds it is
+  refused with `403` and reason `COLLECTION_LIMIT_EXCEEDED` before any tool
+  runs.
 - `gno_egress_audit_list`, `gno_egress_audit_show`, and
   `gno_egress_audit_status` expose only content-free local receipts.
 

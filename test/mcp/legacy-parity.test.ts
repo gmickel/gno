@@ -41,7 +41,9 @@
  *    `gno_query.fast` property description. The agents block v5 rewords the
  *    `gno_search` exact-text guidance. fn-217 closes every tool input
  *    (`additionalProperties: false`), dropped from both sides of the frozen
- *    comparison. All are
+ *    comparison. The collection egress limits change widens
+ *    `gno_egress_check.collections` from 64 to the shared
+ *    `EGRESS_MAX_COLLECTIONS` bound. All are
  *    pinned by the current golden and removed only for the historical
  *    comparison.
  */
@@ -419,6 +421,27 @@ function withoutClosedInput(schema: Record<string, unknown>): unknown {
   return additionalProperties === false ? rest : schema;
 }
 
+/**
+ * The collection egress limits change widened `gno_egress_check.collections`
+ * to the shared `EGRESS_MAX_COLLECTIONS` bound; restore the historical cap of
+ * 64 for the frozen comparison only.
+ */
+function withoutEgressScopeCapExtension(tool: WireTool): WireTool {
+  if (tool.name !== "gno_egress_check") return tool;
+  const properties = tool.inputSchema.properties as Record<string, unknown>;
+  const collections = properties.collections as Record<string, unknown>;
+  return {
+    ...tool,
+    inputSchema: {
+      ...tool.inputSchema,
+      properties: {
+        ...properties,
+        collections: { ...collections, maxItems: 64 },
+      },
+    },
+  };
+}
+
 function normalizeToolsList(line: string): string {
   line = withHistoricalLadderDescriptions(line);
   const envelope = parseJsonRpc<ToolsListEnvelope>(line);
@@ -438,7 +461,11 @@ function normalizeToolsList(line: string): string {
           : withoutClosedInput(
               withoutSdkDeltas(
                 withoutTypedFilterExtension(
-                  withoutRequestIdExtension(withoutAuditCapExtension(tool))
+                  withoutRequestIdExtension(
+                    withoutAuditCapExtension(
+                      withoutEgressScopeCapExtension(tool)
+                    )
+                  )
                 )
               ) as Record<string, unknown>
             ),

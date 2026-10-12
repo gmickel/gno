@@ -318,6 +318,13 @@ Mixed evidence and derived artifacts use the most restrictive participating
 collection. Explicit partial checks disclose every omitted collection and
 reason; normal operations never silently drop restricted evidence.
 
+One egress decision covers at most 1024 collections. That bound applies to an
+unscoped request, which is checked against every configured collection, and to
+an explicit `gno_egress_check` scope, so an index can keep one collection per
+access boundary for several hundred boundaries. Above 1024 configured
+collections, an unscoped HTTP MCP call is refused with `403
+COLLECTION_LIMIT_EXCEEDED`; scope the call or split the index.
+
 ## Link workspaces
 
 If you index one Obsidian vault as several collections (for example one per
