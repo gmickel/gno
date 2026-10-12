@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.11.0] - 2026-10-12
+
 ### Changed
 
 - Semantic search is much faster on indexes embedded since 2.7. Each vector search used to re-check the whole vector index against the stored embeddings, which took about 17 seconds on a 17,600-chunk index; it now takes about 70 ms unscoped and less when scoped to a collection or filter. On that index `gno vsearch` and `gno query --fast` dropped from about 20 seconds to about 2 seconds as one-off commands (most of it model loading) and about 0.2 seconds through MCP or `gno serve`; balanced `gno query` went from about 78 seconds to about 6 seconds one-off and 2-3 seconds with models loaded. Results are unchanged: filters still apply before the top results are picked, and a stored vector is used only while it matches its chunk's current text and title.
@@ -2996,7 +2998,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.10.1...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.11.0...HEAD
+[2.11.0]: https://github.com/gmickel/gno/compare/v2.10.1...v2.11.0
 [2.10.1]: https://github.com/gmickel/gno/compare/v2.10.0...v2.10.1
 [2.10.0]: https://github.com/gmickel/gno/compare/v2.9.2...v2.10.0
 [2.9.2]: https://github.com/gmickel/gno/compare/v2.9.1...v2.9.2
