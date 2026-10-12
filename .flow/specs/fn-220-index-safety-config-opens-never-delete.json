@@ -1,20 +1,372 @@
 {
   "branch_name": "fn-220-index-safety-config-opens-never-delete",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-10-12T13:08:19.764355Z",
   "created_at": "2026-10-12T01:20:47.734967Z",
   "default_impl": null,
   "default_review": "codex:gpt-6.1-sol:high",
   "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-220-index-safety-config-opens-never-delete",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-220-index-safety-config-opens-never-delete.1": 0
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "ready": true,
+  "review_attempts": [
+    {
+      "artifact_sha256": "c0c8d968d48c67485825437666676412cba0080a80441c5b9fa0f7a24cdccf4c",
+      "backend": "codex",
+      "base_sha": "5379fde4bc8dbbf49238d2fd1d0b032f998010b9",
+      "counter_kind": "impl",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-15790dd93e95abc2fad0af3db6395cee",
+            "classification": "introduced",
+            "findingId": "finding-15790dd93e95abc2fad0af3db6395cee",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-bd2a28477ff1968cf9d798f4f65ce4ef",
+            "classification": "introduced",
+            "findingId": "finding-bd2a28477ff1968cf9d798f4f65ce4ef",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-f6d7bbde96053eac26be60d06bb424ab",
+            "classification": "introduced",
+            "findingId": "finding-f6d7bbde96053eac26be60d06bb424ab",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-896d04743f373235faa0575b8c9089e5",
+            "classification": "introduced",
+            "findingId": "finding-896d04743f373235faa0575b8c9089e5",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-f468dc1be7bd9d2ea12f7283480b2607",
+            "classification": "introduced",
+            "findingId": "finding-f468dc1be7bd9d2ea12f7283480b2607",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-6eb0ddf51e3889af1870fb8e4451a02c",
+            "classification": "introduced",
+            "findingId": "finding-6eb0ddf51e3889af1870fb8e4451a02c",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-737f37dcd87a5ad855bd430b8e4c5155",
+            "classification": "introduced",
+            "findingId": "finding-737f37dcd87a5ad855bd430b8e4c5155",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-29637360cdcc9b815f8f3317ffc4066d",
+            "classification": "introduced",
+            "findingId": "finding-29637360cdcc9b815f8f3317ffc4066d",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-e33b6a6933eb8d021c169705358bbc52",
+            "classification": "introduced",
+            "findingId": "finding-e33b6a6933eb8d021c169705358bbc52",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "1875173e100d70d6c44baf83c78b86feb28b725e",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6.1-sol",
+      "outcome": "verdict",
+      "output_bytes": 6971,
+      "output_sha256": "a6b4b932da2a1769b2743b95081c1ff4b86a45f78dbe230fbb32e9f7cfd3a854",
+      "reservation_id": "c82d8a05deb04904927824abaa5dcdf8",
+      "round_consumed": true,
+      "scope": "impl:fn-220-index-safety-config-opens-never-delete.1",
+      "superseded_by": null,
+      "task": "fn-220-index-safety-config-opens-never-delete.1",
+      "timestamp": "2026-10-12T12:38:08.166342Z",
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "3070b7d025329fc75483dfea73be70a1fabbbee7c46f6f2795ee62fd051f97b9",
+      "backend": "codex",
+      "base_sha": "5379fde4bc8dbbf49238d2fd1d0b032f998010b9",
+      "counter_kind": "impl",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-15790dd93e95abc2fad0af3db6395cee",
+            "classification": "introduced",
+            "findingId": "finding-15790dd93e95abc2fad0af3db6395cee",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-bd2a28477ff1968cf9d798f4f65ce4ef",
+            "classification": "introduced",
+            "findingId": "finding-bd2a28477ff1968cf9d798f4f65ce4ef",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "not_fixed"
+          },
+          {
+            "chainRoot": "finding-f6d7bbde96053eac26be60d06bb424ab",
+            "classification": "introduced",
+            "findingId": "finding-f6d7bbde96053eac26be60d06bb424ab",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "withdrawn"
+          },
+          {
+            "chainRoot": "finding-896d04743f373235faa0575b8c9089e5",
+            "classification": "introduced",
+            "findingId": "finding-896d04743f373235faa0575b8c9089e5",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-c9e6c33290ed027f19d1a656f9e2a11d",
+            "classification": "introduced",
+            "findingId": "finding-c9e6c33290ed027f19d1a656f9e2a11d",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-f468dc1be7bd9d2ea12f7283480b2607",
+            "classification": "introduced",
+            "findingId": "finding-f468dc1be7bd9d2ea12f7283480b2607",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-6eb0ddf51e3889af1870fb8e4451a02c",
+            "classification": "introduced",
+            "findingId": "finding-6eb0ddf51e3889af1870fb8e4451a02c",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-737f37dcd87a5ad855bd430b8e4c5155",
+            "classification": "introduced",
+            "findingId": "finding-737f37dcd87a5ad855bd430b8e4c5155",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-29637360cdcc9b815f8f3317ffc4066d",
+            "classification": "introduced",
+            "findingId": "finding-29637360cdcc9b815f8f3317ffc4066d",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-e33b6a6933eb8d021c169705358bbc52",
+            "classification": "introduced",
+            "findingId": "finding-e33b6a6933eb8d021c169705358bbc52",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "d7a0440940528bc1fbd82efb6eff177d6861a44f",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6.1-sol",
+      "outcome": "verdict",
+      "output_bytes": 3345,
+      "output_sha256": "64e172c0b63b1a6aaa21fd659f2d66ef0f18652305511f417068acdb940edf0e",
+      "reservation_id": "e5bec23c45ac41909264bd4b3975f1fb",
+      "round_consumed": true,
+      "scope": "impl:fn-220-index-safety-config-opens-never-delete.1",
+      "superseded_by": null,
+      "task": "fn-220-index-safety-config-opens-never-delete.1",
+      "timestamp": "2026-10-12T12:42:22.952225Z",
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "18d1354fe9dfd91a02079450754979f8a0581c6405f57483336547cbea2d3f90",
+      "backend": "codex",
+      "base_sha": "5379fde4bc8dbbf49238d2fd1d0b032f998010b9",
+      "counter_kind": "impl",
+      "effort": "high",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-15790dd93e95abc2fad0af3db6395cee",
+            "classification": "introduced",
+            "findingId": "finding-15790dd93e95abc2fad0af3db6395cee",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-bd2a28477ff1968cf9d798f4f65ce4ef",
+            "classification": "introduced",
+            "findingId": "finding-bd2a28477ff1968cf9d798f4f65ce4ef",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-f6d7bbde96053eac26be60d06bb424ab",
+            "classification": "introduced",
+            "findingId": "finding-f6d7bbde96053eac26be60d06bb424ab",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "withdrawn"
+          },
+          {
+            "chainRoot": "finding-896d04743f373235faa0575b8c9089e5",
+            "classification": "introduced",
+            "findingId": "finding-896d04743f373235faa0575b8c9089e5",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-c9e6c33290ed027f19d1a656f9e2a11d",
+            "classification": "introduced",
+            "findingId": "finding-c9e6c33290ed027f19d1a656f9e2a11d",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-f468dc1be7bd9d2ea12f7283480b2607",
+            "classification": "introduced",
+            "findingId": "finding-f468dc1be7bd9d2ea12f7283480b2607",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-6eb0ddf51e3889af1870fb8e4451a02c",
+            "classification": "introduced",
+            "findingId": "finding-6eb0ddf51e3889af1870fb8e4451a02c",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-737f37dcd87a5ad855bd430b8e4c5155",
+            "classification": "introduced",
+            "findingId": "finding-737f37dcd87a5ad855bd430b8e4c5155",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-29637360cdcc9b815f8f3317ffc4066d",
+            "classification": "introduced",
+            "findingId": "finding-29637360cdcc9b815f8f3317ffc4066d",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-e33b6a6933eb8d021c169705358bbc52",
+            "classification": "introduced",
+            "findingId": "finding-e33b6a6933eb8d021c169705358bbc52",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "a7b1717230ff6444c5ff1c61c7f986ec8fb35a57",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6.1-sol",
+      "outcome": "verdict",
+      "output_bytes": 2088,
+      "output_sha256": "f32ef2cf68556df6914c9e687dea1e5fd77df008193880a54677ca8263df4183",
+      "reservation_id": "fb68030eb00d4e759e421608a04e5db4",
+      "round_consumed": true,
+      "scope": "impl:fn-220-index-safety-config-opens-never-delete.1",
+      "superseded_by": null,
+      "task": "fn-220-index-safety-config-opens-never-delete.1",
+      "timestamp": "2026-10-12T13:06:44.159527Z",
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "impl:fn-220-index-safety-config-opens-never-delete.1": 1
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-220-index-safety-config-opens-never-delete.1": 0
+  },
   "spec_path": ".flow/specs/fn-220-index-safety-config-opens-never-delete.md",
   "status": "open",
   "title": "Index safety, missing-root status, search speed, agent Capsule dates and eval fixes",
@@ -29,5 +381,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-12T11:29:08.227420Z"
+  "updated_at": "2026-10-12T13:08:19.764361Z"
 }
