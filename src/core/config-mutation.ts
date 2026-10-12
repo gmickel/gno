@@ -60,7 +60,9 @@ export interface ConfigMutationState {
 }
 
 type PersistedConfigHook = (
-  config: Config
+  config: Config,
+  /** Collection names before the mutation (mutators may edit in place). */
+  previousCollections: readonly string[]
 ) => Promise<{ ok: true } | { ok: false; error: string; code: string }>;
 
 async function applySerializedConfigChange<T>(
@@ -102,6 +104,9 @@ async function applySerializedConfigChange<T>(
         code: "LOAD_ERROR",
       };
     }
+    const previousCollections = currentConfig.collections.map(
+      ({ name }) => name
+    );
     const mutationResult = await mutate(currentConfig, {
       created: !loadResult.ok,
     });
@@ -129,7 +134,7 @@ async function applySerializedConfigChange<T>(
       }
     }
 
-    const persisted = await afterPersist?.(newConfig);
+    const persisted = await afterPersist?.(newConfig, previousCollections);
     if (persisted && !persisted.ok) return persisted;
     ctx.onConfigUpdated?.(newConfig);
 
@@ -165,62 +170,70 @@ export async function applyConfigChange<T = void>(
     state: ConfigMutationState
   ) => Promise<MutationResult<T>> | MutationResult<T>
 ): Promise<ApplyConfigResult<T>> {
-  return applySerializedConfigChange(ctx, mutate, async (newConfig) => {
-    await ctx.afterConfigSaved?.(newConfig);
+  return applySerializedConfigChange(
+    ctx,
+    mutate,
+    async (newConfig, previousCollections) => {
+      await ctx.afterConfigSaved?.(newConfig);
 
-    if (ctx.projectStore) {
-      const projection = await ctx.projectStore(ctx.store, newConfig);
-      if (!projection.ok) {
-        console.warn(`Config saved but DB sync failed: ${projection.error}`);
-        return {
-          ok: false,
-          error: `DB sync failed: ${projection.error}`,
-          code: "SYNC_ERROR",
-        };
-      }
-    } else {
-      const syncProjection = async (): Promise<void> => {
-        const syncCollResult = await ctx.store.syncCollections(
-          newConfig.collections
-        );
-        if (!syncCollResult.ok) {
-          throw new Error(
-            `Collection sync failed: ${syncCollResult.error.message}`
-          );
+      if (ctx.projectStore) {
+        const projection = await ctx.projectStore(ctx.store, newConfig);
+        if (!projection.ok) {
+          console.warn(`Config saved but DB sync failed: ${projection.error}`);
+          return {
+            ok: false,
+            error: `DB sync failed: ${projection.error}`,
+            code: "SYNC_ERROR",
+          };
         }
-        const syncCtxResult = await ctx.store.syncContexts(
-          newConfig.contexts ?? []
-        );
-        if (!syncCtxResult.ok) {
-          throw new Error(
-            `Context sync failed: ${syncCtxResult.error.message}`
+      } else {
+        const syncProjection = async (): Promise<void> => {
+          // Collections this change took out of the config are explicitly
+          // removed; any other indexed collection it omits fails the sync.
+          const kept = new Set(newConfig.collections.map(({ name }) => name));
+          const syncCollResult = await ctx.store.syncCollections(
+            newConfig.collections,
+            { remove: previousCollections.filter((name) => !kept.has(name)) }
           );
-        }
-      };
-      const transaction = ctx.store.withTransaction
-        ? await ctx.store.withTransaction(syncProjection)
-        : await syncProjection()
-            .then(() => ({ ok: true as const, value: undefined }))
-            .catch((cause: unknown) => ({
-              ok: false as const,
-              error: {
-                message:
-                  cause instanceof Error ? cause.message : "DB sync failed",
-              },
-            }));
-      if (!transaction.ok) {
-        console.warn(
-          `Config saved but DB sync failed: ${transaction.error.message}`
-        );
-        return {
-          ok: false,
-          error: `DB sync failed: ${transaction.error.message}`,
-          code: "SYNC_ERROR",
+          if (!syncCollResult.ok) {
+            throw new Error(
+              `Collection sync failed: ${syncCollResult.error.message}`
+            );
+          }
+          const syncCtxResult = await ctx.store.syncContexts(
+            newConfig.contexts ?? []
+          );
+          if (!syncCtxResult.ok) {
+            throw new Error(
+              `Context sync failed: ${syncCtxResult.error.message}`
+            );
+          }
         };
+        const transaction = ctx.store.withTransaction
+          ? await ctx.store.withTransaction(syncProjection)
+          : await syncProjection()
+              .then(() => ({ ok: true as const, value: undefined }))
+              .catch((cause: unknown) => ({
+                ok: false as const,
+                error: {
+                  message:
+                    cause instanceof Error ? cause.message : "DB sync failed",
+                },
+              }));
+        if (!transaction.ok) {
+          console.warn(
+            `Config saved but DB sync failed: ${transaction.error.message}`
+          );
+          return {
+            ok: false,
+            error: `DB sync failed: ${transaction.error.message}`,
+            code: "SYNC_ERROR",
+          };
+        }
       }
+
+      await ctx.afterStoreSynced?.(newConfig);
+      return { ok: true };
     }
-
-    await ctx.afterStoreSynced?.(newConfig);
-    return { ok: true };
-  });
+  );
 }

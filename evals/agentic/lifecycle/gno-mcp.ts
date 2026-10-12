@@ -12,6 +12,8 @@ import { dirname, join } from "node:path";
 import type { AgentToolDefinition } from "../adapter";
 import type { CorpusSnapshot, NativeIndexPreparation } from "../types";
 
+import { SqliteAdapter } from "../../../src/store/sqlite/adapter";
+import { storedVectorPartition } from "../../../src/store/vector/status";
 import { AgenticHarnessError } from "../adapter";
 import { canonicalFingerprint } from "../canonical";
 import {
@@ -190,37 +192,53 @@ const runOfflineEmbed = async (
   }
 };
 
-const verifyEmbeddedIndex = (handle: GnoMcpPreparedHandle): number => {
-  const db = new Database(handle.native.dbPath, { readonly: true });
+/**
+ * Verify the embed through the product's own index status: vectors live in
+ * an activated partition (the legacy content_vectors table stays empty), no
+ * chunk is waiting, and every collection's active chunks are embedded.
+ */
+const verifyEmbeddedIndex = async (
+  handle: GnoMcpPreparedHandle
+): Promise<number> => {
+  const model = modelFileUri(handle.models.embed.path);
+  const store = new SqliteAdapter();
+  const opened = store.openReadOnly(handle.native.dbPath);
+  if (!opened.ok) {
+    throw new AgenticHarnessError(
+      "gno_vector_preparation_mismatch",
+      `Prepared GNO index could not be opened: ${opened.error.message}`
+    );
+  }
   try {
-    const model = modelFileUri(handle.models.embed.path);
-    const vectorCount = (
-      db
-        .query("SELECT COUNT(*) AS count FROM content_vectors WHERE model = ?")
-        .get(model) as {
-        count: number;
-      }
-    ).count;
-    const chunkCount = (
-      db
-        .query(
-          `SELECT COUNT(*) AS count FROM content_chunks c
-           WHERE EXISTS (
-             SELECT 1 FROM documents d
-             WHERE d.mirror_hash = c.mirror_hash AND d.active = 1
-           )`
-        )
-        .get() as { count: number }
-    ).count;
-    if (chunkCount === 0 || vectorCount !== chunkCount) {
+    const status = await store.getStatus({ embedModel: model });
+    if (!status.ok) {
       throw new AgenticHarnessError(
         "gno_vector_preparation_mismatch",
-        `Prepared GNO index vector mismatch: vectors=${vectorCount} chunks=${chunkCount}`
+        `Prepared GNO index status failed: ${status.error.message}`
+      );
+    }
+    const { collections, embeddingBacklog } = status.value;
+    let chunkCount = 0;
+    let vectorCount = 0;
+    for (const collection of collections) {
+      chunkCount += collection.totalChunks;
+      vectorCount += collection.embeddedChunks;
+    }
+    const partition = storedVectorPartition(store.getRawDb(), model);
+    if (
+      chunkCount === 0 ||
+      vectorCount !== chunkCount ||
+      embeddingBacklog !== 0 ||
+      !partition
+    ) {
+      throw new AgenticHarnessError(
+        "gno_vector_preparation_mismatch",
+        `Prepared GNO index vector mismatch: vectors=${vectorCount} chunks=${chunkCount} backlog=${embeddingBacklog} partition=${partition?.partitionId ?? "none"}`
       );
     }
     return vectorCount;
   } finally {
-    db.close();
+    await store.close();
   }
 };
 
@@ -409,7 +427,7 @@ export const prepareGnoMcpHandle = async (
     } satisfies GnoMcpPreparedHandle;
     if (options.embed !== false) {
       await runOfflineEmbed(provisional, options.signal);
-      verifyEmbeddedIndex(provisional);
+      await verifyEmbeddedIndex(provisional);
     }
     throwIfAborted(options.signal);
     const connection = await (

@@ -402,6 +402,42 @@ describe("agents CLI commands", () => {
       expect((await verify()).receipt.ok).toBe(true);
     });
 
+    test("update refreshes only files that hold a block; others stay untouched and uncreated", async () => {
+      await setupHome([".codex", ".claude", ".hermes"]);
+      await Bun.write(CLAUDE_FILE, EXISTING);
+      await Bun.write(CODEX_FILE, EXISTING);
+      await install("codex");
+      const installedCodex = await text(CODEX_FILE);
+
+      const r = await update();
+      expect(r.error).toBeUndefined();
+      const claude = r.receipt.results.find((x) => x.target === "claude");
+      expect(claude?.action).toBe("absent");
+      expect(claude?.detail).toMatch(/gno agents install/);
+      expect(claude?.backup).toBeUndefined();
+      expect(r.receipt.results.find((x) => x.target === "hermes")?.action).toBe(
+        "absent"
+      );
+      expect(r.receipt.results.find((x) => x.target === "codex")?.action).toBe(
+        "current"
+      );
+      expect(await text(CLAUDE_FILE)).toBe(EXISTING);
+      expect(await text(CODEX_FILE)).toBe(installedCodex);
+      expect(existsSync(join(FAKE_HOME, ".hermes/SOUL.md"))).toBe(false);
+      expect(backupsIn(join(FAKE_HOME, ".claude"))).toHaveLength(0);
+
+      // Text output names the absent file and the install hint.
+      await installAgents(
+        { target: "claude", homeDir: FAKE_HOME, json: false },
+        "update"
+      );
+      const human = stdoutOutput.join("");
+      stdoutOutput = [];
+      expect(human).toContain(`absent       claude     ${CLAUDE_FILE}`);
+      expect(human).toContain("gno agents install");
+      expect(await text(CLAUDE_FILE)).toBe(EXISTING);
+    });
+
     test("grok is covered via claude: one block, covered rows on install and verify", async () => {
       await setupHome([".claude", ".grok"]);
       const r = await install();

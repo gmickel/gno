@@ -19,6 +19,7 @@ export async function collectionRemove(
     configPath: options.configPath,
     indexName: options.indexName,
     syncConfig: false,
+    allowStaleCollections: true,
     allowEmptyCollections: true,
   });
   if (!initialized.ok) {

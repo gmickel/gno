@@ -19,7 +19,7 @@ Everything outside the markers is yours; the installer never touches it.
 ```bash
 gno agents install            # every harness detected on this machine
 gno agents verify             # deterministic per-target checks
-gno agents update             # refresh after a gno upgrade
+gno agents update             # refresh existing blocks after a gno upgrade
 gno agents uninstall          # remove block + markers cleanly
 ```
 
@@ -51,6 +51,9 @@ installer writes the block once and reports the importing harness as covered.
   lands via a temp file and an atomic rename, so a failed write leaves the
   live file untouched.
 - **Idempotent** — re-running when current is a no-op (no write, no backup).
+- **Update never adds** — `update` refreshes only files that already hold the
+  block; a file without one is reported `absent` (run `install` to add it)
+  and is never written or created.
 - **Fail-closed, with a manual fallback** — malformed or duplicate markers, a
   non-UTF-8 file, or an unwritable file produce a per-target error and no
   write; the command then prints the complete block so you can paste it in

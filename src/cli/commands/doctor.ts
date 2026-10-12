@@ -33,6 +33,7 @@ import {
 import { formatVectorPartitionLines } from "../../core/vector-partition-status";
 import { getEmbeddingFingerprint } from "../../embed/fingerprint";
 import { getCodeChunkingStatus } from "../../ingestion/chunker";
+import { checkCollectionRoots } from "../../ingestion/source-availability/root";
 import { ModelCache } from "../../llm/cache";
 import { getActivePreset, resolveModelUri } from "../../llm/registry";
 import { SqliteAdapter } from "../../store/sqlite/adapter";
@@ -739,6 +740,37 @@ export async function checkFindingsPass(
   };
 }
 
+/** Configured collection roots that are missing or unreadable right now. */
+export async function checkCollectionRootAccess(
+  config: Config
+): Promise<DoctorCheck> {
+  const name = "collection-roots";
+  const errors = await checkCollectionRoots(config.collections);
+  const unavailable = config.collections.flatMap((collection) => {
+    const error = errors[collection.name];
+    return error ? [{ collection, error }] : [];
+  });
+  if (unavailable.length === 0) {
+    return {
+      name,
+      status: "ok",
+      message: `${config.collections.length} collection root(s) available`,
+    };
+  }
+  return {
+    name,
+    status: "warn",
+    message: `${unavailable.length} collection root(s) missing or unreadable: ${unavailable.map(({ collection }) => collection.name).join(", ")}`,
+    details: [
+      ...unavailable.map(
+        ({ collection, error }) =>
+          `${collection.name}: ${collection.path} [${error.code}] ${error.message}`
+      ),
+      "Reconnect the drive or restore the folder; if it moved, change the collection's path in the config, then run: gno update",
+    ],
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Implementation
 // ─────────────────────────────────────────────────────────────────────────────
@@ -779,6 +811,10 @@ export async function doctor(
   // Code chunking capability
   checks.push(checkCodeChunking());
 
+  // Collection roots, checked now (documents stay indexed while one is away)
+  const rootsCheck = await checkCollectionRootAccess(config);
+  checks.push(rootsCheck);
+
   // Embedding fingerprint freshness
   checks.push(...(await checkEmbeddingFingerprints(config, options.indexName)));
 
@@ -801,6 +837,7 @@ export async function doctor(
   return {
     healthy:
       !hasErrors &&
+      rootsCheck.status === "ok" &&
       activation.healthy &&
       isConnectorActivationComplete(activation),
     checks,

@@ -90,6 +90,7 @@ import type {
   SectionTargetV1,
 } from "../core/sections";
 import type { SyncResult } from "../ingestion";
+import type { CollectionRootError } from "../ingestion/source-availability/root";
 import type { DownloadPolicy } from "../llm/policy";
 import type {
   AskOptions,
@@ -193,7 +194,11 @@ export type GnoVectorSearchOptions = Omit<
 export type GnoContextInput = Omit<ContextCapsuleBuildInput, "indexName"> &
   GnoProjectHintOptions;
 export type GnoContextResult = ContextCapsuleV1;
-export type GnoIndexStatus = IndexStatus & {
+export type GnoIndexStatus = Omit<IndexStatus, "collections"> & {
+  /** `rootError` is set while a collection's folder is missing or unreadable. */
+  collections: Array<
+    IndexStatus["collections"][number] & { rootError?: CollectionRootError }
+  >;
   contentTypeBoost: ContentTypeBoostStatus;
 };
 export type GnoContextVerificationResult = ContextCapsuleVerification;

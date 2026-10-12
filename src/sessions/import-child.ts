@@ -26,6 +26,7 @@ import type { Config } from "../config/types";
 import type { SessionImportReceipt } from "./types";
 
 import { getIndexDbPath } from "../app/constants";
+import { modulePath } from "../core/module-path";
 import { isStandaloneExecutable } from "../serve/spa-production-build";
 import { SqliteAdapter } from "../store/sqlite/adapter";
 import { assertSessionBinding } from "./binding";
@@ -113,7 +114,9 @@ export async function importInChildProcess(
   // Shared check: covers the POSIX `/$bunfs/` and Windows `B:/~BUN/` roots.
   const compiled = isStandaloneExecutable();
   const child = Bun.spawn({
-    cmd: compiled ? [process.execPath] : [process.execPath, import.meta.path],
+    cmd: compiled
+      ? [process.execPath]
+      : [process.execPath, modulePath(import.meta)],
     env: compiled ? { ...process.env, [IMPORT_CHILD_ENV]: "1" } : process.env,
     // The request line, then held open as the child's lifeline.
     stdin: "pipe",

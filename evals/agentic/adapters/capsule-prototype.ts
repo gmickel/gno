@@ -157,7 +157,7 @@ class CapsulePrototypeAdapter implements AgentAdapter {
       diagnostics:
         toolName === "search"
           ? [
-              "fixture retrieval prototype; production gno-context-agent-v1 projection",
+              "fixture retrieval prototype; production gno-context-agent-v2 projection",
             ]
           : [],
     };

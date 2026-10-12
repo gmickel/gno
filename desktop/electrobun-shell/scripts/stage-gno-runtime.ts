@@ -11,6 +11,9 @@ const runtimeFiles = [
   "bun.lock",
   "bunfig.toml",
   "package.json",
+  // bun install --frozen-lockfile reads every patchedDependencies file, even
+  // for development-only packages a production install skips.
+  "patches",
   "src",
   "THIRD_PARTY_NOTICES.md",
   "vendor",

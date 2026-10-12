@@ -45,6 +45,7 @@ import type {
   PrepareOutcome,
 } from "./prepare-file";
 
+import { modulePath, moduleDir } from "../core/module-path";
 import { tracePhase } from "../core/phase-trace";
 import { isBunfsPath } from "../serve/spa-production-build";
 import { FILE_PROCESSOR_CHILD_ENV } from "./file-child-env";
@@ -284,7 +285,7 @@ async function processRss(pid: number): Promise<number> {
 }
 
 function startChild(): Processor {
-  const compiled = isBunfsPath(import.meta.path);
+  const compiled = isBunfsPath(modulePath(import.meta));
   let phase = "startup";
   let onMessage: ((message: FileWorkerMessage) => void) | null = null;
   let markReady: () => void = () => undefined;
@@ -298,7 +299,7 @@ function startChild(): Processor {
     // source runtime runs the child module directly.
     cmd: compiled
       ? [process.execPath]
-      : [process.execPath, `${import.meta.dir}/file-child.ts`],
+      : [process.execPath, `${moduleDir(import.meta)}/file-child.ts`],
     env: { ...process.env, [FILE_PROCESSOR_CHILD_ENV]: "1" },
     stdin: "ignore",
     stdout: "ignore",
@@ -447,7 +448,9 @@ let queue: Promise<unknown> = Promise.resolve();
 
 /** Which backend this runtime uses: the worker unless it cannot start. */
 export function fileProcessorBackend(): FileProcessorBackendKind {
-  return forcedBackend ?? (isBunfsPath(import.meta.path) ? "child" : "worker");
+  return (
+    forcedBackend ?? (isBunfsPath(modulePath(import.meta)) ? "child" : "worker")
+  );
 }
 
 /**

@@ -168,21 +168,23 @@ describe("searchBm25 N+1 guard", () => {
   });
 });
 
-test("targeted lexical reads preserve missing sequence and batch-error snippet fallback", async () => {
+test("targeted lexical reads match full hydration; final rows read their chunks once", async () => {
   for (const fail of [false, true]) {
-    const fts = { ...makeFtsResult("hash", 0), snippet: "FTS evidence" };
+    const fts = makeFtsResult("hash", 0);
+    const getChunksBatch: StorePort["getChunksBatch"] = async () =>
+      fail
+        ? {
+            ok: false,
+            error: { code: "QUERY_FAILED", message: "read failed" },
+          }
+        : { ok: true, value: new Map([["hash", [makeChunk("hash", 1)]]]) };
     const baseline: Partial<StorePort> = {
       searchFts: async () => ({ ok: true, value: [fts, fts] }),
       getCollections: async () => ({ ok: true, value: [TEST_COLLECTION] }),
-      getChunksBatch: async () =>
-        fail
-          ? {
-              ok: false,
-              error: { code: "QUERY_FAILED", message: "read failed" },
-            }
-          : { ok: true, value: new Map([["hash", [makeChunk("hash", 1)]]]) },
+      getChunksBatch,
     };
     let calls = 0;
+    const fullReads: string[][] = [];
     const candidate: Partial<StorePort> = {
       ...baseline,
       getChunksBySequenceBatch: async (keys) => {
@@ -197,18 +199,28 @@ test("targeted lexical reads preserve missing sequence and batch-error snippet f
             }
           : { ok: true, value: new Map() };
       },
-      getChunksBatch: () => {
-        throw new Error("unexpected full hydration");
+      // Only the returned rows are hydrated, for their snippets.
+      getChunksBatch: (hashes) => {
+        fullReads.push(hashes);
+        return getChunksBatch(hashes);
       },
     };
     const expected = await searchBm25(baseline as StorePort, "query");
     const actual = await searchBm25(candidate as StorePort, "query");
     expect(actual).toEqual(expected);
     expect(calls).toBe(1);
+    expect(fullReads).toEqual([["hash"]]);
     if (actual.ok) {
       expect(actual.value.results).toHaveLength(1);
-      expect(actual.value.results[0]?.snippet).toBe("FTS evidence");
-      expect(actual.value.results[0]?.snippetRange).toBeUndefined();
+      const [result] = actual.value.results;
+      if (fail) {
+        expect(result?.snippet).toBe("");
+        expect(result?.snippetRange).toBeUndefined();
+      } else {
+        // The snippet names the chunk it came from, not the missing seq 0.
+        expect(result?.snippet).toBe("Chunk text for hash seq 1");
+        expect(result?.snippetRange).toEqual({ startLine: 10, endLine: 19 });
+      }
     }
   }
 });

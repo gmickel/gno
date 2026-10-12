@@ -28,6 +28,8 @@ export interface StatusCollection {
   documentCount: number;
   chunkCount: number;
   embeddedCount: number;
+  /** Present while the collection root is missing or unreadable (path-free). */
+  rootError?: { code: string; message: string };
 }
 
 export interface SuggestedCollection {

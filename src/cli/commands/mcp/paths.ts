@@ -12,6 +12,7 @@ import type { ConnectorWorkspaceEnvironment } from "../../../core/connector-envi
 
 import { resolveDirs } from "../../../app/constants";
 import { assertValidIndexName } from "../../../app/index-name";
+import { modulePath } from "../../../core/module-path";
 import { getCurrentGnoEntrypoint } from "../../../core/runtime-entrypoint";
 import {
   DEFAULT_MCP_TOOL_PROFILE,
@@ -459,7 +460,7 @@ export function resolveLaunchPaths(): {
   entrypoint: LaunchPath;
 } {
   const entrypoint = getCurrentGnoEntrypoint();
-  if (isBunfsPath(import.meta.path)) {
+  if (isBunfsPath(modulePath(import.meta))) {
     return {
       bun: { path: process.execPath, pinned: false },
       entrypoint: { path: entrypoint, pinned: false },

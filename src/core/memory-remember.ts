@@ -90,7 +90,6 @@ async function loadCandidatePool(
     memoryScopesAny: input.scopes,
     excludeSuperseded: true,
     anyTerm: true,
-    snippet: false,
   });
   // INVALID_INPUT means the text has no searchable terms: an empty pool.
   if (!ftsResult.ok && ftsResult.error.code !== "INVALID_INPUT") {

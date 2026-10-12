@@ -9,7 +9,7 @@ import type { ContentTypeBoostStatus } from "../../config/content-types";
 import type { ActivationStatus } from "../../core/activation-status";
 import type { MemoryStatus } from "../../core/memory-diagnostics";
 import type { BackgroundIssue } from "../../serve/status-model";
-import type { IndexStatus } from "../../store/types";
+import type { IndexStatus, StaleCollection } from "../../store/types";
 
 import { getIndexDbPath, getModelsCachePath } from "../../app/constants";
 import {
@@ -33,6 +33,10 @@ import {
 } from "../../core/memory-diagnostics";
 import { formatVectorPartitionLines } from "../../core/vector-partition-status";
 import { BUDGET_ERROR_CODES } from "../../ingestion/file-processor";
+import {
+  checkCollectionRoots,
+  type CollectionRootError,
+} from "../../ingestion/source-availability/root";
 import { ModelCache } from "../../llm/cache";
 import { getActivePreset, resolveModelUri } from "../../llm/registry";
 import { getConnectorVerificationTargets } from "../../serve/connectors";
@@ -80,6 +84,10 @@ export type StatusResult =
       runtimeIssues?: RuntimeIssue[];
       /** Files whose latest conversion stopped at the per-file budget. */
       budgetStops: BudgetStop[];
+      /** Indexed collections this config does not list (kept until cleanup). */
+      staleCollections?: StaleCollection[];
+      /** Configured collections whose root is missing or unreadable now. */
+      rootErrors?: Record<string, CollectionRootError>;
     }
   | { success: false; error: string };
 
@@ -90,6 +98,18 @@ export interface BudgetStop {
   code: string;
   message: string;
 }
+
+/** Indexed collections the config omits; an unreadable list is not fatal. */
+async function collectStaleCollections(
+  store: SqliteAdapter,
+  configured: string[]
+): Promise<StaleCollection[]> {
+  const stale = await store.listStaleCollections(configured);
+  return stale.ok ? stale.value.filter((c) => c.documents > 0) : [];
+}
+
+const STALE_COLLECTIONS_HINT =
+  'not in this config; add them back, or run "gno cleanup" to delete their index data';
 
 /** Most recent ingest errors inspected for budget stops. */
 const BUDGET_STOP_SCAN_LIMIT = 100;
@@ -164,12 +184,14 @@ function connectorProjectionLine(activation: ActivationStatus): string | null {
 
 function isStatusHealthy(
   indexStatus: IndexStatus,
-  activation: ActivationStatus
+  activation: ActivationStatus,
+  rootErrors: Record<string, CollectionRootError> = {}
 ): boolean {
   return (
     indexStatus.healthy &&
     activation.healthy &&
-    isConnectorActivationComplete(activation)
+    isConnectorActivationComplete(activation) &&
+    Object.keys(rootErrors).length === 0
   );
 }
 
@@ -180,7 +202,8 @@ function formatTerminal(
   indexStatus: IndexStatus,
   activation: ActivationStatus,
   contentTypeBoost: ContentTypeBoostStatus,
-  memory: MemoryStatus
+  memory: MemoryStatus,
+  rootErrors: Record<string, CollectionRootError> = {}
 ): string {
   const lines: string[] = [];
 
@@ -203,6 +226,11 @@ function formatTerminal(
         `  ${c.name}: ${c.activeDocuments} docs, ${c.totalChunks} chunks` +
           (c.embeddedChunks > 0 ? `, ${c.embeddedChunks} embedded` : "")
       );
+      const rootError = rootErrors[c.name];
+      if (rootError) {
+        lines.push(`    Root unavailable: ${c.path}`);
+        lines.push(`      [${rootError.code}] ${rootError.message}`);
+      }
       const workspace = formatLinkWorkspace(c);
       if (workspace) lines.push(`    Link workspace: ${workspace}`);
     }
@@ -240,7 +268,7 @@ function formatTerminal(
   lines.push(`Ranking fingerprint: ${contentTypeBoost.rulesFingerprint}`);
 
   lines.push(
-    `Health: ${isStatusHealthy(indexStatus, activation) ? "OK" : "DEGRADED"}`
+    `Health: ${isStatusHealthy(indexStatus, activation, rootErrors) ? "OK" : "DEGRADED"}`
   );
   lines.push("");
   const activationState = activation.healthy
@@ -290,7 +318,8 @@ function formatMarkdown(
   indexStatus: IndexStatus,
   activation: ActivationStatus,
   contentTypeBoost: ContentTypeBoostStatus,
-  memory: MemoryStatus
+  memory: MemoryStatus,
+  rootErrors: Record<string, CollectionRootError> = {}
 ): string {
   const lines: string[] = [];
 
@@ -299,7 +328,7 @@ function formatMarkdown(
   lines.push(`- **Config**: ${indexStatus.configPath}`);
   lines.push(`- **Database**: ${indexStatus.dbPath}`);
   lines.push(
-    `- **Health**: ${isStatusHealthy(indexStatus, activation) ? "✓ OK" : "⚠ DEGRADED"}`
+    `- **Health**: ${isStatusHealthy(indexStatus, activation, rootErrors) ? "✓ OK" : "⚠ DEGRADED"}`
   );
   lines.push("");
 
@@ -314,6 +343,15 @@ function formatMarkdown(
       );
     }
     lines.push("");
+    for (const c of indexStatus.collections) {
+      const rootError = rootErrors[c.name];
+      if (rootError) {
+        lines.push(
+          `- **Root unavailable**: ${c.name} (${c.path}) [${rootError.code}] ${rootError.message}`
+        );
+      }
+    }
+    if (Object.keys(rootErrors).length > 0) lines.push("");
   }
 
   lines.push("## Summary");
@@ -390,6 +428,8 @@ export async function status(
     return { success: false, error: configResult.error.message };
   }
   const config = configResult.value;
+  // Read-time root check, overlapping the index reads below; it never rejects.
+  const rootErrors = checkCollectionRoots(config.collections);
 
   // Open database
   const store = new SqliteAdapter();
@@ -446,6 +486,11 @@ export async function status(
         ...(await checkResidentRuntimes()),
       ],
       budgetStops: await collectBudgetStops(store),
+      staleCollections: await collectStaleCollections(
+        store,
+        config.collections.map(({ name }) => name)
+      ),
+      rootErrors: await rootErrors,
     };
   } finally {
     await store.close();
@@ -482,6 +527,9 @@ export function formatStatus(
           documentCount: c.activeDocuments,
           chunkCount: c.totalChunks,
           embeddedCount: c.embeddedChunks,
+          ...(result.rootErrors?.[c.name]
+            ? { rootError: result.rootErrors[c.name] }
+            : {}),
         })),
         totalDocuments: s.activeDocuments,
         totalChunks: s.totalChunks,
@@ -491,7 +539,7 @@ export function formatStatus(
         typedMetadata: s.typedMetadata,
         chunking: s.chunking,
         lastUpdated: s.lastUpdatedAt,
-        healthy: isStatusHealthy(s, result.activation),
+        healthy: isStatusHealthy(s, result.activation, result.rootErrors),
         contentTypeBoost: result.contentTypeBoost,
         activation: result.activation,
         memory: result.memory,
@@ -501,19 +549,37 @@ export function formatStatus(
         ...(result.runtimeIssues?.length
           ? { runtimeIssues: result.runtimeIssues }
           : {}),
+        ...(result.staleCollections?.length
+          ? { staleCollections: result.staleCollections }
+          : {}),
       },
       null,
       2
     );
   }
 
+  const staleLines = (result.staleCollections ?? []).map(
+    (c) =>
+      `${c.name}: ${c.documents} ${c.documents === 1 ? "document" : "documents"}`
+  );
   if (options.md) {
-    return formatMarkdown(
-      result.status,
-      result.activation,
-      result.contentTypeBoost,
-      result.memory
-    );
+    return [
+      formatMarkdown(
+        result.status,
+        result.activation,
+        result.contentTypeBoost,
+        result.memory,
+        result.rootErrors
+      ),
+      ...(staleLines.length
+        ? [
+            "",
+            `## Collections ${STALE_COLLECTIONS_HINT}`,
+            "",
+            ...staleLines.map((line) => `- ${line}`),
+          ]
+        : []),
+    ].join("\n");
   }
 
   const issueLines = result.backgroundIssues.map(
@@ -529,8 +595,16 @@ export function formatStatus(
       result.status,
       result.activation,
       result.contentTypeBoost,
-      result.memory
+      result.memory,
+      result.rootErrors
     ),
+    ...(staleLines.length
+      ? [
+          "",
+          `Collections ${STALE_COLLECTIONS_HINT}:`,
+          ...staleLines.map((line) => `  ${line}`),
+        ]
+      : []),
     ...(stopLines.length
       ? [
           "",

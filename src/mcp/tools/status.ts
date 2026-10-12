@@ -12,6 +12,10 @@ import { formatChunkingStatus } from "../../core/chunking-status";
 import { OWNER_CONFIG_PATH_FIELDS, withoutFields } from "../../core/host-paths";
 import { formatLinkWorkspace } from "../../core/link-workspace";
 import { formatVectorPartitionLines } from "../../core/vector-partition-status";
+import {
+  type CollectionRootError,
+  withCollectionRootErrors,
+} from "../../ingestion/source-availability/root";
 import { resolveModelUri } from "../../llm/registry";
 import { createStandaloneResidentStatus } from "../../serve/resident-status";
 import { exposesHostPaths } from "../context";
@@ -23,7 +27,10 @@ type StatusInput = Record<string, never>;
 type StatusView = Omit<IndexStatus, "configPath" | "dbPath" | "collections"> &
   Partial<Pick<IndexStatus, "configPath" | "dbPath">> & {
     collections: Array<
-      Omit<CollectionStatus, "path"> & Partial<Pick<CollectionStatus, "path">>
+      Omit<CollectionStatus, "path"> &
+        Partial<Pick<CollectionStatus, "path">> & {
+          rootError?: CollectionRootError;
+        }
     >;
   };
 
@@ -58,6 +65,11 @@ function formatStatus(status: StatusView): string {
       );
       const workspace = formatLinkWorkspace(c);
       if (workspace) lines.push(`    Link workspace: ${workspace}`);
+      if (c.rootError) {
+        lines.push(
+          `    Root unavailable: [${c.rootError.code}] ${c.rootError.message}`
+        );
+      }
     }
   }
 
@@ -113,7 +125,10 @@ export function handleStatus(
 
       // Override configPath with actual path from context
       const status = {
-        ...result.value,
+        ...(await withCollectionRootErrors(
+          result.value,
+          ctx.config.collections
+        )),
         configPath: ctx.actualConfigPath,
         contentTypeBoost: buildContentTypeBoostStatus(
           ctx.config.contentTypes ?? []

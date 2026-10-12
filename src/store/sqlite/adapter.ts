@@ -103,8 +103,10 @@ import type {
   SavedCapsuleReverificationState,
   SavedCapsuleVerificationExpectation,
   SavedCapsuleVerificationRecord,
+  StaleCollection,
   StorePort,
   StoreResult,
+  SyncCollectionsOptions,
   TagCount,
   TagRow,
   TagSource,
@@ -585,6 +587,27 @@ function resolveBusyTimeoutMs(busyTimeoutMs?: number): number {
   return busyTimeoutMs;
 }
 
+/** Aborts a collection sync that would delete indexed collections. */
+class StaleCollectionsError extends Error {}
+
+/** Names the collections a config omits and how to resolve it. */
+export function staleCollectionsMessage(
+  stale: readonly StaleCollection[]
+): string {
+  const names = stale
+    .map(
+      (c) =>
+        `${c.name} (${c.documents} ${c.documents === 1 ? "document" : "documents"})`
+    )
+    .join(", ");
+  return (
+    `This index holds collections the config does not list: ${names}. ` +
+    "Nothing was changed. Add them back to the config, open a separate index " +
+    '(--index <name>, or dbPath in the SDK), or run "gno cleanup" with this ' +
+    "config to delete their index data."
+  );
+}
+
 export class SqliteAdapter implements StorePort, SqliteDbProvider {
   private db: Database | null = null;
   private dbPath = "";
@@ -898,24 +921,33 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   // Config Sync
   // ─────────────────────────────────────────────────────────────────────────
 
-  async syncCollections(collections: Collection[]): Promise<StoreResult<void>> {
+  async syncCollections(
+    collections: Collection[],
+    options: SyncCollectionsOptions = {}
+  ): Promise<StoreResult<void>> {
+    let stale: StaleCollection[] = [];
     try {
       const db = this.ensureOpen();
 
       const transaction = db.transaction(() => {
-        // Get existing collection names
-        const existing = new Set(
-          db
-            .query<{ name: string }, []>("SELECT name FROM collections")
-            .all()
-            .map((r) => r.name)
+        // Opening an index with a config never deletes indexed collections
+        // that config omits (their documents follow by cascade): a different
+        // config on the same index would wipe it. Only explicit removals do.
+        const { remove } = options;
+        const removed = new Set(remove === "stale" ? [] : remove);
+        const unlisted = this.queryStaleCollections(
+          db,
+          collections.map((c) => c.name)
         );
-
-        const incoming = new Set(collections.map((c) => c.name));
-
-        // Delete removed collections
-        for (const name of existing) {
-          if (!incoming.has(name)) {
+        stale = unlisted.filter(
+          (c) => c.documents > 0 && remove !== "stale" && !removed.has(c.name)
+        );
+        if (stale.length > 0 && !options.keepStale) {
+          throw new StaleCollectionsError();
+        }
+        const keep = new Set(stale.map((c) => c.name));
+        for (const { name } of unlisted) {
+          if (!keep.has(name)) {
             db.run("DELETE FROM collections WHERE name = ?", [name]);
           }
         }
@@ -985,12 +1017,44 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       transaction.immediate();
       return ok(undefined);
     } catch (cause) {
+      if (cause instanceof StaleCollectionsError) {
+        return err("STALE_COLLECTIONS", staleCollectionsMessage(stale));
+      }
       return err(
         "QUERY_FAILED",
         cause instanceof Error ? cause.message : "Failed to sync collections",
         cause
       );
     }
+  }
+
+  async listStaleCollections(
+    configured: readonly string[]
+  ): Promise<StoreResult<StaleCollection[]>> {
+    try {
+      return ok(this.queryStaleCollections(this.ensureOpen(), configured));
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to list collections",
+        cause
+      );
+    }
+  }
+
+  private queryStaleCollections(
+    db: Database,
+    configured: readonly string[]
+  ): StaleCollection[] {
+    const listed = new Set(configured);
+    return db
+      .query<StaleCollection, []>(
+        `SELECT c.name AS name,
+           (SELECT COUNT(*) FROM documents d WHERE d.collection = c.name) AS documents
+         FROM collections c ORDER BY c.name`
+      )
+      .all()
+      .filter((c) => !listed.has(c.name));
   }
 
   async upsertCollections(
@@ -3119,6 +3183,52 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  async getChunkTermPresence(
+    mirrorHashes: string[],
+    terms: string[]
+  ): Promise<
+    StoreResult<{ mirrorHash: string; seq: number; present: boolean[] }[]>
+  > {
+    try {
+      const uniqueHashes = uniqueNonEmptyValues(mirrorHashes);
+      if (uniqueHashes.length === 0 || terms.length === 0) return ok([]);
+      const db = this.ensureOpen();
+      const columns = terms.map(() => "instr(lower(text), ?) > 0").join(", ");
+      const batchSize = Math.max(
+        1,
+        SQLITE_SAFE_PARAMETER_BATCH_SIZE - terms.length
+      );
+      const rows: { mirrorHash: string; seq: number; present: boolean[] }[] =
+        [];
+      for (let i = 0; i < uniqueHashes.length; i += batchSize) {
+        const batch = uniqueHashes.slice(i, i + batchSize);
+        const values = db
+          .query<unknown, string[]>(
+            `SELECT mirror_hash, seq, ${columns} FROM content_chunks
+             WHERE mirror_hash IN (${batch.map(() => "?").join(",")})
+             ORDER BY mirror_hash, seq`
+          )
+          .values(...terms, ...batch) as unknown[][];
+        for (const [mirrorHash, seq, ...present] of values) {
+          rows.push({
+            mirrorHash: String(mirrorHash),
+            seq: Number(seq),
+            present: present.map((flag) => flag === 1),
+          });
+        }
+      }
+      return ok(rows);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to read chunk term presence",
+        cause
+      );
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // FTS Search
   // ─────────────────────────────────────────────────────────────────────────
@@ -3143,7 +3253,6 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         WITH fts_matches AS (
           SELECT
             rowid,
-            ${options.snippet ? "snippet(documents_fts, 2, '<mark>', '</mark>', '...', 32) as snippet," : ""}
             bm25(
               documents_fts,
               ${FTS5_FIELD_WEIGHTS.filepath},
@@ -3163,7 +3272,6 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           d.mirror_hash,
           ${options.chunkLanguage ? "(SELECT min(lc.seq) FROM content_chunks lc WHERE lc.mirror_hash = d.mirror_hash AND lc.language = ?) as seq," : "0 as seq,"}
           fm.score as score,
-          ${options.snippet ? "fm.snippet as snippet," : ""}
           d.docid,
           d.uri,
           d.title,
@@ -3197,7 +3305,6 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         mirror_hash: string;
         seq: number;
         score: number;
-        snippet?: string;
         docid: string;
         uri: string;
         title: string | null;
@@ -3247,7 +3354,6 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           mirrorHash: r.mirror_hash,
           seq: r.seq,
           score: r.score, // Raw bm25() - smaller (more negative) is better
-          snippet: r.snippet,
           docid: r.docid,
           uri: r.uri,
           title: r.title ?? undefined,

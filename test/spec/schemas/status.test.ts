@@ -114,6 +114,46 @@ describe("status schema", () => {
       ).toBe(true);
     });
 
+    test("validates a collection root error and rejects an unknown shape", async () => {
+      const fixture = await Bun.file(
+        "test/fixtures/outputs/status-healthy.json"
+      ).json();
+      const [collection] = fixture.collections;
+      const rootError = {
+        code: "SOURCE_AVAILABILITY_UNKNOWN",
+        message:
+          "Collection root is missing or unreadable (ENOENT: no such file or directory); indexed documents were kept",
+      };
+      expect(
+        assertValid(
+          { ...fixture, collections: [{ ...collection, rootError }] },
+          schema
+        )
+      ).toBe(true);
+      expect(
+        assertInvalid(
+          {
+            ...fixture,
+            collections: [
+              { ...collection, rootError: { ...rootError, path: "/x" } },
+            ],
+          },
+          schema
+        )
+      ).toBe(true);
+      expect(
+        assertInvalid(
+          {
+            ...fixture,
+            collections: [
+              { ...collection, rootError: { message: rootError.message } },
+            ],
+          },
+          schema
+        )
+      ).toBe(true);
+    });
+
     test("validates minimal status", () => {
       const status = {
         resident,

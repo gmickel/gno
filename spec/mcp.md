@@ -528,7 +528,7 @@ non-reflection contract as all MCP retrieval tools.
 
 `structuredContent` is the complete canonical Context Capsule object for
 application clients. Model-visible text is always one deterministic
-`gno-context-agent-v1` JSON projection, even when the compatibility `format`
+`gno-context-agent-v2` JSON projection, even when the compatibility `format`
 field is present. The compact keys and tuple positions are part of that
 versioned contract:
 
@@ -540,8 +540,14 @@ versioned contract:
   or `null`, enabled capability names, fallbacks.
 - `e[]`: URI, start line, end line, source hash, mirror hash, passage hash,
   exact extractive text, title, heading, configured-context IDs, egress
-  classification. Title/heading are nullable; egress is explicit even when the
-  policy is unavailable.
+  classification, content date, `supersededBy`. Title/heading are nullable;
+  egress is explicit even when the policy is unavailable. The content date is
+  the document's own date (frontmatter date, a record's date, or a memory
+  fact's `memory.createdAt`), never the file modification time, and `null` when
+  the document has none. `supersededBy` is the current successor's URI when a
+  newer memory fact superseded this one, otherwise `null`; an agent must not
+  present superseded evidence as current. v2 appends these two positions to
+  the v1 tuple; every earlier position is unchanged.
 - `g`: evidence trust (`untrusted_data`), instruction boundary
   (`hard_delimited`), then configured-guidance tuples containing context ID,
   scope type, scope key, and exact guidance text. Evidence `contextIds` bind

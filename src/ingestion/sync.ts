@@ -1,6 +1,5 @@
 // node:fs/promises for realpath/stat (no Bun equivalent for canonical paths or file stats)
-// opendir proves a root can be listed; Bun has no directory-handle API.
-import { opendir, realpath, stat } from "node:fs/promises";
+import { realpath, stat } from "node:fs/promises";
 /**
  * Sync service - orchestrates file ingestion.
  * Walks collections, converts files, chunks content, updates store.
@@ -83,6 +82,7 @@ import {
   type SourceContentReaderPort,
   type SourceReadFailure,
 } from "./source-availability";
+import { unavailableRootMessage } from "./source-availability/root";
 import { collectionToWalkConfig, DEFAULT_CHUNK_PARAMS } from "./types";
 import { defaultWalker } from "./walker";
 
@@ -117,8 +117,10 @@ const BYTES_PER_MB = 1_048_576;
  * 10: Markdown links follow CommonMark: an escaped `[` opens no link, a
  * destination with an unescaped space is text unless wrapped in `<...>`, and
  * the destination ends before a link title.
+ * 11: a memory record's `memory.createdAt` is its document date when its
+ * frontmatter names no other date.
  */
-export const INGEST_VERSION = 10;
+export const INGEST_VERSION = 11;
 const EMPTY_CONTENT_TYPE_RULES_FINGERPRINT =
   fingerprintContentTypeMetadataRules([]);
 const NON_RETRYABLE_CONVERSION_ERROR_CODES = new Set([
@@ -387,22 +389,6 @@ class Semaphore {
     } else {
       this.permits += 1;
     }
-  }
-}
-
-/** Null when the collection root can be listed; otherwise why it cannot. */
-async function unavailableRootMessage(root: string): Promise<string | null> {
-  try {
-    const directory = await opendir(root);
-    try {
-      // The open is lazy; the first read is what needs list permission.
-      await directory.read();
-    } finally {
-      await directory.close();
-    }
-    return null;
-  } catch (cause) {
-    return `Collection root could not be resolved (${cause instanceof Error ? cause.message : String(cause)}); indexed documents were kept`;
   }
 }
 

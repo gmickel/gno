@@ -163,7 +163,10 @@ const client = await createGnoClient({
 });
 ```
 
-If `dbPath` is omitted, GNO uses the normal per-index default location.
+If `dbPath` is omitted, GNO uses the normal per-index default location. A
+client whose config omits collections that location already holds fails to
+open with an error naming them and changes nothing; give a test or sandbox
+config its own `dbPath`.
 
 ---
 
@@ -716,6 +719,10 @@ console.log(
 ```
 
 Status exposes normalized rule IDs/factors, not configured path prefixes.
+
+A collection whose folder is missing or unreadable right now carries
+`rootError` (`{ code, message }`) and makes `healthy` false; its documents stay
+indexed and searchable.
 
 `status.vectorPartitions` (omitted when none exist) lists the embedding model's
 vector partitions with `state`, `owners`, `provenance` and

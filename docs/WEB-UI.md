@@ -32,7 +32,7 @@ project-aware ranking is desired.
 | Page              | Purpose                                                                |
 | :---------------- | :--------------------------------------------------------------------- |
 | **Dashboard**     | First-run onboarding, health center, stats, and quick capture          |
-| **Search**        | BM25/vector/hybrid + advanced retrieval controls and tag facets        |
+| **Search**        | Fast/Balanced/Thorough depth + advanced retrieval controls, tag facets |
 | **Browse**        | Cross-collection tree workspace with folder detail panes               |
 | **Doc View**      | View document with edit/delete actions and tag editing                 |
 | **Editor**        | Split-view markdown editor with live preview                           |
@@ -153,7 +153,11 @@ Navigate to `http://localhost:3000`. The dashboard now handles both first-run se
 
 - **First-run checklist**: Add folders, review preset, and finish the first sync
 - **Health Center**: Real status for folders, indexing, models, disk, and the
-  shared resident lifecycle (listener, sessions, requests, queues, and models)
+  shared resident lifecycle (listener, sessions, requests, queues, and models).
+  A folder that is missing or unreadable (an unmounted drive, an offline sync
+  folder) shows as **Folder access** with the collection and the error, and
+  its card on the Collections page carries the same note; indexed documents
+  stay searchable, and both clear as soon as the folder is back
 - **Document count**: Total indexed documents
 - **Chunk count**: Text segments for search
 - **Quick Capture**: Create new notes instantly
@@ -185,7 +189,7 @@ a success. See [Retries and Request IDs](guides/retries-and-request-ids.md).
 
 ### 4. Search
 
-Click **Search** or press **/**. Choose your mode, then open **Advanced Retrieval** for:
+Click **Search** or press **/**. Choose a depth, then open **Advanced Retrieval** for:
 
 - Collection filter
 - Date range (`since` / `until`)
@@ -193,13 +197,17 @@ Click **Search** or press **/**. Choose your mode, then open **Advanced Retrieva
 - Tag match mode (`any` / `all`)
 - Query modes (`term`, `intent`, `hyde`)
 
-Choose retrieval mode:
+Choose a depth (press **t** to cycle):
 
-| Mode   | Description                |
-| :----- | :------------------------- |
-| BM25   | Exact keyword matching     |
-| Vector | Semantic similarity        |
-| Hybrid | Best of both (recommended) |
+| Depth    | What runs                                                            |
+| :------- | :------------------------------------------------------------------- |
+| Fast     | Hybrid (keyword + vector) without expansion, reranking or graph hops |
+| Balanced | Hybrid with reranking, plus query expansion on the Slim presets      |
+| Thorough | Hybrid with expansion, reranking and a wider candidate pool          |
+
+Fast is the same path as `gno query --fast`. When vector search is unavailable,
+Fast runs keyword (BM25) search and Balanced/Thorough are disabled; see
+[Search Depth](#search-depth).
 
 ### 5. Ask Questions
 
@@ -681,17 +689,30 @@ When syncing or adding collections, a progress indicator shows:
 Leaving the progress view stops its status polling; indexing continues on the
 server. Returning to an active job resumes status updates.
 
-### Search Modes
+### Search Depth
 
 ![GNO Search](../assets/screenshots/webui-search.jpg)
 
-The Search page offers three retrieval modes:
+The Search page offers three depths. All of them combine keyword (BM25) and
+vector results when embeddings are available:
 
-**BM25**: Traditional keyword search. Best for exact phrases, code identifiers, known terms.
+**Fast**: Hybrid retrieval without query expansion, reranking or graph hops,
+the same as `gno query --fast` and MCP `gno_query` with `fast`. Use it first
+for natural-language questions and quick lookups.
 
-**Vector**: Semantic similarity search. Best for concepts, natural language questions, finding related content.
+**Balanced** (default with vectors): Hybrid retrieval with reranking. On the
+Slim and Slim Tuned presets it also expands the query.
 
-**Hybrid**: Combines BM25 + vector with RRF fusion and optional reranking. Best accuracy for most queries.
+**Thorough**: Query expansion, reranking and a wider candidate pool. Slowest;
+use it for hard or ambiguous questions.
+
+When the server reports vector search unavailable, Fast runs keyword search
+through `/api/search` and Balanced/Thorough are disabled; query modes or an
+intent still send Fast to the hybrid endpoint. Before anything is embedded (or
+without an embedding model), every depth returns keyword-only results and the
+results header shows no **vectors** badge. For exact terms, add a `term` query
+mode or use the command palette (**Cmd/Ctrl+K**), which always uses keyword
+search.
 
 Advanced retrieval panel adds structured controls:
 

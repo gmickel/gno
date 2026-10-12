@@ -170,7 +170,7 @@ async function runMutation(
   // the operator the exact block to paste (install/update only — uninstall
   // guidance is in the per-target detail).
   const manualBlock =
-    failedPaths.length > 0 && mode === "install" ? renderBlock() : undefined;
+    failedPaths.length > 0 && mode !== "uninstall" ? renderBlock() : undefined;
 
   if (json) {
     process.stdout.write(
@@ -217,15 +217,16 @@ async function runMutation(
 }
 
 /**
- * Install or refresh the protocol block. Both verbs converge the block to
- * the current release: install appends when absent, update replaces an
- * older/stale block in place; a current block is a no-op for either.
+ * Install or refresh the protocol block. Both verbs replace an older/stale
+ * block in place and treat a current block as a no-op; only install appends
+ * where no block exists. Update reports such a file `absent` (with an
+ * install hint) and never writes or creates it.
  */
 export function installAgents(
   opts: AgentsOptions = {},
   verb: "install" | "update" = "install"
 ): Promise<void> {
-  return runMutation(verb, "install", opts);
+  return runMutation(verb, verb, opts);
 }
 
 /** Remove the protocol block and its markers, leaving the rest untouched. */

@@ -24,7 +24,7 @@ export const AGENTIC_METHODOLOGY = [
   "Cold and warm cohorts reuse each adapter native immutable index; warm uses one discarded readiness probe.",
   "Deterministic hidden-oracle scoring binds typed claims to exact source lines and hashes without an LLM judge.",
   "Capsule promotion compares gno-mcp and capsule only on exact paired identities and unchanged-input payload replays.",
-  "Capsule content is the exact production gno-context-agent-v1 MCP text projection; full structuredContent remains application-only.",
+  "Capsule content is the exact production gno-context-agent-v2 MCP text projection; full structuredContent remains application-only.",
 ];
 
 export const AGENTIC_LIMITATIONS = [

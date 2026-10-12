@@ -587,7 +587,7 @@ describe("Context Capsule REST/MCP parity", () => {
     expect(modelText).toBe(formatContextCapsuleAgentJson(direct));
     const projection = JSON.parse(modelText) as ContextAgentProjection;
     expect(projection).toEqual({
-      v: "gno-context-agent-v1",
+      v: "gno-context-agent-v2",
       id: direct.capsuleId,
       b: [
         direct.budget.requestedTokens,
@@ -623,6 +623,8 @@ describe("Context Capsule REST/MCP parity", () => {
         item.heading,
         item.contextIds,
         item.egress,
+        item.documentDate,
+        item.supersededBy ?? null,
       ]),
       g: [
         direct.guidance.evidenceTrust,

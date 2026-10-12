@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp } from "node:fs/promises";
+import { mkdir, mkdtemp, rename } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -414,6 +414,63 @@ test("status ignores and cleanup purges a collection removed by editing the conf
     }
   );
 }, 30_000);
+
+test("status and doctor name a missing collection root until it is back", async () => {
+  await withIsolatedGno(
+    "gno-status-missing-root-",
+    async ({ testDir, cli, readOutput }) => {
+      await indexTwoCollections(testDir, cli);
+      const root = join(testDir, "gone");
+      const moved = join(testDir, "gone-away");
+      await rename(root, moved);
+
+      expect(await cli("status", "--json")).toBe(0);
+      let parsed = JSON.parse(readOutput());
+      const gone = parsed.collections.find(
+        (c: { name: string }) => c.name === "gone"
+      );
+      expect(gone.path).toBe(root);
+      expect(gone.documentCount).toBe(1);
+      expect(gone.rootError.code).toBe("SOURCE_AVAILABILITY_UNKNOWN");
+      expect(gone.rootError.message).toContain("ENOENT");
+      expect(
+        parsed.collections.find((c: { name: string }) => c.name === "keep")
+          .rootError
+      ).toBeUndefined();
+      expect(parsed.healthy).toBe(false);
+
+      expect(await cli("status")).toBe(0);
+      expect(readOutput()).toContain(
+        `  gone: 1 docs, 1 chunks\n    Root unavailable: ${root}\n      [SOURCE_AVAILABILITY_UNKNOWN] Collection root is missing or unreadable (ENOENT`
+      );
+      expect(readOutput()).toContain("Health: DEGRADED");
+
+      expect(await cli("doctor", "--json")).toBe(0);
+      const doctor = JSON.parse(readOutput());
+      const rootsCheck = doctor.checks.find(
+        (check: { name: string }) => check.name === "collection-roots"
+      );
+      expect(rootsCheck.status).toBe("warn");
+      expect(rootsCheck.message).toContain("gone");
+      expect(rootsCheck.details[0]).toContain(`gone: ${root} [`);
+      expect(doctor.healthy).toBe(false);
+
+      // Read-time check: restoring the folder clears it without a sync.
+      await rename(moved, root);
+      expect(await cli("status", "--json")).toBe(0);
+      parsed = JSON.parse(readOutput());
+      expect(
+        parsed.collections.some((c: { rootError?: unknown }) => c.rootError)
+      ).toBe(false);
+      expect(await cli("doctor", "--json")).toBe(0);
+      expect(
+        JSON.parse(readOutput()).checks.find(
+          (check: { name: string }) => check.name === "collection-roots"
+        ).status
+      ).toBe("ok");
+    }
+  );
+}, 60_000);
 
 function setOptionalEnv(name: string, value: string | undefined): void {
   if (value === undefined) {

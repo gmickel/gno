@@ -8,6 +8,7 @@
 import { join as pathJoin } from "node:path"; // No Bun path utils equivalent
 
 import type { ChunkRow, FtsResult, StorePort } from "../store/types";
+import type { ChunkTermSet, SnippetTerms } from "./query-snippet";
 import type {
   SearchOptions,
   SearchResult,
@@ -32,6 +33,14 @@ import { selectBestChunkForSteering } from "./intent";
 import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
 import {
+  chunkTermPresence,
+  createSnippetTerms,
+  pickSnippetSeq,
+  presentTermIds,
+  renderChunkSnippet,
+  snippetTermWeights,
+} from "./query-snippet";
+import {
   attachSearchResultContexts,
   attachSupersession,
 } from "./result-context";
@@ -43,6 +52,9 @@ import {
 } from "./temporal";
 import { attachSearchResultPlannerMetadata } from "./trace-metadata";
 import { SEARCH_RESULT_PLANNER_METADATA } from "./types";
+
+const passageHash = (text: string): string =>
+  new Bun.CryptoHasher("sha256").update(text).digest("hex");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Score Normalization
@@ -124,11 +136,9 @@ function buildSearchResult(ctx: BuildResultContext): SearchResult {
     snippet = chunk.text;
     snippetRange = { startLine: chunk.startLine, endLine: chunk.endLine };
   } else {
-    // Default: FTS snippet or chunk text, with leading frontmatter stripped
-    const cleaned = cleanDisplaySnippet(
-      fts.snippet ?? chunk?.text ?? "",
-      chunk?.text
-    );
+    // Default: chunk text until attachChunkSnippets replaces it for the final
+    // rows, with leading frontmatter stripped
+    const cleaned = cleanDisplaySnippet(chunk?.text ?? "", chunk?.text);
     snippet = cleaned.text;
     if (chunk) {
       line = chunk.startLine + cleaned.startLineOffset;
@@ -162,10 +172,130 @@ function buildSearchResult(ctx: BuildResultContext): SearchResult {
     graphExpanded: false,
     startLine: chunk.startLine,
     endLine: chunk.endLine,
-    passageHash: new Bun.CryptoHasher("sha256")
-      .update(chunk.text)
-      .digest("hex"),
+    passageHash: passageHash(chunk.text),
   });
+}
+
+/** Query-word ids present in each chunk of the returned documents. */
+async function readChunkTermSets(
+  store: StorePort,
+  hashes: string[],
+  terms: SnippetTerms,
+  loadedChunks: Map<string, ChunkRow[]> | undefined
+): Promise<{
+  termSets: Map<string, ChunkTermSet[]>;
+  chunks?: Map<string, ChunkRow[]>;
+} | null> {
+  const termSets = new Map<string, ChunkTermSet[]>();
+  const add = (mirrorHash: string, seq: number, present: boolean[]) => {
+    const list = termSets.get(mirrorHash) ?? [];
+    list.push({ seq, terms: presentTermIds(present, terms) });
+    termSets.set(mirrorHash, list);
+  };
+  // In-database presence keeps long documents from being loaded whole.
+  const presence =
+    !loadedChunks && store.getChunkTermPresence
+      ? await store.getChunkTermPresence(hashes, terms.prefixes)
+      : undefined;
+  if (presence?.ok) {
+    for (const row of presence.value) add(row.mirrorHash, row.seq, row.present);
+    return { termSets };
+  }
+  let chunks = loadedChunks;
+  if (!chunks) {
+    const fetched = await store.getChunksBatch(hashes);
+    if (!fetched.ok) return null;
+    chunks = fetched.value;
+  }
+  for (const [mirrorHash, list] of chunks)
+    for (const chunk of list)
+      add(mirrorHash, chunk.seq, chunkTermPresence(chunk.text, terms));
+  return { termSets, chunks };
+}
+
+/**
+ * Default-mode snippets for the returned rows only, built from their stored
+ * chunks (FTS5 snippet() re-tokenized every matched document body). Only the
+ * chosen chunk of each row is loaded; with an intent, the steered chunk is
+ * kept. The snippet, its range and the planner chunk all name that chunk.
+ * Updates results in place so hidden ranking metadata stays attached.
+ */
+async function attachChunkSnippets(
+  store: StorePort,
+  results: SearchResult[],
+  query: string,
+  options: SearchOptions,
+  loadedChunks: Map<string, ChunkRow[]> | undefined
+): Promise<void> {
+  const terms = createSnippetTerms(query);
+  const hashes = [
+    ...new Set(
+      results
+        .map((result) => result.conversion?.mirrorHash)
+        .filter((hash): hash is string => Boolean(hash))
+    ),
+  ];
+  if (!terms || hashes.length === 0) return;
+  const read = await readChunkTermSets(store, hashes, terms, loadedChunks);
+  if (!read) return;
+  const weights = snippetTermWeights([...read.termSets.values()].flat());
+
+  const chosen = results.map((result) => {
+    const mirrorHash = result.conversion?.mirrorHash;
+    if (!mirrorHash) return undefined;
+    const steeredSeq = result[SEARCH_RESULT_PLANNER_METADATA]?.seq;
+    const candidates = read.termSets.get(mirrorHash) ?? [];
+    const seq = pickSnippetSeq(
+      options.intent
+        ? candidates.filter((entry) => entry.seq === steeredSeq)
+        : candidates,
+      weights
+    );
+    return seq === undefined ? undefined : { mirrorHash, seq };
+  });
+  let chunks = read.chunks;
+  if (!chunks) {
+    const fetched = store.getChunksBySequenceBatch
+      ? await store.getChunksBySequenceBatch(
+          chosen.filter((key) => key !== undefined)
+        )
+      : await store.getChunksBatch(hashes);
+    if (!fetched.ok) return;
+    chunks = fetched.value;
+  }
+  const getChunk = createChunkLookup(chunks);
+
+  for (const [index, result] of results.entries()) {
+    const key = chosen[index];
+    const chunk = key ? getChunk(key.mirrorHash, key.seq) : undefined;
+    if (!(key && chunk)) continue;
+    const cleaned = cleanDisplaySnippet(
+      renderChunkSnippet(chunk.text, terms, weights),
+      chunk.text
+    );
+    result.line = chunk.startLine + cleaned.startLineOffset;
+    result.snippet = cleaned.text;
+    result.snippetLanguage = chunk.language ?? undefined;
+    result.snippetRange = { startLine: result.line, endLine: chunk.endLine };
+    const coordinates = {
+      mirrorHash: key.mirrorHash,
+      seq: chunk.seq,
+      startLine: chunk.startLine,
+      endLine: chunk.endLine,
+      passageHash: passageHash(chunk.text),
+    };
+    const metadata = result[SEARCH_RESULT_PLANNER_METADATA];
+    if (metadata) {
+      Object.assign(metadata, coordinates);
+    } else {
+      attachSearchResultPlannerMetadata(result, {
+        retrievalRank: 0,
+        sources: ["bm25"],
+        graphExpanded: false,
+        ...coordinates,
+      });
+    }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -207,8 +337,7 @@ export async function searchBm25(
   const detection = detectQueryLanguage(query);
   const queryLanguage = options.lang ?? detection.bcp47;
 
-  // Run FTS search
-  // Disable FTS snippet when --full or --line-numbers (we use raw text instead)
+  // Run FTS search (ranking only; snippets come from chunks of the final rows)
   const ftsResult = await store.searchFts(query, {
     limit: retrievalLimit,
     collection: options.collection,
@@ -216,7 +345,6 @@ export async function searchBm25(
     exclude: options.exclude,
     relPathPrefix: options.retrievalScope?.relPathPrefix,
     language: options.lang,
-    snippet: !(options.full || options.lineNumbers),
     tagsAll: options.tagsAll,
     tagsAny: options.tagsAny,
     since: temporalRange.since,
@@ -265,10 +393,9 @@ export async function searchBm25(
       ftsResult.value.map((f) => f.mirrorHash).filter((h): h is string => !!h)
     ),
   ];
+  const needsAllChunks = Boolean(options.intent || options.exclude?.length);
   const chunksMapResult =
-    store.getChunksBySequenceBatch &&
-    !options.intent &&
-    !options.exclude?.length
+    store.getChunksBySequenceBatch && !needsAllChunks
       ? await store.getChunksBySequenceBatch(
           ftsResult.value
             .filter((row) => !!row.mirrorHash)
@@ -278,6 +405,10 @@ export async function searchBm25(
   const getChunk = chunksMapResult.ok
     ? createChunkLookup(chunksMapResult.value)
     : () => undefined;
+  const allChunks =
+    chunksMapResult.ok && (needsAllChunks || !store.getChunksBySequenceBatch)
+      ? chunksMapResult.value
+      : undefined;
 
   // Dedup: multiple docs can share mirror_hash (content-addressed storage)
   // Track seen uri+seq to eliminate duplicate rows from join fan-out
@@ -326,11 +457,7 @@ export async function searchBm25(
 
     const excluded =
       matchesExcludedText(
-        [
-          fts.title ?? "",
-          fts.recordSourcePath ?? fts.relPath ?? "",
-          fts.snippet ?? "",
-        ],
+        [fts.title ?? "", fts.recordSourcePath ?? fts.relPath ?? ""],
         options.exclude
       ) ||
       matchesExcludedChunks(
@@ -464,6 +591,9 @@ export async function searchBm25(
   }
 
   const finalResults = filteredResults.slice(0, limit);
+  if (!(options.full || options.lineNumbers)) {
+    await attachChunkSnippets(store, finalResults, query, options, allChunks);
+  }
   for (const [index, result] of finalResults.entries()) {
     const metadata = result[SEARCH_RESULT_PLANNER_METADATA];
     if (metadata) metadata.retrievalRank = index + 1;

@@ -329,6 +329,39 @@ test("approved role additions reuse child; same identity replacement drains and 
   ).toThrow();
 });
 
+test("a worker that cannot start reports why, not only that it exited", async () => {
+  // An oversized bootstrap fails before spawn, as any host-side start error.
+  const owner = new NativeWorkerClient({
+    models: [
+      {
+        id: "embed",
+        type: "embed",
+        modelUri: `file:/${"x".repeat(16_384)}.gguf`,
+        path: "/approved.gguf",
+      },
+    ],
+    loadTimeout: 1000,
+    inferenceTimeout: 1000,
+    entryPath: fixture,
+  });
+  clients.push(owner);
+  const result = await owner.request({
+    op: "embed",
+    modelId: "embed",
+    text: "x",
+  });
+  expect(result.ok).toBe(false);
+  if (result.ok) return;
+  expect(result.error.code).toBe("INFERENCE_FAILED");
+  expect(result.error.message).toStartWith(
+    "Native worker failure: exited (ZodError: "
+  );
+  expect(result.error.message).toContain(
+    "Native bootstrap exceeds control capacity"
+  );
+  expect(owner.processId).toBeUndefined();
+});
+
 test("startup timeout kills its actual child and settles the waiting request", async () => {
   const entryPath = join(root, "never-ready.ts");
   await Bun.write(

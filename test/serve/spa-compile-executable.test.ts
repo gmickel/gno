@@ -89,5 +89,6 @@ test("virtual Bun roots are detected without classifying source paths as compile
     "B:/~BUN-backup/app.exe",
   ])
     expect(isBunfsPath(path)).toBe(false);
+  expect(isBunfsPath(undefined)).toBe(false);
   expect(isStandaloneExecutable()).toBe(false);
 });

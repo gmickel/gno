@@ -469,7 +469,6 @@ describe("activation receipt store", () => {
     const result = await adapter.searchFts("sharedterm", {
       collection: "notes",
       limit: 1,
-      snippet: false,
     });
     expect(result.ok).toBe(true);
     if (!result.ok) {

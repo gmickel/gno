@@ -6,6 +6,8 @@ import { tmpdir } from "node:os";
 // node:path — no Bun path utils.
 import { basename, join, relative } from "node:path";
 
+import { moduleDir, modulePath } from "../core/module-path";
+
 export const ROOT_MOUNT_MARKER = 'getElementById("root")';
 
 export type ProductionSpaFile = {
@@ -19,7 +21,8 @@ export type ProductionSpaAssets = {
   sourceHash: string;
 };
 
-const productionSpaPublicDir = (): string => join(import.meta.dir, "public");
+const productionSpaPublicDir = (): string =>
+  join(moduleDir(import.meta), "public");
 
 export const productionSpaEntryPath = (): string =>
   join(productionSpaPublicDir(), "index.html");
@@ -79,13 +82,14 @@ const contentTypeFor = (path: string): string => {
   return "application/octet-stream";
 };
 
-export const isBunfsPath = (path: string): boolean => {
+export const isBunfsPath = (path: string | undefined): boolean => {
+  if (path === undefined) return false;
   const normalized = path.replaceAll("\\", "/");
   return normalized.includes("/$bunfs/") || normalized.startsWith("B:/~BUN/");
 };
 
 export const isStandaloneExecutable = (): boolean =>
-  isBunfsPath(import.meta.path);
+  isBunfsPath(modulePath(import.meta));
 
 const rewriteProductionHtml = (html: string, jsEntryPath: string): string => {
   const script = `<script type="module" src="/${basename(jsEntryPath)}"></script>`;

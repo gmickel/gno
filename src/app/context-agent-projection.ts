@@ -3,7 +3,7 @@
 import type { ContextCapsuleV1 } from "../core/context-capsule";
 
 export const CONTEXT_AGENT_PROJECTION_SCHEMA_VERSION =
-  "gno-context-agent-v1" as const;
+  "gno-context-agent-v2" as const;
 
 export interface ContextAgentProjectionEvidence {
   uri: string;
@@ -17,6 +17,9 @@ export interface ContextAgentProjectionEvidence {
   contextIds: readonly string[];
   egress: "local_only" | "lan" | "remote" | "unclassified" | "unavailable";
   text: string;
+  /** Content date (frontmatter or record date), never the file mtime. */
+  documentDate: string | null;
+  supersededBy: string | null;
 }
 
 export interface ContextAgentProjectionGuidance {
@@ -97,6 +100,8 @@ type EvidenceTuple = readonly [
   heading: string | null,
   contextIds: readonly string[],
   egress: ContextAgentProjectionEvidence["egress"],
+  documentDate: string | null,
+  supersededBy: string | null,
 ];
 
 type GuidanceTuple = readonly [
@@ -207,6 +212,8 @@ const projection = (
       item.heading,
       item.contextIds,
       item.egress,
+      item.documentDate,
+      item.supersededBy,
     ]),
     g: [
       source.guidance.evidenceTrust,
@@ -275,6 +282,8 @@ export const projectContextCapsuleForAgent = (
     contextIds: item.contextIds,
     egress: item.egress,
     text: item.text,
+    documentDate: item.documentDate,
+    supersededBy: item.supersededBy ?? null,
   })),
   coverage: {
     requestedFacets: capsule.coverage.requestedFacets,

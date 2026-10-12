@@ -99,6 +99,8 @@ describe("Capsule prototype with production model-visible projection", () => {
           null,
           [],
           "unavailable",
+          null,
+          null,
         ]);
       }
     }

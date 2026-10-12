@@ -30,7 +30,7 @@ import {
   normalizeWikiName,
   parseLinks,
 } from "../core/links";
-import { extractMemoryScopes } from "../core/memory-record";
+import { validateMemoryRecord } from "../core/memory-record";
 import { extractDocumentMetadata, extractTags } from "./document-metadata";
 import { buildLineOffsets } from "./position";
 import { type ExcludedRange, getExcludedRanges } from "./strip";
@@ -205,9 +205,19 @@ export async function prepareFile(
     request.contentTypeRules
   );
   const tags = extractTags(markdown);
-  const memoryScopes = request.memoryManaged
-    ? extractMemoryScopes(markdown)
-    : null;
+  let memoryScopes: string[] | null = null;
+  if (request.memoryManaged) {
+    const memoryRecord = validateMemoryRecord(markdown);
+    // Indexed scopes are the validated set, or none when malformed.
+    memoryScopes = memoryRecord.ok
+      ? memoryRecord.record.frontmatter.scopes
+      : [];
+    // A memory fact's content date is its record date (`memory.createdAt`)
+    // unless its frontmatter names an explicit date of its own.
+    if (memoryRecord.ok && !metadata.frontmatterDate) {
+      metadata.frontmatterDate = memoryRecord.record.frontmatter.createdAt;
+    }
+  }
   const stopAfterMetadata = step("metadata extraction");
   if (stopAfterMetadata) return { ok: false, error: stopAfterMetadata };
 

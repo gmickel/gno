@@ -82,6 +82,9 @@ export async function startMcpServer(options: McpServerOptions): Promise<void> {
     indexName: canonicalizeIndexName(options.indexName ?? DEFAULT_INDEX_NAME),
     configPath: options.configPath,
     syncConfig: !activationVerification,
+    // A connector proof opens a one-collection verification config against
+    // the full index, read-only.
+    allowStaleCollections: activationVerification,
   });
 
   if (!init.ok) {

@@ -35,12 +35,16 @@ export type PlanAction =
   | "update" // block present but differs — replace in place
   | "current" // block present and identical — no-op
   | "remove" // uninstall: block present — remove it
-  | "absent" // uninstall: no block — no-op
+  | "absent" // update/uninstall: no block — no-op, file untouched
   | "covered" // import chain or same real file — another target owns it
   | "not-detected" // harness not installed on this machine — skipped
   | "error"; // fail-closed (malformed markers, unreadable file)
 
-export type PlanMode = "install" | "uninstall";
+/** `update` refreshes existing blocks only; it never appends or creates. */
+export type PlanMode = "install" | "update" | "uninstall";
+
+const UPDATE_ABSENT_DETAIL =
+  "no GNO agents block to refresh; run `gno agents install` to add one";
 
 export interface TargetPlan {
   target: ResolvedTarget;
@@ -259,6 +263,15 @@ export async function planTargets(
             }
           : { ...base, action: "absent", newContent: content }
       );
+      continue;
+    }
+    if (mode === "update" && !extraction.found) {
+      plans.push({
+        ...base,
+        action: "absent",
+        detail: UPDATE_ABSENT_DETAIL,
+        newContent: content,
+      });
       continue;
     }
 

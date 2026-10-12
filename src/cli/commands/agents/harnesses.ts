@@ -183,25 +183,32 @@ function isDirectory(path: string): boolean {
   }
 }
 
+/**
+ * The harness's documented config-dir override from the environment
+ * (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`): trimmed, unset when empty, and
+ * rejected unless absolute. Shared with `gno skill` user-scope resolution.
+ */
+export function harnessConfigDirFromEnv(id: HarnessId): string | undefined {
+  const envVar = HARNESS_DEFS[id].configDirEnvVar;
+  const value = envVar ? process.env[envVar]?.trim() : undefined;
+  if (!(envVar && value)) {
+    return undefined;
+  }
+  if (!isAbsolute(value)) {
+    throw new CliError("VALIDATION", `${envVar} must be an absolute path`);
+  }
+  return normalize(value);
+}
+
 function resolveHarness(
   def: HarnessDef,
   home: string,
   explicitHome: boolean
 ): ResolvedTarget {
-  let configDir = join(home, def.configDir);
-
-  if (!explicitHome && def.configDirEnvVar) {
-    const envOverride = process.env[def.configDirEnvVar];
-    if (envOverride) {
-      if (!isAbsolute(envOverride)) {
-        throw new CliError(
-          "VALIDATION",
-          `${def.configDirEnvVar} must be an absolute path`
-        );
-      }
-      configDir = normalize(envOverride);
-    }
-  }
+  const envOverride = explicitHome
+    ? undefined
+    : harnessConfigDirFromEnv(def.id);
+  const configDir = envOverride ?? join(home, def.configDir);
 
   // A covered harness (grok → claude) reads its covering harness's file and
   // has none of its own, so that is the file its rows report.

@@ -66,6 +66,8 @@ export const productionCapsuleProjectionFixture = (taskId: string): string => {
         contextIds: [],
         egress: "unavailable",
         text,
+        documentDate: null,
+        supersededBy: null,
       },
     ],
     coverage: {

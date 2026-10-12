@@ -7,7 +7,7 @@ import type {
   TrajectoryReceipt,
 } from "../../../evals/agentic/types";
 
-import { sha256Bytes } from "../../../evals/agentic/canonical";
+import { canonicalJson, sha256Bytes } from "../../../evals/agentic/canonical";
 import {
   evaluatePromotionGates,
   pairPromotionCohorts,
@@ -175,6 +175,58 @@ describe("strict Capsule promotion identity", () => {
     );
     expect(evaluatePromotionGates([ambiguous]).failures).toContainEqual(
       expect.stringContaining("candidate_capsule_payload_missing_or_ambiguous")
+    );
+  });
+
+  test("accepts v2 payloads and recorded v1 receipts, but not mixed shapes", () => {
+    const withPayload = (
+      edit: (projection: { v: string; e: unknown[][] }) => void
+    ): PromotionPair => {
+      const pair = promotionPair();
+      const projection = JSON.parse(
+        productionCapsuleProjectionFixture(pair.taskId)
+      ) as { v: string; e: unknown[][] };
+      edit(projection);
+      const payload = canonicalJson(projection);
+      pair.candidate.receipt.canonical.calls[0]!.result.content = payload;
+      pair.candidate.replay.first = {
+        canonicalJson: payload,
+        sha256: sha256Bytes(payload),
+      };
+      pair.candidate.replay.second = structuredClone(
+        pair.candidate.replay.first
+      );
+      return pair;
+    };
+    const replayFailures = (pair: PromotionPair): string[] =>
+      evaluatePromotionGates([pair]).failures.filter((failure) =>
+        failure.includes("capsule")
+      );
+
+    const v2 = withPayload((projection) => {
+      expect(projection.v).toBe("gno-context-agent-v2");
+      expect(projection.e[0]).toHaveLength(13);
+    });
+    expect(replayFailures(v2)).toEqual([]);
+
+    const v1 = withPayload((projection) => {
+      projection.v = "gno-context-agent-v1";
+      projection.e = projection.e.map((item) => item.slice(0, 11));
+    });
+    expect(replayFailures(v1)).toEqual([]);
+
+    const v1WithV2Tuples = withPayload((projection) => {
+      projection.v = "gno-context-agent-v1";
+    });
+    expect(replayFailures(v1WithV2Tuples)).toContainEqual(
+      expect.stringContaining("invalid_capsule_payload_replay")
+    );
+
+    const badDate = withPayload((projection) => {
+      projection.e[0]![11] = 20_261_012;
+    });
+    expect(replayFailures(badDate)).toContainEqual(
+      expect.stringContaining("invalid_capsule_payload_replay")
     );
   });
 

@@ -294,8 +294,10 @@ flag. If `absPath` is absent, show the URI tail and do not offer file-open for
 that row.
 
 Default snippets skip a leading YAML frontmatter fence and prefer document
-prose. When the FTS window is frontmatter-dominated, GNO falls back to the
-stripped chunk prose. `line` and `snippetRange.startLine` follow that trimmed
+prose. `gno search` takes each snippet from the chunk that best covers the
+query terms, highlights the terms with `<mark>`, and reports that chunk's lines
+in `snippetRange`. When the snippet window is frontmatter-dominated, GNO falls
+back to the stripped chunk prose. `line` and `snippetRange.startLine` follow that trimmed
 display range. `--full` and `--line-numbers` still emit the raw source. This
 display cleaning applies to `gno search`, `gno vsearch`, and `gno query`.
 For non-default indexes, emitted `gno://` URIs include output-only index
@@ -1805,6 +1807,14 @@ Options:
 
 Supported targets: Claude Code, Codex, OpenCode, OpenClaw, Hermes Agent. Use `all` to install to every target.
 
+At user scope, the Claude target follows `CLAUDE_CONFIG_DIR` and the Codex target follows `CODEX_HOME` when they are set, the same way `gno agents` does: the skill goes to `$CLAUDE_CONFIG_DIR/skills/gno` or `$CODEX_HOME/skills/gno`, and the command prints that directory. The value must be an absolute path. To install into several profile directories, run the command once per profile:
+
+```bash
+CLAUDE_CONFIG_DIR=~/.claude-instances/work gno skill install --scope user --target claude
+```
+
+`gno skill uninstall` and `gno skill paths` resolve the same directories.
+
 **Compatibility:** As of their current releases, Grok Build (the xAI grok CLI) automatically reads Claude skill directories (`.claude/skills/` and `~/.claude/skills/`) with no extra configuration, and Cursor loads agent skills from `.claude/skills/` and `.codex/skills/` (project and user scope) in addition to its own `.cursor/skills/`. `--target claude` therefore covers Grok Build and Cursor; `--target codex` is also read by Cursor. Other skill-capable clients can copy the installed files; `gno skill paths` prints their locations.
 
 ### gno skill uninstall
@@ -1892,6 +1902,11 @@ Refresh an installed block in place after a GNO upgrade (block version bump):
 ```bash
 gno agents update
 ```
+
+`update` only touches files that already contain the GNO block. A file
+without one is reported `absent` with a hint to run `gno agents install`, and
+is left as it is; no file is created. Use `gno agents install` to add the
+block.
 
 ### gno agents verify
 
@@ -2179,9 +2194,31 @@ gno status --json
 ```
 
 Status lists configured collections only, and the embedding backlog counts
-configured collections only. If you delete a collection by editing the config
-file by hand, its documents stay in the index until the next `gno update`,
-`gno index`, or `gno cleanup`; `gno collection remove` deletes them at once.
+configured collections only. Opening an index never deletes a collection: if
+the index holds documents of a collection the config does not list (you
+removed it by editing the config file, or a different `--config` points at
+this index), status lists it under `Collections not in this config` (JSON:
+`staleCollections`), and every other command refuses to open the index until
+you add the collection back, use a separate index (`--index <name>`), or run
+`gno cleanup` to delete its index data. `gno collection remove` deletes a
+collection's documents at once.
+
+Status checks each configured collection's folder when it runs. A folder that
+is missing or unreadable (an unmounted drive, an offline sync folder, a
+renamed directory) is named under its collection, and its documents are kept
+and still counted:
+
+```text
+  notes: 120 docs, 480 chunks
+    Root unavailable: /Volumes/Drive/notes
+      [SOURCE_AVAILABILITY_UNKNOWN] Collection root is missing or unreadable (ENOENT: no such file or directory); indexed documents were kept
+```
+
+JSON output adds `rootError` (`code`, `message`) to that collection, and
+`healthy` is false. The report clears as soon as the folder is back, without
+an update. For collections with `sourceAvailability: local`, status only checks
+that the folder exists, so it never downloads a cloud folder's listing. See
+[Troubleshooting](TROUBLESHOOTING.md#collection-root-could-not-be-resolved-after-an-update).
 
 Each collection in a [link workspace](CONFIGURATION.md#link-workspaces) gets a
 `Link workspace:` line with the workspace folder and whether it was detected
@@ -2272,6 +2309,9 @@ Checks include:
   state, chunk count and provenance, and runtimes measured incompatible
   (`vector-partitions`, warns when anything beyond one healthy partition exists)
 - per-collection corpus-derived lexical retrieval proof
+- collection folders that are missing or unreadable right now
+  (`collection-roots`, warning): each names the collection, its folder and
+  the error; indexed documents are kept
 - passive projection of explicit connector proof receipts
 - MCP registrations whose Bun or GNO path is missing or whose Bun is older
   than the supported minimum (`mcp-runtime`, error), or that use a different
@@ -2284,14 +2324,16 @@ Checks include:
 
 Doctor exits 2 when lexical activation fails. A collection with no documents
 yet is not a failure: doctor shows it as informational (`i`) with its
-remediation (add files, then `gno update`). Connector failures or a truncated
-projection remain warnings for process-exit purposes but make the structured
-doctor result non-healthy. Doctor never actively starts a connector or model.
+remediation (add files, then `gno update`). Connector failures, a truncated
+projection, or a missing collection folder remain warnings for process-exit
+purposes but make the structured doctor result non-healthy. Doctor never actively starts a connector or model.
 
 ### gno cleanup
 
-Remove documents of collections no longer in the config, then orphaned content,
-chunks, and vectors.
+Delete the documents of indexed collections the config does not list, then
+orphaned content, chunks, and vectors. Cleanup names each collection it
+deletes (`Deleted collections not in this config:`). It deletes whatever the
+config you pass omits, so run it with the config that owns the index.
 
 ```bash
 gno cleanup

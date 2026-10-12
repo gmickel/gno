@@ -68,7 +68,23 @@ export type StoreErrorCode =
   | "VEC_REBUILD_FAILED"
   | "VEC_SYNC_FAILED"
   /** Embedding would build a separate vector partition without confirmation. */
-  | "VECTOR_PARTITION_FORK";
+  | "VECTOR_PARTITION_FORK"
+  /** The index holds indexed collections the opening config does not list. */
+  | "STALE_COLLECTIONS";
+
+/** How a config sync treats collections the config no longer lists. */
+export interface SyncCollectionsOptions {
+  /** Explicitly removed names, or every unlisted collection ("stale"). */
+  remove?: readonly string[] | "stale";
+  /** Leave unlisted collections untouched instead of failing. */
+  keepStale?: boolean;
+}
+
+/** A collection in the index that the opening config does not list. */
+export interface StaleCollection {
+  name: string;
+  documents: number;
+}
 
 /** Store error with structured details */
 export interface StoreError {
@@ -738,8 +754,6 @@ export interface FtsSearchOptions extends DocumentEligibilityOptions {
    * so runtime language filtering is not currently implemented.
    */
   language?: string;
-  /** Include snippet with highlights */
-  snippet?: boolean;
   /** Match documents containing ANY positive term instead of ALL of them. */
   anyTerm?: boolean;
   /**
@@ -770,7 +784,6 @@ export interface FtsResult {
   mirrorHash: string;
   seq: number;
   score: number;
-  snippet?: string;
   // Joined from documents table
   docid?: string;
   uri?: string;
@@ -1614,10 +1627,21 @@ export interface StorePort {
   // ─────────────────────────────────────────────────────────────────────────
 
   /**
-   * Sync collections from config to DB.
-   * Adds new, updates existing, removes deleted.
+   * Sync collections from config to DB: adds new and updates existing ones.
+   * A collection in the index but not in `collections` is deleted only when
+   * it holds no documents or `options.remove` names it; otherwise the sync
+   * fails with STALE_COLLECTIONS and changes nothing, unless `keepStale`
+   * leaves those collections untouched (status and doctor).
    */
-  syncCollections(collections: Collection[]): Promise<StoreResult<void>>;
+  syncCollections(
+    collections: Collection[],
+    options?: SyncCollectionsOptions
+  ): Promise<StoreResult<void>>;
+
+  /** Collections in the index that `configured` does not list, with counts. */
+  listStaleCollections(
+    configured: readonly string[]
+  ): Promise<StoreResult<StaleCollection[]>>;
 
   /**
    * Sync contexts from config to DB.
@@ -2158,6 +2182,20 @@ export interface StorePort {
   getChunksBySequenceBatch?(
     keys: { mirrorHash: string; seq: number }[]
   ): Promise<StoreResult<Map<string, ChunkRow[]>>>;
+
+  /**
+   * Optional: for every chunk of the given documents, which of the given
+   * lowercase terms occur in its text (substring match on ASCII-lowercased
+   * text), computed in the database so chunk text is never loaded. Rows are
+   * ordered by mirrorHash, then seq; `present[i]` answers `terms[i]`. Callers
+   * fall back to getChunksBatch when this capability is absent.
+   */
+  getChunkTermPresence?(
+    mirrorHashes: string[],
+    terms: string[]
+  ): Promise<
+    StoreResult<{ mirrorHash: string; seq: number; present: boolean[] }[]>
+  >;
 
   // ─────────────────────────────────────────────────────────────────────────
   // FTS Search

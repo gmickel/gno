@@ -107,14 +107,17 @@ bounded graph expansion by default. Set `graph: false` or `noGraph: true`, or
 use fast mode, for an explicit graph-free request.
 
 For `gno_context`, MCP text is the compact, versioned
-`gno-context-agent-v1` projection delivered once to the model. The complete
+`gno-context-agent-v2` projection delivered once to the model. The complete
 canonical Capsule remains in `structuredContent` for application clients. The
 projection retains exact spans, gaps, budget state, retrieval fingerprints,
 model identities, and exact omission totals/reason counts. Its documented
 compact tuples avoid repeating descriptive field names; absent sparse omission
 reasons mean zero. It also retains adversarially escaped title/heading metadata,
 explicit egress state, context-to-evidence bindings, and configured guidance
-under an `untrusted_data`/`hard_delimited` marker. Active-token Capsules carry
+under an `untrusted_data`/`hard_delimited` marker. Each evidence entry ends with
+its content date (the document's own date, such as a frontmatter date or a
+memory fact's record date; never the file modification time) and, for a memory
+fact a newer fact superseded, the successor's URI; both are `null` when absent. Active-token Capsules carry
 their estimator and tokenizer fingerprint with the exact used-token count. The
 complete omission audit remains in `structuredContent`.
 Hosts that expose `structuredContent` to the model must account for it in
@@ -1465,7 +1468,10 @@ URI tail and do not offer file-open for that row.
 
 Check index health.
 
-Returns collection counts, document totals, and health status.
+Returns collection counts, document totals, and health status. A collection
+whose folder is missing or unreadable carries `rootError` (`{ code, message }`,
+no path), its text line reads `Root unavailable: ...`, and `healthy` is false;
+its documents stay indexed.
 
 Over stdio the response names the config file (`configPath`), the index
 database (`dbPath`), and each collection's root `path`. HTTP callers get none

@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The Web UI's Fast depth runs the same hybrid fast search as `gno query --fast` (keyword and semantic, no expansion or reranking) instead of keyword search only; it falls back to keyword search when the server reports vector search unavailable.
+- MCP `gno_context` returns the `gno-context-agent-v2` text to the model: each evidence passage also carries its content date and, for a superseded memory fact, the URI of the fact that replaced it, so agents no longer cite an outdated fact as current. Promotion receipts recorded with v1 still validate.
+
+### Fixed
+
+- `gno search` answers long natural-language questions in about 0.2-0.3 s instead of 2-11 s on a 2,300-document index: highlighted snippets are built only for the returned results instead of for every match. Results and scores are unchanged. Snippets and their line ranges now come from the part of the document that matches the query instead of always its first chunk.
+- Memory facts carry their record date (`memory.createdAt`) as their content date in Context Capsule evidence, `ask` sources, recency sorting and date filters. The next `gno update` reprocesses existing documents once to pick this up; embeddings are reused.
+- Opening an index with a config that does not list all of its collections no longer deletes them. Every command, the SDK, `gno serve`, `gno daemon` and `gno mcp` synced the config into the index on open and deleted each collection the config omitted together with its documents, so `gno --config other.yml search ...`, or an SDK client given a test config but no `dbPath`, silently emptied the normal index. Such an open now fails with an error that names the collections and how to resolve it (add them back, use a separate index, or run `gno cleanup`), and changes nothing. `gno status` lists them under `Collections not in this config` (JSON `staleCollections`). Deleting a collection's documents now takes an explicit removal: `gno collection remove` / `rename` (and their MCP, REST and SDK forms), a running server adopting a config edit, or `gno cleanup`, which now names each collection it deletes.
+- `gno status`, `gno doctor`, MCP `gno_status`, SDK `status()`, `GET /api/status` and the Web UI now name a collection whose folder is missing or unreadable (an unmounted drive, an offline sync folder) with the error, instead of only counting a recent error and reporting the index healthy. The collection gets `rootError` (`{ code, message }`), health turns degraded and `gno doctor` adds a `collection-roots` warning; its documents stay indexed, and the report clears as soon as the folder is back, without waiting for a sync.
+- When the local model worker cannot start, its error now says why instead of only `exited`.
+- `gno agents update` only refreshes files that already contain the GNO block. A file without one is reported `absent` with a hint to run `gno agents install` and is left untouched; update no longer appends a block or creates files such as `~/.hermes/SOUL.md`.
+- `gno skill install`, `uninstall` and `paths` at user scope use `CLAUDE_CONFIG_DIR` for Claude and `CODEX_HOME` for Codex when set, as `gno agents` already did, so Claude Code and Codex profile directories receive the skill. A blank value counts as unset and surrounding whitespace is ignored (also for `gno agents`).
+
+### Development
+
+- `bun run eval:memory` runs again (it hung since 2.8.3): indexing and the model worker now find their own files when loaded outside Bun's module loader, and the pinned eval runner is patched so an eval that throws exits non-zero instead of hanging. The ask eval's sources carry the hashes grounded answers require, so it measures generated answers again, and the agentic eval's write lane checks embeddings through the index's own status.
+
+### Security
+
+- Updated `@modelcontextprotocol/client` and `@modelcontextprotocol/server` to 2.3.1 (the 2.0 client's OAuth flow could send credentials to an authorization server chosen by the MCP server), `sharp` to 0.35.5 (librsvg CVE-2026-96889) and the development dependency `vitest` to 4.1.11 (path traversal through the mocker redirect).
+
 ## [2.11.0] - 2026-10-12
 
 ### Changed

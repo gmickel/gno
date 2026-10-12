@@ -6,7 +6,7 @@
  * @module src/cli/commands/cleanup
  */
 
-import type { CleanupStats } from "../../store/types";
+import type { CleanupStats, StaleCollection } from "../../store/types";
 
 import { getIndexDbPath } from "../../app/constants";
 import { isInitialized, loadConfig } from "../../config";
@@ -26,7 +26,12 @@ export interface CleanupOptions {
  * Result of cleanup command.
  */
 export type CleanupResult =
-  | { success: true; stats: CleanupStats }
+  | {
+      success: true;
+      stats: CleanupStats;
+      /** Indexed collections the config omits, deleted by this cleanup. */
+      droppedCollections: StaleCollection[];
+    }
   | { success: false; error: string };
 
 /**
@@ -64,7 +69,17 @@ export async function cleanup(
   try {
     // Drop collections no longer in the config first (their documents follow
     // by cascade), so their content, chunks and vectors count as orphans.
-    const syncResult = await store.syncCollections(config.collections);
+    // This is the explicit removal path; it names what it deletes.
+    const stale = await store.listStaleCollections(
+      config.collections.map(({ name }) => name)
+    );
+    if (!stale.ok) {
+      return { success: false, error: stale.error.message };
+    }
+    const droppedCollections = stale.value.filter((c) => c.documents > 0);
+    const syncResult = await store.syncCollections(config.collections, {
+      remove: droppedCollections.map(({ name }) => name),
+    });
     if (!syncResult.ok) {
       return { success: false, error: syncResult.error.message };
     }
@@ -74,7 +89,7 @@ export async function cleanup(
       return { success: false, error: cleanupResult.error.message };
     }
 
-    return { success: true, stats: cleanupResult.value };
+    return { success: true, stats: cleanupResult.value, droppedCollections };
   } finally {
     await store.close();
   }
@@ -88,18 +103,25 @@ export function formatCleanup(result: CleanupResult): string {
     return `Error: ${result.error}`;
   }
 
-  const { stats } = result;
+  const { stats, droppedCollections } = result;
   const total =
     stats.orphanedContent +
     stats.orphanedChunks +
     stats.orphanedVectors +
     stats.expiredCache;
+  const dropped = droppedCollections.map(
+    (c) =>
+      `  ${c.name}: ${c.documents} ${c.documents === 1 ? "document" : "documents"}`
+  );
+  const droppedLines = dropped.length
+    ? ["Deleted collections not in this config:", ...dropped]
+    : [];
 
   if (total === 0) {
-    return "No orphans found. Index is clean.";
+    return [...droppedLines, "No orphans found. Index is clean."].join("\n");
   }
 
-  const lines: string[] = ["Cleanup complete:"];
+  const lines: string[] = [...droppedLines, "Cleanup complete:"];
 
   if (stats.orphanedContent > 0) {
     lines.push(`  Orphaned content: ${stats.orphanedContent}`);

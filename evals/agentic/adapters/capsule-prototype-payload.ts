@@ -126,6 +126,8 @@ const projectionSource = (
       contextIds: [],
       egress: "unavailable",
       text: item.text,
+      documentDate: null,
+      supersededBy: null,
     })),
     coverage: {
       requestedFacets: context.facets,

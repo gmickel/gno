@@ -189,6 +189,7 @@ import {
   withContentTypeRules,
 } from "../ingestion";
 import { updateFrontmatterTags } from "../ingestion/frontmatter";
+import { withCollectionRootErrors } from "../ingestion/source-availability/root";
 import {
   withInferenceScope,
   finishInferenceCleanup,
@@ -1541,7 +1542,7 @@ class GnoClientImpl implements GnoClient {
       })
     );
     return {
-      ...status,
+      ...(await withCollectionRootErrors(status, this.config.collections)),
       contentTypeBoost: buildContentTypeBoostStatus(
         this.config.contentTypes ?? []
       ),

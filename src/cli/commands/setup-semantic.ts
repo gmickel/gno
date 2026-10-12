@@ -21,6 +21,7 @@ import type { FolderSetupReceipt } from "../../core/setup-receipt";
 import { VERSION } from "../../app/constants";
 import { canonicalizeIndexName } from "../../app/index-name";
 import { withWriteLock } from "../../core/file-lock";
+import { moduleDir } from "../../core/module-path";
 import {
   setupFingerprint,
   setupRootFingerprint,
@@ -427,7 +428,11 @@ function createSemanticReceipt(
 async function defaultSpawnWorker(
   receipt: SetupSemanticReceipt
 ): Promise<SpawnedSemanticWorker> {
-  const workerPath = join(import.meta.dir, "..", "setup-semantic-worker.ts");
+  const workerPath = join(
+    moduleDir(import.meta),
+    "..",
+    "setup-semantic-worker.ts"
+  );
   const descriptor = openSync(receipt.logPath, "a", 0o600);
   try {
     const child = Bun.spawn({

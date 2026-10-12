@@ -219,11 +219,23 @@ test("frozen 1000-chunk fixture: exact paired lexical/vector output with only th
         0
       ),
     });
-    expect(candidate.counts).toEqual({
-      calls: 1,
-      rows: 1,
-      characters: fixture.chunks[vector ? 777 : 0]!.text.length,
-    });
+    // Lexical ranking hydrates sequence zero; its snippet then loads only the
+    // chunk that holds the terms (777), chosen from in-database presence.
+    expect(candidate.counts).toEqual(
+      vector
+        ? { calls: 1, rows: 1, characters: fixture.chunks[777]!.text.length }
+        : {
+            calls: 2,
+            rows: 2,
+            characters:
+              fixture.chunks[0]!.text.length + fixture.chunks[777]!.text.length,
+          }
+    );
+    if (!vector && candidate.output.ok)
+      expect(candidate.output.value.results[0]?.snippetRange).toEqual({
+        startLine: fixture.chunks[777]!.startLine,
+        endLine: fixture.chunks[777]!.endLine,
+      });
   }
 });
 

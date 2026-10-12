@@ -95,6 +95,18 @@ describe("agents receipt schemas", () => {
     const uninstall = takeReceipt() as { command: string };
     expect(assertValid(uninstall, mutationSchema)).toBe(true);
     expect(uninstall.command).toBe("uninstall");
+
+    // update on files without a block: absent rows with the install hint.
+    await installAgents(
+      { target: "codex", homeDir: FAKE_HOME, json: true },
+      "update"
+    );
+    const absent = takeReceipt() as {
+      results: { action: string; detail?: string }[];
+    };
+    expect(assertValid(absent, mutationSchema)).toBe(true);
+    expect(absent.results[0]?.action).toBe("absent");
+    expect(absent.results[0]?.detail).toContain("gno agents install");
   });
 
   test("live verify receipts (ok and failing) match agents-verify", async () => {

@@ -241,11 +241,15 @@ the model with `id`, `model`, `dimensions`, `state` (`active`|`shadow`),
 `compatibleRuntimes` (runtimes that read it) and `incompatibleRuntimes`.
 Terminal output prints a `Vector partitions:` block
 unless there is exactly one healthy partition. `collections`, `totalDocuments`
-and `totalChunks` cover configured collections only: a collection removed from
-config is not reported even while its rows remain in the index until the next
-command that syncs collections (`gno update`, `gno index`, `gno cleanup`). The
+and `totalChunks` cover configured collections only. Opening an index never
+deletes a collection that has documents: one the config does not list (removed
+by hand, or a different config opened this index) is reported in
+`staleCollections` (`name`, `documents`; omitted when empty) and under
+`Collections not in this config` in text and Markdown, and every command other
+than `status`, `doctor`, `cleanup` and `collection remove/rename` exits with an
+error naming it until it is added back or `gno cleanup` deletes it. The
 embedding backlog likewise counts chunks of configured collections only.
-`gno collection remove` syncs at once, so no rows remain. `totalChunks` counts the
+`gno collection remove` deletes the collection's documents at once. `totalChunks` counts the
 distinct chunks of active documents; chunks left by deleted documents do not
 count. Per-collection chunk totals remain deduplicated by canonical chunk;
 embedded counts require matching current inputs for every active owner within
@@ -362,6 +366,29 @@ collection has documents).
 Semantic and connector stages remain independent; passive status never starts a
 model runtime or connector process. `gno status` still exits 0 when activation
 is unhealthy so scripts can inspect the structured state.
+
+Status checks every configured collection root when it runs, so the report
+reflects the folder now, not the last sync. A root is unavailable when it
+cannot be listed (the check `gno update` uses before proving a file deleted:
+open the directory and read one entry). For `sourceAvailability: local`
+collections only existence is checked (`stat`, a directory), so status never
+lists, and so never materializes, a dataless cloud folder; a partially present
+cloud folder is not reported. The checks run concurrently and add no timeout
+of their own. An unavailable root adds `rootError` to that collection:
+
+```json
+"rootError": {
+  "code": "SOURCE_AVAILABILITY_UNKNOWN",
+  "message": "Collection root is missing or unreadable (ENOENT: no such file or directory); indexed documents were kept"
+}
+```
+
+The message names the filesystem error but never the path (`path` carries it,
+and is omitted for remote REST/HTTP MCP callers). The collection's documents
+stay indexed and counted, and `healthy` is false (terminal `Health: DEGRADED`).
+Terminal output prints `Root unavailable: <path>` and `[<code>] <message>`
+under the collection line; Markdown output adds a `Root unavailable` line after
+the collections table. The key is absent while the root is available.
 
 JSON output also includes `resident` using
 `gno://schemas/resident-status@1.0`. Direct `gno status` is intentionally
@@ -1497,6 +1524,16 @@ Important notes:
 - negation is supported only when at least one positive term exists
 - hyphenated compounds such as `real-time`, `gpt-4`, and `DEC-0054` are handled intentionally
 - malformed lexical syntax returns exit code `1`
+
+**Snippets:**
+
+Ranking never builds snippets. After the final rows are chosen, each default
+snippet is a window of about 32 words from the stored chunk that best covers
+the positive query terms (rarer terms count more; ties go to the earliest
+chunk), with matching words wrapped in `<mark>`/`</mark>` and `...` where the
+window cuts the chunk. `snippetRange` and `line` name that chunk's line span
+(after any leading frontmatter is skipped). With `--intent`, the steered chunk
+is used. `--full` and `--line-numbers` return raw text without markers.
 
 **Output (JSON):**
 See [Output Schemas](./output-schemas/search-results.schema.json)
@@ -2965,8 +3002,11 @@ included, is refused. JSON output is
 
 ### gno cleanup
 
-Remove documents of collections no longer in the config, then orphaned
-content, chunks, and vectors not referenced by active documents.
+Delete the documents of indexed collections the config does not list, then
+orphaned content, chunks, and vectors not referenced by active documents. The
+output starts with `Deleted collections not in this config:` and one
+`<name>: <n> document(s)` line per deleted collection when there are any. This is
+the only command that deletes collections the config omits.
 
 **Synopsis:**
 
@@ -3076,6 +3116,13 @@ signals a process. Its repair restarts the resident: `gno <kind> --stop` then
 start it again, or, for a resident started by another GNO version (which
 `--stop` refuses), `kill <pid>` (`taskkill /PID <pid>` on Windows) and start it
 again.
+
+The `collection-roots` check applies the `gno status` root check to every
+configured collection. It is `ok` when all roots are available and `warn`
+otherwise: the message lists the collections, and `details` holds one line
+per collection (`<name>: <path> [<code>] <message>`) plus the repair
+(reconnect or restore the folder; if it moved, change the collection's path
+and run `gno update`). The warning keeps exit 0 but makes `healthy` false.
 
 The `findings-pass` check reports the daemon's scheduled findings pass from
 its persisted run state: `ok` when disabled or the last run succeeded, `warn`
@@ -3462,15 +3509,22 @@ gno skill install [--scope <project|user>] [--target <claude|codex|opencode|open
 
 **Options:**
 
-| Option     | Type    | Default | Description                                                   |
-| ---------- | ------- | ------- | ------------------------------------------------------------- |
-| `--scope`  | string  | project | `project` (.claude/skills/) or `user` (~/.claude/skills/)     |
-| `--target` | string  | claude  | `claude`, `codex`, `opencode`, `openclaw`, `hermes`, or `all` |
-| `--force`  | boolean | false   | Overwrite existing skill without prompting                    |
+| Option     | Type    | Default | Description                                                                                         |
+| ---------- | ------- | ------- | --------------------------------------------------------------------------------------------------- |
+| `--scope`  | string  | project | `project` (.claude/skills/) or `user` (~/.claude/skills/, or `$CLAUDE_CONFIG_DIR/skills/` when set) |
+| `--target` | string  | claude  | `claude`, `codex`, `opencode`, `openclaw`, `hermes`, or `all`                                       |
+| `--force`  | boolean | false   | Overwrite existing skill without prompting                                                          |
 
 **Behavior:**
 
-1. Resolves target path based on scope and target
+1. Resolves target path based on scope and target. At user scope the Claude
+   target uses `$CLAUDE_CONFIG_DIR/skills/gno` and the Codex target
+   `$CODEX_HOME/skills/gno` when the variable is set (trimmed; empty means
+   unset; a relative path is a validation error, exit 1), validated exactly
+   as `gno agents` does. `GNO_SKILLS_HOME_OVERRIDE` suppresses both variables;
+   `CLAUDE_SKILLS_DIR`/`CODEX_SKILLS_DIR` take precedence over everything.
+   The same resolution applies to `skill uninstall` and `skill paths`, and the
+   output prints the resolved directory.
 2. If skill exists and not `--force`/`--yes`: error
 3. Atomically installs skill directory (temp + rename)
 4. Copies SKILL.md, reference files, and nested recipe files
@@ -3685,6 +3739,8 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
    same real file are written once (`covered via <target> (same file)`).
 6. `GNO_AGENTS_HOME_OVERRIDE` overrides the home directory (testing/sandboxed
    verification); any home override suppresses harness config-dir env vars.
+   `CLAUDE_CONFIG_DIR`/`CODEX_HOME` are trimmed, an empty value counts as
+   unset, and a relative path is a validation error.
 
 **Output (JSON):**
 
@@ -3716,7 +3772,8 @@ gno agents install [--target <claude|codex|cursor|opencode|grok|hermes|openclaw|
 ```
 
 `action` is one of `install`, `update`, `current`, `covered`, `not-detected`,
-`error` (and `remove`, `absent` for uninstall). A covered row's `path` is the
+`error` (and `remove` for uninstall; `absent` for update and uninstall when
+the file holds no block). A covered row's `path` is the
 file the harness actually reads (its covering target's file). With
 `--dry-run`, a `diffs` array of unified diffs is included. When
 any target failed on install/update, `manualBlock` carries the complete block
@@ -3736,8 +3793,13 @@ text to paste. Schema: `spec/output-schemas/agents-mutation.schema.json`
 ### gno agents update
 
 Refresh an installed block in place (block-version migration). Same options,
-output, and exit codes as `agents install`; both verbs converge the block to
-the current release — `update` exists for operator intent clarity.
+output, and exit codes as `agents install`, and an existing block converges
+to the current release exactly as with install. Unlike install, `update`
+never adds a block: a target whose file has no GNO agents block (or does not
+exist) is reported `absent` with the detail
+``no GNO agents block to refresh; run `gno agents install` to add one``,
+and the file is left untouched (no write, no backup, no file created). An
+`absent` row is not a failure (exit 0).
 
 ```bash
 gno agents update [--target <...>] [--extra-dir <path>]... [--dry-run] [--json]
@@ -4827,23 +4889,23 @@ Write-lease contention on `index` / `update` / `embed` does not use the generic 
 
 ## Environment Variables
 
-| Variable                   | Description                                                                                                                                                                     |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GNO_CONFIG_DIR`           | Override config directory                                                                                                                                                       |
-| `GNO_DATA_DIR`             | Override data directory (DB location)                                                                                                                                           |
-| `GNO_CACHE_DIR`            | Override cache directory (models)                                                                                                                                               |
-| `NO_COLOR`                 | Disable colored output (standard)                                                                                                                                               |
-| `PAGER`                    | Pager for long output (default: less -R on Unix, built-in on Windows)                                                                                                           |
-| `GNO_SKILLS_HOME_OVERRIDE` | Override home dir for skill user scope (testing)                                                                                                                                |
-| `GNO_MEMORY_CALLER`        | Default `--caller` identity for `gno remember` / `gno recall`                                                                                                                   |
-| `GNO_MEMORY_SESSION`       | Default `--session` identity for `gno remember` / `gno recall`                                                                                                                  |
-| `CLAUDE_SKILLS_DIR`        | Override Claude skills directory                                                                                                                                                |
-| `CODEX_SKILLS_DIR`         | Override Codex skills directory                                                                                                                                                 |
-| `CLAUDE_CONFIG_DIR`        | Claude Code config dir; `gno agents` resolves Claude's instruction file under it (suppressed by an explicit home override); `gno sessions discover` also checks its `projects/` |
-| `CODEX_HOME`               | Codex config dir; same rule as `CLAUDE_CONFIG_DIR`; `gno sessions discover` checks its `sessions/`                                                                              |
-| `OPENCLAW_STATE_DIR`       | OpenClaw state dir checked by `gno sessions discover` (else `$OPENCLAW_HOME/.openclaw` or `~/.openclaw`)                                                                        |
-| `HERMES_HOME`              | Hermes home checked by `gno sessions discover` (else `~/.hermes`)                                                                                                               |
-| `GNO_SESSIONS_HOOKS`       | `off` or `0` makes every installed `gno sessions hook` return immediately without admitting work                                                                                |
+| Variable                   | Description                                                                                                                                                                                                                       |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GNO_CONFIG_DIR`           | Override config directory                                                                                                                                                                                                         |
+| `GNO_DATA_DIR`             | Override data directory (DB location)                                                                                                                                                                                             |
+| `GNO_CACHE_DIR`            | Override cache directory (models)                                                                                                                                                                                                 |
+| `NO_COLOR`                 | Disable colored output (standard)                                                                                                                                                                                                 |
+| `PAGER`                    | Pager for long output (default: less -R on Unix, built-in on Windows)                                                                                                                                                             |
+| `GNO_SKILLS_HOME_OVERRIDE` | Override home dir for skill user scope (testing)                                                                                                                                                                                  |
+| `GNO_MEMORY_CALLER`        | Default `--caller` identity for `gno remember` / `gno recall`                                                                                                                                                                     |
+| `GNO_MEMORY_SESSION`       | Default `--session` identity for `gno remember` / `gno recall`                                                                                                                                                                    |
+| `CLAUDE_SKILLS_DIR`        | Override Claude skills directory                                                                                                                                                                                                  |
+| `CODEX_SKILLS_DIR`         | Override Codex skills directory                                                                                                                                                                                                   |
+| `CLAUDE_CONFIG_DIR`        | Claude Code config dir; `gno agents` resolves Claude's instruction file and `gno skill --scope user` the Claude skill dir under it (suppressed by an explicit home override); `gno sessions discover` also checks its `projects/` |
+| `CODEX_HOME`               | Codex config dir; same rule as `CLAUDE_CONFIG_DIR` (instruction file and user-scope skill dir); `gno sessions discover` checks its `sessions/`                                                                                    |
+| `OPENCLAW_STATE_DIR`       | OpenClaw state dir checked by `gno sessions discover` (else `$OPENCLAW_HOME/.openclaw` or `~/.openclaw`)                                                                                                                          |
+| `HERMES_HOME`              | Hermes home checked by `gno sessions discover` (else `~/.hermes`)                                                                                                                                                                 |
+| `GNO_SESSIONS_HOOKS`       | `off` or `0` makes every installed `gno sessions hook` return immediately without admitting work                                                                                                                                  |
 
 ---
 

@@ -872,7 +872,6 @@ describe("lexical activation verifier", () => {
     const topHits = await adapter.searchFts("crowdedterm0", {
       collection: "notes",
       limit: 8,
-      snippet: false,
     });
     expect(topHits.ok).toBe(true);
     if (topHits.ok) {

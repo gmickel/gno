@@ -708,6 +708,22 @@ lost embeddings. Search results from a runtime that cannot reproduce the stored
 vectors fall back to lexical retrieval and carry a
 `meta.warnings[].code: "vector_runtime_incompatible"` notice.
 
+Each status request checks every configured collection folder, the same way
+`gno status` does. While a folder is missing or unreadable, its collection
+carries `rootError`, its documents stay indexed and counted, `healthy` is
+false, and `health.checks` includes a `folder-access` warning that names the
+collection and points to the Collections page:
+
+```json
+"rootError": {
+  "code": "SOURCE_AVAILABILITY_UNKNOWN",
+  "message": "Collection root is missing or unreadable (ENOENT: no such file or directory); indexed documents were kept"
+}
+```
+
+The message never contains the folder path, so remote callers see the error
+without the path. Both clear on the next request once the folder is back.
+
 The activation object is identical to the `gno status --json`/doctor/Web model.
 Lexical readiness is proven per collection; semantic availability remains
 independent. A collection with no documents yet (`no_documents`, remediation
@@ -3369,9 +3385,11 @@ is the correct value for subsequent get calls.
 }
 ````
 
-Default snippets skip leading YAML frontmatter and prefer document prose. When
-the FTS window is frontmatter-dominated, GNO falls back to stripped chunk
-prose. `line` follows that trimmed display range. File-backed hits include
+Default snippets skip leading YAML frontmatter and prefer document prose. Each
+`/api/search` snippet comes from the chunk that best covers the query terms,
+with the terms in `<mark>` tags, and `snippetRange` is that chunk's line span.
+When the snippet window is frontmatter-dominated, GNO falls back to stripped
+chunk prose. `line` follows that trimmed display range. File-backed hits include
 `results[].source.absPath` (collection root + relative path) for same-host
 callers only; [remote callers](#host-paths-and-remote-callers) never receive
 it. If `absPath` is absent, show the URI tail and do not offer file-open for

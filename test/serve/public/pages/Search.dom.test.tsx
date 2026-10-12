@@ -225,6 +225,74 @@ describe("Search page DOM interactions", () => {
     expect(text).toContain("<img src=x onerror=alert(1)>");
   });
 
+  test("Fast depth uses the hybrid fast path when vectors are available, else BM25", async () => {
+    const searchCalls = async (hybrid: boolean) => {
+      apiFetch.mockReset();
+      apiFetch.mockImplementation(async (...args: unknown[]) => {
+        if (args[0] === "/api/capabilities")
+          return apiOk({ bm25: true, vector: hybrid, hybrid, answer: false });
+        if (args[0] === "/api/collections") return apiOk([]);
+        if (args[0] === "/api/presets") return apiOk({ activePreset: "slim" });
+        return apiOk({
+          results: [],
+          meta: { query: "cache", mode: "hybrid", totalResults: 0 },
+        });
+      });
+      const { default: Search } =
+        await import("../../../../src/serve/public/pages/Search");
+      const { user, unmount } = renderWithUser(
+        <Search navigate={() => undefined} />
+      );
+      const fast = await screen.findByRole("radio", { name: /Fast/ });
+      if (hybrid) {
+        await waitFor(() =>
+          expect(
+            screen
+              .getByRole("radio", { name: /Balanced/ })
+              .getAttribute("aria-checked")
+          ).toBe("true")
+        );
+      }
+      await user.click(fast);
+      expect(screen.queryByText(/BM25/)).toBeNull();
+      await user.type(
+        screen.getByPlaceholderText(/Search your documents/),
+        "cache"
+      );
+      await user.click(screen.getByRole("button", { name: "Search" }));
+      await screen.findByText("No matches found");
+      const calls = apiFetch.mock.calls
+        .filter(([endpoint]) =>
+          ["/api/search", "/api/query"].includes(endpoint as string)
+        )
+        .map(([endpoint, init]) => ({
+          endpoint,
+          body: JSON.parse((init as { body: string }).body) as Record<
+            string,
+            unknown
+          >,
+        }));
+      unmount();
+      return calls;
+    };
+
+    const withVectors = await searchCalls(true);
+    expect(withVectors).toHaveLength(1);
+    expect(withVectors[0]?.endpoint).toBe("/api/query");
+    expect(withVectors[0]?.body).toMatchObject({
+      query: "cache",
+      limit: 20,
+      noExpand: true,
+      noRerank: true,
+      noGraph: true,
+    });
+
+    const withoutVectors = await searchCalls(false);
+    expect(withoutVectors).toHaveLength(1);
+    expect(withoutVectors[0]?.endpoint).toBe("/api/search");
+    expect(withoutVectors[0]?.body).not.toHaveProperty("noExpand");
+  });
+
   test("invalid typed filter blocks retrieval; correction sends typed predicate and shows coverage warning", async () => {
     apiFetch.mockImplementation(async (...args: unknown[]) => {
       if (args[0] === "/api/capabilities")

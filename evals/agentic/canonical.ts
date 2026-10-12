@@ -9,6 +9,21 @@ import type {
 
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 
+/**
+ * Evidence tuple length per compact Capsule projection version. v2 appends the
+ * content date and `supersededBy`; recorded v1 receipts stay replayable.
+ */
+export const AGENT_PROJECTION_EVIDENCE_LENGTHS: Readonly<
+  Record<string, number>
+> = {
+  "gno-context-agent-v1": 11,
+  "gno-context-agent-v2": 13,
+};
+
+export const isAgentProjectionVersion = (value: unknown): boolean =>
+  typeof value === "string" &&
+  Object.hasOwn(AGENT_PROJECTION_EVIDENCE_LENGTHS, value);
+
 export const sha256Bytes = (value: string | Uint8Array): string =>
   new Bun.CryptoHasher("sha256").update(value).digest("hex");
 
@@ -121,7 +136,7 @@ const bundleContentCarriesExactEvidence = (
     };
     const evidence = Array.isArray(payload.evidence)
       ? payload.evidence
-      : payload.v === "gno-context-agent-v1" && Array.isArray(payload.e)
+      : isAgentProjectionVersion(payload.v) && Array.isArray(payload.e)
         ? payload.e
         : null;
     if (!evidence) return false;

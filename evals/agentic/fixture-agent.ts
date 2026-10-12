@@ -17,6 +17,7 @@ import type {
 import { AgenticAgentError } from "./adapter";
 import {
   canonicalFingerprint,
+  isAgentProjectionVersion,
   normalizeNewlines,
   sha256Bytes,
 } from "./canonical";
@@ -87,7 +88,7 @@ const evidenceVisibleInBundleContent = (
     };
     const evidence = Array.isArray(payload.evidence)
       ? payload.evidence
-      : payload.v === "gno-context-agent-v1" && Array.isArray(payload.e)
+      : isAgentProjectionVersion(payload.v) && Array.isArray(payload.e)
         ? payload.e
         : null;
     if (!evidence) return [];

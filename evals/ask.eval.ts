@@ -13,6 +13,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { SearchResult } from "../src/pipeline/types";
+import type { StorePort } from "../src/store/types";
 
 import { createDefaultConfig } from "../src/config";
 import { LlmAdapter } from "../src/llm/nodeLlamaCpp/adapter";
@@ -21,6 +22,7 @@ import {
   generateGroundedAnswer,
   processAnswerResult,
 } from "../src/pipeline/answer";
+import { ok } from "../src/store/types";
 import askCasesJson from "./fixtures/ask-cases.json";
 
 // ESM-compatible __dirname
@@ -119,6 +121,19 @@ function getGenPort(presetId: PresetId): Promise<GenPort> {
 // Mock Retrieval
 // ─────────────────────────────────────────────────────────────────────────────
 
+const sha256 = (value: string): string =>
+  new Bun.CryptoHasher("sha256").update(value).digest("hex");
+
+/**
+ * Mock source content keyed by its hash, as the index stores it. Grounded
+ * answers only use passages whose content matches the source's mirror hash,
+ * so a source without hashes and stored content never reaches the model.
+ */
+const mockContent = new Map<string, string>();
+const mockStore = {
+  getContent: async (hash: string) => ok(mockContent.get(hash) ?? null),
+} as unknown as StorePort;
+
 /**
  * Load mock sources from fixture corpus and create fake SearchResults.
  * This tests answer generation in isolation from retrieval.
@@ -130,6 +145,8 @@ async function loadMockSources(mockPaths: string[]): Promise<SearchResult[]> {
     const fullPath = join(CORPUS_DIR, relPath);
     try {
       const content = await Bun.file(fullPath).text();
+      const hash = sha256(content);
+      mockContent.set(hash, content);
       results.push({
         docid: relPath,
         score: 1.0,
@@ -140,7 +157,9 @@ async function loadMockSources(mockPaths: string[]): Promise<SearchResult[]> {
           relPath,
           mime: "text/markdown",
           ext: ".md",
+          sourceHash: hash,
         },
+        conversion: { mirrorHash: hash },
       });
     } catch {
       console.warn(`[ask.eval] Could not load mock source: ${relPath}`);
@@ -173,7 +192,7 @@ async function mockAsk(
 
   // Generate grounded answer (real LLM, mocked sources)
   const rawResult = await generateGroundedAnswer(
-    { genPort, store: null }, // No store needed - using snippets directly
+    { genPort, store: mockStore },
     question,
     sources,
     512 // maxTokens

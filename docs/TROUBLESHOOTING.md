@@ -143,9 +143,18 @@ content available locally in the provider UI before indexing under `local`.
 for a collection. Its folder was missing when the sync ran: an unmounted
 drive, an offline Google Drive or other sync folder, or a network share that
 was down. GNO kept the collection's documents searchable and changed nothing.
+
+While the folder is away, `gno status` names the collection, its folder and
+the error (`rootError` in `--json`), `gno doctor` reports a
+`collection-roots` warning and is not healthy, and the Web UI shows a
+"Folder access" item in the Health Center and a note on the collection's card.
+These checks run each time you look, so they clear as soon as the folder is
+back.
+
 Bring the folder back (mount the drive, start the sync client) and run
-`gno update` again. If the folder moved for good, point the collection at the
-new path, or remove the collection with `gno collection remove`.
+`gno update` again to pick up changes made meanwhile. If the folder moved for
+good, change the collection's `path` in the config file and run `gno update`,
+or remove the collection with `gno collection remove`.
 
 ### Retrieval activation failed
 
@@ -183,6 +192,22 @@ Connectors page, run **Verify retrieval** for a configured MCP target and choose
 the collection to test. The proof checks tool discovery, `gno_status`, and a
 scoped `gno_search` without rewriting client config. Skill-only integrations
 remain `target_runtime_unverifiable`; the client must load and use them itself.
+
+### "This index holds collections the config does not list"
+
+A command opened an index that contains documents of collections its config
+does not list, and refused so nothing is deleted. This happens when you remove
+a collection by editing the config file, or when a different config
+(`--config other.yml`, or an SDK client given a config but no `dbPath`) points
+at your normal index. `gno status` lists them under `Collections not in this
+config`.
+
+- The config is wrong (a test or second config): use a separate index with
+  `--index <name>` (SDK: pass `dbPath`), or run with your usual config.
+- You meant to remove the collection: run `gno cleanup` with your usual config;
+  it names each collection it deletes. `gno collection remove <name>` does this
+  in one step next time.
+- You want it back: add the collection to the config again.
 
 ### "Collection not found"
 

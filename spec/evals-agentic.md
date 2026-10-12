@@ -268,7 +268,9 @@ accounting, temp paths, and oracle data are excluded from both the agent history
 and its UTF-8 byte count.
 
 For Capsule evidence bundles, `content` is byte-for-byte the production MCP
-`gno-context-agent-v1` text projection. Exact evidence is not duplicated in the
+`gno-context-agent-v2` text projection. Promotion also accepts recorded
+`gno-context-agent-v1` receipts, whose evidence tuples end at the egress
+position (11 positions instead of 13). Exact evidence is not duplicated in the
 normalized evidence field. The benchmark charges the complete normalized
 agent-visible envelope containing that text once; the full canonical Capsule
 in MCP `structuredContent` is application-only and excluded. This target models

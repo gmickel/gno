@@ -140,7 +140,6 @@ async function oracle(state: State, workload: Workload) {
   const lexical = must(
     await state.client.store.searchFts("needle", {
       limit: state.owners.length + 1,
-      snippet: true,
     })
   ).filter((row) => row.uri !== undefined && uris.has(row.uri));
   const store = new Proxy(state.client.store, {

@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 // node:path has no Bun path utilities
 import { join } from "node:path";
 
+import type { ContextAgentProjection } from "../../src/app/context-agent-projection";
 import type { Collection } from "../../src/config/types";
 import type { ContextCapsuleV1 } from "../../src/core/context-capsule";
 import type { AskResult } from "../../src/pipeline/types";
@@ -20,6 +21,7 @@ import {
   decorateResultUris,
   decorateUriForIndex,
 } from "../../src/app/constants";
+import { formatContextCapsuleAgentJson } from "../../src/app/context-agent-projection";
 import {
   buildContextCapsule,
   verifyContextCapsuleRuntime,
@@ -28,6 +30,7 @@ import { formatAsk } from "../../src/cli/commands/ask-format";
 import { formatSearchResults } from "../../src/cli/format/search-results";
 import { createDefaultConfig } from "../../src/config/defaults";
 import { MemoryService } from "../../src/core/memory";
+import { validateMemoryRecord } from "../../src/core/memory-record";
 import { generateGroundedAnswer } from "../../src/pipeline/answer";
 import { searchBm25 } from "../../src/pipeline/search";
 import { getDocumentByRef } from "../../src/sdk/documents";
@@ -48,6 +51,27 @@ let original: string;
 let latest: string;
 let capsuleBefore: ContextCapsuleV1;
 const deps = () => ({ store, config, indexName: "default" });
+const fastCapsule = () =>
+  buildContextCapsule(
+    {
+      goal: "launch review",
+      collections: ["memory"],
+      budgetTokens: 12_000,
+      graph: false,
+      noRerank: true,
+      depthPolicy: "fast",
+    },
+    deps()
+  );
+/** The record date written in a fact's own frontmatter (`memory.createdAt`). */
+const recordDate = async (uri: string): Promise<string> => {
+  const relPath = uri.replace("gno://memory/", "");
+  const validation = validateMemoryRecord(
+    await Bun.file(join(root, "memory", relPath)).text()
+  );
+  if (!validation.ok) throw new Error("fixture fact is not a valid record");
+  return validation.record.frontmatter.createdAt;
+};
 
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), "gno-supersession-"));
@@ -247,6 +271,59 @@ test("ask sources name the successor in markdown and terminal output", async () 
       formatAsk({ success: true, data }, { md, showSources: true })
     ).toContain(`Superseded by: ${md ? "`" : ""}${latest}`);
   }
+});
+
+test("memory facts carry their record date as the content date", async () => {
+  const originalDate = await recordDate(original);
+  const latestDate = await recordDate(latest);
+  const capsule = await fastCapsule();
+  expect(
+    capsule.evidence.find((item) => item.uri === original)?.documentDate
+  ).toBe(originalDate);
+  expect(
+    capsule.evidence.find((item) => item.uri === latest)?.documentDate
+  ).toBe(latestDate);
+
+  const result = await searchBm25(store, "launch review", {
+    collection: "memory",
+    limit: 10,
+  });
+  if (!result.ok) throw new Error(result.error.message);
+  expect(
+    result.value.results.find((item) => item.uri === original)?.source
+      .documentDate
+  ).toBe(originalDate);
+  let prompt = "";
+  await generateGroundedAnswer(
+    {
+      genPort: {
+        modelUri: "mock://gen",
+        generate: async (value: string) => {
+          prompt = value;
+          return { ok: true as const, value: "Wednesdays [1]." };
+        },
+        dispose: async () => undefined,
+      },
+      store,
+    },
+    "When is the launch review?",
+    result.value.results,
+    256
+  );
+  expect(prompt).toContain(`date="${originalDate}"`);
+  expect(prompt).toContain(`date="${latestDate}"`);
+});
+
+test("the v2 agent projection carries the content date and successor", async () => {
+  const capsule = await fastCapsule();
+  const projection = JSON.parse(
+    formatContextCapsuleAgentJson(capsule)
+  ) as ContextAgentProjection;
+  expect(projection.v).toBe("gno-context-agent-v2");
+  const old = projection.e.find((item) => item[0] === original);
+  const current = projection.e.find((item) => item[0] === latest);
+  expect(old?.slice(11)).toEqual([await recordDate(original), latest]);
+  expect(current?.slice(11)).toEqual([await recordDate(latest), null]);
 });
 
 test("verification fails closed when the supersession lookup fails", async () => {

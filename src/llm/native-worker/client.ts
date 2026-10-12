@@ -4,6 +4,7 @@ import type { Owner, Pending } from "./owner";
 import type { ApprovedModel, NativeRequest, NativeResponse } from "./protocol";
 import type { NativeRuntimeConfig } from "./runtime-config";
 
+import { moduleDir } from "../../core/module-path";
 import { InferenceSettlement } from "../inference-cancellation";
 import {
   inferenceOptions,
@@ -303,7 +304,7 @@ export class NativeWorkerClient {
         error: wireError(
           (cause instanceof NativeWorkerError
             ? cause
-            : new NativeWorkerError("exited")
+            : new NativeWorkerError("exited", cause)
           ).detail
         ),
       };
@@ -314,8 +315,11 @@ export class NativeWorkerClient {
     this.lifecycle = undefined;
     // A compiled executable cannot interpret an external TS entry: invoking it
     // here would recursively launch the CLI. npm/desktop ship the source runtime.
-    if (import.meta.dir.includes("$bunfs"))
-      throw new NativeWorkerError("exited");
+    if (moduleDir(import.meta).includes("$bunfs"))
+      throw new NativeWorkerError(
+        "exited",
+        "a compiled executable cannot start the native worker"
+      );
     const config: NativeRuntimeConfig = NativeRuntimeConfigSchema.parse({
       generation: ++this.generation,
       models: this.options.models,
@@ -328,7 +332,7 @@ export class NativeWorkerClient {
       cmd: [
         process.execPath,
         "--no-env-file",
-        this.options.entryPath ?? `${import.meta.dir}/entry.ts`,
+        this.options.entryPath ?? `${moduleDir(import.meta)}/entry.ts`,
         JSON.stringify(config),
       ],
       env: nativeWorkerEnvironment(),

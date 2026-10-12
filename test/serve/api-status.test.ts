@@ -1,4 +1,10 @@
 import { describe, expect, test } from "bun:test";
+// node:fs/promises mkdir/rmdir: directory structure ops (no Bun equivalent)
+import { mkdir, rmdir } from "node:fs/promises";
+// node:os tmpdir: the per-run test temp root (no Bun equivalent)
+import { tmpdir } from "node:os";
+// node:path join: no Bun path utils
+import { join } from "node:path";
 
 import type { ActivationStatus } from "../../src/core/activation-status";
 import type { AppStatusResponse } from "../../src/serve/status-model";
@@ -231,10 +237,12 @@ describe("GET /api/status", () => {
       hybrid: true,
       vector: true,
     };
+    // An existing folder, so the read-time root check passes.
+    const notesRoot = tmpdir();
     ctx.config.collections = [
       {
         name: "notes",
-        path: "/tmp/notes",
+        path: notesRoot,
         pattern: "**/*",
         include: [],
         exclude: [],
@@ -252,7 +260,7 @@ describe("GET /api/status", () => {
           collections: [
             {
               name: "notes",
-              path: "/tmp/notes",
+              path: notesRoot,
               totalDocuments: 3,
               activeDocuments: 3,
               errorDocuments: 0,
@@ -296,7 +304,7 @@ describe("GET /api/status", () => {
     expect(body.onboarding.detail).toContain("lexical retrieval");
     expect(body.collections[0]).toEqual({
       name: "notes",
-      path: "/tmp/notes",
+      path: notesRoot,
       documentCount: 3,
       chunkCount: 12,
       embeddedCount: 12,
@@ -566,6 +574,61 @@ describe("GET /api/status", () => {
       expect(warningCount).toBe(0);
     } finally {
       console.warn = originalWarn;
+    }
+  });
+
+  test("names a missing collection root at read time and clears once it is back", async () => {
+    const ctx = createMockContext();
+    configureReadyNotesContext(ctx);
+    const root = join(tmpdir(), `gno-status-root-${crypto.randomUUID()}`);
+    const notes = ctx.config.collections[0];
+    if (!notes) throw new Error("Expected the notes collection");
+    notes.path = root;
+    const deps = {
+      inspectDisk: async () => ({
+        freeBytes: 8 * 1024 * 1024 * 1024,
+        totalBytes: 16 * 1024 * 1024 * 1024,
+        path: "/tmp",
+      }),
+      isModelCached: async () => true,
+      listSuggestedCollections: async () => [],
+      listConnectorTargets: async () => [],
+      buildActivation: async () => activationStatus(["notes"]),
+    };
+
+    const missing = (await (
+      await handleStatus(ctx, deps)
+    ).json()) as AppStatusResponse;
+    const [collection] = missing.collections;
+    expect(collection?.name).toBe("notes");
+    expect(collection?.documentCount).toBe(3);
+    expect(collection?.rootError?.code).toBe("SOURCE_AVAILABILITY_UNKNOWN");
+    const message = collection?.rootError?.message ?? "";
+    expect(message).toContain("ENOENT");
+    // The message stays path-free: remote callers lose `path`, not this.
+    expect(message).not.toContain(root);
+    expect(
+      missing.health.checks.find(({ id }) => id === "folder-access")
+    ).toMatchObject({
+      status: "warn",
+      summary: "notes: folder missing or unreadable",
+      actionKind: "open-collections",
+    });
+    expect(missing.healthy).toBe(false);
+    expect(missing.health.state).toBe("needs-attention");
+
+    await mkdir(root);
+    try {
+      const restored = (await (
+        await handleStatus(ctx, deps)
+      ).json()) as AppStatusResponse;
+      expect(restored.collections[0]?.rootError).toBeUndefined();
+      expect(
+        restored.health.checks.some(({ id }) => id === "folder-access")
+      ).toBe(false);
+      expect(restored.healthy).toBe(true);
+    } finally {
+      await rmdir(root);
     }
   });
 

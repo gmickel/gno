@@ -6,8 +6,12 @@ import type {
   TrajectoryReceipt,
 } from "./types";
 
-import { CONTEXT_AGENT_PROJECTION_SCHEMA_VERSION } from "../../src/app/context-agent-projection";
-import { canonicalJson, sha256Bytes } from "./canonical";
+import {
+  AGENT_PROJECTION_EVIDENCE_LENGTHS,
+  canonicalJson,
+  isAgentProjectionVersion,
+  sha256Bytes,
+} from "./canonical";
 
 const pairKey = (receipt: TrajectoryReceipt): string =>
   [
@@ -105,6 +109,12 @@ const validateReplayPayload = (
       Array.isArray(value) && value.every((item) => typeof item === "string");
     const nullableNumber = (value: unknown): boolean =>
       value === null || (typeof value === "number" && Number.isFinite(value));
+    const nullableString = (value: unknown): boolean =>
+      value === null || typeof value === "string";
+    // v1 receipts end at egress; v2 appends content date and supersededBy.
+    const evidenceLength = isAgentProjectionVersion(parsed.v)
+      ? AGENT_PROJECTION_EVIDENCE_LENGTHS[parsed.v as string]
+      : undefined;
     const validReasonCounts =
       Array.isArray(omissions) &&
       Array.isArray(omissions[1]) &&
@@ -126,7 +136,7 @@ const validateReplayPayload = (
     return (
       canonicalJson(parsed) === payload.canonicalJson &&
       sha256Bytes(payload.canonicalJson) === payload.sha256 &&
-      parsed.v === CONTEXT_AGENT_PROJECTION_SCHEMA_VERSION &&
+      evidenceLength !== undefined &&
       hash(parsed.id) &&
       Array.isArray(budget) &&
       budget.length === 6 &&
@@ -153,7 +163,7 @@ const validateReplayPayload = (
       evidence.every(
         (item) =>
           Array.isArray(item) &&
-          item.length === 11 &&
+          item.length === evidenceLength &&
           typeof item[0] === "string" &&
           typeof item[1] === "number" &&
           Number.isInteger(item[1]) &&
@@ -173,7 +183,8 @@ const validateReplayPayload = (
             "remote",
             "unclassified",
             "unavailable",
-          ].includes(item[10] as string)
+          ].includes(item[10] as string) &&
+          item.slice(11).every(nullableString)
       ) &&
       Array.isArray(guidance) &&
       guidance.length === 3 &&

@@ -9,6 +9,7 @@ import { join } from "node:path";
 
 import type { ChunkInput } from "../../src/store/types";
 
+import { searchBm25 } from "../../src/pipeline/search";
 import { SqliteAdapter } from "../../src/store";
 import { safeRm } from "../helpers/cleanup";
 
@@ -250,17 +251,18 @@ describe("FTS search", () => {
       ]
     );
 
-    const result = await adapter.searchFts("fox", { snippet: true });
+    // The store only ranks; the search pipeline builds the highlighted
+    // snippet from the stored chunk.
+    const result = await searchBm25(adapter, "fox");
     expect(result.ok).toBe(true);
     if (!result.ok) {
       return;
     }
 
-    // Should find the document
-    expect(result.value).toHaveLength(1);
-    expect(result.value[0]?.snippet).toBeDefined();
-    expect(result.value[0]?.snippet).toContain("<mark>");
-    expect(result.value[0]?.snippet).toContain("fox");
+    expect(result.value.results).toHaveLength(1);
+    expect(result.value.results[0]?.snippet).toBe(
+      "The quick brown <mark>fox</mark> jumps over the lazy dog"
+    );
   });
 
   test("excludes inactive documents from search", async () => {

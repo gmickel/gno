@@ -235,7 +235,6 @@ async function exhaustiveOracle(
   const fts = must(
     await client.store.searchFts("needle", {
       limit: fixture.length + 1,
-      snippet: true,
     })
   );
   const vectors = client.db

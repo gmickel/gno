@@ -3,6 +3,8 @@
 // node:path has no Bun equivalent for portable absolute path resolution.
 import { posix, win32 } from "node:path";
 
+import { moduleDir } from "./module-path";
+
 /** Resolve the stable package entrypoint for a core-module directory. */
 export function resolveGnoEntrypoint(
   coreModuleDir: string,
@@ -20,5 +22,5 @@ export function resolveGnoEntrypoint(
  * the same layout.
  */
 export function getCurrentGnoEntrypoint(): string {
-  return resolveGnoEntrypoint(import.meta.dir);
+  return resolveGnoEntrypoint(moduleDir(import.meta));
 }

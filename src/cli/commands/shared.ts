@@ -22,7 +22,10 @@ import {
 } from "../../config";
 import { tracePhase } from "../../core/phase-trace";
 import { BUDGET_ERROR_CODES } from "../../ingestion/file-processor";
-import { SqliteAdapter } from "../../store/sqlite/adapter";
+import {
+  SqliteAdapter,
+  staleCollectionsMessage,
+} from "../../store/sqlite/adapter";
 import { assertCliSessionBinding } from "../session-binding";
 
 /**
@@ -53,6 +56,10 @@ export interface InitStoreOptions {
   syncConfig?: boolean;
   /** Permit management commands that only need an existing index database */
   allowEmptyCollections?: boolean;
+  /** Open without syncing even when the index holds collections the config
+   * omits: config mutations report them through their own sync, and a
+   * connector proof reads one collection through a subset config. */
+  allowStaleCollections?: boolean;
 }
 
 /**
@@ -132,7 +139,25 @@ export async function initStore(
     return { ok: false, error: openResult.error.message };
   }
 
+  if (options.syncConfig === false && options.allowStaleCollections) {
+    return { ok: true, store, config, collections, actualConfigPath };
+  }
   if (options.syncConfig === false) {
+    // Reads skip the sync but must not search collections another config
+    // indexed; they fail the same way a sync would.
+    const stale = await store.listStaleCollections(
+      config.collections.map(({ name }) => name)
+    );
+    const indexed = stale.ok ? stale.value.filter((c) => c.documents > 0) : [];
+    if (!stale.ok || indexed.length > 0) {
+      await store.close();
+      return {
+        ok: false,
+        error: stale.ok
+          ? staleCollectionsMessage(indexed)
+          : stale.error.message,
+      };
+    }
     return { ok: true, store, config, collections, actualConfigPath };
   }
 

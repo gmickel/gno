@@ -281,7 +281,6 @@ export async function findEphemeralActivationProbeMatch(
     const search = await store.searchFts(candidate.term, {
       collection: plan.collection,
       limit: PROBE_RESULT_LIMIT,
-      snippet: false,
     });
     if (!search.ok) {
       return err(search.error.code, search.error.message, search.error.cause);

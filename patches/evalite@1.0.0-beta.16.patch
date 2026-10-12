@@ -1,0 +1,14 @@
+diff --git a/dist/reporter/rendering.js b/dist/reporter/rendering.js
+index 895cfb53de1e6ee9a0bd916c2153dda03b597304..5d19e77e650b7c36d6b586542111e063d730acf7 100644
+--- a/dist/reporter/rendering.js
++++ b/dist/reporter/rendering.js
+@@ -72,7 +72,8 @@ export function renderErrorsSummary(logger, opts) {
+         for (const test of failedTests) {
+             const errors = test.result().errors || [];
+             for (const error of errors) {
+-                logger.printError(error, { task: test });
++                // A vitest 4 TestCase is not a runner task; pass its project instead.
++                logger.printError(error, { project: test.project });
+             }
+         }
+     }

@@ -863,7 +863,9 @@ A running `gno serve` or `gno daemon` picks up collections added, removed or
 edited in this file (by `gno collection add/remove` or by hand) without a
 restart; run `gno update` to index the existing files of a new collection. An
 unreadable file is reported as an error instead of serving the old
-collections.
+collections. Without a running server, a collection removed by hand keeps its
+documents: commands report it until you run `gno cleanup` (or add it back), so
+a mistaken or truncated config never deletes indexed data.
 
 ### Collection Fields
 

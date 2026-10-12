@@ -81,6 +81,8 @@ interface CollectionStats {
   documentCount: number;
   chunkCount: number;
   embeddedCount: number;
+  /** Set while the folder is missing or unreadable; documents stay indexed. */
+  rootError?: { code: string; message: string };
   include?: string[];
   models?: Partial<Record<"embed" | "rerank" | "expand" | "gen", string>>;
   effectiveModels?: Record<"embed" | "rerank" | "expand" | "gen", string>;
@@ -276,6 +278,12 @@ function CollectionCard({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+        )}
+        {collection.rootError && (
+          <p className="flex items-start gap-1.5 text-amber-500 text-xs">
+            <AlertCircleIcon className="mt-0.5 size-3.5 shrink-0" />
+            <span>{collection.rootError.message}</span>
+          </p>
         )}
       </CardHeader>
 

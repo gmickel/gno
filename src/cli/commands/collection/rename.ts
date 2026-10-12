@@ -23,6 +23,7 @@ export async function collectionRename(
     configPath: options.configPath,
     indexName: options.indexName,
     syncConfig: false,
+    allowStaleCollections: true,
     allowEmptyCollections: true,
   });
   if (!initialized.ok) {

@@ -458,7 +458,10 @@ GNO retrieves more candidates than you request, then filters down:
 ## Display snippets
 
 After ranking, default search and query snippets skip a leading YAML
-frontmatter fence and prefer document prose. When the FTS window is
+frontmatter fence and prefer document prose. `gno search` builds snippets only
+for the returned results: it picks the chunk that best covers your search
+terms, shows about 32 words around the matches with the terms highlighted, and
+reports that chunk's lines in `snippetRange`. When the snippet window is
 frontmatter-dominated, GNO falls back to the stripped chunk prose. `line` and
 `snippetRange.startLine` follow that trimmed display range. `--full` and
 `--line-numbers` still emit the raw source. Indexed text is unchanged.

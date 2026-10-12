@@ -174,8 +174,12 @@ export default function Search({ navigate }: PageProps) {
     query.trim().length > 0 && !structuredQueryState.ok
       ? structuredQueryState.error.message
       : null;
+  // Without vectors, Fast is keyword search unless modes or intent need the
+  // hybrid endpoint. With vectors, Fast is always hybrid (no expansion,
+  // rerank or graph), the same path as CLI `--fast`.
   const forceHybridForModes =
     thoroughness === "fast" &&
+    !hybridAvailable &&
     (queryModes.length > 0 ||
       intent.trim().length > 0 ||
       (structuredQueryState.ok &&
@@ -325,6 +329,7 @@ export default function Search({ navigate }: PageProps) {
 
       const useBm25 =
         thoroughness === "fast" &&
+        !hybridAvailable &&
         queryModes.length === 0 &&
         intent.trim().length === 0 &&
         !structuredQueryState.value.usedStructuredQuerySyntax;
@@ -403,6 +408,7 @@ export default function Search({ navigate }: PageProps) {
       activePreset,
       category,
       exclude,
+      hybridAvailable,
       intent,
       query,
       queryModes,
@@ -448,7 +454,9 @@ export default function Search({ navigate }: PageProps) {
 
   const thoroughnessDesc =
     thoroughness === "fast"
-      ? "Keyword search (BM25)"
+      ? hybridAvailable
+        ? "Hybrid, no expansion or reranking"
+        : "Keyword search (no vectors)"
       : thoroughness === "balanced"
         ? resolveDepthPolicy({ presetId: activePreset })
             .balancedExpansionEnabled

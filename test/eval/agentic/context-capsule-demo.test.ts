@@ -111,6 +111,8 @@ describe("Context Capsule public demo", () => {
       artifact.frozenInput.sharedFingerprints.index
     );
     expect(artifact.capsuleRetrieval.fallbacks).toEqual([]);
+    // The demo replays the recorded baseline receipt, which predates the v2
+    // projection; recorded v1 payloads stay valid evidence.
     expect(artifact.capsuleRetrieval.normalizedPayload).toMatchObject({
       v: "gno-context-agent-v1",
     });

@@ -11,6 +11,11 @@ import { existsSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, normalize, relative, sep } from "node:path";
 
+import {
+  harnessConfigDirFromEnv,
+  type HarnessId,
+} from "../agents/harnesses.js";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Environment Variables
 // ─────────────────────────────────────────────────────────────────────────────
@@ -84,6 +89,11 @@ interface TargetPathConfig {
   userBase: string; // e.g., ".claude" (joined with homedir) or ".config/opencode"
   skillsSubdir: string; // e.g., "skills" or "skill"
   envVar: string;
+  /**
+   * Harness whose config-dir env var (CLAUDE_CONFIG_DIR, CODEX_HOME) replaces
+   * the user base, resolved exactly as `gno agents` does.
+   */
+  configDirHarness?: HarnessId;
 }
 
 const TARGET_CONFIGS: Record<SkillTarget, TargetPathConfig> = {
@@ -92,12 +102,14 @@ const TARGET_CONFIGS: Record<SkillTarget, TargetPathConfig> = {
     userBase: ".claude",
     skillsSubdir: "skills",
     envVar: ENV_CLAUDE_SKILLS_DIR,
+    configDirHarness: "claude",
   },
   codex: {
     projectBase: ".codex",
     userBase: ".codex",
     skillsSubdir: "skills",
     envVar: ENV_CODEX_SKILLS_DIR,
+    configDirHarness: "codex",
   },
   opencode: {
     projectBase: ".opencode",
@@ -150,8 +162,14 @@ export function resolveSkillPaths(opts: SkillPathOptions): SkillPaths {
   let base: string;
 
   if (scope === "user") {
-    const home = homeDir ?? process.env[ENV_SKILLS_HOME_OVERRIDE] ?? homedir();
-    base = join(home, config.userBase);
+    // Any home override (option or env) is an isolation request and
+    // suppresses the harness config-dir env vars, as in `gno agents`.
+    const explicitHome = homeDir ?? process.env[ENV_SKILLS_HOME_OVERRIDE];
+    const configDir =
+      explicitHome === undefined && config.configDirHarness
+        ? harnessConfigDirFromEnv(config.configDirHarness)
+        : undefined;
+    base = configDir ?? join(explicitHome ?? homedir(), config.userBase);
   } else {
     const projectRoot = cwd ?? process.cwd();
     base = join(projectRoot, config.projectBase);

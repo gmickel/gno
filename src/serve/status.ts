@@ -20,6 +20,10 @@ import {
   type ActivationStatus,
   buildActivationStatus,
 } from "../core/activation-status";
+import {
+  checkCollectionRoots,
+  type CollectionRootError,
+} from "../ingestion/source-availability/root";
 import { ModelCache } from "../llm/cache";
 import { envIsSet, resolveDownloadPolicy } from "../llm/policy";
 import { getActivePreset, resolveModelUri } from "../llm/registry";
@@ -258,6 +262,25 @@ function buildCollectionCheck(status: IndexStatus): HealthCheck {
     status: "ok",
     summary: `${summarizeCount(status.collections.length, "folder")} connected`,
     detail: `${summarizeCount(status.activeDocuments, "document")} active across your current sources.`,
+    actionLabel: "Manage folders",
+    actionKind: "open-collections",
+  };
+}
+
+/** Folders whose root is missing or unreadable right now; null when none. */
+function buildFolderAccessCheck(
+  rootErrors: Record<string, CollectionRootError>
+): HealthCheck | null {
+  const names = Object.keys(rootErrors);
+  if (names.length === 0) {
+    return null;
+  }
+  return {
+    id: "folder-access",
+    title: "Folder access",
+    status: "warn",
+    summary: `${names.join(", ")}: folder missing or unreadable`,
+    detail: `${names.map((name) => `${name}: ${rootErrors[name]?.message}.`).join(" ")} Reconnect the drive or restore the folder; this clears as soon as it is back. If the folder moved, change the collection's path.`,
     actionLabel: "Manage folders",
     actionKind: "open-collections",
   };
@@ -688,6 +711,7 @@ export async function buildAppStatus(
     bootstrap,
     embedCached,
     connectorTargets,
+    rootErrors,
   ] = await Promise.all([
     buildModelCheck(ctx, deps),
     buildDiskCheck(status, deps),
@@ -695,6 +719,7 @@ export async function buildAppStatus(
     buildBootstrapState(ctx),
     isModelCached(preset.embed),
     (deps.listConnectorTargets ?? getConnectorVerificationTargets)(),
+    checkCollectionRoots(ctx.config.collections),
   ]);
   const activation = await (deps.buildActivation ?? buildActivationStatus)(
     ctx.store,
@@ -712,6 +737,7 @@ export async function buildAppStatus(
   const backgroundCheck = buildBackgroundCheck(ctx, status);
   const checks = [
     buildCollectionCheck(status),
+    buildFolderAccessCheck(rootErrors),
     buildIndexingCheck(status),
     buildActivationCheck(activation),
     buildConnectorActivationCheck(activation),
@@ -746,6 +772,9 @@ export async function buildAppStatus(
       documentCount: collection.activeDocuments,
       chunkCount: collection.totalChunks,
       embeddedCount: collection.embeddedChunks,
+      ...(rootErrors[collection.name]
+        ? { rootError: rootErrors[collection.name] }
+        : {}),
     })),
     totalDocuments: status.activeDocuments,
     totalChunks: status.totalChunks,

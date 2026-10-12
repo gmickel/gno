@@ -49,7 +49,6 @@ const ftsResult: FtsResult = {
   mirrorHash: MIRROR_HASH,
   seq: 0,
   score: -10,
-  snippet: "Context snippet",
   docid: document.docid,
   uri: document.uri,
   title: document.title ?? undefined,

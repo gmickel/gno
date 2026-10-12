@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, readdir, symlink } from "node:fs/promises";
+import { homedir } from "node:os";
 import { join } from "node:path";
 
 import { installSkill } from "../../src/cli/commands/skill/install";
 import {
   ENV_HERMES_SKILLS_DIR,
+  ENV_SKILLS_HOME_OVERRIDE,
   resolveAllPaths,
   resolveSkillPaths,
   validatePathForDeletion,
@@ -512,6 +514,121 @@ describe("skill CLI commands", () => {
         expect(error).toBeInstanceOf(CliError);
         expect(error?.code).toBe("VALIDATION");
       }
+    });
+  });
+
+  describe("CLAUDE_CONFIG_DIR / CODEX_HOME at user scope", () => {
+    const ENV_KEYS = [
+      "CLAUDE_CONFIG_DIR",
+      "CODEX_HOME",
+      ENV_SKILLS_HOME_OVERRIDE,
+    ] as const;
+    let saved: Record<string, string | undefined> = {};
+
+    beforeEach(() => {
+      saved = Object.fromEntries(ENV_KEYS.map((k) => [k, process.env[k]]));
+      for (const key of ENV_KEYS) {
+        delete process.env[key];
+      }
+    });
+
+    afterEach(() => {
+      for (const key of ENV_KEYS) {
+        if (saved[key] === undefined) delete process.env[key];
+        else process.env[key] = saved[key];
+      }
+    });
+
+    test("install, paths and uninstall use CLAUDE_CONFIG_DIR for claude", async () => {
+      const profile = join(TEST_DIR, "claude-profile");
+      process.env.CLAUDE_CONFIG_DIR = `  ${profile}  `;
+      const skillDir = join(profile, "skills", "gno");
+      // Resolve first: a regression must fail here, before any write could
+      // reach the real home directory.
+      expect(
+        resolveSkillPaths({ scope: "user", target: "claude" }).gnoDir
+      ).toBe(skillDir);
+
+      await installSkill({ scope: "user", target: "claude", json: false });
+      expect(await Bun.file(join(skillDir, "SKILL.md")).exists()).toBe(true);
+      expect(stdoutOutput.join("")).toContain(
+        `Installed GNO skill to ${skillDir}`
+      );
+
+      stdoutOutput = [];
+      await showPaths({ scope: "user", target: "claude", json: false });
+      expect(stdoutOutput.join("")).toContain(
+        `claude/user: ${skillDir} (installed)`
+      );
+
+      stdoutOutput = [];
+      await uninstallSkill({ scope: "user", target: "claude", json: false });
+      expect(await Bun.file(join(skillDir, "SKILL.md")).exists()).toBe(false);
+      expect(stdoutOutput.join("")).toContain(
+        `Uninstalled GNO skill from ${skillDir}`
+      );
+    });
+
+    test("install uses CODEX_HOME for codex", async () => {
+      const profile = join(TEST_DIR, "codex-profile");
+      process.env.CODEX_HOME = profile;
+      const skillDir = join(profile, "skills", "gno");
+      expect(resolveSkillPaths({ scope: "user", target: "codex" }).gnoDir).toBe(
+        skillDir
+      );
+      await installSkill({ scope: "user", target: "codex", json: true });
+      expect(await Bun.file(join(skillDir, "SKILL.md")).exists()).toBe(true);
+      expect(JSON.parse(stdoutOutput.join(""))).toEqual({
+        installed: [{ target: "codex", scope: "user", path: skillDir }],
+      });
+    });
+
+    test("project scope and an explicit home override ignore the env vars", () => {
+      process.env.CLAUDE_CONFIG_DIR = join(TEST_DIR, "claude-profile");
+      expect(
+        resolveSkillPaths({ scope: "project", target: "claude", cwd: FAKE_CWD })
+          .gnoDir
+      ).toBe(join(FAKE_CWD, ".claude", "skills", "gno"));
+      expect(
+        resolveSkillPaths({
+          scope: "user",
+          target: "claude",
+          homeDir: FAKE_HOME,
+        }).gnoDir
+      ).toBe(join(FAKE_HOME, ".claude", "skills", "gno"));
+      process.env[ENV_SKILLS_HOME_OVERRIDE] = FAKE_HOME;
+      expect(
+        resolveSkillPaths({ scope: "user", target: "claude" }).gnoDir
+      ).toBe(join(FAKE_HOME, ".claude", "skills", "gno"));
+    });
+
+    test("rejects a relative CLAUDE_CONFIG_DIR or CODEX_HOME and treats blank as unset", async () => {
+      process.env.CLAUDE_CONFIG_DIR = "relative/claude";
+      expect(() =>
+        resolveSkillPaths({ scope: "user", target: "claude" })
+      ).toThrow("CLAUDE_CONFIG_DIR must be an absolute path");
+      let error: unknown;
+      try {
+        await installSkill({ scope: "user", target: "claude", json: true });
+      } catch (err) {
+        error = err;
+      }
+      expect(error).toBeInstanceOf(CliError);
+      expect((error as CliError).code).toBe("VALIDATION");
+      expect((error as CliError).message).toContain(
+        "CLAUDE_CONFIG_DIR must be an absolute path"
+      );
+
+      process.env.CODEX_HOME = "relative/codex";
+      expect(() =>
+        resolveSkillPaths({ scope: "user", target: "codex" })
+      ).toThrow("CODEX_HOME must be an absolute path");
+
+      // Path resolution only; nothing is written under the real home.
+      process.env.CLAUDE_CONFIG_DIR = "   ";
+      expect(
+        resolveSkillPaths({ scope: "user", target: "claude" }).gnoDir
+      ).toBe(join(homedir(), ".claude", "skills", "gno"));
     });
   });
 

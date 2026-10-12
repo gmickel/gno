@@ -400,7 +400,8 @@ chunk-level at the time; the first five rows use it.
   `agentCalls`/`backendInvocations`, exact UTF-8 context bytes, native-index
   fingerprints, environment provenance, and Capsule payload replay hashes.
 - Capsule evidence bundles use the exact production
-  `gno-context-agent-v1` serializer and production omission projection policy.
+  `gno-context-agent-v2` serializer and production omission projection policy
+  (recorded `gno-context-agent-v1` receipts remain valid promotion input).
   The measured agent-visible envelope contains that MCP text once and excludes
   the full application-only `structuredContent`. A host that exposes both must
   charge both and is outside this promotion claim.
@@ -566,6 +567,13 @@ Key findings:
 
 The balanced preset trades some citation reliability for faster inference and lower memory.
 
+The mocked sources carry the source and mirror hashes plus stored content
+that grounded answers require, so every case reaches the model. A source
+without them is skipped before generation; from July to October 2026 that
+made every case abstain with zero citations at a flat 50%. An offline run on
+2026-10-12 (judge skipped) scored 77%: citations on 4 of 8 slim, 1 of 8
+balanced and 8 of 8 quality cases.
+
 ### Not Yet Implemented
 
 - **Evalite vector multilingual lane** - vector/hybrid evidence currently lives
@@ -625,6 +633,13 @@ See `evalite.config.ts`:
 - `maxConcurrency`: 5
 - `scoreThreshold`: 70% (global; per-eval overrides such as `memory.eval.ts` at 100 live in `EVAL_THRESHOLDS` in `scripts/update-eval-scores.ts` and are passed as `--threshold` by `bun run evals`)
 - `cache`: true (faster iteration)
+
+The pinned evalite is patched (`patches/evalite@1.0.0-beta.16.patch`, applied
+by `bun install` through `patchedDependencies`): its error summary passed a
+vitest 4 test case where vitest expects a runner task, crashed while printing
+a failed eval's error cause and never exited. With the patch a failing or
+throwing eval file prints its error and exits non-zero. Drop the patch when
+upgrading evalite to a release that fixes it.
 
 The evidence gate also accepts `GNO_LLAMA_GPU=false` for an explicitly CPU-only
 native screen using the same cached GGUFs. The receipt labels that backend;

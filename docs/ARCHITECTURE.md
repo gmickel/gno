@@ -323,10 +323,13 @@ On a 17.6k-chunk index one vector search takes about 70 ms unscoped and less
 when scoped; `bun run bench:vector-search` re-measures it.
 
 Plain lexical and vector retrieval batch-load only the exact selected chunk
-sequences (sequence zero for document-level BM25). Intent steering and
-document-wide exclusions retain whole-hash chunk reads. Missing sequences keep
-the existing lexical snippet fallback and vector omission behavior; full output
-still reads the canonical document content separately. Stores without targeted
+sequences (sequence zero for document-level BM25). BM25 ranking never builds
+snippets: for the returned rows only, an in-database check finds which chunks
+hold the query terms, and only the chosen chunk per row is loaded to build its
+highlighted snippet and `snippetRange`. Intent steering and document-wide
+exclusions retain whole-hash chunk reads. Missing sequences keep the existing
+vector omission behavior; full output still reads the canonical document
+content separately. Stores without targeted
 chunk support retain whole-hash batching. No cross-request cache is introduced.
 
 CLI and SDK Ask own one immutable hydration cache across retrieval, reranking,

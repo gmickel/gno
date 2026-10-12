@@ -1,3 +1,6 @@
+// node:os tmpdir: the per-run test temp root (no Bun equivalent)
+import { tmpdir } from "node:os";
+
 import type { Config } from "../../../src/config/types";
 import type { ActivationStatus } from "../../../src/core/activation-status";
 import type { ServerContext } from "../../../src/serve/context";
@@ -135,11 +138,14 @@ export function createMockContext(): ServerContext {
   };
 }
 
+/** An existing folder, so the read-time collection root check passes. */
+const NOTES_ROOT = tmpdir();
+
 export function configureReadyNotesContext(ctx: ServerContext): void {
   ctx.config.collections = [
     {
       name: "notes",
-      path: "/tmp/notes",
+      path: NOTES_ROOT,
       pattern: "**/*",
       include: [],
       exclude: [],
@@ -157,7 +163,7 @@ export function configureReadyNotesContext(ctx: ServerContext): void {
         collections: [
           {
             name: "notes",
-            path: "/tmp/notes",
+            path: NOTES_ROOT,
             totalDocuments: 3,
             activeDocuments: 3,
             errorDocuments: 0,

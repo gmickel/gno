@@ -3,9 +3,14 @@
  */
 
 import { describe, expect, test } from "bun:test";
+// node:os tmpdir: the per-run test temp root (no Bun equivalent)
+import { tmpdir } from "node:os";
+// node:path join: no Bun path utils
+import { join } from "node:path";
 import { z } from "zod";
 
 import type { ToolContext } from "../../../src/mcp/server";
+import type { CollectionStatus } from "../../../src/store/types";
 
 import { handleStatus } from "../../../src/mcp/tools/status";
 import { createMockContext } from "../../serve/helpers/activation-status-fixtures";
@@ -49,6 +54,56 @@ test("MCP status passes chunking config and exposes the shared layout state", as
   expect(JSON.stringify(result.content)).toContain(
     "2 documents / 1 mirrors pending"
   );
+});
+
+test("MCP status names a collection whose root is missing", async () => {
+  const server = createMockContext();
+  const path = join(tmpdir(), `gno-missing-root-${crypto.randomUUID()}`);
+  server.config.collections = [
+    { name: "notes", path, pattern: "**/*.md", include: [], exclude: [] },
+  ];
+  const original = server.store.getStatus.bind(server.store);
+  server.store.getStatus = async () => {
+    const result = await original();
+    if (!result.ok) return result;
+    const notes: CollectionStatus = {
+      name: "notes",
+      path,
+      egressPolicy: "local_only",
+      egressPolicySource: "config_default",
+      totalDocuments: 1,
+      activeDocuments: 1,
+      errorDocuments: 0,
+      chunkedDocuments: 1,
+      totalChunks: 1,
+      embeddedChunks: 0,
+    };
+    return {
+      ok: true,
+      value: { ...result.value, healthy: true, collections: [notes] },
+    };
+  };
+  const ctx = {
+    ...server,
+    collections: server.config.collections,
+    actualConfigPath: "/tmp/config.yml",
+    toolMutex: { acquire: async () => () => undefined },
+    jobManager: {},
+    serverInstanceId: "root-status",
+    writeLockPath: "/tmp/.lock",
+    enableWrite: false,
+    isShuttingDown: () => false,
+  } as unknown as ToolContext;
+  const result = await handleStatus({}, ctx);
+  const structured = result.structuredContent as {
+    healthy: boolean;
+    collections: Array<{ rootError?: { code: string } }>;
+  };
+  expect(structured.healthy).toBe(false);
+  expect(structured.collections[0]?.rootError?.code).toBe(
+    "SOURCE_AVAILABILITY_UNKNOWN"
+  );
+  expect(JSON.stringify(result.content)).toContain("Root unavailable");
 });
 
 // Test the status input/output schemas match spec

@@ -140,6 +140,21 @@
             "type": "integer",
             "description": "Number of chunks with embeddings",
             "minimum": 0
+          },
+          "rootError": {
+            "type": "object",
+            "description": "Present only while the collection root is missing or unreadable, checked when status is read; the collection's indexed documents are kept and still counted. The message names the filesystem error but not the path.",
+            "additionalProperties": false,
+            "required": ["code", "message"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "SOURCE_AVAILABILITY_UNKNOWN"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
           }
         }
       }
@@ -254,6 +269,19 @@
         },
         "reason": {
           "type": "string"
+        }
+      }
+    },
+    "staleCollections": {
+      "type": "array",
+      "description": "Indexed collections the config does not list. Commands that sync the config refuse to open the index (nothing is deleted) until the collections are added back or `gno cleanup` deletes their index data. Omitted when there are none.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "documents"],
+        "properties": {
+          "name": { "type": "string" },
+          "documents": { "type": "integer", "minimum": 1 }
         }
       }
     },
