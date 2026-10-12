@@ -240,3 +240,110 @@ describe("gno ls scope validation", () => {
     expect(stderr).toContain("trailing path");
   });
 });
+
+describe("gno ls --filter (typed metadata)", () => {
+  let testDir: string;
+  const source = "sp:drives/d1/items/i1";
+
+  beforeEach(async () => {
+    testDir = getTestDir();
+    await setupTestEnv(testDir);
+    const docsDir = join(testDir, "docs");
+    await mkdir(docsDir, { recursive: true });
+    const page = (refs: string) =>
+      `---\ngno:\n  metadata:\n    derived_from: ${refs}\n---\n\n# Page\n`;
+    await writeFile(
+      join(docsDir, "a.md"),
+      page(`["${source}", "jira:PROJ-1"]`)
+    );
+    await writeFile(join(docsDir, "b.md"), page(`["sp:drives/d1/items/i2"]`));
+    await writeFile(
+      join(docsDir, "c.md"),
+      page(`["jira:PROJ-1", "${source}"]`)
+    );
+    // Object members are invalid typed metadata: never matches a filter.
+    await writeFile(
+      join(docsDir, "d.md"),
+      page(`[{ sys: sp, ref: "drives/d1/items/i1" }]`)
+    );
+    await writeFile(join(docsDir, "e.md"), "# No metadata\n");
+    await cli("init", docsDir, "--name", "docs");
+    await cli("update");
+  });
+
+  afterEach(async () => {
+    await cleanupTestEnv(testDir);
+  });
+
+  const inFilter = (values: string[]) =>
+    JSON.stringify({ op: "in", key: "derived_from", values });
+
+  test("returns exactly the pages whose derived_from names the source", async () => {
+    const { code, stdout } = await cli(
+      "ls",
+      "--json",
+      "--filter",
+      inFilter([source])
+    );
+    expect(code).toBe(0);
+    const parsed = JSON.parse(stdout);
+    expect(parsed.documents.map((d: { uri: string }) => d.uri)).toEqual([
+      "gno://docs/a.md",
+      "gno://docs/c.md",
+    ]);
+    expect(parsed.meta).toEqual({ total: 2, returned: 2, offset: 0 });
+  });
+
+  test("intersects with scope and paginates over matches", async () => {
+    const { stdout } = await cli(
+      "ls",
+      "gno://docs/c",
+      "--json",
+      "--filter",
+      inFilter([source])
+    );
+    expect(
+      JSON.parse(stdout).documents.map((d: { uri: string }) => d.uri)
+    ).toEqual(["gno://docs/c.md"]);
+
+    const page = JSON.parse(
+      (
+        await cli(
+          "ls",
+          "--json",
+          "--offset",
+          "1",
+          "--filter",
+          inFilter([source])
+        )
+      ).stdout
+    );
+    expect(page.documents.map((d: { uri: string }) => d.uri)).toEqual([
+      "gno://docs/c.md",
+    ]);
+    expect(page.meta.total).toBe(2);
+  });
+
+  test("invalid metadata never matches, even negated filters", async () => {
+    const { stdout } = await cli(
+      "ls",
+      "--json",
+      "--filter",
+      JSON.stringify({ op: "exists", key: "derived_from", value: false })
+    );
+    expect(
+      JSON.parse(stdout).documents.map((d: { uri: string }) => d.uri)
+    ).toEqual(["gno://docs/e.md"]);
+  });
+
+  test("without --filter the listing is unchanged", async () => {
+    const { stdout } = await cli("ls", "--json");
+    expect(JSON.parse(stdout).meta.total).toBe(5);
+  });
+
+  test("malformed predicate is a validation error", async () => {
+    const { code, stderr } = await cli("ls", "--filter", "{");
+    expect(code).toBe(1);
+    expect(stderr).toContain("filter:");
+  });
+});

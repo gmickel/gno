@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/ls@1.0",
+  "title": "GNO Document List",
+  "description": "Output of gno ls --json. With --filter, documents and meta.total cover matching active documents only.",
+  "type": "object",
+  "required": ["documents", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["docid", "uri", "source"],
+        "additionalProperties": false,
+        "properties": {
+          "docid": { "type": "string", "pattern": "^#[a-f0-9]+$" },
+          "uri": { "type": "string", "pattern": "^gno://" },
+          "title": { "type": "string" },
+          "source": {
+            "type": "object",
+            "required": ["relPath", "mime", "ext"],
+            "additionalProperties": false,
+            "properties": {
+              "relPath": { "type": "string" },
+              "mime": { "type": "string" },
+              "ext": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "required": ["total", "returned", "offset"],
+      "additionalProperties": false,
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "returned": { "type": "integer", "minimum": 0 },
+        "offset": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

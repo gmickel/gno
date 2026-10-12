@@ -2503,7 +2503,7 @@ List documents in a collection or prefix.
 **Synopsis:**
 
 ```bash
-gno ls [<scope>] [--json|--files|--md]
+gno ls [<scope>] [--filter <json>] [-n <num>] [--offset <num>] [--json|--files|--md]
 ```
 
 **Arguments:**
@@ -2511,17 +2511,34 @@ gno ls [<scope>] [--json|--files|--md]
 |-----|------|-------------|
 | `<scope>` | string | Collection name or `gno://collection/prefix` (default: all) |
 
-**Output (JSON):**
+**Options:**
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--filter` | JSON | - | Typed metadata predicate (`spec/output-schemas/metadata-predicate.schema.json`), same semantics as `gno search --filter`. Documents with invalid or pending typed metadata never match. |
+| `-n, --limit` | integer | 20 | Max documents returned |
+| `--offset` | integer | 0 | Skip first N documents |
+
+Without `--filter` the output is unchanged. With it, `documents` and
+`meta.total` cover matching active documents only. An invalid predicate is a
+validation error (exit 1). Provenance convention: `gno.metadata.derived_from`
+is a string array of `<system>:<reference>` members, so
+`{"op":"in","key":"derived_from","values":["sp:..."]}` lists every document
+derived from that source.
+
+**Output (JSON):** see `spec/output-schemas/ls.schema.json`.
 
 ```json
-[
-  {
-    "docid": "#a1b2c3d4",
-    "uri": "gno://work/doc.md",
-    "title": "Document Title",
-    "source": { "relPath": "doc.md", "mime": "text/markdown", "ext": ".md" }
-  }
-]
+{
+  "documents": [
+    {
+      "docid": "#a1b2c3d4",
+      "uri": "gno://work/doc.md",
+      "title": "Document Title",
+      "source": { "relPath": "doc.md", "mime": "text/markdown", "ext": ".md" }
+    }
+  ],
+  "meta": { "total": 1, "returned": 1, "offset": 0 }
+}
 ```
 
 **Exit Codes:**

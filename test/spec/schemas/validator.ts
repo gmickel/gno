@@ -94,6 +94,7 @@ async function loadAllSchemas(): Promise<void> {
     "retrieval-trace-delete",
     "retrieval-trace-purge",
     "collection-list",
+    "ls",
     "collection-egress-policy",
     "collection-egress-policy-set",
     "collection-egress-check",

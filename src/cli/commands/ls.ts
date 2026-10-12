@@ -5,9 +5,11 @@
  * @module src/cli/commands/ls
  */
 
+import type { MetadataPredicate } from "../../core/typed-metadata";
 import type { DocumentRow, StorePort, StoreResult } from "../../store/types";
 
 import { decorateUriForIndex } from "../../app/constants";
+import { typedMetadataFilterReason } from "../../pipeline/filters";
 import { initStore } from "./shared";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -29,6 +31,8 @@ export interface LsCommandOptions {
   files?: boolean;
   /** Markdown output */
   md?: boolean;
+  /** Typed metadata predicate (`gno.metadata`); same semantics as search. */
+  filter?: MetadataPredicate;
 }
 
 export type LsResult =
@@ -128,9 +132,13 @@ export async function ls(
       return { success: false, error: docs.error.message };
     }
 
-    // Filter active only, sort by URI
+    // Filter active only (and typed metadata when asked), sort by URI.
+    // Invalid or not-yet-backfilled metadata never matches, as in search.
     const allActive = docs.value
-      .filter((d) => d.active)
+      .filter(
+        (d) =>
+          d.active && typedMetadataFilterReason(d, options.filter) === undefined
+      )
       .map((d) => ({
         docid: d.docid,
         uri: d.uri,
