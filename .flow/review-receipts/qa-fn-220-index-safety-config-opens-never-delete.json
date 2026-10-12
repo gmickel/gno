@@ -1,0 +1,92 @@
+{
+  "branch": "fn-220-index-safety-config-opens-never-delete",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "8ae05880e099c60849b5308ecf0a87bdcd72f8ed",
+    "items": [
+      {
+        "body": "188, 293, 306, 314, 359, 439 ms (3 of 6 over 300 ms; 2.11.0 took 1.8-10.9 s). Remaining cost is FTS5 prefix expansion of short tokens in ranking plus CLI startup; an FTS prefix index (needs a migration) measured 4-23 ms ranking in research (surface: src/store/sqlite/adapter.ts)",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-61d85a4ae4bc17a4ab6c58ad301e92a7f1d92c62e07fb87fa8a13a02143a496b",
+        "id": "finding-0fdf0ff4a99fadd3489b8fbdcfa1793b",
+        "lastSeenReceiptId": "review-61d85a4ae4bc17a4ab6c58ad301e92a7f1d92c62e07fb87fa8a13a02143a496b",
+        "ordinal": 1,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "QA-1"
+      }
+    ],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-61d85a4ae4bc17a4ab6c58ad301e92a7f1d92c62e07fb87fa8a13a02143a496b"
+  },
+  "head_sha": "8ae05880e099c60849b5308ecf0a87bdcd72f8ed",
+  "id": "fn-220-index-safety-config-opens-never-delete",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 13,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      },
+      {
+        "coverage": "live",
+        "id": "R7"
+      },
+      {
+        "coverage": "live",
+        "id": "R8"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R9"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R10"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R11"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R12"
+      },
+      {
+        "coverage": "live",
+        "id": "R13"
+      }
+    ],
+    "total": 13
+  },
+  "timestamp": "2026-10-12T13:15:21Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
