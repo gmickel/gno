@@ -18,6 +18,7 @@ import { EgressDeniedError } from "../core/egress-enforcement";
 import { httpMcpRequestNamespace } from "../core/request-receipts";
 import { withInferenceScope } from "../llm/inference-scope";
 import { remoteSafeSessionsError } from "../sessions/types";
+import { StaleCollectionsError } from "../store/sqlite/adapter";
 import { createMcpServerSurface, type ToolContext } from "./context";
 import {
   enforceHttpMcpEgress,
@@ -289,8 +290,12 @@ export class HttpMcpTransport {
     try {
       await this.#runtime.refreshConfig?.();
     } catch (error) {
-      const typed = remoteSafeSessionsError(error);
-      return jsonRpcError(500, -32_000, `${typed.code}: ${typed.message}`);
+      // Stale collections are refused per tool with their names, so
+      // gno_status and gno_peek still answer.
+      if (!(error instanceof StaleCollectionsError)) {
+        const typed = remoteSafeSessionsError(error);
+        return jsonRpcError(500, -32_000, `${typed.code}: ${typed.message}`);
+      }
     }
     if (!(await this.#acquireCapacity(request.signal))) {
       if (this.#closed || this.#runtime.isShuttingDown)

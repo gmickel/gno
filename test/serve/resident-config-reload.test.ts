@@ -22,6 +22,7 @@ import type { ResidentRuntime } from "../../src/serve/resident-runtime";
 import { saveConfigToPath } from "../../src/config";
 import { DEFAULT_FTS_TOKENIZER } from "../../src/config/types";
 import { HttpMcpTransport } from "../../src/mcp/http-transport";
+import { createGnoClient } from "../../src/sdk";
 import { handleResidentRead } from "../../src/serve/resident-request";
 import { startResidentRuntime } from "../../src/serve/resident-runtime";
 import { handleSearch, handleStatus } from "../../src/serve/routes/api";
@@ -165,6 +166,49 @@ test("a resident keeps a hand-removed collection and adopts added ones", async (
       .getState()
       .expectedCollections.sort((a, b) => a.localeCompare(b))
   ).toEqual(["alpha", "beta", "gamma"]);
+});
+
+test("over MCP, status still answers and retrieval names a collection another client indexed", async () => {
+  const started = await startResidentRuntime({
+    configPath,
+    index: "reload",
+    offline: true,
+  });
+  if (!started.success) throw new Error(started.error);
+  runtime = started.runtime;
+  await runtime.syncAll({ triggerEmbed: false });
+
+  // Another client with a wider config indexes gamma into the same index.
+  const wider = await createGnoClient({
+    config: configWith("alpha", "beta", "gamma"),
+    dbPath: join(root, "gno-data", "index-reload.sqlite"),
+    indexName: "reload",
+  });
+  try {
+    await wider.update();
+  } finally {
+    await wider.close();
+  }
+
+  expect(await mcpStatus(runtime)).toEqual(["alpha", "beta"]);
+  transport ??= new HttpMcpTransport(runtime, { enableWrite: false });
+  const http = transport;
+  const client = new Client({ name: "config-reload", version: "1.0.0" });
+  await client.connect(
+    new StreamableHTTPClientTransport(new URL("http://127.0.0.1:3000/mcp"), {
+      fetch: (input, init) => http.handleRequest(new Request(input, init)),
+    })
+  );
+  try {
+    const search = (await client.callTool({
+      name: "gno_search",
+      arguments: { query: "zebra" },
+    })) as { isError?: boolean; content: Array<{ text: string }> };
+    expect(search.isError).toBe(true);
+    expect(search.content[0]?.text).toContain("gamma (1 document)");
+  } finally {
+    await client.close();
+  }
 });
 
 test("an unreadable config file is an error, never served stale", async () => {

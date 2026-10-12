@@ -834,7 +834,11 @@ export async function startResidentRuntime(
         await refreshConfig();
         lastRefreshError = undefined;
       } catch (error) {
-        const message = remoteSafeSessionsError(error).message;
+        // The stale-collections message names collections, never paths.
+        const message =
+          error instanceof StaleCollectionsError
+            ? error.message
+            : remoteSafeSessionsError(error).message;
         if (message !== lastRefreshError)
           console.warn(`gno ${mode}: config not reloaded: ${message}`);
         lastRefreshError = message;
