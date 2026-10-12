@@ -47,6 +47,7 @@ never raw roots.
 | `gno bench`          | Benchmark retrieval fixtures                      |
 | `gno ask`            | Search with AI answer                             |
 | `gno get`            | Retrieve document content                         |
+| `gno convert`        | Convert one file to Markdown without indexing     |
 | `gno request-status` | Check a write request ID before retrying          |
 | `gno ls`             | List indexed documents                            |
 | `gno daemon`         | Headless continuous indexing                      |
@@ -928,6 +929,28 @@ Options:
 - `--line-numbers` - Prefix lines with numbers
 - `--trace-id <id>` - Continue an open query receipt and record the exact returned span
 - `--source` - Include source metadata
+
+### gno convert
+
+Convert one file to Markdown without adding it to an index. The output is the
+same Markdown that indexing would store for that file, so you can preview a
+PDF or Office document, or feed it to another tool. No config or index needed.
+
+```bash
+gno convert report.pdf > report.md
+gno convert slides.pptx --json
+gno convert big.pdf --max-bytes 20000000
+```
+
+Options:
+
+- `--max-bytes <n>` - Refuse files larger than this (default 100 MB)
+- `--json` - Return `convert@1.0`: `markdown`, `mirrorHash`, `warnings`, the detected type and converter
+
+Warnings print to stderr in terminal mode. A file over the size limit, a missing
+file or an unsupported type exits 1; a failed conversion exits 2. With `--json`
+the error's `details.reason` names the cause (`TOO_LARGE`, `UNSUPPORTED`,
+`CORRUPT`, ...).
 
 ### gno multi-get
 
