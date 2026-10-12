@@ -16,12 +16,14 @@ import {
   parseUri,
   URI_PREFIX,
 } from "../../app/constants";
+import { accessNotFound, isAccessMode } from "../../core/access-scope";
 import { MCP_ERRORS } from "../../core/errors";
 import { resolveEffectiveIndex } from "../../core/indexed-reference";
 import { normalizeTag, validateTag } from "../../core/tags";
 import { normalizeCollectionName } from "../../core/validation";
 import { openScopedIndexStore } from "../../store/sqlite/scoped-index";
 import { exposesHostPaths } from "../context";
+import { accessRequestOf } from "../tools/access";
 
 // Tags resource URI prefix
 const TAGS_URI = `${URI_PREFIX}tags`;
@@ -96,6 +98,8 @@ export function registerResources(server: McpServer, ctx: ToolContext): void {
   // Resource template for gno://{collection}/{path} URIs
   const template = new ResourceTemplate(`${URI_PREFIX}{collection}/{+path}`, {
     list: async () => {
+      // Non-admin gateway principals get no resource listing at all.
+      if (isAccessMode(accessRequestOf(ctx))) return { resources: [] };
       // List all documents as resources
       const listResult = await ctx.store.listDocuments();
       if (!listResult.ok) {
@@ -120,6 +124,9 @@ export function registerResources(server: McpServer, ctx: ToolContext): void {
       if (ctx.isShuttingDown()) {
         throw new Error("Server is shutting down");
       }
+
+      // Documents are served to non-admin principals only through scoped tools.
+      if (isAccessMode(accessRequestOf(ctx))) throw accessNotFound();
 
       // Serialize resource reads same as tools (prevent concurrent DB access + shutdown race)
       const release = await ctx.toolMutex.acquire();
@@ -240,6 +247,9 @@ export function registerResources(server: McpServer, ctx: ToolContext): void {
         if (ctx.isShuttingDown()) {
           throw new Error("Server is shutting down");
         }
+
+        // Tag counts are collection metadata: admin and unscoped callers only.
+        if (isAccessMode(accessRequestOf(ctx))) throw accessNotFound();
 
         const release = await ctx.toolMutex.acquire();
         try {

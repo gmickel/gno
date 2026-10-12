@@ -25,12 +25,24 @@ import {
 } from "../../core/typed-metadata";
 import { searchBm25 } from "../../pipeline/search";
 import { appendRetrievalWarnings } from "../retrieval-warnings";
-import { normalizeTagFilters, runTool, type ToolResult } from "./index";
+import {
+  accessRetrievalOptions,
+  finishScopedRetrieval,
+  mcpAccessScope,
+  scopeRetrievalArgs,
+} from "./access";
+import {
+  assertCollectionsExist,
+  normalizeTagFilters,
+  runTool,
+  type ToolResult,
+} from "./index";
 
 interface SearchInput {
   query: string;
   projectHints?: string[];
   collection?: string;
+  collections?: string[];
   limit?: number;
   minScore?: number;
   lang?: string;
@@ -109,20 +121,21 @@ function formatSearchResults(data: SearchResults): string {
  * Handle gno_search tool call.
  */
 export function handleSearch(
-  args: SearchInput,
+  requestArgs: SearchInput,
   ctx: ToolContext
 ): Promise<ToolResult> {
   return runTool(
     ctx,
     "gno_search",
     async () => {
-      // Validate collection exists if specified
-      if (args.collection) {
-        const exists = ctx.collections.some((c) => c.name === args.collection);
-        if (!exists) {
-          throw new Error(`Collection not found: ${args.collection}`);
-        }
-      }
+      const scope = mcpAccessScope(ctx);
+      const callerCollections = requestArgs.collections;
+      const args = scope ? scopeRetrievalArgs(scope, requestArgs) : requestArgs;
+      // Validate collections exist if specified
+      assertCollectionsExist(ctx, [
+        args.collection,
+        ...(args.collections ?? []),
+      ]);
 
       const projectAffinity = await resolveRemoteProjectAffinity(
         ctx.config,
@@ -132,6 +145,7 @@ export function handleSearch(
         limit: args.limit ?? 5,
         minScore: args.minScore,
         collection: args.collection,
+        collections: args.collections,
         lang: args.lang,
         intent: args.intent,
         exclude: args.exclude,
@@ -148,6 +162,7 @@ export function handleSearch(
         projectAffinity,
         contentTypeRules: normalizeContentTypes(ctx.config.contentTypes ?? [])
           .rules,
+        ...(scope ? await accessRetrievalOptions(scope, ctx.store) : {}),
       };
       let traceSession: RetrievalTraceSession | undefined;
       try {
@@ -166,10 +181,18 @@ export function handleSearch(
           traceSession,
         });
         if (!result.ok) throw new Error(result.error.message);
+        const value = scope
+          ? await finishScopedRetrieval(
+              scope,
+              ctx.store,
+              callerCollections,
+              result.value
+            )
+          : result.value;
         return attachRetrievalTraceMetadata(
           {
-            ...result.value,
-            results: enrichWithAbsPath(result.value.results, ctx),
+            ...value,
+            results: enrichWithAbsPath(value.results, ctx),
           },
           traceSession
         );

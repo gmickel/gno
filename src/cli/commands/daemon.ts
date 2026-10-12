@@ -6,6 +6,7 @@ import type { ResidentRuntime } from "../../serve/resident-runtime";
 import type { SessionAutomationRunResult } from "../../sessions/types";
 
 import { warnIfBunBelowFloor } from "../../app/bun-runtime";
+import { isAccessMode } from "../../core/access-scope";
 import {
   enforceCollectionEgress,
   EGRESS_DENIED_MESSAGE,
@@ -114,6 +115,13 @@ export const authorizeDaemonStatus = async (
 ): Promise<Response> => {
   const authorization = await gateway.security.authorize(request, server);
   if (!authorization.ok) return authorization.response;
+  // Resident status is a scoped caller's status tool: its egress check and
+  // answer cover every collection and the whole runtime, and a refusal
+  // would name collections it may not read. It gets the 404 of a missing
+  // route, as `gno_status` answers NOT_FOUND.
+  if (isAccessMode({ principal: authorization.value.principal })) {
+    return new Response(null, { status: 404 });
+  }
   const refreshFailure = await refreshResidentConfig(runtime);
   if (refreshFailure) return refreshFailure;
   try {

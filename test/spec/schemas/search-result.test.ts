@@ -263,7 +263,7 @@ describe("search-result schema", () => {
   });
 });
 
-describe("search-results envelope source.absPath", () => {
+describe("search-results envelope", () => {
   let envelopeSchema: object;
 
   beforeAll(async () => {
@@ -312,5 +312,21 @@ describe("search-results envelope source.absPath", () => {
     };
     expect(assertValid(payload, envelopeSchema)).toBe(true);
     expect("absPath" in payload.results[0]!.source).toBe(false);
+  });
+
+  test("accepts meta.collections when an allowlist was applied", () => {
+    const payload = {
+      results: [],
+      meta: { ...meta, totalResults: 0, collections: ["alpha", "beta"] },
+    };
+    expect(assertValid(payload, envelopeSchema)).toBe(true);
+  });
+
+  test("rejects an empty meta.collections", () => {
+    const payload = {
+      results: [],
+      meta: { ...meta, totalResults: 0, collections: [] },
+    };
+    expect(assertInvalid(payload, envelopeSchema)).toBe(true);
   });
 });

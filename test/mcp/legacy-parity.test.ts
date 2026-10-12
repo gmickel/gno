@@ -36,7 +36,9 @@
  *    (`gno_sessions_status` read, `gno_sessions_import` write) and fn-172 adds
  *    the `gno_sessions_automation_run` write tool. fn-178 widens
  *    `gno_audit.maxFindings` to 1-100000 or "all" and adds the optional
- *    `gno_impact.collections` scope. fn-216 rewords the retrieval-ladder
+ *    `gno_impact.collections` scope. The optional `collections` allowlist on
+ *    exactly `gno_search`, `gno_vsearch` and `gno_query` is additive too.
+ *    fn-216 rewords the retrieval-ladder
  *    guidance in the `gno_search`, `gno_vsearch` and `gno_query` descriptions and the
  *    `gno_query.fast` property description. The agents block v5 rewords the
  *    `gno_search` exact-text guidance. fn-217 closes every tool input
@@ -419,6 +421,23 @@ function withoutClosedInput(schema: Record<string, unknown>): unknown {
   return additionalProperties === false ? rest : schema;
 }
 
+const COLLECTIONS_ALLOWLIST_TOOLS = new Set([
+  "gno_search",
+  "gno_vsearch",
+  "gno_query",
+]);
+
+/** Remove only the additive optional `collections` retrieval allowlist. */
+function withoutCollectionsAllowlist(tool: WireTool): WireTool {
+  if (!COLLECTIONS_ALLOWLIST_TOOLS.has(tool.name)) return tool;
+  const { collections: _collections, ...oldProperties } = tool.inputSchema
+    .properties as Record<string, unknown>;
+  return {
+    ...tool,
+    inputSchema: { ...tool.inputSchema, properties: oldProperties },
+  };
+}
+
 function normalizeToolsList(line: string): string {
   line = withHistoricalLadderDescriptions(line);
   const envelope = parseJsonRpc<ToolsListEnvelope>(line);
@@ -438,7 +457,9 @@ function normalizeToolsList(line: string): string {
           : withoutClosedInput(
               withoutSdkDeltas(
                 withoutTypedFilterExtension(
-                  withoutRequestIdExtension(withoutAuditCapExtension(tool))
+                  withoutRequestIdExtension(
+                    withoutAuditCapExtension(withoutCollectionsAllowlist(tool))
+                  )
                 )
               ) as Record<string, unknown>
             ),

@@ -49,12 +49,24 @@ import { diagnoseQueryTarget } from "../../pipeline/diagnose";
 import { type HybridSearchDeps, searchHybrid } from "../../pipeline/hybrid";
 import { createLazyVectorIndex } from "../../store/vector/lazy";
 import { appendRetrievalWarnings } from "../retrieval-warnings";
-import { normalizeTagFilters, runTool, type ToolResult } from "./index";
+import {
+  accessRetrievalOptions,
+  finishScopedRetrieval,
+  mcpAccessScope,
+  scopeRetrievalArgs,
+} from "./access";
+import {
+  assertCollectionsExist,
+  normalizeTagFilters,
+  runTool,
+  type ToolResult,
+} from "./index";
 
 interface QueryInput {
   query: string;
   projectHints?: string[];
   collection?: string;
+  collections?: string[];
   limit?: number;
   minScore?: number;
   lang?: string;
@@ -78,7 +90,7 @@ interface QueryInput {
   explain?: boolean;
 }
 
-interface QueryDiagnoseInput extends QueryInput {
+interface QueryDiagnoseInput extends Omit<QueryInput, "collections"> {
   target: string;
 }
 
@@ -183,7 +195,7 @@ function formatQueryDiagnoseResult(data: QueryDiagnoseResult): string {
  * Handle gno_query tool call.
  */
 export function handleQuery(
-  args: QueryInput,
+  requestArgs: QueryInput,
   ctx: ToolContext
 ): Promise<ToolResult> {
   return runTool(
@@ -191,13 +203,13 @@ export function handleQuery(
     "gno_query",
     // oxlint-disable-next-line max-lines-per-function -- query with validation and result formatting
     async () => {
-      // Validate collection exists if specified
-      if (args.collection) {
-        const exists = ctx.collections.some((c) => c.name === args.collection);
-        if (!exists) {
-          throw new Error(`Collection not found: ${args.collection}`);
-        }
-      }
+      const scope = mcpAccessScope(ctx);
+      const args = scope ? scopeRetrievalArgs(scope, requestArgs) : requestArgs;
+      // Validate collections exist if specified
+      assertCollectionsExist(ctx, [
+        args.collection,
+        ...(args.collections ?? []),
+      ]);
 
       const normalizedInput = normalizeStructuredQueryInput(
         args.query,
@@ -251,6 +263,7 @@ export function handleQuery(
         limit: args.limit ?? 5,
         minScore: args.minScore,
         collection: args.collection,
+        collections: args.collections,
         queryLanguageHint: args.lang,
         intent: args.intent,
         candidateLimit: depthPolicy.candidateLimit,
@@ -272,6 +285,7 @@ export function handleQuery(
         tagsAny: normalizeTagFilters(args.tagsAny),
         projectAffinity,
         explain: args.explain,
+        ...(scope ? await accessRetrievalOptions(scope, ctx.store) : {}),
       };
 
       try {
@@ -291,7 +305,7 @@ export function handleQuery(
         const llm = ctx.getModelAdapter?.() ?? new LlmAdapter(ctx.config);
         const egressCollections = args.collection
           ? [args.collection]
-          : ("all" as const);
+          : (args.collections ?? ("all" as const));
 
         // Resolve download policy from env (MCP has no CLI flags)
         const policy = resolveDownloadPolicy(process.env, {});
@@ -360,15 +374,24 @@ export function handleQuery(
           throw new Error(result.error.message);
         }
 
+        const value = scope
+          ? await finishScopedRetrieval(
+              scope,
+              ctx.store,
+              requestArgs.collections,
+              result.value
+            )
+          : result.value;
+
         // Enrich with absPath
-        const enrichedResults = enrichWithAbsPath(result.value.results, ctx);
+        const enrichedResults = enrichWithAbsPath(value.results, ctx);
 
         return attachRetrievalTraceMetadata(
           {
-            ...result.value,
+            ...value,
             results: enrichedResults,
             meta: {
-              ...result.value.meta,
+              ...value.meta,
               // Add queryLanguage hint if provided
               ...(args.lang ? { queryLanguage: args.lang } : {}),
             },

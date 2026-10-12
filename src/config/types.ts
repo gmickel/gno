@@ -114,6 +114,28 @@ const COLLECTION_NAME_REGEX = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 /** Collection scope key pattern: name (1-64 chars) followed by colon */
 const COLLECTION_SCOPE_REGEX = /^[a-z0-9][a-z0-9_-]{0,63}:$/;
 
+/** Opaque external reference: a system tag and an id in that system. */
+const AccessRefSchema = z
+  .object({
+    sys: z.string().regex(/^[a-z][a-z0-9_-]{0,31}$/, {
+      message: "accessRef.sys must match [a-z][a-z0-9_-]{0,31}",
+    }),
+    ref: z.string().min(1).max(4096),
+  })
+  .strict();
+
+/**
+ * Collection read access for non-admin gateway principals. Exactly one of
+ * `public`, `owner` or `accessRef`. `firmwide` applies to `accessRef` only.
+ */
+export const CollectionAccessSchema = z.union([
+  z.object({ public: z.literal(true) }).strict(),
+  z.object({ owner: z.string().min(1).max(256) }).strict(),
+  z
+    .object({ accessRef: AccessRefSchema, firmwide: z.boolean().optional() })
+    .strict(),
+]);
+
 export const CollectionSchema = z.object({
   /** Unique collection identifier (lowercase) */
   name: z
@@ -160,6 +182,13 @@ export const CollectionSchema = z.object({
    * start at zero; guarded mutations advance it under the config write lock.
    */
   egressPolicyRevision: z.number().int().nonnegative().optional(),
+
+  /**
+   * Who may read this collection through a non-admin gateway principal.
+   * Ignored unless `gateway.principals` is set; such a principal is denied
+   * every collection without it. See `src/core/access-scope.ts`.
+   */
+  access: CollectionAccessSchema.optional(),
 
   /**
    * Source content availability policy for indexing. Distinct from egress:
@@ -211,6 +240,7 @@ export const CollectionSchema = z.object({
 });
 
 export type Collection = z.infer<typeof CollectionSchema>;
+export type CollectionAccess = NonNullable<Collection["access"]>;
 export type CollectionModelOverrides = NonNullable<Collection["models"]>;
 
 /** Resolve config input without erasing whether the user made an explicit choice. */
@@ -483,6 +513,27 @@ export const HttpGatewayLimitsSchema = z.object({
   sessionIdleTimeoutMs: z.number().int().min(1_000).optional(),
 });
 
+/** Gateway principal name: shown in logs and tool context, never a secret. */
+export const HTTP_GATEWAY_PRINCIPAL_NAME_PATTERN =
+  /^[a-z0-9][a-z0-9._-]{0,63}$/;
+
+/**
+ * A named bearer token. Only a principal with `mayAssertSubject` may send the
+ * `GNO-Subject` / `GNO-Context` headers; `admin` is carried to the tool
+ * context for later authorization checks.
+ */
+export const HttpGatewayPrincipalSchema = z.object({
+  name: z.string().regex(HTTP_GATEWAY_PRINCIPAL_NAME_PATTERN, {
+    message: "principal name must match [a-z0-9][a-z0-9._-]{0,63}",
+  }),
+  /** Owner-only bearer token file for this principal. */
+  tokenFile: z.string().min(1),
+  mayAssertSubject: z.boolean().optional(),
+  admin: z.boolean().optional(),
+});
+
+export type HttpGatewayPrincipal = z.infer<typeof HttpGatewayPrincipalSchema>;
+
 export const HttpGatewayConfigSchema = z.object({
   /** Literal listen address. Defaults to IPv4 loopback. */
   host: z.string().min(1).optional(),
@@ -497,6 +548,32 @@ export const HttpGatewayConfigSchema = z.object({
   /** Advertised MCP tool set (`core` | `full`); read at listener start. */
   toolProfile: z.enum(MCP_TOOL_PROFILES).optional(),
   limits: HttpGatewayLimitsSchema.optional(),
+  /** Named bearer tokens; off unless set. Names and token files are unique. */
+  principals: z
+    .array(HttpGatewayPrincipalSchema)
+    .min(1)
+    .max(64)
+    .superRefine((principals, ctx) => {
+      const names = new Set<string>();
+      const files = new Set<string>();
+      for (const [index, principal] of principals.entries()) {
+        if (names.has(principal.name))
+          ctx.addIssue({
+            code: "custom",
+            path: [index, "name"],
+            message: "principal names must be unique",
+          });
+        if (files.has(principal.tokenFile))
+          ctx.addIssue({
+            code: "custom",
+            path: [index, "tokenFile"],
+            message: "principal token files must be unique",
+          });
+        names.add(principal.name);
+        files.add(principal.tokenFile);
+      }
+    })
+    .optional(),
 });
 
 export type HttpGatewayConfig = z.infer<typeof HttpGatewayConfigSchema>;

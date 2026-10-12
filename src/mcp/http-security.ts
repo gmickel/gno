@@ -5,6 +5,11 @@ import { lstat, open } from "node:fs/promises";
 
 import type { HttpGatewayConfig } from "../config/types";
 import type { DestinationClassification } from "../core/destination-classifier";
+import type {
+  RequestPrincipal,
+  RequestSubject,
+  RequestSubjectContext,
+} from "./context";
 
 import { expandPath } from "../config/paths";
 import {
@@ -28,15 +33,34 @@ const TOKEN_BYTES = 32;
 const TOKEN_FILE_FORBIDDEN_MODE = 0o077;
 const VISIBLE_ASCII = /^[\x21-\x7e]+$/;
 
+/** Request headers only a `mayAssertSubject` principal may send. */
+export const GNO_SUBJECT_HEADER = "gno-subject";
+export const GNO_CONTEXT_HEADER = "gno-context";
+const SUBJECT_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}$/;
+const SUBJECT_CONTEXTS: readonly RequestSubjectContext[] = [
+  "1to1",
+  "shared",
+  "public_only",
+];
+
 export interface HttpMcpPeerServer {
   requestIP(request: Request): { address: string; port: number } | null;
   timeout(request: Request, seconds: number): void;
+}
+
+export interface ResolvedHttpGatewayPrincipal {
+  name: string;
+  tokenFile: string;
+  mayAssertSubject: boolean;
+  admin: boolean;
 }
 
 export interface ResolvedHttpGatewayConfig {
   host: string;
   port: number;
   tokenFile?: string;
+  /** Named bearer tokens; absent unless `gateway.principals` is set. */
+  principals?: readonly ResolvedHttpGatewayPrincipal[];
   allowedHosts: readonly string[];
   allowedOrigins: readonly string[];
   enableWrite: boolean;
@@ -64,6 +88,10 @@ export interface HttpGatewayOverrides {
 export interface AuthorizedHttpMcpRequest {
   authenticated: boolean;
   identity: string;
+  /** Matched named principal; absent for the plain token and loopback. */
+  principal?: RequestPrincipal;
+  /** Subject read from `GNO-Subject` / `GNO-Context` (asserting principals only). */
+  subject?: RequestSubject;
   peerClassification: DestinationClassification;
   parsedBody?: unknown;
   request: Request;
@@ -181,6 +209,16 @@ export function resolveHttpGatewayConfig(
       config?.allowedOrigins ??
       defaultAllowedOrigins(host, port),
     enableWrite: overrides.enableWrite ?? config?.enableWrite ?? false,
+    ...(config?.principals?.length
+      ? {
+          principals: config.principals.map((principal) => ({
+            name: principal.name,
+            tokenFile: principal.tokenFile,
+            mayAssertSubject: principal.mayAssertSubject ?? false,
+            admin: principal.admin ?? false,
+          })),
+        }
+      : {}),
     toolProfile:
       overrides.toolProfile ?? config?.toolProfile ?? DEFAULT_MCP_TOOL_PROFILE,
     limits: {
@@ -199,6 +237,41 @@ export function resolveHttpGatewayConfig(
       sessionIdleTimeoutMs:
         config?.limits?.sessionIdleTimeoutMs ??
         DEFAULT_HTTP_MCP_SESSION_IDLE_TIMEOUT_MS,
+    },
+  };
+}
+
+/** SHA-256 hex of an asserted subject; what request receipts store. */
+export function hashGatewaySubject(subject: string): string {
+  return new Bun.CryptoHasher("sha256").update(subject).digest("hex");
+}
+
+/**
+ * Read the subject headers. Only a `mayAssertSubject` principal may send them;
+ * anyone else, a malformed value, or a context without a subject is refused.
+ */
+function readSubjectAssertion(
+  headers: Headers,
+  principal: RequestPrincipal | undefined
+): { ok: true; subject?: RequestSubject } | { ok: false } {
+  const id = headers.get(GNO_SUBJECT_HEADER);
+  const context = headers.get(GNO_CONTEXT_HEADER);
+  if (id === null && context === null) return { ok: true };
+  if (!principal?.mayAssertSubject || id === null || !SUBJECT_PATTERN.test(id))
+    return { ok: false };
+  if (
+    context !== null &&
+    !SUBJECT_CONTEXTS.includes(context as RequestSubjectContext)
+  )
+    return { ok: false };
+  return {
+    ok: true,
+    subject: {
+      id,
+      ...(context === null
+        ? {}
+        : { context: context as RequestSubjectContext }),
+      hash: hashGatewaySubject(id),
     },
   };
 }
@@ -329,6 +402,7 @@ export class HttpMcpSecurity {
   readonly #now: () => number;
   readonly #onCredentialsChanged: () => Promise<void> | void;
   readonly #rates = new Map<string, RateState>();
+  readonly #principalStates = new Map<string, TokenState>();
   #tokenState?: TokenState;
 
   constructor(
@@ -353,7 +427,7 @@ export class HttpMcpSecurity {
     const loopback = isHttpGatewayLoopbackBind(this.#config.host);
     if (
       !loopback &&
-      (!this.#config.tokenFile ||
+      ((!this.#config.tokenFile && !this.#config.principals) ||
         this.#config.allowedHosts.length === 0 ||
         this.#config.allowedOrigins.length === 0)
     ) {
@@ -365,6 +439,19 @@ export class HttpMcpSecurity {
     if (this.#config.tokenFile) {
       await ensureHttpMcpTokenFile(this.#config.tokenFile);
       this.#tokenState = await loadTokenFile(this.#config.tokenFile);
+    }
+
+    if (this.#config.principals) {
+      const digests = new Set<string>();
+      if (this.#tokenState) digests.add(this.#tokenState.digest);
+      for (const principal of this.#config.principals) {
+        await ensureHttpMcpTokenFile(principal.tokenFile);
+        const state = await loadTokenFile(principal.tokenFile);
+        if (digests.has(state.digest))
+          throw new Error("MCP principals must each use a distinct token");
+        digests.add(state.digest);
+        this.#principalStates.set(principal.name, state);
+      }
     }
   }
 
@@ -402,20 +489,54 @@ export class HttpMcpSecurity {
 
     const requiresAuth =
       !isHttpGatewayLoopbackBind(this.#config.host) ||
-      this.#config.tokenFile !== undefined;
-    const tokenState = await this.#refreshTokenState();
+      this.#config.tokenFile !== undefined ||
+      this.#config.principals !== undefined;
+    // One credential snapshot per request: the plain token read here is the
+    // one checked for clashes and the one authenticated against, even if a
+    // concurrent request reloads the files in between.
+    const refreshedToken = await this.#refreshTokenState();
+    const { active: principalStates, ambiguous } =
+      await this.#refreshPrincipalStates(refreshedToken);
+    // A plain token that a principal token now equals (for example after a
+    // rotation) is ambiguous too: refuse it rather than accept it unscoped.
+    const tokenState =
+      refreshedToken && !ambiguous.has(refreshedToken.digest)
+        ? refreshedToken
+        : undefined;
     let identity = "loopback";
     let authenticated = false;
+    let principal: RequestPrincipal | undefined;
     if (requiresAuth) {
-      if (!tokenState) return { ok: false, response: securityError(503) };
+      if (!tokenState && principalStates.length === 0)
+        return { ok: false, response: securityError(503) };
       const authorization = request.headers.get("authorization");
       const match = authorization?.match(/^Bearer ([\x21-\x7e]+)$/);
       if (!match) return { ok: false, response: securityError(401) };
       const presentedDigest = await sha256(match[1] ?? "");
-      if (!constantTimeEqual(presentedDigest, tokenState.digest))
-        return { ok: false, response: securityError(401) };
-      identity = tokenState.digest;
+      if (tokenState && constantTimeEqual(presentedDigest, tokenState.digest)) {
+        identity = tokenState.digest;
+      } else {
+        const matched = principalStates.find(({ state }) =>
+          constantTimeEqual(presentedDigest, state.digest)
+        );
+        if (!matched) return { ok: false, response: securityError(401) };
+        identity = matched.state.digest;
+        principal = {
+          name: matched.principal.name,
+          admin: matched.principal.admin,
+          mayAssertSubject: matched.principal.mayAssertSubject,
+        };
+      }
       authenticated = true;
+    }
+
+    // Without configured principals the subject headers mean nothing and are
+    // only stripped, so existing callers see no change.
+    let subject: RequestSubject | undefined;
+    if (this.#config.principals) {
+      const assertion = readSubjectAssertion(request.headers, principal);
+      if (!assertion.ok) return { ok: false, response: securityError(403) };
+      subject = assertion.subject;
     }
 
     let parsedBody: unknown;
@@ -433,6 +554,8 @@ export class HttpMcpSecurity {
     sanitizedHeaders.delete("forwarded");
     sanitizedHeaders.delete("content-length");
     sanitizedHeaders.delete("transfer-encoding");
+    sanitizedHeaders.delete(GNO_SUBJECT_HEADER);
+    sanitizedHeaders.delete(GNO_CONTEXT_HEADER);
     const forwardedHeaderNames: string[] = [];
     for (const name of sanitizedHeaders.keys())
       if (name.startsWith("x-forwarded-")) forwardedHeaderNames.push(name);
@@ -448,6 +571,8 @@ export class HttpMcpSecurity {
       value: {
         authenticated,
         identity,
+        ...(principal ? { principal } : {}),
+        ...(subject ? { subject } : {}),
         peerClassification,
         parsedBody,
         request: sanitizedRequest,
@@ -471,6 +596,59 @@ export class HttpMcpSecurity {
       if (this.#rates.size > MAX_RATE_KEYS) this.#rates.clear();
     }
     return state.count <= this.#config.limits.maxRequestsPerMinute;
+  }
+
+  /**
+   * Reload every principal token; a broken file disables only that principal.
+   * `ambiguous` holds every digest shared by two credentials (principals or
+   * the plain token); none of them authenticates until the clash is fixed.
+   * `plainToken` is the caller's snapshot of the plain token, never the shared
+   * field, which a concurrent request may already have replaced.
+   */
+  async #refreshPrincipalStates(plainToken: TokenState | undefined): Promise<{
+    active: Array<{
+      principal: ResolvedHttpGatewayPrincipal;
+      state: TokenState;
+    }>;
+    ambiguous: ReadonlySet<string>;
+  }> {
+    const principals = this.#config.principals ?? [];
+    const active: Array<{
+      principal: ResolvedHttpGatewayPrincipal;
+      state: TokenState;
+    }> = [];
+    let changed = false;
+    for (const principal of principals) {
+      const previous = this.#principalStates.get(principal.name);
+      let next: TokenState | undefined;
+      try {
+        next = await loadTokenFile(principal.tokenFile);
+      } catch {
+        next = undefined;
+      }
+      if (previous && previous.revision !== next?.revision) changed = true;
+      if (next) {
+        this.#principalStates.set(principal.name, next);
+        active.push({ principal, state: next });
+      } else {
+        this.#principalStates.delete(principal.name);
+      }
+    }
+    if (changed) await this.#onCredentialsChanged();
+    // Two credentials sharing a token after rotation would be ambiguous:
+    // refuse every one of them, the plain token included.
+    const counts = new Map<string, number>();
+    for (const { state } of active)
+      counts.set(state.digest, (counts.get(state.digest) ?? 0) + 1);
+    if (plainToken)
+      counts.set(plainToken.digest, (counts.get(plainToken.digest) ?? 0) + 1);
+    const ambiguous = new Set(
+      [...counts].flatMap(([digest, count]) => (count > 1 ? [digest] : []))
+    );
+    return {
+      active: active.filter(({ state }) => !ambiguous.has(state.digest)),
+      ambiguous,
+    };
   }
 
   async #refreshTokenState(): Promise<TokenState | undefined> {

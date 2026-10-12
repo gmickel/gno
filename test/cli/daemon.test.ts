@@ -6,6 +6,10 @@ import {
   handleDaemonAppStatus,
 } from "../../src/cli/commands/daemon";
 import { classifyDestination } from "../../src/core/destination-classifier";
+import {
+  StaleCollectionsError,
+  staleCollectionsMessage,
+} from "../../src/store/sqlite/adapter";
 
 type StartBackgroundRuntimeFn =
   typeof import("../../src/serve/background-runtime").startBackgroundRuntime;
@@ -112,6 +116,95 @@ describe("daemon command", () => {
     );
     expect(response.status).toBe(403);
     expect(await response.text()).toContain("EGRESS_DENIED");
+  });
+
+  test("resident status is a missing route to a non-admin principal", async () => {
+    const status = { schemaVersion: "1.0", mode: "daemon" };
+    let refreshed = 0;
+    const runtime = (stale: boolean, egressPolicy?: "local_only") => ({
+      config: {
+        collections: [
+          {
+            name: "notes",
+            path: "/notes",
+            pattern: "**/*",
+            include: [],
+            exclude: [],
+            ...(egressPolicy ? { egressPolicy } : {}),
+          },
+        ],
+      },
+      refreshConfig: async () => {
+        refreshed += 1;
+        if (stale) {
+          throw new StaleCollectionsError(
+            staleCollectionsMessage([{ name: "hidden", documents: 3 }])
+          );
+        }
+      },
+      getStatus: () => status,
+    });
+    const gateway = (admin?: boolean, hostname = "127.0.0.1") => ({
+      security: {
+        authorize: async () => ({
+          ok: true as const,
+          value: {
+            authenticated: true,
+            identity: "principal",
+            ...(admin === undefined
+              ? {}
+              : {
+                  principal: {
+                    name: admin ? "ops" : "assistant",
+                    admin,
+                    mayAssertSubject: !admin,
+                  },
+                }),
+            peerClassification: classifyDestination({
+              kind: "network",
+              hostname,
+            }),
+            request: new Request("http://gno.example/api/resident/status"),
+          },
+        }),
+      },
+    });
+    const read = async (
+      resident: ReturnType<typeof runtime>,
+      admin?: boolean,
+      hostname?: string
+    ) => {
+      const response = await authorizeDaemonStatus(
+        resident as never,
+        gateway(admin, hostname) as never,
+        new Request("http://gno.example/api/resident/status"),
+        {} as never
+      );
+      return { status: response.status, body: await response.text() };
+    };
+
+    // Non-admin principal: the same empty 404 whether the index holds an
+    // unlisted collection or egress would deny a configured one, and the
+    // config is not even refreshed for it.
+    const missing = { status: 404, body: "" };
+    expect(await read(runtime(false), false)).toEqual(missing);
+    expect(await read(runtime(true), false)).toEqual(missing);
+    expect(await read(runtime(false, "local_only"), false, "8.8.8.8")).toEqual(
+      missing
+    );
+    expect(refreshed).toBe(0);
+
+    // Admin principals and the plain token keep the status and the named
+    // refusal.
+    for (const admin of [true, undefined]) {
+      const ok = await read(runtime(false), admin);
+      expect(ok.status).toBe(200);
+      expect(ok.body).toContain('"mode":"daemon"');
+      const refused = await read(runtime(true), admin);
+      expect(refused.status).toBe(409);
+      expect(refused.body).toContain("STALE_COLLECTIONS");
+      expect(refused.body).toContain("hidden (3 documents)");
+    }
   });
 
   test("returns startup errors from background runtime", async () => {

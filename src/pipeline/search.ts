@@ -341,6 +341,7 @@ export async function searchBm25(
   const ftsResult = await store.searchFts(query, {
     limit: retrievalLimit,
     collection: options.collection,
+    collections: options.collections,
     allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
     exclude: options.exclude,
     relPathPrefix: options.retrievalScope?.relPathPrefix,
@@ -599,7 +600,7 @@ export async function searchBm25(
     if (metadata) metadata.retrievalRank = index + 1;
   }
   await attachSearchResultContexts(store, finalResults);
-  await attachSupersession(store, finalResults);
+  await attachSupersession(store, finalResults, options.supersession);
   const lineageResult = await attachSearchResultEgressLineage(
     store,
     finalResults,
@@ -621,12 +622,14 @@ export async function searchBm25(
       intent: options.intent,
       exclude: options.exclude,
       collection: options.collection,
+      collections: options.collections,
       lang: options.lang,
       since: temporalRange.since,
       until: temporalRange.until,
       categories: options.categories,
       author: options.author,
-      ...(options.filter
+      // Coverage counts span documents a scoped caller may not read.
+      ...(options.filter && !options.accessScoped
         ? { warnings: await typedMetadataWarnings(store, query, options) }
         : {}),
       queryLanguage,

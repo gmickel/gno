@@ -10,14 +10,23 @@ import type { DocumentRow, StorePort } from "../../store/types";
 import type { ToolContext } from "../server";
 
 import { decorateUriForIndex, parseUri } from "../../app/constants";
-import { resolveEffectiveIndex } from "../../core/indexed-reference";
+import { accessNotFound } from "../../core/access-scope";
+import {
+  indexesMatch,
+  resolveEffectiveIndex,
+} from "../../core/indexed-reference";
 import {
   projectRecordEvidenceMetadata,
   type RecordEvidenceMetadata,
 } from "../../core/record-metadata";
 import { parseRef } from "../../core/ref-parser";
-import { supersedingUri } from "../../pipeline/result-context";
+import { supersedingUris } from "../../pipeline/result-context";
 import { openScopedIndexStore } from "../../store/sqlite/scoped-index";
+import {
+  isDocumentServable,
+  mcpAccessScope,
+  supersessionScope,
+} from "./access";
 import { runTool, type ToolResult } from "./index";
 
 interface MultiGetInput {
@@ -154,12 +163,20 @@ export function handleMultiGet(
 
       const maxBytes = args.maxBytes ?? DEFAULT_MAX_BYTES;
       const documents: DocumentResult[] = [];
+      // Canonical URI of each entry in `documents`, for supersededBy.
+      const documentUris: string[] = [];
       const skipped: Array<{ ref: string; reason: string }> = [];
 
+      // In access mode an unreadable document is skipped exactly like a
+      // missing one, and patterns only see servable documents.
+      const scope = mcpAccessScope(ctx);
       let refs: string[] = args.refs ?? [];
       const resolution = resolveEffectiveIndex(refs, ctx.indexName);
       if (!resolution.ok) {
-        throw new Error(resolution.error);
+        throw scope ? accessNotFound() : new Error(resolution.error);
+      }
+      if (scope && !indexesMatch(resolution.value.indexName, ctx.indexName)) {
+        throw accessNotFound();
       }
       const scoped = await openScopedIndexStore({
         activeStore: ctx.store,
@@ -187,6 +204,7 @@ export function handleMultiGet(
           const regex = new RegExp(`^${regexPattern}$`);
 
           refs = listResult.value
+            .filter((d) => !scope || isDocumentServable(scope, d))
             .filter((d) => regex.test(d.uri) || regex.test(d.relPath))
             .map((d) => d.uri);
         }
@@ -195,12 +213,12 @@ export function handleMultiGet(
         for (const ref of refs) {
           const parsed = parseRef(ref);
           if ("error" in parsed) {
-            skipped.push({ ref, reason: parsed.error });
+            skipped.push({ ref, reason: scope ? "Not found" : parsed.error });
             continue;
           }
 
           const doc = await lookupDocument(scoped.store, parsed);
-          if (!doc) {
+          if (!doc || (scope && !isDocumentServable(scope, doc))) {
             skipped.push({ ref, reason: "Not found" });
             continue;
           }
@@ -256,16 +274,8 @@ export function handleMultiGet(
             }
           }
 
-          const successor = await supersedingUri(scoped.store, doc.uri);
+          documentUris.push(doc.uri);
           documents.push({
-            ...(successor
-              ? {
-                  supersededBy: decorateUriForIndex(
-                    successor,
-                    scoped.indexName
-                  ),
-                }
-              : {}),
             docid: doc.docid,
             uri: decorateUriForIndex(doc.uri, scoped.indexName),
             title: doc.title ?? undefined,
@@ -284,8 +294,26 @@ export function handleMultiGet(
           });
         }
 
+        // One lookup for every document, so a scoped walk asks about each
+        // hop once instead of once per document.
+        const successors = await supersedingUris(
+          scoped.store,
+          documentUris,
+          scope ? supersessionScope(scope, scoped.store) : undefined
+        );
         const response: MultiGetResponse = {
-          documents,
+          documents: documents.map((document, index) => {
+            const successor = successors.get(documentUris[index] as string);
+            return successor
+              ? {
+                  supersededBy: decorateUriForIndex(
+                    successor,
+                    scoped.indexName
+                  ),
+                  ...document,
+                }
+              : document;
+          }),
           skipped,
           meta: {
             requested: refs.length,

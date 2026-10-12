@@ -15,7 +15,11 @@ import type { RecordEvidenceMetadata } from "../core/record-metadata";
 import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
 import type { MetadataPredicate } from "../core/typed-metadata";
 import type { InferenceOptions } from "../llm/types";
-import type { StoreResult } from "../store/types";
+import type {
+  DocumentRow,
+  StoreResult,
+  SupersessionOptions,
+} from "../store/types";
 import type { ClaimVerificationResult } from "./claim-verification";
 import type { SemanticVerificationCapability } from "./claim-verifier";
 import type { ContentTypeBoostScoreMetadata } from "./content-type-boost";
@@ -114,6 +118,8 @@ export interface SearchMeta {
   totalResults: number;
   intent?: string;
   collection?: string;
+  /** Collection allowlist applied to this request; present only when set. */
+  collections?: string[];
   lang?: string;
   /** Detected/overridden query language for prompt selection (typically BCP-47; may be user-provided via --lang) */
   queryLanguage?: string;
@@ -177,6 +183,11 @@ export interface SearchResults {
 // Search Options
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Resolves to the ids of the given documents that a caller may read. */
+export type ReadableDocumentsCheck = (
+  documents: readonly DocumentRow[]
+) => Promise<ReadonlySet<number>>;
+
 /** Common options for all search commands */
 export interface SearchOptions extends InferenceOptions {
   /** Type-strict custom metadata predicate, applied before candidate limits. */
@@ -194,6 +205,11 @@ export interface SearchOptions extends InferenceOptions {
   /** Filter by collection */
   collection?: string;
   /**
+   * Filter to documents in ANY of these collections, before candidate limits.
+   * Undefined is unrestricted; an empty array denies all.
+   */
+  collections?: string[];
+  /**
    * Internal graph allowlist for a request partitioned into one retrieval per
    * collection (Context Capsules, replay): graph neighbours may come from any
    * of these collections, never from others. Defaults to `[collection]`.
@@ -204,6 +220,24 @@ export interface SearchOptions extends InferenceOptions {
     relPathPrefix?: string;
     allowedMirrorHashes: string[];
   };
+  /**
+   * Internal caller scope for `supersededBy`: a successor the caller may not
+   * read is never named (see `StorePort.getSupersedingUris`).
+   */
+  supersession?: SupersessionOptions;
+  /**
+   * Internal: the documents a scoped caller may read (gateway collection
+   * access). Graph links resolve over these alone, so a hidden document
+   * never takes a link or changes its confidence.
+   */
+  readable?: ReadableDocumentsCheck;
+  /**
+   * Internal: the request is confined to a caller's readable corpus (gateway
+   * collection access). Typed-metadata coverage warnings are omitted, since
+   * their counts span documents outside that corpus, and graph expansion
+   * metadata counts only neighbours the caller may read.
+   */
+  accessScoped?: boolean;
   /** Language filter/hint (BCP-47) */
   lang?: string;
   /** Include full content instead of snippet */

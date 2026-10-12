@@ -52,6 +52,8 @@ export interface InitStoreOptions {
   indexName?: string;
   /** Filter to single collection by name */
   collection?: string;
+  /** Filter to these collections by name; every name must exist */
+  collections?: string[];
   /** Sync collections/contexts from config into DB on open */
   syncConfig?: boolean;
   /** Permit management commands that only need an existing index database */
@@ -96,6 +98,16 @@ export async function initStore(
         error: `Collection not found: ${options.collection}`,
       };
     }
+  }
+  if (options.collections) {
+    const missing = options.collections.find(
+      (name) => !collections.some((c) => c.name === name)
+    );
+    if (missing) {
+      return { ok: false, error: `Collection not found: ${missing}` };
+    }
+    const wanted = new Set(options.collections);
+    collections = collections.filter((c) => wanted.has(c.name));
   }
 
   if (collections.length === 0 && !options.allowEmptyCollections) {
