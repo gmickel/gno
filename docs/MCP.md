@@ -479,6 +479,13 @@ collections whose `access` rule lets its user in (see
 - typed-metadata coverage warnings are left out, because their counts would
   include notes the caller may not read, and graph expansion resolves and
   counts links over only the notes the caller may read;
+- collections another client indexed but this config does not list are never
+  read and never named: where an unrestricted caller gets the error that
+  lists them, such a caller gets the answer it would get without them. While
+  one keeps the server from applying an edited config, such a caller's calls
+  fail with `UNAVAILABLE` and no names until the edit is applied, so it never
+  reads under `access` rules the file has changed;
+- the daemon's `GET /api/resident/status` answers it `404`;
 - only `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`,
   `gno_recall` and `gno_remember` work. Every other tool, including
   `gno_changes`, links and status, answers `NOT_FOUND`, and `gno://`

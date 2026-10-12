@@ -13,6 +13,7 @@ import {
   contextBuildSurfaceSchema,
   contextVerifySurfaceSchema,
 } from "../../app/context-surface";
+import { isAccessMode } from "../../core/access-scope";
 import { CAPTURE_MAX_TEXT_BYTES } from "../../core/capture";
 import { MAX_REQUEST_COLLECTIONS } from "../../core/collection-limits";
 import {
@@ -1116,6 +1117,10 @@ export async function runToolNoMutex<T>(
   }
 }
 
+/** A scoped caller's refusal while the served config is behind its file. */
+const CONFIG_EDIT_PENDING =
+  "UNAVAILABLE: The server has not applied its current config; try again later.";
+
 /** Orientation tools that report the index state instead of reading it. */
 const STALE_CHECK_EXEMPT_TOOLS = new Set(["gno_status", "gno_peek"]);
 
@@ -1124,8 +1129,20 @@ const STALE_CHECK_EXEMPT_TOOLS = new Set(["gno_status", "gno_peek"]);
  * (another client indexed them after this server opened). Status and peek
  * still run, and a connector proof reads one collection through a subset
  * config.
+ *
+ * A non-admin principal is not given that refusal: it reads only configured
+ * collections its access rule admits, so an unlisted collection is never
+ * searched for it, and the refusal would name collections (with document
+ * counts) it may not read. Its answer is the same whether or not the index
+ * holds one. While a config edit waits on such a collection, though, the
+ * served `access` rules may be ones the file has since narrowed, so it is
+ * refused without names until the edit is adopted.
  */
 function assertConfiguredCollections(ctx: ToolContext, name: string): void {
+  if (isAccessMode({ principal: ctx.getRequestPrincipal?.() })) {
+    if (ctx.isConfigEditPending?.()) throw new Error(CONFIG_EDIT_PENDING);
+    return;
+  }
   // Store-free stand-ins (an uninitialized peek, test doubles) have no index.
   const store = ctx.store as Partial<ToolContext["store"]> | undefined;
   if (

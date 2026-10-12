@@ -117,6 +117,12 @@ export interface ToolContext {
   toolProfile?: McpToolProfile;
   isShuttingDown: () => boolean;
   getResidentStatus?: () => ResidentStatus;
+  /**
+   * Resident only: the config file holds an edit the server could not adopt
+   * (a collection it omits is still indexed), so the served config, and the
+   * `access` rules in it, are behind the file.
+   */
+  isConfigEditPending?: () => boolean;
   getModelAdapter?: () => LlmAdapter;
   disposeModels?: (options?: NativeDisposeOptions) => Promise<void>;
   acquireModelLease?: () => ModelLease;

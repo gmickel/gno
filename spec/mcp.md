@@ -390,6 +390,18 @@ collections:
   neighbours the request may read. When no readable neighbour is added,
   the fallback reason is `graph_no_new_candidates`, so a link to a document
   the request may not read reads exactly like no link.
+- Collections the index holds but the config does not list (another client
+  indexed them): an unrestricted caller's tool calls fail with the
+  stale-collections error that names them and their document counts. A
+  non-admin principal never reads them (they have no `access` rule here), so
+  its calls run as if they were absent and answer byte for byte the same.
+  While such a collection keeps the server from applying an edited config
+  file, the served `access` rules may be ones the file has since narrowed:
+  the principal's tool calls then fail with `UNAVAILABLE: The server has
+not applied its current config; try again later.`, naming nothing, until
+  the edit is applied. The daemon's `GET /api/resident/status` answers a
+  non-admin principal `404` with an empty body, before any config refresh or
+  egress check (its answer and egress audit cover every collection).
 - Every tool outside the scoped set (`gno_changes`, links, backlinks,
   similar, graph, tags, status, jobs, traces, diagnostics, writes other than
   `gno_remember`) returns the same `NOT_FOUND` result for a non-admin
