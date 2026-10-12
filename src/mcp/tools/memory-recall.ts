@@ -17,7 +17,11 @@ import {
   MEMORY_RECALL_MAX_TOKENS,
   type RecallResult,
 } from "../../core/memory";
-import { assertMemoryReadable } from "./access";
+import {
+  assertMemoryReadable,
+  mcpAccessScope,
+  scopeRecallResult,
+} from "./access";
 import { runTool, type ToolResult } from "./index";
 import {
   createMcpMemoryService,
@@ -105,9 +109,10 @@ export function handleRecall(
     "gno_recall",
     async () => {
       assertMemoryReadable(ctx, args.collection);
+      const scope = mcpAccessScope(ctx);
       const service = createMcpMemoryService(ctx);
       try {
-        return await service.recall({
+        const result = await service.recall({
           ...resolveMcpMemoryIdentity(ctx, info),
           query: args.query,
           collection: args.collection,
@@ -115,6 +120,7 @@ export function handleRecall(
           maxFacts: args.maxFacts,
           maxTokens: args.maxTokens,
         });
+        return scope ? scopeRecallResult(scope, result) : result;
       } catch (error) {
         return rethrowMemoryError(error);
       }

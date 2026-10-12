@@ -473,6 +473,8 @@ collections whose `access` rule lets its user in (see
   `NOT_FOUND` answer, byte for byte;
 - `supersededBy` names a newer note only when the caller may read it, so a
   note it may not read never shows up as a successor;
+- `egressLineage` lists only collections the caller may read, even when a
+  collection it may not read holds the same content;
 - only `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`,
   `gno_recall` and `gno_remember` work. Every other tool, including
   `gno_changes`, links and status, answers `NOT_FOUND`, and `gno://`

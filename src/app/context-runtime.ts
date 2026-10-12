@@ -136,6 +136,14 @@ export const buildContextCapsule = async (
             result.error.cause
           );
         }
+        const view = deps.egressLineageView;
+        if (view) {
+          for (const item of result.value.results) {
+            if (item.egressLineage) {
+              item.egressLineage = view(item.egressLineage);
+            }
+          }
+        }
         if (
           normalized.filter &&
           result.value.meta.warnings?.some(

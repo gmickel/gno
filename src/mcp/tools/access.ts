@@ -8,6 +8,8 @@
  * @module src/mcp/tools/access
  */
 
+import type { EgressLineage } from "../../core/egress-provenance";
+import type { RecallResult } from "../../core/memory";
 import type {
   DocumentRow,
   StorePort,
@@ -24,6 +26,10 @@ import {
   isAccessMode,
   withDerivedFromRequired,
 } from "../../core/access-scope";
+import {
+  createEgressLineage,
+  mergeEgressLineages,
+} from "../../core/egress-provenance";
 
 /** Collections the current request may read; absent when unrestricted. */
 export interface McpAccessScope {
@@ -190,15 +196,52 @@ export const scopeRetrievalArgs = <T extends RetrievalArgs>(
   return scoped as T;
 };
 
+/**
+ * The caller's view of a policy lineage: only the sources this scope can
+ * read. A result's lineage lists every active owner of its content, so a
+ * hidden collection holding the same bytes would otherwise be named. The
+ * complete lineage stays internal (retrieval traces record it before this
+ * projection) for egress decisions. Empty after projection fails closed.
+ */
+export const visibleEgressLineage = (
+  scope: McpAccessScope,
+  lineage: EgressLineage
+): EgressLineage => {
+  const sources = lineage.sources.filter((source) =>
+    scope.canRead(source.collection)
+  );
+  return sources.length === lineage.sources.length
+    ? lineage
+    : createEgressLineage(sources);
+};
+
+/** Recall output with every lineage projected to the caller's scope. */
+export const scopeRecallResult = (
+  scope: McpAccessScope,
+  value: RecallResult
+): RecallResult => {
+  if (value.facts.length === 0) return value;
+  const facts = value.facts.map((fact) => ({
+    ...fact,
+    egressLineage: visibleEgressLineage(scope, fact.egressLineage),
+  }));
+  return {
+    ...value,
+    facts,
+    egressLineage: mergeEgressLineages(facts.map((f) => f.egressLineage)),
+  };
+};
+
 interface RetrievalResult {
-  results: { docid: string }[];
+  results: { docid: string; egressLineage?: EgressLineage }[];
   meta: { totalResults: number; collections?: string[] };
 }
 
 /**
  * Backstop after retrieval: drop any result whose document is not servable
- * (e.g. it changed since `provenanceRetrievalScope` ran) and hide the
- * collection list the scope injected.
+ * (e.g. it changed since `provenanceRetrievalScope` ran), hide the
+ * collection list the scope injected and name only readable collections in
+ * each result's policy lineage.
  */
 export const finishScopedRetrieval = async <T extends RetrievalResult>(
   scope: McpAccessScope,
@@ -210,7 +253,14 @@ export const finishScopedRetrieval = async <T extends RetrievalResult>(
   for (const result of value.results) {
     const doc = await store.getDocumentByDocid(result.docid);
     if (doc.ok && doc.value && isDocumentServable(scope, doc.value)) {
-      results.push(result);
+      results.push(
+        result.egressLineage
+          ? {
+              ...result,
+              egressLineage: visibleEgressLineage(scope, result.egressLineage),
+            }
+          : result
+      );
     }
   }
   const meta = { ...value.meta, totalResults: results.length };

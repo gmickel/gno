@@ -372,6 +372,11 @@ collections:
   supersession chain stops before the first successor it may not read, so a
   hidden document is never named and never links two readable ones; when the
   first successor is hidden, the field is absent.
+- `egressLineage` (search and query results, Context Capsule evidence and
+  aggregate, `gno_recall` facts and aggregate) lists only collections the
+  request may read. A result's content can also be held by a collection the
+  request may not read; that collection is left out of the lineage and its
+  `effectivePolicy`. Retrieval traces keep the complete lineage.
 - Every tool outside the scoped set (`gno_changes`, links, backlinks,
   similar, graph, tags, status, jobs, traces, diagnostics, writes other than
   `gno_remember`) returns the same `NOT_FOUND` result for a non-admin

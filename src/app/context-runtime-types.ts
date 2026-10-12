@@ -2,6 +2,7 @@ import type { Config } from "../config/types";
 import type { ContextCapsuleV1 } from "../core/context-capsule";
 import type { ContextEvidenceCompilerDeps } from "../core/context-evidence";
 import type { ContextVerifierDeps } from "../core/context-verifier";
+import type { EgressLineage } from "../core/egress-provenance";
 import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
 import type { MetadataPredicate } from "../core/typed-metadata";
 import type { EmbeddingPort, RerankPort } from "../llm/types";
@@ -66,6 +67,11 @@ export interface ContextCapsuleRuntimeDeps {
   retrievalScope?: { allowedMirrorHashes: string[] };
   /** Internal caller scope for evidence `supersededBy` links. */
   supersession?: SupersessionOptions;
+  /**
+   * Internal caller view of each retrieved result's policy lineage, applied
+   * after the retrieval trace has recorded the complete lineage.
+   */
+  egressLineageView?: (lineage: EgressLineage) => EgressLineage;
 }
 
 export type ContextRuntimeErrorCode =
