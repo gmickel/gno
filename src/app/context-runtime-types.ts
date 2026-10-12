@@ -8,7 +8,7 @@ import type { EmbeddingPort, RerankPort } from "../llm/types";
 import type { RequestHydration } from "../pipeline/hydration";
 import type { ProjectAffinityScoringInput } from "../pipeline/project-affinity";
 import type { QueryModeInput } from "../pipeline/types";
-import type { StorePort } from "../store/types";
+import type { StorePort, SupersessionOptions } from "../store/types";
 import type { VectorIndexPort } from "../store/vector";
 
 export type ContextDepthPolicy = "fast" | "balanced" | "thorough";
@@ -64,6 +64,8 @@ export interface ContextCapsuleRuntimeDeps {
   explain?: boolean;
   /** Internal corpus allowlist applied to every retrieval before the limit. */
   retrievalScope?: { allowedMirrorHashes: string[] };
+  /** Internal caller scope for evidence `supersededBy` links. */
+  supersession?: SupersessionOptions;
 }
 
 export type ContextRuntimeErrorCode =

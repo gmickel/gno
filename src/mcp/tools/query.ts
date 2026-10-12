@@ -50,9 +50,9 @@ import { type HybridSearchDeps, searchHybrid } from "../../pipeline/hybrid";
 import { createLazyVectorIndex } from "../../store/vector/lazy";
 import { appendRetrievalWarnings } from "../retrieval-warnings";
 import {
+  accessRetrievalOptions,
   finishScopedRetrieval,
   mcpAccessScope,
-  provenanceRetrievalScope,
   scopeRetrievalArgs,
 } from "./access";
 import {
@@ -285,7 +285,7 @@ export function handleQuery(
         tagsAny: normalizeTagFilters(args.tagsAny),
         projectAffinity,
         explain: args.explain,
-        ...(scope ? await provenanceRetrievalScope(scope, ctx.store) : {}),
+        ...(scope ? await accessRetrievalOptions(scope, ctx.store) : {}),
       };
 
       try {

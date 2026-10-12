@@ -8,7 +8,11 @@
  * @module src/mcp/tools/access
  */
 
-import type { DocumentRow, StorePort } from "../../store/types";
+import type {
+  DocumentRow,
+  StorePort,
+  SupersessionOptions,
+} from "../../store/types";
 import type { ToolContext } from "../server";
 
 import {
@@ -122,6 +126,36 @@ export const provenanceRetrievalScope = async (
     },
   };
 };
+
+/**
+ * Caller scope for `supersededBy` links: a successor is named only when this
+ * scope could serve it, so a hidden document never appears in the link and
+ * never bridges a supersession chain to a readable one.
+ */
+export const supersessionScope = (
+  scope: McpAccessScope,
+  store: Pick<StorePort, "getDocumentByUri">
+): SupersessionOptions => ({
+  canFollow: async (uri) => {
+    const doc = await store.getDocumentByUri(uri);
+    return doc.ok && doc.value !== null && isDocumentServable(scope, doc.value);
+  },
+});
+
+/**
+ * Retrieval options that confine one search, query or Context Capsule to the
+ * scope: the provenance allowlist and the `supersededBy` filter.
+ */
+export const accessRetrievalOptions = async (
+  scope: McpAccessScope,
+  store: Pick<StorePort, "listDocuments" | "getDocumentByUri">
+): Promise<{
+  retrievalScope?: { allowedMirrorHashes: string[] };
+  supersession: SupersessionOptions;
+}> => ({
+  ...(await provenanceRetrievalScope(scope, store)),
+  supersession: supersessionScope(scope, store),
+});
 
 interface RetrievalArgs {
   collection?: string;

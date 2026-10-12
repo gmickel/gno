@@ -26,9 +26,9 @@ import {
 import { searchBm25 } from "../../pipeline/search";
 import { appendRetrievalWarnings } from "../retrieval-warnings";
 import {
+  accessRetrievalOptions,
   finishScopedRetrieval,
   mcpAccessScope,
-  provenanceRetrievalScope,
   scopeRetrievalArgs,
 } from "./access";
 import {
@@ -162,7 +162,7 @@ export function handleSearch(
         projectAffinity,
         contentTypeRules: normalizeContentTypes(ctx.config.contentTypes ?? [])
           .rules,
-        ...(scope ? await provenanceRetrievalScope(scope, ctx.store) : {}),
+        ...(scope ? await accessRetrievalOptions(scope, ctx.store) : {}),
       };
       let traceSession: RetrievalTraceSession | undefined;
       try {

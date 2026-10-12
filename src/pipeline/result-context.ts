@@ -1,4 +1,4 @@
-import type { StorePort } from "../store/types";
+import type { StorePort, SupersessionOptions } from "../store/types";
 import type { SearchResult } from "./types";
 
 import {
@@ -60,15 +60,18 @@ export async function attachSearchResultContexts(
 
 /**
  * Mark results whose memory fact a newer fact superseded, naming the current
- * successor. Fail-open like context guidance: a lookup failure marks nothing.
+ * successor the caller may read (`options.canFollow`). Fail-open like context
+ * guidance: a lookup failure marks nothing.
  */
 export async function attachSupersession(
   store: StorePort,
-  results: { uri: string; supersededBy?: string }[]
+  results: { uri: string; supersededBy?: string }[],
+  options?: SupersessionOptions
 ): Promise<void> {
   if (results.length === 0 || !store.getSupersedingUris) return;
   const successors = await store.getSupersedingUris(
-    results.map((result) => result.uri)
+    results.map((result) => result.uri),
+    options
   );
   if (!successors.ok) return;
   for (const result of results) {
@@ -77,12 +80,16 @@ export async function attachSupersession(
   }
 }
 
-/** Current successor URI of one document's superseded memory fact, if any. */
+/**
+ * Current successor URI of one document's superseded memory fact, if any,
+ * limited to successors the caller may read (`options.canFollow`).
+ */
 export async function supersedingUri(
   store: StorePort,
-  uri: string
+  uri: string,
+  options?: SupersessionOptions
 ): Promise<string | undefined> {
   if (!store.getSupersedingUris) return undefined;
-  const successors = await store.getSupersedingUris([uri]);
+  const successors = await store.getSupersedingUris([uri], options);
   return successors.ok ? successors.value.get(uri) : undefined;
 }

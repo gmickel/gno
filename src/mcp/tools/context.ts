@@ -43,7 +43,7 @@ import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
 import { resolveModelUri } from "../../llm/registry";
 import { createLazyVectorIndex } from "../../store/vector/lazy";
-import { mcpAccessScope, provenanceRetrievalScope } from "./access";
+import { accessRetrievalOptions, mcpAccessScope } from "./access";
 
 interface ContextToolResultData {
   structuredContent: Record<string, unknown>;
@@ -299,7 +299,7 @@ export const handleContext = (
         ? await createMcpModelPorts(context, parsed.input.collections)
         : null;
       const capsule = await buildContextCapsule(parsed.input, {
-        ...(scope ? await provenanceRetrievalScope(scope, context.store) : {}),
+        ...(scope ? await accessRetrievalOptions(scope, context.store) : {}),
         store: context.store,
         config: context.config,
         indexName: context.indexName,

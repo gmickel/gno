@@ -67,22 +67,33 @@ describe("scoped tool profile", () => {
   });
 
   test("a non-admin principal gets NOT_FOUND from metadata tools in any profile", async () => {
+    // gno_list_metadata aggregates keys across every collection, so it stays
+    // outside the scoped set.
+    const names = [
+      "gno_changes",
+      "gno_status",
+      "gno_list_tags",
+      "gno_list_metadata",
+    ];
+    const refused = new Set<string>();
     for (const profile of ["core", "full"] as const) {
       await withClient(
         profile,
         () => member,
         async (client) => {
-          for (const name of ["gno_changes", "gno_status", "gno_list_tags"]) {
+          for (const name of names) {
             const listed = (await client.listTools()).tools.some(
               (tool) => tool.name === name
             );
             if (!listed) continue;
             const result = await client.callTool({ name, arguments: {} });
             expect(result as unknown).toEqual(NOT_FOUND);
+            refused.add(name);
           }
         }
       );
     }
+    expect([...refused].sort()).toEqual([...names].sort());
   });
 
   test("an admin principal and an unnamed caller are not refused", async () => {

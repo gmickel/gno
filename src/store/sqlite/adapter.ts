@@ -106,6 +106,7 @@ import type {
   StaleCollection,
   StorePort,
   StoreResult,
+  SupersessionOptions,
   SyncCollectionsOptions,
   TagCount,
   TagRow,
@@ -607,6 +608,46 @@ export function staleCollectionsMessage(
     "config to delete their index data."
   );
 }
+
+/** One `canFollow` answer per URI for the duration of a lookup. */
+const memoizeCanFollow = (
+  canFollow: SupersessionOptions["canFollow"]
+): SupersessionOptions["canFollow"] => {
+  if (!canFollow) return undefined;
+  const answers = new Map<string, Promise<boolean>>();
+  return (uri) => {
+    let answer = answers.get(uri);
+    if (!answer) {
+      answer = canFollow(uri);
+      answers.set(uri, answer);
+    }
+    return answer;
+  };
+};
+
+/**
+ * End of the supersession chain that starts at `uri`, given each document's
+ * direct successor. A cycle stops at the first repeated URI. With
+ * `canFollow`, the walk stops before the first successor it rejects, so a
+ * hidden hop is never named and never bridged.
+ */
+const supersessionChainEnd = async (
+  uri: string,
+  next: ReadonlyMap<string, string>,
+  canFollow: SupersessionOptions["canFollow"]
+): Promise<string | undefined> => {
+  const visited = new Set([uri]);
+  let reached: string | undefined;
+  let current = next.get(uri);
+  while (current) {
+    if (canFollow && !(await canFollow(current))) break;
+    reached = current;
+    if (!next.has(current) || visited.has(current)) break;
+    visited.add(current);
+    current = next.get(current);
+  }
+  return reached !== undefined && reached !== uri ? reached : undefined;
+};
 
 export class SqliteAdapter implements StorePort, SqliteDbProvider {
   private db: Database | null = null;
@@ -3836,10 +3877,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   /**
    * Map each superseded memory fact's URI to the end of its supersession
    * chain. Input URIs may carry `?index=`; keys are the URIs as given and
-   * successors are canonical (undecorated).
+   * successors are canonical (undecorated). With `canFollow`, each chain
+   * stops before the first successor the caller may not read.
    */
   async getSupersedingUris(
-    uris: string[]
+    uris: string[],
+    options?: SupersessionOptions
   ): Promise<StoreResult<Map<string, string>>> {
     try {
       const db = this.ensureOpen();
@@ -3869,15 +3912,11 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         }
         frontier = discovered;
       }
+      const canFollow = memoizeCanFollow(options?.canFollow);
       const result = new Map<string, string>();
       for (const [input, uri] of canonical) {
-        const visited = new Set([uri]);
-        let current = next.get(uri);
-        while (current && next.has(current) && !visited.has(current)) {
-          visited.add(current);
-          current = next.get(current);
-        }
-        if (current && current !== uri) result.set(input, current);
+        const end = await supersessionChainEnd(uri, next, canFollow);
+        if (end) result.set(input, end);
       }
       return ok(result);
     } catch (cause) {

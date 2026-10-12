@@ -525,7 +525,7 @@ async function searchVectorWithEmbeddingOwned(
     if (metadata) metadata.retrievalRank = index + 1;
   }
   await attachSearchResultContexts(store, finalResults);
-  await attachSupersession(store, finalResults);
+  await attachSupersession(store, finalResults, options.supersession);
   const lineageResult = await attachSearchResultEgressLineage(
     store,
     finalResults,

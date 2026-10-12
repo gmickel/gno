@@ -367,6 +367,11 @@ collections:
   are excluded before candidate selection, graph expansion, reranking and
   the limit, in `gno_search`, `gno_query` and `gno_context`. Memory
   recall is not subject to this check.
+- `supersededBy` (search and query results, `gno_get`, `gno_multi_get`,
+  Context Capsule evidence) names only a successor the request may read. The
+  supersession chain stops before the first successor it may not read, so a
+  hidden document is never named and never links two readable ones; when the
+  first successor is hidden, the field is absent.
 - Every tool outside the scoped set (`gno_changes`, links, backlinks,
   similar, graph, tags, status, jobs, traces, diagnostics, writes other than
   `gno_remember`) returns the same `NOT_FOUND` result for a non-admin

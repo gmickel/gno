@@ -31,7 +31,11 @@ import {
 } from "../../core/retrieval-trace-session";
 import { supersedingUri } from "../../pipeline/result-context";
 import { openScopedIndexStore } from "../../store/sqlite/scoped-index";
-import { isDocumentServable, mcpAccessScope } from "./access";
+import {
+  isDocumentServable,
+  mcpAccessScope,
+  supersessionScope,
+} from "./access";
 import { runTool, type ToolResult } from "./index";
 
 interface GetInput {
@@ -245,7 +249,11 @@ export function handleGet(
           }
         }
 
-        const successor = await supersedingUri(scoped.store, doc.uri);
+        const successor = await supersedingUri(
+          scoped.store,
+          doc.uri,
+          scope ? supersessionScope(scope, scoped.store) : undefined
+        );
         const response: GetResponse = {
           ...(successor
             ? { supersededBy: decorateUriForIndex(successor, scoped.indexName) }

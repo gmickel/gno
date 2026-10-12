@@ -1428,7 +1428,7 @@ async function searchHybridWithHydration(
       }
     : undefined;
   await attachSearchResultContexts(store, finalResults);
-  await attachSupersession(store, finalResults);
+  await attachSupersession(store, finalResults, options.supersession);
   const lineageResult = await attachSearchResultEgressLineage(
     store,
     finalResults,

@@ -1590,6 +1590,12 @@ export type WithTransaction = <T>(
 // StorePort Interface
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Caller scope for supersession links (see `getSupersedingUris`). */
+export interface SupersessionOptions {
+  /** Whether the caller may read the document at this canonical URI. */
+  canFollow?: (uri: string) => Promise<boolean>;
+}
+
 /**
  * StorePort - Port interface for data persistence.
  * Implementations: SQLite adapter (src/store/sqlite/adapter.ts)
@@ -2292,9 +2298,14 @@ export interface StorePort {
   /**
    * For each URI whose document an active document supersedes, the URI of
    * its current successor (the end of the supersession chain).
+   *
+   * With `canFollow`, the chain stops before the first successor the caller
+   * may not read, so the result never names a document outside the caller's
+   * scope and never reveals that a hidden document supersedes another.
    */
   getSupersedingUris?(
-    uris: string[]
+    uris: string[],
+    options?: SupersessionOptions
   ): Promise<StoreResult<Map<string, string>>>;
 
   /**

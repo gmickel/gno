@@ -15,7 +15,7 @@ import type { RecordEvidenceMetadata } from "../core/record-metadata";
 import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
 import type { MetadataPredicate } from "../core/typed-metadata";
 import type { InferenceOptions } from "../llm/types";
-import type { StoreResult } from "../store/types";
+import type { StoreResult, SupersessionOptions } from "../store/types";
 import type { ClaimVerificationResult } from "./claim-verification";
 import type { SemanticVerificationCapability } from "./claim-verifier";
 import type { ContentTypeBoostScoreMetadata } from "./content-type-boost";
@@ -211,6 +211,11 @@ export interface SearchOptions extends InferenceOptions {
     relPathPrefix?: string;
     allowedMirrorHashes: string[];
   };
+  /**
+   * Internal caller scope for `supersededBy`: a successor the caller may not
+   * read is never named (see `StorePort.getSupersedingUris`).
+   */
+  supersession?: SupersessionOptions;
   /** Language filter/hint (BCP-47) */
   lang?: string;
   /** Include full content instead of snippet */
