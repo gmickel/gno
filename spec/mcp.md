@@ -612,7 +612,8 @@ collection, otherwise the call fails with `Collection not found: <name>`. When
 `collection` is also set, both apply (the intersection). Responses echo the
 allowlist as `meta.collections`; with `collections` omitted, inputs and
 outputs are unchanged. `gno_query_diagnose` keeps the single `collection`
-filter. Over Streamable HTTP, egress policy is checked on the served scope: the
+filter and, like every tool, rejects undeclared arguments, so `collections`
+sent to it is a validation error. Over Streamable HTTP, egress policy is checked on the served scope: the
 listed collections, or `collection` when both are set and the list holds it.
 When both are set and the list does not hold it, nothing is served and the
 check covers `collection` and every listed collection.
