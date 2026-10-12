@@ -199,6 +199,36 @@ describe("network boundary policy enforcement", () => {
     ).toThrow(EgressDeniedError);
   });
 
+  test("gno_remember refs are provenance labels, not document scope", () => {
+    const collections = [collection("p-a", "remote")];
+    const context = {
+      authenticated: true,
+      destinationZone: "remote" as const,
+      operationAuthorized: true,
+    };
+    const call = (name: string, args: Record<string, unknown>) => ({
+      method: "tools/call",
+      params: { name, arguments: args },
+    });
+    const refs = ["sp:site-x/doc-1", "self:a", "gno://other/x.md"];
+
+    expect(() =>
+      enforceHttpMcpEgress(
+        call("gno_remember", { collection: "p-a", text: "t", refs }),
+        collections,
+        context
+      )
+    ).not.toThrow();
+    // Document refs on other tools still scope the request (unknown -> error).
+    expect(() =>
+      enforceHttpMcpEgress(
+        call("gno_multi_get", { refs: ["other/x.md"] }),
+        collections,
+        context
+      )
+    ).toThrow();
+  });
+
   test("attributes a batch denial to the exact denied member", async () => {
     const batch = [
       { jsonrpc: "2.0", id: 1, method: "ping" },

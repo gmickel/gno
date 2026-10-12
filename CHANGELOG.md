@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The resident MCP gateway can give named callers their own tokens with `gateway.principals`. A principal marked `mayAssertSubject` can say which user a request is for with the `GNO-Subject` and `GNO-Context` headers; any other caller that sends them gets 403. GNO keeps the principal and the user with each request, and stores the user only as a hash in request receipts. Tool results do not change yet. Without `principals`, the gateway behaves exactly as before. If a token rotation makes two credentials equal, including a principal and the plain `tokenFile`, neither is accepted until one is rotated again, also while another request is reloading the token files.
+- Memory can belong to one user. When a gateway principal asserts a subject, `gno_remember` adds a server-set `subject:<hash>` scope to the fact and `gno_recall` returns only that user's facts; callers cannot send `subject:` scopes, and another user's facts never show up in recall, candidates or supersede. The same principal can attach up to 20 `<system>:<reference>` `refs` to a fact; they are stored in the fact file and come back on recall, also after a reindex. Without `principals`, memory behaves exactly as before.
+
+### Fixed
+
+- `gno_remember` over HTTP MCP no longer fails with 500 when it carries `refs`: the egress check read provenance refs such as `sp:site/doc` as document references in unknown collections. The write is still scoped by its `collection`.
+
 ## [2.12.0] - 2026-10-12
 
 ### Changed

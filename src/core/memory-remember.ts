@@ -38,7 +38,8 @@ import {
   requireFactText,
   requireIdentity,
   requireManagedCollection,
-  requireScopes,
+  requireRefs,
+  requireSubjectScopes,
 } from "./memory-fence";
 import {
   buildMemoryRecordId,
@@ -47,6 +48,7 @@ import {
   MEMORY_SUPERSEDES_EDGE,
   memoryCosine,
   memoryJaccard,
+  memorySubjectVisible,
   normalizeMemoryText,
   serializeMemoryRecord,
   type MemoryRecordFrontmatter,
@@ -84,10 +86,19 @@ async function loadCandidatePool(
   input: CandidateQuery
 ): Promise<MemoryFact[]> {
   const { store } = deps;
+  // Subject scoping: the store query requires a caller scope and the owner
+  // scope before the pool limit; the ownership rule is checked again below.
+  const scoping = deps.subjectScoping;
+  const scopes: { caller: string[]; query: string[]; owner?: string } = scoping
+    ? requireSubjectScopes(deps, input.scopes)
+    : { caller: input.scopes, query: input.scopes };
   const ftsResult = await store.searchFts(normalizeMemoryText(input.text), {
     limit: MEMORY_CANDIDATE_POOL,
     collection: input.collection,
-    memoryScopesAny: input.scopes,
+    memoryScopesAny: scopes.query,
+    ...(scopes.owner === undefined
+      ? {}
+      : { memoryScopeRequired: scopes.owner }),
     excludeSuperseded: true,
     anyTerm: true,
   });
@@ -106,7 +117,14 @@ async function loadCandidatePool(
       docid: row.docid,
       mirrorHash: row.mirrorHash,
     });
-    if (fact) facts.push(fact);
+    if (!fact) continue;
+    if (
+      scoping &&
+      !memorySubjectVisible(fact.scopes, scopes.caller, scoping.ownerScope)
+    ) {
+      continue;
+    }
+    facts.push(fact);
   }
   return facts;
 }
@@ -216,6 +234,20 @@ async function verifyPredecessor(
       `Predecessor ${predecessorUri} is not a valid managed memory record.`
     );
   }
+  // Another subject's fact reads as absent, never as a hash mismatch.
+  if (
+    deps.subjectScoping &&
+    !memorySubjectVisible(
+      predecessor.scopes,
+      predecessor.scopes,
+      deps.subjectScoping.ownerScope
+    )
+  ) {
+    throw new MemoryError(
+      "MEMORY_PREDECESSOR_NOT_FOUND",
+      `Predecessor ${predecessorUri} is not a current record in collection "${collection}".`
+    );
+  }
   if (predecessor.contentHash !== predecessorHash) {
     throw new MemoryError(
       "MEMORY_PREDECESSOR_HASH_MISMATCH",
@@ -270,7 +302,13 @@ export async function rememberFact(
   const identity = requireIdentity(rawInput);
   const text = requireFactText(rawInput.text);
   const collection = requireManagedCollection(collections, rawInput.collection);
-  const scopes = requireScopes(rawInput.scopes);
+  // `scopes` is what the record stores: the caller scopes plus the owner
+  // scope when a gateway subject is set; candidate matching uses the caller
+  // scopes and adds the owner filter itself.
+  const subjectScopes = requireSubjectScopes(deps, rawInput.scopes);
+  const scopes = subjectScopes.write;
+  const callerScopes = subjectScopes.caller;
+  const refs = requireRefs(rawInput.refs);
   const decision = requireDecision(rawInput.decision);
   const contentHash = hashMemoryText(text);
   applyFence(rawInput, contentHash);
@@ -297,7 +335,7 @@ export async function rememberFact(
   const { candidates, matching } = await findMemoryCandidates(deps, {
     text,
     collection: collection.name,
-    scopes,
+    scopes: callerScopes,
   });
   // With a request ID the exact-duplicate decision is made (and recorded)
   // under the lease, so a later retry replays it instead of re-deciding.
@@ -333,7 +371,7 @@ export async function rememberFact(
       const existing = await findExactCurrent(deps, {
         text,
         collection: collection.name,
-        scopes,
+        scopes: callerScopes,
         contentHash,
       });
       if (existing) {
@@ -354,6 +392,7 @@ export async function rememberFact(
       createdAt,
       contentHash,
       ...(source ? { source } : {}),
+      ...(refs.length > 0 ? { refs } : {}),
     };
     return {
       plan: {
@@ -436,6 +475,7 @@ export async function rememberFact(
       contentHash,
       supersedes,
       ...(frontmatter.source ? { source: frontmatter.source } : {}),
+      ...(frontmatter.refs ? { refs: frontmatter.refs } : {}),
     };
     return {
       outcome: decision === "supersede" ? "superseded" : "added",
@@ -481,6 +521,7 @@ export async function rememberFact(
         predecessorUri: rawInput.predecessorUri?.trim(),
         predecessorHash: rawInput.predecessorHash,
         source,
+        ...(refs.length > 0 ? { refs } : {}),
       }),
       lockPath: deps.lockPath,
       lockWaitMs,

@@ -266,6 +266,53 @@ errors. Rotation, deletion, invalid content, or permission relaxation revokes
 existing authenticated sessions. Session IDs are bound to the identity that
 initialized them, preventing reuse with a different bearer token.
 
+#### Gateway principals and asserted subject
+
+Off unless `gateway.principals` is set; with no principals the boundary, its
+responses, and every tool output are unchanged (the two headers below are
+only removed before dispatch).
+
+```yaml
+gateway:
+  principals:
+    - name: assistant # [a-z0-9][a-z0-9._-]{0,63}, unique
+      tokenFile: ~/.config/gno/tokens/assistant # unique, 0600, created if missing
+      mayAssertSubject: true # default false
+      admin: false # default false
+```
+
+- Each principal is a named bearer token with the same file rules as
+  `tokenFile`. Configuring principals requires a bearer token on every request,
+  loopback included, and satisfies the non-loopback token requirement. A plain
+  `tokenFile`, if also set, stays valid as an unnamed caller. Two principals
+  (or a principal and `tokenFile`) with the same token fail startup; if a
+  rotation makes them collide, neither authenticates (the plain `tokenFile`
+  included: it is never accepted as the unnamed caller while a principal
+  holds the same token) until one of them is rotated again. Each request reads
+  the token files once and uses that one snapshot for both the clash check and
+  authentication, so a rotation by a concurrent request cannot let a clashing
+  token through as the unnamed caller. A broken token file
+  disables only that principal and revokes authenticated sessions, as for
+  `tokenFile`.
+- `GNO-Subject: <id>` names the end user the caller acts for and
+  `GNO-Context: 1to1|shared|public_only` the conversation it acts in. Only a
+  `mayAssertSubject` principal may send them. Any other caller that sends
+  either header, a subject outside `[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}`, an
+  unknown context, or a context without a subject gets the redacted 403
+  `Forbidden` boundary error. Both headers are removed before SDK dispatch;
+  subject assertion is never read from `Forwarded`/`X-Forwarded-*` or from
+  tool arguments.
+- The tool context of each request carries the principal
+  (`name`, `admin`, `mayAssertSubject`) and the subject
+  (`id`, `context`, `hash` = SHA-256 hex of `id`). Request receipts for an
+  asserted subject live in a namespace derived from the principal identity and
+  the subject hash, so the raw subject is never stored there and two subjects
+  cannot replay each other's request IDs.
+- Only `gno_remember` and `gno_recall` change behaviour because of the
+  principal or the subject (see [Subject-owned memory](#subject-owned-memory));
+  no other tool changes what it returns because of the principal, `admin`, or
+  the subject.
+
 Because `gno serve` shares this listener with its Web UI and REST API, it
 remains loopback-only. Use the headless `gno daemon` command for an explicitly
 authenticated non-loopback MCP listener.
@@ -1463,7 +1510,7 @@ Budgeted, cited, current-state recall from a memory-managed collection
 - `facts[]` — current facts only (superseded records excluded), each with
   `uri` (`gno://` cite), `docid`, `recordId`, `text`, `scopes`, `caller`,
   `session`, `createdAt`, `contentHash`, `supersedes`, `score`, `spanHash`,
-  `egressLineage`
+  `egressLineage`, and `source` / `refs` when the fact was stored with them
 - `receipt` — content-free fencing receipt: `caller`, `session`, `issuedAt`,
   `memoryIds`, `spanHashes`, `digest`
 - `budget` — `maxFacts`, `maxTokens`, `usedTokens`, `omitted`
@@ -1491,6 +1538,39 @@ never carry identity.
 `MEMORY_COLLECTION_REQUIRED`, `MEMORY_COLLECTION_NOT_FOUND`,
 `MEMORY_COLLECTION_UNMANAGED`, `MEMORY_SCOPES_REQUIRED`,
 `MEMORY_SCOPES_INVALID`, `MEMORY_QUERY_FAILED`.
+
+#### Subject-owned memory
+
+Applies only to gateway requests authenticated by a named principal
+(`gateway.principals`), `admin` or not; stdio, CLI, REST, SDK and a gateway
+without principals behave exactly as above. These rules hold on their own and
+do not depend on any collection-level access rule.
+
+- **Owner scope.** When a `mayAssertSubject` principal sends `GNO-Subject`,
+  the server derives the owner scope `subject:<first 32 hex chars of the
+subject hash>`. `gno_remember` stores it with the caller's scopes (the total
+  must still be at most 8). `gno_recall` and remember's candidate and
+  duplicate matching retrieve only facts that carry it and at least one of
+  the caller's scopes, both inside the retrieval query and before its limit,
+  so facts in the owner's other scopes never crowd out the requested ones; a
+  fact that carries another subject's owner scope is never returned. Superseding another subject's fact returns
+  `MEMORY_PREDECESSOR_NOT_FOUND`.
+- **Reserved prefix.** Under a principal, caller scopes starting with
+  `subject:` return `MEMORY_SCOPES_INVALID`, so a caller can neither name
+  another subject's scope nor drop its own. A principal acting for no subject
+  sees no subject-owned facts.
+- **Refs.** `gno_remember.refs` (at most 20, each `<system>:<reference>`:
+  system `[a-z][a-z0-9_-]{0,31}`, a colon, then no whitespace, at most 512
+  characters; trimmed and deduplicated) is written in the same atomic file
+  write as the fact, under `memory.refs`, and returned as `refs` on the record
+  and on every recalled fact, including after a reindex. Only a
+  `mayAssertSubject` principal may send `refs`; anyone else gets
+  `MEMORY_REFS_FORBIDDEN`. A malformed list returns `MEMORY_REFS_INVALID`.
+  `refs` are provenance to return, separate from the `derivedFrom` fence
+  input, and an exact duplicate returns the stored record without merging
+  refs. The HTTP egress check does not read
+  `gno_remember.refs` as document references; the write is scoped by its
+  `collection`.
 
 ---
 
@@ -1715,6 +1795,12 @@ file edits update existing notes, `gno_remember` upserts a fact.
       "type": "string",
       "description": "Free-text evidence for the fact"
     },
+    "refs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 20,
+      "description": "<system>:<reference> refs stored with the fact; asserting gateway principals only"
+    },
     "requestId": {
       "type": "string",
       "description": "Optional caller request ID (1-128 of A-Z a-z 0-9 . _ : -). Reuse the same ID when retrying the same write after a lost response; a new intent needs a new ID"
@@ -1762,8 +1848,8 @@ committedAt }`
 **Errors:** `WRITE_DISABLED`, `MEMORY_TEXT_REQUIRED`,
 `MEMORY_TEXT_TOO_LARGE`, `MEMORY_COLLECTION_REQUIRED`,
 `MEMORY_COLLECTION_NOT_FOUND`, `MEMORY_COLLECTION_UNMANAGED`,
-`MEMORY_SCOPES_REQUIRED`, `MEMORY_SCOPES_INVALID`,
-`MEMORY_DECISION_INVALID`, `MEMORY_PREDECESSOR_REQUIRED`,
+`MEMORY_SCOPES_REQUIRED`, `MEMORY_SCOPES_INVALID`, `MEMORY_REFS_INVALID`,
+`MEMORY_REFS_FORBIDDEN`, `MEMORY_DECISION_INVALID`, `MEMORY_PREDECESSOR_REQUIRED`,
 `MEMORY_PREDECESSOR_NOT_FOUND`, `MEMORY_PREDECESSOR_HASH_MISMATCH`,
 `MEMORY_SUPERSEDE_CONFLICT`, `MEMORY_FENCED_REPLAY`, `MEMORY_FENCED_DERIVED`,
 `MEMORY_WRITE_LEASE_BUSY`, `MEMORY_SYNC_FAILED`,

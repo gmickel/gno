@@ -739,6 +739,12 @@ export interface DocumentEligibilityOptions {
    */
   memoryScopesAny?: string[];
   /**
+   * Managed-memory owner filter: additionally require this exact scope (the
+   * gateway subject's owner scope). Combined with `memoryScopesAny` as a
+   * conjunction inside the same candidate subquery, before any LIMIT.
+   */
+  memoryScopeRequired?: string;
+  /**
    * Exclude documents that an active document supersedes (typed edge
    * `supersedes` pointing at them). Applied inside the candidate subquery.
    */
@@ -768,6 +774,8 @@ export interface MemoryEligibleDocumentsOptions {
   collection: string;
   /** Normalized scopes; any-intersection semantics. */
   scopes: string[];
+  /** A scope every eligible document must also carry (owner scope). */
+  requiredScope?: string;
   excludeSuperseded?: boolean;
 }
 

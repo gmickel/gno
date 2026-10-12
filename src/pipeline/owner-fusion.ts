@@ -44,6 +44,7 @@ export async function resolveFusionOwners(
       const eligible = await store.listMemoryEligibleDocuments({
         collection,
         scopes: options.memoryFilter.scopes,
+        requiredScope: options.memoryFilter.requiredScope,
         excludeSuperseded: options.memoryFilter.excludeSuperseded,
       });
       if (!eligible.ok)

@@ -65,6 +65,7 @@ export type MemoryErrorCode =
   | "MEMORY_COLLECTION_UNMANAGED"
   | "MEMORY_SCOPES_REQUIRED"
   | "MEMORY_SCOPES_INVALID"
+  | "MEMORY_REFS_INVALID"
   | "MEMORY_IDENTITY_REQUIRED"
   | "MEMORY_DECISION_INVALID"
   | "MEMORY_PREDECESSOR_REQUIRED"
@@ -119,6 +120,11 @@ export interface RememberInput extends MemoryIdentity {
   /** Declared origins; any gno:// origin is fenced. */
   derivedFrom?: string[];
   source?: string;
+  /**
+   * `<system>:<reference>` refs (at most 20) stored with the fact. Adapters
+   * accept them only from an asserting gateway principal.
+   */
+  refs?: string[];
   /** Opt-in retry identity for add/supersede; see docs/MEMORY.md. */
   requestId?: string;
 }
@@ -136,6 +142,8 @@ export interface MemoryFact {
   supersedes: string[];
   /** Free-text evidence recorded with the fact, when one was given. */
   source?: string;
+  /** `<system>:<reference>` refs stored with the fact, when any were given. */
+  refs?: string[];
 }
 
 export type MemoryCandidateMatch = "exact" | "likely" | "weak";
@@ -225,6 +233,13 @@ export interface MemoryServiceDeps {
   /** Must surface typed-edge projection errors (`syncPaths`, not `syncFiles`). */
   syncService?: Pick<typeof defaultSyncService, "syncPaths">;
   now?: () => Date;
+  /**
+   * Gateway subject scoping; absent outside a principal-authenticated
+   * request. When present, caller `subject:` scopes are refused and facts
+   * owned by another subject are invisible. `ownerScope` (set when a subject
+   * was asserted) is added to every write and required on every read.
+   */
+  subjectScoping?: { ownerScope?: string };
   /** Request ledger + caller namespace; required to honour `requestId`. */
   requests?: {
     ledgerPath: string;

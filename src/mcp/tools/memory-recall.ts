@@ -82,6 +82,7 @@ export function formatRecallResult(result: RecallResult): string {
     lines.push(
       `  scopes: ${fact.scopes.join(", ")} | hash: ${fact.contentHash} | created: ${fact.createdAt}`
     );
+    if (fact.refs) lines.push(`  refs: ${fact.refs.join(", ")}`);
   }
   if (result.hint) {
     lines.push("");

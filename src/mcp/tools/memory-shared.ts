@@ -17,8 +17,12 @@ import {
   MemoryError,
   type MemoryIdentity,
   MemoryService,
+  type MemoryServiceDeps,
 } from "../../core/memory";
-import { MEMORY_MAX_SCOPES } from "../../core/memory-record";
+import {
+  MEMORY_MAX_SCOPES,
+  memorySubjectScope,
+} from "../../core/memory-record";
 import { requestLedgerPath } from "../../core/request-receipts";
 import { mcpRequestNamespace, rethrowRequestError } from "./request-status";
 
@@ -64,6 +68,25 @@ export function resolveMcpMemoryIdentity(
 }
 
 /**
+ * Subject scoping for the current request: absent unless the gateway
+ * authenticated a named principal. With an asserted subject, the owner scope
+ * `subject:<hash prefix>` is added to every write and required on every
+ * read; caller scopes can neither name nor remove it.
+ */
+export function resolveMcpMemorySubjectScoping(
+  ctx: ToolContext
+): MemoryServiceDeps["subjectScoping"] {
+  const subject = ctx.getRequestSubject?.();
+  if (subject) return { ownerScope: memorySubjectScope(subject.hash) };
+  return ctx.getRequestPrincipal?.() ? {} : undefined;
+}
+
+/** Only a principal allowed to assert a subject may attach `refs`. */
+export function mayAttachMemoryRefs(ctx: ToolContext): boolean {
+  return ctx.getRequestPrincipal?.()?.mayAssertSubject === true;
+}
+
+/**
  * Construct the core service for one MCP call.
  *
  * The lease path names the same `.mcp-write.lock` file the rest of the MCP
@@ -76,6 +99,7 @@ export function createMcpMemoryService(ctx: ToolContext): MemoryService {
     config: ctx.config,
     collections: ctx.collections,
     lockPath: ctx.writeLockPath,
+    subjectScoping: resolveMcpMemorySubjectScoping(ctx),
     requests: {
       ledgerPath: requestLedgerPath(ctx.store.getDbPath()),
       namespace: mcpRequestNamespace(ctx),

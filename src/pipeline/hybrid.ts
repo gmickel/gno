@@ -162,6 +162,7 @@ async function checkBm25Strength(
     allowedMirrorHashes?: string[];
     exclude?: string[];
     memoryScopesAny?: string[];
+    memoryScopeRequired?: string;
     excludeSuperseded?: boolean;
   }
 ): Promise<boolean> {
@@ -176,6 +177,7 @@ async function checkBm25Strength(
     excludeMetadata: true,
     semanticMetadata: true,
     memoryScopesAny: options?.memoryScopesAny,
+    memoryScopeRequired: options?.memoryScopeRequired,
     excludeSuperseded: options?.excludeSuperseded,
     tagsAll: options?.tagsAll,
     tagsAny: options?.tagsAny,
@@ -237,6 +239,7 @@ async function searchFtsChunks(
     allowedMirrorHashes?: string[];
     exclude?: string[];
     memoryScopesAny?: string[];
+    memoryScopeRequired?: string;
     excludeSuperseded?: boolean;
   }
 ): Promise<FtsChunksResult> {
@@ -249,6 +252,7 @@ async function searchFtsChunks(
     excludeMetadata: true,
     semanticMetadata: true,
     memoryScopesAny: options.memoryScopesAny,
+    memoryScopeRequired: options.memoryScopeRequired,
     excludeSuperseded: options.excludeSuperseded,
     exclude: options.exclude,
     allowedMirrorHashes: options.allowedMirrorHashes,
@@ -502,6 +506,7 @@ async function searchHybridWithHydration(
           collection: options.collection,
           lang: options.lang,
           memoryScopesAny: options.memoryFilter?.scopes,
+          memoryScopeRequired: options.memoryFilter?.requiredScope,
           excludeSuperseded: options.memoryFilter?.excludeSuperseded,
           exclude: options.exclude,
           allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
@@ -551,6 +556,7 @@ async function searchHybridWithHydration(
   const vectorEligibility: VectorSearchOptions["eligibility"] = {
     collection: options.collection,
     memoryScopesAny: options.memoryFilter?.scopes,
+    memoryScopeRequired: options.memoryFilter?.requiredScope,
     excludeSuperseded: options.memoryFilter?.excludeSuperseded,
     relPathPrefix: options.retrievalScope?.relPathPrefix,
     tagsAll: options.tagsAll,
@@ -571,6 +577,7 @@ async function searchHybridWithHydration(
   const bm25Result = await searchFtsChunks(store, query, {
     limit: limit * 2 * retrievalMultiplier,
     memoryScopesAny: options.memoryFilter?.scopes,
+    memoryScopeRequired: options.memoryFilter?.requiredScope,
     excludeSuperseded: options.memoryFilter?.excludeSuperseded,
     exclude: options.exclude,
     allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
@@ -611,6 +618,7 @@ async function searchHybridWithHydration(
         searchFtsChunks(store, variant, {
           limit: limit * retrievalMultiplier,
           memoryScopesAny: options.memoryFilter?.scopes,
+          memoryScopeRequired: options.memoryFilter?.requiredScope,
           excludeSuperseded: options.memoryFilter?.excludeSuperseded,
           exclude: options.exclude,
           allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,

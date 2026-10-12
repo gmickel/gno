@@ -14,6 +14,11 @@ export const MEMORY_MAX_FACT_BYTES = 4096;
 export const MEMORY_SUPERSEDES_EDGE = "supersedes";
 export const MEMORY_FRONTMATTER_KEY = "memory";
 export const MEMORY_RECORD_ID_PREFIX = "mem-";
+/** At most this many `<system>:<reference>` refs per fact. */
+export const MEMORY_MAX_REFS = 20;
+export const MEMORY_MAX_REF_CHARS = 512;
+/** Reserved scope prefix of the server-set owner scope (gateway subjects). */
+export const MEMORY_SUBJECT_SCOPE_PREFIX = "subject:";
 
 const FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)(?:\r?\n)?---(?:\r?\n|$)/;
 const SCOPE_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N}._:/@-]*$/u;
@@ -22,6 +27,8 @@ const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const WHITESPACE_RUN = /\s+/g;
 const TOKEN_SPLIT = /[^\p{L}\p{N}]+/u;
 const URI_PREFIX = "gno://";
+/** `<system>:<reference>`, the `derived_from` member convention. */
+const REF_PATTERN = /^[a-z][a-z0-9_-]{0,31}:\S+$/;
 
 export type MemoryDiagnosticCode =
   | "MEMORY_FRONTMATTER_MISSING"
@@ -34,7 +41,8 @@ export type MemoryDiagnosticCode =
   | "MEMORY_CONTENT_HASH_INVALID"
   | "MEMORY_CONTENT_HASH_MISMATCH"
   | "MEMORY_BODY_EMPTY"
-  | "MEMORY_SUPERSEDES_INVALID";
+  | "MEMORY_SUPERSEDES_INVALID"
+  | "MEMORY_REFS_INVALID";
 
 export interface MemoryDiagnostic {
   code: MemoryDiagnosticCode;
@@ -51,6 +59,8 @@ export interface MemoryRecordFrontmatter {
   contentHash: string;
   /** Free-text evidence for the fact (where it came from), when given. */
   source?: string;
+  /** `<system>:<reference>` refs an asserting gateway principal attached. */
+  refs?: string[];
 }
 
 export interface ParsedMemoryRecord {
@@ -100,6 +110,63 @@ export function memoryScopesIntersect(
 ): boolean {
   const wanted = new Set(normalizeMemoryScopes(requested));
   return normalizeMemoryScopes(factScopes).some((scope) => wanted.has(scope));
+}
+
+/**
+ * Owner scope for a gateway subject: `subject:` plus the first 32 hex chars
+ * (128 bits) of the subject's SHA-256, so it fits the scope length limit.
+ */
+export function memorySubjectScope(subjectHash: string): string {
+  return `${MEMORY_SUBJECT_SCOPE_PREFIX}${subjectHash.slice(0, 32).toLowerCase()}`;
+}
+
+/** Whether a normalized scope uses the reserved owner prefix. */
+export function isMemorySubjectScope(scope: string): boolean {
+  return scope.startsWith(MEMORY_SUBJECT_SCOPE_PREFIX);
+}
+
+/**
+ * Subject-owned visibility. With an owner scope, a fact is visible only when
+ * it carries that owner scope, no other owner scope, and a caller scope.
+ * Without one (a gateway principal acting for nobody), facts that carry any
+ * owner scope are hidden.
+ */
+export function memorySubjectVisible(
+  factScopes: readonly string[],
+  callerScopes: readonly string[],
+  ownerScope: string | undefined
+): boolean {
+  const owners = normalizeMemoryScopes(factScopes).filter(isMemorySubjectScope);
+  if (ownerScope === undefined) return owners.length === 0;
+  return (
+    owners.length > 0 &&
+    owners.every((owner) => owner === ownerScope) &&
+    memoryScopesIntersect(factScopes, callerScopes)
+  );
+}
+
+/** Trim and dedupe refs, order-preserving; a reason when any ref is invalid. */
+export function normalizeMemoryRefs(
+  refs: readonly unknown[]
+): { refs: string[] } | { reason: string } {
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+  for (const raw of refs) {
+    if (typeof raw !== "string") return { reason: "refs must be strings" };
+    const ref = raw.trim();
+    if (ref.length > MEMORY_MAX_REF_CHARS || !REF_PATTERN.test(ref)) {
+      return {
+        reason: `ref "${ref.slice(0, 80)}" must be <system>:<reference> (system [a-z][a-z0-9_-]*, no whitespace, at most ${MEMORY_MAX_REF_CHARS} characters)`,
+      };
+    }
+    if (seen.has(ref)) continue;
+    seen.add(ref);
+    normalized.push(ref);
+  }
+  if (normalized.length > MEMORY_MAX_REFS) {
+    return { reason: `at most ${MEMORY_MAX_REFS} refs are allowed` };
+  }
+  return { refs: normalized };
 }
 
 /** Trim, collapse whitespace runs, NFC. Exact-duplicate identity. */
@@ -206,6 +273,9 @@ export function serializeMemoryRecord(input: {
   ];
   if (frontmatter.source) {
     lines.push(`  source: ${yamlString(frontmatter.source)}`);
+  }
+  if (frontmatter.refs && frontmatter.refs.length > 0) {
+    lines.push(`  refs: [${frontmatter.refs.map(yamlString).join(", ")}]`);
   }
   if (input.supersedes.length > 0) {
     lines.push("relations:", `  ${MEMORY_SUPERSEDES_EDGE}:`);
@@ -394,6 +464,20 @@ export function validateMemoryRecord(content: string): MemoryRecordValidation {
   const supersedes = readSupersedes(parsed.relations, diagnostics);
   // Optional evidence: kept only when it is a non-empty string.
   const source = nonEmptyString(memory.source) ? memory.source.trim() : null;
+  let refs: string[] = [];
+  if (memory.refs !== undefined && memory.refs !== null) {
+    const parsedRefs = Array.isArray(memory.refs)
+      ? normalizeMemoryRefs(memory.refs)
+      : { reason: "memory.refs must be a list of strings" };
+    if ("reason" in parsedRefs) {
+      diagnostics.push({
+        code: "MEMORY_REFS_INVALID",
+        message: parsedRefs.reason,
+      });
+    } else {
+      refs = parsedRefs.refs;
+    }
+  }
 
   if (diagnostics.length > 0) {
     return { ok: false, diagnostics };
@@ -409,6 +493,7 @@ export function validateMemoryRecord(content: string): MemoryRecordValidation {
         createdAt: new Date(createdAt as string).toISOString(),
         contentHash: contentHash as string,
         ...(source ? { source } : {}),
+        ...(refs.length > 0 ? { refs } : {}),
       },
       supersedes,
       text,
