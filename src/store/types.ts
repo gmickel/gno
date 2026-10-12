@@ -1119,6 +1119,14 @@ export interface GetGraphNeighborsOptions {
   collections?: string[];
   /** Max edges to return (default 10000) */
   limitEdges?: number;
+  /**
+   * A caller's hidden documents: links resolve as if they did not exist, so
+   * they take no link and change no match count or confidence. When set
+   * (even empty), `meta.resolutionDocuments` lists the documents that
+   * decided each resolution, for the caller to check and resolve again
+   * without the ones it hides.
+   */
+  hiddenDocumentIds?: number[];
 }
 
 /** Result of seed-scoped one-hop graph neighbor lookup. */
@@ -1132,6 +1140,12 @@ export interface GraphNeighborsResult {
     examinedLinkRows: number;
     /** Edges returned after merge/cap. */
     returnedEdges: number;
+    /**
+     * With `hiddenDocumentIds`: every document that decided a link
+     * resolution (each target and its same-rank matches; every match of a
+     * workspace link), including resolutions that became no edge.
+     */
+    resolutionDocuments?: Array<{ id: number; docid: string }>;
   };
 }
 

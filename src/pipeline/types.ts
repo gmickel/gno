@@ -15,7 +15,11 @@ import type { RecordEvidenceMetadata } from "../core/record-metadata";
 import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
 import type { MetadataPredicate } from "../core/typed-metadata";
 import type { InferenceOptions } from "../llm/types";
-import type { StoreResult, SupersessionOptions } from "../store/types";
+import type {
+  DocumentRow,
+  StoreResult,
+  SupersessionOptions,
+} from "../store/types";
 import type { ClaimVerificationResult } from "./claim-verification";
 import type { SemanticVerificationCapability } from "./claim-verifier";
 import type { ContentTypeBoostScoreMetadata } from "./content-type-boost";
@@ -179,6 +183,11 @@ export interface SearchResults {
 // Search Options
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Resolves to the ids of the given documents that a caller may read. */
+export type ReadableDocumentsCheck = (
+  documents: readonly DocumentRow[]
+) => Promise<ReadonlySet<number>>;
+
 /** Common options for all search commands */
 export interface SearchOptions extends InferenceOptions {
   /** Type-strict custom metadata predicate, applied before candidate limits. */
@@ -216,6 +225,12 @@ export interface SearchOptions extends InferenceOptions {
    * read is never named (see `StorePort.getSupersedingUris`).
    */
   supersession?: SupersessionOptions;
+  /**
+   * Internal: the documents a scoped caller may read (gateway collection
+   * access). Graph links resolve over these alone, so a hidden document
+   * never takes a link or changes its confidence.
+   */
+  readable?: ReadableDocumentsCheck;
   /**
    * Internal: the request is confined to a caller's readable corpus (gateway
    * collection access). Typed-metadata coverage warnings are omitted, since

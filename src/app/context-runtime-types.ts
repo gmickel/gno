@@ -8,7 +8,7 @@ import type { MetadataPredicate } from "../core/typed-metadata";
 import type { EmbeddingPort, RerankPort } from "../llm/types";
 import type { RequestHydration } from "../pipeline/hydration";
 import type { ProjectAffinityScoringInput } from "../pipeline/project-affinity";
-import type { QueryModeInput } from "../pipeline/types";
+import type { QueryModeInput, ReadableDocumentsCheck } from "../pipeline/types";
 import type { StorePort, SupersessionOptions } from "../store/types";
 import type { VectorIndexPort } from "../store/vector";
 
@@ -67,6 +67,8 @@ export interface ContextCapsuleRuntimeDeps {
   retrievalScope?: { allowedMirrorHashes: string[] };
   /** Internal caller scope for evidence `supersededBy` links. */
   supersession?: SupersessionOptions;
+  /** Internal: graph links resolve over the documents a caller may read. */
+  readable?: ReadableDocumentsCheck;
   /** Internal: retrievals are confined to a caller's readable corpus. */
   accessScoped?: boolean;
   /**

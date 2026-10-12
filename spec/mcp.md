@@ -384,8 +384,10 @@ collections:
   and Context Capsule retrieval: their counts would include documents the
   request may not read.
 - Graph expansion (`meta.graphExpansion` on `gno_query`, Context Capsule
-  capability states) seeds only from readable documents and counts only edges
-  to neighbours the request may read. When no readable neighbour is added,
+  capability states) seeds only from readable documents, resolves links over
+  readable documents only (a document the request may not read never becomes
+  a link's target and never makes a link ambiguous), and counts only edges to
+  neighbours the request may read. When no readable neighbour is added,
   the fallback reason is `graph_no_new_candidates`, so a link to a document
   the request may not read reads exactly like no link.
 - Every tool outside the scoped set (`gno_changes`, links, backlinks,

@@ -10,6 +10,7 @@
 
 import type { EgressLineage } from "../../core/egress-provenance";
 import type { RecallResult } from "../../core/memory";
+import type { ReadableDocumentsCheck } from "../../pipeline/types";
 import type {
   DocumentRow,
   StorePort,
@@ -154,10 +155,21 @@ export const supersessionScope = (
   },
 });
 
+/** The documents this scope may serve, for graph link resolution. */
+export const readableDocuments =
+  (scope: McpAccessScope): ReadableDocumentsCheck =>
+  async (documents) =>
+    new Set(
+      documents
+        .filter((doc) => isDocumentServable(scope, doc))
+        .map((doc) => doc.id)
+    );
+
 /**
  * Retrieval options that confine one search, query or Context Capsule to the
- * scope: the provenance allowlist, the `supersededBy` filter and response
- * metadata that counts only readable documents.
+ * scope: the provenance allowlist, the `supersededBy` filter, graph links
+ * resolved over readable documents only, and response metadata that counts
+ * only readable documents.
  */
 export const accessRetrievalOptions = async (
   scope: McpAccessScope,
@@ -165,10 +177,12 @@ export const accessRetrievalOptions = async (
 ): Promise<{
   retrievalScope?: { allowedMirrorHashes: string[] };
   supersession: SupersessionOptions;
+  readable: ReadableDocumentsCheck;
   accessScoped: true;
 }> => ({
   ...(await provenanceRetrievalScope(scope, store)),
   supersession: supersessionScope(scope, store),
+  readable: readableDocuments(scope),
   accessScoped: true,
 });
 

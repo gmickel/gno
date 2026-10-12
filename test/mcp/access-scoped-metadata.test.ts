@@ -20,6 +20,7 @@ import type { DocumentInput } from "../../src/store/types";
 
 import { createDefaultConfig } from "../../src/config/defaults";
 import { TYPED_METADATA_INGEST_VERSION } from "../../src/core/typed-metadata";
+import { handleContext } from "../../src/mcp/tools/context";
 import { handleQuery } from "../../src/mcp/tools/query";
 import { handleSearch } from "../../src/mcp/tools/search";
 import { expandGraphCandidates } from "../../src/pipeline/graph-retrieval";
@@ -161,6 +162,24 @@ const graphQuery = () =>
       ctx()
     )
   );
+/** Context Capsule over "pub" with graph expansion on and no models. */
+const capsule = () =>
+  serialized(() =>
+    handleContext(
+      {
+        goal: "needle note",
+        query: "needle",
+        collections: ["pub"],
+        limit: 8,
+        budgetTokens: 100_000,
+        budgetBytes: 100_000,
+        depthPolicy: "balanced",
+        graph: true,
+        noRerank: true,
+      },
+      ctx()
+    )
+  );
 const query = () =>
   serialized(() =>
     handleQuery({ query: "needle", limit: 20, fast: true }, ctx())
@@ -252,6 +271,50 @@ describe("graph expansion metadata", () => {
       enabled: true,
       candidateCount: 1,
     });
+  });
+
+  test("a hidden note named like a link target leaves the edge unchanged", async () => {
+    await linkToTarget();
+    await addNote("pub/target.md", {}, "linked target note");
+    asReader();
+    const before = await graphQuery();
+    expect(graphMeta(before)).toMatchObject({
+      enabled: true,
+      candidateCount: 1,
+      edgeConfidence: { explicit: 1, ambiguous: 0 },
+    });
+    // Same title, no `derived_from`: unreadable, and no longer a tie.
+    await addNote(
+      "pub/twin.md",
+      { title: "target", typedMetadata: {} },
+      "twin note"
+    );
+    expect(await graphQuery()).toBe(before);
+    asUnrestricted();
+    expect(graphMeta(await graphQuery())).toMatchObject({
+      edgeConfidence: { explicit: 0, ambiguous: 1 },
+    });
+  });
+
+  test("a hidden note that outranks a link target does not take the link", async () => {
+    await linkToTarget();
+    // Matches [[target]] by path only.
+    await addNote("pub/target.md", { title: "Target note" }, "linked note");
+    asReader();
+    const before = await graphQuery();
+    expect(graphMeta(before)).toMatchObject({
+      enabled: true,
+      candidateCount: 1,
+    });
+    expect(await capsule()).toContain("gno://pub/target.md");
+    // An exact title match wins resolution over a path match.
+    await addNote(
+      "pub/other.md",
+      { title: "target", typedMetadata: {} },
+      "other note"
+    );
+    expect(await graphQuery()).toBe(before);
+    expect(await capsule()).toContain("gno://pub/target.md");
   });
 
   test("a hidden note sharing a seed's content does not take its place", async () => {

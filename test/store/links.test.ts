@@ -1523,6 +1523,79 @@ describe("SqliteAdapter links", () => {
       expect(twoSeeds.value.meta.examinedLinkRows).toBe(201);
     });
 
+    test("resolves links as if hidden documents did not exist", async () => {
+      // The hidden twin comes first, so it wins a tie by id.
+      const twinId = await createTestDoc("notes", "twin.md", "Seed");
+      const seedId = await createTestDoc("notes", "seed.md", "Seed");
+      const hiddenId = await createTestDoc("notes", "dup-a.md", "Duplicate");
+      const readableId = await createTestDoc("notes", "dup-b.md", "Duplicate");
+      const backId = await createTestDoc("notes", "back.md", "Back");
+      const wiki = (ref: string): DocLinkInput => ({
+        targetRef: ref,
+        targetRefNorm: ref.toLowerCase(),
+        linkType: "wiki",
+        startLine: 1,
+        startCol: 1,
+        endLine: 1,
+        endCol: ref.length + 4,
+      });
+      await adapter.setDocLinks(seedId, [wiki("Duplicate")], "parsed");
+      await adapter.setDocLinks(backId, [wiki("Seed")], "parsed");
+      const docid = async (id: number): Promise<string> => {
+        const docs = await adapter.listDocuments("notes");
+        if (!docs.ok) throw new Error(docs.error.message);
+        const doc = docs.value.find((row) => row.id === id);
+        if (!doc) throw new Error(`missing document ${id}`);
+        return doc.docid;
+      };
+      const neighbours = async (hiddenDocumentIds?: number[]) => {
+        const result = await adapter.getGraphNeighborsForSeeds({
+          seedDocumentIds: [seedId],
+          collection: "notes",
+          hiddenDocumentIds,
+        });
+        if (!result.ok) throw new Error(result.error.message);
+        return result.value;
+      };
+
+      // Unhidden: [[Duplicate]] is a tie and [[Seed]] lands on the twin.
+      const unhidden = await neighbours();
+      expect(unhidden.links).toEqual([
+        expect.objectContaining({
+          source: await docid(seedId),
+          target: await docid(hiddenId),
+          confidence: "ambiguous",
+        }),
+      ]);
+      expect(unhidden.meta.resolutionDocuments).toBeUndefined();
+      const reported = await neighbours([]);
+      expect(reported.links).toEqual(unhidden.links);
+      expect(
+        new Set(reported.meta.resolutionDocuments?.map((doc) => doc.id))
+      ).toEqual(new Set([twinId, seedId, hiddenId, readableId]));
+
+      // Hidden: [[Duplicate]] has one match and [[Seed]] reaches the seed.
+      const hidden = await neighbours([twinId, hiddenId]);
+      expect(hidden.links).toHaveLength(2);
+      expect(hidden.links).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            source: await docid(backId),
+            target: await docid(seedId),
+            confidence: "explicit",
+          }),
+          expect.objectContaining({
+            source: await docid(seedId),
+            target: await docid(readableId),
+            confidence: "explicit",
+          }),
+        ])
+      );
+      expect(
+        new Set(hidden.meta.resolutionDocuments?.map((doc) => doc.id))
+      ).toEqual(new Set([seedId, readableId]));
+    });
+
     test("matches getGraph confidence for the same seed-adjacent edges", async () => {
       const seedId = await createTestDoc("notes", "seed.md", "Seed");
       await createTestDoc("notes", "exact.md", "Exact Title");

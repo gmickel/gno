@@ -13,7 +13,7 @@ import type {
   GraphLink,
   StorePort,
 } from "../store/types";
-import type { FusionCandidate } from "./types";
+import type { FusionCandidate, ReadableDocumentsCheck } from "./types";
 
 import { typedMetadataFilterReason } from "./filters";
 import { isWithinTemporalRange } from "./temporal";
@@ -37,6 +37,12 @@ const GRAPH_SEED_LIMIT = 5;
 const GRAPH_CANDIDATE_LIMIT = 20;
 const GRAPH_NODE_LIMIT = 2000;
 const GRAPH_EDGE_LIMIT = 10000;
+/**
+ * Bound on resolving again without newly hidden documents. A round that
+ * hides nothing new ends the loop, and each later round moves an affected
+ * link down at least one of its dozen match ranks, so this is never reached.
+ */
+const GRAPH_RESOLUTION_ROUNDS = 16;
 
 const EMPTY_EDGE_CONFIDENCE: Record<GraphEdgeConfidence, number> = {
   explicit: 0,
@@ -191,6 +197,26 @@ const addEdgeCandidate = (
   scores.set(neighborDocid, current + score);
 };
 
+/**
+ * Ids of the documents `readable` does not allow; a document that is no
+ * longer active counts as unreadable. Null when the lookup fails.
+ */
+const unreadableDocumentIds = async (
+  store: StorePort,
+  documents: Array<{ id: number; docid: string }>,
+  readable: ReadableDocumentsCheck
+): Promise<number[] | null> => {
+  if (documents.length === 0) return [];
+  const rows = await store.getDocumentsByDocids(
+    documents.map((doc) => doc.docid),
+    { activeOnly: true }
+  );
+  if (!rows.ok) return null;
+  const ids = new Set(documents.map((doc) => doc.id));
+  const allowed = await readable(rows.value.filter((doc) => ids.has(doc.id)));
+  return documents.filter((doc) => !allowed.has(doc.id)).map((doc) => doc.id);
+};
+
 const loadGraphLinks = async (
   store: StorePort,
   seedDocumentIds: number[],
@@ -198,24 +224,52 @@ const loadGraphLinks = async (
     collection?: string;
     collections?: string[];
     includeSimilar?: boolean;
+    readable?: ReadableDocumentsCheck;
   }
 ): Promise<
   { ok: true; links: GraphLink[] } | { ok: false; reason: string }
 > => {
+  const readable = options.readable;
   if (typeof store.getGraphNeighborsForSeeds === "function") {
-    const neighborsResult = await store.getGraphNeighborsForSeeds({
-      seedDocumentIds,
-      collection: options.collection,
-      collections: options.collections,
-      limitEdges: GRAPH_EDGE_LIMIT,
-    });
-    if (!neighborsResult.ok) {
-      return { ok: false, reason: "graph_query_failed" };
+    // With `readable`, links resolve over the readable documents only: the
+    // documents that decided a resolution are checked, and resolution runs
+    // again without any the caller may not read.
+    const hidden = new Set<number>();
+    const checked = new Set<number>();
+    for (let round = 0; round < GRAPH_RESOLUTION_ROUNDS; round += 1) {
+      const neighborsResult = await store.getGraphNeighborsForSeeds({
+        seedDocumentIds,
+        collection: options.collection,
+        collections: options.collections,
+        limitEdges: GRAPH_EDGE_LIMIT,
+        ...(readable ? { hiddenDocumentIds: [...hidden] } : {}),
+      });
+      if (!neighborsResult.ok) {
+        return { ok: false, reason: "graph_query_failed" };
+      }
+      if (!readable) return { ok: true, links: neighborsResult.value.links };
+      const unchecked = (
+        neighborsResult.value.meta.resolutionDocuments ?? []
+      ).filter((doc) => !checked.has(doc.id));
+      const unreadable = await unreadableDocumentIds(
+        store,
+        unchecked,
+        readable
+      );
+      if (unreadable === null) {
+        return { ok: false, reason: "graph_query_failed" };
+      }
+      if (unreadable.length === 0) {
+        return { ok: true, links: neighborsResult.value.links };
+      }
+      for (const doc of unchecked) checked.add(doc.id);
+      for (const id of unreadable) hidden.add(id);
     }
-    return { ok: true, links: neighborsResult.value.links };
+    return { ok: false, reason: "graph_query_failed" };
   }
 
-  if (typeof store.getGraph !== "function") {
+  // The full-graph fallback cannot leave hidden documents out of resolution.
+  if (readable || typeof store.getGraph !== "function") {
     return { ok: false, reason: "graph_unavailable" };
   }
 
@@ -260,6 +314,12 @@ export async function expandGraphCandidates(
     author?: string;
     filter?: MetadataPredicate;
     relPathPrefix?: string;
+    /**
+     * The documents a scoped caller may read. Links resolve over these alone,
+     * before targets are chosen, matches counted and neighbours scored, so a
+     * hidden document never takes a link or changes its confidence.
+     */
+    readable?: ReadableDocumentsCheck;
     /**
      * The request is confined to a caller's readable corpus: seeds come only
      * from the allowlist, edge counts cover only eligible neighbours, and "no
@@ -384,6 +444,7 @@ export async function expandGraphCandidates(
     collection: options.collection,
     collections: options.collections,
     includeSimilar: options.includeSimilar,
+    readable: options.readable,
   });
   if (!linksResult.ok) {
     meta.fallbackReasons.push(linksResult.reason);

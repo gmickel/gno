@@ -3,6 +3,7 @@
 import type { Database } from "bun:sqlite";
 
 import type {
+  GraphLinkResolutionOptions,
   GraphLinkTarget,
   ResolvedGraphLinkTarget,
 } from "./graph-link-resolver";
@@ -64,7 +65,8 @@ const candidatesFor = (
 
 const resolved = (
   documents: readonly IndexedDocument[],
-  matchRank: number
+  matchRank: number,
+  reportMatches: boolean
 ): ResolvedGraphLinkTarget | null => {
   const first = documents[0];
   if (!first) return null;
@@ -73,6 +75,9 @@ const resolved = (
     targetDocid: first.docid,
     matchRank,
     matchCount: documents.length,
+    ...(reportMatches
+      ? { matches: documents.map(({ id, docid }) => ({ id, docid })) }
+      : {}),
   };
 };
 
@@ -84,8 +89,10 @@ const resolved = (
 export const resolveGraphLinkTargetsBulk = (
   db: Database,
   targets: readonly GraphLinkTarget[],
-  maxDocuments = GRAPH_LINK_BULK_MAX_DOCUMENTS
+  maxDocuments = GRAPH_LINK_BULK_MAX_DOCUMENTS,
+  options: GraphLinkResolutionOptions = {}
 ): Array<ResolvedGraphLinkTarget | null> | null => {
+  const reportMatches = options.reportMatches === true;
   const boundedMaxDocuments = Math.max(
     1,
     Math.min(GRAPH_LINK_BULK_MAX_DOCUMENTS, maxDocuments)
@@ -118,6 +125,7 @@ export const resolveGraphLinkTargetsBulk = (
   const relExactRaw: Lookup = new Map();
   const relSuffix: Lookup = new Map();
   for (const row of rows) {
+    if (options.hiddenDocumentIds?.has(row.id)) continue;
     const document: IndexedDocument = {
       id: row.id,
       docid: row.docid,
@@ -150,7 +158,8 @@ export const resolveGraphLinkTargetsBulk = (
         candidatesFor(relExactRaw, target.targetCollection, [
           target.targetRefNorm,
         ]),
-        5
+        5,
+        reportMatches
       );
     } else {
       const baseRef = stripWikiMdExt(target.targetRefNorm);
@@ -181,7 +190,7 @@ export const resolveGraphLinkTargetsBulk = (
           values
         );
         if (documents.length === 0) continue;
-        result = resolved(documents, rank);
+        result = resolved(documents, rank, reportMatches);
         break;
       }
     }
