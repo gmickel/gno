@@ -279,15 +279,19 @@ export const supersessionScope = (
   },
 });
 
-/** The documents this scope may serve, for graph link resolution. */
+/**
+ * The documents this scope may serve and, when an access hook is set, the
+ * hook allows: what graph links resolve over.
+ */
 export const readableDocuments =
   (scope: McpAccessScope): ReadableDocumentsCheck =>
-  async (documents) =>
-    new Set(
-      documents
-        .filter((doc) => isDocumentServable(scope, doc))
-        .map((doc) => doc.id)
-    );
+  async (documents) => {
+    const servable = documents.filter((doc) => isDocumentServable(scope, doc));
+    if (!scope.check || servable.length === 0) {
+      return new Set(servable.map((doc) => doc.id));
+    }
+    return scope.check(servable);
+  };
 
 /**
  * Retrieval options that confine one search, query or Context Capsule to the

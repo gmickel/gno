@@ -11,7 +11,10 @@ import type { RerankPort } from "../../src/llm/types";
 import type { RequestSubject, ToolContext } from "../../src/mcp/context";
 
 import { TYPED_METADATA_INGEST_VERSION } from "../../src/core/typed-metadata";
-import { resolveMcpAccess } from "../../src/mcp/tools/access";
+import {
+  accessRetrievalOptions,
+  resolveMcpAccess,
+} from "../../src/mcp/tools/access";
 import { handleGet } from "../../src/mcp/tools/get";
 import { handleMultiGet } from "../../src/mcp/tools/multi-get";
 import { handleSearch } from "../../src/mcp/tools/search";
@@ -360,6 +363,120 @@ describe("access hook in hybrid retrieval", () => {
       result.value.meta.explain?.lines.find((line) => line.stage === "access")
         ?.message
     ).toMatch(/^checked=\d+, denied=\d+, overfetch=x3$/);
+  });
+});
+
+describe("access hook and graph links", () => {
+  const addNote = async (
+    relPath: string,
+    title: string,
+    source: string,
+    text: string
+  ): Promise<number> => {
+    // Distinct hex hashes: a docid is the first eight characters.
+    const mirrorHash = new Bun.CryptoHasher("sha256")
+      .update(relPath)
+      .digest("hex");
+    const inserted = await store.upsertDocument({
+      collection: "pub",
+      relPath,
+      sourceHash: mirrorHash,
+      sourceMime: "text/markdown",
+      sourceExt: ".md",
+      sourceSize: text.length,
+      sourceMtime: "2026-10-01T00:00:00.000Z",
+      title,
+      mirrorHash,
+      typedMetadata: { derived_from: [source] },
+      ingestVersion: TYPED_METADATA_INGEST_VERSION,
+    });
+    if (!inserted.ok) throw new Error(inserted.error.message);
+    expect((await store.upsertContent(mirrorHash, text)).ok).toBe(true);
+    expect(
+      (
+        await store.upsertChunks(mirrorHash, [
+          { seq: 0, pos: 0, text, startLine: 1, endLine: 1, language: "en" },
+        ])
+      ).ok
+    ).toBe(true);
+    expect((await store.rebuildFtsForHash(mirrorHash)).ok).toBe(true);
+    return inserted.value.id;
+  };
+  const wiki = (ref: string, line: number) => ({
+    targetRef: ref,
+    targetRefNorm: ref,
+    linkType: "wiki" as const,
+    startLine: line,
+    startCol: 1,
+    endLine: line,
+    endCol: ref.length + 4,
+  });
+  /** Hybrid "graphseed" query with the caller's full scope, graph on. */
+  const graphQuery = async () => {
+    const scope = await resolveMcpAccess(ctx());
+    if (!scope?.check) throw new Error("expected a hook check");
+    const result = await searchHybrid(
+      {
+        store,
+        config: {} as Config,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort: null,
+      },
+      "graphseed",
+      {
+        limit: 10,
+        noExpand: true,
+        noRerank: true,
+        graph: true,
+        collections: scope.collections,
+        ...(await accessRetrievalOptions(scope, store)),
+      }
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return {
+      uris: result.value.results.map((r) => r.uri),
+      graph: result.value.meta.graphExpansion,
+    };
+  };
+
+  test("a hook-denied note takes no link and changes no confidence", async () => {
+    subject = { id: "u:b", context: "1to1", hash: "h" };
+    const seed = await addNote(
+      "gseed.md",
+      "gseed",
+      "web:ok-7",
+      "graphseed note"
+    );
+    // [[gtarget]] matches gtarget.md by title; [[gpath]] gpath.md by path.
+    await addNote("gtarget.md", "gtarget", "web:ok-8", "linked target");
+    await addNote("gpath.md", "Path target", "web:ok-9", "linked by path");
+    expect(
+      (
+        await store.setDocLinks(
+          seed,
+          [wiki("gtarget", 1), wiki("gpath", 2)],
+          "parsed"
+        )
+      ).ok
+    ).toBe(true);
+    const before = await graphQuery();
+    expect(before.graph).toMatchObject({
+      enabled: true,
+      candidateCount: 2,
+      edgeConfidence: { explicit: 2, ambiguous: 0 },
+    });
+    expect(before.uris).toContain("gno://pub/gpath.md");
+
+    // Valid provenance the hook denies: one ties gtarget, one outranks gpath.
+    await addNote("gtwin.md", "gtarget", "sp:secret-3", "twin");
+    await addNote("gother.md", "gpath", "sp:secret-4", "other");
+    calls.length = 0;
+    expect(await graphQuery()).toEqual(before);
+    expect(
+      calls.some((call) => call.refs.some((ref) => ref.ref === "secret-3"))
+    ).toBe(true);
   });
 });
 
