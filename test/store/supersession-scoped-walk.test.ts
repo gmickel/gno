@@ -11,6 +11,7 @@ import { join } from "node:path";
 
 import type { SupersessionOptions } from "../../src/store/types";
 
+import { supersedingUri } from "../../src/pipeline/result-context";
 import {
   MAX_SCOPED_SUPERSESSION_HOPS,
   SqliteAdapter,
@@ -143,6 +144,46 @@ beforeAll(async () => {
 afterAll(async () => {
   await store.close();
   await safeRm(directory);
+});
+
+describe("cycles", () => {
+  const inputs = ["self", "two-a", "tail-a"].map(uri);
+
+  test("a cycle stops at the first repeated note, scoped or not", async () => {
+    const expected = { [uri("tail-a")]: uri("tail-b") };
+    expect(await lookup(inputs)).toEqual(expected);
+    expect(await lookup(inputs, recording(() => true).options)).toEqual(
+      expected
+    );
+  });
+
+  test("the start of a cycle is never asked about", async () => {
+    const { calls, options } = recording(() => true);
+    await lookup([uri("two-a")], options);
+    expect(calls).toEqual([[uri("two-b")]]);
+  });
+
+  test("a rejection inside a cycle stops before the rejected note", async () => {
+    const tail = [uri("tail-a")];
+    const noC = recording((target) => target !== uri("tail-c"));
+    expect(await lookup(tail, noC.options)).toEqual({
+      [uri("tail-a")]: uri("tail-b"),
+    });
+    const noB = recording((target) => target !== uri("tail-b"));
+    expect(await lookup(tail, noB.options)).toEqual({});
+    expect(noB.calls).toEqual([[uri("tail-b")]]);
+  });
+
+  test("a throwing canFollow fails closed", async () => {
+    const options: SupersessionOptions = {
+      canFollow: async () => {
+        throw new Error("access check unavailable");
+      },
+    };
+    const result = await store.getSupersedingUris([uri("tail-a")], options);
+    expect(result.ok).toBe(false);
+    expect(await supersedingUri(store, uri("tail-a"), options)).toBeUndefined();
+  });
 });
 
 describe("bounded work", () => {
