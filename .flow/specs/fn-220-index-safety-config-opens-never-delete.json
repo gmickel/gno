@@ -368,7 +368,7 @@
     "impl:fn-220-index-safety-config-opens-never-delete.1": 0
   },
   "spec_path": ".flow/specs/fn-220-index-safety-config-opens-never-delete.md",
-  "status": "open",
+  "status": "done",
   "title": "Index safety, missing-root status, search speed, agent Capsule dates and eval fixes",
   "tracker": {
     "baseHashFlow": null,
@@ -381,5 +381,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-12T13:08:19.764361Z"
+  "updated_at": "2026-10-12T13:16:23.011730Z"
 }

@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-220-index-safety-config-opens-never-delete",
   "spec_path": ".flow/tasks/fn-220-index-safety-config-opens-never-delete.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement index safety, status, search speed, Capsule and eval fixes",
   "updated_at": "2026-10-12T11:29:26.863401Z"
 }
