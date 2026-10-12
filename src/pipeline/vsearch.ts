@@ -555,7 +555,8 @@ async function searchVectorWithEmbeddingOwned(
       until: temporalRange.until,
       categories: options.categories,
       author: options.author,
-      ...(options.filter
+      // Coverage counts span documents a scoped caller may not read.
+      ...(options.filter && !options.accessScoped
         ? { warnings: await typedMetadataWarnings(store, query, options) }
         : {}),
       queryLanguage,

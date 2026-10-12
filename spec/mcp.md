@@ -377,6 +377,10 @@ collections:
   request may read. A result's content can also be held by a collection the
   request may not read; that collection is left out of the lineage and its
   `effectivePolicy`. Retrieval traces keep the complete lineage.
+- Typed-metadata coverage warnings (`METADATA_COVERAGE_UNKNOWN`,
+  `METADATA_COVERAGE_INCOMPLETE`) are omitted from `gno_search`, `gno_query`
+  and Context Capsule retrieval: their counts would include documents the
+  request may not read.
 - Every tool outside the scoped set (`gno_changes`, links, backlinks,
   similar, graph, tags, status, jobs, traces, diagnostics, writes other than
   `gno_remember`) returns the same `NOT_FOUND` result for a non-admin

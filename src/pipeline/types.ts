@@ -216,6 +216,12 @@ export interface SearchOptions extends InferenceOptions {
    * read is never named (see `StorePort.getSupersedingUris`).
    */
   supersession?: SupersessionOptions;
+  /**
+   * Internal: the request is confined to a caller's readable corpus (gateway
+   * collection access). Typed-metadata coverage warnings are omitted, since
+   * their counts span documents outside that corpus.
+   */
+  accessScoped?: boolean;
   /** Language filter/hint (BCP-47) */
   lang?: string;
   /** Include full content instead of snippet */

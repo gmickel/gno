@@ -150,7 +150,8 @@ export const supersessionScope = (
 
 /**
  * Retrieval options that confine one search, query or Context Capsule to the
- * scope: the provenance allowlist and the `supersededBy` filter.
+ * scope: the provenance allowlist, the `supersededBy` filter and response
+ * metadata that counts only readable documents.
  */
 export const accessRetrievalOptions = async (
   scope: McpAccessScope,
@@ -158,9 +159,11 @@ export const accessRetrievalOptions = async (
 ): Promise<{
   retrievalScope?: { allowedMirrorHashes: string[] };
   supersession: SupersessionOptions;
+  accessScoped: true;
 }> => ({
   ...(await provenanceRetrievalScope(scope, store)),
   supersession: supersessionScope(scope, store),
+  accessScoped: true,
 });
 
 interface RetrievalArgs {

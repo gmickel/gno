@@ -475,6 +475,8 @@ collections whose `access` rule lets its user in (see
   note it may not read never shows up as a successor;
 - `egressLineage` lists only collections the caller may read, even when a
   collection it may not read holds the same content;
+- typed-metadata coverage warnings are left out, because their counts would
+  include notes the caller may not read;
 - only `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`,
   `gno_recall` and `gno_remember` work. Every other tool, including
   `gno_changes`, links and status, answers `NOT_FOUND`, and `gno://`

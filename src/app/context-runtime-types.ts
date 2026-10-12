@@ -67,6 +67,8 @@ export interface ContextCapsuleRuntimeDeps {
   retrievalScope?: { allowedMirrorHashes: string[] };
   /** Internal caller scope for evidence `supersededBy` links. */
   supersession?: SupersessionOptions;
+  /** Internal: retrievals are confined to a caller's readable corpus. */
+  accessScoped?: boolean;
   /**
    * Internal caller view of each retrieved result's policy lineage, applied
    * after the retrieval trace has recorded the complete lineage.
