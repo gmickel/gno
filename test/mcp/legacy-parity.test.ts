@@ -38,7 +38,8 @@
  *    `gno_audit.maxFindings` to 1-100000 or "all" and adds the optional
  *    `gno_impact.collections` scope. fn-216 rewords the retrieval-ladder
  *    guidance in the `gno_search`, `gno_vsearch` and `gno_query` descriptions and the
- *    `gno_query.fast` property description. fn-217 closes every tool input
+ *    `gno_query.fast` property description. The agents block v5 rewords the
+ *    `gno_search` exact-text guidance. fn-217 closes every tool input
  *    (`additionalProperties: false`), dropped from both sides of the frozen
  *    comparison. All are
  *    pinned by the current golden and removed only for the historical
@@ -382,6 +383,14 @@ const LADDER_DESCRIPTION_DELTAS: [current: string, historical: string][] = [
   [
     "For questions, gno_query with fast=true adds keyword matching at about the same cost.",
     "Use gno_query for default hybrid retrieval.",
+  ],
+  [
+    "Fast lookup of exact text you already have verbatim: identifiers, filenames, error text, and quoted phrases.",
+    "Fast exact-term lookup for names, identifiers, error text, and known phrases.",
+  ],
+  [
+    "A question, or a name or topic taken from it, is not exact text: use gno_query (fast=true first).",
+    "Use gno_query when wording is uncertain.",
   ],
   [
     "For natural-language questions use gno_query (fast=true first).",

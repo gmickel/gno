@@ -163,7 +163,7 @@ describe("agents CLI commands", () => {
   describe("block", () => {
     test("is static, stamped, bounded, and under the size budget", () => {
       const body = renderBlockBody();
-      expect(body.length).toBeLessThan(1500);
+      expect(body.length).toBeLessThan(1700);
       expect(body).toContain("gno search");
       expect(body).toContain("gno capture");
       expect(body).toContain("/gno");

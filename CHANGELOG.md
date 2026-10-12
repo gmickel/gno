@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The `gno agents` block (v5), the `gno` skill and the MCP `gno_search` description narrow the exact-text rung: `gno search` is for a term, identifier, quote or error you already have verbatim, and a question, or a name or topic taken from it, goes to `gno query --fast`. In headless agent sessions given only the v4 block, one agent often ran `gno search` on a word or name lifted from a natural-language question and never reached semantic search; with the v5 wording its first retrieval call fit the question in 14 of 16 runs instead of 6 of 16, with no change for exact-phrase questions. Run `gno agents update` and `gno skill install --force` to pick it up.
 - The Web UI's Fast depth runs the same hybrid fast search as `gno query --fast` (keyword and semantic, no expansion or reranking) instead of keyword search only; it falls back to keyword search when the server reports vector search unavailable.
 - MCP `gno_context` returns the `gno-context-agent-v2` text to the model: each evidence passage also carries its content date and, for a superseded memory fact, the URI of the fact that replaced it, so agents no longer cite an outdated fact as current. Promotion receipts recorded with v1 still validate.
 
