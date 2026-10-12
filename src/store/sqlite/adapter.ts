@@ -938,15 +938,18 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         const unlisted = this.queryStaleCollections(
           db,
           collections.map((c) => c.name)
-        );
-        stale = unlisted.filter(
-          (c) => c.documents > 0 && remove !== "stale" && !removed.has(c.name)
-        );
+        ).filter((c) => remove !== "stale" && !removed.has(c.name));
+        // Unlisted collections without documents stay too; they only block
+        // the sync when they hold indexed documents.
+        stale = unlisted.filter((c) => c.documents > 0);
         if (stale.length > 0 && !options.keepStale) {
           throw new StaleCollectionsError();
         }
-        const keep = new Set(stale.map((c) => c.name));
-        for (const { name } of unlisted) {
+        const keep = new Set(unlisted.map((c) => c.name));
+        for (const { name } of this.queryStaleCollections(
+          db,
+          collections.map((c) => c.name)
+        )) {
           if (!keep.has(name)) {
             db.run("DELETE FROM collections WHERE name = ?", [name]);
           }
@@ -3193,10 +3196,22 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const uniqueHashes = uniqueNonEmptyValues(mirrorHashes);
       if (uniqueHashes.length === 0 || terms.length === 0) return ok([]);
       const db = this.ensureOpen();
-      const columns = terms.map(() => "instr(lower(text), ?) > 0").join(", ");
+      // SQLite lower() folds ASCII only, so a non-ASCII term is also looked
+      // up in its upper-case and capitalized spellings (ÜBERBLICK, Überblick).
+      const spellings = terms.flatMap((term) => [
+        term,
+        term.toUpperCase(),
+        `${term.charAt(0).toUpperCase()}${term.slice(1)}`,
+      ]);
+      const columns = terms
+        .map(
+          () =>
+            "(instr(lower(text), ?) > 0 OR instr(text, ?) > 0 OR instr(text, ?) > 0)"
+        )
+        .join(", ");
       const batchSize = Math.max(
         1,
-        SQLITE_SAFE_PARAMETER_BATCH_SIZE - terms.length
+        SQLITE_SAFE_PARAMETER_BATCH_SIZE - spellings.length
       );
       const rows: { mirrorHash: string; seq: number; present: boolean[] }[] =
         [];
@@ -3208,7 +3223,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
              WHERE mirror_hash IN (${batch.map(() => "?").join(",")})
              ORDER BY mirror_hash, seq`
           )
-          .values(...terms, ...batch) as unknown[][];
+          .values(...spellings, ...batch) as unknown[][];
         for (const [mirrorHash, seq, ...present] of values) {
           rows.push({
             mirrorHash: String(mirrorHash),

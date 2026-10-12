@@ -3651,9 +3651,14 @@ function wireManagementCommands(program: Command): void {
 
   // cleanup - Clean stale data
   addWriteLeaseFlags(
-    program.command("cleanup").description("Clean orphaned data from index")
+    program
+      .command("cleanup")
+      .description("Clean orphaned data from index")
+      .option("--json", "JSON output")
   ).action(async (cmdOpts: Record<string, unknown>) => {
-    const { cleanup, formatCleanup } = await import("./commands/cleanup");
+    const { cleanup, formatCleanup, formatDroppingCollections } =
+      await import("./commands/cleanup");
+    const json = Boolean(cmdOpts.json) || getGlobals().json;
     const lease = parseWriteLeaseFlags(cmdOpts);
     const result = await withCliWriteLease(
       {
@@ -3665,6 +3670,13 @@ function wireManagementCommands(program: Command): void {
         cleanup({
           configPath: getGlobals().config,
           indexName: getGlobals().index,
+          // Name what is about to be deleted before deleting it.
+          onDropping: (collections) => {
+            const plan = json
+              ? JSON.stringify({ deleting: collections })
+              : formatDroppingCollections(collections);
+            process.stderr.write(`${plan}\n`);
+          },
         })
     );
     throwIfWriteLeaseBusy(result, false);
@@ -3672,7 +3684,11 @@ function wireManagementCommands(program: Command): void {
     if (!result.success) {
       throw new CliError("RUNTIME", result.error ?? "Cleanup failed");
     }
-    process.stdout.write(`${formatCleanup(result)}\n`);
+    process.stdout.write(
+      json
+        ? `${JSON.stringify({ droppedCollections: result.droppedCollections, ...result.stats }, null, 2)}\n`
+        : `${formatCleanup(result)}\n`
+    );
   });
 
   // reset - Reset GNO to fresh state

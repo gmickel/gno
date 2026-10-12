@@ -1629,9 +1629,9 @@ export interface StorePort {
   /**
    * Sync collections from config to DB: adds new and updates existing ones.
    * A collection in the index but not in `collections` is deleted only when
-   * it holds no documents or `options.remove` names it; otherwise the sync
-   * fails with STALE_COLLECTIONS and changes nothing, unless `keepStale`
-   * leaves those collections untouched (status and doctor).
+   * `options.remove` names it (or is "stale"). One that holds documents
+   * otherwise fails the sync with STALE_COLLECTIONS and changes nothing,
+   * unless `keepStale` leaves it untouched.
    */
   syncCollections(
     collections: Collection[],

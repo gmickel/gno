@@ -995,11 +995,8 @@ export async function runAutomationProfile(
       }
       await probe.release();
       // Project the current archive collections (added, changed or removed)
-      // into the index before importing. An archive index is bound to its
-      // own config, so collections that config dropped are removed.
-      const synced = await deps.store.syncCollections(config.collections, {
-        remove: config.sessions?.index === undefined ? [] : "stale",
-      });
+      // into the index before importing.
+      const synced = await deps.store.syncCollections(config.collections);
       if (!synced.ok) {
         throw isIndexLockContention(synced.error)
           ? new SessionsError("SESSIONS_BUSY", "The archive index is busy.")

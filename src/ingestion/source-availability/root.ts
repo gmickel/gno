@@ -6,8 +6,10 @@
  * @module src/ingestion/source-availability/root
  */
 
-// node:fs/promises opendir/stat: Bun has no directory-handle API
-import { opendir, stat } from "node:fs/promises";
+// node:fs constants: access mode bits (no Bun equivalent)
+import { constants } from "node:fs";
+// node:fs/promises access/opendir/stat: Bun has no directory-handle API
+import { access, opendir, stat } from "node:fs/promises";
 
 import type { Collection } from "../../config/types";
 
@@ -63,9 +65,10 @@ function describeRootError(cause: unknown): string {
 }
 
 /**
- * Check one configured root at read time. `local` collections only stat the
- * root: listing a dataless cloud folder would download it, and a partially
- * present cloud folder is not missing (sync skips its unmaterialized parts).
+ * Check one configured root at read time. `local` collections never list the
+ * root (listing a dataless cloud folder would download it, and a partially
+ * present cloud folder is not missing); they check that it is a directory
+ * this process may read and enter.
  */
 export async function checkCollectionRoot(
   collection: Pick<Collection, "path" | "sourceAvailability">
@@ -73,9 +76,12 @@ export async function checkCollectionRoot(
   let detail: string | null;
   if (collection.sourceAvailability === "local") {
     try {
-      detail = (await stat(collection.path)).isDirectory()
-        ? null
-        : "ENOTDIR: not a directory";
+      if ((await stat(collection.path)).isDirectory()) {
+        await access(collection.path, constants.R_OK | constants.X_OK);
+        detail = null;
+      } else {
+        detail = "ENOTDIR: not a directory";
+      }
     } catch (cause) {
       detail = describeRootError(cause);
     }

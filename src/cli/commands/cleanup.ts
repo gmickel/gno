@@ -20,6 +20,8 @@ export interface CleanupOptions {
   configPath?: string;
   /** Index name */
   indexName?: string;
+  /** Called with the collections about to be deleted, before deleting them. */
+  onDropping?: (collections: StaleCollection[]) => void;
 }
 
 /**
@@ -32,7 +34,12 @@ export type CleanupResult =
       /** Indexed collections the config omits, deleted by this cleanup. */
       droppedCollections: StaleCollection[];
     }
-  | { success: false; error: string };
+  | {
+      success: false;
+      error: string;
+      /** Collections already deleted when a later step failed. */
+      droppedCollections?: StaleCollection[];
+    };
 
 /**
  * Execute gno cleanup command.
@@ -76,9 +83,10 @@ export async function cleanup(
     if (!stale.ok) {
       return { success: false, error: stale.error.message };
     }
-    const droppedCollections = stale.value.filter((c) => c.documents > 0);
+    const droppedCollections = stale.value;
+    if (droppedCollections.length > 0) options.onDropping?.(droppedCollections);
     const syncResult = await store.syncCollections(config.collections, {
-      remove: droppedCollections.map(({ name }) => name),
+      remove: "stale",
     });
     if (!syncResult.ok) {
       return { success: false, error: syncResult.error.message };
@@ -86,7 +94,11 @@ export async function cleanup(
 
     const cleanupResult = await store.cleanupOrphans();
     if (!cleanupResult.ok) {
-      return { success: false, error: cleanupResult.error.message };
+      return {
+        success: false,
+        error: cleanupResult.error.message,
+        droppedCollections,
+      };
     }
 
     return { success: true, stats: cleanupResult.value, droppedCollections };
@@ -103,25 +115,18 @@ export function formatCleanup(result: CleanupResult): string {
     return `Error: ${result.error}`;
   }
 
-  const { stats, droppedCollections } = result;
+  const { stats } = result;
   const total =
     stats.orphanedContent +
     stats.orphanedChunks +
     stats.orphanedVectors +
     stats.expiredCache;
-  const dropped = droppedCollections.map(
-    (c) =>
-      `  ${c.name}: ${c.documents} ${c.documents === 1 ? "document" : "documents"}`
-  );
-  const droppedLines = dropped.length
-    ? ["Deleted collections not in this config:", ...dropped]
-    : [];
 
   if (total === 0) {
-    return [...droppedLines, "No orphans found. Index is clean."].join("\n");
+    return "No orphans found. Index is clean.";
   }
 
-  const lines: string[] = [...droppedLines, "Cleanup complete:"];
+  const lines: string[] = ["Cleanup complete:"];
 
   if (stats.orphanedContent > 0) {
     lines.push(`  Orphaned content: ${stats.orphanedContent}`);
@@ -139,4 +144,17 @@ export function formatCleanup(result: CleanupResult): string {
   lines.push(`Total removed: ${total}`);
 
   return lines.join("\n");
+}
+
+/** Lines naming the collections cleanup is about to delete. */
+export function formatDroppingCollections(
+  collections: readonly StaleCollection[]
+): string {
+  return [
+    "Deleting collections not in this config:",
+    ...collections.map(
+      (c) =>
+        `  ${c.name}: ${c.documents} ${c.documents === 1 ? "document" : "documents"}`
+    ),
+  ].join("\n");
 }

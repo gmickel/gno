@@ -2216,8 +2216,9 @@ and still counted:
 
 JSON output adds `rootError` (`code`, `message`) to that collection, and
 `healthy` is false. The report clears as soon as the folder is back, without
-an update. For collections with `sourceAvailability: local`, status only checks
-that the folder exists, so it never downloads a cloud folder's listing. See
+an update. For collections with `sourceAvailability: local`, status checks
+that the folder exists and may be read without listing it, so it never
+downloads a cloud folder's listing. See
 [Troubleshooting](TROUBLESHOOTING.md#collection-root-could-not-be-resolved-after-an-update).
 
 Each collection in a [link workspace](CONFIGURATION.md#link-workspaces) gets a
@@ -2331,12 +2332,15 @@ purposes but make the structured doctor result non-healthy. Doctor never activel
 ### gno cleanup
 
 Delete the documents of indexed collections the config does not list, then
-orphaned content, chunks, and vectors. Cleanup names each collection it
-deletes (`Deleted collections not in this config:`). It deletes whatever the
-config you pass omits, so run it with the config that owns the index.
+orphaned content, chunks, and vectors. Before deleting, cleanup names each of
+those collections on stderr (`Deleting collections not in this config:`, or
+`{"deleting": [...]}` with `--json`). It deletes whatever the config you pass
+omits, so run it with the config that owns the index. `--json` prints
+`droppedCollections` and the orphan counts.
 
 ```bash
 gno cleanup
+gno cleanup --json
 ```
 
 ### gno reset

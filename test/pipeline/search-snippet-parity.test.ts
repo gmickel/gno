@@ -68,6 +68,11 @@ const DOCS: Record<string, string[][]> = {
     ],
     filler("search index notes", 6),
   ],
+  "pets.md": [filler("gardening", 6), ["A cat sleeps on the porch."]],
+  "overview.md": [
+    filler("weather", 6),
+    ["ÜBERBLICK der Architektur und ihrer Teile."],
+  ],
   "mixed.md": [
     [
       "Why does my retrieval ladder pick a slow search mode on a large index?",
@@ -242,6 +247,20 @@ describe("BM25 chunk snippets", () => {
     expect(
       result.value.results.some((entry) => entry.uri.endsWith("ladder.md"))
     ).toBe(false);
+  });
+
+  test("short plurals and upper-case non-ASCII pick the matching chunk", async () => {
+    for (const [query, uri, highlight] of [
+      ["cats", "gno://notes/pets.md", "<mark>cat</mark>"],
+      ["überblick", "gno://notes/overview.md", "<mark>ÜBERBLICK</mark>"],
+    ] as const) {
+      const result = await searchBm25(adapter, query);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      const hit = result.value.results.find((entry) => entry.uri === uri);
+      expect(hit?.snippetRange).toEqual(chunkRanges.get(uri)?.[1]);
+      expect(hit?.snippet).toContain(highlight);
+    }
   });
 
   test("--line-numbers and --full keep raw text without markers", async () => {

@@ -423,7 +423,7 @@ describe("SqliteAdapter", () => {
       });
     });
 
-    test("removes deleted collections on sync", async () => {
+    test("keeps unlisted collections; removes only named ones", async () => {
       const initialCollections: Collection[] = [
         {
           name: "notes",
@@ -455,6 +455,13 @@ describe("SqliteAdapter", () => {
       ];
 
       await adapter.syncCollections(updatedCollections);
+      const kept = await adapter.getCollections();
+      expect(
+        kept.ok &&
+          kept.value.map(({ name }) => name).sort((a, b) => a.localeCompare(b))
+      ).toEqual(["docs", "notes"]);
+
+      await adapter.syncCollections(updatedCollections, { remove: ["docs"] });
 
       const result = await adapter.getCollections();
       expect(result.ok).toBe(true);

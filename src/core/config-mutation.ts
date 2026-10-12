@@ -189,11 +189,15 @@ export async function applyConfigChange<T = void>(
       } else {
         const syncProjection = async (): Promise<void> => {
           // Collections this change took out of the config are explicitly
-          // removed; any other indexed collection it omits fails the sync.
+          // removed; other indexed collections the config omits stay as they
+          // are (the next ordinary open reports them).
           const kept = new Set(newConfig.collections.map(({ name }) => name));
           const syncCollResult = await ctx.store.syncCollections(
             newConfig.collections,
-            { remove: previousCollections.filter((name) => !kept.has(name)) }
+            {
+              remove: previousCollections.filter((name) => !kept.has(name)),
+              keepStale: true,
+            }
           );
           if (!syncCollResult.ok) {
             throw new Error(

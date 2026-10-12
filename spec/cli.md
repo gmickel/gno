@@ -108,7 +108,7 @@ equivalent files fail closed as ambiguous.
 | models clear       | no     | no      | no    | no   | no    | terminal |
 | models path        | yes    | no      | no    | no   | no    | terminal |
 | publish export     | yes    | no      | no    | no   | no    | terminal |
-| cleanup            | no     | no      | no    | no   | no    | terminal |
+| cleanup            | yes    | no      | no    | no   | no    | terminal |
 | doctor             | yes    | no      | no    | yes  | no    | terminal |
 | mcp                | no     | no      | no    | no   | no    | stdio    |
 | mcp install        | yes    | no      | no    | no   | no    | terminal |
@@ -371,8 +371,9 @@ Status checks every configured collection root when it runs, so the report
 reflects the folder now, not the last sync. A root is unavailable when it
 cannot be listed (the check `gno update` uses before proving a file deleted:
 open the directory and read one entry). For `sourceAvailability: local`
-collections only existence is checked (`stat`, a directory), so status never
-lists, and so never materializes, a dataless cloud folder; a partially present
+collections the root is checked without listing it (`stat` as a directory, then
+read and search permission via `access`), so status never lists, and so never
+materializes, a dataless cloud folder; a partially present
 cloud folder is not reported. The checks run concurrently and add no timeout
 of their own. An unavailable root adds `rootError` to that collection:
 
@@ -3003,15 +3004,18 @@ included, is refused. JSON output is
 ### gno cleanup
 
 Delete the documents of indexed collections the config does not list, then
-orphaned content, chunks, and vectors not referenced by active documents. The
-output starts with `Deleted collections not in this config:` and one
-`<name>: <n> document(s)` line per deleted collection when there are any. This is
-the only command that deletes collections the config omits.
+orphaned content, chunks, and vectors not referenced by active documents.
+Before deleting, cleanup writes the collections it is about to delete to
+stderr: `Deleting collections not in this config:` and one
+`<name>: <n> document(s)` line each, or `{"deleting":[{"name","documents"}]}`
+with `--json`. With `--json`, stdout is
+`{"droppedCollections":[{"name","documents"}],"orphanedContent","orphanedChunks","orphanedVectors","expiredCache"}`.
+This is the only command that deletes collections the config omits.
 
 **Synopsis:**
 
 ```bash
-gno cleanup [--lock-wait <duration>] [--no-wait]
+gno cleanup [--json] [--lock-wait <duration>] [--no-wait]
 ```
 
 **Exit Codes:**

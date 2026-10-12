@@ -51,7 +51,7 @@ test("a file in place of the root is not a directory", async () => {
 });
 
 test.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
-  "an unlistable root is unreadable unless the collection is local-only",
+  "an unlistable root is unreadable, also when the collection is local-only",
   async () => {
     const root = join(tempDir, "locked");
     await mkdir(root);
@@ -59,10 +59,11 @@ test.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
     expect((await checkCollectionRoot({ path: root }))?.message).toContain(
       "EACCES"
     );
-    // Local mode never lists the root (that could download a cloud folder).
+    // Local mode checks permissions without listing (no cloud download).
     expect(
-      await checkCollectionRoot({ path: root, sourceAvailability: "local" })
-    ).toBeNull();
+      (await checkCollectionRoot({ path: root, sourceAvailability: "local" }))
+        ?.message
+    ).toContain("EACCES");
   }
 );
 

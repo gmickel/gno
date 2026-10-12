@@ -76,14 +76,9 @@ export async function adoptServedConfig(
   served: ServedSessionsConfig,
   config: Config
 ): Promise<void> {
-  // Collections the new config dropped relative to the served one are
-  // removed; any other indexed collection it omits fails the sync.
-  const kept = new Set(config.collections.map(({ name }) => name));
-  const collections = await served.store.syncCollections(config.collections, {
-    remove: served.config.collections
-      .map(({ name }) => name)
-      .filter((name) => !kept.has(name)),
-  });
+  // A config edit never deletes indexed collections; one it dropped fails
+  // the refresh until it is added back or `gno cleanup` deletes it.
+  const collections = await served.store.syncCollections(config.collections);
   if (!collections.ok) {
     throw new Error(
       `Config saved but collection sync failed: ${collections.error.message}`

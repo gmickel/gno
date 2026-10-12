@@ -84,7 +84,7 @@ const stripDiacritics = (text: string): string =>
     : text;
 
 function stemPrefix(term: string): string {
-  if (term.length <= MIN_STEM_LENGTH + 1) return term;
+  if (term.length <= MIN_STEM_LENGTH) return term;
   for (const suffix of STEM_SUFFIXES) {
     if (
       term.endsWith(suffix) &&
