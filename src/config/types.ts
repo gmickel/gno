@@ -483,6 +483,27 @@ export const HttpGatewayLimitsSchema = z.object({
   sessionIdleTimeoutMs: z.number().int().min(1_000).optional(),
 });
 
+/** Gateway principal name: shown in logs and tool context, never a secret. */
+export const HTTP_GATEWAY_PRINCIPAL_NAME_PATTERN =
+  /^[a-z0-9][a-z0-9._-]{0,63}$/;
+
+/**
+ * A named bearer token. Only a principal with `mayAssertSubject` may send the
+ * `GNO-Subject` / `GNO-Context` headers; `admin` is carried to the tool
+ * context for later authorization checks.
+ */
+export const HttpGatewayPrincipalSchema = z.object({
+  name: z.string().regex(HTTP_GATEWAY_PRINCIPAL_NAME_PATTERN, {
+    message: "principal name must match [a-z0-9][a-z0-9._-]{0,63}",
+  }),
+  /** Owner-only bearer token file for this principal. */
+  tokenFile: z.string().min(1),
+  mayAssertSubject: z.boolean().optional(),
+  admin: z.boolean().optional(),
+});
+
+export type HttpGatewayPrincipal = z.infer<typeof HttpGatewayPrincipalSchema>;
+
 export const HttpGatewayConfigSchema = z.object({
   /** Literal listen address. Defaults to IPv4 loopback. */
   host: z.string().min(1).optional(),
@@ -497,6 +518,32 @@ export const HttpGatewayConfigSchema = z.object({
   /** Advertised MCP tool set (`core` | `full`); read at listener start. */
   toolProfile: z.enum(MCP_TOOL_PROFILES).optional(),
   limits: HttpGatewayLimitsSchema.optional(),
+  /** Named bearer tokens; off unless set. Names and token files are unique. */
+  principals: z
+    .array(HttpGatewayPrincipalSchema)
+    .min(1)
+    .max(64)
+    .superRefine((principals, ctx) => {
+      const names = new Set<string>();
+      const files = new Set<string>();
+      for (const [index, principal] of principals.entries()) {
+        if (names.has(principal.name))
+          ctx.addIssue({
+            code: "custom",
+            path: [index, "name"],
+            message: "principal names must be unique",
+          });
+        if (files.has(principal.tokenFile))
+          ctx.addIssue({
+            code: "custom",
+            path: [index, "tokenFile"],
+            message: "principal token files must be unique",
+          });
+        names.add(principal.name);
+        files.add(principal.tokenFile);
+      }
+    })
+    .optional(),
 });
 
 export type HttpGatewayConfig = z.infer<typeof HttpGatewayConfigSchema>;
