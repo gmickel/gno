@@ -260,6 +260,13 @@ export async function expandGraphCandidates(
     author?: string;
     filter?: MetadataPredicate;
     relPathPrefix?: string;
+    /**
+     * The request is confined to a caller's readable corpus: seeds come only
+     * from the allowlist, edge counts cover only eligible neighbours, and "no
+     * usable neighbour" has one fallback reason, so a link to a document the
+     * caller may not read cannot be told apart from no link at all.
+     */
+    accessScoped?: boolean;
   } = {},
   hydration: Pick<
     StorePort,
@@ -312,9 +319,22 @@ export async function expandGraphCandidates(
     return { candidates: [], meta };
   }
 
+  const graphAllowlist = options.collections
+    ? new Set(options.collections)
+    : options.collection
+      ? new Set([options.collection])
+      : undefined;
   const rankedSeedDocs: Array<{ doc: DocumentRow; rank: number }> = [];
   for (const doc of seedDocsResult.value) {
     if (!doc.mirrorHash || typedMetadataFilterReason(doc, options.filter)) {
+      continue;
+    }
+    // A hidden document sharing a seed's content must not seed (or count).
+    if (
+      options.accessScoped &&
+      graphAllowlist &&
+      !graphAllowlist.has(doc.collection)
+    ) {
       continue;
     }
     if (
@@ -360,11 +380,6 @@ export async function expandGraphCandidates(
   }
 
   const seedDocumentIds = [...seedByDocid.values()].map(({ doc }) => doc.id);
-  const graphAllowlist = options.collections
-    ? new Set(options.collections)
-    : options.collection
-      ? new Set([options.collection])
-      : undefined;
   const linksResult = await loadGraphLinks(store, seedDocumentIds, {
     collection: options.collection,
     collections: options.collections,
@@ -375,7 +390,9 @@ export async function expandGraphCandidates(
     return { candidates: [], meta };
   }
   if (linksResult.links.length === 0) {
-    meta.fallbackReasons.push("graph_empty");
+    meta.fallbackReasons.push(
+      options.accessScoped ? "graph_no_new_candidates" : "graph_empty"
+    );
     return { candidates: [], meta };
   }
 
@@ -439,6 +456,22 @@ export async function expandGraphCandidates(
       matchesDocumentFilters(doc, options)
   );
   const docs = await filterDocsByTags(store, metadataFilteredDocs, options);
+  if (options.accessScoped) {
+    // Count only edges to neighbours that survived every filter.
+    const kept = new Set(docs.map((doc) => doc.docid));
+    const keptConfidence = { ...EMPTY_EDGE_CONFIDENCE };
+    for (const link of linksResult.links) {
+      const neighbour = seedByDocid.has(link.source)
+        ? link.target
+        : seedByDocid.has(link.target)
+          ? link.source
+          : null;
+      if (neighbour && kept.has(neighbour) && !seedDocids.has(neighbour)) {
+        keptConfidence[link.confidence] += 1;
+      }
+    }
+    meta.edgeConfidence = keptConfidence;
+  }
   const docByDocid = new Map(docs.map((doc) => [doc.docid, doc]));
   const rankedDocs = rankedNeighborDocids
     .map((docid) => docByDocid.get(docid))
@@ -482,7 +515,11 @@ export async function expandGraphCandidates(
   meta.enabled = candidates.length > 0;
   meta.candidateCount = candidates.length;
   if (candidates.length === 0) {
-    meta.fallbackReasons.push("graph_neighbor_lookup_empty");
+    meta.fallbackReasons.push(
+      options.accessScoped
+        ? "graph_no_new_candidates"
+        : "graph_neighbor_lookup_empty"
+    );
   }
 
   return { candidates, meta };

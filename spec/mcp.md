@@ -381,6 +381,11 @@ collections:
   `METADATA_COVERAGE_INCOMPLETE`) are omitted from `gno_search`, `gno_query`
   and Context Capsule retrieval: their counts would include documents the
   request may not read.
+- Graph expansion (`meta.graphExpansion` on `gno_query`, Context Capsule
+  capability states) seeds only from readable documents and counts only edges
+  to neighbours the request may read. When no readable neighbour is added,
+  the fallback reason is `graph_no_new_candidates`, so a link to a document
+  the request may not read reads exactly like no link.
 - Every tool outside the scoped set (`gno_changes`, links, backlinks,
   similar, graph, tags, status, jobs, traces, diagnostics, writes other than
   `gno_remember`) returns the same `NOT_FOUND` result for a non-admin

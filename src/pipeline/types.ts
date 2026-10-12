@@ -219,7 +219,8 @@ export interface SearchOptions extends InferenceOptions {
   /**
    * Internal: the request is confined to a caller's readable corpus (gateway
    * collection access). Typed-metadata coverage warnings are omitted, since
-   * their counts span documents outside that corpus.
+   * their counts span documents outside that corpus, and graph expansion
+   * metadata counts only neighbours the caller may read.
    */
   accessScoped?: boolean;
   /** Language filter/hint (BCP-47) */

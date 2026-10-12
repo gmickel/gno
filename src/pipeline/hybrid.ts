@@ -854,6 +854,7 @@ async function searchHybridWithHydration(
       categories: options.categories,
       author: options.author,
       filter: options.filter,
+      accessScoped: options.accessScoped,
     },
     hydration
   );

@@ -22,6 +22,7 @@ import { createDefaultConfig } from "../../src/config/defaults";
 import { TYPED_METADATA_INGEST_VERSION } from "../../src/core/typed-metadata";
 import { handleQuery } from "../../src/mcp/tools/query";
 import { handleSearch } from "../../src/mcp/tools/search";
+import { expandGraphCandidates } from "../../src/pipeline/graph-retrieval";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
 
@@ -87,13 +88,13 @@ const ctx = (): ToolContext =>
     },
   }) as unknown as ToolContext;
 
-/** Index one note (`collection/relPath`) whose text matches "needle". */
+/** Index one note (`collection/relPath`); by default its text matches "needle". */
 const addNote = async (
   path: string,
-  fields: Partial<DocumentInput> = {}
+  fields: Partial<DocumentInput> = {},
+  text = `needle note ${path}`
 ): Promise<number> => {
   const [name, relPath] = path.split("/") as [string, string];
-  const text = `needle note ${path}`;
   const mirrorHash = new Bun.CryptoHasher("sha256").update(text).digest("hex");
   const inserted = await store.upsertDocument({
     collection: name,
@@ -152,6 +153,14 @@ const search = () =>
       ctx()
     )
   );
+/** Hybrid query with graph expansion on and no models. */
+const graphQuery = () =>
+  serialized(() =>
+    handleQuery(
+      { query: "needle", limit: 20, graph: true, expand: false, rerank: false },
+      ctx()
+    )
+  );
 const query = () =>
   serialized(() =>
     handleQuery({ query: "needle", limit: 20, fast: true }, ctx())
@@ -186,5 +195,112 @@ describe("metadata coverage warnings", () => {
     await addHiddenNotes();
     asUnrestricted();
     expect(await search()).toContain("METADATA_COVERAGE_INCOMPLETE");
+  });
+});
+
+describe("graph expansion metadata", () => {
+  /** pub/a.md links to [[target]]; whether that resolves is the variable. */
+  const linkToTarget = async (): Promise<void> => {
+    const source = await store.getDocumentByUri("gno://pub/a.md");
+    if (!source.ok || !source.value) throw new Error("seed note missing");
+    const linked = await store.setDocLinks(
+      source.value.id,
+      [
+        {
+          targetRef: "target",
+          targetRefNorm: "target",
+          linkType: "wiki",
+          startLine: 1,
+          startCol: 1,
+          endLine: 1,
+          endCol: 11,
+        },
+      ],
+      "parsed"
+    );
+    expect(linked.ok).toBe(true);
+  };
+  /** The link target: no `derived_from`, and no "needle" so it is no seed. */
+  const addTarget = () =>
+    addNote("pub/target.md", { typedMetadata: {} }, "linked target note");
+  const graphMeta = (serializedResult: string) =>
+    (
+      JSON.parse(serializedResult) as {
+        structuredContent: { meta: { graphExpansion: unknown } };
+      }
+    ).structuredContent.meta.graphExpansion;
+
+  test("an edge to an unreadable note reads exactly like no edge", async () => {
+    await linkToTarget();
+    asReader();
+    const noEdge = await graphQuery();
+    // The link now resolves to a note the reader may not read.
+    await addTarget();
+    expect(await graphQuery()).toBe(noEdge);
+    expect(graphMeta(noEdge)).toMatchObject({
+      enabled: false,
+      edgeConfidence: { explicit: 0, inferred: 0, ambiguous: 0 },
+      fallbackReasons: ["graph_no_new_candidates"],
+    });
+  });
+
+  test("an unrestricted caller still follows the edge", async () => {
+    await linkToTarget();
+    await addTarget();
+    asUnrestricted();
+    expect(graphMeta(await graphQuery())).toMatchObject({
+      enabled: true,
+      candidateCount: 1,
+    });
+  });
+
+  test("a hidden note sharing a seed's content does not take its place", async () => {
+    const text = "shared needle note";
+    // The hidden copy comes first, so it would win the seed slot.
+    await addNote("secret/shared.md", {}, text);
+    const shared = await addNote("pub/shared.md", {}, text);
+    await addNote("pub/neighbour.md", {}, "neighbour note");
+    expect(
+      (
+        await store.setDocLinks(
+          shared,
+          [
+            {
+              targetRef: "neighbour",
+              targetRefNorm: "neighbour",
+              linkType: "wiki",
+              startLine: 1,
+              startCol: 1,
+              endLine: 1,
+              endCol: 14,
+            },
+          ],
+          "parsed"
+        )
+      ).ok
+    ).toBe(true);
+    const mirrorHash = new Bun.CryptoHasher("sha256")
+      .update(text)
+      .digest("hex");
+    // A vector hit names content, not a document.
+    const seed = {
+      mirrorHash,
+      seq: 0,
+      bm25Rank: null,
+      vecRank: 1,
+      fusionScore: 1,
+      sources: ["vector" as const],
+    };
+    const expand = (accessScoped?: boolean) =>
+      expandGraphCandidates(store, [seed], {
+        collections: ["pub"],
+        accessScoped,
+      });
+    expect((await expand(true)).meta).toMatchObject({
+      seedCount: 1,
+      candidateCount: 1,
+    });
+    // Unscoped expansion is unchanged: the first copy seeds.
+    expect((await expand()).meta.candidateCount).toBe(0);
   });
 });
