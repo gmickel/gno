@@ -61,7 +61,11 @@ import {
   readInstanceConfig,
 } from "../sessions/config-refresh";
 import { remoteSafeSessionsError } from "../sessions/types";
-import { SqliteAdapter } from "../store/sqlite/adapter";
+import {
+  SqliteAdapter,
+  StaleCollectionsError,
+  staleCollectionsMessage,
+} from "../store/sqlite/adapter";
 import {
   createServerContext,
   type CreateServerContextOptions,
@@ -519,10 +523,23 @@ export async function startResidentRuntime(
       return undefined;
     }
   };
+  // Another client may index a collection the served config omits after this
+  // runtime started; requests fail instead of reading it.
+  const assertServedCollections = (): void => {
+    const stale = store.staleIndexedCollections(
+      ctxHolder.config.collections.map(({ name }) => name)
+    );
+    if (stale.length > 0) {
+      throw new StaleCollectionsError(staleCollectionsMessage(stale));
+    }
+  };
   const refreshConfig = (): Promise<void> => {
     configRefresh ??= (async () => {
       const stamp = await configStamp();
-      if (stamp !== undefined && stamp === loadedConfigStamp) return;
+      if (stamp !== undefined && stamp === loadedConfigStamp) {
+        assertServedCollections();
+        return;
+      }
       const file = await readInstanceConfig(
         instance,
         deps.loadConfig ?? loadConfig
@@ -535,6 +552,7 @@ export async function startResidentRuntime(
       };
       if (Bun.deepEquals(next, served)) {
         loadedConfigStamp = stamp;
+        assertServedCollections();
         return;
       }
       await adoptServedConfig(

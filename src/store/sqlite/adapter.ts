@@ -587,8 +587,8 @@ function resolveBusyTimeoutMs(busyTimeoutMs?: number): number {
   return busyTimeoutMs;
 }
 
-/** Aborts a collection sync that would delete indexed collections. */
-class StaleCollectionsError extends Error {}
+/** The index holds collections the config omits; the message names them. */
+export class StaleCollectionsError extends Error {}
 
 /** Names the collections a config omits and how to resolve it. */
 export function staleCollectionsMessage(
@@ -1043,6 +1043,26 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         cause
       );
     }
+  }
+
+  /**
+   * Indexed collections `configured` omits, checked cheaply on each read of a
+   * long-lived client: another client may add a collection after it opened.
+   */
+  staleIndexedCollections(configured: readonly string[]): StaleCollection[] {
+    const db = this.ensureOpen();
+    const listed = new Set(configured);
+    const indexed = db
+      .query<{ name: string }, []>(
+        `SELECT c.name AS name FROM collections c
+         WHERE EXISTS (SELECT 1 FROM documents d WHERE d.collection = c.name)`
+      )
+      .all();
+    return indexed.some(({ name }) => !listed.has(name))
+      ? this.queryStaleCollections(db, configured).filter(
+          (c) => c.documents > 0
+        )
+      : [];
   }
 
   private queryStaleCollections(

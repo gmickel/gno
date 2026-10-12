@@ -309,3 +309,30 @@ test("explicit sync removals delete; unlisted collections are kept", async () =>
   }
   expect(await indexedDocuments("notes")).toBe(0);
 });
+
+test("an open client stops reading once another client indexes a collection it omits", async () => {
+  const owner = await createGnoClient({ config: configWith("notes"), dbPath });
+  try {
+    expect((await owner.search("alpha")).results).toHaveLength(1);
+    const wider = await createGnoClient({
+      config: configWith("notes", "sandbox"),
+      dbPath,
+    });
+    try {
+      await wider.update();
+    } finally {
+      await wider.close();
+    }
+    let caught: unknown;
+    try {
+      await owner.search("alpha");
+    } catch (error) {
+      caught = error;
+    }
+    expect(String((caught as Error)?.message)).toContain(
+      "sandbox (1 document)"
+    );
+  } finally {
+    await owner.close();
+  }
+});

@@ -2200,7 +2200,9 @@ removed it by editing the config file, or a different `--config` points at
 this index), status lists it under `Collections not in this config` (JSON:
 `staleCollections`), and every other command refuses to open the index until
 you add the collection back, use a separate index (`--index <name>`), or run
-`gno cleanup` to delete its index data. `gno collection remove` deletes a
+`gno cleanup` to delete its index data. A running `gno serve`, `gno daemon`,
+`gno mcp` or SDK client refuses requests the same way (REST answers `409` with
+code `STALE_COLLECTIONS`; MCP `gno_status` and `gno_peek` still answer). `gno collection remove` deletes a
 collection's documents at once.
 
 Status checks each configured collection's folder when it runs. A folder that

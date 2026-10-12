@@ -37,6 +37,9 @@ import {
   assertInferenceActive,
   acquireInferencePermit,
 } from "../../llm/inference-scope";
+import { envIsSet } from "../../llm/policy";
+import { staleCollectionsMessage } from "../../store/sqlite/adapter";
+import { MCP_ACTIVATION_VERIFICATION_ENV } from "../activation-verification-mode";
 import { exposesHostPaths } from "../context";
 import { profileToolDescription } from "../tool-descriptions-core";
 import {
@@ -1014,6 +1017,7 @@ export async function runTool<T>(
   // Sequential execution via mutex
   const release = await acquireInferencePermit(() => ctx.toolMutex.acquire());
   try {
+    assertConfiguredCollections(ctx, name);
     assertInferenceActive();
     const raw = await (ctx.runWithSnapshot?.(fn) ?? fn());
     assertInferenceActive();
@@ -1082,6 +1086,31 @@ export async function runToolNoMutex<T>(
       structuredContent: parsedError,
     };
   }
+}
+
+/** Orientation tools that report the index state instead of reading it. */
+const STALE_CHECK_EXEMPT_TOOLS = new Set(["gno_status", "gno_peek"]);
+
+/**
+ * Refuse a tool call while the index holds collections this config omits
+ * (another client indexed them after this server opened). Status and peek
+ * still run, and a connector proof reads one collection through a subset
+ * config.
+ */
+function assertConfiguredCollections(ctx: ToolContext, name: string): void {
+  // Store-free stand-ins (an uninitialized peek, test doubles) have no index.
+  const store = ctx.store as Partial<ToolContext["store"]> | undefined;
+  if (
+    STALE_CHECK_EXEMPT_TOOLS.has(name) ||
+    typeof store?.staleIndexedCollections !== "function" ||
+    envIsSet(process.env, MCP_ACTIVATION_VERIFICATION_ENV)
+  ) {
+    return;
+  }
+  const stale = store.staleIndexedCollections(
+    ctx.collections.map((collection) => collection.name)
+  );
+  if (stale.length > 0) throw new Error(staleCollectionsMessage(stale));
 }
 
 function parseErrorMessage(message: string): { [x: string]: unknown } {

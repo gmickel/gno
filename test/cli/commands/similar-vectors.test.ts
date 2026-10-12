@@ -218,7 +218,16 @@ test("gno similar scores the first chunk alike on CLI, MCP and REST", async () =
       {
         store,
         config: DEFAULT_CONFIG,
-        collections: [],
+        // The served config lists the indexed collection.
+        collections: [
+          {
+            name: "notes",
+            path: join(testDir, "notes"),
+            pattern: "**/*",
+            include: [],
+            exclude: [],
+          },
+        ],
         toolMutex: { acquire: async () => () => {} },
         isShuttingDown: () => false,
       } as unknown as ToolContext

@@ -50,6 +50,10 @@ const SECTION_READ_METHODS = [
   "getContent",
 ] as const;
 
+/** Every tool call first checks the index holds no collection the config
+ * omits; that index check is not a document read. */
+const UNTRACKED_READ_METHODS = new Set(["staleIndexedCollections"]);
+
 type SectionReadMethod = (typeof SECTION_READ_METHODS)[number];
 
 function createReadOnlyStoreFacade(store: SqliteAdapter): {
@@ -70,6 +74,9 @@ function createReadOnlyStoreFacade(store: SqliteAdapter): {
       const value = Reflect.get(target, prop, receiver);
       if (typeof value !== "function") {
         return value;
+      }
+      if (UNTRACKED_READ_METHODS.has(name)) {
+        return (value as (...inner: unknown[]) => unknown).bind(target);
       }
       if (allowed.has(name)) {
         return (...args: unknown[]) => {

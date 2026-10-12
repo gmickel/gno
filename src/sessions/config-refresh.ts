@@ -13,6 +13,7 @@ import type { SqliteAdapter } from "../store/sqlite/adapter";
 import { getIndexDbPath } from "../app/constants";
 import { loadConfig } from "../config";
 import { collectionEgressPolicyEpoch } from "../core/collection-egress-policy-service";
+import { StaleCollectionsError } from "../store/sqlite/adapter";
 import { assertSessionBinding } from "./binding";
 import { SessionsError } from "./types";
 
@@ -79,6 +80,9 @@ export async function adoptServedConfig(
   // A config edit never deletes indexed collections; one it dropped fails
   // the refresh until it is added back or `gno cleanup` deletes it.
   const collections = await served.store.syncCollections(config.collections);
+  if (!collections.ok && collections.error.code === "STALE_COLLECTIONS") {
+    throw new StaleCollectionsError(collections.error.message);
+  }
   if (!collections.ok) {
     throw new Error(
       `Config saved but collection sync failed: ${collections.error.message}`

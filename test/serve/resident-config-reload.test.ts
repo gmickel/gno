@@ -130,7 +130,7 @@ async function mcpStatus(resident: ResidentRuntime): Promise<string[]> {
   }
 }
 
-test("a resident adopts collections removed and added in its config file", async () => {
+test("a resident keeps a hand-removed collection and adopts added ones", async () => {
   const started = await startResidentRuntime({
     configPath,
     index: "reload",
@@ -145,23 +145,26 @@ test("a resident adopts collections removed and added in its config file", async
     "gno://beta/beta.md",
   ]);
 
-  // Removed by hand while the resident runs.
+  // Removed by hand while the resident runs: nothing is deleted, and reads
+  // fail naming the collection until it is added back or cleaned up.
   await saveConfigToPath(configWith("alpha"), configPath);
-  expect(await apiStatus(runtime)).toEqual(["alpha"]);
-  expect(await mcpStatus(runtime)).toEqual(["alpha"]);
-  expect(await searchHits(runtime)).toEqual(["gno://alpha/alpha.md"]);
-  expect(runtime.watchService.getState().expectedCollections).toEqual([
-    "alpha",
-  ]);
+  const refused = await read(runtime, () => new Response("unreachable"));
+  expect(refused.status).toBe(409);
+  expect(JSON.stringify(await refused.json())).toContain("beta (1 document)");
 
-  // Added (as `gno collection add` writes it).
-  await saveConfigToPath(configWith("alpha", "gamma"), configPath);
-  expect(await mcpStatus(runtime)).toEqual(["alpha", "gamma"]);
-  expect(await apiStatus(runtime)).toEqual(["alpha", "gamma"]);
-  expect(runtime.watchService.getState().expectedCollections.sort()).toEqual([
-    "alpha",
-    "gamma",
+  // Added back, plus a new one (as `gno collection add` writes it).
+  await saveConfigToPath(configWith("alpha", "beta", "gamma"), configPath);
+  expect(await mcpStatus(runtime)).toEqual(["alpha", "beta", "gamma"]);
+  expect(await apiStatus(runtime)).toEqual(["alpha", "beta", "gamma"]);
+  expect(await searchHits(runtime)).toEqual([
+    "gno://alpha/alpha.md",
+    "gno://beta/beta.md",
   ]);
+  expect(
+    runtime.watchService
+      .getState()
+      .expectedCollections.sort((a, b) => a.localeCompare(b))
+  ).toEqual(["alpha", "beta", "gamma"]);
 });
 
 test("an unreadable config file is an error, never served stale", async () => {

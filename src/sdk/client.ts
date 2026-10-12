@@ -211,7 +211,10 @@ import { runAutomationProfile } from "../sessions/automation";
 import { assertSessionBinding } from "../sessions/binding";
 import { SessionsService } from "../sessions/service";
 import { SESSIONS_VALIDATION_CODES, SessionsError } from "../sessions/types";
-import { SqliteAdapter } from "../store/sqlite/adapter";
+import {
+  SqliteAdapter,
+  staleCollectionsMessage,
+} from "../store/sqlite/adapter";
 import { openScopedIndexStore } from "../store/sqlite/scoped-index";
 import { createVectorIndexPort } from "../store/vector";
 import {
@@ -462,6 +465,14 @@ class GnoClientImpl implements GnoClient {
   private assertOpen(): void {
     if (!this.isOpen()) {
       throw sdkError("RUNTIME", "GNO client is closed");
+    }
+    // Another client may have indexed a collection this config omits since
+    // this one opened; never read it.
+    const stale = this.store.staleIndexedCollections(
+      this.config.collections.map(({ name }) => name)
+    );
+    if (stale.length > 0) {
+      throw sdkError("RUNTIME", staleCollectionsMessage(stale));
     }
   }
 

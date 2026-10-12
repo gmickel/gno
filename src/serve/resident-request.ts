@@ -2,6 +2,7 @@ import type { ResidentRuntime } from "./resident-runtime";
 /** Admission and bounded-reader boundary for resident REST reads. */
 
 import { withInferenceScope } from "../llm/inference-scope";
+import { StaleCollectionsError } from "../store/sqlite/adapter";
 import { sessionsErrorResponse } from "./routes/sessions";
 
 /**
@@ -16,6 +17,13 @@ export async function refreshResidentConfig(
     await runtime.refreshConfig?.();
     return null;
   } catch (error) {
+    // Names collections only (no paths), and says how to resolve it.
+    if (error instanceof StaleCollectionsError) {
+      return Response.json(
+        { error: { code: "STALE_COLLECTIONS", message: error.message } },
+        { status: 409 }
+      );
+    }
     return sessionsErrorResponse(error);
   }
 }

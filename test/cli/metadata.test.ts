@@ -145,6 +145,10 @@ test("CLI, SDK, REST and MCP report the same metadata summary", async () => {
 
   const ctx = createLegacyParityToolContext(false);
   ctx.store = store;
+  // The served config lists the indexed collection.
+  ctx.collections = [
+    { name: "notes", path: root, pattern: "**/*", include: [], exclude: [] },
+  ];
   const server = createMcpServerSurface(ctx, LEGACY_PARITY_SERVER_IDENTITY);
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   await server.connect(serverSide);
