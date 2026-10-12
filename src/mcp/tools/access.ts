@@ -250,22 +250,32 @@ export const provenanceRetrievalScope = async (
 
 /**
  * Caller scope for `supersededBy` links: a successor is named only when this
- * scope could serve it, so a hidden document never appears in the link and
- * never bridges a supersession chain to a readable one.
+ * scope could serve it (and the access hook, when set, allows it), so a
+ * hidden document never appears in the link and never bridges a supersession
+ * chain to a readable one.
  */
 export const supersessionScope = (
   scope: McpAccessScope,
   store: Pick<StorePort, "getDocumentByUri">
 ): SupersessionOptions => ({
   canFollow: async (uris) => {
-    const readable = new Set<string>();
+    const servable: { uri: string; doc: DocumentRow }[] = [];
     for (const uri of uris) {
       const doc = await store.getDocumentByUri(uri);
       if (doc.ok && doc.value && isDocumentServable(scope, doc.value)) {
-        readable.add(uri);
+        servable.push({ uri, doc: doc.value });
       }
     }
-    return readable;
+    // One hook batch for every successor of the hop.
+    const allowed =
+      scope.check && servable.length > 0
+        ? await scope.check(servable.map(({ doc }) => doc))
+        : undefined;
+    return new Set(
+      servable
+        .filter(({ doc }) => !allowed || allowed.has(doc.id))
+        .map(({ uri }) => uri)
+    );
   },
 });
 
@@ -281,20 +291,22 @@ export const readableDocuments =
 
 /**
  * Retrieval options that confine one search, query or Context Capsule to the
- * scope: the provenance allowlist, the `supersededBy` filter, graph links
- * resolved over readable documents only, and response metadata that counts
- * only readable documents.
+ * scope: the provenance allowlist, the access hook check, the
+ * `supersededBy` filter, graph links resolved over readable documents only,
+ * and response metadata that counts only readable documents.
  */
 export const accessRetrievalOptions = async (
   scope: McpAccessScope,
   store: Pick<StorePort, "listDocuments" | "getDocumentByUri">
 ): Promise<{
   retrievalScope?: { allowedMirrorHashes: string[] };
+  access?: DocumentAccessCheck;
   supersession: SupersessionOptions;
   readable: ReadableDocumentsCheck;
   accessScoped: true;
 }> => ({
   ...(await provenanceRetrievalScope(scope, store)),
+  ...(scope.check ? { access: scope.check } : {}),
   supersession: supersessionScope(scope, store),
   readable: readableDocuments(scope),
   accessScoped: true,

@@ -362,3 +362,83 @@ describe("access hook in hybrid retrieval", () => {
     ).toMatch(/^checked=\d+, denied=\d+, overfetch=x3$/);
   });
 });
+
+describe("access hook and supersededBy", () => {
+  const link = async (successor: string, predecessor: string) => {
+    const from = await store.getDocumentByUri(successor);
+    const to = await store.getDocumentByUri(predecessor);
+    if (!(from.ok && from.value && to.ok && to.value)) {
+      throw new Error("missing fixture document");
+    }
+    const edge = await store.setDocEdges(
+      from.value.id,
+      [
+        {
+          targetDocId: to.value.id,
+          edgeType: "supersedes",
+          confidence: "parsed",
+        },
+      ],
+      "frontmatter-relation"
+    );
+    expect(edge.ok).toBe(true);
+  };
+
+  beforeAll(async () => {
+    // closed.md (readable collection, hook-denied source) supersedes open.md;
+    // x.md (hook-admitted collection, u:a only) supersedes f.md.
+    await link("gno://pub/closed.md", "gno://pub/open.md");
+    await link("gno://x/x.md", "gno://firm/f.md");
+  });
+
+  const getLink = async (ref: string) =>
+    (
+      (await handleGet({ ref }, ctx())).structuredContent as {
+        supersededBy?: string;
+      }
+    ).supersededBy;
+
+  test("gno_get names a successor only when the hook allows it", async () => {
+    subject = { id: "u:a", context: "1to1", hash: "h" };
+    expect(await getLink("gno://pub/open.md")).toBeUndefined();
+    expect(await getLink("gno://firm/f.md")).toBe("gno://x/x.md");
+    subject = { id: "u:b", context: "1to1", hash: "h" };
+    expect(await getLink("gno://pub/open.md")).toBeUndefined();
+    expect(await getLink("gno://firm/f.md")).toBeUndefined();
+  });
+
+  test("gno_multi_get and gno_search never name a hook-denied successor", async () => {
+    subject = { id: "u:b", context: "1to1", hash: "h" };
+    const multi = (
+      await handleMultiGet(
+        { refs: ["gno://pub/open.md", "gno://firm/f.md"] },
+        ctx()
+      )
+    ).structuredContent as {
+      documents: { uri: string; supersededBy?: string }[];
+    };
+    expect(multi.documents.map((d) => d.uri)).toEqual([
+      "gno://pub/open.md",
+      "gno://firm/f.md",
+    ]);
+    expect(multi.documents.some((d) => d.supersededBy)).toBe(false);
+    const search = (await handleSearch({ query: "needle", limit: 20 }, ctx()))
+      .structuredContent as {
+      results: { uri: string; supersededBy?: string }[];
+    };
+    expect(search.results.some((r) => r.supersededBy)).toBe(false);
+    expect(JSON.stringify(search)).not.toMatch(/closed\.md|x\/x\.md/);
+    subject = { id: "u:a", context: "1to1", hash: "h" };
+    const allowed = (await handleSearch({ query: "needle", limit: 20 }, ctx()))
+      .structuredContent as {
+      results: { uri: string; supersededBy?: string }[];
+    };
+    expect(
+      Object.fromEntries(
+        allowed.results
+          .filter((r) => r.supersededBy)
+          .map((r) => [r.uri, r.supersededBy])
+      )
+    ).toEqual({ "gno://firm/f.md": "gno://x/x.md" });
+  });
+});

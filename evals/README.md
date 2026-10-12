@@ -671,8 +671,8 @@ documents. Subjects x collection rules (`public`, `owner`, `accessRef`,
 mixed, malformed, missing) are checked against an exhaustive oracle, with a
 fake hook on a unix socket (one subject's hook always fails). It requires
 search results to equal the allowed set, no denied document's marker in any
-result, snippet, count, warning, reranker input, graph candidate, capsule or
-`multi_get` output, and byte-identical `NOT_FOUND` for denied and missing
+result, snippet, count, warning, reranker input, graph candidate, capsule,
+`supersededBy` link or `multi_get` output, and byte-identical `NOT_FOUND` for denied and missing
 documents and collections. Fixtures live in `evals/fixtures/access-leak/`.
 
 Add `--negative-control` with a different output path to drop the

@@ -4,10 +4,10 @@
  *
  * For every subject x collection x provenance kind at each corpus size it
  * requires: search results equal the oracle's allowed set; no denied
- * document's marker in any result, snippet, count, capsule or error; nothing
- * denied reaches the reranker or graph expansion; denied and missing refs give
- * byte-identical NOT_FOUND. `--negative-control` drops the per-document hook
- * check, which must fail the gate (exit 1).
+ * document's marker in any result, snippet, count, capsule, `supersededBy`
+ * link or error; nothing denied reaches the reranker or graph expansion;
+ * denied and missing refs give byte-identical NOT_FOUND. `--negative-control`
+ * drops the per-document hook check, which must fail the gate (exit 1).
  */
 import { Database } from "bun:sqlite";
 // Bun has no temporary-directory creation/path/recursive-directory-removal APIs.
@@ -24,7 +24,10 @@ import type { StoreResult } from "../../src/store/types";
 
 import { CollectionSchema } from "../../src/config/types";
 import { TYPED_METADATA_INGEST_VERSION } from "../../src/core/typed-metadata";
-import { resolveMcpAccess } from "../../src/mcp/tools/access";
+import {
+  resolveMcpAccess,
+  supersessionScope,
+} from "../../src/mcp/tools/access";
 import { handleContext } from "../../src/mcp/tools/context";
 import { handleGet } from "../../src/mcp/tools/get";
 import { handleMultiGet } from "../../src/mcp/tools/multi-get";
@@ -128,7 +131,8 @@ function makeDoc(index: number): Doc {
   return {
     index,
     collection: collection.name,
-    relPath: `d${index}.md`,
+    // The marker in the path makes any URI (such as `supersededBy`) checkable.
+    relPath: `${marker(index)}.md`,
     metadata: refs ? { [useKey]: refs } : undefined,
     refs,
     validKey: useKey === key,
@@ -245,6 +249,25 @@ try {
               },
             ],
             "parsed"
+          )
+        );
+      }
+      // In each run of three, the second supersedes the first and the third
+      // the second, so a `supersededBy` link can name a denied document or
+      // bridge a chain through one.
+      for (let index = 0; index + 1 < count; index++) {
+        if (index % 3 === 2) continue;
+        unwrap(
+          await store.setDocEdges(
+            ids[index + 1]!,
+            [
+              {
+                targetDocId: ids[index]!,
+                edgeType: "supersedes",
+                confidence: "parsed",
+              },
+            ],
+            "frontmatter-relation"
           )
         );
       }
@@ -365,9 +388,10 @@ try {
             collections: scope.collections,
             ...(negativeControl
               ? {}
-              : scope.check
-                ? { access: scope.check }
-                : {}),
+              : {
+                  ...(scope.check ? { access: scope.check } : {}),
+                  supersession: supersessionScope(scope, store),
+                }),
           }
         );
         if (!hybrid.ok) fail(`hybrid-error:${label}`);

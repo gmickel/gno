@@ -163,7 +163,6 @@ export function handleSearch(
         contentTypeRules: normalizeContentTypes(ctx.config.contentTypes ?? [])
           .rules,
         ...(scope ? await accessRetrievalOptions(scope, ctx.store) : {}),
-        ...(scope?.check ? { access: scope.check } : {}),
       };
       let traceSession: RetrievalTraceSession | undefined;
       try {

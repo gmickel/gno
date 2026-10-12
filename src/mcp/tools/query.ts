@@ -286,7 +286,6 @@ export function handleQuery(
         projectAffinity,
         explain: args.explain,
         ...(scope ? await accessRetrievalOptions(scope, ctx.store) : {}),
-        ...(scope?.check ? { access: scope.check } : {}),
       };
 
       try {

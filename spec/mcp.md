@@ -508,12 +508,19 @@ collections:
     documents never seed it), on graph neighbours before they are ranked,
     and again after graph fusion, before reranking. Candidates are
     overfetched (x3) so the page stays full; `explain` (when enabled) shows
-    `access: checked=N, denied=M, overfetch=x3`.
+    `access: checked=N, denied=M, overfetch=x3`, summed over both checks and
+    counting fused candidates (one per document).
   - `gno_context` and anything built on its retrieval inherit both checks;
     capsule omissions only describe retrieved, allowed evidence.
   - `gno_get`: a denied document is `NOT_FOUND`, byte-identical to a missing
     one. `gno_multi_get`: denied refs are skipped as `Not found`, and a
     `pattern` never lists a denied document.
+  - `supersededBy` (search and query results, `gno_get`, `gno_multi_get`,
+    Context Capsule evidence): a successor is named only when the hook allows
+    it as well, and the chain stops before the first successor it denies.
+    Within one lookup there is at most one hook call per hop, about the
+    successors that hop reaches; answers already cached for the request skip
+    it.
   - Metadata-coverage warnings are not emitted in access mode (their counts
     include documents the hook may deny). With no usable graph neighbour the
     graph fallback reason is always `graph_no_new_candidates`, and edge counts

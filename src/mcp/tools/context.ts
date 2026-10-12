@@ -313,7 +313,6 @@ export const handleContext = (
                 visibleEgressLineage(scope, lineage),
             }
           : {}),
-        ...(scope?.check ? { access: scope.check } : {}),
         store: context.store,
         config: context.config,
         indexName: context.indexName,

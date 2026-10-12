@@ -502,7 +502,8 @@ With `gateway.accessHook` set (see
 request, which of a note's sources the user may read: a note is served only
 when every source is allowed, and `accessRef` collections open only when the
 hook allows them. Anything the hook does not allow, including a slow or
-failed answer, is treated like a missing note.
+failed answer, is treated like a missing note, and is never named as a
+`supersededBy` successor.
 
 Before each scoped search, query or context call, GNO lists the documents of
 every readable collection to leave out notes without a valid `derived_from`.
