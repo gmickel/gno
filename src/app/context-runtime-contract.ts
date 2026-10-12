@@ -21,6 +21,7 @@ import {
 import { canonicalVerifierJson } from "../core/context-verifier-canonical";
 import { mergeEgressLineages } from "../core/egress-provenance";
 import { resolveModelUri } from "../llm/registry";
+import { URI_PREFIX } from "./constants";
 
 const fingerprint = (value: unknown): string =>
   sha256Text(canonicalVerifierJson(value));
@@ -41,6 +42,79 @@ const configuredContextFingerprint = (
       syncedAt: "",
     }))
   );
+
+/**
+ * Configured contexts that apply inside `collections`: global ones and those
+ * keyed to a listed collection or to a path under one.
+ */
+const contextsWithin = (
+  contexts: NonNullable<ContextCapsuleRuntimeDeps["config"]["contexts"]>,
+  collections: readonly string[]
+) => {
+  const names = new Set(collections);
+  return contexts.filter((context) => {
+    switch (context.scopeType) {
+      case "global":
+        return true;
+      case "collection":
+        return names.has(context.scopeKey.slice(0, -1));
+      case "prefix":
+        return names.has(
+          context.scopeKey.slice(URI_PREFIX.length).split("/")[0] ?? ""
+        );
+      default:
+        return false;
+    }
+  });
+};
+
+/**
+ * Fingerprints an access-scoped caller receives. They are derived only from
+ * what that caller may read, so a change to a collection, document or
+ * context it may not read never changes its Capsule:
+ *
+ * - config: the config entries of the Capsule's collections (all readable)
+ *   without their `access` rules, plus the contexts that apply inside them;
+ * - context (inside the retrieval fingerprint): those same contexts;
+ * - index: the Capsule's collections and the identities of the evidence it
+ *   returns. The complete index and context snapshots still guard the build
+ *   against drift; they are just not exposed.
+ */
+const scopedFingerprints = (
+  deps: ContextCapsuleRuntimeDeps,
+  collections: readonly string[],
+  evidence: readonly { uri: string; sourceHash: string; mirrorHash: string }[]
+) => {
+  const names = new Set(collections);
+  const contexts = contextsWithin(deps.config.contexts ?? [], collections);
+  return {
+    config: fingerprint(
+      JSON.parse(
+        JSON.stringify({
+          collections: deps.config.collections
+            .filter((collection) => names.has(collection.name))
+            .map((collection) =>
+              Object.fromEntries(
+                Object.entries(collection).filter(([key]) => key !== "access")
+              )
+            ),
+          contexts,
+        })
+      ) as Record<string, unknown>
+    ),
+    context: fingerprintContextRows(
+      contexts.map((context) => ({ ...context, syncedAt: "" }))
+    ),
+    index: fingerprint({
+      collections: [...names].sort(),
+      evidence: evidence.map(({ uri, sourceHash, mirrorHash }) => ({
+        uri,
+        sourceHash,
+        mirrorHash,
+      })),
+    }),
+  };
+};
 
 const retrievalFingerprint = (
   capsule: Pick<
@@ -175,6 +249,11 @@ export const projectContextCapsule = (
   }
   const exactTokens =
     deps.countTokens !== undefined && deps.tokenizerFingerprint != null;
+  const scoped = deps.accessScoped
+    ? scopedFingerprints(deps, draft.collections, evidence)
+    : null;
+  const indexFingerprint = scoped?.index ?? snapshots.indexFingerprint;
+  const contextFingerprint = scoped?.context ?? snapshots.contextFingerprint;
   const capabilityStates = capsuleCapabilityStates(draft, input);
   const capabilities = capsuleCapabilities(
     capabilityStates,
@@ -215,8 +294,8 @@ export const projectContextCapsule = (
       },
       capabilityStates,
       indexSnapshot: {
-        before: snapshots.indexFingerprint,
-        after: snapshots.indexFingerprint,
+        before: indexFingerprint,
+        after: indexFingerprint,
         stable: true as const,
       },
     },
@@ -238,8 +317,8 @@ export const projectContextCapsule = (
         : null,
     },
     fingerprints: {
-      config: contextRuntimeConfigFingerprint(deps),
-      retrieval: retrievalFingerprint(base, snapshots.contextFingerprint),
+      config: scoped?.config ?? contextRuntimeConfigFingerprint(deps),
+      retrieval: retrievalFingerprint(base, contextFingerprint),
       embeddingModel: capabilities.semanticSearch
         ? sha256Text(deps.embedPort?.modelUri ?? "")
         : null,
@@ -315,7 +394,7 @@ export const projectContextCapsule = (
           };
     versionedPayload.fingerprints.retrieval = retrievalFingerprint(
       versionedPayload,
-      snapshots.contextFingerprint
+      contextFingerprint
     );
     const value = createContextCapsuleV1(versionedPayload, {
       countTokens: deps.countTokens,

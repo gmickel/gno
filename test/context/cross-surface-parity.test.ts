@@ -23,7 +23,9 @@ import {
 } from "../../src/app/context-runtime";
 import { normalizeContextBuildInput } from "../../src/app/context-runtime-input";
 import { parseContextBuildSurfaceInput } from "../../src/app/context-surface";
+import { MAX_REQUEST_COLLECTIONS } from "../../src/core/collection-limits";
 import { createContextCapsuleV1 } from "../../src/core/context-capsule";
+import { contextCapsulePayloadV1Schema } from "../../src/core/context-capsule-schema";
 import { sha256Text } from "../../src/core/context-capsule-validation";
 import {
   handleCompiledContextPreview,
@@ -454,6 +456,39 @@ describe("Context Capsule REST/MCP parity", () => {
         ["notes"]
       )
     ).toThrow("tagsAll contains an invalid tag");
+  });
+
+  test("accepts a collections scope up to the shared request bound", () => {
+    const at = new Date("2026-07-22T12:00:00.000Z");
+    const names = Array.from(
+      { length: MAX_REQUEST_COLLECTIONS + 1 },
+      (_, i) => `c${String(i).padStart(4, "0")}`
+    );
+    const accepted = names.slice(0, MAX_REQUEST_COLLECTIONS);
+    const normalized = normalizeContextBuildInput(
+      {
+        goal: "Many readable collections",
+        collections: accepted,
+        budgetTokens: 1000,
+      },
+      "default",
+      at,
+      names
+    );
+    expect(normalized.collections).toHaveLength(MAX_REQUEST_COLLECTIONS);
+    expect(
+      contextCapsulePayloadV1Schema.shape.scope.shape.collections.safeParse(
+        accepted
+      ).success
+    ).toBe(true);
+    expect(() =>
+      normalizeContextBuildInput(
+        { goal: "Too many", collections: names, budgetTokens: 1000 },
+        "default",
+        at,
+        names
+      )
+    ).toThrow("Invalid collection filter");
   });
 
   test("enables graph outside fast and keeps fast retrieval lexical-only", () => {

@@ -196,8 +196,8 @@ never hands out a job ID to poll. If a future core write becomes async,
 
 Selection and precedence (highest first):
 
-1. CLI flag: `gno mcp --tool-profile core|full` (stdio); `gno serve --mcp-tool-profile core|full` or `gno daemon --mcp-tool-profile core|full` (resident gateway). An unknown value fails with `VALIDATION` before any listener starts.
-2. Config: `gateway.toolProfile: core|full` under the root `gateway` key (resident gateway only; stdio has no config key).
+1. CLI flag: `gno mcp --tool-profile core|full|scoped` (stdio); `gno serve --mcp-tool-profile core|full|scoped` or `gno daemon --mcp-tool-profile core|full|scoped` (resident gateway). An unknown value fails with `VALIDATION` before any listener starts.
+2. Config: `gateway.toolProfile: core|full|scoped` under the root `gateway` key (resident gateway only; stdio has no config key).
 3. Default: `full`.
 
 The profile is read once when the listener starts (stdio process start, or
@@ -206,6 +206,13 @@ changing it requires restarting the server. `--detach` re-executes the same
 argv, so the flag carries over to the detached child. Calling a tool outside
 the active profile answers JSON-RPC `-32602` exactly like an unregistered
 tool.
+
+`scoped` advertises the tools a non-admin gateway principal may call:
+`gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`,
+`gno_recall`, and `gno_remember` (still behind `--enable-write`). It uses the
+`core` descriptions. Unlike `core` it has no `gno_changes`, which lists
+documents across every collection. See
+[Collection access](#collection-access-and-the-scoped-profile).
 
 Default-profile decision (deferred): the default stays `full`. `core` ships as
 opt-in so existing clients, installers, and skills see an unchanged surface,
@@ -266,6 +273,153 @@ errors. Rotation, deletion, invalid content, or permission relaxation revokes
 existing authenticated sessions. Session IDs are bound to the identity that
 initialized them, preventing reuse with a different bearer token.
 
+#### Gateway principals and asserted subject
+
+Off unless `gateway.principals` is set; with no principals the boundary, its
+responses, and every tool output are unchanged (the two headers below are
+only removed before dispatch).
+
+```yaml
+gateway:
+  principals:
+    - name: assistant # [a-z0-9][a-z0-9._-]{0,63}, unique
+      tokenFile: ~/.config/gno/tokens/assistant # unique, 0600, created if missing
+      mayAssertSubject: true # default false
+      admin: false # default false
+```
+
+- Each principal is a named bearer token with the same file rules as
+  `tokenFile`. Configuring principals requires a bearer token on every request,
+  loopback included, and satisfies the non-loopback token requirement. A plain
+  `tokenFile`, if also set, stays valid as an unnamed caller. Two principals
+  (or a principal and `tokenFile`) with the same token fail startup; if a
+  rotation makes them collide, neither authenticates (the plain `tokenFile`
+  included: it is never accepted as the unnamed caller while a principal
+  holds the same token) until one of them is rotated again. Each request reads
+  the token files once and uses that one snapshot for both the clash check and
+  authentication, so a rotation by a concurrent request cannot let a clashing
+  token through as the unnamed caller. A broken token file
+  disables only that principal and revokes authenticated sessions, as for
+  `tokenFile`.
+- `GNO-Subject: <id>` names the end user the caller acts for and
+  `GNO-Context: 1to1|shared|public_only` the conversation it acts in. Only a
+  `mayAssertSubject` principal may send them. Any other caller that sends
+  either header, a subject outside `[A-Za-z0-9][A-Za-z0-9._:@-]{0,255}`, an
+  unknown context, or a context without a subject gets the redacted 403
+  `Forbidden` boundary error. `GNO-Request-Id: <id>` (optional, same
+  principals, needs `GNO-Subject`, `[A-Za-z0-9][A-Za-z0-9._:-]{0,127}`, else 403) is the caller's id for the turn; the access hook receives it as
+  `request_id`. The headers are removed before SDK dispatch;
+  subject assertion is never read from `Forwarded`/`X-Forwarded-*` or from
+  tool arguments.
+- The tool context of each request carries the principal
+  (`name`, `admin`, `mayAssertSubject`) and the subject
+  (`id`, `context`, `hash` = SHA-256 hex of `id`). Request receipts for an
+  asserted subject live in a namespace derived from the principal identity and
+  the subject hash, so the raw subject is never stored there and two subjects
+  cannot replay each other's request IDs.
+- This is plumbing only: no tool changes what it returns because of the
+  principal, `admin`, or the subject.
+
+#### Collection access and the scoped profile
+
+Off unless `gateway.principals` is set. Requests from stdio, `gno serve`
+without principals, a plain `tokenFile` caller and an `admin` principal are
+unrestricted and their outputs are unchanged. A request from a non-admin
+principal is in **access mode**:
+
+```yaml
+collections:
+  - name: pub
+    access: { public: true }
+  - name: p-alice
+    access: { owner: "u:alice" }
+  - name: sp-ops-docs
+    access: { accessRef: { sys: sp, ref: "drives/b!x/root" }, firmwide: true }
+  - name: sp-client-x
+    access: { accessRef: { sys: sp, ref: "drives/b!y/root" } }
+```
+
+- `access` is exactly one of `{public: true}`, `{owner: <subject id>}`, or
+  `{accessRef: {sys, ref}, firmwide?: bool}`. GNO stores `accessRef` as an
+  opaque reference and never interprets it.
+- Readable collections, by the request's `GNO-Context` (missing subject or
+  context = `public_only`): `public` in every context; `owner` only for that
+  subject in `1to1`. An `accessRef` collection is denied unless
+  `gateway.accessHook` is set and the hook allows its ref (see "Access
+  hook" below), and a collection without `access` is always denied.
+- `gno_query` and `gno_search`: a named `collection`/`collections` the
+  request cannot read fails exactly like an unknown collection; without one
+  the search covers every readable collection (none denies all). Both run
+  before the result limit. `explain` is ignored, and `meta.collections` shows
+  only what the caller sent.
+- `gno_context`: the same collection rule (an unreadable collection is an
+  unknown one); with nothing readable it answers `no_evidence`.
+- `gno_get`: a missing document, an unreadable or unknown collection, a
+  document without indexed content, an invalid ref, and a ref to another index
+  all return the same error, byte for byte: `isError: true`, text
+  `Error: NOT_FOUND: Not found`, `structuredContent`
+  `{"error":"NOT_FOUND","message":"Not found"}`.
+- `gno_multi_get`: such refs are skipped with reason `Not found`; `pattern`
+  matches only documents the request may read.
+- `gno_recall` needs a readable collection; `gno_remember` writes only into an
+  `owner` collection, for its owner, in `1to1`. Otherwise `NOT_FOUND`.
+- Provenance: a document is served only when its typed metadata has
+  `derived_from` as a non-empty list of `<system>:<reference>` strings
+  (docs/TYPED-METADATA.md). Documents without it, or with a malformed value,
+  are excluded before candidate selection, graph expansion, reranking and
+  the limit, in `gno_search`, `gno_query` and `gno_context`. Memory
+  recall is not subject to this check.
+- `supersededBy` (search and query results, `gno_get`, `gno_multi_get`,
+  Context Capsule evidence and the `gno-context-agent-v2` projection built
+  from it) names only a successor the request may read. The supersession
+  chain stops before the first successor it may not read, so a hidden
+  document is never named and never links two readable ones; when the
+  first successor is hidden, the field is absent (`null` in the projection).
+  Each hop is checked before the next one is read, and a scoped chain is
+  followed for at most 32 hops: a longer chain names no successor.
+- `egressLineage` (search and query results, Context Capsule evidence and
+  aggregate, `gno_recall` facts and aggregate) lists only collections the
+  request may read. A result's content can also be held by a collection the
+  request may not read; that collection is left out of the lineage and its
+  `effectivePolicy`. Retrieval traces keep the complete lineage.
+- Context Capsule fingerprints cover only what the request may read, so a
+  collection, document or context it may not read never changes them:
+  `fingerprints.config` covers the config entries of the Capsule's
+  collections (without their `access` rules) and the contexts that apply to
+  them, `fingerprints.retrieval` uses those same contexts, and
+  `retrieval.indexSnapshot` covers the Capsule's collections and the
+  identities of its evidence. Verifying such a Capsule against the complete
+  config and index (`gno_context_verify`, an admin tool) reports them changed.
+- Typed-metadata coverage warnings (`METADATA_COVERAGE_UNKNOWN`,
+  `METADATA_COVERAGE_INCOMPLETE`) are omitted from `gno_search`, `gno_query`
+  and Context Capsule retrieval: their counts would include documents the
+  request may not read.
+- Graph expansion (`meta.graphExpansion` on `gno_query`, Context Capsule
+  capability states) seeds only from readable documents, resolves links over
+  readable documents only (a document the request may not read never becomes
+  a link's target and never makes a link ambiguous), and counts only edges to
+  neighbours the request may read. When no readable neighbour is added,
+  the fallback reason is `graph_no_new_candidates`, so a link to a document
+  the request may not read reads exactly like no link.
+- Collections the index holds but the config does not list (another client
+  indexed them): an unrestricted caller's tool calls fail with the
+  stale-collections error that names them and their document counts. A
+  non-admin principal never reads them (they have no `access` rule here), so
+  its calls run as if they were absent and answer byte for byte the same.
+  While such a collection keeps the server from applying an edited config
+  file, the served `access` rules may be ones the file has since narrowed:
+  the principal's tool calls then fail with `UNAVAILABLE: The server has
+not applied its current config; try again later.`, naming nothing, until
+  the edit is applied. The daemon's `GET /api/resident/status` answers a
+  non-admin principal `404` with an empty body, before any config refresh or
+  egress check (its answer and egress audit cover every collection).
+- Every tool outside the scoped set (`gno_changes`, links, backlinks,
+  similar, graph, tags, status, jobs, traces, diagnostics, writes other than
+  `gno_remember`) returns the same `NOT_FOUND` result for a non-admin
+  principal, whatever the profile advertises. Set `toolProfile: scoped` so
+  the listing matches. `gno://` resources list nothing and read as
+  `NOT_FOUND`.
+
 Because `gno serve` shares this listener with its Web UI and REST API, it
 remains loopback-only. Use the headless `gno daemon` command for an explicitly
 authenticated non-loopback MCP listener.
@@ -311,6 +465,69 @@ redacted statuses: 401 (authentication), 403 (peer/Host/Origin/write), 413
 (shutdown, revoked credentials, or unavailable runtime). Defaults are 1 MiB per
 POST body, 120 requests/minute per actual peer, 64 active requests, 16 queued
 requests, 32 sessions, and a five-minute idle session timeout.
+
+#### Access hook
+
+Off unless `gateway.accessHook` is set; only access-mode requests use it.
+
+```yaml
+gateway:
+  principals: [...]
+  accessHook:
+    url: http://hook/check # host ignored with `unix`
+    unix: /run/fabric/hook.sock # optional; recommended
+    timeoutMs: 2000 # optional, 10..30000, default 2000
+collections:
+  - name: keyed
+    access: { public: true, provenanceKey: sources } # default derived_from
+```
+
+- Request: `POST <url>` with JSON
+  `{"subject": "<GNO-Subject>", "ctx": "1to1"|"shared"|"public_only",
+"request_id": "<GNO-Request-Id, else a uuid per tool call>", "refs": [{"sys": "...", "ref": "..."}]}`.
+  Every hook call of one tool call (collection check and document checks)
+  carries the same `request_id`.
+  Response: `200 {"allow": [<index into refs>, ...]}`.
+- Fail closed: a ref whose index is not listed, a non-200 status, malformed
+  JSON, a missing `allow` array, a transport error, or no answer within
+  `timeoutMs` denies. Non-integer or out-of-range indexes are ignored.
+- Within one tool call each distinct ref is asked once; answers are not kept
+  across calls or subjects.
+- Collection check (once per call, before retrieval): the `accessRef` of
+  every `accessRef` collection the context may reach (any in `1to1`,
+  `firmwide` only in `shared`, none in `public_only`). An allowed ref makes
+  the collection readable for that call. Collection scope stays a SQL
+  filter applied before the limit.
+- Document check: every document served needs a valid provenance list under
+  its collection's `access.provenanceKey` (default `derived_from`) and the
+  hook must allow every ref in it; otherwise it is dropped. This applies to
+  all access-mode documents, `public` and `owner` collections included.
+  - `gno_search` (BM25) and vector search: on the candidate rows, before
+    ranking, the limit and counts.
+  - `gno_query`: on fused candidates before graph expansion (so denied
+    documents never seed it), on graph neighbours before they are ranked,
+    and again after graph fusion, before reranking. Candidates are
+    overfetched (x3) so the page stays full; `explain` (when enabled) shows
+    `access: checked=N, denied=M, overfetch=x3`, summed over both checks and
+    counting fused candidates (one per document).
+  - `gno_context` and anything built on its retrieval inherit both checks;
+    capsule omissions only describe retrieved, allowed evidence.
+  - `gno_get`: a denied document is `NOT_FOUND`, byte-identical to a missing
+    one. `gno_multi_get`: denied refs are skipped as `Not found`, and a
+    `pattern` never lists a denied document.
+  - `supersededBy` (search and query results, `gno_get`, `gno_multi_get`,
+    Context Capsule evidence): a successor is named only when the hook allows
+    it as well, and the chain stops before the first successor it denies.
+    Within one lookup there is at most one hook call per hop, about the
+    successors that hop reaches; answers already cached for the request skip
+    it.
+  - Metadata-coverage warnings are not emitted in access mode (their counts
+    include documents the hook may deny). With no usable graph neighbour the
+    graph fallback reason is always `graph_no_new_candidates`, and edge counts
+    cover only allowed neighbours.
+- Links, backlinks, similar, graph and `gno_vsearch` are outside the scoped
+  tool set, so non-admin principals get `NOT_FOUND` for them already.
+- Without `accessHook` the static rules above apply unchanged.
 
 ### Cancellation and accepted jobs
 
@@ -603,6 +820,21 @@ opaque remote hints. The server never stats, realpaths, discovers repositories,
 or infers its cwd from them; remote hints produce redacted zero-affinity
 metadata and no ranking change.
 
+`gno_search`, `gno_vsearch`, and `gno_query` also accept optional
+`collections: string[]` (1-1024 names, the same bound as collection
+egress). Results come only from documents in any
+listed collection; the allowlist is applied before `limit`, so other
+collections never take result slots. Every name must be a configured
+collection, otherwise the call fails with `Collection not found: <name>`. When
+`collection` is also set, both apply (the intersection). Responses echo the
+allowlist as `meta.collections`; with `collections` omitted, inputs and
+outputs are unchanged. `gno_query_diagnose` keeps the single `collection`
+filter and, like every tool, rejects undeclared arguments, so `collections`
+sent to it is a validation error. Over Streamable HTTP, egress policy is checked on the served scope: the
+listed collections, or `collection` when both are set and the list holds it.
+When both are set and the list does not hold it, nothing is served and the
+check covers `collection` and every listed collection.
+
 **Input Schema:**
 
 ```json
@@ -616,6 +848,13 @@ metadata and no ranking change.
     "collection": {
       "type": "string",
       "description": "Optional collection name to filter results"
+    },
+    "collections": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "maxItems": 1024,
+      "description": "Filter to documents in ANY of these collections (applied before the limit)"
     },
     "limit": {
       "type": "integer",
@@ -738,6 +977,13 @@ Vector semantic search over indexed documents.
       "type": "string",
       "description": "Optional collection name to filter results"
     },
+    "collections": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "maxItems": 1024,
+      "description": "Filter to documents in ANY of these collections (applied before the limit)"
+    },
     "limit": {
       "type": "integer",
       "description": "Maximum number of results (1-100)",
@@ -821,6 +1067,13 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
     "collection": {
       "type": "string",
       "description": "Optional collection name to filter results"
+    },
+    "collections": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "maxItems": 1024,
+      "description": "Filter to documents in ANY of these collections (applied before the limit)"
     },
     "limit": {
       "type": "integer",

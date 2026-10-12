@@ -19,9 +19,10 @@ import type {
 
 import { z } from "zod";
 
+import { ACCESS_NOT_FOUND_MESSAGE } from "../core/access-scope";
 import { withInferenceScope } from "../llm/inference-scope";
 
-export const MCP_TOOL_PROFILES = ["core", "full"] as const;
+export const MCP_TOOL_PROFILES = ["core", "full", "scoped"] as const;
 
 export type McpToolProfile = (typeof MCP_TOOL_PROFILES)[number];
 
@@ -36,6 +37,22 @@ export const MCP_CORE_READ_TOOL_NAMES: ReadonlySet<string> = new Set([
   "gno_context",
   "gno_changes",
   "gno_recall",
+]);
+
+/**
+ * Tools a non-admin gateway principal may call, whatever the profile: the
+ * collection-scoped read set plus `gno_remember` (still behind
+ * `--enable-write`). Metadata tools such as `gno_changes`, links, tags and
+ * status are admin-only. The `scoped` profile advertises exactly this set.
+ */
+export const MCP_SCOPED_TOOL_NAMES: ReadonlySet<string> = new Set([
+  "gno_query",
+  "gno_search",
+  "gno_get",
+  "gno_multi_get",
+  "gno_context",
+  "gno_recall",
+  "gno_remember",
 ]);
 
 /**
@@ -73,6 +90,7 @@ export function mcpToolProfileAllowlist(
   profile: McpToolProfile
 ): ReadonlySet<string> | null {
   if (profile === "full") return null;
+  if (profile === "scoped") return new Set(MCP_SCOPED_TOOL_NAMES);
   return new Set([...MCP_CORE_READ_TOOL_NAMES, ...MCP_CORE_WRITE_TOOL_NAMES]);
 }
 
@@ -99,14 +117,28 @@ export type ProfileToolRegistrar = <
   cb: ToolCallback<InputArgs>
 ) => void;
 
+/** Result for a tool a non-admin principal may not call. */
+const refusedToolResult = () => ({
+  isError: true,
+  content: [
+    { type: "text" as const, text: `Error: ${ACCESS_NOT_FOUND_MESSAGE}` },
+  ],
+  structuredContent: { error: "NOT_FOUND", message: "Not found" },
+});
+
 /**
  * Wrap `server.registerTool` so tools outside the profile are never
  * registered. `full` forwards every call unchanged, so registration order
  * and wire bytes stay identical to an unprofiled server.
+ *
+ * `getPrincipal` reads the gateway principal of the current request; a
+ * non-admin principal calling a tool outside `MCP_SCOPED_TOOL_NAMES` gets
+ * NOT_FOUND, whatever the profile advertises.
  */
 export function createProfileToolRegistrar(
   server: McpServer,
-  profile: McpToolProfile
+  profile: McpToolProfile,
+  getPrincipal?: () => { admin: boolean } | undefined
 ): ProfileToolRegistrar {
   const allowlist = mcpToolProfileAllowlist(profile);
   const connection = new AbortController();
@@ -119,7 +151,12 @@ export function createProfileToolRegistrar(
     if (allowlist !== null && !allowlist.has(name)) return;
     // The SDK callback is conditional on schema presence: the last argument
     // is always ServerContext, while a schema-bearing call also has input.
+    const scoped = MCP_SCOPED_TOOL_NAMES.has(name);
     const wrapped = (...args: unknown[]) => {
+      const principal = getPrincipal?.();
+      if (!scoped && principal !== undefined && !principal.admin) {
+        return refusedToolResult();
+      }
       const request = args.at(-1) as ServerContext;
       return withInferenceScope(
         {

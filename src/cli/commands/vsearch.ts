@@ -87,6 +87,7 @@ export async function vsearch(
     configPath: options.configPath,
     indexName: options.indexName,
     collection: options.collection,
+    collections: options.collections,
     syncConfig: false,
   });
 
@@ -129,7 +130,9 @@ export async function vsearch(
     // Create LLM adapter for embeddings
     const llm = new LlmAdapter(config);
     const embedResult = await llm.createEmbeddingPort(modelUri, {
-      egressCollections: options.collection ? [options.collection] : "all",
+      egressCollections: options.collection
+        ? [options.collection]
+        : (options.collections ?? "all"),
     });
     if (!embedResult.ok) {
       await traceSession?.finish("failed");
