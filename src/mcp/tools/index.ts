@@ -175,7 +175,7 @@ export function normalizeTagFilters(tags?: string[]): string[] | undefined {
 
 export const MCP_TOOL_DESCRIPTIONS = {
   search:
-    "BM25 keyword search. Fast exact-term lookup for names, identifiers, error text, and known phrases. Structured results include uri/docid, line when available, and optional user-configured context guidance; use gno_get with fromLine/lineCount or gno_multi_get for full context. For natural-language questions use gno_query (fast=true first).",
+    "BM25 keyword search. Fast lookup of exact text you already have verbatim: identifiers, filenames, error text, and quoted phrases. Structured results include uri/docid, line when available, and optional user-configured context guidance; use gno_get with fromLine/lineCount or gno_multi_get for full context. A question, or a name or topic taken from it, is not exact text: use gno_query (fast=true first).",
   vsearch:
     "Vector semantic search. Finds conceptually similar docs with different wording. Structured results preserve optional user-configured context guidance. Best after embeddings are current; use intent to disambiguate short terms. For questions, gno_query with fast=true adds keyword matching at about the same cost.",
   query:
