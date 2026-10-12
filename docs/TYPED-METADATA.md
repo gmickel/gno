@@ -125,6 +125,9 @@ field values.
 `gno ls --filter` lists every active document that matches a predicate, sorted
 by URI, with the usual scope, `--limit`, and `--offset`. It runs no retrieval,
 so it suits maintenance jobs such as "every note built from this source".
+Use `gno metadata` (see [Discover keys and values](#discover-keys-and-values))
+to find which keys and values exist, for example which `derived_from` sources
+your notes record, then `gno ls --filter` to list the documents that carry them.
 
 ## Convention: `derived_from` provenance
 
