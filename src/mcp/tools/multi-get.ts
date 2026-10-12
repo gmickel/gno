@@ -20,7 +20,7 @@ import {
   type RecordEvidenceMetadata,
 } from "../../core/record-metadata";
 import { parseRef } from "../../core/ref-parser";
-import { supersedingUri } from "../../pipeline/result-context";
+import { supersedingUris } from "../../pipeline/result-context";
 import { openScopedIndexStore } from "../../store/sqlite/scoped-index";
 import {
   isDocumentServable,
@@ -163,6 +163,8 @@ export function handleMultiGet(
 
       const maxBytes = args.maxBytes ?? DEFAULT_MAX_BYTES;
       const documents: DocumentResult[] = [];
+      // Canonical URI of each entry in `documents`, for supersededBy.
+      const documentUris: string[] = [];
       const skipped: Array<{ ref: string; reason: string }> = [];
 
       // In access mode an unreadable document is skipped exactly like a
@@ -272,20 +274,8 @@ export function handleMultiGet(
             }
           }
 
-          const successor = await supersedingUri(
-            scoped.store,
-            doc.uri,
-            scope ? supersessionScope(scope, scoped.store) : undefined
-          );
+          documentUris.push(doc.uri);
           documents.push({
-            ...(successor
-              ? {
-                  supersededBy: decorateUriForIndex(
-                    successor,
-                    scoped.indexName
-                  ),
-                }
-              : {}),
             docid: doc.docid,
             uri: decorateUriForIndex(doc.uri, scoped.indexName),
             title: doc.title ?? undefined,
@@ -304,8 +294,26 @@ export function handleMultiGet(
           });
         }
 
+        // One lookup for every document, so a scoped walk asks about each
+        // hop once instead of once per document.
+        const successors = await supersedingUris(
+          scoped.store,
+          documentUris,
+          scope ? supersessionScope(scope, scoped.store) : undefined
+        );
         const response: MultiGetResponse = {
-          documents,
+          documents: documents.map((document, index) => {
+            const successor = successors.get(documentUris[index] as string);
+            return successor
+              ? {
+                  supersededBy: decorateUriForIndex(
+                    successor,
+                    scoped.indexName
+                  ),
+                  ...document,
+                }
+              : document;
+          }),
           skipped,
           meta: {
             requested: refs.length,

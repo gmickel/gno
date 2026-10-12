@@ -371,7 +371,9 @@ collections:
   Context Capsule evidence) names only a successor the request may read. The
   supersession chain stops before the first successor it may not read, so a
   hidden document is never named and never links two readable ones; when the
-  first successor is hidden, the field is absent.
+  first successor is hidden, the field is absent. Each hop is checked before
+  the next one is read, and a scoped chain is followed for at most 32 hops:
+  a longer chain names no successor.
 - `egressLineage` (search and query results, Context Capsule evidence and
   aggregate, `gno_recall` facts and aggregate) lists only collections the
   request may read. A result's content can also be held by a collection the

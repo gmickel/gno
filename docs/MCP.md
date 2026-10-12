@@ -472,7 +472,8 @@ collections whose `access` rule lets its user in (see
 - a note it may not read and a note that does not exist give the same
   `NOT_FOUND` answer, byte for byte;
 - `supersededBy` names a newer note only when the caller may read it, so a
-  note it may not read never shows up as a successor;
+  note it may not read never shows up as a successor, and follows at most 32
+  supersession hops;
 - `egressLineage` lists only collections the caller may read, even when a
   collection it may not read holds the same content;
 - typed-metadata coverage warnings are left out, because their counts would

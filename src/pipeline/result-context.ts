@@ -93,3 +93,18 @@ export async function supersedingUri(
   const successors = await store.getSupersedingUris([uri], options);
   return successors.ok ? successors.value.get(uri) : undefined;
 }
+
+/**
+ * Current successor URI of each document's superseded memory fact, from one
+ * lookup, limited to successors the caller may read (`options.canFollow`).
+ * A lookup failure names none.
+ */
+export async function supersedingUris(
+  store: StorePort,
+  uris: string[],
+  options?: SupersessionOptions
+): Promise<ReadonlyMap<string, string>> {
+  if (uris.length === 0 || !store.getSupersedingUris) return new Map();
+  const successors = await store.getSupersedingUris(uris, options);
+  return successors.ok ? successors.value : new Map();
+}

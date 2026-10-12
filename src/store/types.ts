@@ -1592,8 +1592,12 @@ export type WithTransaction = <T>(
 
 /** Caller scope for supersession links (see `getSupersedingUris`). */
 export interface SupersessionOptions {
-  /** Whether the caller may read the document at this canonical URI. */
-  canFollow?: (uri: string) => Promise<boolean>;
+  /**
+   * Which of these canonical URIs the caller may read. A lookup asks once
+   * per hop, with every new successor that hop reaches; a throw fails the
+   * lookup, so no successor is named.
+   */
+  canFollow?: (uris: string[]) => Promise<ReadonlySet<string>>;
 }
 
 /**
@@ -2301,7 +2305,9 @@ export interface StorePort {
    *
    * With `canFollow`, the chain stops before the first successor the caller
    * may not read, so the result never names a document outside the caller's
-   * scope and never reveals that a hidden document supersedes another.
+   * scope and never reveals that a hidden document supersedes another. A
+   * scoped walk is bounded: a chain that reaches the hop limit names no
+   * successor.
    */
   getSupersedingUris?(
     uris: string[],

@@ -194,7 +194,8 @@ describe("store chain walk", () => {
     const open = await store.getSupersedingUris(all);
     expect(open.ok && Object.fromEntries(open.value)).toEqual(UNRESTRICTED);
     const scoped = await store.getSupersedingUris(all, {
-      canFollow: async (target) => target.startsWith("gno://pub/"),
+      canFollow: async (targets) =>
+        new Set(targets.filter((target) => target.startsWith("gno://pub/"))),
     });
     expect(scoped.ok && Object.fromEntries(scoped.value)).toEqual(SCOPED);
   });

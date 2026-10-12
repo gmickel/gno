@@ -142,9 +142,15 @@ export const supersessionScope = (
   scope: McpAccessScope,
   store: Pick<StorePort, "getDocumentByUri">
 ): SupersessionOptions => ({
-  canFollow: async (uri) => {
-    const doc = await store.getDocumentByUri(uri);
-    return doc.ok && doc.value !== null && isDocumentServable(scope, doc.value);
+  canFollow: async (uris) => {
+    const readable = new Set<string>();
+    for (const uri of uris) {
+      const doc = await store.getDocumentByUri(uri);
+      if (doc.ok && doc.value && isDocumentServable(scope, doc.value)) {
+        readable.add(uri);
+      }
+    }
+    return readable;
   },
 });
 
