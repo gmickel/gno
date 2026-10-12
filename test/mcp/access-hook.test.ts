@@ -15,6 +15,7 @@ import {
   accessRetrievalOptions,
   resolveMcpAccess,
 } from "../../src/mcp/tools/access";
+import { handleContext } from "../../src/mcp/tools/context";
 import { handleGet } from "../../src/mcp/tools/get";
 import { handleMultiGet } from "../../src/mcp/tools/multi-get";
 import { handleSearch } from "../../src/mcp/tools/search";
@@ -124,6 +125,18 @@ const ctx = (): ToolContext =>
       mayAssertSubject: true,
     }),
     getRequestSubject: () => subject,
+    getModelAdapter: () => {
+      const unavailable = async () => ({
+        ok: false,
+        error: { code: "MODEL_NOT_FOUND", message: "no models in this test" },
+      });
+      return {
+        createEmbeddingPort: unavailable,
+        createExpansionPort: unavailable,
+        createRerankPort: unavailable,
+        createGenerationPort: unavailable,
+      };
+    },
   }) as unknown as ToolContext;
 
 beforeAll(async () => {
@@ -142,16 +155,19 @@ beforeAll(async () => {
     },
   });
   expect(
-    (await store.open(join(directory, "index.sqlite"), "unicode61")).ok
+    (await store.open(join(directory, "index-default.sqlite"), "unicode61")).ok
   ).toBe(true);
   expect((await store.syncCollections(COLLECTIONS)).ok).toBe(true);
-  for (const [index, doc] of DOCS.entries()) {
-    const mirrorHash = `mirror-${index}`;
+  for (const doc of DOCS) {
     const text = `needle note ${doc.relPath}`;
+    // Capsule evidence needs canonical source and mirror hashes.
+    const mirrorHash = new Bun.CryptoHasher("sha256")
+      .update(text)
+      .digest("hex");
     const inserted = await store.upsertDocument({
       collection: doc.collection,
       relPath: doc.relPath,
-      sourceHash: `source-${index}`,
+      sourceHash: mirrorHash,
       sourceMime: "text/markdown",
       sourceExt: ".md",
       sourceSize: text.length,
@@ -557,6 +573,56 @@ describe("access hook and supersededBy", () => {
           .map((r) => [r.uri, r.supersededBy])
       )
     ).toEqual({ "gno://firm/f.md": "gno://x/x.md" });
+  });
+
+  test("a hook-denied successor changes no byte of search, get or the gno_context agent projection", async () => {
+    const read = async () =>
+      JSON.stringify([
+        await handleContext(
+          {
+            goal: "needle note",
+            query: "needle",
+            limit: 8,
+            budgetTokens: 100_000,
+            budgetBytes: 100_000,
+            depthPolicy: "fast",
+            graph: false,
+            noRerank: true,
+          },
+          ctx()
+        ),
+        await handleSearch({ query: "needle", limit: 20 }, ctx()),
+        await handleGet({ ref: "gno://pub/open.md" }, ctx()),
+        await handleGet({ ref: "gno://firm/f.md" }, ctx()),
+      ]);
+    const unlink = async (successor: string) => {
+      const from = await store.getDocumentByUri(successor);
+      if (!(from.ok && from.value)) throw new Error("missing fixture document");
+      expect(
+        (await store.setDocEdges(from.value.id, [], "frontmatter-relation")).ok
+      ).toBe(true);
+    };
+
+    subject = { id: "u:a", context: "1to1", hash: "h" };
+    // Control: the agent projection carries a successor the hook allows.
+    const [allowed] = JSON.parse(await read()) as [
+      { content: { text: string }[] },
+    ];
+    expect(allowed.content.map((part) => part.text).join("\n")).toContain(
+      '"gno://x/x.md"'
+    );
+
+    subject = { id: "u:b", context: "1to1", hash: "h" };
+    const linked = await read();
+    expect(linked).not.toMatch(/closed\.md|x\/x\.md/);
+    await unlink("gno://pub/closed.md");
+    await unlink("gno://x/x.md");
+    try {
+      expect(await read()).toBe(linked);
+    } finally {
+      await link("gno://pub/closed.md", "gno://pub/open.md");
+      await link("gno://x/x.md", "gno://firm/f.md");
+    }
   });
 });
 
