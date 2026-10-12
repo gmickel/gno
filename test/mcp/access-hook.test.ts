@@ -442,3 +442,97 @@ describe("access hook and supersededBy", () => {
     ).toEqual({ "gno://firm/f.md": "gno://x/x.md" });
   });
 });
+
+describe("access hook calls for supersededBy", () => {
+  /** A pub note (not matching "needle") whose one source is `source`. */
+  const addNote = async (name: string, source: string): Promise<number> => {
+    const text = `chain note ${name}`;
+    const inserted = await store.upsertDocument({
+      collection: "pub",
+      relPath: `${name}.md`,
+      sourceHash: `source-${name}`,
+      sourceMime: "text/markdown",
+      sourceExt: ".md",
+      sourceSize: text.length,
+      sourceMtime: "2026-10-01T00:00:00.000Z",
+      title: name,
+      mirrorHash: `mirror-${name}`,
+      typedMetadata: { derived_from: [source] },
+      ingestVersion: TYPED_METADATA_INGEST_VERSION,
+    });
+    if (!inserted.ok) throw new Error(inserted.error.message);
+    expect((await store.upsertContent(`mirror-${name}`, text)).ok).toBe(true);
+    return inserted.value.id;
+  };
+  const supersede = async (successor: number, predecessor: number) => {
+    const edge = await store.setDocEdges(
+      successor,
+      [
+        {
+          targetDocId: predecessor,
+          edgeType: "supersedes",
+          confidence: "parsed",
+        },
+      ],
+      "frontmatter-relation"
+    );
+    expect(edge.ok).toBe(true);
+  };
+
+  beforeAll(async () => {
+    // Three chains of one hop: c1 supersedes c0, each with its own source.
+    for (const chain of ["a", "b", "c"]) {
+      await supersede(
+        await addNote(`${chain}1`, `web:ok-${chain}1`),
+        await addNote(`${chain}0`, `web:ok-${chain}0`)
+      );
+    }
+    // d0 <- d1 (hook-denied) <- d2.
+    const d0 = await addNote("d0", "web:ok-d0");
+    const d1 = await addNote("d1", "sp:deny-d1");
+    await supersede(d1, d0);
+    await supersede(await addNote("d2", "web:ok-d2"), d1);
+  });
+
+  /** Document sources the hook was asked about (not collection refs). */
+  const refsAsked = () =>
+    calls
+      .flatMap((call) => call.refs.map((ref) => `${ref.sys}:${ref.ref}`))
+      .filter((ref) => !ref.startsWith("sp:site-"));
+
+  test("one hop asks the hook once for every chain's successor", async () => {
+    subject = { id: "u:a", context: "1to1", hash: "h" };
+    calls.length = 0;
+    const multi = (
+      await handleMultiGet(
+        { refs: ["gno://pub/a0.md", "gno://pub/b0.md", "gno://pub/c0.md"] },
+        ctx()
+      )
+    ).structuredContent as {
+      documents: { uri: string; supersededBy?: string }[];
+    };
+    expect(multi.documents.map((d) => d.supersededBy)).toEqual([
+      "gno://pub/a1.md",
+      "gno://pub/b1.md",
+      "gno://pub/c1.md",
+    ]);
+    // The scope's collection call, one per requested note, then one for all
+    // three successors.
+    expect(calls).toHaveLength(5);
+    expect(calls.at(-1)?.refs.map((ref) => ref.ref)).toEqual([
+      "ok-a1",
+      "ok-b1",
+      "ok-c1",
+    ]);
+  });
+
+  test("nothing past a denied successor is asked about", async () => {
+    subject = { id: "u:a", context: "1to1", hash: "h" };
+    calls.length = 0;
+    const result = await handleGet({ ref: "gno://pub/d0.md" }, ctx());
+    expect(
+      (result.structuredContent as { supersededBy?: string }).supersededBy
+    ).toBeUndefined();
+    expect(refsAsked()).toEqual(["web:ok-d0", "sp:deny-d1"]);
+  });
+});
