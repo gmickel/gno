@@ -3,6 +3,7 @@ import { z } from "zod";
 import { buildUri, deriveDocid, parseUri } from "../app/constants";
 import { isValidIndexName } from "../app/index-name";
 import { RECORD_METADATA_LIMITS } from "../converters/types";
+import { MAX_REQUEST_COLLECTIONS } from "./collection-limits";
 import { contextCapsuleIndexSnapshotSchema } from "./context-capsule-index-schema";
 import { contextCapsuleRetrievalV1_2Schema } from "./context-capsule-retrieval-schema";
 import { contextCapsuleRetrievalSchema } from "./context-capsule-retrieval-schema";
@@ -121,7 +122,7 @@ export const contextCapsuleOmissionCodeSchema = z.enum([
 const scopeSchema = z
   .object({
     indexName: nonEmptyTextSchema.max(64).refine(isValidIndexName),
-    collections: z.array(collectionSchema).max(128),
+    collections: z.array(collectionSchema).max(MAX_REQUEST_COLLECTIONS),
     uriPrefix: contextCapsulePrefixUriSchema.nullable(),
     tagsAll: z.array(nonEmptyTextSchema.max(256)).max(128),
     tagsAny: z.array(nonEmptyTextSchema.max(256)).max(128),

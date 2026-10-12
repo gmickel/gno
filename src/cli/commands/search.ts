@@ -80,6 +80,7 @@ export async function search(
     configPath: options.configPath,
     indexName: options.indexName,
     collection: options.collection,
+    collections: options.collections,
     syncConfig: false,
   });
 
@@ -104,6 +105,7 @@ export async function search(
       filters: {
         limit,
         collection: options.collection,
+        collections: options.collections,
         lang: options.lang,
         full: options.full,
         lineNumbers: options.lineNumbers,

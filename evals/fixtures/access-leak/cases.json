@@ -1,0 +1,46 @@
+{
+  "sizes": [100, 1000, 10000],
+  "limit": 10,
+  "query": "needle",
+  "getSample": 150,
+  "collections": [
+    { "name": "pub", "access": { "public": true } },
+    {
+      "name": "firm",
+      "access": {
+        "accessRef": { "sys": "sp", "ref": "site-firm" },
+        "firmwide": true
+      }
+    },
+    {
+      "name": "x",
+      "access": { "accessRef": { "sys": "sp", "ref": "site-x" } }
+    },
+    { "name": "alice", "access": { "owner": "u:a" } },
+    {
+      "name": "keyed",
+      "access": { "public": true, "provenanceKey": "sources" }
+    }
+  ],
+  "kinds": [
+    { "name": "public-source", "refs": ["web:pub-{i}"] },
+    { "name": "group-source", "refs": ["sp:g-{i}"] },
+    { "name": "mixed-sources", "refs": ["web:pub-{i}", "sp:g-{i}"] },
+    { "name": "nobody-source", "refs": ["sp:none-{i}"] },
+    { "name": "invalid-member", "refs": ["bad"] },
+    { "name": "missing-key", "refs": null }
+  ],
+  "grants": {
+    "u:a": ["web:pub-", "sp:g-", "sp:site-firm", "sp:site-x"],
+    "u:b": ["web:pub-", "sp:site-firm"],
+    "u:z": ["web:pub-"]
+  },
+  "failingSubject": "u:down",
+  "subjects": [
+    { "id": "u:a", "context": "1to1" },
+    { "id": "u:b", "context": "1to1" },
+    { "id": "u:a", "context": "shared" },
+    { "id": "u:z", "context": "public_only" },
+    { "id": "u:down", "context": "1to1" }
+  ]
+}

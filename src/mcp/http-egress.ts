@@ -140,6 +140,16 @@ const GRAPH_RESULT_TOOLS = new Set([
   "gno_impact",
 ]);
 
+/**
+ * Tools whose optional `collections` allowlist narrows retrieval (`collection`
+ * and `collections` together serve their intersection).
+ */
+const COLLECTION_FILTER_TOOLS = new Set([
+  "gno_query",
+  "gno_search",
+  "gno_vsearch",
+]);
+
 const requestedCollections = (
   params: unknown,
   collections: readonly Collection[]
@@ -154,14 +164,28 @@ const requestedCollections = (
   // scope here either (a graph call with one is authorized as unscoped).
   if (typeof direct === "string" && direct.trim())
     names.add(direct.trim().toLowerCase());
-  if (
-    (record?.name === "gno_audit" || record?.name === "gno_impact") &&
-    Array.isArray(args.collections)
-  ) {
+  const listed = new Set<string>();
+  if (Array.isArray(args.collections)) {
     for (const value of args.collections) {
       if (typeof value !== "string") continue;
       const normalized = value.trim().toLowerCase();
-      if (normalized) names.add(normalized);
+      if (normalized) listed.add(normalized);
+    }
+  }
+  if (record?.name === "gno_audit" || record?.name === "gno_impact") {
+    for (const name of listed) names.add(name);
+  } else if (
+    typeof record?.name === "string" &&
+    COLLECTION_FILTER_TOOLS.has(record.name) &&
+    listed.size > 0
+  ) {
+    // These tools serve `collection` ∩ `collections`. With only the list,
+    // the list is the scope. With both, the single collection already is
+    // the intersection when the list holds it; an empty intersection serves
+    // nothing, and is judged against both rather than as an unscoped call.
+    const [single] = names;
+    if (single === undefined || !listed.has(single)) {
+      for (const name of listed) names.add(name);
     }
   }
   const graphTool =

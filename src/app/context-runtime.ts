@@ -121,6 +121,13 @@ export const buildContextCapsule = async (
           {
             ...request,
             noRerank: requestNoRerank,
+            ...(deps.retrievalScope
+              ? { retrievalScope: deps.retrievalScope }
+              : {}),
+            ...(deps.supersession ? { supersession: deps.supersession } : {}),
+            ...(deps.readable ? { readable: deps.readable } : {}),
+            ...(deps.access ? { access: deps.access } : {}),
+            ...(deps.accessScoped ? { accessScoped: true } : {}),
             projectAffinity: deps.projectAffinity,
             traceSession: deps.traceSession,
           }
@@ -131,6 +138,14 @@ export const buildContextCapsule = async (
             result.error.message,
             result.error.cause
           );
+        }
+        const view = deps.egressLineageView;
+        if (view) {
+          for (const item of result.value.results) {
+            if (item.egressLineage) {
+              item.egressLineage = view(item.egressLineage);
+            }
+          }
         }
         if (
           normalized.filter &&

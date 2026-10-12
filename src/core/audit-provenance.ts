@@ -2,7 +2,9 @@
 
 import type { AuditFindingDraft, AuditRuleContribution } from "./audit";
 import type { CaptureSource } from "./capture";
+import type { TypedMetadata } from "./typed-metadata";
 
+import { DERIVED_FROM_KEY, derivedFromIssue } from "./access-scope";
 import { compareAuditFindingDrafts } from "./audit";
 import { validateDeclaredCaptureProvenance } from "./capture";
 import { diagnoseMemoryContent } from "./memory-diagnostics";
@@ -248,5 +250,84 @@ export const evaluateProvenanceAudit = (
       declaredRecordDocuments
     ),
     evaluateMemoryRecordAudit(documents, options),
+  ];
+};
+
+/** Indexed document fields the required-metadata rule reads. */
+export interface AuditRequiredMetadataDocument {
+  uri: string;
+  relPath: string;
+  collection: string;
+  typedMetadata?: TypedMetadata | null;
+  metadataError?: string | null;
+}
+
+/**
+ * `provenance.required-metadata`: in a collection that sets `access`, every
+ * document must carry `derived_from` as a non-empty `<sys>:<ref>` string
+ * array, or gateway principals cannot be served it. Runs only when an
+ * audited collection sets `access`, so other configs keep their rule list.
+ */
+export const evaluateRequiredMetadataAudit = (
+  documents: readonly AuditRequiredMetadataDocument[],
+  collections: readonly { name: string; access?: unknown }[],
+  options: { truncated?: boolean; maxFindingsPerRule?: number } = {}
+): AuditRuleContribution[] => {
+  const required = new Set(
+    collections
+      .filter((collection) => collection.access !== undefined)
+      .map((collection) => collection.name)
+  );
+  const inScope = documents.filter((document) =>
+    required.has(document.collection)
+  );
+  if (inScope.length === 0) return [];
+  const findings: AuditFindingDraft[] = [];
+  for (const document of inScope) {
+    const reason = derivedFromIssue(
+      document.typedMetadata,
+      document.metadataError
+    );
+    if (reason === null) continue;
+    findings.push({
+      subject: document.uri,
+      location: DERIVED_FROM_KEY,
+      severity: "warning",
+      message: `required provenance metadata is ${reason}: ${DERIVED_FROM_KEY}`,
+      evidence: [
+        {
+          kind: "required-metadata",
+          summary: `${DERIVED_FROM_KEY}:${reason}`,
+          uri: document.uri,
+          path: document.relPath,
+        },
+      ],
+      guidance: [
+        `Add gno.metadata.${DERIVED_FROM_KEY} as a list of <system>:<reference> strings; gateway principals are not served this document until then`,
+      ],
+    });
+  }
+  findings.sort(compareAuditFindingDrafts);
+  const truncated = options.truncated === true;
+  return [
+    {
+      ruleId: "provenance.required-metadata",
+      category: "provenance",
+      status: truncated
+        ? "inconclusive"
+        : findings.length > 0
+          ? "fail"
+          : "pass",
+      message: truncated
+        ? "Provenance scan was truncated"
+        : `${findings.length} of ${inScope.length} access-controlled document(s) lack valid ${DERIVED_FROM_KEY}`,
+      findings: findings.slice(
+        0,
+        options.maxFindingsPerRule ?? PROVENANCE_AUDIT_MAX_FINDINGS_PER_RULE
+      ),
+      findingCount: findings.length,
+      examinedCount: inScope.length,
+      skipReason: truncated ? "snapshot_truncated" : null,
+    },
   ];
 };

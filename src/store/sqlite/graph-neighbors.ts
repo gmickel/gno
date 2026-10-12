@@ -5,7 +5,9 @@
  * Resolution and scope are separate steps: links resolve with the shared
  * workspace-aware resolver, then the collection allowlist is applied to the
  * resolved source AND target of every edge before scoring or limits, so a
- * cross-collection edge never widens the caller's scope.
+ * cross-collection edge never widens the caller's scope. A caller's hidden
+ * documents are left out of resolution itself, so they take no link and
+ * change no match count.
  *
  * @module src/store/sqlite/graph-neighbors
  */
@@ -317,8 +319,13 @@ const resolveRawEdges = (
   rawRows: RawLinkRow[],
   incomingLinkIds: Set<number>,
   seedIds: Set<number>,
-  allowlist: Set<string> | undefined
-): ResolvedEdgeRow[] => {
+  allowlist: Set<string> | undefined,
+  hidden: ReadonlySet<number> | undefined
+): {
+  rows: ResolvedEdgeRow[];
+  /** Deciding documents of every resolution; only when `hidden` is set. */
+  matches?: Array<{ id: number; docid: string }>;
+} => {
   const resolvedTargets = resolveGraphLinkTargets(
     db,
     rawRows.map((row) => ({
@@ -326,11 +333,18 @@ const resolveRawEdges = (
       targetCollection: row.target_collection ?? row.source_collection,
       linkType: row.link_type,
       source: linkSourceIdentity(row),
-    }))
+    })),
+    "auto",
+    hidden ? { hiddenDocumentIds: hidden, reportMatches: true } : {}
   );
+  const matches = hidden
+    ? new Map<number, { id: number; docid: string }>()
+    : undefined;
   const rows: ResolvedEdgeRow[] = [];
   for (const [index, rawRow] of rawRows.entries()) {
     const target = resolvedTargets[index];
+    // Dropped resolutions count too: a hidden match may be what dropped them.
+    for (const match of target?.matches ?? []) matches?.set(match.id, match);
     if (
       !isTraversableResolution(target) ||
       (incomingLinkIds.has(rawRow.id) && !seedIds.has(target.targetId))
@@ -358,7 +372,7 @@ const resolveRawEdges = (
       reason: target.reason,
     });
   }
-  return rows;
+  return { rows, ...(matches ? { matches: [...matches.values()] } : {}) };
 };
 
 const toGraphLinks = (
@@ -441,6 +455,7 @@ export function queryGraphNeighborsForSeeds(
         seedDocumentIds: [],
         examinedLinkRows: 0,
         returnedEdges: 0,
+        ...(options.hiddenDocumentIds ? { resolutionDocuments: [] } : {}),
       },
     };
   }
@@ -453,16 +468,17 @@ export function queryGraphNeighborsForSeeds(
   const rawLinksById = new Map(
     [...outgoingLinks, ...incomingLinks].map((link) => [link.id, link])
   );
-  const resolvedRows = resolveRawEdges(
+  const resolved = resolveRawEdges(
     db,
     [...rawLinksById.values()],
     incomingLinkIds,
     new Set(seedIds),
-    allowlist
+    allowlist,
+    options.hiddenDocumentIds ? new Set(options.hiddenDocumentIds) : undefined
   );
 
   const examinedLinkRows = outgoingLinks.length + incomingCandidates;
-  const links = toGraphLinks(resolvedRows, limitEdges);
+  const links = toGraphLinks(resolved.rows, limitEdges);
 
   return {
     links,
@@ -470,6 +486,7 @@ export function queryGraphNeighborsForSeeds(
       seedDocumentIds: seedIds,
       examinedLinkRows,
       returnedEdges: links.length,
+      ...(resolved.matches ? { resolutionDocuments: resolved.matches } : {}),
     },
   };
 }

@@ -34,7 +34,11 @@ import {
 import { formatQueryForEmbedding } from "./contextual";
 import { attachSearchResultEgressLineage } from "./egress-lineage";
 import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
-import { typedMetadataWarnings, typedMetadataFilterReason } from "./filters";
+import {
+  resolveAccessAllowlist,
+  typedMetadataWarnings,
+  typedMetadataFilterReason,
+} from "./filters";
 import { selectBestChunkForSteering } from "./intent";
 import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
@@ -131,8 +135,9 @@ async function searchVectorWithEmbeddingOwned(
   );
   const projectAffinityActive = hasProjectAffinity(options.projectAffinity);
   const recencySort = shouldSortByRecency(query);
+  // Access hook: overfetch so denied documents do not empty the page.
   const retrievalLimit =
-    recencySort || projectAffinityActive ? limit * 3 : limit;
+    recencySort || projectAffinityActive || options.access ? limit * 3 : limit;
   const temporalRange = resolveTemporalRange(
     query,
     options.since,
@@ -176,6 +181,7 @@ async function searchVectorWithEmbeddingOwned(
         excludeMetadata: true,
         semanticMetadata: true,
         collection: options.collection,
+        collections: options.collections,
         memoryScopesAny: options.memoryFilter?.scopes,
         excludeSuperseded: options.memoryFilter?.excludeSuperseded,
         relPathPrefix: options.retrievalScope?.relPathPrefix,
@@ -198,7 +204,20 @@ async function searchVectorWithEmbeddingOwned(
     return err("QUERY_FAILED", searchResult.error.message);
   }
 
-  const vecResults = searchResult.value;
+  let vecResults = searchResult.value;
+  if (options.access) {
+    // Access hook gate: a hash passes only when every document holding it is
+    // allowed (vector hits carry no document id).
+    const allowlist = await resolveAccessAllowlist(
+      store,
+      vecResults.map((v) => v.mirrorHash),
+      options.access
+    );
+    if (!allowlist.ok) return err("QUERY_FAILED", "Access check failed");
+    vecResults = vecResults.filter((v) =>
+      allowlist.value.hashes.has(v.mirrorHash)
+    );
+  }
   const uniqueHashes = [...new Set(vecResults.map((v) => v.mirrorHash))];
 
   // Get collection paths for absPath resolution
@@ -215,6 +234,7 @@ async function searchVectorWithEmbeddingOwned(
   const { documents: docsByMirrorHash, ownershipDocuments } =
     await buildDocumentMap(store, {
       collection: options.collection,
+      collections: options.collections,
       relPathPrefix: options.retrievalScope?.relPathPrefix,
       tagsAll: options.tagsAll,
       tagsAny: options.tagsAny,
@@ -523,7 +543,7 @@ async function searchVectorWithEmbeddingOwned(
     if (metadata) metadata.retrievalRank = index + 1;
   }
   await attachSearchResultContexts(store, finalResults);
-  await attachSupersession(store, finalResults);
+  await attachSupersession(store, finalResults, options.supersession);
   const lineageResult = await attachSearchResultEgressLineage(
     store,
     finalResults,
@@ -547,12 +567,14 @@ async function searchVectorWithEmbeddingOwned(
       intent: options.intent,
       exclude: options.exclude,
       collection: options.collection,
+      collections: options.collections,
       lang: options.lang,
       since: temporalRange.since,
       until: temporalRange.until,
       categories: options.categories,
       author: options.author,
-      ...(options.filter
+      // Coverage counts span documents a scoped caller may not read.
+      ...(options.filter && !options.accessScoped
         ? { warnings: await typedMetadataWarnings(store, query, options) }
         : {}),
       queryLanguage,
@@ -666,6 +688,7 @@ interface DocumentInfo {
 
 interface DocumentMapOptions {
   collection?: string;
+  collections?: string[];
   relPathPrefix?: string;
   tagsAll?: string[];
   tagsAny?: string[];
@@ -718,11 +741,12 @@ async function buildDocumentMap(
   const ownershipDocuments = options.mirrorHashes
     ? docs.value.filter((d) => d.mirrorHash)
     : docs.value.filter((d) => d.mirrorHash && d.active);
-  const activeDocs = options.collection
-    ? ownershipDocuments.filter(
-        (document) => document.collection === options.collection
-      )
-    : ownershipDocuments;
+  const activeDocs = ownershipDocuments.filter(
+    (document) =>
+      (!options.collection || document.collection === options.collection) &&
+      (!options.collections ||
+        options.collections.includes(document.collection))
+  );
   const temporalRange: TemporalRange = {
     since: options.since,
     until: options.until,
