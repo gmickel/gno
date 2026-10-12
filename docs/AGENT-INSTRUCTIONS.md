@@ -7,7 +7,7 @@ supported harness, bounded by stable markers:
 
 ```
 <!-- gno:agents:begin -->
-<!-- gno-agents block v4 sha256:... — managed by `gno agents`; ... -->
+<!-- gno-agents block v5 sha256:... — managed by `gno agents`; ... -->
 ...ladder + writing contract...
 <!-- gno:agents:end -->
 ```
@@ -85,7 +85,7 @@ for memory facts → `query --fast` for any other question → balanced
 contract (retrieve first; edit canonical notes in place; `gno capture` for
 genuinely new notes; `gno remember` with the add/supersede decision and the
 recall receipt for facts that may change; reindex + verify after writes), and
-gno:// citation discipline — in well under 1,500 characters. It carries a version stamp and a
+gno:// citation discipline — in under 1,700 characters. It carries a version stamp and a
 content hash, and points at the `gno` skill for advanced retrieval: load it
 (`/gno`) when installed, otherwise run `gno skill install --scope user` first.
 The text is identical on every machine and contains no filesystem paths, so

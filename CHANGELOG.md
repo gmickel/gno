@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The `gno agents` block (v5), the `gno` skill and the MCP `gno_search` description narrow the exact-text rung: `gno search` is for a term, identifier, quote or error you already have verbatim, and a question, or a name or topic taken from it, goes to `gno query --fast`. In headless agent sessions given only the v4 block, one agent often ran `gno search` on a word or name lifted from a natural-language question and never reached semantic search; with the v5 wording its first retrieval call fit the question in 14 of 16 runs instead of 6 of 16, with no change for exact-phrase questions. Run `gno agents update` and `gno skill install --force` to pick it up.
+
 ## [2.11.0] - 2026-10-12
 
 ### Changed

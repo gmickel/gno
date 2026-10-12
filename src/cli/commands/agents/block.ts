@@ -17,7 +17,7 @@ import { CliError } from "../../errors.js";
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Version of the protocol block content. Bump on any content change. */
-export const BLOCK_VERSION = 4;
+export const BLOCK_VERSION = 5;
 
 /** Stable across block versions — never change these once shipped. */
 export const BEGIN_MARKER = "<!-- gno:agents:begin -->";
@@ -43,7 +43,7 @@ Local knowledge search over indexed collections. Source files are the truth; the
 
 Ladder — scope to a collection first (\`--collection <name>\`):
 
-1. Exact term/identifier/quote/error: \`gno search "<text>"\`
+1. Exact term/identifier/quote/error you already have verbatim: \`gno search "<text>"\`. A question, or a name or topic taken from it, is not exact text: use rung 3
 2. What do we know/believe (memory): \`gno recall "<query>" --scope <scope>\`
 3. Any other question: \`gno query "<question>" --fast -n 10\` (hybrid)
 4. Not found or vague: \`gno query "<question>" -n 10\` (adds expansion + rerank)

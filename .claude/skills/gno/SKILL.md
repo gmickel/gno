@@ -151,7 +151,8 @@ machines are slower.
 | `gno ask --verify`     | varies   | ~8s         | Closed-Capsule answer or abstention        |
 
 **Retry strategy**: natural-language question → `gno query --fast` first;
-exact identifier/quote/error → `gno search`. No good results: run balanced
+exact identifier/quote/error you already have verbatim → `gno search` (a
+question, or a name or topic taken from it, is not exact text). No good results: run balanced
 `gno query`, then rephrase, then `--thorough`. An expected document still
 missing: `gno query diagnose` before falling back to grep.
 
