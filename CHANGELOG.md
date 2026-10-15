@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The Web UI (`gno serve`) has a favicon: the GNO mark from gno.sh, so its browser tab is easy to find.
+
 ## [2.12.0] - 2026-10-12
 
 ### Changed
