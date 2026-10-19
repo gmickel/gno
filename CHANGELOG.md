@@ -7,13 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.12.1] - 2026-10-19
+
 ### Added
 
 - The Web UI (`gno serve`) has a favicon: the GNO mark from gno.sh, so its browser tab is easy to find.
 
 ### Fixed
 
-- Graph traversal (`gno graph query`, `gno impact` and their MCP, REST and SDK forms) works with SQLite 3.54 and at the maximum depth. On macOS with Homebrew SQLite 3.54 it failed from depth 3 with "VIEWs and/or subqueries nested too deep", and on every platform depth 6 failed after about 20 seconds. A depth-3 traversal now takes a few milliseconds instead of about 100.
+- Graph traversal (`gno graph query`, `gno impact` and their MCP, REST and SDK forms) works with SQLite 3.54 and at the maximum depth. On macOS with Homebrew SQLite 3.54 it failed from depth 3 with "VIEWs and/or subqueries nested too deep", and on every platform depth 6 failed after about 20 seconds. Traversals are also faster with identical results: on an index with 16,000 links, traversals from heavily linked documents take 0.6-2.4 s instead of 2-11 s.
 - `gno graph query --max-depth <n>` applies the depth you pass; it was ignored and the query always used the default depth of 2.
 
 ## [2.12.0] - 2026-10-12
@@ -3033,7 +3035,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.12.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.12.1...HEAD
+[2.12.1]: https://github.com/gmickel/gno/compare/v2.12.0...v2.12.1
 [2.12.0]: https://github.com/gmickel/gno/compare/v2.11.0...v2.12.0
 [2.11.0]: https://github.com/gmickel/gno/compare/v2.10.1...v2.11.0
 [2.10.1]: https://github.com/gmickel/gno/compare/v2.10.0...v2.10.1
