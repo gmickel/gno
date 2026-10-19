@@ -4691,8 +4691,12 @@ function wireGraphCommand(program: Command): void {
           );
         }
 
-        const maxDepth = cmdOpts.maxDepth
-          ? parsePositiveInt("max-depth", cmdOpts.maxDepth)
+        // `gno graph` declares --max-depth for paths, so Commander hands the
+        // flag to the parent command.
+        const rawMaxDepth: unknown =
+          cmdOpts.maxDepth ?? command.parent?.opts().maxDepth;
+        const maxDepth = rawMaxDepth
+          ? parsePositiveInt("max-depth", rawMaxDepth)
           : undefined;
         const maxNodes = cmdOpts.maxNodes
           ? parsePositiveInt("max-nodes", cmdOpts.maxNodes)

@@ -651,13 +651,19 @@ describe("gno graph traversal", () => {
       root: { uri: string };
       nodes: Array<{ uri: string; depth: number; graphHints: string[] }>;
       edges: Array<{ edgeType: string; depth: number }>;
-      meta: { direction: string; edgeType: string; truncated: boolean };
+      meta: {
+        direction: string;
+        edgeType: string;
+        maxDepth: number;
+        truncated: boolean;
+      };
     };
     expect(data.schemaVersion).toBe("1.0");
     expect(data.root.uri).toBe("gno://notes/source.md");
     expect(data.meta).toMatchObject({
       direction: "out",
       edgeType: "mentions",
+      maxDepth: 1,
       truncated: false,
     });
     expect(data.nodes.some((node) => node.depth === 1)).toBe(true);
