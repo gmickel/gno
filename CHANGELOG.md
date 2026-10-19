@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The Web UI (`gno serve`) has a favicon: the GNO mark from gno.sh, so its browser tab is easy to find.
 
+### Fixed
+
+- Graph traversal (`gno graph query`, `gno impact` and their MCP, REST and SDK forms) works with SQLite 3.54 and at the maximum depth. On macOS with Homebrew SQLite 3.54 it failed from depth 3 with "VIEWs and/or subqueries nested too deep", and on every platform depth 6 failed after about 20 seconds. A depth-3 traversal now takes a few milliseconds instead of about 100.
+- `gno graph query --max-depth <n>` applies the depth you pass; it was ignored and the query always used the default depth of 2.
+
 ## [2.12.0] - 2026-10-12
 
 ### Changed
