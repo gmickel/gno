@@ -5076,20 +5076,19 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const edgeTypeFilterFor = (alias: string): string =>
         edgeType ? `AND ${alias}.edge_type = ?` : "";
       const candidateEdgeLimit = Math.min(frontierLimit * 4, 4_000);
-      const frontierCtes: string[] = [];
-      const frontierParams: (number | string)[] = [];
-      const frontierNames = ["f0"];
-      const allFrontiers = (): string =>
-        frontierNames
-          .map((name) => `SELECT doc_id FROM ${name}`)
-          .join(" UNION ");
-      const frontierJoinClause = (frontierName: string): string =>
+      // Each level runs as its own statement over the previous frontier and
+      // the visited set, passed as JSON. One statement chaining every level
+      // as CTEs re-expands each earlier level at every reference, which
+      // grows exponentially with depth: SQLite 3.54 refuses it from depth 3
+      // ("nested too deep") and older versions fail at depth 6.
+      const visitedIds = "SELECT doc_id FROM visited";
+      const frontierJoinClause =
         direction === "out"
-          ? `e.src_doc_id = ${frontierName}.doc_id`
+          ? "e.src_doc_id = prev.doc_id"
           : direction === "in"
-            ? `e.dst_doc_id = ${frontierName}.doc_id`
-            : `(e.src_doc_id = ${frontierName}.doc_id OR e.dst_doc_id = ${frontierName}.doc_id)`;
-      const boundedEdgePredicate = (frontierName: string): string => {
+            ? "e.dst_doc_id = prev.doc_id"
+            : "(e.src_doc_id = prev.doc_id OR e.dst_doc_id = prev.doc_id)";
+      const boundedEdgePredicate = (): string => {
         if (direction === "out") {
           return `
             e.id IN (
@@ -5110,10 +5109,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                     ) AS next_rank
                   FROM doc_edges e2
                   JOIN documents next_doc ON next_doc.id = e2.dst_doc_id AND next_doc.active = 1${nextDocScope}
-                  WHERE e2.src_doc_id = ${frontierName}.doc_id
+                  WHERE e2.src_doc_id = prev.doc_id
                     ${edgeTypeFilterFor("e2")}
-                    AND instr(${frontierName}.path, printf(',%d,', e2.dst_doc_id)) = 0
-                    AND e2.dst_doc_id NOT IN (${allFrontiers()})
+                    AND instr(prev.path, printf(',%d,', e2.dst_doc_id)) = 0
+                    AND e2.dst_doc_id NOT IN (${visitedIds})
                 )
                 WHERE next_rank = 1
                 ORDER BY edge_type ASC, next_doc_id ASC, edge_id ASC
@@ -5141,10 +5140,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                     ) AS next_rank
                   FROM doc_edges e2
                   JOIN documents next_doc ON next_doc.id = e2.src_doc_id AND next_doc.active = 1${nextDocScope}
-                  WHERE e2.dst_doc_id = ${frontierName}.doc_id
+                  WHERE e2.dst_doc_id = prev.doc_id
                     ${edgeTypeFilterFor("e2")}
-                    AND instr(${frontierName}.path, printf(',%d,', e2.src_doc_id)) = 0
-                    AND e2.src_doc_id NOT IN (${allFrontiers()})
+                    AND instr(prev.path, printf(',%d,', e2.src_doc_id)) = 0
+                    AND e2.src_doc_id NOT IN (${visitedIds})
                 )
                 WHERE next_rank = 1
                 ORDER BY edge_type ASC, next_doc_id ASC, edge_id ASC
@@ -5172,10 +5171,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                     ) AS next_rank
                   FROM doc_edges e2
                   JOIN documents next_doc ON next_doc.id = e2.dst_doc_id AND next_doc.active = 1${nextDocScope}
-                  WHERE e2.src_doc_id = ${frontierName}.doc_id
+                  WHERE e2.src_doc_id = prev.doc_id
                     ${edgeTypeFilterFor("e2")}
-                    AND instr(${frontierName}.path, printf(',%d,', e2.dst_doc_id)) = 0
-                    AND e2.dst_doc_id NOT IN (${allFrontiers()})
+                    AND instr(prev.path, printf(',%d,', e2.dst_doc_id)) = 0
+                    AND e2.dst_doc_id NOT IN (${visitedIds})
                 )
                 WHERE next_rank = 1
                 ORDER BY edge_type ASC, next_doc_id ASC, edge_id ASC
@@ -5200,10 +5199,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                     ) AS next_rank
                   FROM doc_edges e3
                   JOIN documents next_doc ON next_doc.id = e3.src_doc_id AND next_doc.active = 1${nextDocScope}
-                  WHERE e3.dst_doc_id = ${frontierName}.doc_id
+                  WHERE e3.dst_doc_id = prev.doc_id
                     ${edgeTypeFilterFor("e3")}
-                    AND instr(${frontierName}.path, printf(',%d,', e3.src_doc_id)) = 0
-                    AND e3.src_doc_id NOT IN (${allFrontiers()})
+                    AND instr(prev.path, printf(',%d,', e3.src_doc_id)) = 0
+                    AND e3.src_doc_id NOT IN (${visitedIds})
                 )
                 WHERE next_rank = 1
                 ORDER BY edge_type ASC, next_doc_id ASC, edge_id ASC
@@ -5212,40 +5211,62 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             )
           )`;
       };
-      const nextExprFor = (frontierName: string): string =>
-        `CASE WHEN e.src_doc_id = ${frontierName}.doc_id THEN e.dst_doc_id ELSE e.src_doc_id END`;
+      const nextExpr =
+        "CASE WHEN e.src_doc_id = prev.doc_id THEN e.dst_doc_id ELSE e.src_doc_id END";
+      const levelParams: (number | string)[] = [];
+      if (direction === "both") {
+        if (edgeType) {
+          levelParams.push(edgeType);
+        }
+        levelParams.push(candidateEdgeLimit);
+      }
+      if (edgeType) {
+        levelParams.push(edgeType);
+      }
+      levelParams.push(candidateEdgeLimit);
+      if (edgeType) {
+        levelParams.push(edgeType);
+      }
+      levelParams.push(
+        frontierLimit,
+        frontierLimit,
+        visitedLimit,
+        frontierLimit
+      );
 
-      const boundaryCandidateDepth = maxDepth + 1;
-      for (let depth = 1; depth <= boundaryCandidateDepth; depth += 1) {
-        const previous = `f${depth - 1}`;
-        const raw = `c${depth}_raw`;
-        const deduped = `c${depth}_deduped`;
-        const nodeDeduped = `c${depth}_node_deduped`;
-        const ranked = `c${depth}_ranked`;
-        const candidates = `c${depth}`;
-        const frontier = `f${depth}`;
-        const nextExpr = nextExprFor(previous);
-        frontierCtes.push(`
-        ${raw} AS (
+      const levelQuery = (depth: number) =>
+        db.query<
+          {
+            candidate_count: number;
+            has_candidates: number;
+            expansion_overflow: number;
+            doc_id: number | null;
+            depth: number | null;
+            path: string | null;
+            sort_key: string | null;
+          },
+          (number | string)[]
+        >(`
+        WITH
+        prev(doc_id, path) AS (
+          SELECT json_extract(value, '$[0]'), json_extract(value, '$[1]')
+          FROM json_each(?)
+        ),
+        visited(doc_id) AS (
+          SELECT value FROM json_each(?)
+        ),
+        raw AS (
           SELECT
-            ${previous}.doc_id AS from_doc_id,
+            prev.doc_id AS from_doc_id,
             ${nextExpr} AS doc_id,
             ${depth} AS depth,
-            ${previous}.path || ${nextExpr} || ',' AS path,
+            prev.path || ${nextExpr} || ',' AS path,
             printf('%06d|%s|%012d', ${depth}, e.edge_type, ${nextExpr}) AS sort_key,
             e.src_doc_id,
-            src.docid AS source_docid,
-            src.uri AS source_uri,
-            src.title AS source_title,
             e.dst_doc_id,
-            dst.docid AS target_docid,
-            dst.uri AS target_uri,
-            dst.title AS target_title,
             e.edge_type,
-            e.confidence,
-            e.source,
             row_number() OVER (
-              PARTITION BY ${previous}.doc_id, e.src_doc_id, e.dst_doc_id, e.edge_type
+              PARTITION BY prev.doc_id, e.src_doc_id, e.dst_doc_id, e.edge_type
               ORDER BY
                 CASE e.confidence
                   WHEN 'manual' THEN 1
@@ -5258,47 +5279,47 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                 src.docid ASC,
                 dst.docid ASC
             ) AS dedup_rank
-          FROM ${previous}
-          JOIN doc_edges e ON ${frontierJoinClause(previous)}
-            AND ${boundedEdgePredicate(previous)}
+          FROM prev
+          JOIN doc_edges e ON ${frontierJoinClause}
+            AND ${boundedEdgePredicate()}
           JOIN documents src ON src.id = e.src_doc_id AND src.active = 1
           JOIN documents dst ON dst.id = e.dst_doc_id AND dst.active = 1
           WHERE 1 = 1
             ${edgeTypeFilter}
-            AND instr(${previous}.path, printf(',%d,', ${nextExpr})) = 0
-            AND ${nextExpr} NOT IN (${allFrontiers()})
+            AND instr(prev.path, printf(',%d,', ${nextExpr})) = 0
+            AND ${nextExpr} NOT IN (${visitedIds})
         ),
-        ${deduped} AS (
+        deduped AS (
           SELECT *
-          FROM ${raw}
+          FROM raw
           WHERE dedup_rank = 1
         ),
-        ${nodeDeduped} AS (
+        node_deduped AS (
           SELECT
             from_doc_id,
             doc_id,
             depth,
             min(path) AS path,
             min(sort_key) AS sort_key
-          FROM ${deduped}
+          FROM deduped
           GROUP BY from_doc_id, doc_id, depth
         ),
-        ${ranked} AS (
+        ranked AS (
           SELECT
             *,
             row_number() OVER (
               PARTITION BY from_doc_id
               ORDER BY sort_key ASC, doc_id ASC
             ) AS expansion_rank
-          FROM ${nodeDeduped}
+          FROM node_deduped
         ),
-        ${candidates} AS (
+        candidates AS (
           SELECT doc_id, depth, min(path) AS path, min(sort_key) AS sort_key
-          FROM ${ranked}
+          FROM ranked
           WHERE expansion_rank <= ?
           GROUP BY doc_id, depth
         ),
-        ${frontier} AS (
+        frontier AS (
           SELECT doc_id, depth, path, sort_key
           FROM (
             SELECT
@@ -5307,35 +5328,88 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
               path,
               sort_key,
               row_number() OVER (ORDER BY sort_key ASC, doc_id ASC) AS depth_rank
-            FROM ${candidates}
+            FROM candidates
           )
           WHERE depth_rank <= ?
-            AND depth_rank <= ? - (
-              SELECT count(*)
-              FROM (${allFrontiers()})
-            )
-        )`);
-        if (direction === "both") {
-          if (edgeType) {
-            frontierParams.push(edgeType);
-          }
-          frontierParams.push(candidateEdgeLimit);
-          if (edgeType) {
-            frontierParams.push(edgeType);
-          }
-          frontierParams.push(candidateEdgeLimit);
-        } else {
-          if (edgeType) {
-            frontierParams.push(edgeType);
-          }
-          frontierParams.push(candidateEdgeLimit);
+            AND depth_rank <= ? - (SELECT count(*) FROM visited)
+        )
+        SELECT
+          stats.candidate_count,
+          stats.has_candidates,
+          stats.expansion_overflow,
+          frontier.doc_id,
+          frontier.depth,
+          frontier.path,
+          frontier.sort_key
+        FROM (
+          SELECT
+            (SELECT count(*) FROM candidates) AS candidate_count,
+            EXISTS (SELECT 1 FROM ranked) AS has_candidates,
+            EXISTS (SELECT 1 FROM ranked WHERE expansion_rank > ?) AS expansion_overflow
+        ) stats
+        LEFT JOIN frontier ON 1
+        ORDER BY frontier.sort_key ASC, frontier.doc_id ASC`);
+
+      // Walk level by level; the extra level past maxDepth only reports
+      // whether the depth cap cut anything off.
+      type FrontierRow = {
+        doc_id: number;
+        depth: number;
+        path: string;
+        sort_key: string;
+      };
+      let previous: FrontierRow[] = [
+        {
+          doc_id: rootDocumentId,
+          depth: 0,
+          path: `,${rootDocumentId},`,
+          sort_key: "",
+        },
+      ];
+      const walked: FrontierRow[] = [...previous];
+      const visited = new Set([rootDocumentId]);
+      let visitedOverflow = false;
+      let frontierOverflow = false;
+      let depthOverflow = false;
+      for (let depth = 1; depth <= maxDepth + 1; depth += 1) {
+        const rows = levelQuery(depth).all(
+          JSON.stringify(previous.map((row) => [row.doc_id, row.path])),
+          JSON.stringify([...visited]),
+          ...levelParams
+        );
+        const stats = rows[0];
+        if (depth > maxDepth) {
+          depthOverflow = Boolean(stats?.has_candidates);
+          break;
         }
-        if (edgeType) {
-          frontierParams.push(edgeType);
+        const candidateCount = stats?.candidate_count ?? 0;
+        if (
+          candidateCount > 0 &&
+          candidateCount > visitedLimit - visited.size
+        ) {
+          visitedOverflow = true;
         }
-        frontierParams.push(frontierLimit, frontierLimit, visitedLimit);
-        if (depth <= maxDepth) {
-          frontierNames.push(frontier);
+        if (
+          (candidateCount > 0 && candidateCount > frontierLimit) ||
+          stats?.expansion_overflow
+        ) {
+          frontierOverflow = true;
+        }
+        previous = rows.flatMap((row) =>
+          row.doc_id === null
+            ? []
+            : [
+                {
+                  doc_id: row.doc_id,
+                  depth: row.depth ?? depth,
+                  path: row.path ?? "",
+                  sort_key: row.sort_key ?? "",
+                },
+              ]
+        );
+        for (const row of previous) {
+          visited.add(row.doc_id);
+          walked.push(row);
         }
       }
 
@@ -5345,62 +5419,18 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           : direction === "in"
             ? "AND ns.depth > nt.depth"
             : "";
-      const frontierUnion = frontierNames
-        .map((name) => `SELECT doc_id, depth, sort_key FROM ${name}`)
-        .join(" UNION ALL ");
-      const visitedOverflowChecks = Array.from(
-        { length: maxDepth },
-        (_, index) => {
-          const previousFrontiers = Array.from(
-            { length: index + 1 },
-            (__, frontierIndex) => `SELECT doc_id FROM f${frontierIndex}`
-          ).join(" UNION ");
-          return `
-          SELECT 1 AS has_more
-          FROM c${index + 1}
-          GROUP BY 1
-          HAVING count(*) > ? - (
-            SELECT count(*)
-            FROM (${previousFrontiers})
-          )`;
-        }
-      ).join(" UNION ALL ");
-      const frontierOverflowChecks = Array.from(
-        { length: maxDepth },
-        (_, index) => `
-          SELECT 1 AS has_more
-          FROM c${index + 1}
-          GROUP BY 1
-          HAVING count(*) > ?
-          UNION ALL
-          SELECT 1 AS has_more
-          FROM c${index + 1}_ranked
-          WHERE expansion_rank > ?`
-      ).join(" UNION ALL ");
-      const walkCte = `
-        WITH RECURSIVE
-        f0(doc_id, depth, path, sort_key) AS (
-          SELECT ?, 0, printf(',%d,', ?), ''
-        ),
-        ${frontierCtes.join(",")},
+      const walkedJson = JSON.stringify(
+        walked.map((row) => [row.doc_id, row.depth, row.sort_key])
+      );
+      const nodeDepthCte = `
         node_depth AS (
-          SELECT doc_id, min(depth) AS depth, min(sort_key) AS sort_key
-          FROM (${frontierUnion})
-          GROUP BY doc_id
-        ),
-        ranked_nodes AS (
           SELECT
-            d.*,
-            nd.depth,
-            row_number() OVER (ORDER BY nd.depth ASC, nd.sort_key ASC, d.id ASC) AS global_rank,
-            count(*) OVER () AS total_count
-          FROM node_depth nd
-          JOIN documents d ON d.id = nd.doc_id AND d.active = 1
-        )
-      `;
-
-      const baseParams: (number | string)[] = [];
-      baseParams.push(rootDocumentId, rootDocumentId, ...frontierParams);
+            json_extract(value, '$[0]') AS doc_id,
+            min(json_extract(value, '$[1]')) AS depth,
+            min(json_extract(value, '$[2]')) AS sort_key
+          FROM json_each(?)
+          GROUP BY 1
+        )`;
 
       const nodeRows = db
         .query<
@@ -5411,14 +5441,23 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           },
           (number | string)[]
         >(
-          `${walkCte}
+          `WITH ${nodeDepthCte},
+           ranked_nodes AS (
+             SELECT
+               d.*,
+               nd.depth,
+               row_number() OVER (ORDER BY nd.depth ASC, nd.sort_key ASC, d.id ASC) AS global_rank,
+               count(*) OVER () AS total_count
+             FROM node_depth nd
+             JOIN documents d ON d.id = nd.doc_id AND d.active = 1
+           )
            SELECT *
            FROM ranked_nodes
            WHERE global_rank <= ?
            ORDER BY depth ASC, uri ASC, docid ASC
            LIMIT ?`
         )
-        .all(...baseParams, nodeLimit + 1, nodeLimit + 1);
+        .all(walkedJson, nodeLimit + 1, nodeLimit + 1);
 
       const returnedNodeRows = nodeRows.slice(0, nodeLimit);
       const returnedIds = new Set(returnedNodeRows.map((row) => row.id));
@@ -5429,41 +5468,19 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         truncated = true;
         warnings.push("maxNodes reached");
       }
-      if (totalNodes > visitedLimit) {
+      if (totalNodes > visitedLimit || visitedOverflow) {
         truncated = true;
         warnings.push("visitedLimit reached");
       }
-
-      const visitedRows = db
-        .query<{ has_more: number }, (number | string)[]>(
-          `${walkCte}
-           SELECT 1 AS has_more
-           FROM (${visitedOverflowChecks})
-           LIMIT 1`
-        )
-        .get(...baseParams, ...Array(maxDepth).fill(visitedLimit));
-      if (visitedRows) {
-        truncated = true;
-        warnings.push("visitedLimit reached");
-      }
-
-      const frontierRows = db
-        .query<{ has_more: number }, (number | string)[]>(
-          `${walkCte}
-           SELECT 1 AS has_more
-           FROM (${frontierOverflowChecks})
-           LIMIT 1`
-        )
-        .get(...baseParams, ...Array(maxDepth * 2).fill(frontierLimit));
-      if (frontierRows) {
+      if (frontierOverflow) {
         truncated = true;
         warnings.push("frontierLimit reached");
       }
 
       const edgeRows = db
         .query<DbDocEdgeRow & { traversal_depth: number }, (number | string)[]>(
-          `${walkCte}
-           , returned_edges AS (
+          `WITH ${nodeDepthCte},
+           returned_edges AS (
            SELECT
              e.src_doc_id,
              src.docid AS source_docid,
@@ -5510,22 +5527,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
            ORDER BY traversal_depth ASC, edge_type ASC, source_docid ASC, target_docid ASC`
         )
         .all(
-          ...baseParams,
+          walkedJson,
           ...returnedIds,
           ...returnedIds,
           ...(edgeType ? [edgeType] : [])
         );
 
-      const boundaryRows = db
-        .query<{ has_more: number }, (number | string)[]>(
-          `${walkCte}
-           SELECT 1 AS has_more
-           FROM c${boundaryCandidateDepth}_ranked
-           LIMIT 1`
-        )
-        .get(...baseParams);
-
-      if (boundaryRows) {
+      if (depthOverflow) {
         truncated = true;
         warnings.push("maxDepth reached");
       }

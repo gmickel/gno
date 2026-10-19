@@ -202,6 +202,40 @@ describe("diagnoseGraphQuery", () => {
     ]);
   });
 
+  test("walks the maximum depth in both directions", async () => {
+    const chain: DocumentRow[] = [];
+    for (let index = 0; index < 8; index += 1) {
+      chain.push(await createDoc(`chain-${index}.md`, `Chain ${index}`));
+    }
+    for (let index = 0; index < chain.length - 1; index += 1) {
+      await adapter.setDocEdges(
+        chain[index]!.id,
+        [
+          {
+            targetDocId: chain[index + 1]!.id,
+            edgeType: "mentions",
+            confidence: "parsed",
+          },
+        ],
+        "wikilink"
+      );
+    }
+
+    const result = await diagnoseGraphQuery(adapter, chain[0]!.uri, {
+      direction: "both",
+      maxDepth: 6,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.nodes.map((node) => node.depth)).toEqual([
+      0, 1, 2, 3, 4, 5, 6,
+    ]);
+    expect(result.data.edges).toHaveLength(6);
+    expect(result.data.meta.truncated).toBe(true);
+    expect(result.data.meta.warnings).toEqual(["maxDepth reached"]);
+  });
+
   test("truncates hub traversal at frontier and node caps", async () => {
     const root = await createDoc("root.md", "Root");
     const targets: DocumentRow[] = [];
