@@ -255,6 +255,12 @@ export const searchInputSchema = z.object({
     .string()
     .optional()
     .describe("Filter to a single collection name"),
+  collections: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Filter to any of these collection names (1-256); use instead of collection"
+    ),
   limit: z
     .number()
     .int()
@@ -496,6 +502,12 @@ export const vsearchInputSchema = z.object({
     .string()
     .optional()
     .describe("Filter to a single collection name"),
+  collections: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Filter to any of these collection names (1-256); use instead of collection"
+    ),
   limit: z
     .number()
     .int()
@@ -570,6 +582,12 @@ export const queryInputSchema = z.object({
     .string()
     .optional()
     .describe("Filter to a single collection name"),
+  collections: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Filter to any of these collection names (1-256); use instead of collection"
+    ),
   limit: z
     .number()
     .int()
@@ -672,15 +690,17 @@ export const queryInputSchema = z.object({
   tagsAny: z.array(z.string()).optional().describe("Require ANY of these tags"),
 });
 
-export const queryDiagnoseInputSchema = queryInputSchema.extend({
-  target: z
-    .string()
-    .trim()
-    .min(1, "Target reference cannot be empty")
-    .describe(
-      "Target document reference to diagnose (gno URI, docid, or collection/path)"
-    ),
-});
+export const queryDiagnoseInputSchema = queryInputSchema
+  .omit({ collections: true })
+  .extend({
+    target: z
+      .string()
+      .trim()
+      .min(1, "Target reference cannot be empty")
+      .describe(
+        "Target document reference to diagnose (gno URI, docid, or collection/path)"
+      ),
+  });
 
 const getInputSchema = z.object({
   ref: z

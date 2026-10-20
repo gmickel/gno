@@ -718,6 +718,11 @@ export interface DocumentEligibilityOptions {
   exclude?: string[];
   /** Filter by collection */
   collection?: string;
+  /**
+   * Filter to documents in ANY of these collections, before ranking and LIMIT.
+   * Undefined is unrestricted; an empty array denies all.
+   */
+  collections?: string[];
   /** Internal exact relative-path boundary applied before ranking and LIMIT. */
   relPathPrefix?: string;
   /** Filter to docs with ANY of these tags */
@@ -1945,6 +1950,8 @@ export interface StorePort {
     mirrorHashes: string[],
     options?: {
       collection?: string;
+      /** Keep only documents in ANY of these collections; empty denies all. */
+      collections?: string[];
       activeOnly?: boolean;
     }
   ): Promise<StoreResult<DocumentRow[]>>;

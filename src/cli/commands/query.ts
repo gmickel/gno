@@ -19,6 +19,7 @@ import {
   fingerprintContentTypeMetadataRules,
   normalizeContentTypes,
 } from "../../config";
+import { resolveCollectionScope } from "../../core/collection-scope";
 import { resolveCliProjectAffinity } from "../../core/project-affinity-surface";
 import {
   finishRetrievalTraceAfterError,
@@ -27,7 +28,7 @@ import {
 } from "../../core/retrieval-trace-request";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
-import { resolveModelUri } from "../../llm/registry";
+import { modelCollectionForList, resolveModelUri } from "../../llm/registry";
 import {
   diagnoseQueryTarget,
   type QueryDiagnoseResult as PipelineQueryDiagnoseResult,
@@ -91,7 +92,7 @@ export type QueryResult =
       data: SearchResults;
       metadata?: RetrievalTraceSurfaceMetadata;
     }
-  | { success: false; error: string };
+  | { success: false; error: string; isValidation?: boolean };
 
 export type QueryDiagnoseCommandOptions = Omit<
   HybridSearchOptions,
@@ -151,17 +152,29 @@ export async function query(
   let traceSession: RetrievalTraceSession | undefined;
 
   try {
+    const scope = resolveCollectionScope(options, config.collections);
+    if (!scope.ok) {
+      return {
+        success: false,
+        error: scope.message,
+        isValidation: scope.kind === "validation",
+      };
+    }
+    options = { ...options, collections: scope.collections };
     const { projectAffinityDisabled, projectRoots, ...queryOptions } = options;
     const projectAffinity = await resolveCliProjectAffinity(config, {
       cwd: process.cwd(),
       disabled: projectAffinityDisabled,
       projectRoots,
     });
+    const modelCollection = (type: "embed" | "expand" | "rerank") =>
+      options.collection ??
+      modelCollectionForList(config, type, options.collections);
     const embedUri = resolveModelUri(
       config,
       "embed",
       options.embedModel,
-      options.collection
+      modelCollection("embed")
     );
     const expandUri =
       !options.noExpand && !options.queryModes?.length
@@ -169,7 +182,7 @@ export async function query(
             config,
             "expand",
             options.expandModel ?? options.genModel,
-            options.collection
+            modelCollection("expand")
           )
         : undefined;
     const rerankUri = !options.noRerank
@@ -177,7 +190,7 @@ export async function query(
           config,
           "rerank",
           options.rerankModel,
-          options.collection
+          modelCollection("rerank")
         )
       : undefined;
     const traceStart = await startRetrievalTraceRequest({
@@ -196,9 +209,9 @@ export async function query(
     }
     traceSession = traceStart.value ?? undefined;
     const llm = new LlmAdapter(config);
-    const egressCollections = options.collection
-      ? [options.collection]
-      : ("all" as const);
+    const egressCollections =
+      options.collections ??
+      (options.collection ? [options.collection] : ("all" as const));
 
     // Resolve download policy from env/flags
     const globals = getGlobals();

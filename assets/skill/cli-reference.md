@@ -393,16 +393,16 @@ BM25 keyword search.
 gno search <query> [options]
 ```
 
-| Option             | Default | Description                      |
-| ------------------ | ------- | -------------------------------- |
-| `-n`               | 5       | Max results                      |
-| `--min-score`      | 0       | Minimum score (0-1)              |
-| `-c, --collection` | all     | Filter to collection             |
-| `--tags-any`       | -       | Filter: has ANY tag (comma-sep)  |
-| `--tags-all`       | -       | Filter: has ALL tags (comma-sep) |
-| `--full`           | false   | Full content (not snippets)      |
-| `--line-numbers`   | false   | Include line numbers             |
-| `--lang`           | auto    | Language filter                  |
+| Option             | Default | Description                                            |
+| ------------------ | ------- | ------------------------------------------------------ |
+| `-n`               | 5       | Max results                                            |
+| `--min-score`      | 0       | Minimum score (0-1)                                    |
+| `-c, --collection` | all     | Filter to collection; repeat (`-c a -c b`) for several |
+| `--tags-any`       | -       | Filter: has ANY tag (comma-sep)                        |
+| `--tags-all`       | -       | Filter: has ALL tags (comma-sep)                       |
+| `--full`           | false   | Full content (not snippets)                            |
+| `--line-numbers`   | false   | Include line numbers                                   |
+| `--lang`           | auto    | Language filter                                        |
 
 Output formats: `--json`, `--files`, `--csv`, `--md`, `--xml`
 

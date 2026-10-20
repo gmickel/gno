@@ -179,7 +179,7 @@ export type GnoQueryOptions = Omit<
   GnoProjectHintOptions;
 export type GnoAskOptions = Omit<
   AskOptions,
-  "contentTypeRules" | "projectAffinity"
+  "collections" | "contentTypeRules" | "projectAffinity"
 > &
   GnoModelOverrides &
   GnoProjectHintOptions;

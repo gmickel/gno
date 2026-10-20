@@ -25,13 +25,27 @@ export interface QueryFilterEvaluation {
  * not replace complete ownership lineage or change ranking/deduplication.
  * Managed-memory scopes/supersession must already be enforced by the store.
  */
+/** True when `collection` falls outside the request's collection scope. */
+function outsideCollectionScope(
+  scope: Pick<HybridSearchOptions, "collection" | "collections">,
+  collection: string
+): boolean {
+  if (scope.collection && collection !== scope.collection) return true;
+  return (
+    scope.collections !== undefined && !scope.collections.includes(collection)
+  );
+}
+
 export async function evaluateRetrievalEligibility(
   store: StorePort,
   query: string,
   doc: DocumentRow | undefined,
   chunks: ChunkRow[] | undefined,
   options: HybridSearchOptions,
-  callerScope?: Pick<HybridSearchOptions, "collection" | "retrievalScope">
+  callerScope?: Pick<
+    HybridSearchOptions,
+    "collection" | "collections" | "retrievalScope"
+  >
 ): Promise<QueryFilterEvaluation & { chunks: ChunkRow[] }> {
   if (!doc || !chunks || !doc.mirrorHash) {
     return { matches: false, reasons: ["metadata"], chunks: [] };
@@ -40,7 +54,7 @@ export async function evaluateRetrievalEligibility(
   if (!doc.active) reasons.push("inactive");
   const sourcePath = doc.recordSourcePath ?? doc.relPath;
   for (const scope of [callerScope, options]) {
-    if (scope?.collection && doc.collection !== scope.collection) {
+    if (scope && outsideCollectionScope(scope, doc.collection)) {
       reasons.push("collection");
     }
     if (scope?.retrievalScope) {
@@ -98,7 +112,7 @@ export function evaluateDocumentChunkFilters(
     options.until
   );
 
-  if (options.collection && doc.collection !== options.collection) {
+  if (outsideCollectionScope(options, doc.collection)) {
     reasons.push("collection");
   }
   if (!isWithinTemporalRange(doc.sourceMtime, temporalRange)) {
@@ -219,6 +233,7 @@ export async function typedMetadataWarnings(
   const range = resolveTemporalRange(query, options.since, options.until);
   const result = await store.getTypedMetadataCoverage({
     collection: options.collection,
+    collections: options.collections,
     relPathPrefix: options.retrievalScope?.relPathPrefix,
     allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
     chunkLanguage: options.lang,

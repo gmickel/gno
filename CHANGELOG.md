@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `gno search`, `gno vsearch` and `gno query` can search several collections at once: repeat `-c` (`-c work -c notes`), or pass `collections` to the MCP tools, `POST /api/search` and `POST /api/query`, and the SDK. The filter applies before the result limit, so other collections never take result slots, and responses list the collections in `meta.collections`. Up to 256 names per request; `collection` and `collections` cannot be combined. Over the resident HTTP MCP endpoint, the egress check covers just the listed collections. Thanks to @ArnauvGilotra for the idea and the original pull request (#313).
+
 ## [2.12.2] - 2026-10-20
 
 ### Fixed

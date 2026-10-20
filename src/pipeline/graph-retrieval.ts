@@ -304,6 +304,7 @@ export async function expandGraphCandidates(
     seedHashes,
     {
       collection: options.collection,
+      collections: options.collections,
       activeOnly: true,
     }
   );

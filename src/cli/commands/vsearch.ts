@@ -13,6 +13,7 @@ import type {
 import type { EmbeddingPort } from "../../llm/types";
 import type { SearchOptions, SearchResults } from "../../pipeline/types";
 
+import { resolveCollectionScope } from "../../core/collection-scope";
 import { resolveCliProjectAffinity } from "../../core/project-affinity-surface";
 import {
   finishRetrievalTraceAfterError,
@@ -20,7 +21,7 @@ import {
   startRetrievalTraceRequest,
 } from "../../core/retrieval-trace-request";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
-import { resolveModelUri } from "../../llm/registry";
+import { modelCollectionForList, resolveModelUri } from "../../llm/registry";
 import { formatQueryForEmbedding } from "../../pipeline/contextual";
 import {
   searchVectorWithEmbedding,
@@ -65,7 +66,7 @@ export type VsearchResult =
       data: SearchResults;
       metadata?: RetrievalTraceSurfaceMetadata;
     }
-  | { success: false; error: string };
+  | { success: false; error: string; isValidation?: boolean };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Command Implementation
@@ -99,6 +100,15 @@ export async function vsearch(
   let traceSession: RetrievalTraceSession | undefined;
 
   try {
+    const scope = resolveCollectionScope(options, config.collections);
+    if (!scope.ok) {
+      return {
+        success: false,
+        error: scope.message,
+        isValidation: scope.kind === "validation",
+      };
+    }
+    options = { ...options, collections: scope.collections };
     const { projectAffinityDisabled, projectRoots, ...searchOptions } = options;
     const projectAffinity = await resolveCliProjectAffinity(config, {
       cwd: process.cwd(),
@@ -110,7 +120,8 @@ export async function vsearch(
       config,
       "embed",
       options.model,
-      options.collection
+      options.collection ??
+        modelCollectionForList(config, "embed", options.collections)
     );
     const traceStart = await startRetrievalTraceRequest({
       store,
@@ -129,7 +140,9 @@ export async function vsearch(
     // Create LLM adapter for embeddings
     const llm = new LlmAdapter(config);
     const embedResult = await llm.createEmbeddingPort(modelUri, {
-      egressCollections: options.collection ? [options.collection] : "all",
+      egressCollections:
+        options.collections ??
+        (options.collection ? [options.collection] : "all"),
     });
     if (!embedResult.ok) {
       await traceSession?.finish("failed");

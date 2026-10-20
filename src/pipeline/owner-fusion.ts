@@ -30,6 +30,7 @@ export async function resolveFusionOwners(
   ];
   const documents = await hydration.getDocumentsByMirrorHashes(hashes, {
     collection: options.collection,
+    collections: options.collections,
     activeOnly: true,
   });
   const chunks = await hydration.getChunksBatch(hashes);

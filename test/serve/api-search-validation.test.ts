@@ -67,3 +67,69 @@ test("REST retrieval rejects invalid typed filters with a stable field path befo
     });
   }
 });
+
+test("REST search and query validate the collections allowlist before retrieval", async () => {
+  const store = new SqliteAdapter();
+  expect((await store.open(":memory:", "unicode61")).ok).toBe(true);
+  const collections = ["alpha", "beta"].map((name) => ({
+    name,
+    path: `/tmp/${name}`,
+    pattern: "**/*.md",
+    include: [],
+    exclude: [],
+  }));
+  expect((await store.syncCollections(collections)).ok).toBe(true);
+  const ctx = {
+    store,
+    config: {
+      version: "1.0",
+      ftsTokenizer: "unicode61",
+      collections,
+      contexts: [],
+    },
+  } as unknown as ServerContext;
+  const post = (body: Record<string, unknown>) =>
+    new Request("http://localhost/api/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: "needle", ...body }),
+    });
+  try {
+    for (const handler of [
+      (req: Request) => handleSearch(store, req),
+      (req: Request) => handleSearch(ctx, req),
+      (req: Request) => handleQuery(ctx, req),
+    ]) {
+      const both = await handler(
+        post({ collection: "alpha", collections: ["beta"] })
+      );
+      expect(both.status).toBe(400);
+      expect(await both.json()).toMatchObject({
+        error: {
+          code: "VALIDATION",
+          message: "Pass either collection or collections, not both",
+        },
+      });
+      for (const collectionsInput of [[], "alpha", [1]]) {
+        const invalid = await handler(post({ collections: collectionsInput }));
+        expect(invalid.status).toBe(400);
+      }
+      const unknown = await handler(post({ collections: ["alpha", "nope"] }));
+      expect(unknown.status).toBe(404);
+      expect(await unknown.json()).toMatchObject({
+        error: { code: "NOT_FOUND", message: "Collection not found: nope" },
+      });
+    }
+    const served = await handleSearch(
+      store,
+      post({ collections: ["Beta", "alpha"] })
+    );
+    expect(served.status).toBe(200);
+    expect(
+      ((await served.json()) as { meta: { collections: string[] } }).meta
+        .collections
+    ).toEqual(["alpha", "beta"]);
+  } finally {
+    await store.close();
+  }
+});

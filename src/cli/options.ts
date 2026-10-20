@@ -26,6 +26,23 @@ export interface CliProjectAffinityOptions {
   projectRoots: string[];
 }
 
+/**
+ * Map repeatable `-c` values for search/vsearch/query: one value keeps the
+ * single-collection `collection` path; two or more form the allowlist.
+ */
+export const splitCollectionFlags = (
+  value: unknown
+): { collection?: string; collections?: string[] } => {
+  const values = Array.isArray(value)
+    ? (value as string[])
+    : typeof value === "string"
+      ? [value]
+      : [];
+  if (values.length === 0) return {};
+  if (values.length === 1) return { collection: values[0] };
+  return { collections: values };
+};
+
 export const collectRepeatableValue = (
   value: string,
   previous: string[] = []

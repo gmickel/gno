@@ -142,13 +142,18 @@ export class RequestHydration {
     const store = this.store;
     if (!store) return err("QUERY_FAILED", "Hydration request released");
     // Capture caller-owned options before any asynchronous read. Collection
-    // and activity are part of the lookup identity; titles never key by hash.
-    const scope = { ...options };
+    // scope and activity are part of the lookup identity; titles never key by
+    // hash.
+    const scope = {
+      ...options,
+      collections: options?.collections ? [...options.collections] : undefined,
+    };
     // Cache the exact lookup, retaining the adapter's ordering (including SQL
     // batch boundaries). Regrouping by content hash would reorder documents.
     const requested = [...hashes];
     const identity = JSON.stringify([
       scope.collection ?? null,
+      scope.collections ?? null,
       scope.activeOnly ?? null,
       requested,
     ]);

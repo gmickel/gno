@@ -199,6 +199,46 @@ describe("network boundary policy enforcement", () => {
     ).toThrow(EgressDeniedError);
   });
 
+  test("scopes remote retrieval to the collections allowlist", () => {
+    const collections = [
+      collection("public", "remote"),
+      collection("shared", "remote"),
+      collection("private", "local_only"),
+    ];
+    const context = {
+      authenticated: true,
+      destinationZone: "remote" as const,
+      operationAuthorized: true,
+    };
+    for (const name of ["gno_search", "gno_vsearch", "gno_query"]) {
+      const request = (requested: unknown) => ({
+        method: "tools/call",
+        params: { name, arguments: { query: "x", collections: requested } },
+      });
+      expect(() =>
+        enforceHttpMcpEgress(
+          request(["Public", "shared"]),
+          collections,
+          context
+        )
+      ).not.toThrow();
+      expect(() =>
+        enforceHttpMcpEgress(
+          request(["public", "private"]),
+          collections,
+          context
+        )
+      ).toThrow(EgressDeniedError);
+      // An empty or malformed list never narrows the check: every collection.
+      expect(() =>
+        enforceHttpMcpEgress(request([]), collections, context)
+      ).toThrow(EgressDeniedError);
+      expect(() =>
+        enforceHttpMcpEgress(request("public"), collections, context)
+      ).toThrow(EgressDeniedError);
+    }
+  });
+
   test("attributes a batch denial to the exact denied member", async () => {
     const batch = [
       { jsonrpc: "2.0", id: 1, method: "ping" },

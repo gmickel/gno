@@ -44,17 +44,23 @@ import {
 } from "../../core/typed-metadata";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
-import { getActivePreset, resolveModelUri } from "../../llm/registry";
+import {
+  getActivePreset,
+  modelCollectionForList,
+  resolveModelUri,
+} from "../../llm/registry";
 import { diagnoseQueryTarget } from "../../pipeline/diagnose";
 import { type HybridSearchDeps, searchHybrid } from "../../pipeline/hybrid";
 import { createLazyVectorIndex } from "../../store/vector/lazy";
 import { appendRetrievalWarnings } from "../retrieval-warnings";
+import { requestCollections } from "./collection-scope";
 import { normalizeTagFilters, runTool, type ToolResult } from "./index";
 
 interface QueryInput {
   query: string;
   projectHints?: string[];
   collection?: string;
+  collections?: string[];
   limit?: number;
   minScore?: number;
   lang?: string;
@@ -198,6 +204,7 @@ export function handleQuery(
           throw new Error(`Collection not found: ${args.collection}`);
         }
       }
+      const collections = requestCollections(args, ctx);
 
       const normalizedInput = normalizeStructuredQueryInput(
         args.query,
@@ -219,11 +226,14 @@ export function handleQuery(
       let rerankPort: RerankPort | null = null;
       let vectorIndex: VectorIndexPort | null = null;
       let traceSession: RetrievalTraceSession | undefined;
+      const modelCollection = (type: "embed" | "expand" | "rerank") =>
+        args.collection ??
+        modelCollectionForList(ctx.config, type, collections);
       const embedUri = resolveModelUri(
         ctx.config,
         "embed",
         undefined,
-        args.collection
+        modelCollection("embed")
       );
       const hasStructuredModes = Boolean(queryModes?.length);
       const depthPolicy = resolveDepthPolicy({
@@ -242,15 +252,26 @@ export function handleQuery(
       );
       const expandUri =
         !noExpand && !hasStructuredModes
-          ? resolveModelUri(ctx.config, "expand", undefined, args.collection)
+          ? resolveModelUri(
+              ctx.config,
+              "expand",
+              undefined,
+              modelCollection("expand")
+            )
           : undefined;
       const rerankUri = !noRerank
-        ? resolveModelUri(ctx.config, "rerank", undefined, args.collection)
+        ? resolveModelUri(
+            ctx.config,
+            "rerank",
+            undefined,
+            modelCollection("rerank")
+          )
         : undefined;
       const options = {
         limit: args.limit ?? 5,
         minScore: args.minScore,
         collection: args.collection,
+        collections,
         queryLanguageHint: args.lang,
         intent: args.intent,
         candidateLimit: depthPolicy.candidateLimit,
@@ -289,9 +310,9 @@ export function handleQuery(
         if (!traceStart.ok) throw new Error(traceStart.error.message);
         traceSession = traceStart.value ?? undefined;
         const llm = ctx.getModelAdapter?.() ?? new LlmAdapter(ctx.config);
-        const egressCollections = args.collection
-          ? [args.collection]
-          : ("all" as const);
+        const egressCollections =
+          collections ??
+          (args.collection ? [args.collection] : ("all" as const));
 
         // Resolve download policy from env (MCP has no CLI flags)
         const policy = resolveDownloadPolicy(process.env, {});

@@ -25,12 +25,14 @@ import {
 } from "../../core/typed-metadata";
 import { searchBm25 } from "../../pipeline/search";
 import { appendRetrievalWarnings } from "../retrieval-warnings";
+import { requestCollections } from "./collection-scope";
 import { normalizeTagFilters, runTool, type ToolResult } from "./index";
 
 interface SearchInput {
   query: string;
   projectHints?: string[];
   collection?: string;
+  collections?: string[];
   limit?: number;
   minScore?: number;
   lang?: string;
@@ -123,6 +125,7 @@ export function handleSearch(
           throw new Error(`Collection not found: ${args.collection}`);
         }
       }
+      const collections = requestCollections(args, ctx);
 
       const projectAffinity = await resolveRemoteProjectAffinity(
         ctx.config,
@@ -132,6 +135,7 @@ export function handleSearch(
         limit: args.limit ?? 5,
         minScore: args.minScore,
         collection: args.collection,
+        collections,
         lang: args.lang,
         intent: args.intent,
         exclude: args.exclude,

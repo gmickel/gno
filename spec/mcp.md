@@ -603,6 +603,19 @@ opaque remote hints. The server never stats, realpaths, discovers repositories,
 or infers its cwd from them; remote hints produce redacted zero-affinity
 metadata and no ranking change.
 
+`gno_search`, `gno_vsearch` and `gno_query` also accept an optional
+`collections` allowlist. The filter applies before every candidate limit (BM25,
+vector, fusion, graph expansion, hydration and rerank), so unlisted collections
+never take result slots. Names are trimmed, lowercased, de-duplicated and
+sorted; responses echo them as `meta.collections`, and `meta.collection` keeps
+its single-collection meaning. Passing both `collection` and `collections`, an
+empty list, a non-string member, or more than 256 names after normalization is
+a `VALIDATION` error; unconfigured names give `Collection not found: <name>` /
+`Collections not found: <a>, <b>`. Over HTTP the egress check covers exactly
+the listed collections, so the most restrictive listed collection decides.
+When the listed collections resolve different models for a role, that role uses
+the unscoped default. `gno_query_diagnose` does not accept `collections`.
+
 **Input Schema:**
 
 ```json
@@ -616,6 +629,11 @@ metadata and no ranking change.
     "collection": {
       "type": "string",
       "description": "Optional collection name to filter results"
+    },
+    "collections": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Optional allowlist: filter to any of these collection names (1-256); use instead of collection"
     },
     "limit": {
       "type": "integer",
@@ -738,6 +756,11 @@ Vector semantic search over indexed documents.
       "type": "string",
       "description": "Optional collection name to filter results"
     },
+    "collections": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Optional allowlist: filter to any of these collection names (1-256); use instead of collection"
+    },
     "limit": {
       "type": "integer",
       "description": "Maximum number of results (1-100)",
@@ -821,6 +844,11 @@ Hybrid search combining BM25 and vector retrieval with optional expansion and re
     "collection": {
       "type": "string",
       "description": "Optional collection name to filter results"
+    },
+    "collections": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Optional allowlist: filter to any of these collection names (1-256); use instead of collection"
     },
     "limit": {
       "type": "integer",

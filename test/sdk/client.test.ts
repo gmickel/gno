@@ -849,3 +849,44 @@ test("SDK rejects malformed typed filters before model or retrieval execution", 
     });
   }
 });
+
+test("SDK validates the collections allowlist before model or retrieval execution", async () => {
+  const rejection = async (pending: Promise<unknown>): Promise<unknown> => {
+    try {
+      await pending;
+    } catch (error) {
+      return error;
+    }
+    throw new Error("Expected the call to reject");
+  };
+  for (const run of [
+    (options: GnoSearchOptions) => client.search("needle", options),
+    (options: GnoSearchOptions) => client.vsearch("needle", options),
+    (options: GnoSearchOptions) => client.query("needle", options),
+  ]) {
+    expect(
+      await rejection(
+        run({ collection: "fixtures", collections: ["fixtures"] })
+      )
+    ).toMatchObject({
+      code: "VALIDATION",
+      message: "Pass either collection or collections, not both",
+    });
+    expect(await rejection(run({ collections: [] }))).toMatchObject({
+      code: "VALIDATION",
+    });
+    expect(
+      await rejection(run({ collections: ["fixtures", "nope"] }))
+    ).toMatchObject({
+      code: "VALIDATION",
+      message: "Collection not found: nope",
+    });
+  }
+  const served = await client.search("JWT token", {
+    collections: ["Fixtures"],
+  });
+  expect(served.meta.collections).toEqual(["fixtures"]);
+  expect(
+    served.results.every(({ uri }) => uri.startsWith("gno://fixtures/"))
+  ).toBe(true);
+});

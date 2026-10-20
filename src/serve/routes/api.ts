@@ -57,6 +57,7 @@ import {
   type EgressRelaxationConfirmation,
 } from "../../core/collection-egress-policy-service";
 import { parsePolicySetBody } from "../../core/collection-egress-policy-validation";
+import { resolveCollectionScope } from "../../core/collection-scope";
 import {
   type ConnectorVerificationCode,
   getConnectorVerificationRemediation,
@@ -303,6 +304,8 @@ export interface SearchRequestBody {
   limit?: number;
   minScore?: number;
   collection?: string;
+  /** Collection allowlist (1-256 names); not combined with `collection`. */
+  collections?: string[];
   intent?: string;
   exclude?: string;
   since?: string;
@@ -323,6 +326,8 @@ export interface QueryRequestBody {
   limit?: number;
   minScore?: number;
   collection?: string;
+  /** Collection allowlist (1-256 names); not combined with `collection`. */
+  collections?: string[];
   lang?: string;
   intent?: string;
   candidateLimit?: number;
@@ -649,6 +654,42 @@ function parseRestMetadataFilter(
     };
   }
   return { ok: true, filter: normalizeMetadataPredicate(parsed.data) };
+}
+
+/**
+ * Resolve a search/query `collections` allowlist: 400 VALIDATION for malformed
+ * input or `collection` with `collections`, 404 NOT_FOUND for unknown names.
+ */
+async function parseRestCollectionScope(
+  body: { collection?: unknown; collections?: unknown },
+  configured: readonly { name: string }[] | null,
+  store: SqliteAdapter
+): Promise<
+  | { ok: true; collections: string[] | undefined }
+  | { ok: false; response: Response }
+> {
+  if (body.collections === undefined)
+    return { ok: true, collections: undefined };
+  let names = configured;
+  if (!names) {
+    const stored = await store.getCollections();
+    if (!stored.ok) {
+      return {
+        ok: false,
+        response: errorResponse("RUNTIME", stored.error.message, 500),
+      };
+    }
+    names = stored.value;
+  }
+  const scope = resolveCollectionScope(body, names);
+  if (scope.ok) return { ok: true, collections: scope.collections };
+  return {
+    ok: false,
+    response:
+      scope.kind === "validation"
+        ? errorResponse("VALIDATION", scope.message)
+        : errorResponse("NOT_FOUND", scope.message, 404),
+  };
 }
 
 function fileRefactorHttpErrorResponse(error: FileRefactorHttpError): Response {
@@ -4587,6 +4628,13 @@ export async function handleSearch(
   const parsedFilter = parseRestMetadataFilter(body.filter);
   if (!parsedFilter.ok) return parsedFilter.response;
   const filter = parsedFilter.filter;
+  const collectionScope = await parseRestCollectionScope(
+    body,
+    context?.config.collections ?? null,
+    store
+  );
+  if (!collectionScope.ok) return collectionScope.response;
+  const { collections } = collectionScope;
   let projectAffinity: ProjectAffinityScoringInput | undefined;
   try {
     projectAffinity = context
@@ -4606,6 +4654,7 @@ export async function handleSearch(
     limit: Math.min(body.limit || 10, 50),
     minScore: body.minScore,
     collection: body.collection,
+    collections,
     intent: body.intent?.trim() || undefined,
     exclude,
     tagsAll,
@@ -4785,6 +4834,13 @@ export async function handleQuery(
   const parsedFilter = parseRestMetadataFilter(body.filter);
   if (!parsedFilter.ok) return parsedFilter.response;
   const filter = parsedFilter.filter;
+  const collectionScope = await parseRestCollectionScope(
+    body,
+    ctx.config.collections,
+    ctx.store
+  );
+  if (!collectionScope.ok) return collectionScope.response;
+  const { collections } = collectionScope;
   let projectAffinity: ProjectAffinityScoringInput | undefined;
   try {
     projectAffinity = await resolveRemoteProjectAffinity(
@@ -4804,6 +4860,7 @@ export async function handleQuery(
     limit: Math.min(body.limit ?? 20, 50),
     minScore: body.minScore,
     collection: body.collection,
+    collections,
     lang: body.lang,
     intent: body.intent?.trim() || undefined,
     candidateLimit:

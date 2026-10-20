@@ -244,6 +244,7 @@ gno search "auth" --json
 gno search "meeting" --files
 gno search --query-file /run/user/1000/gno-recall/q.XXXX --json
 printf '%s' "auth" | gno search --query-file - --json
+gno search "deploy" -c work -c ops --json   # only these collections
 ```
 
 **Document-level indexing**: Finds documents where terms appear anywhere, even across sections. "authentication JWT" matches docs with those terms in different parts.
@@ -267,6 +268,7 @@ Options:
 - `--query-file <path>` - Read the query from a file (`-` reads stdin). Keeps the query off argv. Do not also pass a positional query.
 - `-n, --limit <n>` - Limit results (default: 5; 20 with --json/--files)
 - `--min-score <n>` - Minimum score threshold (0-1)
+- `-c, --collection <name>` - Filter to a collection; repeat to search several (`-c work -c notes`, up to 256). The filter applies before the result limit, and `--json` lists them in `meta.collections`
 - `--full` - Show full document content (not just snippet)
 - `--line-numbers` - Show line numbers in snippets
 - `--lang <code>` - Filter by detected language in code blocks
@@ -337,6 +339,7 @@ gno query "auth" --thorough          # Full pipeline: ~5-8s
 gno query "auth" --tags-all work,backend   # Filter by tags
 gno query "performance" --intent "web performance and latency"
 gno query "auth" --no-graph          # Disable graph-neighbor candidates
+gno query "auth" -c work -c notes     # Search only these collections
 gno query diagnose "Alice Acme" --target gno://notes/people/alice.md --json
 gno query "auth flow" --query-mode term:"jwt refresh token" --query-mode intent:"how refresh token rotation works"
 gno query $'auth flow\nterm: "refresh token"\nintent: token rotation'

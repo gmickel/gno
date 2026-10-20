@@ -140,6 +140,19 @@ const GRAPH_RESULT_TOOLS = new Set([
   "gno_impact",
 ]);
 
+/**
+ * Tools whose `collections` argument bounds the collections they read. The
+ * retrieval tools reject `collection` with `collections`, so the union of both
+ * is never wider than what the handler serves.
+ */
+const COLLECTIONS_SCOPE_TOOLS = new Set([
+  "gno_audit",
+  "gno_impact",
+  "gno_query",
+  "gno_search",
+  "gno_vsearch",
+]);
+
 const requestedCollections = (
   params: unknown,
   collections: readonly Collection[]
@@ -155,7 +168,8 @@ const requestedCollections = (
   if (typeof direct === "string" && direct.trim())
     names.add(direct.trim().toLowerCase());
   if (
-    (record?.name === "gno_audit" || record?.name === "gno_impact") &&
+    typeof record?.name === "string" &&
+    COLLECTIONS_SCOPE_TOOLS.has(record.name) &&
     Array.isArray(args.collections)
   ) {
     for (const value of args.collections) {

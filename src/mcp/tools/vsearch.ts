@@ -28,7 +28,7 @@ import {
 } from "../../core/typed-metadata";
 import { LlmAdapter } from "../../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../../llm/policy";
-import { resolveModelUri } from "../../llm/registry";
+import { modelCollectionForList, resolveModelUri } from "../../llm/registry";
 import { formatQueryForEmbedding } from "../../pipeline/contextual";
 import {
   searchVectorWithEmbedding,
@@ -36,12 +36,14 @@ import {
 } from "../../pipeline/vsearch";
 import { createVectorIndexPort } from "../../store/vector";
 import { appendRetrievalWarnings } from "../retrieval-warnings";
+import { requestCollections } from "./collection-scope";
 import { normalizeTagFilters, runTool, type ToolResult } from "./index";
 
 interface VsearchInput {
   query: string;
   projectHints?: string[];
   collection?: string;
+  collections?: string[];
   limit?: number;
   minScore?: number;
   lang?: string;
@@ -137,13 +139,15 @@ export function handleVsearch(
           throw new Error(`Collection not found: ${args.collection}`);
         }
       }
+      const collections = requestCollections(args, ctx);
 
       // Get model from active preset
       const modelUri = resolveModelUri(
         ctx.config,
         "embed",
         undefined,
-        args.collection
+        args.collection ??
+          modelCollectionForList(ctx.config, "embed", collections)
       );
       const projectAffinity = await resolveRemoteProjectAffinity(
         ctx.config,
@@ -153,6 +157,7 @@ export function handleVsearch(
         limit: args.limit ?? 5,
         minScore: args.minScore,
         collection: args.collection,
+        collections,
         intent: args.intent,
         exclude: args.exclude,
         since: args.since,
@@ -192,7 +197,8 @@ export function handleVsearch(
         // Create LLM adapter for embeddings
         const llm = ctx.getModelAdapter?.() ?? new LlmAdapter(ctx.config);
         const embedResult = await llm.createEmbeddingPort(modelUri, {
-          egressCollections: args.collection ? [args.collection] : "all",
+          egressCollections:
+            collections ?? (args.collection ? [args.collection] : "all"),
           policy,
           onProgress: (progress) => downloadProgress("embed", progress),
         });

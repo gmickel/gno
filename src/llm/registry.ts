@@ -134,6 +134,26 @@ export function resolveModelUri(
   return preset[type];
 }
 
+/**
+ * Collection to resolve models for when a request lists several collections:
+ * the first listed one when every listed collection resolves `type` to the
+ * same model, otherwise undefined (the unscoped resolution).
+ */
+export function modelCollectionForList(
+  config: Config,
+  type: ModelType,
+  collections: readonly string[] | undefined
+): string | undefined {
+  const [first] = collections ?? [];
+  if (first === undefined) return undefined;
+  const uri = resolveModelUri(config, type, undefined, first);
+  return collections?.every(
+    (collection) => resolveModelUri(config, type, undefined, collection) === uri
+  )
+    ? first
+    : undefined;
+}
+
 export function resolveModelSource(
   config: Config,
   type: ModelType,

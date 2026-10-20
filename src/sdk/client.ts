@@ -110,6 +110,7 @@ import {
 import { publishCapture } from "../core/capture-publish";
 import { projectCollectionEgressPolicy } from "../core/collection-egress-policy-projection";
 import { CollectionEgressPolicyService } from "../core/collection-egress-policy-service";
+import { resolveCollectionScope } from "../core/collection-scope";
 import { applyConfigChange } from "../core/config-mutation";
 import { getDocumentCapabilities } from "../core/document-capabilities";
 import { EgressAuditService } from "../core/egress-audit";
@@ -196,7 +197,7 @@ import {
 } from "../llm/inference-scope";
 import { LlmAdapter } from "../llm/nodeLlamaCpp/adapter";
 import { resolveDownloadPolicy } from "../llm/policy";
-import { resolveModelUri } from "../llm/registry";
+import { modelCollectionForList, resolveModelUri } from "../llm/registry";
 import {
   answerTraceTerminalStatus,
   generateGroundedAnswer,
@@ -476,6 +477,27 @@ class GnoClientImpl implements GnoClient {
     }
   }
 
+  /** Normalize and validate a search/vsearch/query `collections` allowlist. */
+  private withCollectionScope<
+    T extends { collection?: string; collections?: string[] },
+  >(options: T): T {
+    const scope = resolveCollectionScope(options, this.config.collections);
+    if (!scope.ok) throw sdkError("VALIDATION", scope.message);
+    return scope.collections === undefined
+      ? options
+      : { ...options, collections: scope.collections };
+  }
+
+  private modelCollection(
+    type: "embed" | "expand" | "rerank",
+    options: { collection?: string; collections?: string[] }
+  ): string | undefined {
+    return (
+      options.collection ??
+      modelCollectionForList(this.config, type, options.collections)
+    );
+  }
+
   private getCollections(collection?: string) {
     if (!collection) {
       return this.config.collections;
@@ -541,6 +563,7 @@ class GnoClientImpl implements GnoClient {
     answer?: boolean;
     rerank?: boolean;
     collection?: string;
+    collections?: string[];
     requiredEmbed?: boolean;
     requiredExpand?: boolean;
     requiredAnswer?: boolean;
@@ -551,9 +574,9 @@ class GnoClientImpl implements GnoClient {
     rerankModel?: string;
   }): Promise<RuntimePorts> {
     this.assertOpen();
-    const egressCollections = options.collection
-      ? [options.collection]
-      : ("all" as const);
+    const egressCollections =
+      options.collections ??
+      (options.collection ? [options.collection] : ("all" as const));
 
     let embedPort: EmbeddingPort | null = null;
     let expandPort: GenerationPort | null = null;
@@ -567,7 +590,7 @@ class GnoClientImpl implements GnoClient {
           this.config,
           "embed",
           options.embedModel,
-          options.collection
+          this.modelCollection("embed", options)
         ),
         {
           egressCollections,
@@ -612,7 +635,7 @@ class GnoClientImpl implements GnoClient {
           this.config,
           "expand",
           options.expandModel ?? options.genModel,
-          options.collection
+          this.modelCollection("expand", options)
         ),
         {
           egressCollections,
@@ -665,7 +688,7 @@ class GnoClientImpl implements GnoClient {
           this.config,
           "rerank",
           options.rerankModel,
-          options.collection
+          this.modelCollection("rerank", options)
         ),
         {
           egressCollections,
@@ -735,6 +758,7 @@ class GnoClientImpl implements GnoClient {
     options: GnoSearchOptions
   ): Promise<SearchResults> {
     this.assertOpen();
+    options = this.withCollectionScope(options);
     let traceSession: RetrievalTraceSession | null = null;
     try {
       const { projectHints, ...searchOptions } = options;
@@ -789,6 +813,7 @@ class GnoClientImpl implements GnoClient {
     options: GnoVectorSearchOptions
   ): Promise<SearchResults> {
     this.assertOpen();
+    options = this.withCollectionScope(options);
 
     let ports: RuntimePorts | null = null;
     let traceSession: RetrievalTraceSession | null = null;
@@ -805,7 +830,7 @@ class GnoClientImpl implements GnoClient {
         this.config,
         "embed",
         options.model,
-        options.collection
+        this.modelCollection("embed", options)
       );
       traceSession = unwrapStore(
         await startRetrievalTraceRequest({
@@ -823,6 +848,7 @@ class GnoClientImpl implements GnoClient {
         requiredEmbed: true,
         embedModel: options.model,
         collection: options.collection,
+        collections: options.collections,
       });
       if (!ports.embedPort || !ports.vectorIndex) {
         throw sdkError(
@@ -882,6 +908,7 @@ class GnoClientImpl implements GnoClient {
     options: GnoQueryOptions
   ): Promise<SearchResults> {
     this.assertOpen();
+    options = this.withCollectionScope(options);
 
     const normalizedInput = normalizeStructuredQueryInput(
       query,
@@ -905,14 +932,14 @@ class GnoClientImpl implements GnoClient {
       this.config,
       "embed",
       options.embedModel,
-      options.collection
+      this.modelCollection("embed", options)
     );
     const expandUri = expandRequested
       ? resolveModelUri(
           this.config,
           "expand",
           options.expandModel ?? options.genModel,
-          options.collection
+          this.modelCollection("expand", options)
         )
       : undefined;
     const rerankUri = rerankRequested
@@ -920,7 +947,7 @@ class GnoClientImpl implements GnoClient {
           this.config,
           "rerank",
           options.rerankModel,
-          options.collection
+          this.modelCollection("rerank", options)
         )
       : undefined;
     let ports: RuntimePorts | null = null;
@@ -956,6 +983,7 @@ class GnoClientImpl implements GnoClient {
         genModel: options.genModel,
         rerankModel: options.rerankModel,
         collection: options.collection,
+        collections: options.collections,
       });
       return attachRetrievalTraceMetadata(
         this.decorateSearchResults(

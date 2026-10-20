@@ -454,6 +454,13 @@
           "type": "string",
           "description": "Collection filter if applied"
         },
+        "collections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "maxItems": 256,
+          "description": "Normalized collection allowlist if applied (sorted, lowercase)"
+        },
         "intent": {
           "type": "string",
           "description": "Disambiguating context used to steer retrieval without being searched directly"

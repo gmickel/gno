@@ -180,6 +180,21 @@ BM25/document-level search.
 const results = await client.search("JWT token", { limit: 5 });
 ```
 
+`search`, `vsearch`, and `query` accept `collections` to search several
+collections at once, filtered before the result limit:
+
+```ts
+const scoped = await client.query("rollout plan", {
+  collections: ["work", "ops"],
+});
+scoped.meta.collections; // ["ops", "work"]
+```
+
+Names are trimmed, lowercased, de-duplicated and sorted. Passing both
+`collection` and `collections`, an empty list, more than 256 names, or a name
+that is not configured throws a `GnoSdkError` with code `VALIDATION`. `ask` does
+not take `collections`.
+
 `search`, `vsearch`, `query`, and `ask` preserve optional `context` on each
 result. It contains matching user-configured guidance in deterministic
 global-to-specific order while `uri` and `docid` retain the exact source

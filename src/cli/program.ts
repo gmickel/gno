@@ -52,6 +52,7 @@ import {
   assertFormatSupported,
   CMD,
   collectRepeatableValue,
+  splitCollectionFlags,
   getDefaultLimit,
   parseCliProjectAffinityOptions,
   parseCliMetadataFilter,
@@ -324,6 +325,18 @@ function validateContextOutputPath(value: unknown): string | undefined {
 // ─────────────────────────────────────────────────────────────────────────────
 // Program Factory
 // ─────────────────────────────────────────────────────────────────────────────
+
+/** `query --diagnose` explains one collection scope; several `-c` are refused. */
+function singleDiagnoseCollection(value: unknown): string | undefined {
+  const { collection, collections } = splitCollectionFlags(value);
+  if (collections) {
+    throw new CliError(
+      "VALIDATION",
+      "query --diagnose accepts a single -c collection"
+    );
+  }
+  return collection;
+}
 
 export function createProgram(): Command {
   const program = new Command();
@@ -650,7 +663,11 @@ function wireSearchCommands(program: Command): void {
     )
     .option("-n, --limit <num>", "max results")
     .option("--min-score <num>", "minimum score threshold")
-    .option("-c, --collection <name>", "filter by collection")
+    .option(
+      "-c, --collection <name>",
+      "filter by collection (repeat for several)",
+      collectRepeatableValue
+    )
     .option("--lang <code>", "language filter/hint (BCP-47)")
     .option(
       "--since <date>",
@@ -740,7 +757,7 @@ function wireSearchCommands(program: Command): void {
           indexName: globals.index,
           limit,
           minScore,
-          collection: cmdOpts.collection as string | undefined,
+          ...splitCollectionFlags(cmdOpts.collection),
           lang: cmdOpts.lang as string | undefined,
           since: cmdOpts.since as string | undefined,
           until: cmdOpts.until as string | undefined,
@@ -790,7 +807,11 @@ function wireSearchCommands(program: Command): void {
     .description("Vector similarity search")
     .option("-n, --limit <num>", "max results")
     .option("--min-score <num>", "minimum score threshold")
-    .option("-c, --collection <name>", "filter by collection")
+    .option(
+      "-c, --collection <name>",
+      "filter by collection (repeat for several)",
+      collectRepeatableValue
+    )
     .option("--lang <code>", "language filter/hint (BCP-47)")
     .option(
       "--since <date>",
@@ -870,7 +891,7 @@ function wireSearchCommands(program: Command): void {
         indexName: globals.index,
         limit,
         minScore,
-        collection: cmdOpts.collection as string | undefined,
+        ...splitCollectionFlags(cmdOpts.collection),
         lang: cmdOpts.lang as string | undefined,
         since: cmdOpts.since as string | undefined,
         until: cmdOpts.until as string | undefined,
@@ -892,7 +913,10 @@ function wireSearchCommands(program: Command): void {
       });
 
       if (!result.success) {
-        throw new CliError("RUNTIME", result.error);
+        throw new CliError(
+          result.isValidation ? "VALIDATION" : "RUNTIME",
+          result.error
+        );
       }
       const output = formatVsearch(result, {
         json: format === "json",
@@ -918,7 +942,11 @@ function wireSearchCommands(program: Command): void {
     )
     .option("-n, --limit <num>", "max results")
     .option("--min-score <num>", "minimum score threshold")
-    .option("-c, --collection <name>", "filter by collection")
+    .option(
+      "-c, --collection <name>",
+      "filter by collection (repeat for several)",
+      collectRepeatableValue
+    )
     .option("--lang <code>", "language hint (BCP-47)")
     .option(
       "--since <date>",
@@ -1088,7 +1116,7 @@ function wireSearchCommands(program: Command): void {
             target: cmdOpts.target as string,
             limit,
             minScore,
-            collection: cmdOpts.collection as string | undefined,
+            collection: singleDiagnoseCollection(cmdOpts.collection),
             lang: cmdOpts.lang as string | undefined,
             since: cmdOpts.since as string | undefined,
             until: cmdOpts.until as string | undefined,
@@ -1125,7 +1153,7 @@ function wireSearchCommands(program: Command): void {
           indexName: globals.index,
           limit,
           minScore,
-          collection: cmdOpts.collection as string | undefined,
+          ...splitCollectionFlags(cmdOpts.collection),
           lang: cmdOpts.lang as string | undefined,
           since: cmdOpts.since as string | undefined,
           until: cmdOpts.until as string | undefined,
@@ -1154,7 +1182,10 @@ function wireSearchCommands(program: Command): void {
         });
 
         if (!result.success) {
-          throw new CliError("RUNTIME", result.error);
+          throw new CliError(
+            result.isValidation ? "VALIDATION" : "RUNTIME",
+            result.error
+          );
         }
         const output = formatQuery(result, {
           format,

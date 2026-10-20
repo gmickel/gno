@@ -2330,6 +2330,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     mirrorHashes: string[],
     options: {
       collection?: string;
+      collections?: string[];
       activeOnly?: boolean;
     } = {}
   ): Promise<StoreResult<DocumentRow[]>> {
@@ -2350,7 +2351,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
       // SQLite SQLITE_LIMIT_VARIABLE_NUMBER defaults to 999.
       // Reserve headroom for optional non-IN parameters.
-      const SQL_PARAM_LIMIT = options.collection ? 899 : 900;
+      const SQL_PARAM_LIMIT = 898;
 
       for (let i = 0; i < uniqueHashes.length; i += SQL_PARAM_LIMIT) {
         const batch = uniqueHashes.slice(i, i + SQL_PARAM_LIMIT);
@@ -2364,6 +2365,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         if (options.collection) {
           clauses.push("collection = ?");
           params.push(options.collection);
+        }
+        if (options.collections !== undefined) {
+          clauses.push("collection IN (SELECT value FROM json_each(?))");
+          params.push(JSON.stringify(options.collections));
         }
 
         const sql = `SELECT * FROM documents INDEXED BY idx_documents_mirror_hash WHERE ${clauses.join(" AND ")} ORDER BY id`;

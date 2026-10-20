@@ -321,6 +321,24 @@ function withoutRequestIdExtension(tool: WireTool): WireTool {
   return { ...tool, inputSchema: { ...rest, properties: oldProperties } };
 }
 
+/** Retrieval tools that gained the optional `collections` allowlist (fn-222). */
+const COLLECTIONS_ALLOWLIST_TOOLS = new Set([
+  "gno_query",
+  "gno_search",
+  "gno_vsearch",
+]);
+
+/** Remove only the additive fn-222 `collections` input for the frozen capture. */
+function withoutCollectionsAllowlist(tool: WireTool): WireTool {
+  if (!COLLECTIONS_ALLOWLIST_TOOLS.has(tool.name)) return tool;
+  const { properties, ...rest } = tool.inputSchema;
+  const { collections: _collections, ...oldProperties } = properties as Record<
+    string,
+    unknown
+  >;
+  return { ...tool, inputSchema: { ...rest, properties: oldProperties } };
+}
+
 /** Remove only the additive fn-168 inputs when comparing the frozen SDK capture. */
 function withoutTypedFilterExtension(tool: WireTool): Record<string, unknown> {
   const schema = tool.inputSchema;
@@ -438,7 +456,9 @@ function normalizeToolsList(line: string): string {
           : withoutClosedInput(
               withoutSdkDeltas(
                 withoutTypedFilterExtension(
-                  withoutRequestIdExtension(withoutAuditCapExtension(tool))
+                  withoutRequestIdExtension(
+                    withoutAuditCapExtension(withoutCollectionsAllowlist(tool))
+                  )
                 )
               ) as Record<string, unknown>
             ),

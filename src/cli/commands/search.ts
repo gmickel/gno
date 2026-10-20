@@ -13,6 +13,7 @@ import type {
 import type { SearchOptions, SearchResults } from "../../pipeline/types";
 
 import { normalizeContentTypes } from "../../config";
+import { resolveCollectionScope } from "../../core/collection-scope";
 import { resolveCliProjectAffinity } from "../../core/project-affinity-surface";
 import {
   finishRetrievalTraceAfterError,
@@ -91,6 +92,15 @@ export async function search(
   let traceSession: RetrievalTraceSession | undefined;
 
   try {
+    const scope = resolveCollectionScope(options, config.collections);
+    if (!scope.ok) {
+      return {
+        success: false,
+        error: scope.message,
+        isValidation: scope.kind === "validation",
+      };
+    }
+    options = { ...options, collections: scope.collections };
     const { projectAffinityDisabled, projectRoots, ...searchOptions } = options;
     const projectAffinity = await resolveCliProjectAffinity(config, {
       cwd: process.cwd(),
@@ -104,6 +114,7 @@ export async function search(
       filters: {
         limit,
         collection: options.collection,
+        collections: options.collections,
         lang: options.lang,
         full: options.full,
         lineNumbers: options.lineNumbers,
