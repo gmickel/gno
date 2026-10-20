@@ -206,7 +206,12 @@ const requestedCollections = (
       if (collection) names.add(collection);
     }
   }
-  return names.size > 0 ? [...names] : collections.map(({ name }) => name);
+  // A name that is not configured serves nothing (the handler refuses it), so
+  // it never narrows or widens the check; with no configured name left, every
+  // collection is checked (fail closed).
+  const configured = new Set(collections.map(({ name }) => name.toLowerCase()));
+  const scoped = [...names].filter((name) => configured.has(name));
+  return scoped.length > 0 ? scoped : collections.map(({ name }) => name);
 };
 
 const enforceMessage = (

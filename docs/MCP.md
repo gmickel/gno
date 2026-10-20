@@ -1258,7 +1258,9 @@ result limit, so other collections never take result slots. Responses echo the
 normalized list in `meta.collections`. Sending both `collection` and
 `collections`, an empty list or more than 256 names is a `VALIDATION` error;
 unknown names are listed in the error. Over HTTP the egress check covers just
-the listed collections. `gno_vsearch` and `gno_query` accept the same
+the listed collections; it runs before the tool, so a malformed or empty list
+from a non-loopback client is checked against every collection and may be
+refused by egress policy before the `VALIDATION` error is reached. `gno_vsearch` and `gno_query` accept the same
 `collections` input; `gno_query_diagnose` does not.
 
 Structured search results include per-result `contentType` and `categories`

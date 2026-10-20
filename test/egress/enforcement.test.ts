@@ -239,6 +239,36 @@ describe("network boundary policy enforcement", () => {
     }
   });
 
+  test("unknown collection names fall back to a policy decision, never a transport error", () => {
+    const collections = [
+      collection("public", "remote"),
+      collection("private", "local_only"),
+    ];
+    const context = {
+      authenticated: true,
+      destinationZone: "remote" as const,
+      operationAuthorized: true,
+    };
+    const call = (name: string, args: Record<string, unknown>) => ({
+      method: "tools/call",
+      params: { name, arguments: { query: "x", ...args } },
+    });
+    // A known name keeps its own scope; the unknown one serves nothing.
+    expect(() =>
+      enforceHttpMcpEgress(
+        call("gno_query", { collections: ["public", "nope"] }),
+        collections,
+        context
+      )
+    ).not.toThrow();
+    // Only unknown names: every collection is checked, so private denies.
+    for (const args of [{ collections: ["nope"] }, { collection: "nope" }]) {
+      expect(() =>
+        enforceHttpMcpEgress(call("gno_search", args), collections, context)
+      ).toThrow(EgressDeniedError);
+    }
+  });
+
   test("attributes a batch denial to the exact denied member", async () => {
     const batch = [
       { jsonrpc: "2.0", id: 1, method: "ping" },

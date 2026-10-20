@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `gno search`, `gno vsearch` and `gno query` can search several collections at once: repeat `-c` (`-c work -c notes`), or pass `collections` to the MCP tools, `POST /api/search` and `POST /api/query`, and the SDK. The filter applies before the result limit, so other collections never take result slots, and responses list the collections in `meta.collections`. Up to 256 names per request; `collection` and `collections` cannot be combined. Over the resident HTTP MCP endpoint, the egress check covers just the listed collections. Thanks to @ArnauvGilotra for the idea and the original pull request (#313).
 
+### Fixed
+
+- Over the resident HTTP MCP endpoint (`gno serve`, `gno daemon`), a tool call naming a collection that is not configured (for example `gno_search` with `collection: "typo"`) returns the tool's `Collection not found` error instead of `500 Internal MCP transport error`. The egress check ignores unknown names and, when none of the named collections exist, checks every configured collection.
+
 ## [2.12.2] - 2026-10-20
 
 ### Fixed
