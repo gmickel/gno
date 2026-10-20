@@ -232,6 +232,7 @@ export async function typedMetadataWarnings(
     excludeMetadata: true,
     semanticMetadata: true,
     memoryScopesAny: options.memoryFilter?.scopes,
+    memoryScopeRequired: options.memoryFilter?.requiredScope,
     excludeSuperseded: options.memoryFilter?.excludeSuperseded,
   });
   if (!result.ok) return unknown;

@@ -3732,11 +3732,18 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             AND d.collection = ?
             AND d.mirror_hash IS NOT NULL
             AND EXISTS (SELECT 1 FROM doc_memory_scopes ms WHERE ms.document_id = d.id AND ms.scope IN (${placeholders}))
+            ${options.requiredScope === undefined ? "" : "AND EXISTS (SELECT 1 FROM doc_memory_scopes rs WHERE rs.document_id = d.id AND rs.scope = ?)"}
             ${options.excludeSuperseded ? SUPERSEDED_EXCLUSION_SQL("d.id") : ""}
           ORDER BY d.id
           `
         )
-        .all(options.collection, ...options.scopes);
+        .all(
+          options.collection,
+          ...options.scopes,
+          ...(options.requiredScope === undefined
+            ? []
+            : [options.requiredScope])
+        );
       return ok(
         rows.map((row) => ({
           id: row.id,

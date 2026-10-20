@@ -186,7 +186,10 @@ const requestedCollections = (
       for (const { name } of collections) names.add(name);
     }
   }
-  if (Array.isArray(args.refs)) {
+  // `gno_remember.refs` are provenance labels stored with the fact (any
+  // `<system>:<reference>`), not documents this call serves: the target
+  // `collection` above already scopes the write.
+  if (record?.name !== "gno_remember" && Array.isArray(args.refs)) {
     for (const ref of args.refs) {
       const collection = collectionFromRef(ref);
       if (collection) names.add(collection);

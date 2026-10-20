@@ -41,7 +41,8 @@
  *    `gno_query.fast` property description. The agents block v5 rewords the
  *    `gno_search` exact-text guidance. fn-217 closes every tool input
  *    (`additionalProperties: false`), dropped from both sides of the frozen
- *    comparison. All are
+ *    comparison. The subject-owned memory change adds the optional `refs`
+ *    property on exactly `gno_remember`. All are
  *    pinned by the current golden and removed only for the historical
  *    comparison.
  */
@@ -310,6 +311,17 @@ const TYPED_FILTER_DEFINITIONS = new Set(
   )
 );
 
+/** Remove only the additive optional `gno_remember.refs` input. */
+function withoutMemoryRefsExtension(tool: WireTool): WireTool {
+  if (tool.name !== "gno_remember") return tool;
+  const { refs: _refs, ...oldProperties } = tool.inputSchema
+    .properties as Record<string, unknown>;
+  return {
+    ...tool,
+    inputSchema: { ...tool.inputSchema, properties: oldProperties },
+  };
+}
+
 /** Remove only the additive fn-170 `requestId` input. */
 function withoutRequestIdExtension(tool: WireTool): WireTool {
   if (!REQUEST_ID_TOOLS.has(tool.name)) return tool;
@@ -438,7 +450,9 @@ function normalizeToolsList(line: string): string {
           : withoutClosedInput(
               withoutSdkDeltas(
                 withoutTypedFilterExtension(
-                  withoutRequestIdExtension(withoutAuditCapExtension(tool))
+                  withoutRequestIdExtension(
+                    withoutMemoryRefsExtension(withoutAuditCapExtension(tool))
+                  )
                 )
               ) as Record<string, unknown>
             ),

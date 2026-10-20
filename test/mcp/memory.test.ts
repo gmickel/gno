@@ -664,3 +664,89 @@ describe("2026-07-28 sessionless leg: memory identity is per caller", () => {
     }
   });
 });
+
+describe("subject-owned memory and refs over MCP", () => {
+  // Admin principals: subject-owned memory applies to every principal, and
+  // collection access rules (which restrict only non-admin principals) must
+  // not hide what these tests check, the subject scope and the refs rule.
+  const assistant = { name: "assistant", admin: true, mayAssertSubject: true };
+  const reader = { name: "reader", admin: true, mayAssertSubject: false };
+  const subject = (id: string) => ({
+    id,
+    context: "1to1" as const,
+    hash: new Bun.CryptoHasher("sha256").update(id).digest("hex"),
+  });
+
+  function asPrincipal(
+    principal: typeof assistant,
+    asserted?: ReturnType<typeof subject>
+  ): ToolContext {
+    return {
+      ...toolContext(true),
+      getRequestPrincipal: () => principal,
+      getRequestSubject: () => asserted,
+    };
+  }
+
+  const recall = (ctx: ToolContext, scopes = SCOPES) =>
+    handleRecall(
+      { query: "standing desk", collection: "memory", scopes },
+      ctx
+    ).then((result) => structured<RecallResult>(result));
+
+  test("the owner scope is server-set; B recalls nothing of A's, even naming A's scope", async () => {
+    const userA = subject("u:alice");
+    const userB = subject("u:bob");
+    const added = await handleRemember(
+      {
+        text: "I booked the standing desk by the window.",
+        collection: "memory",
+        scopes: SCOPES,
+        decision: "add",
+        refs: ["self:u:alice"],
+      },
+      asPrincipal(assistant, userA)
+    );
+    expect(added.isError).not.toBe(true);
+    const payload = structured<RememberResult>(added);
+    if (payload.outcome !== "added") throw new Error("unreachable");
+    const ownerScope = `subject:${userA.hash.slice(0, 32)}`;
+    expect(payload.record.scopes).toEqual([...SCOPES, ownerScope]);
+    expect(payload.record.refs).toEqual(["self:u:alice"]);
+
+    const mine = await recall(asPrincipal(assistant, userA));
+    expect(mine.facts.map((fact) => fact.refs)).toEqual([["self:u:alice"]]);
+    expect((await recall(asPrincipal(assistant, userB))).facts).toEqual([]);
+    const forged = await handleRecall(
+      {
+        query: "standing desk",
+        collection: "memory",
+        scopes: [...SCOPES, ownerScope],
+      },
+      asPrincipal(assistant, userB)
+    );
+    expect(forged.isError).toBe(true);
+    expect(errorCode(forged)).toBe("MEMORY_SCOPES_INVALID");
+    // A principal with no subject sees no subject's memory either.
+    expect((await recall(asPrincipal(reader))).facts).toEqual([]);
+    // No principal at all (stdio): unchanged behaviour.
+    expect((await recall(toolContext(true))).facts).toHaveLength(1);
+  });
+
+  test("only an asserting principal may set refs", async () => {
+    for (const ctx of [toolContext(true), asPrincipal(reader)]) {
+      const result = await handleRemember(
+        {
+          text: "Refs from the wrong caller.",
+          collection: "memory",
+          scopes: SCOPES,
+          decision: "add",
+          refs: ["sp:drives/d1/items/i1"],
+        },
+        ctx
+      );
+      expect(result.isError).toBe(true);
+      expect(errorCode(result)).toBe("MEMORY_REFS_FORBIDDEN");
+    }
+  });
+});
