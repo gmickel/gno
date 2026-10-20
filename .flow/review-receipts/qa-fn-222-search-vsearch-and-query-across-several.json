@@ -1,0 +1,182 @@
+{
+  "branch": "fn-222-search-vsearch-and-query-across-several",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "0b2d63dfc4be07cd7587762bf303240150d49002",
+    "items": [
+      {
+        "body": "HTTP MCP gno_query with an unknown name in collections returned 500 Internal MCP transport error (egress pre-check threw on the unknown name; the single-collection path had the same failure before). Fixed in 0b2d63df; re-run over gno serve and gno daemon returns the tool's not-found error. (surface: src/mcp/http-egress.ts)",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-544de49585a9eafc8bc142f56191264b311b684be422c595b77154e106df8775",
+        "id": "finding-9d04923537e698f5c94bda897fa26764",
+        "lastSeenReceiptId": "review-31776769d715f1ca0c985690d70322c0bd0dfa516bd2366d138a73c256f6ed8b",
+        "ordinal": 1,
+        "rIds": [],
+        "severity": "P1",
+        "status": "fixed",
+        "title": "QA-1"
+      }
+    ],
+    "reviewKind": "qa",
+    "round": 2,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-31776769d715f1ca0c985690d70322c0bd0dfa516bd2366d138a73c256f6ed8b",
+    "supersedesReceiptId": "review-544de49585a9eafc8bc142f56191264b311b684be422c595b77154e106df8775"
+  },
+  "head_sha": "0b2d63dfc4be07cd7587762bf303240150d49002",
+  "id": "fn-222-search-vsearch-and-query-across-several",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 8,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      },
+      {
+        "coverage": "live",
+        "id": "R7"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R8"
+      }
+    ],
+    "total": 8
+  },
+  "scenarios": [
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/01-cli-search-list.log",
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/02-cli-vsearch-list.log",
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/03-cli-query-list-fast.log",
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/04-cli-query-list-default.log"
+      ],
+      "head_sha": "0b2d63dfc4be07cd7587762bf303240150d49002",
+      "id": "S1-cli-list",
+      "outcome": "PASS",
+      "rids": [
+        "R1",
+        "R2"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/05-cli-query-unscoped.log",
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/06-cli-query-alpha-private.log",
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/07-cli-query-list-nograph.log",
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/summary-controls.log"
+      ],
+      "head_sha": "0b2d63dfc4be07cd7587762bf303240150d49002",
+      "id": "S2-cli-scope-controls",
+      "outcome": "PASS",
+      "rids": [
+        "R2",
+        "R3"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/summary-errors.log",
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/09-err-search-unknown.log",
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/09-err-search-257.log",
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/09-err-diagnose-two.log",
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/09-ok-dup-flags.log"
+      ],
+      "head_sha": "0b2d63dfc4be07cd7587762bf303240150d49002",
+      "id": "S3-cli-errors",
+      "outcome": "PASS",
+      "rids": [
+        "R1",
+        "R4",
+        "R5"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/summary-parity.log",
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/08-r6-new-0.log",
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/08-r6-old-0.log"
+      ],
+      "head_sha": "0b2d63dfc4be07cd7587762bf303240150d49002",
+      "id": "S4-unchanged-output-vs-v2.12.2",
+      "outcome": "PASS",
+      "rids": [
+        "R6"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/drive-all.log"
+      ],
+      "head_sha": "0b2d63dfc4be07cd7587762bf303240150d49002",
+      "id": "S5-mcp-stdio-and-sdk",
+      "outcome": "PASS",
+      "rids": [
+        "R1",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/drive-serve.log",
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/10-serve-server.log"
+      ],
+      "head_sha": "0b2d63dfc4be07cd7587762bf303240150d49002",
+      "id": "S6-rest-and-http-mcp-serve",
+      "outcome": "PASS",
+      "rids": [
+        "R1",
+        "R4",
+        "R5"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/drive-daemon.log",
+        ".flow/tmp/qa-fn-222-search-vsearch-and-query-across-several/11-daemon-server.log"
+      ],
+      "head_sha": "0b2d63dfc4be07cd7587762bf303240150d49002",
+      "id": "S7-daemon-lan-egress",
+      "outcome": "PASS",
+      "rids": [
+        "R7"
+      ],
+      "run": "live"
+    }
+  ],
+  "timestamp": "2026-10-20T17:17:06Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
