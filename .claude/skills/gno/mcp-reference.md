@@ -114,6 +114,8 @@ abstains unless every substantive claim is supported. This is a support
 classification against the retained Capsule, not a guarantee that the corpus
 is complete or its sources are true. Bounded graph expansion is on by default;
 set `graph: false` or `noGraph: true` only for an explicit BM25/vector-only path.
+To search several collections, pass `collections: ["a", "b"]` to `gno_query`,
+`gno_search` or `gno_vsearch` instead of `collection` (not both).
 Check `gno_peek` first for counts, backlog, serve liveness, or recent files.
 Use `gno_status` for activation, onboarding, or heavy health (missing vectors,
 stale embeddings). Use `gno_query_diagnose` when a known target document

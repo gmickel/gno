@@ -46,7 +46,7 @@ gno convert <file> [--json]
   "title": "Quarterly report",
   "languageHint": "en",
   "markdown": "# Quarterly report\n...",
-  "mirrorHash": "sha256:…",
+  "mirrorHash": "9f2c…(64 hex chars, as stored by indexing)",
   "warnings": [{ "code": "…", "message": "…" }]
 }
 ```

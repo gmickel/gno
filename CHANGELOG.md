@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `gno convert <file>` prints the Markdown GNO would index for one file, without config or an index, and the SDK exposes the same as `convertFile(path)`. The output, and its `mirrorHash` with `--json`, equal what `gno update` stores for the same file. Mail archives, calendars and other multi-record formats are refused with `MULTI_DOCUMENT`. Thanks to @ArnauvGilotra for the idea and the original pull request (#314).
 - `gno search`, `gno vsearch` and `gno query` can search several collections at once: repeat `-c` (`-c work -c notes`), or pass `collections` to the MCP tools, `POST /api/search` and `POST /api/query`, and the SDK. The filter applies before the result limit, so other collections never take result slots, and responses list the collections in `meta.collections`. Up to 256 names per request; `collection` and `collections` cannot be combined. Over the resident HTTP MCP endpoint, the egress check covers just the listed collections. Thanks to @ArnauvGilotra for the idea and the original pull request (#313).
 
 ### Fixed

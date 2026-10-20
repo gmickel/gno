@@ -151,6 +151,19 @@ gno index [options]
 | `--models-pull`       | Download models if missing |
 | `--git-pull`          | Git pull before indexing   |
 
+### gno convert
+
+Print the Markdown GNO would index for one file. Needs no config or index and
+writes nothing.
+
+```bash
+gno convert <file> [--json]
+```
+
+`--json` adds `title`, `converter`, `mirrorHash` and `warnings`. Mail archives,
+calendars and other multi-record formats are refused (`MULTI_DOCUMENT`); index
+them in a collection instead.
+
 ### gno embed
 
 Generate embeddings only.

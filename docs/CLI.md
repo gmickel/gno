@@ -945,6 +945,22 @@ Options:
 
 - `--max-bytes <n>` - Limit bytes per document (truncates long docs)
 
+### gno convert
+
+Print the Markdown GNO would index for one file, without adding it to a collection. The output equals what `gno update` stores for the same file, and nothing is written: no config, index or cache is needed or touched.
+
+```bash
+gno convert report.pdf              # Markdown on stdout
+gno convert report.pdf > report.md  # Save it
+gno convert slides.pptx --json      # Markdown plus title, converter and mirror hash
+```
+
+Options:
+
+- `--json` - Output `convert@1.0`: `source` (`path`, `mime`, `ext`, `sizeBytes`), `converter`, `title`, `languageHint`, `markdown`, `mirrorHash` and `warnings`
+
+Conversion warnings go to stderr, so stdout is exactly the Markdown. Files over the indexing size limit (100 MB) are refused before they are read. Mail archives, calendars and other formats that GNO splits into several records are refused with `MULTI_DOCUMENT`; index them in a collection instead. Errors carry the reason in `details.reason` (`NOT_FOUND`, `TOO_LARGE`, `UNSUPPORTED` and `MULTI_DOCUMENT` exit 1; converter failures such as `CORRUPT` or `TIMEOUT` exit 2).
+
 ### gno ls
 
 List indexed documents. Optional scope argument filters results.

@@ -781,6 +781,17 @@ await client.index();
 
 `update()` syncs files into the index without embedding. `index()` runs sync plus embedding unless `noEmbed: true` is set.
 
+### Convert One File
+
+```ts
+import { convertFile } from "@gmickel/gno";
+
+const result = await convertFile("report.pdf");
+console.log(result.markdown, result.mirrorHash);
+```
+
+`convertFile` needs no client, config or index. It returns the same `convert@1.0` object as `gno convert --json`: the Markdown indexing would store for the file, with its mirror hash, title and converter. Failures throw `GnoSdkError` with the CLI's reason in `details.reason` (`NOT_FOUND`, `TOO_LARGE`, `UNSUPPORTED`, `MULTI_DOCUMENT`, or a converter code such as `CORRUPT`).
+
 ---
 
 ## Lifecycle
@@ -817,6 +828,7 @@ This is useful for tests, CI, or applications that want explicit model installat
 Current stable root import surface:
 
 - `createGnoClient`
+- `convertFile`
 - `createDefaultConfig`
 - `ConfigSchema`
 - SDK/client/result types

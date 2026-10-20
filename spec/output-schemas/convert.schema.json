@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/convert@1.0",
+  "title": "GNO Convert Result",
+  "description": "Output of gno convert --json and SDK convertFile: the Markdown GNO would index for one file",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "source",
+    "converter",
+    "title",
+    "languageHint",
+    "markdown",
+    "mirrorHash",
+    "warnings"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "convert@1.0"
+    },
+    "source": {
+      "type": "object",
+      "required": ["path", "mime", "ext", "sizeBytes"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Absolute path of the converted file"
+        },
+        "mime": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Detected MIME type"
+        },
+        "ext": {
+          "type": "string",
+          "description": "File extension, including the dot"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "converter": {
+      "type": "object",
+      "required": ["id", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "title": {
+      "type": ["string", "null"],
+      "description": "Title from conversion, or null"
+    },
+    "languageHint": {
+      "type": ["string", "null"],
+      "description": "BCP-47 language hint from conversion, or null"
+    },
+    "markdown": {
+      "type": "string",
+      "description": "Canonical Markdown, identical to the mirror indexing stores"
+    },
+    "mirrorHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 hex of the canonical Markdown, as stored by indexing"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "message"],
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

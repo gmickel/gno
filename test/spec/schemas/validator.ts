@@ -110,6 +110,7 @@ async function loadAllSchemas(): Promise<void> {
     "memory-recall",
     "request-status",
     "index-receipt",
+    "convert",
   ];
 
   for (const name of schemaFiles) {

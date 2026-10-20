@@ -151,6 +151,19 @@ gno index [options]
 | `--models-pull`       | Download models if missing |
 | `--git-pull`          | Git pull before indexing   |
 
+### gno convert
+
+Print the Markdown GNO would index for one file. Needs no config or index and
+writes nothing.
+
+```bash
+gno convert <file> [--json]
+```
+
+`--json` adds `title`, `converter`, `mirrorHash` and `warnings`. Mail archives,
+calendars and other multi-record formats are refused (`MULTI_DOCUMENT`); index
+them in a collection instead.
+
 ### gno embed
 
 Generate embeddings only.
@@ -393,16 +406,16 @@ BM25 keyword search.
 gno search <query> [options]
 ```
 
-| Option             | Default | Description                      |
-| ------------------ | ------- | -------------------------------- |
-| `-n`               | 5       | Max results                      |
-| `--min-score`      | 0       | Minimum score (0-1)              |
-| `-c, --collection` | all     | Filter to collection             |
-| `--tags-any`       | -       | Filter: has ANY tag (comma-sep)  |
-| `--tags-all`       | -       | Filter: has ALL tags (comma-sep) |
-| `--full`           | false   | Full content (not snippets)      |
-| `--line-numbers`   | false   | Include line numbers             |
-| `--lang`           | auto    | Language filter                  |
+| Option             | Default | Description                                            |
+| ------------------ | ------- | ------------------------------------------------------ |
+| `-n`               | 5       | Max results                                            |
+| `--min-score`      | 0       | Minimum score (0-1)                                    |
+| `-c, --collection` | all     | Filter to collection; repeat (`-c a -c b`) for several |
+| `--tags-any`       | -       | Filter: has ANY tag (comma-sep)                        |
+| `--tags-all`       | -       | Filter: has ALL tags (comma-sep)                       |
+| `--full`           | false   | Full content (not snippets)                            |
+| `--line-numbers`   | false   | Include line numbers                                   |
+| `--lang`           | auto    | Language filter                                        |
 
 Output formats: `--json`, `--files`, `--csv`, `--md`, `--xml`
 

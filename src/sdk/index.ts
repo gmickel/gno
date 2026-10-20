@@ -27,6 +27,8 @@ export type { IndexStatus } from "../store/types";
 
 export { GnoSdkError, sdkError } from "./errors";
 export { createGnoClient } from "./client";
+export { convertFile } from "./convert";
+export type { ConvertFileResult } from "../ingestion/convert-file";
 export type {
   DocumentSection,
   GnoAskOptions,

@@ -362,7 +362,7 @@ export function createProgram(): Command {
     .option("--no-pager", "disable automatic paging of long output");
 
   // Resolve globals ONCE before any command runs (ensures consistency)
-  program.hook("preAction", async (thisCommand) => {
+  program.hook("preAction", async (thisCommand, actionCommand) => {
     const rootOpts = thisCommand.optsWithGlobals();
     const globals = parseGlobalOptions(rootOpts);
     if (!isValidIndexName(globals.index)) {
@@ -373,6 +373,8 @@ export function createProgram(): Command {
     }
     applyGlobalOptions(globals);
     globalState.current = globals;
+    // convert reads no config or index, so there is no binding to check.
+    if (actionCommand === convertCommand) return;
     const { assertCliSessionBinding } = await import("./session-binding");
     await assertCliSessionBinding(globals.config, globals.index);
   });
@@ -388,6 +390,7 @@ export function createProgram(): Command {
   wirePublishCommand(program);
   wireVecCommands(program);
   wireRetrievalCommands(program);
+  const convertCommand = wireConvertCommand(program);
   wireTagsCommands(program);
   wireLinksCommands(program);
   wireGraphCommand(program);
@@ -2466,6 +2469,36 @@ function wireSessionsAutomationCommands(
 // ─────────────────────────────────────────────────────────────────────────────
 // Retrieval Commands (get, multi-get, ls)
 // ─────────────────────────────────────────────────────────────────────────────
+
+function wireConvertCommand(program: Command): Command {
+  return program
+    .command("convert <file>")
+    .description("Print the Markdown GNO would index for one file")
+    .option("--json", "JSON output")
+    .action(async (file: string, cmdOpts: Record<string, unknown>) => {
+      const format = getFormat(cmdOpts);
+      assertFormatSupported(CMD.convert, format);
+
+      const { convertFile } = await import("../ingestion/convert-file");
+      const result = await convertFile(file);
+      if (!result.ok) {
+        const { reason, message, validation, details } = result.error;
+        throw new CliError(validation ? "VALIDATION" : "RUNTIME", message, {
+          details: { reason, ...details },
+        });
+      }
+
+      if (format === "json") {
+        process.stdout.write(`${JSON.stringify(result.value, null, 2)}\n`);
+        return;
+      }
+      // Warnings go to stderr so stdout stays exactly the Markdown.
+      for (const warning of result.value.warnings) {
+        process.stderr.write(`Warning: ${warning.code}: ${warning.message}\n`);
+      }
+      process.stdout.write(result.value.markdown);
+    });
+}
 
 function wireRetrievalCommands(program: Command): void {
   // get - Retrieve document by URI or docid

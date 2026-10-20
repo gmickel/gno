@@ -160,7 +160,7 @@ missing: `gno query diagnose` before falling back to grep.
 
 ```
 -n <num>              Max results (default: 5)
--c, --collection      Filter to collection
+-c, --collection      Filter to collection (repeat for several; search/vsearch/query)
 --tags-any <t1,t2>    Has ANY of these tags
 --tags-all <t1,t2>    Has ALL of these tags
 --since <date>        Modified after date (ISO: 2026-03-01)

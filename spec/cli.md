@@ -91,6 +91,7 @@ equivalent files fail closed as ambiguous.
 | sessions           | yes    | no      | no    | no   | no    | terminal |
 | get                | yes    | no      | no    | yes  | no    | terminal |
 | multi-get          | yes    | yes     | no    | yes  | no    | terminal |
+| convert            | yes    | no      | no    | no   | no    | Markdown |
 | ls                 | yes    | yes     | no    | yes  | no    | terminal |
 | daemon             | yes¹   | no      | no    | no   | no    | terminal |
 | context add        | no     | no      | no    | no   | no    | terminal |
@@ -2506,6 +2507,51 @@ See [Output Schemas](./output-schemas/multi-get.schema.json)
 - 0: Success (partial results if some docs missing)
 - 1: Invalid pattern
 - 2: DB failure
+
+---
+
+### gno convert
+
+Print the Markdown GNO would index for one file. The file goes through the
+same conversion path as indexing (MIME detection, converter, canonical
+Markdown, mirror hash) with the default indexing limits, so the output equals
+the mirror `gno update` stores for the same bytes. No config, index, store or
+cache is read or written, and the command works with no GNO config present.
+
+**Synopsis:**
+
+```bash
+gno convert <file> [--json]
+```
+
+**Arguments:**
+| Arg | Type | Description |
+|-----|------|-------------|
+| `<file>` | path | One regular file (a symlink to a regular file is followed) |
+
+**Output:**
+
+- Terminal: exactly the Markdown on stdout; conversion warnings go to stderr.
+- `--json`: [convert@1.0](./output-schemas/convert.schema.json) with `source`
+  (`path`, `mime`, `ext`, `sizeBytes`), `converter` (`id`, `version`),
+  `title`, `languageHint`, `markdown`, `mirrorHash` (SHA-256 hex, as stored by
+  indexing) and `warnings`.
+
+Single-document formats are supported. Formats whose adapters split one file
+into several records (mail archives, calendars and the other record adapters)
+are refused, because their record identity comes from the collection and path.
+
+**Errors:** the standard error envelope, with `details.reason`:
+
+| Case                                                         | `details.reason`                                               | Exit |
+| ------------------------------------------------------------ | -------------------------------------------------------------- | ---- |
+| Path missing, a directory or another non-regular file        | `NOT_FOUND`                                                    | 1    |
+| Larger than the indexing size limit (checked before reading) | `TOO_LARGE`                                                    | 1    |
+| No converter for the type                                    | `UNSUPPORTED`                                                  | 1    |
+| Multi-record format (`details.format` names it)              | `MULTI_DOCUMENT`                                               | 1    |
+| Converter failure, timeout, memory limit or corrupt input    | the converter's code (`CORRUPT`, `PERMISSION`, `TIMEOUT`, ...) | 2    |
+
+The SDK exposes the same operation as `convertFile(path)`.
 
 ---
 
