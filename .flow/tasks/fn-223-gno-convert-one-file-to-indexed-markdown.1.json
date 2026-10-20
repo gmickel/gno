@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-223-gno-convert-one-file-to-indexed-markdown",
   "spec_path": ".flow/tasks/fn-223-gno-convert-one-file-to-indexed-markdown.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement gno convert: one file to indexed Markdown",
   "updated_at": "2026-10-20T21:46:50.779729Z"
 }
