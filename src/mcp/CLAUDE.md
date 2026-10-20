@@ -13,6 +13,7 @@ src/mcp/
 ├── http-modern.ts     # 2026-07-28 sessionless leg + modern request checks
 ├── tool-profile.ts    # core|full profile allowlists + registrar
 ├── tool-descriptions-core.ts # core-profile description micro-instructions
+├── tool-lease.ts      # tool mutex lease; yieldToolMutex for external waits
 ├── tools/             # Tool implementations
 │   ├── index.ts       # Tool registry
 │   ├── search.ts      # gno_search (BM25)

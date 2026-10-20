@@ -318,6 +318,67 @@ Mixed evidence and derived artifacts use the most restrictive participating
 collection. Explicit partial checks disclose every omitted collection and
 reason; normal operations never silently drop restricted evidence.
 
+## Collection access
+
+Only for a shared gateway with named principals (`gateway.principals`, see
+[MCP](MCP.md#named-principals-optional)). It does nothing otherwise.
+
+```yaml
+collections:
+  - name: pub
+    path: ~/wiki/pub
+    access: { public: true } # every user, every conversation
+  - name: p-alice
+    path: ~/wiki/personal/alice
+    access: { owner: "u:alice" } # only u:alice, only in 1:1
+  - name: ops
+    path: ~/wiki/ops
+    access:
+      accessRef: { sys: sp, ref: "drives/b!x/root" }
+      firmwide: true # served only when the access hook allows the ref
+```
+
+A principal without `admin: true` reads only collections whose rule admits
+the request's `GNO-Subject` and `GNO-Context`. A collection with no `access`
+is never served to it. An `accessRef` collection is served only when an
+access hook is configured and allows its reference.
+Notes served this way also need `gno.metadata.derived_from` (a list of
+`<system>:<reference>` strings); `gno audit provenance` lists the ones that
+lack it. A collection can name a different key with
+`access: { ..., provenanceKey: sources }`.
+
+### Access hook
+
+```yaml
+gateway:
+  accessHook:
+    url: http://hook/check
+    unix: /run/my-hook.sock # optional, recommended
+    timeoutMs: 2000 # optional
+    maxConcurrent: 16 # optional, hook calls in flight at once
+```
+
+With an access hook, GNO asks your service which sources the user may read.
+It sends `POST {subject, ctx, request_id, refs: [{sys, ref}]}` and expects
+`200 {allow: [indexes]}`. `request_id` is the caller's `GNO-Request-Id`
+header when it sends one (so your hook can match its own turn), else a new
+UUID per tool call. A note is served only if the hook allows every
+source in its `derived_from`; an `accessRef` collection is readable only if
+the hook allows its `accessRef` (in shared conversations only `firmwide`
+ones are asked about). Anything not listed, a slow answer, an error or an
+unreachable hook means "no". GNO never interprets the references; your hook
+decides. Denied notes never reach the reranker, graph expansion, capsules,
+counts or warnings, and asking for one gives the same `NOT_FOUND` as a
+missing note.
+
+While a request waits for your hook, other requests keep running, so a slow
+hook adds its own latency to each request but no longer queues every other
+user behind it. GNO sends at most `maxConcurrent` hook calls at once
+(default 16) and queues the rest in order. The `timeoutMs` deadline starts
+when a call joins that queue, so time spent waiting counts: a call still
+queued at its deadline is never sent and counts as "no", like a late answer.
+Size `maxConcurrent` for your peak load so queueing stays short.
+
 ## Link workspaces
 
 If you index one Obsidian vault as several collections (for example one per
@@ -870,18 +931,19 @@ remove` deletes them at once.
 
 ### Collection Fields
 
-| Field                | Type            | Default     | Description                                                            |
-| -------------------- | --------------- | ----------- | ---------------------------------------------------------------------- |
-| `name`               | string          | required    | Unique identifier (lowercase)                                          |
-| `path`               | string          | required    | Absolute path to directory                                             |
-| `pattern`            | glob            | `**/*`      | File matching pattern                                                  |
-| `include`            | array           | see below   | Extension allowlist                                                    |
-| `exclude`            | array           | see below   | Patterns to skip                                                       |
-| `updateCmd`          | string          | -           | Shell command before indexing                                          |
-| `updateCmdTimeoutMs` | number          | `600000`    | Stop `updateCmd` after this many milliseconds                          |
-| `languageHint`       | string          | -           | BCP-47 language code                                                   |
-| `models`             | object          | -           | Per-collection model overrides                                         |
-| `workspaceRoot`      | path or `false` | auto-detect | Link workspace for wiki links; see [Link workspaces](#link-workspaces) |
+| Field                | Type            | Default     | Description                                                                         |
+| -------------------- | --------------- | ----------- | ----------------------------------------------------------------------------------- |
+| `name`               | string          | required    | Unique identifier (lowercase)                                                       |
+| `path`               | string          | required    | Absolute path to directory                                                          |
+| `pattern`            | glob            | `**/*`      | File matching pattern                                                               |
+| `include`            | array           | see below   | Extension allowlist                                                                 |
+| `exclude`            | array           | see below   | Patterns to skip                                                                    |
+| `updateCmd`          | string          | -           | Shell command before indexing                                                       |
+| `updateCmdTimeoutMs` | number          | `600000`    | Stop `updateCmd` after this many milliseconds                                       |
+| `languageHint`       | string          | -           | BCP-47 language code                                                                |
+| `models`             | object          | -           | Per-collection model overrides                                                      |
+| `workspaceRoot`      | path or `false` | auto-detect | Link workspace for wiki links; see [Link workspaces](#link-workspaces)              |
+| `access`             | object          | -           | Who non-admin gateway principals serve; see [Collection access](#collection-access) |
 
 ### Default Include Extensions
 

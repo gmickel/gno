@@ -31,6 +31,25 @@ export const collectRepeatableValue = (
   previous: string[] = []
 ): string[] => [...previous, value];
 
+/**
+ * Repeatable `-c`: one name keeps the single-collection request unchanged;
+ * two or more become a pre-limit collection allowlist.
+ */
+export const parseCliCollectionScope = (
+  value: unknown
+): { collection?: string; collections?: string[] } => {
+  const names = [
+    ...new Set(
+      Array.isArray(value)
+        ? (value as string[])
+        : typeof value === "string"
+          ? [value]
+          : []
+    ),
+  ];
+  return names.length > 1 ? { collections: names } : { collection: names[0] };
+};
+
 export const parseCliProjectAffinityOptions = (
   options: Record<string, unknown>
 ): CliProjectAffinityOptions => {

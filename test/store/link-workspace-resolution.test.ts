@@ -222,6 +222,51 @@ describe("workspace resolution order (R2, R3)", () => {
     expect(reversed).toEqual(sql);
   });
 
+  test("hidden documents are left out of the ranking, as if absent", async () => {
+    fixture = await openLinkWorkspaceFixture();
+    const db = fixture.store.getRawDb();
+    const idOf = (uri: string): number => {
+      const row = db
+        .query<{ id: number }, [string]>(
+          "SELECT id FROM documents WHERE uri = ? AND active = 1"
+        )
+        .get(uri);
+      if (!row) throw new Error(`missing ${uri}`);
+      return row.id;
+    };
+    const a = idOf("gno://work/A/Shared.md");
+    const b = idOf("gno://work/B/Shared.md");
+    const shared: GraphLinkTarget = {
+      targetRefNorm: "shared",
+      targetCollection: "ai",
+      linkType: "wiki",
+      source: {
+        collection: "ai",
+        relPath: "Agents/Planner.md",
+        explicit: false,
+      },
+    };
+    const [tied] = resolveGraphLinkTargets(db, [shared], "auto", {
+      reportMatches: true,
+    });
+    expect(tied?.traversable).toBe(false);
+    expect(new Set(tied?.matches?.map((match) => match.id))).toEqual(
+      new Set([a, b])
+    );
+    for (const strategy of ["sql", "bulk"] as const) {
+      const [resolved] = resolveGraphLinkTargets(db, [shared], strategy, {
+        hiddenDocumentIds: new Set([b]),
+        reportMatches: true,
+      });
+      expect(resolved).toMatchObject({
+        targetId: a,
+        reason: "exact-name",
+        matches: [{ id: a }],
+      });
+      expect(resolved?.traversable).toBe(true);
+    }
+  });
+
   test("resolution inputs carry source location and explicit-prefix identity (A5)", async () => {
     fixture = await openLinkWorkspaceFixture();
     const db = fixture.store.getRawDb();

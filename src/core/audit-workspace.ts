@@ -33,7 +33,10 @@ import {
 import { evaluateFreshnessAudit } from "./audit-freshness";
 import { evaluateLinkAudit } from "./audit-links";
 import { markOutsideIndexLinks } from "./audit-outside-index";
-import { evaluateProvenanceAudit } from "./audit-provenance";
+import {
+  evaluateProvenanceAudit,
+  evaluateRequiredMetadataAudit,
+} from "./audit-provenance";
 import {
   extractCaptureSourceFromFrontmatter,
   hasDeclaredCaptureSource,
@@ -677,6 +680,11 @@ export const runWorkspaceAudit = async (
           contributions.push(
             ...evaluateProvenanceAudit(
               snapshot.documents.map(({ provenance }) => provenance),
+              { truncated: snapshot.truncated, maxFindingsPerRule }
+            ),
+            ...evaluateRequiredMetadataAudit(
+              snapshot.documents.map(({ document }) => document),
+              options.collections,
               { truncated: snapshot.truncated, maxFindingsPerRule }
             )
           );

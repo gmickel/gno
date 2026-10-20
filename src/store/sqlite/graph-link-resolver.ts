@@ -61,7 +61,35 @@ export interface ResolvedGraphLinkTarget {
   traversable?: boolean;
   /** Tied candidates of a non-traversable link, canonical path order. */
   candidates?: Array<{ id: number; docid: string; collection: string }>;
+  /**
+   * With `reportMatches`: every document that decided this resolution, the
+   * target included: each same-rank match, and for a workspace link every
+   * match (a second one turns an exact name into a tie-break).
+   */
+  matches?: Array<{ id: number; docid: string }>;
 }
+
+export interface GraphLinkResolutionOptions {
+  /**
+   * Documents treated as absent (a caller's hidden documents): never a
+   * target, a tie or a match, so they change no target and no confidence.
+   */
+  hiddenDocumentIds?: ReadonlySet<number>;
+  /** Report each resolution's deciding documents as `matches`. */
+  reportMatches?: boolean;
+}
+
+/** SQL exclusion of hidden documents, bound as one JSON array parameter. */
+const hiddenDocumentsClause = (
+  options: GraphLinkResolutionOptions,
+  column: string
+): { sql: string; params: string[] } =>
+  options.hiddenDocumentIds?.size
+    ? {
+        sql: `AND ${column} NOT IN (SELECT value FROM json_each(?))`,
+        params: [JSON.stringify([...options.hiddenDocumentIds])],
+      }
+    : { sql: "", params: [] };
 
 /** Resolved and allowed to become a graph edge. */
 export const isTraversableResolution = (
@@ -167,8 +195,11 @@ const suffixMatch = (targetExpr: string, valueExpr: string): string =>
 
 export const resolveGraphLinkTargetsSql = (
   db: Database,
-  targets: GraphLinkTarget[]
+  targets: GraphLinkTarget[],
+  options: GraphLinkResolutionOptions = {}
 ): Array<ResolvedGraphLinkTarget | null> => {
+  const hidden = hiddenDocumentsClause(options, "d.id");
+  const reportMatches = options.reportMatches === true;
   const results: Array<ResolvedGraphLinkTarget | null> = Array.from(
     { length: targets.length },
     () => null
@@ -236,12 +267,15 @@ export const resolveGraphLinkTargetsSql = (
   const wikiBatchSize = Math.max(1, Math.floor(MAX_SQL_PARAMS / 4));
   for (const batch of chunkArray(wikiTargets, wikiBatchSize)) {
     const valuesClause = batch.map(() => "(?, ?, ?, ?)").join(", ");
-    const params = batch.flatMap((target) => [
-      target.idx,
-      target.collection,
-      target.baseRef,
-      target.baseRefMd,
-    ]);
+    const params = [
+      ...batch.flatMap((target) => [
+        target.idx,
+        target.collection,
+        target.baseRef,
+        target.baseRefMd,
+      ]),
+      ...hidden.params,
+    ];
     const rows = db
       .query<
         {
@@ -250,6 +284,7 @@ export const resolveGraphLinkTargetsSql = (
           target_docid: string;
           match_rank: number;
           match_count: number;
+          rn: number;
         },
         (string | number)[]
       >(
@@ -261,6 +296,7 @@ export const resolveGraphLinkTargetsSql = (
              ${wikiRank} AS match_rank
            FROM targets t
            JOIN documents d ON d.active = 1 AND d.collection = t.collection
+             ${hidden.sql}
            WHERE ${wikiWhere}
          ),
          best_candidates AS (
@@ -280,18 +316,24 @@ export const resolveGraphLinkTargetsSql = (
              ROW_NUMBER() OVER (PARTITION BY idx ORDER BY target_id) AS rn
            FROM best_candidates
          )
-         SELECT idx, target_id, target_docid, match_rank, match_count
+         SELECT idx, target_id, target_docid, match_rank, match_count, rn
          FROM ranked
-         WHERE rn = 1`
+         ${reportMatches ? "ORDER BY idx, rn" : "WHERE rn = 1"}`
       )
       .all(...params);
 
     for (const row of rows) {
+      const match = { id: row.target_id, docid: row.target_docid };
+      if (row.rn !== 1) {
+        results[row.idx]?.matches?.push(match);
+        continue;
+      }
       results[row.idx] = {
         targetId: row.target_id,
         targetDocid: row.target_docid,
         matchRank: row.match_rank,
         matchCount: row.match_count,
+        ...(reportMatches ? { matches: [match] } : {}),
       };
     }
   }
@@ -299,11 +341,14 @@ export const resolveGraphLinkTargetsSql = (
   const markdownBatchSize = Math.max(1, Math.floor(MAX_SQL_PARAMS / 3));
   for (const batch of chunkArray(markdownTargets, markdownBatchSize)) {
     const valuesClause = batch.map(() => "(?, ?, ?)").join(", ");
-    const params = batch.flatMap((target) => [
-      target.idx,
-      target.collection,
-      target.relPath,
-    ]);
+    const params = [
+      ...batch.flatMap((target) => [
+        target.idx,
+        target.collection,
+        target.relPath,
+      ]),
+      ...hidden.params,
+    ];
     const rows = db
       .query<
         { idx: number; target_id: number; target_docid: string },
@@ -319,6 +364,7 @@ export const resolveGraphLinkTargetsSql = (
            JOIN documents d ON d.active = 1
              AND d.collection = t.collection
              AND d.rel_path = t.rel_path
+             ${hidden.sql}
          )
          SELECT idx, target_id, target_docid
          FROM ranked
@@ -332,6 +378,9 @@ export const resolveGraphLinkTargetsSql = (
         targetDocid: row.target_docid,
         matchRank: 5,
         matchCount: 1,
+        ...(reportMatches
+          ? { matches: [{ id: row.target_id, docid: row.target_docid }] }
+          : {}),
       };
     }
   }
@@ -350,7 +399,8 @@ export type GraphLinkResolutionStrategy = "auto" | "sql" | "bulk";
 export function resolveGraphLinkTargets(
   db: Database,
   targets: GraphLinkTarget[],
-  strategy: GraphLinkResolutionStrategy = "auto"
+  strategy: GraphLinkResolutionStrategy = "auto",
+  options: GraphLinkResolutionOptions = {}
 ): Array<ResolvedGraphLinkTarget | null> {
   const results: Array<ResolvedGraphLinkTarget | null> = Array.from(
     { length: targets.length },
@@ -392,7 +442,8 @@ export function resolveGraphLinkTargets(
   const legacyResults = resolveCollectionScopedTargets(
     db,
     legacyTargets,
-    strategy
+    strategy,
+    options
   );
   // Results are shared per unique resolution (as the resolvers dedupe
   // targets) so large inventories do not allocate one object per link.
@@ -452,7 +503,7 @@ export function resolveGraphLinkTargets(
       db,
       memberships,
       workspaceInputs,
-      { bulk }
+      { bulk, hiddenDocumentIds: options.hiddenDocumentIds }
     );
     const workspaceShared = new Map<object, ResolvedGraphLinkTarget>();
     for (const [position, index] of workspaceIndexes.entries()) {
@@ -485,6 +536,14 @@ export function resolveGraphLinkTargets(
                     ({ id, docid, collection }) => ({ id, docid, collection })
                   ),
                 }),
+            ...(options.reportMatches
+              ? {
+                  matches: resolution.matches.map(({ id, docid }) => ({
+                    id,
+                    docid,
+                  })),
+                }
+              : {}),
           }
         : null;
       if (resolution && results[index]) {
@@ -511,7 +570,8 @@ const countActiveDocuments = (
 function resolveCollectionScopedTargets(
   db: Database,
   targets: GraphLinkTarget[],
-  strategy: GraphLinkResolutionStrategy
+  strategy: GraphLinkResolutionStrategy,
+  options: GraphLinkResolutionOptions
 ): Array<ResolvedGraphLinkTarget | null> {
   const uniqueTargets: GraphLinkTarget[] = [];
   const uniqueIndexByKey = new Map<string, number>();
@@ -536,7 +596,12 @@ function resolveCollectionScopedTargets(
     strategy === "bulk" ||
     (strategy === "auto" && uniqueTargets.length > BULK_RESOLUTION_THRESHOLD)
   ) {
-    const bulkResults = resolveGraphLinkTargetsBulk(db, uniqueTargets);
+    const bulkResults = resolveGraphLinkTargetsBulk(
+      db,
+      uniqueTargets,
+      GRAPH_LINK_BULK_MAX_DOCUMENTS,
+      options
+    );
     if (bulkResults) {
       return originalToUniqueIndex.map(
         (uniqueIndex) => bulkResults[uniqueIndex] ?? null
@@ -544,7 +609,7 @@ function resolveCollectionScopedTargets(
     }
   }
 
-  const uniqueResults = resolveGraphLinkTargetsSql(db, uniqueTargets);
+  const uniqueResults = resolveGraphLinkTargetsSql(db, uniqueTargets, options);
   return originalToUniqueIndex.map(
     (uniqueIndex) => uniqueResults[uniqueIndex] ?? null
   );

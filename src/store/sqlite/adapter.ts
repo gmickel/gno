@@ -106,6 +106,7 @@ import type {
   StaleCollection,
   StorePort,
   StoreResult,
+  SupersessionOptions,
   SyncCollectionsOptions,
   TagCount,
   TagRow,
@@ -608,6 +609,84 @@ export function staleCollectionsMessage(
   );
 }
 
+/**
+ * Most hops a scoped supersession lookup walks. Each hop costs one successor
+ * query and at most one `canFollow` call, however many chains it advances, so
+ * the authorization work of one lookup is bounded.
+ */
+export const MAX_SCOPED_SUPERSESSION_HOPS = 32;
+
+interface ScopedChain {
+  start: string;
+  current: string;
+  visited: Set<string>;
+}
+
+/**
+ * End of each supersession chain from `starts`, naming only successors
+ * `canFollow` accepts. Chains advance together one hop at a time, and a
+ * successor is looked up only after the hop that reached its predecessor was
+ * allowed, so nothing past a rejected successor is read or asked about. A
+ * cycle stops at the first repeated URI, as in the unscoped walk. A chain
+ * still advancing after MAX_SCOPED_SUPERSESSION_HOPS names no successor.
+ */
+const scopedChainEnds = async (
+  starts: Iterable<string>,
+  successorsOf: (uris: string[]) => { uri: string; successor: string }[],
+  canFollow: NonNullable<SupersessionOptions["canFollow"]>
+): Promise<Map<string, string>> => {
+  const next = new Map<string, string | null>();
+  const followable = new Map<string, boolean>();
+  const ends = new Map<string, string>();
+  const finish = (chain: ScopedChain, end: string): void => {
+    if (end !== chain.start) ends.set(chain.start, end);
+  };
+  let active: ScopedChain[] = [...new Set(starts)].map((start) => ({
+    start,
+    current: start,
+    visited: new Set([start]),
+  }));
+  for (
+    let hop = 0;
+    hop < MAX_SCOPED_SUPERSESSION_HOPS && active.length > 0;
+    hop += 1
+  ) {
+    const unknown = [...new Set(active.map((chain) => chain.current))].filter(
+      (uri) => !next.has(uri)
+    );
+    for (const uri of unknown) next.set(uri, null);
+    if (unknown.length > 0) {
+      for (const row of successorsOf(unknown)) next.set(row.uri, row.successor);
+    }
+    const steps: { chain: ScopedChain; successor: string }[] = [];
+    const unchecked = new Set<string>();
+    for (const chain of active) {
+      const successor = next.get(chain.current);
+      if (!successor) finish(chain, chain.current);
+      else if (chain.visited.has(successor)) finish(chain, successor);
+      else {
+        if (!followable.has(successor)) unchecked.add(successor);
+        steps.push({ chain, successor });
+      }
+    }
+    if (unchecked.size > 0) {
+      const allowed = await canFollow([...unchecked]);
+      for (const uri of unchecked) followable.set(uri, allowed.has(uri));
+    }
+    active = [];
+    for (const { chain, successor } of steps) {
+      if (!followable.get(successor)) {
+        finish(chain, chain.current);
+        continue;
+      }
+      chain.visited.add(successor);
+      chain.current = successor;
+      active.push(chain);
+    }
+  }
+  return ends;
+};
+
 export class SqliteAdapter implements StorePort, SqliteDbProvider {
   private db: Database | null = null;
   private dbPath = "";
@@ -781,6 +860,18 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       db.query<{ timeout: number }, []>("PRAGMA busy_timeout").get()?.timeout ??
       0;
     db.exec(`PRAGMA busy_timeout = ${Math.min(current, remaining)}`);
+  }
+
+  /**
+   * True while a store transaction is open on this connection. Callers that
+   * would let other work run on the shared connection (yielding the MCP tool
+   * mutex) must not do so then: that work would join the open transaction.
+   */
+  hasOpenTransaction(): boolean {
+    return (
+      this.activeTransaction !== undefined ||
+      this.txContext.getStore() !== undefined
+    );
   }
 
   /** Revoke suspended transaction callbacks before closing their connection. */
@@ -3836,10 +3927,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   /**
    * Map each superseded memory fact's URI to the end of its supersession
    * chain. Input URIs may carry `?index=`; keys are the URIs as given and
-   * successors are canonical (undecorated).
+   * successors are canonical (undecorated). With `canFollow`, each chain
+   * stops before the first successor the caller may not read, and is walked
+   * within a bounded number of hops (see `scopedChainEnds`).
    */
   async getSupersedingUris(
-    uris: string[]
+    uris: string[],
+    options?: SupersessionOptions
   ): Promise<StoreResult<Map<string, string>>> {
     try {
       const db = this.ensureOpen();
@@ -3855,6 +3949,19 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         ORDER BY s.id
       `);
       const canonical = new Map(uris.map((uri) => [uri, stripUriIndex(uri)]));
+      if (options?.canFollow) {
+        const ends = await scopedChainEnds(
+          canonical.values(),
+          (frontier) => successorOf.all(JSON.stringify(frontier)),
+          options.canFollow
+        );
+        const result = new Map<string, string>();
+        for (const [input, uri] of canonical) {
+          const end = ends.get(uri);
+          if (end) result.set(input, end);
+        }
+        return ok(result);
+      }
       const next = new Map<string, string>();
       const seen = new Set(canonical.values());
       let frontier = [...seen];

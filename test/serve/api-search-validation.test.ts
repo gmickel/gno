@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 
 import type { ServerContext } from "../../src/serve/context";
 
+import { MAX_REQUEST_COLLECTIONS } from "../../src/core/collection-limits";
 import {
   handleSearch,
   handleQuery,
@@ -63,6 +64,35 @@ test("REST retrieval rejects invalid typed filters with a stable field path befo
         code: "VALIDATION",
         message: expect.stringContaining("filter"),
         details: { field: expect.stringContaining("filter") },
+      },
+    });
+  }
+});
+
+test("REST collections allowlist accepts the shared bound and rejects one more name", async () => {
+  const store = new SqliteAdapter();
+  const ctx = { store } as ServerContext;
+  const names = (count: number): string[] =>
+    Array.from({ length: count }, (_, i) => `c${i}`);
+  for (const handler of [
+    (req: Request) => handleSearch(store, req),
+    (req: Request) => handleQuery(ctx, req),
+  ]) {
+    const response = await handler(
+      new Request("http://localhost/api/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: "needle",
+          collections: names(MAX_REQUEST_COLLECTIONS + 1),
+        }),
+      })
+    );
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: "VALIDATION",
+        message: `collections accepts at most ${MAX_REQUEST_COLLECTIONS} names`,
       },
     });
   }

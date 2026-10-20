@@ -90,6 +90,10 @@ export function buildEligibleDocumentQuery(
     conditions.push("d.collection = ?");
     params.push(options.collection);
   }
+  if (options.collections !== undefined) {
+    conditions.push("d.collection IN (SELECT value FROM json_each(?))");
+    params.push(JSON.stringify(options.collections));
+  }
   if (options.relPathPrefix !== undefined) {
     conditions.push(
       "(COALESCE(NULLIF(d.record_source_path, ''), d.rel_path) = ? OR substr(COALESCE(NULLIF(d.record_source_path, ''), d.rel_path), 1, length(?) + 1) = ? || '/')"

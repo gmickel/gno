@@ -15,6 +15,7 @@ import type { ToolContext } from "../server";
 import { type RememberResult } from "../../core/memory";
 import { MEMORY_MAX_FACT_BYTES } from "../../core/memory-record";
 import { formatRequestReceiptLine } from "../../core/request-receipts";
+import { assertMemoryWritable } from "./access";
 import { runTool, type ToolResult } from "./index";
 import {
   createMcpMemoryService,
@@ -155,6 +156,7 @@ export function handleRemember(
           "WRITE_DISABLED: gno_remember requires --enable-write or GNO_MCP_ENABLE_WRITE=1"
         );
       }
+      assertMemoryWritable(ctx, args.collection);
       const service = createMcpMemoryService(ctx);
       let result: RememberResult;
       try {

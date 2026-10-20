@@ -4,11 +4,14 @@
 
 import { describe, expect, test } from "bun:test";
 
+import { MAX_REQUEST_COLLECTIONS } from "../../../src/core/collection-limits";
 import {
   graphQueryInputSchema,
   MCP_TOOL_DESCRIPTIONS,
   queryDiagnoseInputSchema,
   queryInputSchema,
+  searchInputSchema,
+  vsearchInputSchema,
 } from "../../../src/mcp/tools/index";
 
 describe("gno_query schema", () => {
@@ -125,5 +128,51 @@ describe("gno_query schema", () => {
   test("new tool descriptions explain when to diagnose/query graph", () => {
     expect(MCP_TOOL_DESCRIPTIONS.queryDiagnose).toContain("missing");
     expect(MCP_TOOL_DESCRIPTIONS.queryDiagnose).toContain("stage-by-stage");
+  });
+});
+
+describe("collections allowlist schema", () => {
+  test.each([
+    ["gno_query", queryInputSchema],
+    ["gno_search", searchInputSchema],
+    ["gno_vsearch", vsearchInputSchema],
+  ] as const)(
+    "%s accepts collections and rejects an empty list",
+    (_, schema) => {
+      const parsed = schema.safeParse({ query: "x", collections: ["a", "b"] });
+      expect(parsed.success).toBe(true);
+      if (parsed.success) expect(parsed.data.collections).toEqual(["a", "b"]);
+      expect(schema.safeParse({ query: "x", collections: [] }).success).toBe(
+        false
+      );
+    }
+  );
+
+  test.each([
+    ["gno_query", queryInputSchema],
+    ["gno_search", searchInputSchema],
+    ["gno_vsearch", vsearchInputSchema],
+  ] as const)(
+    "%s accepts several hundred collections up to the shared bound",
+    (_, schema) => {
+      const names = (count: number): string[] =>
+        Array.from({ length: count }, (_, i) => `c${i}`);
+      expect(MAX_REQUEST_COLLECTIONS).toBe(1024);
+      for (const count of [180, 500, MAX_REQUEST_COLLECTIONS]) {
+        expect(
+          schema.safeParse({ query: "x", collections: names(count) }).success
+        ).toBe(true);
+      }
+      expect(
+        schema.safeParse({
+          query: "x",
+          collections: names(MAX_REQUEST_COLLECTIONS + 1),
+        }).success
+      ).toBe(false);
+    }
+  );
+
+  test("gno_query_diagnose keeps a single collection", () => {
+    expect("collections" in queryDiagnoseInputSchema.shape).toBe(false);
   });
 });

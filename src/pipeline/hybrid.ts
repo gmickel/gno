@@ -60,7 +60,11 @@ import {
   explainTimings,
   explainVector,
 } from "./explain";
-import { evaluateDocumentChunkFilters, typedMetadataWarnings } from "./filters";
+import {
+  evaluateDocumentChunkFilters,
+  resolveAccessAllowlist,
+  typedMetadataWarnings,
+} from "./filters";
 import { type RankedInput, rrfFuse, toRankedInput } from "./fusion";
 import { expandGraphCandidates } from "./graph-retrieval";
 import { RequestHydration } from "./hydration";
@@ -150,6 +154,7 @@ async function checkBm25Strength(
   query: string,
   options?: {
     collection?: string;
+    collections?: string[];
     lang?: string;
     tagsAll?: string[];
     tagsAny?: string[];
@@ -168,6 +173,7 @@ async function checkBm25Strength(
   const result = await store.searchFts(query, {
     limit: 5,
     collection: options?.collection,
+    collections: options?.collections,
     relPathPrefix: options?.relPathPrefix,
     language: options?.lang,
     chunkLanguage: options?.lang,
@@ -225,6 +231,7 @@ async function searchFtsChunks(
   options: {
     limit: number;
     collection?: string;
+    collections?: string[];
     lang?: string;
     tagsAll?: string[];
     tagsAny?: string[];
@@ -243,6 +250,7 @@ async function searchFtsChunks(
   const result = await store.searchFts(query, {
     limit: options.limit,
     collection: options.collection,
+    collections: options.collections,
     relPathPrefix: options.relPathPrefix,
     language: options.lang,
     chunkLanguage: options.lang,
@@ -399,6 +407,22 @@ export async function searchHybrid(
 }
 
 // oxlint-disable-next-line max-lines-per-function -- search orchestration with BM25, vector, fusion, reranking
+/**
+ * Effective collection scope of a request: `collection` intersected with the
+ * `collections` allowlist. Undefined means unrestricted; empty denies all.
+ */
+function requestCollectionScope(
+  options: Pick<HybridSearchOptions, "collection" | "collections">
+): string[] | undefined {
+  if (options.collections === undefined) {
+    return options.collection === undefined ? undefined : [options.collection];
+  }
+  if (options.collection === undefined) return options.collections;
+  return options.collections.includes(options.collection)
+    ? [options.collection]
+    : [];
+}
+
 async function searchHybridWithHydration(
   deps: HybridSearchDeps,
   query: string,
@@ -451,9 +475,34 @@ async function searchHybridWithHydration(
     options.categories?.length ||
     options.author ||
     temporalRange.since ||
-    temporalRange.until
+    temporalRange.until ||
+    // Access hook: overfetch so denied documents do not empty the page.
+    options.access
   );
   const retrievalMultiplier = hasPostFilters || recencySort ? 3 : 1;
+  // Access hook gate: drop candidates whose documents it does not allow.
+  const accessCounts = { checked: 0, denied: 0 };
+  const applyAccess = async <
+    T extends { mirrorHash: string; documentId?: number },
+  >(
+    candidates: T[]
+  ): Promise<T[] | null> => {
+    if (!options.access) return candidates;
+    const allowlist = await resolveAccessAllowlist(
+      hydration,
+      candidates.map((candidate) => candidate.mirrorHash),
+      options.access
+    );
+    if (!allowlist.ok) return null;
+    const kept = candidates.filter((candidate) =>
+      candidate.documentId === undefined
+        ? allowlist.value.hashes.has(candidate.mirrorHash)
+        : allowlist.value.ids.has(candidate.documentId)
+    );
+    accessCounts.checked += candidates.length;
+    accessCounts.denied += candidates.length - kept.length;
+    return kept;
+  };
 
   // ─────────────────────────────────────────────────────────────────────────
   // 0. Detect query language for PROMPT SELECTION only
@@ -500,6 +549,7 @@ async function searchHybridWithHydration(
       ? false
       : await checkBm25Strength(store, query, {
           collection: options.collection,
+          collections: options.collections,
           lang: options.lang,
           memoryScopesAny: options.memoryFilter?.scopes,
           excludeSuperseded: options.memoryFilter?.excludeSuperseded,
@@ -550,8 +600,12 @@ async function searchHybridWithHydration(
 
   const vectorEligibility: VectorSearchOptions["eligibility"] = {
     collection: options.collection,
+    collections: options.collections,
     memoryScopesAny: options.memoryFilter?.scopes,
     excludeSuperseded: options.memoryFilter?.excludeSuperseded,
+    // Graph neighbours hydrate through this eligibility, so the internal
+    // allowlist bounds them as well as the vector legs.
+    allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
     relPathPrefix: options.retrievalScope?.relPathPrefix,
     tagsAll: options.tagsAll,
     tagsAny: options.tagsAny,
@@ -575,6 +629,7 @@ async function searchHybridWithHydration(
     exclude: options.exclude,
     allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
     collection: options.collection,
+    collections: options.collections,
     lang: options.lang,
     tagsAll: options.tagsAll,
     tagsAny: options.tagsAny,
@@ -615,6 +670,7 @@ async function searchHybridWithHydration(
           exclude: options.exclude,
           allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
           collection: options.collection,
+          collections: options.collections,
           lang: options.lang,
           tagsAll: options.tagsAll,
           tagsAny: options.tagsAny,
@@ -792,6 +848,12 @@ async function searchHybridWithHydration(
     await resolveFusionOwners(rankedInputs, store, hydration, query, options),
     pipelineConfig.rrf
   );
+  if (options.access) {
+    // Before graph seeds: a denied document never seeds expansion.
+    const allowed = await applyAccess(fusedCandidates);
+    if (!allowed) return err("QUERY_FAILED", "Access check failed");
+    fusedCandidates = allowed;
+  }
   diagnoseTrace?.stages.push({
     id: "fusion",
     status: "active",
@@ -806,7 +868,13 @@ async function searchHybridWithHydration(
     fusedCandidates,
     {
       collection: options.collection,
-      collections: options.graphCollections,
+      // A request allowlist is intersected with `collection` before graph
+      // expansion; only the internal graphCollections may widen past it.
+      collections:
+        options.graphCollections ??
+        (options.collections === undefined
+          ? undefined
+          : requestCollectionScope(options)),
       includeSimilar: vectorAvailable,
       eligibility: vectorEligibility,
       limit,
@@ -821,6 +889,9 @@ async function searchHybridWithHydration(
       categories: options.categories,
       author: options.author,
       filter: options.filter,
+      readable: options.readable,
+      access: options.access,
+      accessScoped: options.accessScoped,
     },
     hydration
   );
@@ -832,7 +903,41 @@ async function searchHybridWithHydration(
       await resolveFusionOwners(rankedInputs, store, hydration, query, options),
       pipelineConfig.rrf
     );
+    if (options.access) {
+      // Graph neighbours (and re-fused seeds) pass the hook before rerank.
+      const allowed = await applyAccess(fusedCandidates);
+      if (!allowed) return err("QUERY_FAILED", "Access check failed");
+      fusedCandidates = allowed;
+    }
     timings.fusionMs += performance.now() - graphFusionStartedAt;
+  }
+  // Enforce the intersected request scope before anything reaches the
+  // reranker: no candidate outside `collection` ∩ `collections` may be sent
+  // to the model, whichever stage produced it.
+  if (
+    options.collections !== undefined &&
+    options.graphCollections === undefined
+  ) {
+    const scope = new Set(requestCollectionScope(options));
+    const scopeDocsResult = await hydration.getDocumentsByMirrorHashes(
+      [...new Set(fusedCandidates.map((candidate) => candidate.mirrorHash))],
+      { collection: options.collection, activeOnly: true }
+    );
+    if (!scopeDocsResult.ok) {
+      return err("QUERY_FAILED", scopeDocsResult.error.message);
+    }
+    const inScopeHashes = new Set<string>();
+    const inScopeIds = new Set<number>();
+    for (const document of scopeDocsResult.value) {
+      if (!document.mirrorHash || !scope.has(document.collection)) continue;
+      inScopeHashes.add(document.mirrorHash);
+      inScopeIds.add(document.id);
+    }
+    fusedCandidates = fusedCandidates.filter((candidate) =>
+      candidate.documentId === undefined
+        ? inScopeHashes.has(candidate.mirrorHash)
+        : inScopeIds.has(candidate.documentId)
+    );
   }
   diagnoseTrace?.stages.push({
     id: "graph",
@@ -857,6 +962,12 @@ async function searchHybridWithHydration(
       ? `seeds=${graphExpansion.meta.seedCount}, candidates=${graphExpansion.meta.candidateCount}/${graphExpansion.meta.maxCandidates}, explicit=${graphExpansion.meta.edgeConfidence.explicit}, inferred=${graphExpansion.meta.edgeConfidence.inferred}, ambiguous=${graphExpansion.meta.edgeConfidence.ambiguous}, similarity=${graphExpansion.meta.edgeConfidence.similarity}`
       : `skipped (${graphExpansion.meta.fallbackReasons.join(", ") || "disabled"})`,
   });
+  if (options.access) {
+    explainLines.push({
+      stage: "access",
+      message: `checked=${accessCounts.checked}, denied=${accessCounts.denied}, overfetch=x${retrievalMultiplier}`,
+    });
+  }
   explainLines.push(
     explainFusion(pipelineConfig.rrf.k, fusedCandidates.length)
   );
@@ -1367,7 +1478,7 @@ async function searchHybridWithHydration(
       }
     : undefined;
   await attachSearchResultContexts(store, finalResults);
-  await attachSupersession(store, finalResults);
+  await attachSupersession(store, finalResults, options.supersession);
   const lineageResult = await attachSearchResultEgressLineage(
     store,
     finalResults,
@@ -1394,12 +1505,14 @@ async function searchHybridWithHydration(
       intent: options.intent,
       exclude: options.exclude,
       collection: options.collection,
+      collections: options.collections,
       lang: options.lang,
       since: temporalRange.since,
       until: temporalRange.until,
       categories: options.categories,
       author: options.author,
-      ...(options.filter
+      // Coverage counts span documents a scoped caller may not read.
+      ...(options.filter && !options.accessScoped
         ? { warnings: await typedMetadataWarnings(store, query, options) }
         : {}),
       candidateLimit,

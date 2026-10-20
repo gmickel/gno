@@ -19,7 +19,12 @@ import { httpMcpRequestNamespace } from "../core/request-receipts";
 import { withInferenceScope } from "../llm/inference-scope";
 import { remoteSafeSessionsError } from "../sessions/types";
 import { StaleCollectionsError } from "../store/sqlite/adapter";
-import { createMcpServerSurface, type ToolContext } from "./context";
+import {
+  createMcpServerSurface,
+  type RequestPrincipal,
+  type RequestSubject,
+  type ToolContext,
+} from "./context";
 import {
   enforceHttpMcpEgress,
   httpMcpEgressDeniedResponse,
@@ -60,6 +65,8 @@ export interface HttpMcpTransportOptions extends HttpMcpSessionStoreOptions {
 export interface HttpMcpRequestContext {
   authenticated?: boolean;
   identity: string;
+  principal?: RequestPrincipal;
+  subject?: RequestSubject;
   parsedBody?: unknown;
   peerClassification?: DestinationClassification;
 }
@@ -462,7 +469,15 @@ export class HttpMcpTransport {
                 this.#runtime.mcpContext.serverInstanceId,
                 context.identity
               ),
-              requestNamespace: httpMcpRequestNamespace(context.identity),
+              // An asserted subject gets its own receipt namespace, keyed by
+              // the subject hash; the plain identity keeps its old namespace.
+              requestNamespace: httpMcpRequestNamespace(
+                context.subject
+                  ? `${context.identity}\u0000subject:${context.subject.hash}`
+                  : context.identity
+              ),
+              ...(context.principal ? { principal: context.principal } : {}),
+              ...(context.subject ? { subject: context.subject } : {}),
             }
           )
         : await handle();
