@@ -718,6 +718,12 @@ export interface DocumentEligibilityOptions {
   exclude?: string[];
   /** Filter by collection */
   collection?: string;
+  /**
+   * Filter to documents in ANY of these collections, before ranking and LIMIT.
+   * Undefined is unrestricted; an empty array denies all. Intersects with
+   * `collection` when both are set.
+   */
+  collections?: string[];
   /** Internal exact relative-path boundary applied before ranking and LIMIT. */
   relPathPrefix?: string;
   /** Filter to docs with ANY of these tags */
@@ -1113,6 +1119,14 @@ export interface GetGraphNeighborsOptions {
   collections?: string[];
   /** Max edges to return (default 10000) */
   limitEdges?: number;
+  /**
+   * A caller's hidden documents: links resolve as if they did not exist, so
+   * they take no link and change no match count or confidence. When set
+   * (even empty), `meta.resolutionDocuments` lists the documents that
+   * decided each resolution, for the caller to check and resolve again
+   * without the ones it hides.
+   */
+  hiddenDocumentIds?: number[];
 }
 
 /** Result of seed-scoped one-hop graph neighbor lookup. */
@@ -1126,6 +1140,12 @@ export interface GraphNeighborsResult {
     examinedLinkRows: number;
     /** Edges returned after merge/cap. */
     returnedEdges: number;
+    /**
+     * With `hiddenDocumentIds`: every document that decided a link
+     * resolution (each target and its same-rank matches; every match of a
+     * workspace link), including resolutions that became no edge.
+     */
+    resolutionDocuments?: Array<{ id: number; docid: string }>;
   };
 }
 
@@ -1583,6 +1603,16 @@ export type WithTransaction = <T>(
 // ─────────────────────────────────────────────────────────────────────────────
 // StorePort Interface
 // ─────────────────────────────────────────────────────────────────────────────
+
+/** Caller scope for supersession links (see `getSupersedingUris`). */
+export interface SupersessionOptions {
+  /**
+   * Which of these canonical URIs the caller may read. A lookup asks once
+   * per hop, with every new successor that hop reaches; a throw fails the
+   * lookup, so no successor is named.
+   */
+  canFollow?: (uris: string[]) => Promise<ReadonlySet<string>>;
+}
 
 /**
  * StorePort - Port interface for data persistence.
@@ -2286,9 +2316,16 @@ export interface StorePort {
   /**
    * For each URI whose document an active document supersedes, the URI of
    * its current successor (the end of the supersession chain).
+   *
+   * With `canFollow`, the chain stops before the first successor the caller
+   * may not read, so the result never names a document outside the caller's
+   * scope and never reveals that a hidden document supersedes another. A
+   * scoped walk is bounded: a chain that reaches the hop limit names no
+   * successor.
    */
   getSupersedingUris?(
-    uris: string[]
+    uris: string[],
+    options?: SupersessionOptions
   ): Promise<StoreResult<Map<string, string>>>;
 
   /**

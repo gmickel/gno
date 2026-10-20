@@ -533,10 +533,14 @@ export async function startResidentRuntime(
       throw new StaleCollectionsError(staleCollectionsMessage(stale));
     }
   };
+  // Whether the config file holds an edit the last refresh could not adopt
+  // (a stale collection fails the sync), so the served config is behind it.
+  let configEditPending = false;
   const refreshConfig = (): Promise<void> => {
     configRefresh ??= (async () => {
       const stamp = await configStamp();
       if (stamp !== undefined && stamp === loadedConfigStamp) {
+        configEditPending = false;
         assertServedCollections();
         return;
       }
@@ -552,9 +556,11 @@ export async function startResidentRuntime(
       };
       if (Bun.deepEquals(next, served)) {
         loadedConfigStamp = stamp;
+        configEditPending = false;
         assertServedCollections();
         return;
       }
+      configEditPending = true;
       await adoptServedConfig(
         {
           ...instance,
@@ -570,6 +576,7 @@ export async function startResidentRuntime(
         next
       );
       loadedConfigStamp = stamp;
+      configEditPending = false;
     })().finally(() => {
       configRefresh = undefined;
     });
@@ -826,6 +833,7 @@ export async function startResidentRuntime(
     };
   };
   mcpContext.getResidentStatus = () => runtime.getStatus();
+  mcpContext.isConfigEditPending = () => configEditPending;
   // Without requests (a headless daemon) the watcher still follows the file.
   let lastRefreshError: string | undefined;
   const configRefreshTimer = setInterval(() => {

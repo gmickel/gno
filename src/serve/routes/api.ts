@@ -57,6 +57,7 @@ import {
   type EgressRelaxationConfirmation,
 } from "../../core/collection-egress-policy-service";
 import { parsePolicySetBody } from "../../core/collection-egress-policy-validation";
+import { MAX_REQUEST_COLLECTIONS } from "../../core/collection-limits";
 import {
   type ConnectorVerificationCode,
   getConnectorVerificationRemediation,
@@ -303,6 +304,8 @@ export interface SearchRequestBody {
   limit?: number;
   minScore?: number;
   collection?: string;
+  /** Filter to documents in ANY of these collections (before the limit) */
+  collections?: string[];
   intent?: string;
   exclude?: string;
   since?: string;
@@ -323,6 +326,8 @@ export interface QueryRequestBody {
   limit?: number;
   minScore?: number;
   collection?: string;
+  /** Filter to documents in ANY of these collections (before the limit) */
+  collections?: string[];
   lang?: string;
   intent?: string;
   candidateLimit?: number;
@@ -626,6 +631,39 @@ function requestErrorResponse(error: unknown): Response | null {
     error.message,
     REQUEST_RECEIPT_HTTP_STATUS[error.code]
   );
+}
+
+/** Opt-in collection allowlist: a non-empty array of collection names. */
+function parseRestCollections(
+  value: unknown
+):
+  | { ok: true; collections: string[] | undefined }
+  | { ok: false; response: Response } {
+  if (value === undefined) return { ok: true, collections: undefined };
+  if (
+    !Array.isArray(value) ||
+    value.length === 0 ||
+    !value.every((name) => typeof name === "string" && name.length > 0)
+  ) {
+    return {
+      ok: false,
+      response: errorResponse(
+        "VALIDATION",
+        "collections must be a non-empty array of collection names"
+      ),
+    };
+  }
+  const collections = [...new Set(value as string[])];
+  if (collections.length > MAX_REQUEST_COLLECTIONS) {
+    return {
+      ok: false,
+      response: errorResponse(
+        "VALIDATION",
+        `collections accepts at most ${MAX_REQUEST_COLLECTIONS} names`
+      ),
+    };
+  }
+  return { ok: true, collections };
 }
 
 function parseRestMetadataFilter(
@@ -4476,7 +4514,7 @@ export async function handleCreateDoc(
 
 /**
  * POST /api/search
- * Body: { query, mode?, limit?, minScore?, collection? }
+ * Body: { query, mode?, limit?, minScore?, collection?, collections? }
  * Returns search results.
  */
 export async function handleSearch(
@@ -4584,6 +4622,8 @@ export async function handleSearch(
     ? parseCommaSeparatedValues(body.exclude)
     : undefined;
   const author = body.author?.trim() || undefined;
+  const parsedCollections = parseRestCollections(body.collections);
+  if (!parsedCollections.ok) return parsedCollections.response;
   const parsedFilter = parseRestMetadataFilter(body.filter);
   if (!parsedFilter.ok) return parsedFilter.response;
   const filter = parsedFilter.filter;
@@ -4606,6 +4646,7 @@ export async function handleSearch(
     limit: Math.min(body.limit || 10, 50),
     minScore: body.minScore,
     collection: body.collection,
+    collections: parsedCollections.collections,
     intent: body.intent?.trim() || undefined,
     exclude,
     tagsAll,
@@ -4651,7 +4692,7 @@ export async function handleSearch(
 
 /**
  * POST /api/query
- * Body: { query, limit?, minScore?, collection?, lang?, queryModes?, noExpand?, noRerank? }
+ * Body: { query, limit?, minScore?, collection?, collections?, lang?, queryModes?, noExpand?, noRerank? }
  * Returns hybrid search results (BM25 + vector + expansion + reranking).
  */
 export async function handleQuery(
@@ -4782,6 +4823,8 @@ export async function handleQuery(
     ? parseCommaSeparatedValues(body.exclude)
     : undefined;
   const author = body.author?.trim() || undefined;
+  const parsedCollections = parseRestCollections(body.collections);
+  if (!parsedCollections.ok) return parsedCollections.response;
   const parsedFilter = parseRestMetadataFilter(body.filter);
   if (!parsedFilter.ok) return parsedFilter.response;
   const filter = parsedFilter.filter;
@@ -4804,6 +4847,7 @@ export async function handleQuery(
     limit: Math.min(body.limit ?? 20, 50),
     minScore: body.minScore,
     collection: body.collection,
+    collections: parsedCollections.collections,
     lang: body.lang,
     intent: body.intent?.trim() || undefined,
     candidateLimit:

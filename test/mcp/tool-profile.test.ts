@@ -231,7 +231,7 @@ describe("MCP tool profile selection", () => {
     expect(parseMcpToolProfile("core")).toBe("core");
     expect(parseMcpToolProfile("full")).toBe("full");
     expect(() => parseMcpToolProfile("slim")).toThrow(
-      'Invalid tool profile: "slim". Must be one of: core, full.'
+      'Invalid tool profile: "slim". Must be one of: core, full, scoped.'
     );
     expect(() => parseMcpToolProfile("CORE")).toThrow(/Invalid tool profile/);
   });

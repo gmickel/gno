@@ -117,6 +117,7 @@ export const retrievalTraceFilters = (
       limit: options.limit,
       minScore: options.minScore,
       collection: options.collection,
+      collections: options.collections,
       lang: options.lang,
       full: options.full,
       lineNumbers: options.lineNumbers,

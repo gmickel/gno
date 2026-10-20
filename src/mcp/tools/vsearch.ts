@@ -36,12 +36,18 @@ import {
 } from "../../pipeline/vsearch";
 import { createVectorIndexPort } from "../../store/vector";
 import { appendRetrievalWarnings } from "../retrieval-warnings";
-import { normalizeTagFilters, runTool, type ToolResult } from "./index";
+import {
+  assertCollectionsExist,
+  normalizeTagFilters,
+  runTool,
+  type ToolResult,
+} from "./index";
 
 interface VsearchInput {
   query: string;
   projectHints?: string[];
   collection?: string;
+  collections?: string[];
   limit?: number;
   minScore?: number;
   lang?: string;
@@ -130,13 +136,11 @@ export function handleVsearch(
     "gno_vsearch",
     // oxlint-disable-next-line max-lines-per-function -- vector search with validation and result formatting
     async () => {
-      // Validate collection exists if specified
-      if (args.collection) {
-        const exists = ctx.collections.some((c) => c.name === args.collection);
-        if (!exists) {
-          throw new Error(`Collection not found: ${args.collection}`);
-        }
-      }
+      // Validate collections exist if specified
+      assertCollectionsExist(ctx, [
+        args.collection,
+        ...(args.collections ?? []),
+      ]);
 
       // Get model from active preset
       const modelUri = resolveModelUri(
@@ -153,6 +157,7 @@ export function handleVsearch(
         limit: args.limit ?? 5,
         minScore: args.minScore,
         collection: args.collection,
+        collections: args.collections,
         intent: args.intent,
         exclude: args.exclude,
         since: args.since,
@@ -192,7 +197,9 @@ export function handleVsearch(
         // Create LLM adapter for embeddings
         const llm = ctx.getModelAdapter?.() ?? new LlmAdapter(ctx.config);
         const embedResult = await llm.createEmbeddingPort(modelUri, {
-          egressCollections: args.collection ? [args.collection] : "all",
+          egressCollections: args.collection
+            ? [args.collection]
+            : (args.collections ?? "all"),
           policy,
           onProgress: (progress) => downloadProgress("embed", progress),
         });

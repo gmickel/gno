@@ -136,6 +136,7 @@ export async function query(
     configPath: options.configPath,
     indexName: options.indexName,
     collection: options.collection,
+    collections: options.collections,
     syncConfig: false,
   });
 
@@ -198,7 +199,7 @@ export async function query(
     const llm = new LlmAdapter(config);
     const egressCollections = options.collection
       ? [options.collection]
-      : ("all" as const);
+      : (options.collections ?? ("all" as const));
 
     // Resolve download policy from env/flags
     const globals = getGlobals();

@@ -61,6 +61,11 @@ export interface WorkspaceTargetResolution {
   tied: WorkspaceCandidate[];
   /** Legacy-compatible rank for title fallback confidence (1-4), else null. */
   titleRank: number | null;
+  /**
+   * Every match the ranking weighed, the target included: any of them
+   * decides the target, a tie or an exact name.
+   */
+  matches: WorkspaceCandidate[];
 }
 
 interface CatalogDoc extends WorkspaceCandidate {
@@ -454,6 +459,7 @@ const rankTarget = (
       traversable,
       tied: traversable ? [] : tied.map(({ doc }) => toCandidate(doc)),
       titleRank: null,
+      matches: matches.map(({ doc }) => toCandidate(doc)),
     };
   }
   // Fallback: frontmatter title inside the source collection only; relative
@@ -474,6 +480,7 @@ const rankTarget = (
       traversable: docs.length === 1,
       tied: docs.length === 1 ? [] : docs.map(toCandidate),
       titleRank: rank,
+      matches: docs.map(toCandidate),
     };
   }
   return null;
@@ -662,13 +669,14 @@ const withUnicodeForms = (values: Iterable<string>): string[] => {
 /**
  * Resolve workspace targets. `bulk` loads every document of the involved
  * workspaces once; otherwise a SQL basename/title prefilter fetches only
- * potential candidates. Both paths rank identical rows identically.
+ * potential candidates. Both paths rank identical rows identically. Hidden
+ * documents are left out of the catalog, as if they did not exist.
  */
 export const resolveWorkspaceTargets = (
   db: Database,
   memberships: ReadonlyMap<string, CollectionWorkspaceMembership>,
   targets: readonly WorkspaceTargetInput[],
-  options: { bulk: boolean }
+  options: { bulk: boolean; hiddenDocumentIds?: ReadonlySet<number> }
 ): Array<WorkspaceTargetResolution | null> => {
   if (targets.length === 0) return [];
   const wsKeys = new Set(targets.map((target) => target.wsKey));
@@ -677,7 +685,7 @@ export const resolveWorkspaceTargets = (
   const seen = new Set<number>();
   const addRows = (rows: CatalogRow[]) => {
     for (const row of rows) {
-      if (seen.has(row.id)) continue;
+      if (seen.has(row.id) || options.hiddenDocumentIds?.has(row.id)) continue;
       seen.add(row.id);
       catalog.add(row);
     }

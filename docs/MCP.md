@@ -316,6 +316,7 @@ today's whole surface, byte-for-byte.
 | ---------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------- |
 | `full` (default) | all 38                                                                                                | all 22 write-gated tools      |
 | `core`           | `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`, `gno_changes`, `gno_recall` (7) | `gno_capture`, `gno_remember` |
+| `scoped`         | `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`, `gno_recall` (6)                | `gno_remember`                |
 
 Write tools stay behind `--enable-write` in both profiles; a profile never
 widens the write gate. `gno_job_status` is not in `core` because neither core
@@ -433,6 +434,83 @@ configured path does not exist. On POSIX it must remain mode `0600` or stricter.
 Never pass the token on the command line; clients send
 `Authorization: Bearer <token>`. Rotation, deletion, invalid contents, or
 permission relaxation invalidates authenticated sessions.
+
+#### Named principals (optional)
+
+A front end that serves many people through one gateway, such as a chat
+assistant, can get its own named token and say which user each request is for:
+
+```yaml
+# ~/.config/gno/index.yml
+gateway:
+  principals:
+    - name: assistant
+      tokenFile: ~/.config/gno/tokens/assistant
+      mayAssertSubject: true
+    - name: ops
+      tokenFile: ~/.config/gno/tokens/ops
+      admin: true
+```
+
+Each principal sends `Authorization: Bearer <its token>`. Once principals are
+configured, every request needs a token, even on loopback. Only a principal
+with `mayAssertSubject: true` may send `GNO-Subject: <user id>` and
+`GNO-Context: 1to1`, `shared` or `public_only` (and, optionally,
+`GNO-Request-Id: <turn id>`, passed to the access hook as `request_id`);
+anyone else who sends them gets 403. GNO records the principal and the user with the request (the user only
+as a hash in request receipts). Every principal and the plain `tokenFile`
+need different tokens: if a rotation makes two of them equal, neither is
+accepted until one is rotated again. Without `principals`, nothing changes.
+
+#### Collection access (optional)
+
+Once principals are configured, a principal without `admin: true` reads only
+collections whose `access` rule lets its user in (see
+[Collection access](CONFIGURATION.md#collection-access)). For such a caller:
+
+- search, query and context cover only readable collections, and only notes
+  whose `gno.metadata.derived_from` lists their sources as
+  `<system>:<reference>` strings;
+- a note it may not read and a note that does not exist give the same
+  `NOT_FOUND` answer, byte for byte;
+- `supersededBy`, including the one `gno_context` hands the model, names a
+  newer note only when the caller may read it, so a note it may not read
+  never shows up as a successor, and follows at most 32 supersession hops;
+- `egressLineage` lists only collections the caller may read, even when a
+  collection it may not read holds the same content;
+- a Context Capsule's config, retrieval and index fingerprints cover only
+  the collections, contexts and notes the caller may read, so a change it may
+  not read never changes its Capsule;
+- typed-metadata coverage warnings are left out, because their counts would
+  include notes the caller may not read, and graph expansion resolves and
+  counts links over only the notes the caller may read;
+- collections another client indexed but this config does not list are never
+  read and never named: where an unrestricted caller gets the error that
+  lists them, such a caller gets the answer it would get without them. While
+  one keeps the server from applying an edited config, such a caller's calls
+  fail with `UNAVAILABLE` and no names until the edit is applied, so it never
+  reads under `access` rules the file has changed;
+- the daemon's `GET /api/resident/status` answers it `404`;
+- only `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`,
+  `gno_recall` and `gno_remember` work. Every other tool, including
+  `gno_changes`, links and status, answers `NOT_FOUND`, and `gno://`
+  resources are empty. Set `gateway.toolProfile: scoped` so the tool list
+  matches.
+
+With `gateway.accessHook` set (see
+[Access hook](CONFIGURATION.md#access-hook)), GNO also asks your hook, per
+request, which of a note's sources the user may read: a note is served only
+when every source is allowed, and `accessRef` collections open only when the
+hook allows them. Anything the hook does not allow, including a slow or
+failed answer, is treated like a missing note, and is never named as a
+`supersededBy` successor.
+
+Before each scoped search, query or context call, GNO lists the documents of
+every readable collection to leave out notes without a valid `derived_from`.
+Results are unaffected, but latency grows with the readable corpus.
+
+Admin principals, plain `tokenFile` callers and stdio see everything, as
+before.
 
 Authentication does not authorize writes. Set `gateway.enableWrite: true` or
 pass `--mcp-enable-write` separately. Without that opt-in, HTTP calls to write
@@ -1243,6 +1321,7 @@ BM25 keyword search.
 ```
 Query: "authentication"
 Collection: (optional)
+collections: ["work", "notes"]  # Optional: ANY of these, applied before the limit
 since: "last month"         # Optional temporal lower bound
 until: "today"              # Optional temporal upper bound
 categories: ["meeting"]     # Optional category/content-type filters
@@ -1251,6 +1330,16 @@ tagsAll: ["backend"]        # Optional: must have ALL tags
 tagsAny: ["urgent"]         # Optional: must have ANY tag
 Limit: 5 (default)
 ```
+
+`collections` (on `gno_search`, `gno_vsearch` and `gno_query`) keeps documents
+from any listed collection. It is applied before `limit`, so other collections
+never take result slots, and every name must be configured. Responses echo it as
+`meta.collections`. One list takes up to 1024 names (the collection egress
+bound); `gno_query_diagnose` keeps the single `collection` filter. Over
+Streamable HTTP, egress policy is checked on the listed collections only (on
+`collection` when both are set and the list holds it), so a list of `remote`
+collections is served to a remote caller even when another collection is
+`local_only`.
 
 Structured search results include per-result `contentType` and `categories`
 fields, alongside `tags`, `docid`, `uri`, scores, and source metadata. Use those

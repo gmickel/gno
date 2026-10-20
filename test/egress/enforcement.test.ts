@@ -102,6 +102,18 @@ describe("network boundary enforcement inventory", () => {
     expect(names.sort()).toEqual(Object.keys(MCP_HTTP_EGRESS_TOOLS).sort());
   });
 
+  test("registers the access hook call as a transport without collection data", () => {
+    const hook = NETWORK_BOUNDARY_INVENTORY.find(
+      ({ key }) => key === "src/core/access-hook.ts::fetch#1"
+    );
+    expect(hook).toMatchObject({
+      id: "gateway-access-hook",
+      primitive: "fetch",
+      action: null,
+      enforcement: "no_collection_data",
+    });
+  });
+
   test("documents disabled remote/private paths explicitly", () => {
     const disabled = NETWORK_BOUNDARY_INVENTORY.filter(
       ({ enforcement }) => enforcement === "disabled"
@@ -197,6 +209,49 @@ describe("network boundary policy enforcement", () => {
     expect(() =>
       enforceHttpMcpEgress(request(["private"]), collections, context)
     ).toThrow(EgressDeniedError);
+  });
+
+  test("scopes remote retrieval to the requested collections allowlist", () => {
+    const collections = [
+      collection("docs", "remote"),
+      collection("notes", "remote"),
+      collection("private", "local_only"),
+    ];
+    const context = {
+      authenticated: true,
+      destinationZone: "remote" as const,
+      operationAuthorized: true,
+    };
+    const call = (name: string, args: Record<string, unknown>) => () =>
+      enforceHttpMcpEgress(
+        {
+          method: "tools/call",
+          params: { name, arguments: { query: "q", ...args } },
+        },
+        collections,
+        context
+      );
+
+    for (const name of ["gno_query", "gno_search", "gno_vsearch"]) {
+      // The list alone is the scope, like a single `collection`.
+      expect(call(name, { collections: [" Docs ", "notes"] })).not.toThrow();
+      expect(call(name, { collections: ["docs", "private"] })).toThrow(
+        EgressDeniedError
+      );
+      // Both: the intersection is served, so it is the scope.
+      expect(
+        call(name, { collection: "docs", collections: ["docs", "private"] })
+      ).not.toThrow();
+      // An empty intersection is judged against both, never as unscoped.
+      expect(
+        call(name, { collection: "docs", collections: ["private"] })
+      ).toThrow(EgressDeniedError);
+      expect(
+        call(name, { collection: "docs", collections: ["notes"] })
+      ).not.toThrow();
+      // Without either filter the call stays unscoped (every collection).
+      expect(call(name, {})).toThrow(EgressDeniedError);
+    }
   });
 
   test("attributes a batch denial to the exact denied member", async () => {
