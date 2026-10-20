@@ -109,7 +109,22 @@ export async function convertFile(path: string): Promise<ConvertFileOutcome> {
     );
   }
 
-  const bytes = await Bun.file(absPath).bytes();
+  let bytes: Uint8Array;
+  try {
+    bytes = await Bun.file(absPath).bytes();
+  } catch (error) {
+    // Readable at stat but not at read: removed meanwhile, or no permission.
+    const code = (error as { code?: unknown } | null)?.code;
+    if (code === "ENOENT") {
+      return fail("NOT_FOUND", `File not found: ${path}`, true);
+    }
+    const denied = code === "EACCES" || code === "EPERM";
+    return fail(
+      denied ? "PERMISSION" : "IO",
+      `Cannot read ${path}: ${error instanceof Error ? error.message : String(error)}`,
+      false
+    );
+  }
   const { mime, ext } = detector.detect(
     absPath,
     bytes.subarray(0, SNIFF_BYTES)

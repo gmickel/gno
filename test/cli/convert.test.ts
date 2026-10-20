@@ -275,6 +275,28 @@ describe("gno convert", () => {
     }
   );
 
+  test.skipIf(process.platform === "win32")(
+    "R4: an unreadable file fails with PERMISSION on the CLI and in the SDK",
+    async () => {
+      const locked = join(testDir, "locked.md");
+      await Bun.write(locked, "# Locked\n");
+      await chmod(locked, 0o000);
+      try {
+        const result = await cli("convert", locked, "--json");
+        expect(result.code).toBe(2);
+        expect(errorReason(result.stderr)).toBe("PERMISSION");
+        const error = await convertFile(locked).then(
+          () => null,
+          (cause: unknown) => cause
+        );
+        expect(error).toBeInstanceOf(GnoSdkError);
+        expect((error as GnoSdkError).details?.reason).toBe("PERMISSION");
+      } finally {
+        await chmod(locked, 0o644);
+      }
+    }
+  );
+
   test("R5: multi-record formats are refused with no partial output", async () => {
     for (const [fixture, format] of [
       ["exports/mail/mixed.mbox", "native/email-export"],
