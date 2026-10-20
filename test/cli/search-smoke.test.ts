@@ -318,6 +318,43 @@ describe("gno search smoke tests", () => {
     expect(code).not.toBe(0);
   });
 
+  test("repeated -c searches only the named collections", async () => {
+    for (const name of ["notes", "other"]) {
+      const dir = join(testDir, name);
+      await mkdir(dir, { recursive: true });
+      await writeFile(join(dir, `${name}.md`), `# ${name}\n\nmarkdown notes`);
+      expect((await cli("collection", "add", dir, "--name", name)).code).toBe(
+        0
+      );
+    }
+    await cli("update");
+
+    const { code, stdout } = await cli(
+      "search",
+      "markdown",
+      "-c",
+      "docs",
+      "-c",
+      "notes",
+      "--json"
+    );
+    expect(code).toBe(0);
+    const parsed = JSON.parse(stdout);
+    expect(validateSearchResults(parsed)).toBe(true);
+    expect(parsed.meta.collections).toEqual(["docs", "notes"]);
+    expect(
+      (parsed.results as { uri: string }[]).map((r) => r.uri).toSorted()
+    ).toEqual(["gno://docs/test.md", "gno://notes/notes.md"]);
+
+    const missing = await cli("search", "markdown", "-c", "docs", "-c", "nope");
+    // Same failure as an unknown single -c.
+    expect(missing.code).toBe(
+      (await cli("search", "markdown", "-c", "nope")).code
+    );
+    expect(missing.code).not.toBe(0);
+    expect(missing.stderr).toContain("Collection not found: nope");
+  });
+
   test("search no results returns exit 0", async () => {
     const { code, stdout } = await cli("search", "xyznonexistent123");
     expect(code).toBe(0);

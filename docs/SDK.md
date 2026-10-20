@@ -178,7 +178,13 @@ BM25/document-level search.
 
 ```ts
 const results = await client.search("JWT token", { limit: 5 });
+
+// Several collections: documents from any of them, filtered before the limit.
+const scoped = await client.query("deploy", { collections: ["work", "ops"] });
 ```
+
+`search`, `vsearch`, and `query` accept `collections: string[]` next to
+`collection`. When both are set, both apply. An empty array matches nothing.
 
 `search`, `vsearch`, `query`, and `ask` preserve optional `context` on each
 result. It contains matching user-configured guidance in deterministic

@@ -2,13 +2,14 @@ import type { Config } from "../config/types";
 import type { ContextCapsuleV1 } from "../core/context-capsule";
 import type { ContextEvidenceCompilerDeps } from "../core/context-evidence";
 import type { ContextVerifierDeps } from "../core/context-verifier";
+import type { EgressLineage } from "../core/egress-provenance";
 import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
 import type { MetadataPredicate } from "../core/typed-metadata";
 import type { EmbeddingPort, RerankPort } from "../llm/types";
 import type { RequestHydration } from "../pipeline/hydration";
 import type { ProjectAffinityScoringInput } from "../pipeline/project-affinity";
-import type { QueryModeInput } from "../pipeline/types";
-import type { StorePort } from "../store/types";
+import type { QueryModeInput, ReadableDocumentsCheck } from "../pipeline/types";
+import type { StorePort, SupersessionOptions } from "../store/types";
 import type { VectorIndexPort } from "../store/vector";
 
 export type ContextDepthPolicy = "fast" | "balanced" | "thorough";
@@ -62,6 +63,23 @@ export interface ContextCapsuleRuntimeDeps {
   traceSession?: RetrievalTraceSession;
   /** Internal non-canonical retrieval explanation request. */
   explain?: boolean;
+  /** Internal corpus allowlist applied to every retrieval before the limit. */
+  retrievalScope?: { allowedMirrorHashes: string[] };
+  /** Internal caller scope for evidence `supersededBy` links. */
+  supersession?: SupersessionOptions;
+  /** Internal: graph links resolve over the documents a caller may read. */
+  readable?: ReadableDocumentsCheck;
+  /**
+   * Internal: retrievals are confined to a caller's readable corpus, and the
+   * Capsule's config, retrieval and index fingerprints cover only what that
+   * caller may read.
+   */
+  accessScoped?: boolean;
+  /**
+   * Internal caller view of each retrieved result's policy lineage, applied
+   * after the retrieval trace has recorded the complete lineage.
+   */
+  egressLineageView?: (lineage: EgressLineage) => EgressLineage;
 }
 
 export type ContextRuntimeErrorCode =

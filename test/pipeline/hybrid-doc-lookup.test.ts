@@ -53,10 +53,11 @@ const makeDoc = (
     contentType?: string;
     relPath?: string;
     recordSourcePath?: string;
+    collection?: string;
   }
 ): DocumentRow => ({
   id,
-  collection: "notes",
+  collection: metadata?.collection ?? "notes",
   relPath: metadata?.relPath ?? `${mirrorHash}.md`,
   sourceHash: `source_${mirrorHash}`,
   sourceMime: "text/markdown",
@@ -64,7 +65,7 @@ const makeDoc = (
   sourceSize: 100,
   sourceMtime: metadata?.sourceMtime ?? NOW,
   docid: `#${mirrorHash}`,
-  uri: `gno://notes/${mirrorHash}.md`,
+  uri: `gno://${metadata?.collection ?? "notes"}/${mirrorHash}.md`,
   title: `Doc ${mirrorHash}`,
   mirrorHash,
   converterId: "md",
@@ -1616,6 +1617,76 @@ describe("searchHybrid targeted document lookup", () => {
       "explicit.md"
     );
     expect(result.value.meta.reranked).toBe(true);
+  });
+
+  test("graph expansion never sends a collection outside collection ∩ collections to the reranker", async () => {
+    const store = createGraphStore(
+      [
+        {
+          source: "#seed",
+          target: "#explicit",
+          type: "wiki",
+          weight: 1,
+          confidence: "explicit",
+          audit: { resolution: "exact-title", matchCount: 1 },
+        },
+      ],
+      {
+        docs: ["seed", "explicit"],
+        docMetadata: {
+          seed: { collection: "alpha" },
+          explicit: { collection: "beta" },
+        },
+      }
+    );
+    const notes = TEST_COLLECTIONS[0] as CollectionRow;
+    store.getCollections = async () => ({
+      ok: true as const,
+      value: ["alpha", "beta"].map((name) => ({ ...notes, name })),
+    });
+    const rerankedDocs: string[] = [];
+    const rerankPort: RerankPort = {
+      modelUri: "test:rerank",
+      rerank: async (_query, documents) => {
+        rerankedDocs.push(...documents);
+        return {
+          ok: true as const,
+          value: documents.map((_doc, index) => ({
+            index,
+            score: 1,
+            rank: index + 1,
+          })),
+        };
+      },
+      dispose: async () => {},
+    };
+
+    const result = await searchHybrid(
+      {
+        store: store as StorePort,
+        config: {} as Config,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort,
+      },
+      "seed query",
+      {
+        graph: true,
+        noExpand: true,
+        limit: 5,
+        collection: "alpha",
+        collections: ["alpha", "beta"],
+      }
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(rerankedDocs.length).toBeGreaterThan(0);
+    expect(rerankedDocs.some((doc) => doc.includes("explicit"))).toBe(false);
+    expect(result.value.results.map((r) => r.source.relPath)).toEqual([
+      "seed.md",
+    ]);
   });
 
   test("prefers seed-scoped graph neighbors and skips full getGraph", async () => {

@@ -4,6 +4,7 @@ import type { QueryModeInput } from "../pipeline/types";
 import type { ContextCapsuleBuildInput } from "./context-runtime-types";
 
 import { isValidLanguageHint } from "../config/types";
+import { MAX_REQUEST_COLLECTIONS } from "../core/collection-limits";
 import { normalizeTag, validateTag } from "../core/tags";
 import {
   metadataPredicateSchema,
@@ -213,7 +214,7 @@ export const normalizeContextBuildInput = (
   }
   const collections = canonicalStrings(input.collections, "collections");
   if (
-    collections.length > MAX_FILTER_VALUES ||
+    collections.length > MAX_REQUEST_COLLECTIONS ||
     collections.some((value) => !COLLECTION_PATTERN.test(value))
   ) {
     throw new ContextRuntimeError(

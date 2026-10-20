@@ -31,7 +31,10 @@ export async function evaluateRetrievalEligibility(
   doc: DocumentRow | undefined,
   chunks: ChunkRow[] | undefined,
   options: HybridSearchOptions,
-  callerScope?: Pick<HybridSearchOptions, "collection" | "retrievalScope">
+  callerScope?: Pick<
+    HybridSearchOptions,
+    "collection" | "collections" | "retrievalScope"
+  >
 ): Promise<QueryFilterEvaluation & { chunks: ChunkRow[] }> {
   if (!doc || !chunks || !doc.mirrorHash) {
     return { matches: false, reasons: ["metadata"], chunks: [] };
@@ -40,7 +43,10 @@ export async function evaluateRetrievalEligibility(
   if (!doc.active) reasons.push("inactive");
   const sourcePath = doc.recordSourcePath ?? doc.relPath;
   for (const scope of [callerScope, options]) {
-    if (scope?.collection && doc.collection !== scope.collection) {
+    if (
+      (scope?.collection && doc.collection !== scope.collection) ||
+      (scope?.collections && !scope.collections.includes(doc.collection))
+    ) {
       reasons.push("collection");
     }
     if (scope?.retrievalScope) {
@@ -98,7 +104,10 @@ export function evaluateDocumentChunkFilters(
     options.until
   );
 
-  if (options.collection && doc.collection !== options.collection) {
+  if (
+    (options.collection && doc.collection !== options.collection) ||
+    (options.collections && !options.collections.includes(doc.collection))
+  ) {
     reasons.push("collection");
   }
   if (!isWithinTemporalRange(doc.sourceMtime, temporalRange)) {
@@ -219,6 +228,7 @@ export async function typedMetadataWarnings(
   const range = resolveTemporalRange(query, options.since, options.until);
   const result = await store.getTypedMetadataCoverage({
     collection: options.collection,
+    collections: options.collections,
     relPathPrefix: options.retrievalScope?.relPathPrefix,
     allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
     chunkLanguage: options.lang,

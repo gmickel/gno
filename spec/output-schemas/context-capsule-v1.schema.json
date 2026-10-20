@@ -257,7 +257,7 @@
         "indexName": { "type": "string", "minLength": 1, "maxLength": 64 },
         "collections": {
           "type": "array",
-          "maxItems": 128,
+          "maxItems": 1024,
           "items": { "$ref": "#/definitions/collection" }
         },
         "uriPrefix": {

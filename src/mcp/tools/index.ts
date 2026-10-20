@@ -13,7 +13,9 @@ import {
   contextBuildSurfaceSchema,
   contextVerifySurfaceSchema,
 } from "../../app/context-surface";
+import { isAccessMode } from "../../core/access-scope";
 import { CAPTURE_MAX_TEXT_BYTES } from "../../core/capture";
+import { MAX_REQUEST_COLLECTIONS } from "../../core/collection-limits";
 import {
   compiledContextPreviewInputSchema,
   compiledContextCheckInputSchema,
@@ -167,6 +169,28 @@ import {
 // Shared Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Opt-in multi-collection allowlist; applied before the result limit. */
+const collectionsInputSchema = z
+  .array(z.string().min(1))
+  .min(1)
+  .max(MAX_REQUEST_COLLECTIONS)
+  .optional()
+  .describe(
+    "Filter to documents in ANY of these collections (applied before the limit)"
+  );
+
+/** Throw for the first named collection that is not configured. */
+export function assertCollectionsExist(
+  ctx: { collections: { name: string }[] },
+  names: (string | undefined)[]
+): void {
+  for (const name of names) {
+    if (name && !ctx.collections.some((c) => c.name === name)) {
+      throw new Error(`Collection not found: ${name}`);
+    }
+  }
+}
+
 /**
  * Normalize and dedupe tag filter arrays.
  * Returns undefined if empty, normalized array otherwise.
@@ -255,6 +279,7 @@ export const searchInputSchema = z.object({
     .string()
     .optional()
     .describe("Filter to a single collection name"),
+  collections: collectionsInputSchema,
   limit: z
     .number()
     .int()
@@ -496,6 +521,7 @@ export const vsearchInputSchema = z.object({
     .string()
     .optional()
     .describe("Filter to a single collection name"),
+  collections: collectionsInputSchema,
   limit: z
     .number()
     .int()
@@ -570,6 +596,7 @@ export const queryInputSchema = z.object({
     .string()
     .optional()
     .describe("Filter to a single collection name"),
+  collections: collectionsInputSchema,
   limit: z
     .number()
     .int()
@@ -672,15 +699,17 @@ export const queryInputSchema = z.object({
   tagsAny: z.array(z.string()).optional().describe("Require ANY of these tags"),
 });
 
-export const queryDiagnoseInputSchema = queryInputSchema.extend({
-  target: z
-    .string()
-    .trim()
-    .min(1, "Target reference cannot be empty")
-    .describe(
-      "Target document reference to diagnose (gno URI, docid, or collection/path)"
-    ),
-});
+export const queryDiagnoseInputSchema = queryInputSchema
+  .omit({ collections: true })
+  .extend({
+    target: z
+      .string()
+      .trim()
+      .min(1, "Target reference cannot be empty")
+      .describe(
+        "Target document reference to diagnose (gno URI, docid, or collection/path)"
+      ),
+  });
 
 const getInputSchema = z.object({
   ref: z
@@ -1088,6 +1117,10 @@ export async function runToolNoMutex<T>(
   }
 }
 
+/** A scoped caller's refusal while the served config is behind its file. */
+const CONFIG_EDIT_PENDING =
+  "UNAVAILABLE: The server has not applied its current config; try again later.";
+
 /** Orientation tools that report the index state instead of reading it. */
 const STALE_CHECK_EXEMPT_TOOLS = new Set(["gno_status", "gno_peek"]);
 
@@ -1096,8 +1129,20 @@ const STALE_CHECK_EXEMPT_TOOLS = new Set(["gno_status", "gno_peek"]);
  * (another client indexed them after this server opened). Status and peek
  * still run, and a connector proof reads one collection through a subset
  * config.
+ *
+ * A non-admin principal is not given that refusal: it reads only configured
+ * collections its access rule admits, so an unlisted collection is never
+ * searched for it, and the refusal would name collections (with document
+ * counts) it may not read. Its answer is the same whether or not the index
+ * holds one. While a config edit waits on such a collection, though, the
+ * served `access` rules may be ones the file has since narrowed, so it is
+ * refused without names until the edit is adopted.
  */
 function assertConfiguredCollections(ctx: ToolContext, name: string): void {
+  if (isAccessMode({ principal: ctx.getRequestPrincipal?.() })) {
+    if (ctx.isConfigEditPending?.()) throw new Error(CONFIG_EDIT_PENDING);
+    return;
+  }
   // Store-free stand-ins (an uninitialized peek, test doubles) have no index.
   const store = ctx.store as Partial<ToolContext["store"]> | undefined;
   if (
@@ -1134,7 +1179,9 @@ function parseErrorMessage(message: string): { [x: string]: unknown } {
 export function registerTools(server: McpServer, ctx: ToolContext): void {
   // Tool IDs use underscores (MCP pattern: ^[a-zA-Z0-9_-]{1,64}$)
   const profile = ctx.toolProfile ?? DEFAULT_MCP_TOOL_PROFILE;
-  const registerTool = createProfileToolRegistrar(server, profile);
+  const registerTool = createProfileToolRegistrar(server, profile, () =>
+    ctx.getRequestPrincipal?.()
+  );
   // The core profile serves micro-instruction variants; full keeps the
   // original strings verbatim (legacy golden + tool-profile byte-compat).
   const describe = (name: string, fullDescription: string) =>
