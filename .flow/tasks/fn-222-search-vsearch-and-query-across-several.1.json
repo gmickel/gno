@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-222-search-vsearch-and-query-across-several",
   "spec_path": ".flow/tasks/fn-222-search-vsearch-and-query-across-several.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Search, vsearch and query across several collections",
   "updated_at": "2026-10-20T16:37:57.217230Z"
 }

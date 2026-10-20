@@ -15,7 +15,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-222-search-vsearch-and-query-across-several.md",
-  "status": "open",
+  "status": "done",
   "title": "Search, vsearch and query across several collections",
   "tracker": {
     "baseHashFlow": null,
@@ -28,5 +28,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-20T17:08:31.347411Z"
+  "updated_at": "2026-10-20T17:18:04.581288Z"
 }
