@@ -1,0 +1,167 @@
+{
+  "branch": "fn-223-gno-convert-one-file-to-indexed-markdown",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "1b7f34dc7ec4313dfb33d349d1a2d8cc74782a21",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-1fbae8031636689a1faa2931331a1e54168fee08b61356b2f9546d77dafc1a4c"
+  },
+  "head_sha": "1b7f34dc7ec4313dfb33d349d1a2d8cc74782a21",
+  "id": "fn-223-gno-convert-one-file-to-indexed-markdown",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 6,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      }
+    ],
+    "total": 6
+  },
+  "scenarios": [
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-223-gno-convert-one-file-to-indexed-markdown/s1-parity-vs-index.log",
+        ".flow/tmp/qa-fn-223-gno-convert-one-file-to-indexed-markdown/summary.log"
+      ],
+      "head_sha": "1b7f34dc7ec4313dfb33d349d1a2d8cc74782a21",
+      "id": "S1",
+      "outcome": "PASS",
+      "rids": [
+        "R1"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-223-gno-convert-one-file-to-indexed-markdown/s1b-pipe.log",
+        ".flow/tmp/qa-fn-223-gno-convert-one-file-to-indexed-markdown/summary.log"
+      ],
+      "head_sha": "1b7f34dc7ec4313dfb33d349d1a2d8cc74782a21",
+      "id": "S1b",
+      "outcome": "PASS",
+      "rids": [
+        "R1"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-223-gno-convert-one-file-to-indexed-markdown/s2a-no-config.log",
+        ".flow/tmp/qa-fn-223-gno-convert-one-file-to-indexed-markdown/summary.log"
+      ],
+      "head_sha": "1b7f34dc7ec4313dfb33d349d1a2d8cc74782a21",
+      "id": "S2a",
+      "outcome": "PASS",
+      "rids": [
+        "R2"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-223-gno-convert-one-file-to-indexed-markdown/s2b-index-untouched.log",
+        ".flow/tmp/qa-fn-223-gno-convert-one-file-to-indexed-markdown/summary.log"
+      ],
+      "head_sha": "1b7f34dc7ec4313dfb33d349d1a2d8cc74782a21",
+      "id": "S2b",
+      "outcome": "PASS",
+      "rids": [
+        "R2"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-223-gno-convert-one-file-to-indexed-markdown/s3-json-shape.log",
+        ".flow/tmp/qa-fn-223-gno-convert-one-file-to-indexed-markdown/summary.log"
+      ],
+      "head_sha": "1b7f34dc7ec4313dfb33d349d1a2d8cc74782a21",
+      "id": "S3",
+      "outcome": "PASS",
+      "rids": [
+        "R3"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-223-gno-convert-one-file-to-indexed-markdown/s4-errors.log",
+        ".flow/tmp/qa-fn-223-gno-convert-one-file-to-indexed-markdown/summary.log"
+      ],
+      "head_sha": "1b7f34dc7ec4313dfb33d349d1a2d8cc74782a21",
+      "id": "S4",
+      "outcome": "PASS",
+      "rids": [
+        "R4"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-223-gno-convert-one-file-to-indexed-markdown/s5-multi-record.log",
+        ".flow/tmp/qa-fn-223-gno-convert-one-file-to-indexed-markdown/summary.log"
+      ],
+      "head_sha": "1b7f34dc7ec4313dfb33d349d1a2d8cc74782a21",
+      "id": "S5",
+      "outcome": "PASS",
+      "rids": [
+        "R5"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-223-gno-convert-one-file-to-indexed-markdown/s6-sdk.log",
+        ".flow/tmp/qa-fn-223-gno-convert-one-file-to-indexed-markdown/summary.log"
+      ],
+      "head_sha": "1b7f34dc7ec4313dfb33d349d1a2d8cc74782a21",
+      "id": "S6",
+      "outcome": "PASS",
+      "rids": [
+        "R6"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-223-gno-convert-one-file-to-indexed-markdown/r1-session-bound-config.log",
+        ".flow/tmp/qa-fn-223-gno-convert-one-file-to-indexed-markdown/summary.log"
+      ],
+      "head_sha": "1b7f34dc7ec4313dfb33d349d1a2d8cc74782a21",
+      "id": "REG1",
+      "outcome": "PASS",
+      "rids": [],
+      "run": "live"
+    }
+  ],
+  "timestamp": "2026-10-20T21:56:52Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
