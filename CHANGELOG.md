@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.12.2] - 2026-10-20
+
 ### Fixed
 
-- MCP searches and reads no longer wait for a running sync, embed or index job to finish, over stdio or the `gno serve` / `gno daemon` `/mcp` endpoint.
+- MCP searches and reads no longer wait for a running sync, embed or index job to finish, over stdio or the `gno serve` / `gno daemon` `/mcp` endpoint. Thanks to @DanielKillenberger for the fix (#332).
 
 ## [2.12.1] - 2026-10-19
 
@@ -3039,7 +3041,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.12.1...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.12.2...HEAD
+[2.12.2]: https://github.com/gmickel/gno/compare/v2.12.1...v2.12.2
 [2.12.1]: https://github.com/gmickel/gno/compare/v2.12.0...v2.12.1
 [2.12.0]: https://github.com/gmickel/gno/compare/v2.11.0...v2.12.0
 [2.11.0]: https://github.com/gmickel/gno/compare/v2.10.1...v2.11.0
