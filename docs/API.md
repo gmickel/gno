@@ -1257,12 +1257,12 @@ the index.
 
 **Errors**:
 
-| Status | Code           | When                                                                                                      |
-| :----- | :------------- | :-------------------------------------------------------------------------------------------------------- |
-| 400    | `VALIDATION`   | Bad body, empty `paths`, `paths` without `collection` or with `gitPull`                                   |
-| 400    | `INVALID_PATH` | A path is outside the collection root (including through a symlink), or the collection's rules exclude it |
-| 409    | `CONFLICT`     | Another process holds the index write lease when the sync would start at once                             |
-| 429    | `QUEUE_FULL`   | Too many distinct syncs are already waiting; retry after the running job finishes                         |
+| Status | Code           | When                                                                                                                      |
+| :----- | :------------- | :------------------------------------------------------------------------------------------------------------------------ |
+| 400    | `VALIDATION`   | Bad body, empty `paths` or more than 256, `paths` without `collection` or with `gitPull`                                  |
+| 400    | `INVALID_PATH` | A path is a directory, is outside the collection root (including through a symlink), or the collection's rules exclude it |
+| 409    | `CONFLICT`     | Another process holds the index write lease when the sync would start at once                                             |
+| 429    | `QUEUE_FULL`   | Too many distinct syncs are already waiting; retry after the running job finishes                                         |
 
 **Example**:
 
