@@ -129,6 +129,22 @@ if (process.env.GNO_INDEXING_PROGRESS_TEST_CHILD !== "1") {
     expect(newComplete).toHaveBeenCalledTimes(1);
   });
 
+  test("a queued job keeps polling until it completes", async () => {
+    const onComplete = mock();
+    render(<IndexingProgress jobId="job" onComplete={onComplete} />);
+    const scheduled = timeoutSpy.mock.calls.length;
+    await settle(pending[0]!, { ...running, status: "queued" });
+    expect(screen.getByText("Queued behind another indexing job")).toBeTruthy();
+    expect(timeoutSpy.mock.calls.length).toBe(scheduled + 1);
+    await act(async () => {
+      await Bun.sleep(1100);
+    });
+    expect(pending).toHaveLength(2);
+    await settle(pending[1]!, completed);
+    expect(screen.getByText("Indexing complete")).toBeTruthy();
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
   test("repeated remounts keep one loop and cleanup cancels its timer", async () => {
     const oldRequests: PendingRequest[] = [];
     for (let attempt = 0; attempt < 3; attempt++) {

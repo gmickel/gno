@@ -13,6 +13,11 @@ export const MCP_ERRORS = {
     code: "JOB_CONFLICT",
     message: "Another job is already running.",
   },
+  QUEUE_FULL: {
+    code: "QUEUE_FULL",
+    message:
+      "Too many reindex jobs are waiting. Retry after the running job finishes.",
+  },
   INVALID_PATH: {
     code: "INVALID_PATH",
     message: "Path violates safety rules.",

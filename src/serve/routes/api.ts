@@ -16,7 +16,6 @@ import type {
   EgressPolicy,
   ModelPreset,
 } from "../../config/types";
-import type { JobManager } from "../../core/job-manager";
 import type { ProjectAffinityScoringInput } from "../../pipeline/project-affinity";
 import type {
   AskResult,
@@ -83,6 +82,7 @@ import {
   planCreateFolder,
   planDuplicateRefactor,
 } from "../../core/file-refactors";
+import { JobError, type JobManager } from "../../core/job-manager";
 import {
   MemoryError,
   type MemoryErrorCode,
@@ -112,6 +112,7 @@ import {
   resolveRemoteProjectAffinity,
 } from "../../core/project-affinity-surface";
 import { projectRecordEvidenceMetadata } from "../../core/record-metadata";
+import { resolveReindexScope } from "../../core/reindex-paths";
 import {
   isLeaseBusy,
   localRequestLedger,
@@ -501,6 +502,7 @@ export interface ImportPreviewRequestBody {
 export interface SyncRequestBody {
   collection?: string;
   gitPull?: boolean;
+  paths?: string[];
 }
 
 export interface CreateDocRequestBody {
@@ -1821,6 +1823,9 @@ export async function handleSync(
   if (body.gitPull !== undefined && typeof body.gitPull !== "boolean") {
     return errorResponse("VALIDATION", "gitPull must be a boolean");
   }
+  if (body.paths !== undefined && !Array.isArray(body.paths)) {
+    return errorResponse("VALIDATION", "paths must be an array of strings");
+  }
 
   // Get collections to sync (case-insensitive matching)
   const collectionName = body.collection?.toLowerCase();
@@ -1842,37 +1847,115 @@ export async function handleSync(
     return errorResponse("VALIDATION", "No collections to sync");
   }
 
-  // Start background sync job
-  const jobResult = await startJob(
-    "sync",
-    async (): Promise<SyncResult> => {
-      const result = await defaultSyncService.syncAll(
-        collections,
-        store,
-        withContentTypeRules(
-          {
-            gitPull: body.gitPull,
-            runUpdateCmd: true,
-          },
-          ctxHolder.config
-        )
-      );
-      recordContentMutation(result, ctxHolder.markContentMutation);
-      if (hasContentMutation(result)) {
-        if (ctxHolder.scheduler) {
-          await ctxHolder.scheduler.triggerNow();
-        }
-      }
-      return result;
+  const options = withContentTypeRules(
+    {
+      gitPull: body.gitPull,
+      runUpdateCmd: true,
     },
-    ctxHolder.jobManager
+    ctxHolder.config
   );
+  let paths: string[] | null;
+  try {
+    // A path-level sync runs no update command; only git pull conflicts.
+    paths = await resolveReindexScope(
+      body.collection ? (collections[0] ?? null) : null,
+      body.paths,
+      { gitPull: body.gitPull }
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const separator = message.indexOf(": ");
+    const code = separator > 0 ? message.slice(0, separator) : "";
+    return errorResponse(
+      code === "INVALID_PATH" ? "INVALID_PATH" : "VALIDATION",
+      separator > 0 ? message.slice(separator + 2) : message
+    );
+  }
+
+  // Captured now: a queued pass runs after this request's context is gone.
+  const config = ctxHolder.config;
+  const runSync = async (
+    scopedPaths: string[] | null,
+    passOptions: { gitPull?: boolean; runUpdateCmd?: boolean }
+  ): Promise<SyncResult> => {
+    const collection = collections[0];
+    const result =
+      scopedPaths && collection
+        ? wrapCollectionSync(
+            await defaultSyncService.syncPaths(
+              collection,
+              store,
+              scopedPaths,
+              withContentTypeRules({}, config)
+            )
+          )
+        : await defaultSyncService.syncAll(
+            collections,
+            store,
+            withContentTypeRules({ ...passOptions }, config)
+          );
+    recordContentMutation(result, ctxHolder.markContentMutation);
+    if (hasContentMutation(result)) {
+      if (ctxHolder.scheduler) {
+        await ctxHolder.scheduler.triggerNow();
+      }
+    }
+    return result;
+  };
+
+  const manager = ctxHolder.jobManager;
+  if (manager) {
+    try {
+      const accepted = await manager.submitReindex({
+        type: "sync",
+        collection: body.collection ? (collections[0]?.name ?? null) : null,
+        paths,
+        // A whole sync over REST always runs the collection's update command.
+        options: { gitPull: body.gitPull ?? false, runUpdateCmd: true },
+        run: async (scope) => ({
+          kind: "sync",
+          value: await runSync(scope.paths, scope.options),
+        }),
+      });
+      return jsonResponse(
+        { jobId: accepted.jobId, status: accepted.status },
+        202
+      );
+    } catch (error) {
+      if (error instanceof JobError && error.code === "QUEUE_FULL") {
+        return errorResponse("QUEUE_FULL", error.message, 429);
+      }
+      if (error instanceof JobError) {
+        return errorResponse("CONFLICT", error.message, 409, {
+          activeJobId: manager.getActiveJob()?.id ?? "",
+        });
+      }
+      throw error;
+    }
+  }
+
+  // Standalone fallback (unit fixtures without a resident job manager).
+  const jobResult = startJob("sync", () => runSync(paths, options));
 
   if (!jobResult.ok) {
     return jobConflictResponse(jobResult);
   }
 
   return jsonResponse({ jobId: jobResult.jobId }, 202);
+}
+
+function wrapCollectionSync(
+  result: Awaited<ReturnType<typeof defaultSyncService.syncPaths>>
+): SyncResult {
+  return {
+    collections: [result],
+    totalDurationMs: result.durationMs,
+    totalFilesProcessed: result.filesProcessed,
+    totalFilesAdded: result.filesAdded,
+    totalFilesUpdated: result.filesUpdated,
+    totalFilesErrored: result.filesErrored,
+    totalFilesSkipped: result.filesSkipped,
+  };
 }
 
 /**

@@ -19,8 +19,15 @@
     },
     "status": {
       "type": "string",
-      "description": "Job status",
-      "enum": ["started"]
+      "description": "started: the job is running; queued: it waits behind another write job (requests for the same scope share one queued job)",
+      "enum": ["started", "queued"]
+    },
+    "paths": {
+      "type": "array",
+      "description": "Collection-relative files this sync reindexes; absent for a whole-collection sync",
+      "items": {
+        "type": "string"
+      }
     },
     "options": {
       "type": "object",

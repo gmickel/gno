@@ -1,0 +1,150 @@
+{
+  "branch": "fn-222-queued-coalesced-path-level-reindexing",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "3fa6797bbda722ebef03d75ebd18bd66a5864388",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-1df9c394693af132626e06fab8647a9b7a5d71a57a7f954db85b523c197dccdc"
+  },
+  "head_sha": "3fa6797bbda722ebef03d75ebd18bd66a5864388",
+  "id": "fn-222-queued-coalesced-path-level-reindexing",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 5,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      }
+    ],
+    "total": 5
+  },
+  "scenarios": [
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-222-queued-coalesced-path-level-reindexing/s1-single.log"
+      ],
+      "head_sha": "3fa6797bbda722ebef03d75ebd18bd66a5864388",
+      "id": "S1",
+      "outcome": "PASS",
+      "rids": [
+        "R4"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-222-queued-coalesced-path-level-reindexing/s2-queue.log"
+      ],
+      "head_sha": "3fa6797bbda722ebef03d75ebd18bd66a5864388",
+      "id": "S2",
+      "outcome": "PASS",
+      "rids": [
+        "R1"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-222-queued-coalesced-path-level-reindexing/s3-coalesce.log"
+      ],
+      "head_sha": "3fa6797bbda722ebef03d75ebd18bd66a5864388",
+      "id": "S3",
+      "outcome": "PASS",
+      "rids": [
+        "R2"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-222-queued-coalesced-path-level-reindexing/s4-paths.log"
+      ],
+      "head_sha": "3fa6797bbda722ebef03d75ebd18bd66a5864388",
+      "id": "S4",
+      "outcome": "PASS",
+      "rids": [
+        "R3",
+        "R1"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-222-queued-coalesced-path-level-reindexing/s5-desktop-queued.png",
+        ".flow/tmp/qa-fn-222-queued-coalesced-path-level-reindexing/s5-desktop-done.png",
+        ".flow/tmp/qa-fn-222-queued-coalesced-path-level-reindexing/s5-desktop-console.log"
+      ],
+      "head_sha": "3fa6797bbda722ebef03d75ebd18bd66a5864388",
+      "id": "S5-desktop",
+      "outcome": "PASS",
+      "rids": [
+        "R1"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-222-queued-coalesced-path-level-reindexing/s5-mobile-queued.png",
+        ".flow/tmp/qa-fn-222-queued-coalesced-path-level-reindexing/s5-mobile-done.png",
+        ".flow/tmp/qa-fn-222-queued-coalesced-path-level-reindexing/s5-mobile-console.log"
+      ],
+      "head_sha": "3fa6797bbda722ebef03d75ebd18bd66a5864388",
+      "id": "S5-mobile",
+      "outcome": "PASS",
+      "rids": [
+        "R1"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-222-queued-coalesced-path-level-reindexing/s6-restart.log"
+      ],
+      "head_sha": "3fa6797bbda722ebef03d75ebd18bd66a5864388",
+      "id": "S6",
+      "outcome": "PASS",
+      "rids": [
+        "R5"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-222-queued-coalesced-path-level-reindexing/s7-cli.log"
+      ],
+      "head_sha": "3fa6797bbda722ebef03d75ebd18bd66a5864388",
+      "id": "S7",
+      "outcome": "PASS",
+      "rids": [
+        "R3",
+        "R4"
+      ],
+      "run": "live"
+    }
+  ],
+  "timestamp": "2026-10-20T17:41:45Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

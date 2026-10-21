@@ -24,6 +24,7 @@ interface JobStatusResult {
   result?: SyncResult;
   typedResult?: JobResult;
   error?: string;
+  scope?: JobRecord["scope"];
   serverInstanceId: string;
 }
 
@@ -34,6 +35,11 @@ function formatJobStatus(result: JobStatusResult): string {
   lines.push(`Type: ${result.type}`);
   lines.push(`Status: ${result.status}`);
   lines.push(`Started: ${result.startedAt}`);
+  if (result.scope) {
+    lines.push(`Collection: ${result.scope.collection ?? "(all)"}`);
+    if (result.scope.paths)
+      lines.push(`Paths: ${result.scope.paths.join(", ")}`);
+  }
 
   if (result.completedAt) {
     lines.push(`Completed: ${result.completedAt}`);
@@ -92,6 +98,7 @@ function toJobStatusResult(job: JobRecord): JobStatusResult {
     result: job.result,
     typedResult: job.typedResult,
     error: job.error,
+    ...(job.scope ? { scope: job.scope } : {}),
     serverInstanceId: job.serverInstanceId,
   };
 }

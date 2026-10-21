@@ -41,7 +41,8 @@
  *    `gno_query.fast` property description. The agents block v5 rewords the
  *    `gno_search` exact-text guidance. fn-217 closes every tool input
  *    (`additionalProperties: false`), dropped from both sides of the frozen
- *    comparison. All are
+ *    comparison. fn-222 permits the optional `paths` property on exactly
+ *    `gno_sync` and `gno_index`. All are
  *    pinned by the current golden and removed only for the historical
  *    comparison.
  */
@@ -280,6 +281,7 @@ const COMPILED_CONTEXT_TOOLS = new Set([
 ]);
 const REQUEST_STATUS_TOOLS = new Set(["gno_request_status"]);
 const REQUEST_ID_TOOLS = new Set(["gno_capture", "gno_remember"]);
+const REINDEX_PATH_TOOLS = new Set(["gno_sync", "gno_index"]);
 
 const SESSION_ARCHIVE_TOOLS = new Set([
   "gno_sessions_status",
@@ -309,6 +311,17 @@ const TYPED_FILTER_DEFINITIONS = new Set(
     (_, index) => `gnoMetadataPredicateDepth${index + 1}`
   )
 );
+
+/** Remove only the additive fn-222 `paths` input. */
+function withoutReindexPathsExtension(tool: WireTool): WireTool {
+  if (!REINDEX_PATH_TOOLS.has(tool.name)) return tool;
+  const { properties, ...rest } = tool.inputSchema;
+  const { paths: _paths, ...oldProperties } = properties as Record<
+    string,
+    unknown
+  >;
+  return { ...tool, inputSchema: { ...rest, properties: oldProperties } };
+}
 
 /** Remove only the additive fn-170 `requestId` input. */
 function withoutRequestIdExtension(tool: WireTool): WireTool {
@@ -457,7 +470,11 @@ function normalizeToolsList(line: string): string {
               withoutSdkDeltas(
                 withoutTypedFilterExtension(
                   withoutRequestIdExtension(
-                    withoutAuditCapExtension(withoutCollectionsAllowlist(tool))
+                    withoutReindexPathsExtension(
+                      withoutAuditCapExtension(
+                        withoutCollectionsAllowlist(tool)
+                      )
+                    )
                   )
                 )
               ) as Record<string, unknown>

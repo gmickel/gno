@@ -24,7 +24,7 @@ import { Badge } from "./ui/badge";
 export interface JobStatus {
   id: string;
   type: "add" | "sync";
-  status: "running" | "completed" | "failed";
+  status: "queued" | "running" | "completed" | "failed";
   createdAt: number;
   result?: SyncResult;
   error?: string;
@@ -138,7 +138,7 @@ export function IndexingProgress({
       setStatus(data);
       setFetchError(null);
 
-      if (data.status === "running") {
+      if (data.status === "queued" || data.status === "running") {
         pollTimeout = setTimeout(() => {
           void poll();
         }, 1000);
@@ -187,6 +187,20 @@ export function IndexingProgress({
 
   // Compact mode
   if (compact) {
+    if (status?.status === "queued") {
+      return (
+        <div
+          aria-live="polite"
+          className={cn("flex items-center gap-2 text-sm", className)}
+        >
+          <Loader2Icon className="size-4 animate-spin text-muted-foreground" />
+          <span className="text-muted-foreground">
+            Queued... {formatElapsed(elapsed)}
+          </span>
+        </div>
+      );
+    }
+
     if (status?.status === "running") {
       return (
         <div
@@ -237,6 +251,14 @@ export function IndexingProgress({
       {/* Status header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
+          {status?.status === "queued" && (
+            <>
+              <Loader2Icon className="size-5 animate-spin text-muted-foreground" />
+              <span className="font-medium">
+                Queued behind another indexing job
+              </span>
+            </>
+          )}
           {status?.status === "running" && (
             <>
               <Loader2Icon className="size-5 animate-spin text-primary" />
@@ -264,7 +286,7 @@ export function IndexingProgress({
         <div className="flex items-center gap-1.5 text-muted-foreground text-sm">
           <TimerIcon className="size-4" />
           <span>
-            {status?.status === "running"
+            {status?.status === "queued" || status?.status === "running"
               ? formatElapsed(elapsed)
               : formatDuration(status?.result?.totalDurationMs ?? elapsed)}
           </span>

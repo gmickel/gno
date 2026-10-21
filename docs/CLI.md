@@ -1303,6 +1303,7 @@ Full index end-to-end: runs `gno update` then `gno embed`. This is the recommend
 ```bash
 gno index                   # Index all collections
 gno index notes             # Index specific collection
+gno index notes --path a.md sub/b.md   # Reindex only these files
 gno index --no-embed        # Skip embedding (same as gno update)
 gno index --git-pull        # Pull git repos first
 gno index --json            # Sync receipt plus embedding outcome
@@ -1313,6 +1314,7 @@ gno index --no-wait         # Fail immediately on contention (exit 4)
 Options:
 
 - `--collection <name>` - Scope to single collection
+- `--path <path...>` - Reindex only these files of the collection (relative to its root, or absolute inside it). Needs a collection; at most 256 files, and directories are rejected (reindex the collection instead); a file that no longer exists is removed from the index. Cannot be combined with `--git-pull`
 - `--no-embed` - Skip embedding phase
 - `--models-pull` - Download models if missing
 - `--git-pull` - Run `git pull` in git repositories

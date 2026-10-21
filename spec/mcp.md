@@ -230,6 +230,50 @@ All write tools acquire an OS-backed advisory lock at `.mcp-write.lock` under th
 If another process holds the lock, tools return `LOCKED`.
 For async jobs, the lock is held for the full job duration.
 
+### Reindex Queue
+
+`gno_sync` and `gno_index` (and REST `POST /api/sync`) never reject a request
+because another job in the same server is running:
+
+- With no job running or waiting, the request starts at once (`status:
+"started"`), taking the write lock as above; another process holding it
+  returns `LOCKED`.
+- Otherwise it is queued (`status: "queued"`) and starts when the jobs ahead
+  of it finish, taking the write lock then. A queued job that cannot get the
+  lock fails with `LOCKED` in its job status.
+- A request joins a waiting job of the same tool and collection and returns
+  its `jobId`, so any number of requests cause at most one more pass:
+  - a request with `paths` joins any such job (its files are added to the
+    pass, or covered by a whole-collection pass);
+  - a whole-collection request joins a job that only has path requests
+    (widening it and setting its options) or a whole-collection job with the
+    same `gitPull` / `runUpdateCmd`. Whole-collection requests with different
+    options stay separate passes, and a path-only pass never runs `gitPull`
+    or an update command.
+  - a path-only job whose merged files pass 256 becomes a whole-collection
+    pass with no `gitPull` or update command.
+- A queued pass uses the configuration of the latest request that joined it;
+  `gno_index` resolves its embedding model when the pass starts, so a model
+  or preset change while it waits is picked up.
+- At most 64 distinct scopes wait at once; a new scope beyond that returns
+  `QUEUE_FULL`. Retry after the running job finishes.
+- The queue lives in the server process. Jobs still waiting when it stops are
+  failed at shutdown and unknown after a restart (`NOT_FOUND` from
+  `gno_job_status`); the index stays consistent.
+
+### Path-Level Reindex
+
+`paths` on `gno_sync` / `gno_index` reindexes only the listed files of one
+collection: each path is relative to the collection root or absolute inside
+it, and only those files are re-read. A listed file that no longer exists is
+marked inactive. `paths` requires `collection` and cannot be combined with
+`gitPull` or `runUpdateCmd`; an empty list, more than 256 paths, a
+directory, a path outside the root (including through a symlink) or a
+non-string entry is rejected before anything is queued (`INVALID_INPUT` /
+`INVALID_PATH`), and so is a path the collection's own `pattern`, `include`
+or `exclude` rules leave out. To reindex a directory or more than 256 files,
+reindex the whole collection.
+
 `gno_remember` is the one write tool whose adapter takes no lock of its own:
 the core memory service acquires the same `.mcp-write.lock` lease for every
 memory write, so an MCP remember and a CLI writer serialise on one lease. A
@@ -2747,12 +2791,21 @@ Reindex one or all collections (write-enabled).
       "type": "boolean",
       "description": "Run updateCmd before indexing (default: false for MCP)",
       "default": false
+    },
+    "paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 256,
+      "description": "Reindex only these files of the collection (see Path-Level Reindex); requires collection"
     }
   }
 }
 ```
 
 **Output Schema:** `gno://schemas/mcp-sync-result@1.0`
+
+`status` is `started` or `queued` (see [Reindex Queue](#reindex-queue));
+`paths` echoes the resolved collection-relative paths of a path-level sync.
 
 ---
 
@@ -2846,6 +2899,12 @@ Full index: sync files + generate embeddings (write-enabled). Runs as background
       "type": "boolean",
       "description": "Run git pull before sync",
       "default": false
+    },
+    "paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 256,
+      "description": "Reindex only these files of the collection (see Path-Level Reindex); requires collection"
     }
   }
 }
@@ -2880,6 +2939,7 @@ Full index: sync files + generate embeddings (write-enabled). Runs as background
 
 - Requires `--enable-write` flag
 - Runs sync phase first, then embed phase
+- `status` is `started` or `queued` (see [Reindex Queue](#reindex-queue)); a path-level index adds `paths`
 - `runUpdateCmd` is always false for MCP (security)
 - Fails fast if embedding model not cached
 - Poll job status with `gno_job_status`
@@ -2929,6 +2989,11 @@ Get status of a background job.
 ```
 
 **Output Schema:** `gno://schemas/mcp-job-status@1.0`
+
+`status` is `queued` while a reindex job waits behind another job, then
+`running`, `completed` or `failed`. Reindex jobs also report `scope`: the
+collection (`null` for all) and the merged `paths` (`null` for the whole
+collection).
 
 ---
 
@@ -3090,8 +3155,9 @@ Resource errors use standard MCP error responses.
 - `HAS_REFERENCES` — Collection referenced by contexts
 - `INVALID_PATH` — Path violates safety rules
 - `PATH_NOT_FOUND` — Path does not exist
-- `JOB_CONFLICT` — Another job is already running
+- `JOB_CONFLICT` — Another job is already running (not returned by `gno_sync` / `gno_index`, which queue instead)
 - `LOCKED` — Another MCP process holds the write lock
+- `QUEUE_FULL` — Too many reindex scopes are already waiting; retry later
 - `CAPTURE_SYNC_FAILED` — `gno_capture` wrote the file but lexical sync failed
 - `WRITE_DISABLED` — Write tool dispatched while writes are disabled
 - `MEMORY_*` — Memory contract errors from `gno_recall` / `gno_remember`;

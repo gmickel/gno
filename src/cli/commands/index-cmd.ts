@@ -7,6 +7,7 @@
  * @module src/cli/commands/indexCmd
  */
 
+import { resolveReindexScope } from "../../core/reindex-paths";
 import {
   type CliWriteLeaseOptions,
   type WriteLeaseContention,
@@ -27,6 +28,7 @@ import {
   type SyncResult,
   withContentTypeRules,
 } from "../../ingestion";
+import { CliError } from "../errors";
 import { type EmbedResult, embedStageOutcome } from "./embed";
 import {
   formatSyncResultLines,
@@ -44,6 +46,8 @@ export interface IndexOptions extends CliWriteLeaseOptions {
   indexName?: string;
   /** Scope to single collection */
   collection?: string;
+  /** Reindex only these files of `collection` */
+  paths?: string[];
   /** Run ingestion only, skip embedding */
   noEmbed?: boolean;
   /** Download models if missing */
@@ -186,6 +190,18 @@ export async function index(options: IndexOptions = {}): Promise<IndexResult> {
     }
 
     const { store, collections, config } = initResult;
+    let paths: string[] | null;
+    try {
+      paths = await resolveReindexScope(
+        options.collection ? (collections[0] ?? null) : null,
+        options.paths,
+        { gitPull: options.gitPull }
+      );
+    } catch (e) {
+      await store.close();
+      const message = e instanceof Error ? e.message : String(e);
+      throw new CliError("VALIDATION", message.replace(/^[A-Z_]+: /, ""));
+    }
     const db = store.getRawDb();
     const embedSkipped = options.noEmbed ?? false;
 
@@ -202,18 +218,40 @@ export async function index(options: IndexOptions = {}): Promise<IndexResult> {
       markIndexStageRunning(db, "lexical", { collection: options.collection });
       let syncResult: SyncResult;
       try {
-        syncResult = await defaultSyncService.syncAll(
-          collections,
-          store,
-          withContentTypeRules(
-            {
-              gitPull: options.gitPull,
-              runUpdateCmd: true,
-              onSlowConversion: reportSlowConversion,
-            },
-            config
-          )
-        );
+        const collection = collections[0];
+        if (paths && collection) {
+          const pathResult = await defaultSyncService.syncPaths(
+            collection,
+            store,
+            paths,
+            withContentTypeRules(
+              { onSlowConversion: reportSlowConversion },
+              config
+            )
+          );
+          syncResult = {
+            collections: [pathResult],
+            totalDurationMs: pathResult.durationMs,
+            totalFilesProcessed: pathResult.filesProcessed,
+            totalFilesAdded: pathResult.filesAdded,
+            totalFilesUpdated: pathResult.filesUpdated,
+            totalFilesErrored: pathResult.filesErrored,
+            totalFilesSkipped: pathResult.filesSkipped,
+          };
+        } else {
+          syncResult = await defaultSyncService.syncAll(
+            collections,
+            store,
+            withContentTypeRules(
+              {
+                gitPull: options.gitPull,
+                runUpdateCmd: true,
+                onSlowConversion: reportSlowConversion,
+              },
+              config
+            )
+          );
+        }
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         markIndexStageFinished(db, "lexical", "failed");

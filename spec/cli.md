@@ -1246,13 +1246,14 @@ Build or update the index end-to-end (update + embed).
 **Synopsis:**
 
 ```bash
-gno index [collection] [--no-embed] [--models-pull] [--git-pull] [--json] [--yes] [--lock-wait <duration>] [--no-wait]
+gno index [collection] [--path <path...>] [--no-embed] [--models-pull] [--git-pull] [--json] [--yes] [--lock-wait <duration>] [--no-wait]
 ```
 
 **Options:**
 | Option | Type | Description |
 |--------|------|-------------|
 | `--collection` | string | Scope to single collection |
+| `--path <path...>` | string[] | Reindex only these files of the collection (relative to its root, or absolute inside it); at most 256, not directories; requires a collection, not combinable with `--git-pull` |
 | `--no-embed` | boolean | Run ingestion only, skip embedding |
 | `--models-pull` | boolean | Download models if missing (prompts unless `--yes`) |
 | `--git-pull` | boolean | Run `git pull` in git repositories |
@@ -1265,6 +1266,7 @@ gno index [collection] [--no-embed] [--models-pull] [--git-pull] [--json] [--yes
 
 - Runs two separable stages: `lexical` (`update`) then `embed`
 - With `--no-embed`, runs the `lexical` stage only (embed stage `skipped`)
+- With `--path`, the `lexical` stage re-reads only the listed files and marks a listed file that no longer exists inactive; the collection's update command does not run. A path outside the collection root (including through a symlink), `--path` without a collection, or `--path` with `--git-pull` exits 1 (`VALIDATION`) before anything is written
 - Waits by default for the shared write lease; `--no-wait` fails immediately with exit 4
 
 **Staged, resumable contract:** each stage persists its own progress inside

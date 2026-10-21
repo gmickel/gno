@@ -223,7 +223,7 @@
     "status": {
       "type": "string",
       "description": "Job status",
-      "enum": ["running", "completed", "failed"]
+      "enum": ["queued", "running", "completed", "failed"]
     },
     "startedAt": {
       "type": "string",
@@ -246,6 +246,22 @@
     "error": {
       "type": "string",
       "description": "Error message if failed"
+    },
+    "scope": {
+      "type": "object",
+      "description": "Reindex jobs: what the job covers after merging requests",
+      "required": ["collection", "paths"],
+      "properties": {
+        "collection": {
+          "type": ["string", "null"],
+          "description": "Collection name, or null for all collections"
+        },
+        "paths": {
+          "type": ["array", "null"],
+          "description": "Collection-relative files, or null for the whole collection",
+          "items": { "type": "string" }
+        }
+      }
     },
     "serverInstanceId": {
       "type": "string",

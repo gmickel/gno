@@ -22,6 +22,33 @@ describe("mcp-sync-result schema", () => {
     expect(assertValid(result, schema)).toBe(true);
   });
 
+  test("valid queued path-level sync result", () => {
+    const result = {
+      jobId: "job-789",
+      collections: ["notes"],
+      status: "queued",
+      paths: ["a.md", "sub/b.md"],
+      options: {
+        gitPull: false,
+        runUpdateCmd: false,
+      },
+    };
+    expect(assertValid(result, schema)).toBe(true);
+  });
+
+  test("rejects an unknown status", () => {
+    const result = {
+      jobId: "job-789",
+      collections: ["notes"],
+      status: "pending",
+      options: {
+        gitPull: false,
+        runUpdateCmd: false,
+      },
+    };
+    expect(assertInvalid(result, schema)).toBe(true);
+  });
+
   test("rejects missing options", () => {
     const result = {
       jobId: "job-456",
