@@ -52,7 +52,22 @@ A scoped call naming more than 64 collections gets 403 `COLLECTION_LIMIT_EXCEEDE
 - Every way of exceeding a bound fails closed. No over-bound path may serve data or skip the egress check.
 - Other errors from lineage building (malformed scope, invalid policy) keep their current handling. Only the bound becomes a policy denial.
 - Output schemas are unchanged.
-- Docs: the bounds and `COLLECTION_LIMIT_EXCEEDED` are documented today only as a schema enum. `docs/CONFIGURATION.md` and `spec/mcp.md` state the bounds and the denial. CHANGELOG `Fixed`.
+- Docs: the bounds and `COLLECTION_LIMIT_EXCEEDED` are documented today only as a schema enum. `docs/CONFIGURATION.md` and `spec/mcp.md` state the bounds and the denial. CHANGELOG `Fixed`. Skill and agent-instruction changes are listed in the next section.
+
+## Skill and Agent Instructions
+<!-- scope: technical -->
+
+<!-- Source: 100% [inferred] -->
+
+An agent that gets `COLLECTION_LIMIT_EXCEEDED` today has no guidance, and after this fix the denial is the normal outcome of an unscoped call on a large configuration. The skill says what to do with it.
+
+- `assets/skill/SKILL.md`, the collection egress section (next to the `EGRESS_DENIED` guidance): `COLLECTION_LIMIT_EXCEEDED` means the call covered too many collections. Retry scoped to the collections the task needs (at most 64), and never treat the denial as an outage or retry through another surface.
+- `assets/skill/mcp-reference.md`: the same rule at the egress notes, with the three bounds (64 per decision, 128 lineage sources, 64 names for `gno_egress_check`).
+- `assets/skill/cli-reference.md`, "Collection Egress": one line naming the denial and the scoping remedy.
+- Autoresearch eval (`~/repos/autoresearch-experiments/gno-skill/eval.py`), one new scenario:
+  - `egress_collection_limit`: "My `gno_query` call over HTTP MCP was denied with `COLLECTION_LIMIT_EXCEEDED`. I need results from the `work` collection." Checks: the retry is scoped to `work` (`(--collection|-c)\s+work` or `"collections?"\s*:\s*\[?\s*"work"`); must not suggest restarting the server, raising a limit or `collection policy set`.
+  Iterate `skill.md` until the full suite scores 100%, copy the winner back to `assets/skill/` and reinstall.
+- Retrieval ladder (`src/cli/commands/agents/block.ts`, `docs/AGENT-INSTRUCTIONS.md`): no change, and `BLOCK_VERSION` stays. The ladder already scopes every rung to a collection first, which is the remedy for this denial. The global ladder in `~/work/agent-instructions` needs no change either.
 
 ## Acceptance Criteria
 <!-- scope: both -->
@@ -62,6 +77,8 @@ A scoped call naming more than 64 collections gets 403 `COLLECTION_LIMIT_EXCEEDE
 - **R3:** Daemon status, MCP sync and update tools, the clipper route and compiled-context exports return their existing egress denial, not an internal error, when the scope they evaluate exceeds a bound. [inferred] Errors: as stated.
 - **R4:** No bound changes. The decision bound stays 64, lineage 128 and the explicit `gno_egress_check` scope 64, and output schemas are unchanged. [paraphrase] Errors: none.
 - **R5:** `docs/CONFIGURATION.md` and `spec/mcp.md` document the bounds and the `COLLECTION_LIMIT_EXCEEDED` denial. [inferred] Errors: none.
+- **R6:** The shipped skill tells agents to answer `COLLECTION_LIMIT_EXCEEDED` with a call scoped to the collections they need, in `SKILL.md`, `mcp-reference.md` and `cli-reference.md`, and states the three bounds. [inferred] Errors: none.
+- **R7:** The autoresearch eval, with the `egress_collection_limit` scenario added, scores 100%, and the passing skill is the one in `assets/skill/`. The ladder block and its `BLOCK_VERSION` are unchanged. [inferred] Errors: a score below 100% blocks the PR.
 
 ## Boundaries
 <!-- scope: business -->

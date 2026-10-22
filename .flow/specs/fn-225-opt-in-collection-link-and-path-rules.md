@@ -68,7 +68,22 @@ collections:
 - A truncated link snapshot makes these rules `inconclusive`, as the existing rules do.
 - `externalUrls` is unrelated to the collection's egress policy, and docs say so: egress governs where content may travel, while this rule only reports URLs written in documents.
 - MCP `gno_audit` and any daemon findings run pick the rules up through the same config, with no new inputs.
-- Docs: `spec/cli.md` (rule list), `docs/CONFIGURATION.md`, CHANGELOG and the hosted gno.sh configuration and audit docs ship with the change.
+- Docs: `spec/cli.md` (rule list), `docs/CONFIGURATION.md`, CHANGELOG and the hosted gno.sh configuration and audit docs ship with the change. Skill and agent-instruction changes are listed in the next section.
+
+## Skill and Agent Instructions
+<!-- scope: technical -->
+
+<!-- Source: 100% [inferred] -->
+
+- `assets/skill/SKILL.md`, "Read-Only Knowledge Integrity Audits": a short paragraph saying a collection can opt into the `audit` block's three rules, that their findings are `warning`s under `links.`, and that agents report them as structure and publishing hygiene. They are not access control, and `links.external-url` is not the egress policy. Setting up a rule is a config write the user asks for. Agents do not add an `audit` block on their own initiative.
+- `assets/skill/cli-reference.md`: the audit reference gains the `audit` collection keys (`linkCollections`, `externalUrls`, `paths`) with one YAML example, and the three rule ids with what each reports. If the reference has no `gno audit` entry yet, add one beside the other read-only commands.
+- `assets/skill/mcp-reference.md`: one line saying `gno_audit` reports these rules from collection config, with no new inputs.
+- `assets/skill/examples.md`: one example that configures `linkCollections` for a published collection and runs `gno audit links --json`.
+- Autoresearch eval (`~/repos/autoresearch-experiments/gno-skill/eval.py`), two new scenarios:
+  - `audit_link_policy`: "My `published` collection may only link to itself and `reference`. Set that up and check it." Checks: `linkCollections`, `reference`, `gno\s+audit\s+links`; must not mention `egress` or `collection policy set`.
+  - `audit_finding_report`: "`gno audit links --json` returned a `links.external-url` warning on my published notes. What does it mean?" Checks: the answer treats it as a report of a URL written in the note (`report|written|URL`); must not propose `collection policy set` or another egress change.
+  Iterate `skill.md` until the full suite scores 100%, copy the winner back to `assets/skill/` and reinstall.
+- Retrieval ladder (`src/cli/commands/agents/block.ts`, `docs/AGENT-INSTRUCTIONS.md`): no change, and `BLOCK_VERSION` stays. Auditing is not a retrieval step, and the block already tells agents to load the skill, which documents audits. The global ladder in `~/work/agent-instructions` needs no change either.
 
 ## Acceptance Criteria
 <!-- scope: both -->
@@ -79,6 +94,8 @@ collections:
 - **R4:** With no `audit` object on any audited collection, audit output, rule lists, fingerprints and exit codes are byte-identical to the pre-change output on the same index. [paraphrase] Errors: none.
 - **R5:** The rules report only. Indexing, retrieval, editing and link resolution behave identically whether or not the rules are configured or failing. [inferred] Errors: none.
 - **R6:** `gno_audit` over MCP returns the same rule results as the CLI for the same scope. [inferred] Errors: none beyond the existing audit errors.
+- **R7:** The shipped skill documents the `audit` keys, the three rule ids and their report-only meaning in `SKILL.md`, `cli-reference.md` and `mcp-reference.md`, and the new example runs against a fixture index. [inferred] Errors: none.
+- **R8:** The autoresearch eval, with the `audit_link_policy` and `audit_finding_report` scenarios added, scores 100%, and the passing skill is the one in `assets/skill/`. The ladder block and its `BLOCK_VERSION` are unchanged. [inferred] Errors: a score below 100% blocks the PR.
 
 ## Boundaries
 <!-- scope: business -->

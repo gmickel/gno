@@ -61,7 +61,24 @@ Errors: invalid JSON or an invalid predicate gives the same `VALIDATION` error, 
 - Without `--filter`, `ls` output is unchanged in every format.
 - `--filter` combines with the scope argument (collection or `gno://` prefix): both must hold.
 - `spec/cli.md` currently documents `ls --json` as a bare array while the command returns `{documents, meta}`. The spec and the new schema describe the actual shape.
-- Docs: `spec/cli.md`, the `ls` schema and its contract test, `docs/CLI.md`, `docs/TYPED-METADATA.md` (a "listing by metadata" section using neutral example keys), `docs/SDK.md`, CHANGELOG and the hosted gno.sh docs ship with the change. Re-run the skill autoresearch eval.
+- Docs: `spec/cli.md`, the `ls` schema and its contract test, `docs/CLI.md`, `docs/TYPED-METADATA.md` (a "listing by metadata" section using neutral example keys), `docs/SDK.md`, CHANGELOG and the hosted gno.sh docs ship with the change. Skill and agent-instruction changes are listed in the next section.
+
+## Skill and Agent Instructions
+<!-- scope: technical -->
+
+<!-- Source: 100% [inferred] -->
+
+Agents learn `ls --filter` only from the shipped skill, so the skill changes and its eval are part of this spec.
+
+- `assets/skill/SKILL.md`: the **Retrieve** row of the command table names `ls --filter`, and the filter guidance says that enumerating documents by typed metadata with no query (every `status: draft` note) uses `gno ls [<collection>] --filter '<json>'`, not a search with a placeholder query.
+- `assets/skill/cli-reference.md`, `### gno ls`: the `--filter <json>` flag, its shared predicate syntax with `search --filter`, the `{documents, meta}` JSON shape, and `meta.warnings` for incomplete coverage.
+- `assets/skill/examples.md`: a "List by metadata" example under "List documents". Fix the existing JSON examples that read the output as a bare array: `ls --json | jq -r '.[].docid'` (line 227) becomes `.documents[].docid`, and the three `search --json | jq '.[] …'` examples (lines 207, 210, 230) become `.results[]`. They fail against the real output today.
+- `assets/skill/mcp-reference.md`: no change. This spec adds no MCP listing.
+- Autoresearch eval (`~/repos/autoresearch-experiments/gno-skill/eval.py`), two new scenarios:
+  - `list_by_metadata`: "List every note in my work collection whose status is draft. I don't have a search term." Checks: `gno\s+ls`, `--filter`, `status`; must not use `gno\s+(search|query|vsearch)`.
+  - `ls_json_export`: "Write the docids of every document in work to a file, using jq." Checks: `gno\s+ls`, `\.documents\[\]`; must not match `jq -r '\.\[\]`.
+  Iterate `skill.md` until the full suite scores 100%, copy the winner back to `assets/skill/` and reinstall (repo CLAUDE.md, "Skill & MCP Optimization").
+- Retrieval ladder (`src/cli/commands/agents/block.ts`, `docs/AGENT-INSTRUCTIONS.md`): no change, and `BLOCK_VERSION` stays. Listing by metadata enumerates documents rather than answering a question, and the block already sends filters to the skill. The global ladder in `~/work/agent-instructions` needs no change for the same reason.
 
 ## Acceptance Criteria
 <!-- scope: both -->
@@ -72,6 +89,8 @@ Errors: invalid JSON or an invalid predicate gives the same `VALIDATION` error, 
 - **R4:** Without `--filter`, `ls` output is byte-identical to the pre-change output in every format. [paraphrase] Errors: none.
 - **R5:** `ls --json` output validates against a new `ls` output schema, and `spec/cli.md` documents the actual `{documents, meta}` shape. [inferred] Errors: none.
 - **R6:** The SDK document listing accepts the same `filter` and returns the same documents and total as the CLI. [inferred] Errors: as R1, as a typed error.
+- **R7:** The shipped skill documents `ls --filter` and the `{documents, meta}` shape, and every `ls --json` and `search --json` jq example in `assets/skill/` parses the real output: run against a fixture index, each example exits 0 and prints at least one value. [inferred] Errors: none.
+- **R8:** The autoresearch eval, with the `list_by_metadata` and `ls_json_export` scenarios added, scores 100%, and the passing skill is the one in `assets/skill/`. The ladder block and its `BLOCK_VERSION` are unchanged. [inferred] Errors: a score below 100% blocks the PR.
 
 ## Boundaries
 <!-- scope: business -->
