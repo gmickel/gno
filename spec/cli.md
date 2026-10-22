@@ -893,6 +893,12 @@ List all configured collections.
 gno collection list [--json|--md]
 ```
 
+Each JSON item is the configured collection plus `effectiveWorkspaceRoot` and
+`workspaceSource`. A collection with an `audit` block lists it unchanged
+(`linkCollections`, `externalUrls`, `paths`); see
+[gno audit](#gno-audit). Schema:
+[`collection-list@1.0`](./output-schemas/collection-list.schema.json).
+
 ---
 
 ### gno collection clear-embeddings

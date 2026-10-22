@@ -40,4 +40,38 @@ describe("collection-list schema", () => {
     ];
     expect(assertInvalid(list, schema)).toBe(true);
   });
+
+  test("declares and validates a configured audit block", () => {
+    const declared = (
+      schema as { items: { properties: Record<string, unknown> } }
+    ).items.properties;
+    expect(declared.audit).toBeDefined();
+    const list = [
+      {
+        name: "wiki",
+        pattern: "**/*.md",
+        include: [],
+        exclude: [],
+        audit: {
+          linkCollections: ["docs"],
+          externalUrls: "report",
+          paths: ["notes/**/*.md"],
+        },
+      },
+    ];
+    expect(assertValid(list, schema)).toBe(true);
+  });
+
+  test("rejects an audit block with empty paths or an unknown key", () => {
+    const base = { name: "wiki", pattern: "**/*.md", include: [], exclude: [] };
+    expect(assertInvalid([{ ...base, audit: { paths: [] } }], schema)).toBe(
+      true
+    );
+    expect(
+      assertInvalid([{ ...base, audit: { externalUrls: "block" } }], schema)
+    ).toBe(true);
+    expect(assertInvalid([{ ...base, audit: { extra: true } }], schema)).toBe(
+      true
+    );
+  });
 });
