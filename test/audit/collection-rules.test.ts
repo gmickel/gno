@@ -455,3 +455,31 @@ describe("collection audit rule units", () => {
     ]);
   });
 });
+
+describe("collection audit config errors name the setting", () => {
+  test("loadConfig reports the audit path and message", async () => {
+    const path = join(root, "bad-config.yml");
+    for (const [audit, expected] of [
+      [
+        { linkCollections: ["ghost"] },
+        'collections.0.audit.linkCollections.0: Collection "published" audit.linkCollections names unknown collection "ghost"',
+      ],
+      [{ externalUrls: "deny" }, "collections.0.audit.externalUrls:"],
+      [
+        { paths: [] },
+        "collections.0.audit.paths: audit.paths must list at least one glob",
+      ],
+    ] as const) {
+      await Bun.write(
+        path,
+        Bun.YAML.stringify({
+          version: "1.0",
+          collections: [{ name: "published", path: root, audit }],
+        })
+      );
+      const loaded = await loadConfig(path);
+      expect(loaded.ok).toBe(false);
+      if (!loaded.ok) expect(loaded.error.message).toContain(expected);
+    }
+  });
+});
