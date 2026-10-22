@@ -93,6 +93,14 @@ gno serve --status --json
 gno daemon --status --json
 ```
 
+Each HTTP request is checked against the egress policy of the collections it
+covers: the ones it names, or every configured collection when it names none.
+One check covers at most 64 collections (128 for a policy lineage; 64 names for
+`gno_egress_check`). A 403 whose reason is `COLLECTION_LIMIT_EXCEEDED` means the
+call covered too many collections: retry with `collection` or `collections` set
+to just the ones the task needs. It is not an outage, so do not restart the
+server, raise a limit, change policy, or retry through another surface.
+
 ## Retrieval Order
 
 `gno mcp --tool-profile core` (or `gateway.toolProfile: core` for the resident

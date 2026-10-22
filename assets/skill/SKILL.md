@@ -154,7 +154,9 @@ machines are slower.
 exact identifier/quote/error you already have verbatim → `gno search` (a
 question, or a name or topic taken from it, is not exact text). No good results: run balanced
 `gno query`, then rephrase, then `--thorough`. An expected document still
-missing: `gno query diagnose` before falling back to grep.
+missing: `gno query diagnose` before falling back to grep. When the user
+explicitly asks for a semantic, vector or meaning-only search (their documents
+use different wording), use `gno vsearch` instead.
 
 ## Common Flags (search/vsearch/query/ask)
 
@@ -345,7 +347,10 @@ confirmation and invalidates active sessions, streams, and queued work.
 
 Bearer authentication, MCP write enablement, and collection policy are
 independent gates. `EGRESS_DENIED` is not permission to retry through another
-surface. Audit output is local and content-free via
+surface. The one exception is reason `COLLECTION_LIMIT_EXCEEDED`: the call
+covered more than 64 collections (128 for lineage), so retry it scoped to the
+collections the task needs (`collection`/`collections`, `-c`). It is not an
+outage; never restart, raise a limit or relax policy for it. Audit output is local and content-free via
 `gno egress-audit list|show|status`; deletion/purge must be explicit. A local
 policy change cannot retract data already uploaded—tell the user to remove it
 at the remote service. For gno.sh, supported private links can be revoked or

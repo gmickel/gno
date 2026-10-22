@@ -318,6 +318,26 @@ Mixed evidence and derived artifacts use the most restrictive participating
 collection. Explicit partial checks disclose every omitted collection and
 reason; normal operations never silently drop restricted evidence.
 
+### Collection limits
+
+One egress decision covers at most 64 collections, and one policy lineage at
+most 128. These limit the request's scope, not how many collections you
+configure:
+
+- A request that names its collections is judged on those collections, however
+  many are configured.
+- A request with no collection scope covers every configured collection. With
+  more than 64 configured, it is denied with `COLLECTION_LIMIT_EXCEEDED`; name
+  the collections it needs instead.
+- A request naming more than 64 collections is denied the same way.
+- `gno collection policy check` and MCP `gno_egress_check` accept at most 64
+  explicit names. MCP `gno_egress_check` without a scope, with more than 128
+  collections configured, returns a validation error that asks for named
+  collections.
+
+The denial is an ordinary egress denial (HTTP 403 over MCP) that names no
+collection, never a server error.
+
 ## Link workspaces
 
 If you index one Obsidian vault as several collections (for example one per
