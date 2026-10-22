@@ -84,7 +84,7 @@ Recipe rules:
 | ------------ | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
 | **Search**   | `search`, `vsearch`, `query`, `ask`                                                                        | Find documents by keywords, meaning, or get AI answers                   |
 | **Links**    | `links`, `backlinks`, `similar`, `graph`, `graph query`                                                    | Navigate document relationships and typed connections                    |
-| **Retrieve** | `get`, `multi-get`, `ls`                                                                                   | Fetch document content by URI or ID                                      |
+| **Retrieve** | `get`, `multi-get`, `ls`, `ls --filter`                                                                    | Fetch document content by URI or ID; list documents by typed metadata    |
 | **Index**    | `setup`, `profile check/show/diff/apply`, `init`, `collection add/list/remove`, `index`, `update`, `embed` | Reproduce profile intent, prove retrieval, then maintain the index       |
 | **Tags**     | `tags`, `tags add`, `tags rm`                                                                              | Organize and filter documents                                            |
 | **Context**  | `context add/list/rm/check/build/verify/watch/watches/reverify/unwatch`                                    | Configure guidance or compile, verify, and watch saved evidence Capsules |
@@ -758,7 +758,10 @@ fields must be indexed from nested YAML `gno.metadata`; arbitrary frontmatter
 keys are not automatically custom fields. Run `gno metadata --collection <c>`
 (MCP `gno_list_metadata`) first to see which keys, types and values exist.
 CLI retrieval accepts `--filter` JSON; MCP/SDK/REST accept the same `filter`
-object:
+object. To enumerate documents by metadata with no search term (every
+`status: draft` note), use `gno ls [<collection>] --filter '<json>'`, not a
+search with a placeholder query; `--json` returns `{documents, meta}`, so read
+`.documents[]` and `meta.total`:
 
 ```json
 {

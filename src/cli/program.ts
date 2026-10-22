@@ -2625,6 +2625,7 @@ function wireRetrievalCommands(program: Command): void {
       "Skip first N results",
       parsePositiveInt.bind(null, "offset")
     )
+    .option("--filter <json>", "typed custom metadata predicate (JSON)")
     .option("--json", "JSON output")
     .option("--files", "File protocol output")
     .option("--md", "Markdown output")
@@ -2633,6 +2634,7 @@ function wireRetrievalCommands(program: Command): void {
         const format = getFormat(cmdOpts);
         assertFormatSupported(CMD.ls, format);
         const globals = getGlobals();
+        const filter = parseCliMetadataFilter(cmdOpts.filter);
 
         const { ls, formatLs } = await import("./commands/ls");
         const result = await ls(scope, {
@@ -2640,6 +2642,7 @@ function wireRetrievalCommands(program: Command): void {
           indexName: globals.index,
           limit: cmdOpts.limit as number | undefined,
           offset: cmdOpts.offset as number | undefined,
+          filter,
           json: format === "json",
           files: format === "files",
           md: format === "md",
@@ -2652,6 +2655,14 @@ function wireRetrievalCommands(program: Command): void {
           );
         }
 
+        // JSON carries warnings in meta; other formats keep stdout clean.
+        if (format !== "json") {
+          for (const warning of result.data.meta.warnings ?? []) {
+            process.stderr.write(
+              `Warning: ${warning.code}: ${warning.message}\n`
+            );
+          }
+        }
         const output = formatLs(result, {
           json: format === "json",
           files: format === "files",

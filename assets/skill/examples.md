@@ -183,6 +183,17 @@ gno ls work
 gno ls --json
 ```
 
+### List by metadata
+
+```bash
+# Every draft note in work (no search term needed)
+gno ls work --filter '{"op":"eq","key":"status","value":"draft"}'
+
+# URIs of every note whose project list contains atlas
+gno ls work --filter '{"op":"in","key":"project","values":["atlas"]}' -n 1000 --json \
+  | jq -r '.documents[].uri'
+```
+
 ## Search & Retrieve Full Content
 
 ### Pipeline: Search then get
@@ -204,10 +215,10 @@ gno search "error handling" --json | jq -r '.results[].uri' | xargs gno multi-ge
 
 ```bash
 # Get URIs of matches
-gno search "api endpoint" --json | jq '.[] | .uri'
+gno search "api endpoint" --json | jq '.results[] | .uri'
 
 # Get snippets
-gno search "config" --json | jq '.[] | {uri, snippet}'
+gno search "config" --json | jq '.results[] | {uri, snippet}'
 ```
 
 ### Check index health
@@ -224,10 +235,10 @@ gno doctor --json
 
 ```bash
 # Export all document IDs
-gno ls --json | jq -r '.[].docid' > doc-ids.txt
+gno ls --json -n 10000 | jq -r '.documents[].docid' > doc-ids.txt
 
 # Search and process results
-gno search "error" --json | jq -r '.[] | .uri' | while read uri; do
+gno search "error" --json | jq -r '.results[] | .uri' | while read uri; do
   echo "Processing: $uri"
   gno get "$uri" > "output/$(basename $uri)"
 done

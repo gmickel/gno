@@ -971,11 +971,23 @@ gno ls notes              # Documents in 'notes' collection
 gno ls gno://notes/proj   # Documents under path prefix
 gno ls --json
 gno ls --files
+gno ls notes --filter '{"op":"eq","key":"status","value":"draft"}'
 ```
 
 Options:
 
 - `[scope]` - Filter by collection name or URI prefix
+- `--filter <json>` - List only documents whose [typed metadata](TYPED-METADATA.md) matches the predicate. Same syntax and semantics as `gno search --filter`; an invalid predicate fails with the same validation error (exit 1)
+- `-n, --limit <num>` - Max documents (default 20)
+- `--offset <num>` - Skip the first N documents
+- `--json` - Output `{ documents, meta }`; `meta.total` counts every matching document before pagination
+
+The filter applies before pagination, so `--limit`, `--offset` and `meta.total` count matching documents only. Documents with invalid or not-yet-extracted metadata never match a filter. When some were skipped for that reason, `--json` adds `meta.warnings` (`METADATA_COVERAGE_INCOMPLETE`) and the other formats print the warning on stderr. Without `--filter`, the output is unchanged.
+
+```bash
+gno ls work --filter '{"op":"in","key":"project","values":["atlas"]}' --json \
+  | jq -r '.documents[].uri'
+```
 
 ## Collection Commands
 

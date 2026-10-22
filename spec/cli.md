@@ -2564,7 +2564,7 @@ List documents in a collection or prefix.
 **Synopsis:**
 
 ```bash
-gno ls [<scope>] [--json|--files|--md]
+gno ls [<scope>] [--filter <json>] [-n <num>] [--offset <num>] [--json|--files|--md]
 ```
 
 **Arguments:**
@@ -2572,23 +2572,49 @@ gno ls [<scope>] [--json|--files|--md]
 |-----|------|-------------|
 | `<scope>` | string | Collection name or `gno://collection/prefix` (default: all) |
 
-**Output (JSON):**
+**Options:**
+| Flag | Type | Description |
+|------|------|-------------|
+| `--filter` | JSON | Typed metadata predicate; same schema and semantics as `gno search --filter` |
+| `-n, --limit` | integer | Max documents (default 20) |
+| `--offset` | integer | Skip the first N documents |
+
+Active documents are listed in URI order. With `--filter`, only documents whose
+typed metadata satisfies the predicate are listed; documents with invalid or
+not-yet-extracted metadata never match, including under negated predicates.
+The filter and the scope both apply, before pagination: `limit`, `offset` and
+`meta.total` count matching documents only. Without `--filter`, output is
+unchanged.
+
+**Output (JSON):** [`ls@1.0`](output-schemas/ls.schema.json)
 
 ```json
-[
-  {
-    "docid": "#a1b2c3d4",
-    "uri": "gno://work/doc.md",
-    "title": "Document Title",
-    "source": { "relPath": "doc.md", "mime": "text/markdown", "ext": ".md" }
+{
+  "documents": [
+    {
+      "docid": "#a1b2c3d4",
+      "uri": "gno://work/doc.md",
+      "title": "Document Title",
+      "source": { "relPath": "doc.md", "mime": "text/markdown", "ext": ".md" }
+    }
+  ],
+  "meta": {
+    "total": 12,
+    "returned": 1,
+    "offset": 0,
+    "warnings": [{ "code": "METADATA_COVERAGE_INCOMPLETE", "message": "..." }]
   }
-]
+}
 ```
+
+`meta.warnings` appears only with `--filter` when documents in scope were
+skipped because their metadata is invalid or pending re-ingestion. Terminal,
+`--files` and `--md` output print the warning on stderr.
 
 **Exit Codes:**
 
 - 0: Success
-- 1: Invalid scope
+- 1: Invalid scope or invalid `--filter` (`VALIDATION`, same message as `gno search --filter`)
 - 2: DB failure
 
 ---

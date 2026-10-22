@@ -23,6 +23,7 @@ async function loadAllSchemas(): Promise<void> {
     "metadata-summary",
     "get",
     "multi-get",
+    "ls",
     "ask",
     "error",
     "capture-receipt",

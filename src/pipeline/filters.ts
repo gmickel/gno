@@ -250,13 +250,41 @@ export async function typedMetadataWarnings(
     excludeSuperseded: options.memoryFilter?.excludeSuperseded,
   });
   if (!result.ok) return unknown;
-  const { pending, invalid } = result.value;
+  return metadataCoverageWarnings(result.value, "query");
+}
+
+/** The coverage warning for documents a typed metadata filter had to skip. */
+export function metadataCoverageWarnings(
+  coverage: { pending: number; invalid: number },
+  scope: "query" | "listing"
+): { code: string; message: string }[] | undefined {
+  const { pending, invalid } = coverage;
   return pending || invalid
     ? [
         {
           code: "METADATA_COVERAGE_INCOMPLETE",
-          message: `Typed metadata coverage is incomplete: ${pending} documents need re-ingestion and ${invalid} have invalid metadata within the query scope.`,
+          message: `Typed metadata coverage is incomplete: ${pending} documents need re-ingestion and ${invalid} have invalid metadata within the ${scope} scope.`,
         },
       ]
     : undefined;
+}
+
+/**
+ * Keep the documents a typed metadata predicate matches, counting the ones it
+ * could not judge (pending re-ingestion or invalid metadata) for the warning.
+ */
+export function filterDocumentsByMetadata<T extends DocumentRow>(
+  docs: readonly T[],
+  filter: MetadataPredicate
+): { matches: T[]; pending: number; invalid: number } {
+  const matches: T[] = [];
+  let pending = 0;
+  let invalid = 0;
+  for (const doc of docs) {
+    const reason = typedMetadataFilterReason(doc, filter);
+    if (reason === undefined) matches.push(doc);
+    else if (reason === "metadata_backfill") pending += 1;
+    else if (reason === "metadata_invalid") invalid += 1;
+  }
+  return { matches, pending, invalid };
 }

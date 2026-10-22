@@ -5,9 +5,14 @@
  * @module src/cli/commands/ls
  */
 
+import type { MetadataPredicate } from "../../core/typed-metadata";
 import type { DocumentRow, StorePort, StoreResult } from "../../store/types";
 
 import { decorateUriForIndex } from "../../app/constants";
+import {
+  filterDocumentsByMetadata,
+  metadataCoverageWarnings,
+} from "../../pipeline/filters";
 import { initStore } from "./shared";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -23,6 +28,8 @@ export interface LsCommandOptions {
   limit?: number;
   /** Skip first N results */
   offset?: number;
+  /** Typed metadata predicate (same semantics as search --filter) */
+  filter?: MetadataPredicate;
   /** JSON output */
   json?: boolean;
   /** File protocol output */
@@ -48,6 +55,8 @@ export interface LsResponse {
     total: number;
     returned: number;
     offset: number;
+    /** Only with a filter, when documents could not be judged. */
+    warnings?: { code: string; message: string }[];
   };
 }
 
@@ -128,9 +137,16 @@ export async function ls(
       return { success: false, error: docs.error.message };
     }
 
-    // Filter active only, sort by URI
-    const allActive = docs.value
-      .filter((d) => d.active)
+    const active = docs.value.filter((d) => d.active);
+    const filtered = options.filter
+      ? filterDocumentsByMetadata(active, options.filter)
+      : undefined;
+    const warnings = filtered
+      ? metadataCoverageWarnings(filtered, "listing")
+      : undefined;
+
+    // Sort by URI
+    const allActive = (filtered?.matches ?? active)
       .map((d) => ({
         docid: d.docid,
         uri: d.uri,
@@ -160,6 +176,7 @@ export async function ls(
           total: allActive.length,
           returned: paged.length,
           offset,
+          ...(warnings ? { warnings } : {}),
         },
       },
     };
