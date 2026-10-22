@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-224-gno-ls-filter-list-documents-by-typed",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-10-22T20:47:51.639349Z",
   "created_at": "2026-10-20T16:31:13.682852Z",
   "default_impl": null,
   "default_review": null,
@@ -28,5 +28,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-20T16:31:18.502301Z"
+  "updated_at": "2026-10-22T20:47:51.639356Z"
 }
