@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-226-egress-collection-limits-deny-cleanly",
   "spec_path": ".flow/tasks/fn-226-egress-collection-limits-deny-cleanly.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Egress collection limits deny cleanly instead of failing",
   "updated_at": "2026-10-22T13:11:15.805661Z"
 }
