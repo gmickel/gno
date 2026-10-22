@@ -5,7 +5,7 @@
 import { createDefaultConfig, createGnoClient } from "@gmickel/gno";
 import { Database } from "bun:sqlite";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -75,7 +75,7 @@ const lsJson = async (...args: string[]): Promise<LsJson> => {
 };
 
 beforeAll(async () => {
-  testDir = join(tmpdir(), `gno-ls-filter-${Date.now()}`);
+  testDir = await mkdtemp(join(tmpdir(), "gno-ls-filter-"));
   docsDir = join(testDir, "docs");
   await mkdir(join(docsDir, "drafts"), { recursive: true });
   process.env.GNO_CONFIG_DIR = join(testDir, "config");
