@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Opt-in collection audit rules for `gno audit links`. A collection's new `audit` config block can list the other collections it may link to (`linkCollections`), report external URLs written in its notes (`externalUrls: report`), and require document paths to match globs (`paths`). Findings are `warning`s under `links.collection-policy`, `links.external-url` and `links.path-layout`; they only report and never block indexing, search or editing, and MCP `gno_audit` and the daemon findings pass pick them up from the same config. Without an `audit` block, audit output is unchanged. The `gno` agent skill documents the rules. Thanks to @ArnauvGilotra for the idea and the original pull request (#316).
 - `gno ls --filter <json>` lists the documents whose typed metadata matches a predicate, without a search term (for example every note with `status: draft`). It uses the same predicate syntax and semantics as `gno search --filter`, applies before pagination so `meta.total` counts matches, and warns with `METADATA_COVERAGE_INCOMPLETE` when documents with invalid or pending metadata were skipped. The SDK's `list()` takes the same `filter`. `ls --json` output now has a published schema, and the `gno` agent skill documents the listing; its JSON examples now read `.documents[]` and `.results[]` instead of a bare array. Thanks to @ArnauvGilotra for the idea and the original pull request (#315).
 
 ### Fixed

@@ -214,7 +214,10 @@ run policy, not persisted configuration. Links are read only from Markdown
 notes, outside code spans and code blocks. Link targets that exist as files in
 the link workspace but are not indexed (wiki links, embeds, and relative
 Markdown links) are `info` findings of `links.outside-index`, which always
-passes.
+passes. Collections with an `audit` block also get `links.collection-policy`,
+`links.external-url` and `links.path-layout` from that config, with no extra
+tool inputs (see
+[Collection audit rules](CONFIGURATION.md#collection-audit-rules)).
 
 The tool is annotated read-only, destructive-false, and idempotent, and the
 implementation independently performs only query-only SQLite and source reads.

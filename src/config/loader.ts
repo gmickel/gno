@@ -126,11 +126,21 @@ export async function loadConfigFromPath(
   const result = ConfigSchema.safeParse(parsed);
 
   if (!result.success) {
+    // Collection `audit` mistakes name the setting; other issues keep the
+    // generic message.
+    const auditIssues = result.error.issues.filter((issue) =>
+      issue.path.includes("audit")
+    );
     return {
       ok: false,
       error: {
         code: "VALIDATION_ERROR",
-        message: "Config validation failed",
+        message:
+          auditIssues.length > 0
+            ? `Config validation failed: ${auditIssues
+                .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+                .join("; ")}`
+            : "Config validation failed",
         issues: result.error.issues,
       },
     };

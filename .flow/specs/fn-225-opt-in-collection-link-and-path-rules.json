@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-225-opt-in-collection-link-and-path-rules",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-10-22T22:05:17.254775Z",
   "created_at": "2026-10-20T16:31:14.056129Z",
   "default_impl": null,
   "default_review": null,
@@ -15,7 +15,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-225-opt-in-collection-link-and-path-rules.md",
-  "status": "open",
+  "status": "done",
   "title": "Opt-in collection link and path rules for gno audit",
   "tracker": {
     "baseHashFlow": null,
@@ -28,5 +28,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-20T16:31:18.836350Z"
+  "updated_at": "2026-10-22T22:11:45.639978Z"
 }

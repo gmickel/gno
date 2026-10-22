@@ -1,0 +1,174 @@
+{
+  "branch": "fn-225-opt-in-collection-link-and-path-rules",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "2c8ad18a42f693c97a9eae54e26839e60020e1c4",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-575745b2ba13bcd269f3a3b16df9c757adb7cd01762b5c55340c6d90bb864a35"
+  },
+  "head_sha": "2c8ad18a42f693c97a9eae54e26839e60020e1c4",
+  "id": "fn-225-opt-in-collection-link-and-path-rules",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 8,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      },
+      {
+        "coverage": "live",
+        "id": "R7"
+      },
+      {
+        "coverage": "live",
+        "id": "R8"
+      }
+    ],
+    "total": 8
+  },
+  "scenarios": [
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-225-opt-in-collection-link-and-path-rules/S1-collection-policy.log",
+        ".flow/tmp/qa-fn-225-opt-in-collection-link-and-path-rules/S6-config-errors.log"
+      ],
+      "head_sha": "2c8ad18a42f693c97a9eae54e26839e60020e1c4",
+      "id": "S1",
+      "outcome": "PASS",
+      "rids": [
+        "R1"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-225-opt-in-collection-link-and-path-rules/S2-external-urls.log",
+        ".flow/tmp/qa-fn-225-opt-in-collection-link-and-path-rules/S6-config-errors.log"
+      ],
+      "head_sha": "2c8ad18a42f693c97a9eae54e26839e60020e1c4",
+      "id": "S2",
+      "outcome": "PASS",
+      "rids": [
+        "R2"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-225-opt-in-collection-link-and-path-rules/S3-path-layout.log",
+        ".flow/tmp/qa-fn-225-opt-in-collection-link-and-path-rules/S6-config-errors.log"
+      ],
+      "head_sha": "2c8ad18a42f693c97a9eae54e26839e60020e1c4",
+      "id": "S3",
+      "outcome": "PASS",
+      "rids": [
+        "R3"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-225-opt-in-collection-link-and-path-rules/S4-unchanged-without-config.log",
+        ".flow/tmp/qa-fn-225-opt-in-collection-link-and-path-rules/S4-first-pass-separate-indexes.log"
+      ],
+      "head_sha": "2c8ad18a42f693c97a9eae54e26839e60020e1c4",
+      "id": "S4",
+      "outcome": "PASS",
+      "rids": [
+        "R4"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-225-opt-in-collection-link-and-path-rules/S5-report-only.log"
+      ],
+      "head_sha": "2c8ad18a42f693c97a9eae54e26839e60020e1c4",
+      "id": "S5",
+      "outcome": "PASS",
+      "rids": [
+        "R5"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-225-opt-in-collection-link-and-path-rules/S6-config-errors.log"
+      ],
+      "head_sha": "2c8ad18a42f693c97a9eae54e26839e60020e1c4",
+      "id": "S6",
+      "outcome": "PASS",
+      "rids": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-225-opt-in-collection-link-and-path-rules/S7-mcp-parity.log"
+      ],
+      "head_sha": "2c8ad18a42f693c97a9eae54e26839e60020e1c4",
+      "id": "S7",
+      "outcome": "PASS",
+      "rids": [
+        "R6"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-225-opt-in-collection-link-and-path-rules/S8-skill-docs-and-examples.log"
+      ],
+      "head_sha": "2c8ad18a42f693c97a9eae54e26839e60020e1c4",
+      "id": "S8",
+      "outcome": "PASS",
+      "rids": [
+        "R7"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-225-opt-in-collection-link-and-path-rules/S9-skill-eval.log"
+      ],
+      "head_sha": "2c8ad18a42f693c97a9eae54e26839e60020e1c4",
+      "id": "S9",
+      "outcome": "PASS",
+      "rids": [
+        "R8"
+      ],
+      "run": "live"
+    }
+  ],
+  "timestamp": "2026-10-22T22:11:21Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

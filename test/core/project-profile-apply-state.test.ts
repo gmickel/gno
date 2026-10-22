@@ -1,4 +1,4 @@
-/** fn-207: applying a project profile keeps a collection's updateCmd limit. */
+/** Applying a project profile keeps collection settings it does not own. */
 
 import { expect, test } from "bun:test";
 
@@ -8,7 +8,7 @@ import type { ProjectProfileDesiredState } from "../../src/core/project-profile"
 import { DEFAULT_FTS_TOKENIZER } from "../../src/config/types";
 import { applyProjectProfileDesiredState } from "../../src/core/project-profile-apply-state";
 
-test("an existing updateCmd and its timeout survive a profile apply", () => {
+test("an existing updateCmd, its timeout and audit survive a profile apply", () => {
   const config: Config = {
     version: "1.0",
     ftsTokenizer: DEFAULT_FTS_TOKENIZER,
@@ -21,6 +21,7 @@ test("an existing updateCmd and its timeout survive a profile apply", () => {
         exclude: [],
         updateCmd: "git pull",
         updateCmdTimeoutMs: 120_000,
+        audit: { externalUrls: "report", paths: ["**/*.md"] },
       },
     ],
     contexts: [],
@@ -47,5 +48,9 @@ test("an existing updateCmd and its timeout survive a profile apply", () => {
   const notes = next.collections.find(({ name }) => name === "notes");
   expect(notes?.updateCmd).toBe("git pull");
   expect(notes?.updateCmdTimeoutMs).toBe(120_000);
+  expect(notes?.audit).toEqual({
+    externalUrls: "report",
+    paths: ["**/*.md"],
+  });
   expect(notes?.exclude).toEqual(["drafts"]);
 });

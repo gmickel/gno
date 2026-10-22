@@ -893,6 +893,12 @@ List all configured collections.
 gno collection list [--json|--md]
 ```
 
+Each JSON item is the configured collection plus `effectiveWorkspaceRoot` and
+`workspaceSource`. A collection with an `audit` block lists it unchanged
+(`linkCollections`, `externalUrls`, `paths`); see
+[gno audit](#gno-audit). Schema:
+[`collection-list@1.0`](./output-schemas/collection-list.schema.json).
+
 ---
 
 ### gno collection clear-embeddings
@@ -1045,6 +1051,32 @@ itself stays exact-path, so that link remains in `links.local-targets`. A
 target missing from the listing stays unresolved; an unreadable folder or the
 file bound makes the listing incomplete, which the `links.outside-index` rule
 message states once.
+
+**Opt-in collection rules.** A collection's optional `audit` config object
+adds three report-only `links` rules. Each is emitted only when an audited
+collection (the `--collection` filter, else every collection) configures it,
+so without `audit` the rule list, findings, fingerprints and exit codes are
+unchanged. The config fingerprint includes a collection's `audit` object only
+when present on an audited collection.
+
+| Rule id                   | Enabled by                   | Reports                                                                                              |
+| ------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `links.collection-policy` | `audit.linkCollections`      | A link that resolves into a collection the list does not name                                        |
+| `links.external-url`      | `audit.externalUrls: report` | An external URL written in a document, or a document whose indexed text is unavailable (`unchecked`) |
+| `links.path-layout`       | `audit.paths`                | A document whose collection-relative path matches none of the globs                                  |
+
+Findings are `warning`s with location evidence: `collection-policy` (detail
+`sourceCollection`, `targetCollection`, `target`, `linkType`, `allowed`) at the
+link's line and column, `external-url` at the URL's line and column (or
+`external-url-unchecked` with no location), and `path-layout` (detail
+`paths`). Only links that resolve to exactly one document are policy findings.
+External URLs are `scheme://` URLs in the document's indexed text outside
+frontmatter, code and HTML comments; `gno://` and `file://` are local. Path
+globs use `pattern` syntax against `recordSourcePath ?? relPath`. A truncated
+snapshot makes all three `inconclusive`. Config validation: `linkCollections`
+members must name configured collections, `externalUrls` is `report` or
+`ignore`, and `paths` is 1-64 relative globs without `..` and with balanced
+`{}` / `[]`.
 
 The wiki link parser reads Obsidian's table-escaped alias `[[Note\|Alias]]`
 as target `Note` with alias `Alias`. Markdown link text may contain balanced

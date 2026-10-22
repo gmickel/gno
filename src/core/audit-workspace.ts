@@ -30,6 +30,10 @@ import {
   resolveAuditMaxFindings,
   runAudit,
 } from "./audit";
+import {
+  evaluateCollectionAuditRules,
+  needsAuditContents,
+} from "./audit-collection-rules";
 import { evaluateFreshnessAudit } from "./audit-freshness";
 import { evaluateLinkAudit } from "./audit-links";
 import { markOutsideIndexLinks } from "./audit-outside-index";
@@ -81,9 +85,22 @@ interface WorkspaceDocumentSnapshot {
 
 interface WorkspaceSnapshot {
   documents: WorkspaceDocumentSnapshot[];
+  /** Every selected (audited) document row. */
+  selected: DocumentRow[];
+  /** Indexed text for collections with `audit.externalUrls: report`. */
+  contents: Map<string, string>;
   links: AuditLinkSnapshot;
   truncated: boolean;
 }
+
+/** Collections an audit run covers: the collection filter, else all. */
+const auditedCollectionNames = (
+  options: WorkspaceAuditOptions,
+  filters: { collections: string[] }
+): string[] =>
+  filters.collections.length > 0
+    ? filters.collections
+    : options.collections.map(({ name }) => name);
 
 const normalizeValues = (values: readonly string[] | undefined): string[] =>
   [...new Set((values ?? []).map((value) => value.normalize("NFC").trim()))]
@@ -391,6 +408,26 @@ const emptyLinkSnapshot = (): AuditLinkSnapshot => ({
   },
 });
 
+/** Indexed text for documents in collections that report external URLs. */
+const loadAuditContents = async (
+  options: WorkspaceAuditOptions,
+  documents: readonly DocumentRow[]
+): Promise<Map<string, string>> => {
+  const reporting = new Set(
+    options.collections
+      .filter(({ audit }) => audit?.externalUrls === "report")
+      .map(({ name }) => name)
+  );
+  const hashes = documents
+    .filter(
+      ({ collection, mirrorHash }) => reporting.has(collection) && mirrorHash
+    )
+    .map(({ mirrorHash }) => mirrorHash as string);
+  const loaded = await options.store.getContentBatch(hashes);
+  if (!loaded.ok) throw new Error(loaded.error.message);
+  return loaded.value;
+};
+
 const loadWorkspaceSnapshot = async (
   options: WorkspaceAuditOptions,
   filters: { collections: string[]; paths: string[]; tags: string[] }
@@ -437,8 +474,18 @@ const loadWorkspaceSnapshot = async (
     selected.truncated,
     filters.collections
   );
+  const contents =
+    options.categories.includes("links") &&
+    needsAuditContents(
+      options.collections,
+      auditedCollectionNames(options, filters)
+    )
+      ? await loadAuditContents(options, selected.documents)
+      : new Map<string, string>();
   return {
     documents: observed,
+    selected: selected.documents,
+    contents,
     links: options.categories.includes("links")
       ? await markOutsideIndexLinks(options.store.getRawDb(), links, {
           signal: options.signal,
@@ -514,13 +561,19 @@ const captureWorkspaceFingerprints = async (
     options.categories.includes("links") && selected.documents.length > 0
       ? captureAuditLinkSnapshot(options.store.getRawDb())
       : null;
+  // `audit` is covered only where present on an audited collection, the only
+  // place it changes the run, so other fingerprints stay unchanged.
+  const audited = new Set(auditedCollectionNames(options, filters));
   return {
     config: hashAuditCanonical({
-      collections: options.collections.map(({ name, path, pattern }) => ({
-        name,
-        path,
-        pattern,
-      })),
+      collections: options.collections.map(
+        ({ name, path, pattern, audit }) => ({
+          name,
+          path,
+          pattern,
+          ...(audit === undefined || !audited.has(name) ? {} : { audit }),
+        })
+      ),
       filters,
     }),
     source: hashAuditCanonical({ sourceStats, total: selected.total }),
@@ -664,6 +717,17 @@ export const runWorkspaceAudit = async (
             ...evaluateLinkAudit(snapshot.links, {
               rootUris: options.orphanRoots ?? [],
               ignorePathPrefixes: options.orphanIgnorePrefixes ?? [],
+              maxFindingsPerRule,
+            }),
+            ...evaluateCollectionAuditRules({
+              links: snapshot.links,
+              documents: snapshot.selected,
+              collections: options.collections,
+              auditedCollections: auditedCollectionNames(options, filters),
+              contents: snapshot.contents,
+              truncated:
+                snapshot.links.truncated.documents ||
+                snapshot.links.truncated.links,
               maxFindingsPerRule,
             })
           );

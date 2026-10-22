@@ -96,6 +96,7 @@ export function applyProjectProfileDesiredState(
       : existing?.recordAdapters
         ? { recordAdapters: existing.recordAdapters }
         : {}),
+    ...(existing?.audit ? { audit: existing.audit } : {}),
   };
   const collections = [...config.collections];
   if (existingIndex >= 0) collections[existingIndex] = nextCollection;

@@ -57,6 +57,34 @@
         "type": "string",
         "enum": ["none", "detected", "configured", "disabled", "unavailable"],
         "description": "CLI list only: how the link workspace was set"
+      },
+      "audit": {
+        "type": "object",
+        "description": "Opt-in report-only link and path rules for gno audit links. Absent when not configured.",
+        "additionalProperties": false,
+        "properties": {
+          "linkCollections": {
+            "type": "array",
+            "description": "Other collections this one may link to; its own is always allowed",
+            "maxItems": 256,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+            }
+          },
+          "externalUrls": {
+            "type": "string",
+            "enum": ["report", "ignore"],
+            "description": "report lists external URLs written in documents"
+          },
+          "paths": {
+            "type": "array",
+            "description": "Relative globs; each document path must match at least one",
+            "minItems": 1,
+            "maxItems": 64,
+            "items": { "type": "string", "maxLength": 1024 }
+          }
+        }
       }
     }
   }
