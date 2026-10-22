@@ -1051,7 +1051,7 @@ adds three report-only `links` rules. Each is emitted only when an audited
 collection (the `--collection` filter, else every collection) configures it,
 so without `audit` the rule list, findings, fingerprints and exit codes are
 unchanged. The config fingerprint includes a collection's `audit` object only
-when present.
+when present on an audited collection.
 
 | Rule id                   | Enabled by                   | Reports                                                                                              |
 | ------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------- |

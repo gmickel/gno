@@ -230,10 +230,20 @@ describe("collection audit rules", () => {
     ]);
   });
 
-  test("a run scoped to collections without configuration emits no new rules", async () => {
+  test("a run scoped to collections without configuration emits no new rules and keeps the old fingerprint", async () => {
     const { report } = await auditJson("-c", "reference");
     expect(report.rules.some(({ ruleId }) => NEW_RULES.includes(ruleId))).toBe(
       false
+    );
+    const loaded = await loadConfig();
+    if (!loaded.ok) throw new Error(loaded.error.message);
+    expect(report.fingerprints.config).toBe(
+      hashAuditCanonical({
+        collections: loaded.value.collections.map(
+          ({ name, path, pattern }) => ({ name, path, pattern })
+        ),
+        filters: { collections: ["reference"], paths: [], tags: [] },
+      })
     );
   });
 

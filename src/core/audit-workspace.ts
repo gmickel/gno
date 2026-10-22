@@ -561,16 +561,17 @@ const captureWorkspaceFingerprints = async (
     options.categories.includes("links") && selected.documents.length > 0
       ? captureAuditLinkSnapshot(options.store.getRawDb())
       : null;
+  // `audit` is covered only where present on an audited collection, the only
+  // place it changes the run, so other fingerprints stay unchanged.
+  const audited = new Set(auditedCollectionNames(options, filters));
   return {
     config: hashAuditCanonical({
-      // `audit` is covered only when present, so fingerprints of
-      // collections without it are unchanged.
       collections: options.collections.map(
         ({ name, path, pattern, audit }) => ({
           name,
           path,
           pattern,
-          ...(audit === undefined ? {} : { audit }),
+          ...(audit === undefined || !audited.has(name) ? {} : { audit }),
         })
       ),
       filters,
