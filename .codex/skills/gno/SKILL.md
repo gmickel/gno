@@ -154,7 +154,9 @@ machines are slower.
 exact identifier/quote/error you already have verbatim → `gno search` (a
 question, or a name or topic taken from it, is not exact text). No good results: run balanced
 `gno query`, then rephrase, then `--thorough`. An expected document still
-missing: `gno query diagnose` before falling back to grep.
+missing: `gno query diagnose` before falling back to grep. When the user
+explicitly asks for a semantic, vector or meaning-only search (their documents
+use different wording), use `gno vsearch` instead.
 
 ## Common Flags (search/vsearch/query/ask)
 
