@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-225-opt-in-collection-link-and-path-rules",
   "spec_path": ".flow/tasks/fn-225-opt-in-collection-link-and-path-rules.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement opt-in collection link and path rules for gno audit",
   "updated_at": "2026-10-22T21:34:23.401137Z"
 }
