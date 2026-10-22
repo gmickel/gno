@@ -330,9 +330,10 @@ configure:
   more than 64 configured, it is denied with `COLLECTION_LIMIT_EXCEEDED`; name
   the collections it needs instead.
 - A request naming more than 64 collections is denied the same way.
-- `gno collection policy check` and MCP `gno_egress_check` accept at most 64 explicit
-  names. Unscoped, with more than 128 collections configured, they return a
-  validation error that asks for named collections.
+- `gno collection policy check` and MCP `gno_egress_check` accept at most 64
+  explicit names. MCP `gno_egress_check` without a scope, with more than 128
+  collections configured, returns a validation error that asks for named
+  collections.
 
 The denial is an ordinary egress denial (HTTP 403 over MCP) that names no
 collection, never a server error.

@@ -1,0 +1,194 @@
+{
+  "branch": "fn-226-egress-collection-limits-deny-cleanly",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "217242036b09ef5b62b6230e1c751e9f8df4891a",
+    "items": [
+      {
+        "body": "gno collection policy check without -c always fails VALIDATION 'Invalid egress policy check' at 64/65/129 collections, on main and branch: the CLI sends its -c default [] as an explicit empty scope. (surface: src/cli/program.ts)",
+        "classification": "pre_existing",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-d550cbbd4b3a14b4b18e6d243a757a2c670322612d0e752bc7b5a8d1326487d2",
+        "id": "finding-88b6a886d8a506bc5f6a80c9af617f8a",
+        "lastSeenReceiptId": "review-d550cbbd4b3a14b4b18e6d243a757a2c670322612d0e752bc7b5a8d1326487d2",
+        "ordinal": 1,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "F1"
+      },
+      {
+        "body": "Over HTTP MCP, gno_egress_check's collections scope is ignored by the transport gate (not in COLLECTIONS_SCOPE_TOOLS), so a check scoped to one collection is denied 403 COLLECTION_LIMIT_EXCEEDED with 65+ configured; stdio returns mode=complete. (surface: src/mcp/http-egress.ts)",
+        "classification": "pre_existing",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-d550cbbd4b3a14b4b18e6d243a757a2c670322612d0e752bc7b5a8d1326487d2",
+        "id": "finding-61435ca883dc953c8422155fa3751e66",
+        "lastSeenReceiptId": "review-d550cbbd4b3a14b4b18e6d243a757a2c670322612d0e752bc7b5a8d1326487d2",
+        "ordinal": 2,
+        "rIds": [],
+        "severity": "P2",
+        "status": "open",
+        "title": "F2"
+      },
+      {
+        "body": "gno daemon GET /api/resident/status is denied 403 COLLECTION_LIMIT_EXCEEDED from loopback with 65+ collections (unscoped serve check); kept by design under R2, filed as a usability gap. (surface: src/cli/commands/daemon.ts)",
+        "classification": "pre_existing",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-d550cbbd4b3a14b4b18e6d243a757a2c670322612d0e752bc7b5a8d1326487d2",
+        "id": "finding-9a0b3a2a7492f0364e888e2f2f948071",
+        "lastSeenReceiptId": "review-d550cbbd4b3a14b4b18e6d243a757a2c670322612d0e752bc7b5a8d1326487d2",
+        "ordinal": 3,
+        "rIds": [
+          "R2"
+        ],
+        "severity": "P2",
+        "status": "open",
+        "title": "F3"
+      }
+    ],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-d550cbbd4b3a14b4b18e6d243a757a2c670322612d0e752bc7b5a8d1326487d2"
+  },
+  "head_sha": "217242036b09ef5b62b6230e1c751e9f8df4891a",
+  "id": "fn-226-egress-collection-limits-deny-cleanly",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 7,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R6"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R7"
+      }
+    ],
+    "total": 7
+  },
+  "scenarios": [
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-226-egress-collection-limits-deny-cleanly/mcp-branch.log",
+        ".flow/tmp/qa-fn-226-egress-collection-limits-deny-cleanly/mcp-main.log"
+      ],
+      "head_sha": "217242036b09ef5b62b6230e1c751e9f8df4891a",
+      "id": "S1",
+      "outcome": "PASS",
+      "rids": [
+        "R1",
+        "R2",
+        "R4"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-226-egress-collection-limits-deny-cleanly/mcp-branch.log",
+        ".flow/tmp/qa-fn-226-egress-collection-limits-deny-cleanly/mcp-main.log"
+      ],
+      "head_sha": "217242036b09ef5b62b6230e1c751e9f8df4891a",
+      "id": "S2",
+      "outcome": "PASS",
+      "rids": [
+        "R1",
+        "R2",
+        "R4"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-226-egress-collection-limits-deny-cleanly/mcp-branch.log"
+      ],
+      "head_sha": "217242036b09ef5b62b6230e1c751e9f8df4891a",
+      "id": "S3",
+      "outcome": "PASS",
+      "rids": [
+        "R1",
+        "R4"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-226-egress-collection-limits-deny-cleanly/mcp-branch.log"
+      ],
+      "head_sha": "217242036b09ef5b62b6230e1c751e9f8df4891a",
+      "id": "S4",
+      "outcome": "PASS",
+      "rids": [
+        "R1"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-226-egress-collection-limits-deny-cleanly/surfaces-branch.log",
+        ".flow/tmp/qa-fn-226-egress-collection-limits-deny-cleanly/surfaces-main.log"
+      ],
+      "head_sha": "217242036b09ef5b62b6230e1c751e9f8df4891a",
+      "id": "S5",
+      "outcome": "PASS",
+      "rids": [
+        "R3"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-226-egress-collection-limits-deny-cleanly/surfaces-branch.log",
+        ".flow/tmp/qa-fn-226-egress-collection-limits-deny-cleanly/surfaces-main.log"
+      ],
+      "head_sha": "217242036b09ef5b62b6230e1c751e9f8df4891a",
+      "id": "S6",
+      "outcome": "PASS",
+      "rids": [
+        "R3"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-226-egress-collection-limits-deny-cleanly/egress-check-branch.log",
+        ".flow/tmp/qa-fn-226-egress-collection-limits-deny-cleanly/egress-check-main.log",
+        ".flow/tmp/qa-fn-226-egress-collection-limits-deny-cleanly/egress-check-stdio-branch.log"
+      ],
+      "head_sha": "217242036b09ef5b62b6230e1c751e9f8df4891a",
+      "id": "S7",
+      "outcome": "PASS",
+      "rids": [
+        "R3",
+        "R5"
+      ],
+      "run": "live"
+    }
+  ],
+  "timestamp": "2026-10-22T13:33:38Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
