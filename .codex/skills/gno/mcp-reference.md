@@ -261,6 +261,12 @@ before calling.
   `not_found`, so do not blindly resend an uncertain old write as new.
 - Errors arrive as tool text `CODE: message` with `structuredContent.error`.
 
+## Audits
+
+`gno_audit` returns the same report as `gno audit`. Collection `audit` config
+adds `links.collection-policy`, `links.external-url` and `links.path-layout`
+findings with no new tool inputs; they report structure, not egress.
+
 ## Uninstall
 
 ```bash

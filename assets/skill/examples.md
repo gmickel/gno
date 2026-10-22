@@ -246,6 +246,21 @@ done
 
 ## Maintenance
 
+### Check a published collection's links
+
+Let `published` link only to itself and `reference`: add this to the
+`published` collection in the config file (`gno doctor` shows its path).
+
+```yaml
+audit:
+  linkCollections: [reference]
+```
+
+```bash
+gno audit links -c published --json \
+  | jq -r '.findings[] | select(.ruleId == "links.collection-policy") | "\(.subject) \(.location): \(.message)"'
+```
+
 ### Update index after changes
 
 ```bash

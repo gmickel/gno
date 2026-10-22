@@ -857,6 +857,36 @@ gno models path [--json]
 
 ## Maintenance
 
+### gno audit
+
+Read-only workspace integrity report. Exit 4 = complete with findings, 5 =
+partial/inconclusive.
+
+```bash
+gno audit [links|provenance|freshness|all] [-c <collection>] [--json]
+gno audit links -c published --json
+```
+
+Opt-in, report-only collection rules come from an `audit` block on a
+collection in the config file (`gno doctor` shows its path); there are no CLI
+flags for them:
+
+```yaml
+collections:
+  - name: published
+    path: ~/notes/published
+    audit:
+      linkCollections: [reference] # other collections it may link to
+      externalUrls: report # report | ignore (default ignore)
+      paths: ["20??/**/*.md"] # globs every document path must match
+```
+
+| Rule id                   | Reports                                                                                                                    |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `links.collection-policy` | A link into a collection `linkCollections` does not list                                                                   |
+| `links.external-url`      | A URL written in a document (outside frontmatter, code, comments), or `unchecked` when the text is unavailable. Not egress |
+| `links.path-layout`       | A document whose path matches none of the `paths` globs                                                                    |
+
 ### gno peek
 
 Cheap counts, backlog, recent files, and serve liveness. Same `peek@1.0`

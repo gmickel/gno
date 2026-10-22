@@ -1135,7 +1135,11 @@ gno audit freshness --max-age-days 90 --json --output audit.json
 
 The default `all` run evaluates parsed local links, explicitly declared capture
 and logical-record provenance, and observable source/index freshness. External
-URLs are outside the local-link graph. Age is only a review signal when
+URLs are outside the local-link graph; a collection can opt in to have
+`gno audit links` report them, along with links into other collections and
+documents outside an expected path layout (see
+[Collection audit rules](CONFIGURATION.md#collection-audit-rules)). Age is only
+a review signal when
 `--max-age-days` is supplied; it is never presented as proof that content is
 false. Use repeatable `--orphan-root` and `--orphan-ignore-prefix` inputs for an
 explicit orphan policy.

@@ -655,6 +655,52 @@ The equivalent MCP fields are `maxAgeDays`, `orphanRoots`, and
 does not change them. Do not confuse its content-bearing local findings with
 the content-free egress policy receipts above.
 
+### Collection audit rules
+
+A collection can opt into three extra checks for `gno audit links` with an
+`audit` block. They help keep a collection tidy and publishable: they report
+findings and never block indexing, search, editing or link resolution.
+
+```yaml
+collections:
+  - name: published
+    path: ~/notes/published
+    audit:
+      linkCollections: [reference] # other collections it may link to
+      externalUrls: report # report | ignore (default ignore)
+      paths: ["20??/**/*.md"] # each document path must match one glob
+```
+
+| Rule id                   | Enabled by                   | Reports                                                                                              |
+| ------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `links.collection-policy` | `audit.linkCollections`      | A link that resolves into a collection the list does not name                                        |
+| `links.external-url`      | `audit.externalUrls: report` | An external URL written in a document, or a document whose indexed text is unavailable (`unchecked`) |
+| `links.path-layout`       | `audit.paths`                | A document whose collection-relative path matches none of the globs                                  |
+
+- `linkCollections` lists the other collections this collection's links may
+  point into; links inside the collection are always allowed. A link GNO
+  cannot resolve is not a policy finding: the broken-link rules report it.
+  Every name must be a configured collection, so remove a name here before
+  removing that collection.
+- `externalUrls: report` lists every `scheme://` URL in a document's indexed
+  text, in link syntax or bare prose, with its line and column. Frontmatter,
+  code and HTML comments are skipped, and `gno://` and `file://` URLs are
+  local, not external. This rule only reports what is written in notes; it is
+  unrelated to the collection's [egress policy](#collection-egress-policy),
+  which governs where content may travel.
+- `paths` takes globs in the same syntax as `pattern` (not regular
+  expressions), relative to the collection root, without `..` segments. Up to
+  64 globs.
+
+Findings are `warning`s, so a run with findings exits `4` as usual, and a
+truncated audit snapshot makes these rules `inconclusive`. The rules run only
+when an audited collection configures them: without an `audit` block, reports
+are unchanged. MCP `gno_audit` and the daemon's
+[scheduled findings pass](#scheduled-findings-pass) pick them up from the same
+config. An invalid block (an unknown collection name, an `externalUrls` value
+other than `report` or `ignore`, an empty `paths` list or a malformed glob) is
+a configuration error.
+
 ## Scheduled findings pass
 
 `gno daemon` can run the read-only audit on a cadence and write each finding as
@@ -890,18 +936,19 @@ remove` deletes them at once.
 
 ### Collection Fields
 
-| Field                | Type            | Default     | Description                                                            |
-| -------------------- | --------------- | ----------- | ---------------------------------------------------------------------- |
-| `name`               | string          | required    | Unique identifier (lowercase)                                          |
-| `path`               | string          | required    | Absolute path to directory                                             |
-| `pattern`            | glob            | `**/*`      | File matching pattern                                                  |
-| `include`            | array           | see below   | Extension allowlist                                                    |
-| `exclude`            | array           | see below   | Patterns to skip                                                       |
-| `updateCmd`          | string          | -           | Shell command before indexing                                          |
-| `updateCmdTimeoutMs` | number          | `600000`    | Stop `updateCmd` after this many milliseconds                          |
-| `languageHint`       | string          | -           | BCP-47 language code                                                   |
-| `models`             | object          | -           | Per-collection model overrides                                         |
-| `workspaceRoot`      | path or `false` | auto-detect | Link workspace for wiki links; see [Link workspaces](#link-workspaces) |
+| Field                | Type            | Default     | Description                                                               |
+| -------------------- | --------------- | ----------- | ------------------------------------------------------------------------- |
+| `name`               | string          | required    | Unique identifier (lowercase)                                             |
+| `path`               | string          | required    | Absolute path to directory                                                |
+| `pattern`            | glob            | `**/*`      | File matching pattern                                                     |
+| `include`            | array           | see below   | Extension allowlist                                                       |
+| `exclude`            | array           | see below   | Patterns to skip                                                          |
+| `updateCmd`          | string          | -           | Shell command before indexing                                             |
+| `updateCmdTimeoutMs` | number          | `600000`    | Stop `updateCmd` after this many milliseconds                             |
+| `languageHint`       | string          | -           | BCP-47 language code                                                      |
+| `models`             | object          | -           | Per-collection model overrides                                            |
+| `workspaceRoot`      | path or `false` | auto-detect | Link workspace for wiki links; see [Link workspaces](#link-workspaces)    |
+| `audit`              | object          | -           | Opt-in audit rules; see [Collection audit rules](#collection-audit-rules) |
 
 ### Default Include Extensions
 

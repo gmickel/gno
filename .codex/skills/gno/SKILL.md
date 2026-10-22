@@ -376,6 +376,29 @@ never from code spans, code blocks, or non-Markdown files.
 Report `truncation.snapshotTruncated` as "totals cover the bounded snapshot,
 not the whole index".
 
+A collection can opt into three report-only link rules with an `audit` block in
+its config: `linkCollections` (other collections it may link to; its own is
+always allowed), `externalUrls: report`, and `paths` (globs every document path
+must match). Their findings are `warning`s: `links.collection-policy`,
+`links.external-url` and `links.path-layout`. Report them as structure and
+publishing hygiene, not access control: `links.external-url` only reports a
+URL written in a note; it sends and blocks nothing, so the remedy is editing
+the note or setting `externalUrls: ignore`, never a collection policy change.
+Show which URLs were found with
+`gno audit links --json | jq -r '.findings[] | select(.ruleId == "links.external-url") | "\(.subject) \(.location) \(.evidence[0].summary)"'`.
+Never add an `audit` block on your own initiative. When the user asks for a
+rule, there is no CLI flag: always write out the exact `audit` block for that
+collection's entry in the config file, then run the check. For "published may
+link only to reference":
+
+```bash
+gno doctor   # prints "Config loaded: <path>"
+# In <path>, under the `published` collection entry, add:
+#   audit:
+#     linkCollections: [reference]
+gno audit links -c published --json
+```
+
 Treat exit `4` as a complete report with findings. Exit `5` or report status
 `partial`/`changed_during_audit` means evidence is unavailable, inconclusive,
 cancelled, truncated, or repeatedly changed—never healthy. Preserve stable

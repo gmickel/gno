@@ -114,6 +114,74 @@ const COLLECTION_NAME_REGEX = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 /** Collection scope key pattern: name (1-64 chars) followed by colon */
 const COLLECTION_SCOPE_REGEX = /^[a-z0-9][a-z0-9_-]{0,63}:$/;
 
+/** Most globs one collection's `audit.paths` may list. */
+export const COLLECTION_AUDIT_MAX_PATHS = 64;
+const COLLECTION_AUDIT_MAX_GLOB_CHARS = 1024;
+
+/**
+ * A path glob in `pattern` syntax: relative, no `..` segment, balanced
+ * `{}` / `[]`. Bun.Glob accepts nearly any string, so the shape is checked.
+ */
+export function isValidAuditPathGlob(glob: string): boolean {
+  if (glob.trim() !== glob || glob.length === 0) return false;
+  if (glob.includes("\0") || glob.startsWith("/")) return false;
+  if (glob.split("/").includes("..")) return false;
+  let braces = 0;
+  let inClass = false;
+  for (const char of glob) {
+    if (inClass) {
+      if (char === "]") inClass = false;
+      continue;
+    }
+    if (char === "[") inClass = true;
+    else if (char === "{") braces += 1;
+    else if (char === "}") {
+      braces -= 1;
+      if (braces < 0) return false;
+    }
+  }
+  return braces === 0 && !inClass;
+}
+
+/**
+ * Opt-in, report-only audit rules for one collection (`gno audit links`).
+ * They never block indexing, retrieval or editing.
+ */
+export const CollectionAuditSchema = z
+  .object({
+    /** Other collections this one may link to; its own is always allowed. */
+    linkCollections: z
+      .array(
+        z
+          .string()
+          .regex(
+            COLLECTION_NAME_REGEX,
+            "audit.linkCollections entries must be collection names"
+          )
+      )
+      .max(256)
+      .optional(),
+    /** `report` lists external URLs written in documents. Not egress. */
+    externalUrls: z.enum(["report", "ignore"]).optional(),
+    /** Each document path must match at least one glob. */
+    paths: z
+      .array(
+        z
+          .string()
+          .max(COLLECTION_AUDIT_MAX_GLOB_CHARS)
+          .refine(isValidAuditPathGlob, {
+            message:
+              "audit.paths entries must be relative globs without '..' and with balanced {} and []",
+          })
+      )
+      .min(1, "audit.paths must list at least one glob")
+      .max(COLLECTION_AUDIT_MAX_PATHS)
+      .optional(),
+  })
+  .strict();
+
+export type CollectionAuditConfig = z.infer<typeof CollectionAuditSchema>;
+
 export const CollectionSchema = z.object({
   /** Unique collection identifier (lowercase) */
   name: z
@@ -183,6 +251,9 @@ export const CollectionSchema = z.object({
    * Omitted means false; ordinary retrieval is unaffected either way.
    */
   memoryManaged: z.boolean().optional(),
+
+  /** Opt-in report-only link and path rules for `gno audit links`. */
+  audit: CollectionAuditSchema.optional(),
 
   /** Optional per-collection model overrides */
   models: z
@@ -616,7 +687,25 @@ export const ConfigSchema = z.object({
   editorUriTemplate: z.string().min(1).optional(),
 
   /** Collection definitions */
-  collections: z.array(CollectionSchema).default([]),
+  collections: z
+    .array(CollectionSchema)
+    .superRefine((collections, ctx) => {
+      const names = new Set(collections.map(({ name }) => name));
+      for (const [index, collection] of collections.entries()) {
+        for (const [
+          position,
+          name,
+        ] of collection.audit?.linkCollections?.entries() ?? []) {
+          if (names.has(name)) continue;
+          ctx.addIssue({
+            code: "custom",
+            message: `Collection "${collection.name}" audit.linkCollections names unknown collection "${name}"`,
+            path: [index, "audit", "linkCollections", position],
+          });
+        }
+      }
+    })
+    .default([]),
 
   /** Context metadata */
   contexts: z.array(ContextSchema).default([]),

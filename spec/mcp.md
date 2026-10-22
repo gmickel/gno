@@ -418,7 +418,10 @@ Rules report `pass`, `fail`, `skip`, `unavailable`, or `inconclusive`; reports
 are `complete`, `partial`, `changed_during_audit`, or `failed`. A passing rule
 may carry `info` findings (`links.outside-index`: link targets that exist as
 files in the link workspace but are not indexed); only `warning` and `error`
-findings fail a rule. Link semantics match `gno audit` (spec/cli.md). Unavailable or
+findings fail a rule. Link semantics match `gno audit` (spec/cli.md),
+including the opt-in `links.collection-policy`, `links.external-url` and
+`links.path-layout` rules read from collection `audit` config; they add no
+tool inputs. Unavailable or
 changing evidence never appears healthy. Stable finding IDs are derived from
 rule, normalized subject/location, and evidence fingerprint. Responses are
 canonically ordered and bounded while retaining exact pre-truncation totals.
