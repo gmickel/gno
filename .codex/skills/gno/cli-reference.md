@@ -510,8 +510,13 @@ gno multi-get <pattern> [--max-bytes <n>] [--line-numbers]
 List documents.
 
 ```bash
-gno ls [<scope>] [--json|--files|--md]
+gno ls [<scope>] [--filter <json>] [-n <num>] [--offset <num>] [--json|--files|--md]
 ```
+
+- `<scope>`: collection name or `gno://collection/prefix`
+- `--filter <json>`: list only documents whose typed metadata (`gno.metadata`) matches; same predicate syntax and semantics as `gno search --filter`. Applies before pagination
+- `--json` returns `{documents: [{docid, uri, title, source}], meta: {total, returned, offset}}`; `meta.total` counts all matches
+- With `--filter`, `meta.warnings` (`METADATA_COVERAGE_INCOMPLETE`) appears when documents with invalid or pending metadata were skipped; other formats print it on stderr
 
 ## Context Management
 

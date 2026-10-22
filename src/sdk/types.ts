@@ -89,6 +89,7 @@ import type {
   SectionTargetResolveResult,
   SectionTargetV1,
 } from "../core/sections";
+import type { MetadataPredicate } from "../core/typed-metadata";
 import type { SyncResult } from "../ingestion";
 import type { CollectionRootError } from "../ingestion/source-availability/root";
 import type { DownloadPolicy } from "../llm/policy";
@@ -223,6 +224,8 @@ export interface GnoListOptions {
   scope?: string;
   limit?: number;
   offset?: number;
+  /** Typed metadata predicate, as for search `filter`. */
+  filter?: MetadataPredicate;
 }
 
 export interface GnoUpdateOptions {

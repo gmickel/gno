@@ -34,7 +34,7 @@ gno context build "Atlas rollout" --filter '{"op":"all","key":"reviewers","value
 ```
 
 `--filter` accepts JSON on search, vector search, hybrid/structured query,
-query diagnosis, ask, and Context Capsule building. SDK, MCP, and REST inputs
+query diagnosis, ask, Context Capsule building, and `gno ls`. SDK, MCP, and REST inputs
 accept the same object in `filter`. It intersects collection/path, exclusions,
 authority, egress, and memory visibility before candidate limits. It cannot
 expand access. No model or background service is needed to extract metadata.
@@ -63,6 +63,21 @@ you when more exist. The same summary is MCP `gno_list_metadata`, REST
 `client.listMetadata({ collection: "notes" })`. It reads the index as it is, so
 documents not yet updated to the current metadata format do not count until
 `gno update` runs; an unknown collection reports zero documents.
+
+## List documents by metadata
+
+To enumerate documents by metadata without a search term, give `gno ls` the
+same predicate:
+
+```bash
+gno ls notes --filter '{"op":"eq","key":"status","value":"draft"}'
+gno ls notes --filter '{"op":"in","key":"project","values":["atlas"]}' --json
+```
+
+The listing uses the same evaluation as search filters and applies it before
+pagination, so `meta.total` is the number of matching documents. It also
+carries the same coverage warning when documents had to be skipped. The SDK
+equivalent is `client.list({ scope: "notes", filter })`.
 
 ## Types and operators
 

@@ -393,6 +393,10 @@ truthful SQLite/WAL physical-cleanup state.
 const doc = await client.get("notes/README.md");
 const many = await client.multiGet(["notes/README.md", "notes/api/auth.md"]);
 const listed = await client.list({ limit: 20 });
+const drafts = await client.list({
+  scope: "notes",
+  filter: { op: "eq", key: "status", value: "draft" },
+});
 const metadata = await client.listMetadata({ collection: "notes", values: 20 });
 ```
 
@@ -877,5 +881,7 @@ const approved = await client.search("rollout", { filter });
 ```
 
 The same `filter` option is available to vector/hybrid/structured retrieval,
-ask, and Context Capsule building. Validation rejects invalid types rather than
+ask, Context Capsule building, and `list()`, which returns the matching
+documents and `meta.total` without running a search (plus `meta.warnings` when
+coverage is incomplete). Validation rejects invalid types rather than
 coercing strings. See [Typed metadata filters](TYPED-METADATA.md).

@@ -30,6 +30,10 @@ import {
   evidenceFromExactDocument,
   RetrievalTraceSession,
 } from "../core/retrieval-trace-session";
+import {
+  filterDocumentsByMetadata,
+  metadataCoverageWarnings,
+} from "../pipeline/filters";
 import { supersedingUri } from "../pipeline/result-context";
 import { sdkError } from "./errors";
 
@@ -388,11 +392,19 @@ export async function listDocuments(
     });
   }
 
-  const allActive = docsResult.value
+  const inScope = docsResult.value
     .filter((d) => d.active)
     .filter((d) =>
       !scope?.startsWith("gno://") ? true : d.uri.startsWith(scope)
-    )
+    );
+  const filtered = options.filter
+    ? filterDocumentsByMetadata(inScope, options.filter)
+    : undefined;
+  const warnings = filtered
+    ? metadataCoverageWarnings(filtered, "listing")
+    : undefined;
+
+  const allActive = (filtered?.matches ?? inScope)
     .map((d) => ({
       docid: d.docid,
       uri: d.uri,
@@ -415,6 +427,7 @@ export async function listDocuments(
       total: allActive.length,
       returned: paged.length,
       offset,
+      ...(warnings ? { warnings } : {}),
     },
   };
 }

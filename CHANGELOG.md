@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `gno ls --filter <json>` lists the documents whose typed metadata matches a predicate, without a search term (for example every note with `status: draft`). It uses the same predicate syntax and semantics as `gno search --filter`, applies before pagination so `meta.total` counts matches, and warns with `METADATA_COVERAGE_INCOMPLETE` when documents with invalid or pending metadata were skipped. The SDK's `list()` takes the same `filter`. `ls --json` output now has a published schema, and the `gno` agent skill documents the listing; its JSON examples now read `.documents[]` and `.results[]` instead of a bare array. Thanks to @ArnauvGilotra for the idea and the original pull request (#315).
+
 ### Fixed
 
 - With more than 128 collections configured, every call to the resident HTTP MCP endpoint failed with `500 Internal MCP transport error`, scoped or not. A call that names its collections is now judged on those collections however many are configured, and an unscoped call over the limit gets the documented `COLLECTION_LIMIT_EXCEEDED` denial (403). Daemon status and unscoped MCP sync calls deny the same way instead of failing, and the browser clipper and publish exports, which name one collection, work again. The limits themselves are unchanged and are now documented in the configuration guide. Thanks to @ArnauvGilotra for the idea and the original pull request (#318).

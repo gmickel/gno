@@ -1524,7 +1524,12 @@ class GnoClientImpl implements GnoClient {
 
   async list(options: GnoListOptions = {}) {
     this.assertOpen();
-    const result = await listDocuments(this.store, options);
+    const result = await listDocuments(
+      this.store,
+      options.filter === undefined
+        ? options
+        : { ...options, filter: normalizeSdkMetadataFilter(options.filter) }
+    );
     return {
       ...result,
       documents: result.documents.map((doc) => ({

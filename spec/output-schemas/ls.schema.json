@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/ls@1.0",
+  "title": "GNO Document Listing",
+  "description": "Output of gno ls --json and SDK list(): one page of active documents in URI order",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["documents", "meta"],
+  "properties": {
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["docid", "uri", "source"],
+        "properties": {
+          "docid": { "type": "string", "pattern": "^#[a-f0-9]+$" },
+          "uri": { "type": "string", "pattern": "^gno://" },
+          "title": { "type": "string" },
+          "source": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["relPath", "mime", "ext"],
+            "properties": {
+              "relPath": { "type": "string" },
+              "mime": { "type": "string" },
+              "ext": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "returned", "offset"],
+      "properties": {
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Documents in scope that match the filter, before pagination"
+        },
+        "returned": { "type": "integer", "minimum": 0 },
+        "offset": { "type": "integer", "minimum": 0 },
+        "warnings": {
+          "type": "array",
+          "description": "Present only with a typed metadata filter when some documents could not be judged",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "message"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": ["METADATA_COVERAGE_INCOMPLETE"]
+              },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
