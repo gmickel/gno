@@ -653,6 +653,9 @@ gno egress-audit purge
 Denied egress is terminal for that route; do not retry through another network
 surface. Relaxing policy requires the current revision; tightening to
 `local_only` does not. Audit receipts are local and content-free.
+`COLLECTION_LIMIT_EXCEEDED` is the one denial to retry: the request covered more
+than 64 collections (128 for lineage), so name only the collections it needs
+(`-c <name>`).
 Deletion/purge must remain explicit.
 
 ## Note Linking

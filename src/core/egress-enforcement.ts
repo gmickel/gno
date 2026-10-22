@@ -13,7 +13,10 @@ import type { EgressLineage, EgressLineageInput } from "./egress-provenance";
 
 import { resolveConfiguredEgressPolicy } from "../config/types";
 import { EgressAuditService } from "./egress-audit";
-import { evaluateEgressPolicy } from "./egress-policy";
+import {
+  collectionLimitExceededDecision,
+  evaluateEgressPolicy,
+} from "./egress-policy";
 import {
   EgressProvenanceError,
   resolveEgressLineage,
@@ -58,8 +61,9 @@ const collectionLineageInputs = (
         "Collection policy scope must be a readable dense bounded array"
       );
     }
+    // The configuration is not bounded here; the resolved scope is.
     const { length } = collections;
-    if (!Number.isSafeInteger(length) || length > 128) {
+    if (!Number.isSafeInteger(length)) {
       throw new EgressProvenanceError(
         "INVALID_EGRESS_LINEAGE",
         "Collection policy scope must be a readable dense bounded array"
@@ -100,11 +104,23 @@ const collectionLineageInputs = (
   }
 };
 
+/** A scope over the lineage bound is a policy denial, never an internal error. */
 const resolveCollectionEgressLineage = (
   collections: readonly Collection[],
   names?: readonly string[]
-): EgressLineage =>
-  resolveEgressLineage(collectionLineageInputs(collections), names);
+): EgressLineage => {
+  try {
+    return resolveEgressLineage(collectionLineageInputs(collections), names);
+  } catch (error) {
+    if (
+      error instanceof EgressProvenanceError &&
+      error.code === "EGRESS_SCOPE_LIMIT_EXCEEDED"
+    ) {
+      throw new EgressDeniedError(collectionLimitExceededDecision());
+    }
+    throw error;
+  }
+};
 
 export const collectionEgressStates = (
   collections: readonly Collection[],

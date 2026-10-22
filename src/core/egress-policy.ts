@@ -420,6 +420,10 @@ function evaluateSnapshot(snapshot: EgressEvaluationSnapshot): EgressDecision {
   return decision(true, "REMOTE_POLICY_AUTHENTICATED", audit);
 }
 
+/** The denial for a scope over the collection bound, naming no collection. */
+export const collectionLimitExceededDecision = (): EgressDecision =>
+  decision(false, "COLLECTION_LIMIT_EXCEEDED", limitExceededAudit());
+
 export function evaluateEgressPolicy(input: unknown): EgressDecision {
   try {
     const result = snapshotInput(input);

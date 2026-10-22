@@ -338,6 +338,13 @@ compatible collection policy. Policy denial returns HTTP 403 with stable
 `EGRESS_DENIED` data and a redacted evaluator audit. Write authorization remains
 an independent additional requirement.
 
+The check covers the request's collection scope: the collections it names, or
+every configured collection when it names none. One decision covers at most 64
+collections and one policy lineage at most 128. A scope over either bound is
+denied with reason `COLLECTION_LIMIT_EXCEEDED` through the same 403 response,
+whose audit names no collection; it is never an internal error. A request that
+names a few collections is evaluated normally however many are configured.
+
 The MCP tool and resource registry is paired with a callsite-level
 network-boundary inventory. A TypeScript AST scan covers shipped TS, TSX, JS,
 and JSX and recognizes direct, qualified, bracketed, imported, and aliased
@@ -3386,7 +3393,10 @@ Read tools:
   caller authentication/authorization, content class, and partial mode. It
   performs no action and returns the canonical decision/explanation contract.
   An explicit scope is a non-empty, duplicate-free list of at most 64 canonical
-  collection names; omitted scope means all configured collections.
+  collection names; omitted scope means all configured collections. Omitted
+  scope with more than 64 configured collections returns a denied decision
+  with reason `COLLECTION_LIMIT_EXCEEDED`; with more than 128 it returns a
+  `VALIDATION` error asking for named collections.
 - `gno_egress_audit_list`, `gno_egress_audit_show`, and
   `gno_egress_audit_status` expose only content-free local receipts.
 

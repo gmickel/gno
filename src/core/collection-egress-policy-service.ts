@@ -410,7 +410,10 @@ export class CollectionEgressPolicyService {
         return {
           ok: false,
           code: "VALIDATION",
-          error: "Invalid collection egress scope",
+          error:
+            error.code === "EGRESS_SCOPE_LIMIT_EXCEEDED"
+              ? "Collection egress scope exceeds 128 collections; name the collections to check"
+              : "Invalid collection egress scope",
         };
       }
       if (!(error instanceof EgressDeniedError)) throw error;

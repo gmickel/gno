@@ -345,7 +345,10 @@ confirmation and invalidates active sessions, streams, and queued work.
 
 Bearer authentication, MCP write enablement, and collection policy are
 independent gates. `EGRESS_DENIED` is not permission to retry through another
-surface. Audit output is local and content-free via
+surface. The one exception is reason `COLLECTION_LIMIT_EXCEEDED`: the call
+covered more than 64 collections (128 for lineage), so retry it scoped to the
+collections the task needs (`collection`/`collections`, `-c`). It is not an
+outage; never restart, raise a limit or relax policy for it. Audit output is local and content-free via
 `gno egress-audit list|show|status`; deletion/purge must be explicit. A local
 policy change cannot retract data already uploaded—tell the user to remove it
 at the remote service. For gno.sh, supported private links can be revoked or

@@ -33,10 +33,16 @@ const POLICY_RESTRICTIVENESS: Readonly<Record<EgressPolicy, number>> = {
 };
 
 export class EgressProvenanceError extends Error {
-  readonly code: "EMPTY_EGRESS_LINEAGE" | "INVALID_EGRESS_LINEAGE";
+  readonly code:
+    | "EMPTY_EGRESS_LINEAGE"
+    | "INVALID_EGRESS_LINEAGE"
+    | "EGRESS_SCOPE_LIMIT_EXCEEDED";
 
   constructor(
-    code: "EMPTY_EGRESS_LINEAGE" | "INVALID_EGRESS_LINEAGE",
+    code:
+      | "EMPTY_EGRESS_LINEAGE"
+      | "INVALID_EGRESS_LINEAGE"
+      | "EGRESS_SCOPE_LIMIT_EXCEEDED",
     message: string
   ) {
     super(message);
@@ -71,13 +77,24 @@ const invalidLineageInput = (): EgressProvenanceError =>
     `Source policy lineage must be a readable dense array with at most ${MAX_EGRESS_LINEAGE_SOURCES} entries`
   );
 
+const scopeLimitExceeded = (): EgressProvenanceError =>
+  new EgressProvenanceError(
+    "EGRESS_SCOPE_LIMIT_EXCEEDED",
+    `Collection policy scope exceeds ${MAX_EGRESS_LINEAGE_SOURCES} collections`
+  );
+
+/**
+ * `maxSources` bounds a lineage. Configured sources a scope is resolved from
+ * are unbounded: only the resolved scope must fit (resolveEgressLineage).
+ */
 const snapshotInputs = (
-  inputs: readonly EgressLineageInput[]
+  inputs: readonly EgressLineageInput[],
+  maxSources: number
 ): readonly EgressLineageInput[] => {
   try {
     if (!Array.isArray(inputs)) throw invalidLineageInput();
     const { length } = inputs;
-    if (!Number.isSafeInteger(length) || length > MAX_EGRESS_LINEAGE_SOURCES) {
+    if (!Number.isSafeInteger(length) || length > maxSources) {
       throw invalidLineageInput();
     }
     if (length === 0) {
@@ -109,9 +126,10 @@ const snapshotInputs = (
 };
 
 const canonicalSources = (
-  inputs: readonly EgressLineageInput[]
+  inputs: readonly EgressLineageInput[],
+  maxSources = MAX_EGRESS_LINEAGE_SOURCES
 ): readonly EgressLineageSource[] => {
-  const snapshots = snapshotInputs(inputs);
+  const snapshots = snapshotInputs(inputs, maxSources);
   const byCollection = new Map<string, EgressLineageSource>();
   for (const input of snapshots) {
     const collectionInput = input.collection;
@@ -225,15 +243,19 @@ export const resolveEgressLineage = (
   inputs: readonly EgressLineageInput[],
   requestedNames?: readonly string[]
 ): EgressLineage => {
-  const canonical = canonicalSources(inputs);
-  if (requestedNames === undefined) return createEgressLineage(canonical);
+  const canonical = canonicalSources(inputs, Number.MAX_SAFE_INTEGER);
+  if (requestedNames === undefined) {
+    if (canonical.length > MAX_EGRESS_LINEAGE_SOURCES) {
+      throw scopeLimitExceeded();
+    }
+    return createEgressLineage(canonical);
+  }
   let requested: string[];
   try {
     if (!Array.isArray(requestedNames)) throw invalidLineageInput();
     const { length } = requestedNames;
-    if (!Number.isSafeInteger(length) || length > MAX_EGRESS_LINEAGE_SOURCES) {
-      throw invalidLineageInput();
-    }
+    if (!Number.isSafeInteger(length)) throw invalidLineageInput();
+    if (length > MAX_EGRESS_LINEAGE_SOURCES) throw scopeLimitExceeded();
     const names: string[] = [];
     for (let index = 0; index < length; index += 1) {
       if (!(index in requestedNames)) throw invalidLineageInput();

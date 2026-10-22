@@ -1,11 +1,13 @@
 import { describe, expect, test } from "bun:test";
 
-import type { Collection } from "../../src/config/types";
+import type { Collection, Config } from "../../src/config/types";
 import type { ToolContext } from "../../src/mcp/context";
 
+import { CollectionEgressPolicyService } from "../../src/core/collection-egress-policy-service";
 import {
   EgressDeniedError,
   enforceCollectionEgress,
+  planCollectionEgress,
 } from "../../src/core/egress-enforcement";
 import { resolveEgressLineage } from "../../src/core/egress-provenance";
 import {
@@ -133,6 +135,18 @@ describe("egress collection limits", () => {
     }
   });
 
+  test("single-collection boundaries (clipper, publish export) work with a large configuration", () => {
+    const plan = planCollectionEgress({
+      collections: collections(300),
+      collectionNames: ["c250"],
+      action: "export",
+      destinationZone: "local_process",
+      caller: { authenticated: true, operationAuthorized: true },
+      contentClass: "source",
+    });
+    expect(plan.allowedCollections).toEqual(["c250"]);
+  });
+
   test("sync tools evaluate a named collection and deny an unscoped pull over the bound", () => {
     const ctx = {
       collections: collections(129),
@@ -150,6 +164,30 @@ describe("egress collection limits", () => {
       enforceSyncCommandEgress(ctx, { gitPull: true })
     );
     expect(denied?.decision.reason).toBe("COLLECTION_LIMIT_EXCEEDED");
+  });
+
+  test("gno_egress_check judges a named scope and explains an unscoped one over the bound", () => {
+    const service = new CollectionEgressPolicyService({
+      getConfig: () =>
+        ({ collections: collections(129), contexts: [] }) as unknown as Config,
+      mutateConfig: () => {
+        throw new Error("read-only test");
+      },
+    });
+    const check = {
+      action: "export",
+      caller: { authenticated: true, operationAuthorized: true },
+      contentClass: "retrieval_trace",
+      destinationZone: "remote",
+    } as const;
+    const scoped = service.check({ ...check, collections: ["c9"] });
+    expect(scoped).toMatchObject({ ok: true, value: { mode: "complete" } });
+    expect(service.check(check)).toEqual({
+      ok: false,
+      code: "VALIDATION",
+      error:
+        "Collection egress scope exceeds 128 collections; name the collections to check",
+    });
   });
 
   test("lineage resolves a named scope out of a large configuration", () => {

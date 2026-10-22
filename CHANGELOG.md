@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- With more than 128 collections configured, every call to the resident HTTP MCP endpoint failed with `500 Internal MCP transport error`, scoped or not. A call that names its collections is now judged on those collections however many are configured, and an unscoped call over the limit gets the documented `COLLECTION_LIMIT_EXCEEDED` denial (403). Daemon status and unscoped MCP sync calls deny the same way instead of failing, and the browser clipper and publish exports, which name one collection, work again. The limits themselves are unchanged and are now documented in the configuration guide. Thanks to @ArnauvGilotra for the idea and the original pull request (#318).
+
 ## [2.13.0] - 2026-10-21
 
 ### Added
