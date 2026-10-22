@@ -15,7 +15,7 @@
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-224-gno-ls-filter-list-documents-by-typed.md",
-  "status": "open",
+  "status": "done",
   "title": "gno ls --filter: list documents by typed metadata",
   "tracker": {
     "baseHashFlow": null,
@@ -28,5 +28,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-22T20:47:51.639356Z"
+  "updated_at": "2026-10-22T20:52:33.314669Z"
 }
