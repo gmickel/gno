@@ -1,0 +1,168 @@
+{
+  "branch": "fn-224-gno-ls-filter-list-documents-by-typed",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "0fc3e4caf3f3a310c83ff762355079c5f317c15f",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-8ee79a5fbb768fe76ea5102ddbbda3f1b76c99fe258e2661732697c79393c03f"
+  },
+  "head_sha": "0fc3e4caf3f3a310c83ff762355079c5f317c15f",
+  "id": "fn-224-gno-ls-filter-list-documents-by-typed",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 8,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      },
+      {
+        "coverage": "live",
+        "id": "R7"
+      },
+      {
+        "coverage": "live",
+        "id": "R8"
+      }
+    ],
+    "total": 8
+  },
+  "scenarios": [
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-224-gno-ls-filter-list-documents-by-typed/S1-filter-lists-matches.log"
+      ],
+      "head_sha": "0fc3e4caf3f3a310c83ff762355079c5f317c15f",
+      "id": "S1",
+      "outcome": "PASS",
+      "rids": [
+        "R1"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-224-gno-ls-filter-list-documents-by-typed/S2-invalid-filter.log"
+      ],
+      "head_sha": "0fc3e4caf3f3a310c83ff762355079c5f317c15f",
+      "id": "S2",
+      "outcome": "PASS",
+      "rids": [
+        "R1"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-224-gno-ls-filter-list-documents-by-typed/S3-coverage-warning.log"
+      ],
+      "head_sha": "0fc3e4caf3f3a310c83ff762355079c5f317c15f",
+      "id": "S3",
+      "outcome": "PASS",
+      "rids": [
+        "R2"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-224-gno-ls-filter-list-documents-by-typed/S4-pagination.log"
+      ],
+      "head_sha": "0fc3e4caf3f3a310c83ff762355079c5f317c15f",
+      "id": "S4",
+      "outcome": "PASS",
+      "rids": [
+        "R3"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-224-gno-ls-filter-list-documents-by-typed/S5-unfiltered-identical.log"
+      ],
+      "head_sha": "0fc3e4caf3f3a310c83ff762355079c5f317c15f",
+      "id": "S5",
+      "outcome": "PASS",
+      "rids": [
+        "R4"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-224-gno-ls-filter-list-documents-by-typed/S6-schema.log"
+      ],
+      "head_sha": "0fc3e4caf3f3a310c83ff762355079c5f317c15f",
+      "id": "S6",
+      "outcome": "PASS",
+      "rids": [
+        "R5"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-224-gno-ls-filter-list-documents-by-typed/S7-sdk-parity.log"
+      ],
+      "head_sha": "0fc3e4caf3f3a310c83ff762355079c5f317c15f",
+      "id": "S7",
+      "outcome": "PASS",
+      "rids": [
+        "R6"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-224-gno-ls-filter-list-documents-by-typed/S8-skill-jq-examples.log"
+      ],
+      "head_sha": "0fc3e4caf3f3a310c83ff762355079c5f317c15f",
+      "id": "S8",
+      "outcome": "PASS",
+      "rids": [
+        "R7"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-224-gno-ls-filter-list-documents-by-typed/S9-skill-eval.log"
+      ],
+      "head_sha": "0fc3e4caf3f3a310c83ff762355079c5f317c15f",
+      "id": "S9",
+      "outcome": "PASS",
+      "rids": [
+        "R8"
+      ],
+      "run": "live"
+    }
+  ],
+  "timestamp": "2026-10-22T20:52:03Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
