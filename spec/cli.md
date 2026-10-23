@@ -191,7 +191,11 @@ through a resumable operation. It can initialize a missing user config. Omitted 
 collection-scoped contexts, and content-type rules remain untouched; stale
 same-path collections are reported as skipped and retained. A stale same-name
 collection root is repaired in place without deleting its collection or index
-identity. Apply also updates a timestamp-free `projectProfileBindings` record
+identity. A re-applied collection keeps every setting the profile does not
+own (for example `egressPolicy`, `egressPolicyRevision`, `sourceAvailability`,
+`workspaceRoot`, `memoryManaged`, `audit` and `updateCmd`). When a repaired root
+falls outside an explicit `workspaceRoot`, apply fails with
+`WORKSPACE_ROOT_CONFLICT` (exit 1) before any config write. Apply also updates a timestamp-free `projectProfileBindings` record
 in the local user config with the canonical absolute profile path, profile
 fingerprint, and projected collection. The public `profile_binding` resource
 receipt identifies only the collection and never exposes that local path.

@@ -267,7 +267,8 @@ export async function runProjectProfileApplyCommand(
       ];
       const validationFailure =
         applied.error.code === "PROFILE_INVALID" ||
-        applied.error.code === "RUNTIME_PATH_OVERLAP";
+        applied.error.code === "RUNTIME_PATH_OVERLAP" ||
+        applied.error.code === "WORKSPACE_ROOT_CONFLICT";
       return {
         result: failedApplyResult(
           validationFailure ? "invalid" : "failed",
