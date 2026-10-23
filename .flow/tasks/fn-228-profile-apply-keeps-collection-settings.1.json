@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-228-profile-apply-keeps-collection-settings",
   "spec_path": ".flow/tasks/fn-228-profile-apply-keeps-collection-settings.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Profile apply keeps collection settings it does not own",
   "updated_at": "2026-10-23T06:17:19.912140Z"
 }
