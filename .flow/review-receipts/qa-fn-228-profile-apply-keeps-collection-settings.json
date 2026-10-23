@@ -1,0 +1,125 @@
+{
+  "branch": "fn-228-profile-apply-keeps-collection-settings",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "c505445a495a6699fd1a9775585dc72276983973",
+    "items": [
+      {
+        "body": "Config saver writes single-line flow-style YAML after a profile apply; values correct and config loads. saver.ts unchanged on this branch. Filed .flow/memory/bug/ui/config-hand-editor-cant-read-config-2026-10-23.md (surface: src/config/saver.ts)",
+        "classification": "pre_existing",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-e7b5aa692a752083a6d0c0ff100dc5aad9f276ae272d2816c13e48a624345261",
+        "id": "finding-31c313232a78d030a9c1b76aa91930dd",
+        "lastSeenReceiptId": "review-0b6eea3f259f348830ed27b4e5d0b6985a5d834b549c8f59e9205e72298f1d56",
+        "ordinal": 1,
+        "rIds": [],
+        "severity": "P2",
+        "status": "not_fixed",
+        "title": "S1-config-flow-yaml"
+      }
+    ],
+    "reviewKind": "qa",
+    "round": 2,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-0b6eea3f259f348830ed27b4e5d0b6985a5d834b549c8f59e9205e72298f1d56",
+    "supersedesReceiptId": "review-e7b5aa692a752083a6d0c0ff100dc5aad9f276ae272d2816c13e48a624345261"
+  },
+  "head_sha": "c505445a495a6699fd1a9775585dc72276983973",
+  "id": "fn-228-profile-apply-keeps-collection-settings",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 5,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      }
+    ],
+    "total": 5
+  },
+  "scenarios": [
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-228-profile-apply-keeps-collection-settings/s1-apply-scenarios.log"
+      ],
+      "head_sha": "c505445a495a6699fd1a9775585dc72276983973",
+      "id": "S1",
+      "outcome": "PASS",
+      "rids": [
+        "R5"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-228-profile-apply-keeps-collection-settings/s1-apply-scenarios.log"
+      ],
+      "head_sha": "c505445a495a6699fd1a9775585dc72276983973",
+      "id": "S2",
+      "outcome": "PASS",
+      "rids": [
+        "R1",
+        "R3"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-228-profile-apply-keeps-collection-settings/s1-apply-scenarios.log"
+      ],
+      "head_sha": "c505445a495a6699fd1a9775585dc72276983973",
+      "id": "S3",
+      "outcome": "PASS",
+      "rids": [
+        "R1",
+        "R2"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-228-profile-apply-keeps-collection-settings/s2-remember.log"
+      ],
+      "head_sha": "c505445a495a6699fd1a9775585dc72276983973",
+      "id": "S4",
+      "outcome": "PASS",
+      "rids": [
+        "R1"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-228-profile-apply-keeps-collection-settings/s1-apply-scenarios.log"
+      ],
+      "head_sha": "c505445a495a6699fd1a9775585dc72276983973",
+      "id": "S5",
+      "outcome": "PASS",
+      "rids": [
+        "R4"
+      ],
+      "run": "live"
+    }
+  ],
+  "timestamp": "2026-10-23T07:04:04Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
