@@ -546,3 +546,78 @@ describe("applyProjectProfile", () => {
     expect(await readdir(join(fixture.project, ".gno"))).toEqual(["index.yml"]);
   });
 });
+
+describe("applyProjectProfile keeps settings the profile does not own", () => {
+  const applyOptions = (
+    fixture: Awaited<ReturnType<typeof createFixture>>,
+    profileRoot = fixture.project
+  ) => ({
+    profileYaml: PROFILE,
+    profileRoot,
+    configPath: fixture.configPath,
+    dataDir: fixture.dataDir,
+    store: createStoreProbe().store,
+  });
+
+  test("re-applying an unchanged profile keeps them and rewrites nothing", async () => {
+    const fixture = await createFixture("keep-settings");
+    expect((await applyProjectProfile(applyOptions(fixture))).ok).toBe(true);
+    const config = await readConfig(fixture.configPath);
+    const kept = {
+      egressPolicy: "remote",
+      egressPolicyRevision: 4,
+      sourceAvailability: "local",
+      workspaceRoot: fixture.project,
+      memoryManaged: true,
+    } as const;
+    config.collections = config.collections.map((collection) =>
+      collection.name === "notes" ? { ...collection, ...kept } : collection
+    );
+    await saveConfigToPath(config, fixture.configPath);
+    const before = await Bun.file(fixture.configPath).text();
+
+    const reapplied = await applyProjectProfile(applyOptions(fixture));
+
+    expect(reapplied.ok && reapplied.receipt.status).toBe("unchanged");
+    if (!reapplied.ok) return;
+    expect(reapplied.receipt.resources).toContainEqual({
+      kind: "collection",
+      id: "notes",
+      disposition: "reused",
+      pendingIndexing: false,
+    });
+    expect(await Bun.file(fixture.configPath).text()).toBe(before);
+    const saved = await readConfig(fixture.configPath);
+    expect(
+      saved.collections.find(({ name }) => name === "notes")
+    ).toMatchObject(kept);
+  });
+
+  test("refuses a root move outside an explicit workspaceRoot without writing", async () => {
+    const fixture = await createFixture("workspace-conflict");
+    expect((await applyProjectProfile(applyOptions(fixture))).ok).toBe(true);
+    const config = await readConfig(fixture.configPath);
+    config.collections = config.collections.map((collection) =>
+      collection.name === "notes"
+        ? { ...collection, workspaceRoot: fixture.project }
+        : collection
+    );
+    await saveConfigToPath(config, fixture.configPath);
+    const before = await Bun.file(fixture.configPath).text();
+    const moved = join(fixture.root, "moved");
+    await mkdir(join(moved, ".gno"), { recursive: true });
+    await Bun.write(join(moved, ".gno", "index.yml"), PROFILE);
+
+    const result = await applyProjectProfile(
+      applyOptions(fixture, await realpath(moved))
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("WORKSPACE_ROOT_CONFLICT");
+    expect(result.error.message).toBe(
+      'Collection "notes": workspaceRoot must contain the collection root'
+    );
+    expect(await Bun.file(fixture.configPath).text()).toBe(before);
+  });
+});

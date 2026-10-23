@@ -71,32 +71,22 @@ export function applyProjectProfileDesiredState(
   const existing =
     existingIndex >= 0 ? config.collections[existingIndex] : undefined;
   const models = collectionModels(config, desired.collection.modelPreset);
+  // Start from the existing entry so settings the profile does not own
+  // (egress, workspace, availability, memory, audit, update command) survive.
   const nextCollection: Config["collections"][number] = {
+    ...existing,
     name: desired.collection.name,
     path: collectionRoot,
     pattern: projectProfileIncludePattern(desired.collection.include),
     include: [],
     exclude: desired.collection.exclude,
-    ...(existing?.updateCmd ? { updateCmd: existing.updateCmd } : {}),
-    ...(existing?.updateCmdTimeoutMs
-      ? { updateCmdTimeoutMs: existing.updateCmdTimeoutMs }
-      : {}),
     ...(desired.collection.languageHint
       ? { languageHint: desired.collection.languageHint }
-      : existing?.languageHint
-        ? { languageHint: existing.languageHint }
-        : {}),
-    ...(models
-      ? { models }
-      : existing?.models
-        ? { models: existing.models }
-        : {}),
+      : {}),
+    ...(models ? { models } : {}),
     ...(desired.collection.recordAdapters
       ? { recordAdapters: desired.collection.recordAdapters }
-      : existing?.recordAdapters
-        ? { recordAdapters: existing.recordAdapters }
-        : {}),
-    ...(existing?.audit ? { audit: existing.audit } : {}),
+      : {}),
   };
   const collections = [...config.collections];
   if (existingIndex >= 0) collections[existingIndex] = nextCollection;

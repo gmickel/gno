@@ -54,3 +54,98 @@ test("an existing updateCmd, its timeout and audit survive a profile apply", () 
   });
   expect(notes?.exclude).toEqual(["drafts"]);
 });
+
+const baseConfig = (collection: Partial<Config["collections"][number]>) =>
+  ({
+    version: "1.0",
+    ftsTokenizer: DEFAULT_FTS_TOKENIZER,
+    collections: [
+      {
+        name: "notes",
+        path: "/work/notes",
+        pattern: "**/*.md",
+        include: [],
+        exclude: [],
+        ...collection,
+      },
+    ],
+    contexts: [],
+  }) as Config;
+
+const profileState = (
+  collection: Record<string, unknown> = {}
+): ProjectProfileDesiredState =>
+  ({
+    schemaVersion: "1.0",
+    collection: {
+      name: "notes",
+      root: ".",
+      include: ["**/*.md"],
+      exclude: ["drafts"],
+      ...collection,
+    },
+    contexts: [],
+    contentTypes: [],
+    affinityDefaults: {},
+  }) as unknown as ProjectProfileDesiredState;
+
+test("settings a profile does not own survive a profile apply", () => {
+  const kept = {
+    egressPolicy: "remote",
+    egressPolicyRevision: 7,
+    sourceAvailability: "local",
+    workspaceRoot: false,
+    memoryManaged: true,
+  } as const;
+  const next = applyProjectProfileDesiredState(
+    baseConfig(kept),
+    profileState(),
+    "/work/notes",
+    {} as ProjectProfileBinding
+  );
+  const notes = next.collections.find(({ name }) => name === "notes");
+  expect(notes).toMatchObject(kept);
+});
+
+test("profile-owned fields still come from the profile", () => {
+  const next = applyProjectProfileDesiredState(
+    baseConfig({
+      path: "/old/notes",
+      pattern: "**/*.txt",
+      include: [".txt"],
+      exclude: ["old"],
+      languageHint: "de",
+      workspaceRoot: "/work",
+    }),
+    profileState({ languageHint: "en" }),
+    "/work/notes",
+    {} as ProjectProfileBinding
+  );
+  const notes = next.collections.find(({ name }) => name === "notes");
+  expect(notes?.path).toBe("/work/notes");
+  expect(notes?.pattern).toBe("**/*.md");
+  expect(notes?.include).toEqual([]);
+  expect(notes?.exclude).toEqual(["drafts"]);
+  expect(notes?.languageHint).toBe("en");
+  expect(notes?.workspaceRoot).toBe("/work");
+});
+
+test("a collection created from a profile carries only profile fields", () => {
+  const config = baseConfig({});
+  config.collections = [];
+  const next = applyProjectProfileDesiredState(
+    config,
+    profileState(),
+    "/work/notes",
+    {} as ProjectProfileBinding
+  );
+  expect(next.collections).toEqual([
+    {
+      name: "notes",
+      path: "/work/notes",
+      pattern: "**/*.md",
+      include: [],
+      exclude: ["drafts"],
+    },
+  ]);
+});

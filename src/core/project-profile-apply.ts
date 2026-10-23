@@ -28,6 +28,10 @@ import {
   canonicalOperationalPath,
   getConfigWriteLockPath,
 } from "./config-write-lock";
+import {
+  validateWorkspaceRootSetting,
+  workspaceRootSettingMessage,
+} from "./link-workspace";
 import { compileProjectProfileYaml } from "./project-profile";
 import {
   applyProjectProfileDesiredState,
@@ -64,7 +68,8 @@ export type ProjectProfileApplyErrorCode =
   | "PROFILE_INVALID"
   | "RECEIPT_WRITE_FAILED"
   | "RUNTIME_PATH_OVERLAP"
-  | "STORE_SYNC_FAILED";
+  | "STORE_SYNC_FAILED"
+  | "WORKSPACE_ROOT_CONFLICT";
 
 export interface ProjectProfileApplyError {
   code: ProjectProfileApplyErrorCode;
@@ -157,6 +162,14 @@ const mutationFailure = (
       message,
       remediation:
         "Repair the local index store and rerun apply; the saved config is resumable.",
+    };
+  }
+  if (code === "WORKSPACE_ROOT_CONFLICT") {
+    return {
+      code: "WORKSPACE_ROOT_CONFLICT",
+      message,
+      remediation:
+        "Point workspaceRoot at a directory that contains the profile root, or remove it, then rerun apply.",
     };
   }
   if (code === "LOAD_ERROR") {
@@ -304,6 +317,24 @@ export async function applyProjectProfile(
           compiled.value.resolvedPaths.collectionRoot,
           profileBinding
         );
+        // A kept explicit workspaceRoot must still contain a moved root, or
+        // the saved config would fail to load.
+        const applied = nextConfig.collections.find(
+          ({ name }) => name === compiled.value.desiredState.collection.name
+        );
+        if (typeof applied?.workspaceRoot === "string") {
+          const invalid = validateWorkspaceRootSetting(
+            applied.path,
+            applied.workspaceRoot
+          );
+          if (invalid) {
+            return {
+              ok: false,
+              code: "WORKSPACE_ROOT_CONFLICT",
+              error: workspaceRootSettingMessage(applied.name, invalid),
+            };
+          }
+        }
         projection = {
           collectionName: compiled.value.desiredState.collection.name,
           contexts: compiled.value.desiredState.contexts.map((context) => ({

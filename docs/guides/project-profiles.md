@@ -124,6 +124,15 @@ content types, or index state. Multiple context entries for one collection are
 preserved. Changed collections appear in `pendingIndexing`; repeat apply
 converges to `unchanged`.
 
+Apply only sets what the profile declares: the collection root, include and
+exclude rules, language hint, model preset and record adapters. Settings you
+added to the collection yourself, such as its egress policy, source
+availability, workspace root, memory flag, audit rules and update command, stay
+as they are. If the profile moves the collection root outside an explicit
+`workspaceRoot`, apply stops with `WORKSPACE_ROOT_CONFLICT` and changes
+nothing; point `workspaceRoot` at a directory that contains the new root, or
+remove it, then apply again.
+
 ## Affinity Precedence
 
 Local retrieval uses one deterministic order:
