@@ -155,7 +155,15 @@ gh workflow run publish-skill.yml -f ref=vX.Y.Z -f dry_run=false -f verify_versi
 ```
 
 Use the original GNO release tag and submitted skill version. A pending upload
-is not a published skill. The public-version check needs no token and cannot
+is not a published skill.
+
+The upload picks the next patch after the latest public version, so a later
+release fails with `Version X.Y.Z already exists` while an earlier upload is
+still pending. Publish that release under the following version instead:
+
+````bash
+gh workflow run publish-skill.yml -f ref=vX.Y.Z -f dry_run=false -f version=1.2.12
+``` The public-version check needs no token and cannot
 mistake a private staged version for a public release.
 
 Hash checks use ClawHub's public `/verify` envelope, validate its schema and
@@ -163,3 +171,4 @@ publisher/slug/version identity, and compare the exact `artifact.files` source
 list with the release. ClawHub's generated `skill-card.md` is described separately
 in that envelope; it does not count as an uploaded source file. Missing, changed,
 or extra source files still fail verification.
+````

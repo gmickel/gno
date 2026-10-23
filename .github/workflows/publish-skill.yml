@@ -15,6 +15,11 @@ on:
         description: Released GNO tag to publish (for example v2.2.1)
         required: true
         type: string
+      version:
+        description: Explicit skill version to upload (default is the next patch after the latest public version)
+        required: false
+        default: ""
+        type: string
       verify_version:
         description: Resume verification of an already submitted skill version without uploading
         required: false
@@ -77,6 +82,7 @@ jobs:
           RELEASE_REF: ${{ inputs.ref }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
           VERIFY_VERSION: ${{ inputs.verify_version }}
+          SKILL_VERSION: ${{ inputs.version }}
         run: |
           if [[ -n "$VERIFY_VERSION" ]]; then
             [[ "$DRY_RUN" == "false" && "$VERIFY_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
@@ -89,6 +95,10 @@ jobs:
           fi
           args=()
           if [[ "$DRY_RUN" == "true" ]]; then args+=(--dry-run); fi
+          if [[ -n "$SKILL_VERSION" ]]; then
+            [[ "$SKILL_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+            args+=(--version "$SKILL_VERSION")
+          fi
           bunx clawhub@0.23.3 skill publish assets/skill \
             --slug gno --owner gmickel --name GNO \
             --source-repo "$GITHUB_REPOSITORY" \
