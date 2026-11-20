@@ -1149,7 +1149,8 @@ gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-
   and the stored chunks re-embedded to verify a changed runtime before the
   first batch. Verification is not interrupted: it submits at most one
   sample of up to eight chunks per stored partition of the model, once per
-  runtime (the verdict is cached), so it can take a run past the limit by
+  runtime when its verdict is cached (a failed cache write verifies again
+  on the next run), so it can take a run past the limit by
   those samples. Every run still embeds at least one batch, so a run whose
   verification reached the limit embeds one batch and stops.
   Seconds run from the start of embedding. Batches are never split, so a run

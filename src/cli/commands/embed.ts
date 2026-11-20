@@ -800,7 +800,8 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
         // a bounded run charges those requests against --max-chunks too.
         // Verification is not interrupted midway (the run needs a resolved
         // partition): it is at most one sample per stored partition, and the
-        // verdict is cached, so it happens once per runtime.
+        // verdict is cached, so it happens once per runtime (again only if
+        // that cache write failed).
         let verificationSpent = 0;
         const verification = meterEmbeddingPort(embedPort, (texts) => {
           verificationSpent += texts;
