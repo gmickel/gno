@@ -220,3 +220,26 @@ test("JSON receipt carries remaining and stopped; the human line says how many r
   expect(finished.remaining).toBe(0);
   expect(finished).not.toHaveProperty("stopped");
 });
+
+test("a runtime identity change ends the pass as incomplete so the CLI recounts", async () => {
+  const { deps } = await limitsFixture(6);
+  let checks = 0;
+  const result = await embedBacklog({
+    ...deps,
+    batchSize: 2,
+    // Current for the first page, then the runtime changes.
+    identityStillCurrent: () => ++checks <= 3,
+  });
+  expect(result).toMatchObject({ ok: true, value: { incomplete: true } });
+  expect(countVariantBacklog(deps)).toBeGreaterThan(0);
+});
+
+test("limit values must be positive whole numbers", async () => {
+  const { parseRunLimit } = await import("../../src/cli/options");
+  expect(parseRunLimit("max-chunks", undefined)).toBeUndefined();
+  expect(parseRunLimit("max-chunks", "5000")).toBe(5000);
+  for (const bad of ["0", "-3", "2.9", "1e3", "7junk", "", "9007199254740993"])
+    expect(() => parseRunLimit("max-chunks", bad)).toThrow(
+      "--max-chunks must be a positive whole number"
+    );
+});

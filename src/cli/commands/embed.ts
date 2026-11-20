@@ -200,6 +200,7 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
   let suggestion: string | undefined;
   let cursor: Cursor | undefined;
   let stopped: "limit" | undefined;
+  let attempted = 0;
   const retryQueue = new Map<string, { item: BacklogItem; attempts: number }>();
   const embedFingerprint = getEmbeddingFingerprint({
     modelUri: ctx.modelUri,
@@ -379,6 +380,7 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
     errors += batchStoreResult.errors;
     contentionErrors += batchStoreResult.contentionErrors;
     enqueueRetryItems(batchStoreResult.retryItems, 1);
+    attempted += batch.length;
 
     if (embedded > beforeEmbedded) {
       await drainRetryQueue();
@@ -388,14 +390,20 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
 
     if (
       embedded + errors < ctx.totalToEmbed &&
-      runLimitReached(ctx.limits, embedded + errors, startTime)
+      runLimitReached(ctx.limits, attempted, startTime)
     ) {
       stopped = "limit";
       break;
     }
   }
 
-  await drainRetryQueue();
+  if (stopped) {
+    // Queued retries stay pending for the next run instead of spending more
+    // than the limit; they are counted in `remaining`, not as failures.
+    retryQueue.clear();
+  } else {
+    await drainRetryQueue();
+  }
 
   if (retryQueue.size > 0) {
     errors += retryQueue.size;
@@ -700,7 +708,8 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
             stopped ||
             processed.value.errors ||
             processed.value.contentionErrors ||
-            processed.value.deferred
+            processed.value.deferred ||
+            processed.value.incomplete
           ) {
             remaining = countVariantBacklog(prepared.value);
           }

@@ -233,6 +233,29 @@ export function getDefaultLimit(format: OutputFormat): number {
  * Parse and validate a positive integer option.
  * Throws CliError on invalid input.
  */
+/**
+ * Optional run bound (`--max-chunks`, `--max-seconds`): a whole positive
+ * safe integer, rejecting values like `2.9`, `1e3` or `7junk` that
+ * parseInt would truncate.
+ */
+export function parseRunLimit(
+  name: string,
+  value: unknown
+): number | undefined {
+  if (value === undefined) return undefined;
+  const text = (
+    typeof value === "string" ? value : JSON.stringify(value)
+  ).trim();
+  const num = Number(text);
+  if (!/^[0-9]+$/.test(text) || !Number.isSafeInteger(num) || num < 1) {
+    throw new CliError(
+      "VALIDATION",
+      `--${name} must be a positive whole number, got: ${text}`
+    );
+  }
+  return num;
+}
+
 export function parsePositiveInt(name: string, value: unknown): number {
   if (value === undefined || value === null) {
     throw new CliError("VALIDATION", `--${name} requires a value`);

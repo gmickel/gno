@@ -94,6 +94,8 @@ export interface EmbedBacklogResult {
    * incomplete pass; committed batches stay.
    */
   stopped?: "limit";
+  /** The pass ended early because the runtime identity changed; work may remain. */
+  incomplete?: boolean;
 }
 
 interface Cursor {

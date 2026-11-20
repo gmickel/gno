@@ -1142,12 +1142,15 @@ gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-
   after the batch that reaches either limit. Chunks count every chunk the run
   attempted, embedded or failed; seconds run from the start of embedding.
   Batches are never split, so a run can go past the limit by up to one batch.
-- A stopped run exits 0, keeps every committed batch and releases the write
-  lease. It skips the final vector-index activation that only a complete pass
+- A stopped run exits 0 (exit 4 still reports chunks deferred by SQLite
+  contention, as for any run), keeps every committed batch and releases the
+  write lease. It skips the final vector-index activation that only a complete pass
   performs, and the index stage marker records the run as finished, not
   interrupted. The next `gno embed` continues with the remaining chunks.
 - A limit reached on the batch that empties the backlog is a complete run.
-- `--dry-run` ignores both limits.
+- `--dry-run` ignores both limits. Combining either limit with `--force` is a
+  validation error (exit 1), because a forced pass restarts from the first
+  chunk. Limit values must be positive whole numbers.
 - The JSON receipt of a run that embeds (not a dry run) adds `remaining`, the
   chunks still pending for the scope (0 when the backlog is done), and
   `stopped: "limit"` when a limit ended the run with work pending. Without

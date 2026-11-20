@@ -1207,11 +1207,13 @@ gno embed --max-chunks 5000 --json   # receipt includes "remaining" and "stopped
 ```
 
 A bounded run stops at a batch boundary, keeps what it embedded, exits 0 and
-releases the index lock. The receipt reports `remaining`, the chunks still to
-embed for that scope, and `"stopped": "limit"` when the limit ended the run
-early. Run the same command again to continue; the run that finishes the
-backlog reports `remaining: 0` and makes the new vectors searchable as a
-complete run always does. `--dry-run` ignores the limits.
+releases the index lock (exit 4 still reports chunks deferred by index
+contention, as for any run). The receipt reports `remaining`, the chunks
+still to embed for that scope, and `"stopped": "limit"` when the limit ended
+the run early. Run the same command again to continue. New vectors become
+searchable in the same way as without limits: once every collection that uses
+the model is fully embedded. `--dry-run` ignores the limits, and the limits
+cannot be combined with `--force`.
 
 Switching backend (`GNO_LLAMA_GPU`), Bun version or thread count resumes the
 backlog in the existing partition when a measured sample of stored chunks

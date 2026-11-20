@@ -41,6 +41,7 @@ export async function embedVariantBacklog(
   const limits = deps.limits;
   const startedAt = performance.now();
   let attempted = 0;
+  let identityLost = false;
   /** True once a bound is reached and the next page still has owners. */
   const stopAtLimit = (): boolean => {
     if (!limits) return false;
@@ -67,7 +68,10 @@ export async function embedVariantBacklog(
               "Embedding model reload exceeded its inference deadline"
           );
       }
-      if (!identityStillCurrent()) break;
+      if (!identityStillCurrent()) {
+        identityLost = true;
+        break;
+      }
       assertInferenceActive();
       const pending = variantBacklogPage(deps, store, batchSize, after);
       if (!pending.length) break;
@@ -136,7 +140,7 @@ export async function embedVariantBacklog(
         return ok({ ...total, syncError: turn.value });
     }
     assertInferenceActive();
-    return ok(total);
+    return ok(identityLost ? { ...total, incomplete: true } : total);
   } catch (cause) {
     return err(
       "QUERY_FAILED",
