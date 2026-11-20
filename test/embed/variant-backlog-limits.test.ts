@@ -720,3 +720,44 @@ test("a stage marker that cannot be written never discards the receipt", () => {
     true
   );
 });
+
+test("time spent while the final empty page is read still stops a run with failures pending", async () => {
+  const { store, deps, embedBatch } = await limitsFixture(1);
+  const down = () =>
+    Promise.resolve({
+      ok: false,
+      error: { message: "provider down" },
+    } as never);
+  embedBatch.mockImplementation(down);
+  (deps.embedPort.embed as ReturnType<typeof mock>).mockImplementation(down);
+  let offset = 0;
+  const realNow = performance.now.bind(performance);
+  const base = realNow();
+  const clock = spyOn(performance, "now").mockImplementation(
+    () => base + offset
+  );
+  const pending = store.pending.bind(store);
+  // The clock passes the budget only while the traversal reads its empty
+  // final page, after the batch-boundary check has already run.
+  const pages = spyOn(store, "pending").mockImplementation((options) => {
+    const page = pending(options);
+    if (!page.length) offset = 2000;
+    return page;
+  });
+  try {
+    const result = await embedBacklog({
+      ...deps,
+      batchSize: 1,
+      limits: { maxSeconds: 1 },
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      value: { embedded: 0, stopped: "limit" },
+    });
+    expect(countVariantBacklog(deps)).toBe(1);
+    expect(store.hasActivated()).toBe(false);
+  } finally {
+    pages.mockRestore();
+    clock.mockRestore();
+  }
+});

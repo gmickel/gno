@@ -166,6 +166,17 @@ export async function embedVariantBacklog(
           (owner) => compareOwnerCursor(owner, resumeFrom) <= 0
         );
       if (!pending.length) {
+        // Time can run out while this page is read. Owners this run failed
+        // are still pending, so the same check as at a batch boundary decides
+        // between a stopped run and a finished traversal.
+        if (pagesStarted > 0) {
+          const verdict = await stopAtLimit();
+          if (verdict === "limit") return await stop();
+          if (verdict === "incomplete") {
+            identityLost = true;
+            break;
+          }
+        }
         if (wrapped) break;
         wrapped = true;
         after = undefined;
