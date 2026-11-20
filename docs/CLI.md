@@ -1221,8 +1221,12 @@ one inference; the reported owner count is not a model-call count.
 
 Both normal and dry-run commands may initialize the cached model to determine
 its actual dimensions, context and truncation policy. A dry run does not embed
-pending inputs. A normal run also repairs missing vector-index materialization
-from stored variants, even when no owner needs another embedding. Repeated
+pending inputs. A normal run also rebuilds the vector index from stored
+variants when they changed outside GNO's own writes (for example while
+sqlite-vec was unavailable), even when no owner needs another embedding;
+`gno vec sync` rebuilds it on demand. Once a model's vectors have been
+activated, a run does not re-check coverage of the whole index, so its cost
+follows the chunks it embeds. Repeated
 unchanged runs reuse proven inputs. Providers without verified identity retain
 legacy compatibility only before variant authority has been activated; missing
 identity afterward is an error, not permission to reuse legacy vectors.
