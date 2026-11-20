@@ -1210,7 +1210,9 @@ A bounded run stops at a batch boundary, keeps what it embedded, exits 0 and
 releases the index lock (exit 4 still reports chunks deferred by index
 contention, as for any run). The receipt reports `remaining`, the chunks
 still to embed for that scope, and `"stopped": "limit"` when the limit ended
-the run early. Run the same command again to continue. New vectors become
+the run early. Run the same command again to continue: the next bounded run picks up
+after the previous slice and wraps to the start, so a chunk that keeps failing
+stays pending without holding up the rest. New vectors become
 searchable in the same way as without limits: once every collection that uses
 the model is fully embedded. `--dry-run` ignores the limits, and the limits
 cannot be combined with `--force`.

@@ -243,3 +243,76 @@ test("limit values must be positive whole numbers", async () => {
       "--max-chunks must be a positive whole number"
     );
 });
+
+/** Fails every input containing "poison", in batches and one at a time. */
+function poisonPort(deps: EmbedBacklogDeps) {
+  const vector = [0.1, 0.2, 0.3];
+  const embedded: string[] = [];
+  deps.embedPort.embedBatch = mock(async (texts: string[]) => {
+    if (texts.some((text) => text.includes("poison")))
+      return { ok: false as const, error: { code: "MODEL", message: "bad" } };
+    embedded.push(...texts);
+    return { ok: true as const, value: texts.map(() => vector) };
+  }) as never;
+  deps.embedPort.embed = mock(async (text: string) => {
+    if (text.includes("poison"))
+      return { ok: false as const, error: { code: "MODEL", message: "bad" } };
+    embedded.push(text);
+    return { ok: true as const, value: vector };
+  }) as never;
+  return embedded;
+}
+
+test("a chunk that keeps failing does not block later chunks across bounded runs", async () => {
+  const { db, deps } = await limitsFixture(4);
+  db.run("UPDATE content_chunks SET text = 'poison' WHERE mirror_hash = 'm1'");
+  poisonPort(deps);
+  const bounded = { ...deps, batchSize: 1, limits: { maxChunks: 1 } };
+
+  // Run 1 attempts the failing first chunk and stops at the limit.
+  expect(await embedBacklog(bounded)).toMatchObject({
+    ok: true,
+    value: { embedded: 0, errors: 1, stopped: "limit" },
+  });
+  // Later runs resume after it instead of retrying it first.
+  expect(await embedBacklog(bounded)).toMatchObject({
+    ok: true,
+    value: { embedded: 1, stopped: "limit" },
+  });
+  expect(await embedBacklog(bounded)).toMatchObject({
+    ok: true,
+    value: { embedded: 1, stopped: "limit" },
+  });
+  expect(countVariantBacklog(deps)).toBe(2);
+  // The fourth chunk, then the run wraps to the failing chunk, which stays pending.
+  const last = await embedBacklog({ ...bounded, limits: { maxChunks: 10 } });
+  expect(last).toMatchObject({ ok: true, value: { embedded: 1, errors: 1 } });
+  expect(countVariantBacklog(deps)).toBe(1);
+  // A pass that reached its end clears the resume position.
+  expect(
+    db
+      .query(
+        "SELECT count(*) AS n FROM schema_meta WHERE key LIKE 'embed_resume_cursor:%'"
+      )
+      .get()
+  ).toEqual({ n: 0 });
+});
+
+test("a runtime change during the batch that reaches the limit is incomplete, not a limit stop", async () => {
+  const { deps, embedBatch } = await limitsFixture(6);
+  let current = true;
+  embedBatch.mockImplementation(async (texts: string[]) => {
+    current = false;
+    return { ok: true as const, value: texts.map(() => [0.1, 0.2, 0.3]) };
+  });
+  const result = await embedBacklog({
+    ...deps,
+    batchSize: 2,
+    limits: { maxChunks: 2 },
+    identityStillCurrent: () => current,
+  });
+  expect(result.ok).toBe(true);
+  const value = result.ok ? result.value : undefined;
+  expect(value?.incomplete).toBe(true);
+  expect(value?.stopped).toBeUndefined();
+});

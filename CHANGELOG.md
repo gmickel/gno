@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Bounded embed runs: `gno embed --max-chunks <n>` and `--max-seconds <n>` stop after the batch that reaches either limit, exit 0, keep the embedded batches and release the write lease, so a large backlog can be embedded in slices. The `--json` receipt of an embedding run now reports `remaining` (chunks still pending for the scope, 0 when done) and `stopped: "limit"` when a limit ended the run early; the next run continues where it stopped. A stopped run skips only the final activation that a complete pass performs and is never reported as interrupted.
+- Bounded embed runs: `gno embed --max-chunks <n>` and `--max-seconds <n>` stop after the batch that reaches either limit, exit 0, keep the embedded batches and release the write lease, so a large backlog can be embedded in slices. The `--json` receipt of an embedding run now reports `remaining` (chunks still pending for the scope, 0 when done) and `stopped: "limit"` when a limit ended the run early; the next bounded run continues after the previous slice and wraps to the start, so a chunk that keeps failing stays pending without blocking later chunks. `remaining` is the real pending backlog, also after `--force`. A stopped run skips only the final activation that a complete pass performs and is never reported as interrupted.
 
 ### Fixed
 

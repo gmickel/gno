@@ -29,6 +29,13 @@ import {
 import { embedBacklog, prepareEmbeddingBacklog } from "../../embed/backlog";
 import { getEmbeddingFingerprint } from "../../embed/fingerprint";
 import {
+  compareChunkCursor,
+  isChunkCursor,
+  readResumeCursor,
+  resumeCursorKey,
+  writeResumeCursor,
+} from "../../embed/resume-cursor";
+import {
   addUniqueSamples,
   chunkRetryKey,
   embedAndStoreBatch,
@@ -201,6 +208,19 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
   let cursor: Cursor | undefined;
   let stopped: "limit" | undefined;
   let attempted = 0;
+  const limitReached = (): boolean =>
+    runLimitReached(ctx.limits, attempted, startTime);
+  const resumeKey = resumeCursorKey(
+    `legacy:${ctx.force ? "force:" : ""}${ctx.modelUri}`,
+    ctx.collection
+  );
+  // A bounded run resumes after the previous slice and wraps to the start,
+  // so chunks that keep failing stay pending without blocking later ones.
+  const resumeFrom = ctx.limits
+    ? readResumeCursor(ctx.db, resumeKey, isChunkCursor)
+    : undefined;
+  let wrapped = !resumeFrom;
+  cursor = resumeFrom;
   const retryQueue = new Map<string, { item: BacklogItem; attempts: number }>();
   const embedFingerprint = getEmbeddingFingerprint({
     modelUri: ctx.modelUri,
@@ -308,7 +328,10 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
       (entry) => entry.attempts < MAX_EMBED_CHUNK_ATTEMPTS
     );
     for (let idx = 0; idx < entries.length; idx += ctx.batchSize) {
+      // Retries count against the run limits; the rest stay queued.
+      if (limitReached()) break;
       const slice = entries.slice(idx, idx + ctx.batchSize);
+      attempted += slice.length;
       for (const entry of slice) {
         retryQueue.delete(chunkRetryKey(entry.item));
         entry.attempts += 1;
@@ -348,7 +371,7 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
 
   while (embedded + errors < ctx.totalToEmbed) {
     // Get next batch using seek pagination (cursor-based)
-    const batchResult = ctx.force
+    const fetched = ctx.force
       ? await getActiveChunks(ctx.db, ctx.batchSize, cursor, ctx.collection)
       : await ctx.stats.getBacklog(ctx.modelUri, embedFingerprint, {
           limit: ctx.batchSize,
@@ -356,13 +379,22 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
           collection: ctx.collection,
         });
 
-    if (!batchResult.ok) {
-      return { ok: false, error: batchResult.error.message };
+    if (!fetched.ok) {
+      return { ok: false, error: fetched.error.message };
     }
 
-    const batch = batchResult.value;
+    // After wrapping, a bounded run stops where it started.
+    const batch =
+      wrapped && resumeFrom
+        ? fetched.value.filter(
+            (item) => compareChunkCursor(item, resumeFrom) <= 0
+          )
+        : fetched.value;
     if (batch.length === 0) {
-      break;
+      if (wrapped) break;
+      wrapped = true;
+      cursor = undefined;
+      continue;
     }
 
     // Advance cursor to last item (even on failure, to avoid infinite loops)
@@ -382,20 +414,23 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
     enqueueRetryItems(batchStoreResult.retryItems, 1);
     attempted += batch.length;
 
-    if (embedded > beforeEmbedded) {
+    if (embedded > beforeEmbedded && !limitReached()) {
       await drainRetryQueue();
     }
 
     renderProgress();
 
-    if (
-      embedded + errors < ctx.totalToEmbed &&
-      runLimitReached(ctx.limits, attempted, startTime)
-    ) {
+    if (embedded + errors < ctx.totalToEmbed && limitReached()) {
       stopped = "limit";
       break;
     }
   }
+
+  // Bounded runs continue after this slice next time; a finished traversal
+  // leaves nothing to resume.
+  if (stopped) writeResumeCursor(ctx.db, resumeKey, cursor);
+  else if (readResumeCursor(ctx.db, resumeKey, isChunkCursor))
+    writeResumeCursor(ctx.db, resumeKey, undefined);
 
   if (stopped) {
     // Queued retries stay pending for the next run instead of spending more
@@ -698,21 +733,19 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           if (!processed.ok)
             return { success: false, error: processed.error.message };
           const { stopped } = processed.value;
-          const attempted = processed.value.embedded + processed.value.errors;
-          // Recount only when work can be left: a limit stop, failures or
-          // deferral. A forced run counts what it has not yet re-embedded.
-          let remaining = 0;
-          if (force) {
-            if (stopped) remaining = Math.max(0, totalToEmbed - attempted);
-          } else if (
+          // Recount only when work can be left: a limit stop, failures,
+          // contention, deferral or a runtime change. The count is the real
+          // pending backlog, also after `--force` (whose failed re-embeds
+          // keep their previous vector).
+          const leftWork =
             stopped ||
             processed.value.errors ||
             processed.value.contentionErrors ||
             processed.value.deferred ||
-            processed.value.incomplete
-          ) {
-            remaining = countVariantBacklog(prepared.value);
-          }
+            processed.value.incomplete;
+          const remaining = leftWork
+            ? countVariantBacklog({ ...prepared.value, force: false })
+            : 0;
           return {
             success: true,
             ...processed.value,
@@ -797,11 +830,9 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           return { success: false, error: result.error };
         }
         const legacyRemaining = async (): Promise<number> => {
-          const attempted = result.embedded + result.errors;
-          if (force)
-            return result.stopped ? Math.max(0, totalToEmbed - attempted) : 0;
           if (!result.stopped && !result.errors && !result.contentionErrors)
             return 0;
+          // The real pending backlog, also after `--force`.
           const recount = await stats.countBacklog(
             modelUri,
             getEmbeddingFingerprint({ modelUri, dimensions }),

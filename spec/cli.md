@@ -903,6 +903,9 @@ Each JSON item is the configured collection plus `effectiveWorkspaceRoot` and
 [gno audit](#gno-audit). Schema:
 [`collection-list@1.0`](./output-schemas/collection-list.schema.json).
 
+`updateCmdTimeoutMs` (milliseconds) appears when the collection sets a limit
+for `updateCmd`; without it the command is stopped after 10 minutes.
+
 ---
 
 ### gno collection clear-embeddings
@@ -1148,6 +1151,12 @@ gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-
   performs, and the index stage marker records the run as finished, not
   interrupted. The next `gno embed` continues with the remaining chunks.
 - A limit reached on the batch that empties the backlog is a complete run.
+- A bounded run starts after the position where the previous bounded run for
+  the same scope stopped, reaches the end of the backlog and then wraps to the
+  start, so chunks that keep failing stay pending without blocking later
+  chunks. A run that reaches the end of its traversal clears the position.
+- Retries of failed chunks count toward `--max-chunks` and `--max-seconds`;
+  retries still queued when a limit is reached stay pending for the next run.
 - `--dry-run` ignores both limits. Combining either limit with `--force` is a
   validation error (exit 1), because a forced pass restarts from the first
   chunk. Limit values must be positive whole numbers.
@@ -1157,29 +1166,34 @@ gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-
   `--json`, a stopped run adds the line "Stopped at the run limit; <n> chunks
   remaining. Run `gno embed` again to continue."
 
-````
-
 **Output (JSON):**
 
 ```json
-[
-  {
-    "name": "notes",
-    "path": "/home/user/notes",
-    "pattern": "**/*.md",
-    "include": null,
-    "exclude": [".git", "node_modules"],
-    "updateCmd": null
-  }
-]
-````
+{
+  "embedded": 5024,
+  "errors": 0,
+  "contentionErrors": 0,
+  "duration": 312.4,
+  "model": "hf:org/model/model.gguf",
+  "searchAvailable": true,
+  "errorSamples": [],
+  "remaining": 41210,
+  "stopped": "limit"
+}
+```
 
-`updateCmdTimeoutMs` (milliseconds) appears when the collection sets a limit
-for `updateCmd`; without it the command is stopped after 10 minutes.
+`remaining` and `stopped` appear on runs that embed (not `--dry-run`);
+`stopped` only when a limit ended the run with work pending. `suggestion` and
+`syncError` appear when relevant.
 
 **Exit Codes:**
 
-- 0: Success
+- 0: Success, including a run stopped by `--max-chunks` or `--max-seconds`
+- 1: Validation error (for example a limit that is not a positive whole number,
+  or a limit combined with `--force`)
+- 2: Runtime error (model, partition or index failure)
+- 4: Busy: the write lease is held, or some chunks were deferred by SQLite
+  contention (the receipt is still printed)
 
 ---
 
