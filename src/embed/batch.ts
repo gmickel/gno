@@ -57,9 +57,72 @@ async function resetEmbeddingPort(
   return embedPort.init();
 }
 
+export interface EmbedRecoveryOptions {
+  /**
+   * Called before each provider request with the number of texts it submits,
+   * including resubmissions after a port reset and adaptive recovery. Bounded
+   * runs charge these against `--max-chunks`.
+   */
+  onSubmit?: (texts: number) => void;
+}
+
+/** Report each provider request to `onSubmit` before it is sent. */
+function meteredPort(
+  embedPort: EmbeddingPort,
+  onSubmit: ((texts: number) => void) | undefined
+): Pick<EmbeddingPort, "embed" | "embedBatch"> {
+  return {
+    embed: (text) => {
+      onSubmit?.(1);
+      return embedPort.embed(text);
+    },
+    embedBatch: (texts) => {
+      onSubmit?.(texts.length);
+      return embedPort.embedBatch(texts);
+    },
+  };
+}
+
+/**
+ * A port that reports each `embed`/`embedBatch` request to `onSubmit` while
+ * `meter.active` is true; every other member is the original port's. Used to
+ * charge requests made outside the embedding loop (runtime verification)
+ * against a bounded run.
+ */
+export function meterEmbeddingPort(
+  embedPort: EmbeddingPort,
+  onSubmit: (texts: number) => void
+): { port: EmbeddingPort; meter: { active: boolean } } {
+  const meter = { active: true };
+  const port = new Proxy(embedPort, {
+    get(target, prop) {
+      if (meter.active && prop === "embed")
+        return (
+          text: string,
+          options?: Parameters<EmbeddingPort["embed"]>[1]
+        ) => {
+          onSubmit(1);
+          return target.embed(text, options);
+        };
+      if (meter.active && prop === "embedBatch")
+        return (
+          texts: string[],
+          options?: Parameters<EmbeddingPort["embedBatch"]>[1]
+        ) => {
+          onSubmit(texts.length);
+          return target.embedBatch(texts, options);
+        };
+      const value: unknown = Reflect.get(target, prop, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  return { port, meter };
+}
+
 export async function embedTextsWithRecovery(
   embedPort: EmbeddingPort,
-  texts: string[]
+  texts: string[],
+  options: EmbedRecoveryOptions = {}
 ): Promise<LlmResult<EmbedBatchRecoveryResult>> {
   if (texts.length === 0) {
     return {
@@ -73,11 +136,12 @@ export async function embedTextsWithRecovery(
     };
   }
 
+  const provider = meteredPort(embedPort, options.onSubmit);
   const profile = getEmbeddingCompatibilityProfile(embedPort.modelUri);
   // A background page gets one provider attempt. Recovery remains durable for
   // the next pass instead of expanding the current native scheduling turn.
   if (isBackgroundInference() && profile.batchEmbeddingTrusted) {
-    const result = await embedPort.embedBatch(texts);
+    const result = await provider.embedBatch(texts);
     assertInferenceResult(result);
     if (!result.ok) return result;
     const complete = result.value.length === texts.length;
@@ -92,7 +156,7 @@ export async function embedTextsWithRecovery(
     };
   }
   if (profile.batchEmbeddingTrusted) {
-    let batchResult = await embedPort.embedBatch(texts);
+    let batchResult = await provider.embedBatch(texts);
     assertInferenceResult(batchResult);
     if (!batchResult.ok) {
       const formattedBatchError = formatFailureMessage(batchResult.error);
@@ -101,7 +165,7 @@ export async function embedTextsWithRecovery(
         if (!reset.ok) {
           return reset;
         }
-        batchResult = await embedPort.embedBatch(texts);
+        batchResult = await provider.embedBatch(texts);
         assertInferenceResult(batchResult);
       }
     }
@@ -117,9 +181,14 @@ export async function embedTextsWithRecovery(
       };
     }
 
-    const recovered = await recoverWithAdaptiveBatches(embedPort, texts, {
-      rootBatchAlreadyFailed: true,
-    });
+    const recovered = await recoverWithAdaptiveBatches(
+      embedPort,
+      provider,
+      texts,
+      {
+        rootBatchAlreadyFailed: true,
+      }
+    );
     if (!recovered.ok) {
       return recovered;
     }
@@ -139,7 +208,7 @@ export async function embedTextsWithRecovery(
     };
   }
 
-  const recovered = await recoverIndividually(embedPort, texts);
+  const recovered = await recoverIndividually(embedPort, provider, texts);
   if (!recovered.ok) {
     return recovered;
   }
@@ -159,6 +228,7 @@ export async function embedTextsWithRecovery(
 
 async function recoverWithAdaptiveBatches(
   embedPort: EmbeddingPort,
+  provider: Pick<EmbeddingPort, "embed" | "embedBatch">,
   texts: string[],
   options: { rootBatchAlreadyFailed?: boolean } = {}
 ): Promise<
@@ -188,7 +258,7 @@ async function recoverWithAdaptiveBatches(
       }
 
       if (rangeTexts.length === 1) {
-        const result = await embedPort.embed(rangeTexts[0] ?? "");
+        const result = await provider.embed(rangeTexts[0] ?? "");
         assertInferenceResult(result);
         if (result.ok) {
           vectors[offset] = result.value;
@@ -202,7 +272,7 @@ async function recoverWithAdaptiveBatches(
       let batchResult: Awaited<ReturnType<typeof embedPort.embedBatch>> | null =
         null;
       if (!batchAlreadyFailed) {
-        batchResult = await embedPort.embedBatch(rangeTexts);
+        batchResult = await provider.embedBatch(rangeTexts);
         assertInferenceResult(batchResult);
       }
       if (
@@ -230,7 +300,7 @@ async function recoverWithAdaptiveBatches(
         return reinit;
       }
 
-      const retry = await recoverIndividually(embedPort, texts);
+      const retry = await recoverIndividually(embedPort, provider, texts);
       if (!retry.ok) {
         return retry;
       }
@@ -267,6 +337,7 @@ async function recoverWithAdaptiveBatches(
 
 async function recoverIndividually(
   embedPort: EmbeddingPort,
+  provider: Pick<EmbeddingPort, "embed" | "embedBatch">,
   texts: string[]
 ): Promise<
   LlmResult<Omit<EmbedBatchRecoveryResult, "batchFailed" | "batchError">>
@@ -278,7 +349,7 @@ async function recoverIndividually(
 
     for (const text of texts) {
       assertInferenceActive();
-      const result = await embedPort.embed(text);
+      const result = await provider.embed(text);
       assertInferenceResult(result);
       if (result.ok) {
         vectors.push(result.value);

@@ -111,6 +111,7 @@ async function loadAllSchemas(): Promise<void> {
     "memory-recall",
     "request-status",
     "index-receipt",
+    "embed-receipt",
     "convert",
   ];
 

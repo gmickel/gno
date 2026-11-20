@@ -2,7 +2,10 @@ import { describe, expect, mock, test } from "bun:test";
 
 import type { EmbeddingPort } from "../../src/llm/types";
 
-import { embedTextsWithRecovery } from "../../src/embed/batch";
+import {
+  embedTextsWithRecovery,
+  meterEmbeddingPort,
+} from "../../src/embed/batch";
 import { withInferenceScope } from "../../src/llm/inference-scope";
 
 function createEmbedPort(
@@ -268,4 +271,26 @@ test("cancelled embedding batch never retries individual inputs or returns parti
   expect(result).toMatchObject({ name: "AbortError" });
   expect(batchCalls).toBe(1);
   expect(singleCalls).toBe(0);
+});
+
+describe("meterEmbeddingPort", () => {
+  test("reports requests while active and passes everything through", async () => {
+    const port = createEmbedPort();
+    const counts: number[] = [];
+    const { port: metered, meter } = meterEmbeddingPort(port, (texts) =>
+      counts.push(texts)
+    );
+    await metered.embedBatch(["a", "b", "c"]);
+    await metered.embed("d");
+    expect(counts).toEqual([3, 1]);
+    expect(metered.dimensions()).toBe(3);
+    expect(metered.modelUri).toBe(port.modelUri);
+
+    meter.active = false;
+    await metered.embedBatch(["e"]);
+    await metered.embed("f");
+    expect(counts).toEqual([3, 1]);
+    expect(port.embedBatch).toHaveBeenCalledTimes(2);
+    expect(port.embed).toHaveBeenCalledTimes(2);
+  });
 });

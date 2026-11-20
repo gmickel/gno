@@ -903,6 +903,9 @@ Each JSON item is the configured collection plus `effectiveWorkspaceRoot` and
 [gno audit](#gno-audit). Schema:
 [`collection-list@1.0`](./output-schemas/collection-list.schema.json).
 
+`updateCmdTimeoutMs` (milliseconds) appears when the collection sets a limit
+for `updateCmd`; without it the command is stopped after 10 minutes.
+
 ---
 
 ### gno collection clear-embeddings
@@ -1123,7 +1126,7 @@ Generate embeddings for indexed chunks.
 **Synopsis:**
 
 ```bash
-gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--yes] [--json]
+gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--max-chunks <n>] [--max-seconds <n>] [--yes] [--json]
 ```
 
 **Arguments:**
@@ -1136,29 +1139,80 @@ gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-
 - `[collection]` and `--collection <name>` are aliases
 - if provided, embedding work is scoped to that collection only
 
-````
+**Bounded runs:**
+
+- `--max-chunks <n>` and `--max-seconds <n>` (positive integers) stop the run
+  after the batch that reaches either limit. Chunks count every chunk the run
+  submitted to the embedding provider, embedded or failed, including
+  resubmissions: a retry after a model reset and the smaller requests of
+  adaptive recovery (a failed batch retried in halves or one chunk at a time),
+  and the stored chunks re-embedded to verify a changed runtime before the
+  first batch. Verification is not interrupted: it submits at most one
+  sample of up to eight chunks per stored partition of the model, once per
+  runtime when its verdict is cached (a failed cache write verifies again
+  on the next run), so it can take a run past the limit by
+  those samples. Every run still embeds at least one batch, so a run whose
+  verification reached the limit embeds one batch and stops.
+  Seconds run from the start of embedding. Batches are never split, so a run
+  can go past the limit by the submissions of one batch and its recovery.
+- A stopped run exits 0, also when some chunks were deferred by SQLite
+  contention (the receipt still reports `contentionErrors`). It keeps every
+  committed batch and releases the write lease. It skips the final
+  vector-index activation that only a complete pass performs, does not start a
+  model-wide vector index sync (a later run that is not stopped performs it),
+  and the index stage marker records the run as
+  finished, not interrupted (best effort: if the database stays busy past its
+  timeout, the receipt is still printed and the next run only shows a resume
+  note). The next `gno embed` continues with the remaining chunks.
+- A limit reached on the batch that empties the backlog is a complete run.
+- A bounded run starts after the position where the previous bounded run for
+  the same scope stopped, reaches the end of the backlog and then wraps to the
+  start, so chunks that keep failing stay pending without blocking later
+  chunks. A run that reaches the end of its traversal clears the position.
+- Retries of failed chunks count toward `--max-chunks` and `--max-seconds`;
+  retries still queued when a limit is reached stay pending for the next run.
+- `--dry-run` ignores both limits. Combining either limit with `--force` is a
+  validation error (exit 1), because a forced pass restarts from the first
+  chunk. Limit values must be positive whole numbers.
+- The JSON receipt of a run that embeds (not a dry run) adds `remaining`, the
+  chunks still pending for the scope (0 when the backlog is done), and
+  `stopped: "limit"` when a limit ended the run with work pending. Without
+  `--json`, a stopped run adds the line "Stopped at the run limit; <n> chunks
+  remaining. Run `gno embed` again to continue."
 
 **Output (JSON):**
 
 ```json
-[
-  {
-    "name": "notes",
-    "path": "/home/user/notes",
-    "pattern": "**/*.md",
-    "include": null,
-    "exclude": [".git", "node_modules"],
-    "updateCmd": null
-  }
-]
-````
+{
+  "embedded": 5024,
+  "errors": 0,
+  "contentionErrors": 0,
+  "duration": 312.4,
+  "model": "hf:org/model/model.gguf",
+  "searchAvailable": true,
+  "errorSamples": [],
+  "remaining": 41210,
+  "stopped": "limit"
+}
+```
 
-`updateCmdTimeoutMs` (milliseconds) appears when the collection sets a limit
-for `updateCmd`; without it the command is stopped after 10 minutes.
+Schema: [`embed-receipt@1.0`](./output-schemas/embed-receipt.schema.json)
+(a failed run prints the error envelope instead).
+
+`remaining` and `stopped` appear on runs that embed (not `--dry-run`);
+`stopped` only when a limit ended the run with work pending. `incomplete: true`
+appears when the run ended early because the embedding runtime changed.
+`suggestion` and `syncError` appear when relevant.
 
 **Exit Codes:**
 
-- 0: Success
+- 0: Success, including a run stopped by `--max-chunks` or `--max-seconds`
+- 1: Validation error (for example a limit that is not a positive whole number,
+  or a limit combined with `--force`)
+- 2: Runtime error (model, partition or index failure)
+- 4: Busy: the write lease is held, or some chunks were deferred by SQLite
+  contention in a run that was not stopped by a limit (the receipt is still
+  printed)
 
 ---
 
@@ -1380,7 +1434,7 @@ memory pressure prevents creating the full pool.
 **Synopsis:**
 
 ```bash
-gno embed [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--yes] [--new-partition] [--json] [--lock-wait <duration>] [--no-wait]
+gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--max-chunks <n>] [--max-seconds <n>] [--yes] [--new-partition] [--json] [--lock-wait <duration>] [--no-wait]
 ```
 
 Vector partitions are keyed on model weights, formatter, dimensions, context
@@ -1396,38 +1450,27 @@ never confirms; without confirmation embed exits 2 and writes nothing.
 
 **Options:**
 
-| Option                   | Type     | Default | Description                                                                 |
-| ------------------------ | -------- | ------- | --------------------------------------------------------------------------- |
-| `--force`                | boolean  | false   | Re-embed all chunks (ignore existing vectors)                               |
-| `--model`                | string   | config  | Override embedding model URI                                                |
-| `--batch-size`           | integer  | 32      | Chunks per batch                                                            |
-| `--dry-run`              | boolean  | false   | Show what would be embedded without doing it                                |
-| `--yes`, `-y`            | boolean  | false   | Skip confirmation prompts (never confirms a separate vector partition)      |
-| `--new-partition`        | boolean  | false   | Confirm building a separate vector partition for an incompatible runtime    |
-| `--json`                 | boolean  | false   | Output result as JSON                                                       |
-| `--lock-wait <duration>` | duration | `120s`  | How long to wait for the index write lease. Accepts `120`, `120s`, or `2m`. |
-| `--no-wait`              | boolean  | false   | Do not wait; fail immediately if another writer holds the lease             |
+| Option                   | Type     | Default | Description                                                                  |
+| ------------------------ | -------- | ------- | ---------------------------------------------------------------------------- |
+| `--force`                | boolean  | false   | Re-embed all chunks (ignore existing vectors)                                |
+| `--model`                | string   | config  | Override embedding model URI                                                 |
+| `--batch-size`           | integer  | 32      | Chunks per batch                                                             |
+| `--dry-run`              | boolean  | false   | Show what would be embedded without doing it                                 |
+| `--max-chunks <n>`       | integer  | -       | Stop after the batch that reaches this many chunks (see Bounded runs above)  |
+| `--max-seconds <n>`      | integer  | -       | Stop after the batch that reaches this many seconds (see Bounded runs above) |
+| `--yes`, `-y`            | boolean  | false   | Skip confirmation prompts (never confirms a separate vector partition)       |
+| `--new-partition`        | boolean  | false   | Confirm building a separate vector partition for an incompatible runtime     |
+| `--json`                 | boolean  | false   | Output result as JSON                                                        |
+| `--lock-wait <duration>` | duration | `120s`  | How long to wait for the index write lease. Accepts `120`, `120s`, or `2m`.  |
+| `--no-wait`              | boolean  | false   | Do not wait; fail immediately if another writer holds the lease              |
 
 Waits by default for the same write lease as `index` / `update` / MCP writers. `--no-wait` opts out.
 
-**Exit Codes:**
+**Exit Codes and JSON Output:**
 
-- 0: Success
-- 1: User cancelled or invalid `--lock-wait`
-- 2: Model not available or embedding failure
-- 4: Write lease busy (contention, not corruption)
-
-**JSON Output:**
-
-```json
-{
-  "embedded": 1234,
-  "errors": 0,
-  "duration": 45.2,
-  "model": "hf:BAAI/bge-m3-gguf/bge-m3-q8_0.gguf",
-  "searchAvailable": true
-}
-```
+See the receipt and exit codes in the first [gno embed](#gno-embed) section
+(including `remaining`, `stopped`, `incomplete`, limit validation and
+contention).
 
 **Verbose Mode:**
 

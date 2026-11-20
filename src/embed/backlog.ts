@@ -63,6 +63,29 @@ export interface EmbedBacklogDeps {
   acquireWriteTurn?: AcquireWriteTurn;
   /** Explicit confirmation to build a separate vector partition (never implied by --yes). */
   allowNewPartition?: boolean;
+  /**
+   * Bounded run (verified variant passes): stop at the first batch boundary
+   * at or past either limit. Chunks count every owner attempted, embedded or
+   * failed; seconds run from the start of the pass.
+   */
+  limits?: EmbedRunLimits;
+}
+
+export interface EmbedRunLimits {
+  maxChunks?: number;
+  maxSeconds?: number;
+  /**
+   * Pending owners in scope when the pass started, for callers that hold the
+   * write lease for the whole pass (the CLI): the stop classification then
+   * uses this count minus committed owners instead of probing the backlog.
+   */
+  pendingAtStart?: number;
+  /**
+   * Chunks already sent to the provider for this run before the embedding
+   * loop (runtime verification). They count toward `maxChunks`; the run
+   * still embeds its first batch, so it always progresses.
+   */
+  spent?: number;
 }
 
 export interface EmbedBacklogResult {
@@ -77,6 +100,14 @@ export interface EmbedBacklogResult {
   syncError?: string;
   /** The pass stopped early because another writer held the write gate. */
   deferred?: boolean;
+  /**
+   * The pass stopped at a batch boundary because a `limits` bound was reached
+   * while owners were still pending. Activation is skipped, as for any
+   * incomplete pass; committed batches stay.
+   */
+  stopped?: "limit";
+  /** The pass ended early because the runtime identity changed; work may remain. */
+  incomplete?: boolean;
 }
 
 interface Cursor {
