@@ -61,6 +61,7 @@ export async function embedVariantBacklog(
   // input or reuse a stored vector cost nothing. The limit is checked at
   // batch boundaries.
   let attempted = 0;
+  let pagesStarted = 0;
   const onSubmit = (texts: number): void => {
     attempted += texts;
   };
@@ -172,7 +173,9 @@ export async function embedVariantBacklog(
       }
       // Time can run out while the page is fetched: stop before inference,
       // keeping this page eligible for the next run (the cursor stays put).
-      if (attempted > 0 && limitReached()) return await stop();
+      // Every run processes at least one page, even one that submits nothing.
+      if (pagesStarted > 0 && limitReached()) return await stop();
+      pagesStarted += 1;
       const last = pending.at(-1)!;
       after = { documentId: last.documentId, seq: last.seq };
       // Pages are already limited to deps.collection in SQL.

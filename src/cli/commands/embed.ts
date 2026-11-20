@@ -201,7 +201,8 @@ interface Cursor {
 }
 
 async function processBatches(ctx: BatchContext): Promise<BatchResult> {
-  const startTime = Date.now();
+  // Monotonic: a wall-clock adjustment cannot shorten or negate the run.
+  const startTime = performance.now();
   let embedded = 0;
   let errors = 0;
   let contentionErrors = 0;
@@ -213,6 +214,7 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
   // provider, so a disposed-port retry and adaptive recovery resubmissions
   // count. Charged at batch boundaries, where the limit is checked.
   let attempted = 0;
+  let batchesStarted = 0;
   const onSubmit = (texts: number): void => {
     attempted += texts;
   };
@@ -320,7 +322,7 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
     const embeddedDisplay = Math.min(embedded, ctx.totalToEmbed);
     const completed = Math.min(embedded + errors, ctx.totalToEmbed);
     const pct = (completed / ctx.totalToEmbed) * 100;
-    const elapsed = (Date.now() - startTime) / 1000;
+    const elapsed = (performance.now() - startTime) / 1000;
     const rate = embedded / Math.max(elapsed, 0.001);
     const eta =
       Math.max(0, ctx.totalToEmbed - completed) / Math.max(rate, 0.001);
@@ -408,10 +410,12 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
 
     // Time can run out while the batch is fetched: stop before inference,
     // keeping this batch eligible for the next run (the cursor stays put).
-    if (attempted > 0 && limitReached()) {
+    // Every run processes at least one batch, even one that submits nothing.
+    if (batchesStarted > 0 && limitReached()) {
       stopped = "limit";
       break;
     }
+    batchesStarted += 1;
 
     // Advance cursor to last item (even on failure, to avoid infinite loops)
     const lastItem = batch.at(-1);
@@ -492,7 +496,7 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
     embedded,
     errors,
     contentionErrors,
-    duration: (Date.now() - startTime) / 1000,
+    duration: (performance.now() - startTime) / 1000,
     errorSamples,
     suggestion,
     stopped,
@@ -539,7 +543,7 @@ function runLimitReached(
   return (
     (limits.maxChunks !== undefined && attempted >= limits.maxChunks) ||
     (limits.maxSeconds !== undefined &&
-      (Date.now() - startedAtMs) / 1000 >= limits.maxSeconds)
+      (performance.now() - startedAtMs) / 1000 >= limits.maxSeconds)
   );
 }
 
@@ -796,7 +800,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           return { success: false, error: prepared.error.message };
         if (prepared.value.variantStore) {
           totalToEmbed = countVariantBacklog(prepared.value);
-          const startedAt = Date.now();
+          const startedAt = performance.now();
           if (dryRun)
             return {
               success: true,
@@ -848,7 +852,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
             success: true,
             ...processed.value,
             contentionErrors: processed.value.contentionErrors ?? 0,
-            duration: (Date.now() - startedAt) / 1000,
+            duration: (performance.now() - startedAt) / 1000,
             model: modelUri,
             searchAvailable: prepared.value.variantStore.searchAvailable,
             errorSamples: [],

@@ -15,7 +15,10 @@ import type { VectorIndexPort } from "../../src/store/vector";
 
 import { embedStageOutcome, formatEmbed } from "../../src/cli/commands/embed";
 import { embedBacklog } from "../../src/embed/backlog";
-import { countVariantBacklog } from "../../src/embed/variant-plan";
+import {
+  countVariantBacklog,
+  variantBacklogPage,
+} from "../../src/embed/variant-plan";
 import { migration } from "../../src/store/migrations/028-vector-variants";
 import { migration as runtimeMigration } from "../../src/store/migrations/031-runtime-independent-vectors";
 import { createVectorStatsPort } from "../../src/store/vector/stats";
@@ -631,4 +634,42 @@ test("owners that share an input or reuse a vector cost no extra submissions", a
   expect(result.ok && result.value.stopped).toBeFalsy();
   expect(embedBatch.mock.calls.flat(2).length).toBeLessThanOrEqual(2);
   expect(countVariantBacklog(deps)).toBe(0);
+});
+
+test("a first page that submits nothing still stops before the next page once time is spent", async () => {
+  const { db, store, deps, embedBatch } = await limitsFixture(5);
+  // Documents 1, 2 and 5 share one input; storing document 5's vector makes
+  // the first page (documents 1 and 2) reuse it without a provider request.
+  db.run(
+    "UPDATE content_chunks SET text = 'same body' WHERE mirror_hash IN ('m1', 'm2', 'm5')"
+  );
+  db.run("UPDATE documents SET title = 'Same' WHERE id IN (1, 2, 5)");
+  const fifth = variantBacklogPage(deps, store, 10).find(
+    (owner) => owner.documentId === 5
+  )!;
+  store.write([{ owner: fifth, embedding: new Float32Array([0.1, 0.2, 0.3]) }]);
+  const pending = store.pending.bind(store);
+  let calls = 0;
+  spyOn(store, "pending").mockImplementation((options) => {
+    calls += 1;
+    if (calls === 2) {
+      // The second page fetch outlasts the time limit.
+      const until = performance.now() + 120;
+      while (performance.now() < until) {
+        // busy wait
+      }
+    }
+    return pending(options);
+  });
+  const result = await embedBacklog({
+    ...deps,
+    batchSize: 2,
+    limits: { maxSeconds: 0.08 },
+  });
+  expect(result).toMatchObject({
+    ok: true,
+    value: { embedded: 2, stopped: "limit" },
+  });
+  expect(embedBatch).not.toHaveBeenCalled();
+  expect(countVariantBacklog(deps)).toBe(2);
 });
