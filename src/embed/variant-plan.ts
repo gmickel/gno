@@ -1,62 +1,58 @@
+import type { Database } from "bun:sqlite";
+
 import type { VectorVariantStore } from "../store/vector/variants";
 import type { EmbedBacklogDeps } from "./backlog";
 
 import { getVectorStatsDatabase } from "../store/vector/stats";
+import { chunkKeyHint, collectionScanHint } from "../store/vector/variants";
 
-/** Counts and execution enumerate the same exact current owner partition. */
+/** Active chunks in scope; the collection predicate is added only when set. */
+function activeChunkScope(db: Database, collection: string | undefined) {
+  return {
+    // CROSS JOIN and the index hints keep the collection index as the outer
+    // loop and each document's chunks a key lookup by mirror.
+    from: `FROM documents d${collectionScanHint(db, collection)}
+    CROSS JOIN content_chunks c${chunkKeyHint(db)} ON c.mirror_hash = d.mirror_hash
+    WHERE d.active = 1${collection ? " AND d.collection = ?" : ""}`,
+    params: collection ? [collection] : [],
+  };
+}
+
+function forcedDatabase(deps: EmbedBacklogDeps) {
+  const db = getVectorStatsDatabase(deps.statsPort);
+  if (!db)
+    throw new Error("Forced variants require document ownership storage");
+  return db;
+}
+
+/**
+ * Counts and execution enumerate the same exact current owner partition,
+ * limited in SQL to `deps.collection` when one is set.
+ */
 export function variantBacklogPage(
   deps: EmbedBacklogDeps,
   store: VectorVariantStore,
   limit: number,
   after?: { documentId: number; seq: number }
 ) {
-  if (!deps.force) return store.pending({ limit, after });
-  const db = getVectorStatsDatabase(deps.statsPort);
-  if (!db)
-    throw new Error("Forced variants require document ownership storage");
-  const rows = db
-    .query<
-      { documentId: number; seq: number },
-      [number, number, number, number]
-    >(`
-    SELECT d.id AS documentId, c.seq FROM documents d
-    JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
-    WHERE d.active = 1 AND (d.id > ? OR (d.id = ? AND c.seq > ?))
-    ORDER BY d.id, c.seq LIMIT ?
-  `)
-    .all(
-      after?.documentId ?? -1,
-      after?.documentId ?? -1,
-      after?.seq ?? -1,
-      limit
-    );
-  return rows.flatMap((row) => {
-    const owner = store.current(row.documentId, row.seq);
-    return owner ? [owner] : [];
-  });
+  const collection = deps.collection || undefined;
+  if (!deps.force) return store.pending({ limit, after, collection });
+  // Same guard as before: forced passes need document ownership storage.
+  forcedDatabase(deps);
+  return store.currentPage({ limit, after, collection });
 }
 
+/** Owners a complete variantBacklogPage pass would return, without paging. */
 export function countVariantBacklog(deps: EmbedBacklogDeps): number {
   const store = deps.variantStore;
   if (!store) throw new Error("Verified variant identity required");
-  const db = getVectorStatsDatabase(deps.statsPort);
-  let after: { documentId: number; seq: number } | undefined;
-  let count = 0;
-  while (true) {
-    const owners = variantBacklogPage(deps, store, 256, after);
-    if (!owners.length) return count;
-    for (const owner of owners) {
-      if (
-        !deps.collection ||
-        db
-          ?.query(
-            "SELECT 1 FROM documents WHERE id = ? AND collection = ? AND active = 1"
-          )
-          .get(owner.documentId, deps.collection)
-      )
-        count += 1;
-    }
-    const last = owners.at(-1)!;
-    after = { documentId: last.documentId, seq: last.seq };
-  }
+  const collection = deps.collection || undefined;
+  if (!deps.force) return store.countPending({ collection });
+  // Every active chunk in scope has a current owner input, so a forced pass
+  // returns exactly one owner per row.
+  const db = forcedDatabase(deps);
+  const scope = activeChunkScope(db, collection);
+  return db
+    .query<{ n: number }, string[]>(`SELECT count(*) AS n ${scope.from}`)
+    .get(...scope.params)!.n;
 }

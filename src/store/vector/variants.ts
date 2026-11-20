@@ -8,6 +8,40 @@ import { decodeEmbedding, encodeEmbedding } from "./sqlite-vec";
 
 export const SELECTED_VECTOR_PARTITION_PREFIX = "vector_selected_partition:";
 
+/**
+ * Index hint for collection-scoped scans of `documents`. With statistics
+ * from ANALYZE, SQLite can prefer a full scan of documents for a small
+ * collection; the collection index keeps the scan proportional to the
+ * collection. Empty when unscoped or when the index does not exist.
+ */
+export function collectionScanHint(
+  db: Database,
+  collection: string | undefined
+): string {
+  if (!collection) return "";
+  return db
+    .query("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?")
+    .get("idx_documents_collection")
+    ? " INDEXED BY idx_documents_collection"
+    : "";
+}
+
+/**
+ * Index hint that makes `content_chunks` a key lookup by mirror. Statistics
+ * gathered while the table held a row or two make a scan look cheaper, and
+ * the scan then runs once per selected document over every collection's
+ * chunks. The primary key index serves both the mirror lookup and the
+ * `(mirror_hash, seq)` cursor range.
+ */
+export function chunkKeyHint(db: Database): string {
+  const pk = db
+    .query<{ name: string }, []>(
+      "SELECT name FROM pragma_index_list('content_chunks') WHERE origin = 'pk'"
+    )
+    .get();
+  return pk ? ` INDEXED BY "${pk.name.replaceAll('"', '""')}"` : "";
+}
+
 export function embeddingInputHash(input: string): string {
   return new Bun.CryptoHasher("sha256").update(input).digest("hex");
 }
@@ -52,6 +86,11 @@ interface OwnerRow {
   seq: number;
   text: string;
   title: string | null;
+}
+
+interface CandidateRow extends OwnerRow {
+  boundHash: string | null;
+  boundMirror: string | null;
 }
 
 interface VariantRow {
@@ -303,52 +342,217 @@ export class VectorVariantStore {
     });
   }
 
+  /**
+   * Active chunk rows with this partition's binding, optionally limited to
+   * one collection, as columns `documentId, mirrorHash, title, seq, text,
+   * boundMirror, boundHash` that `columns` and `where` refer to. The
+   * collection predicate is added only when requested: activation and
+   * unscoped passes need the whole index, and some callers' schemas have no
+   * collection column.
+   */
+  private candidates(
+    collection: string | undefined,
+    columns: string,
+    where = ""
+  ): { sql: string; params: (string | number)[] } {
+    const owner = `FROM vector_owners o
+          WHERE o.document_id = d.id AND o.seq = c.seq AND o.partition_id = ?`;
+    return {
+      // CROSS JOIN keeps documents as the outer loop and the index hint
+      // makes a scoped scan start from the collection index, even when
+      // statistics favour walking content_chunks or scanning documents; the
+      // chunk hint keeps each document's chunks a key lookup by mirror.
+      // Each binding column is a correlated subquery on the full owner key,
+      // so it is only primary-key lookups for the scoped chunks (a few per
+      // chunk, never a pass over other bindings). As a LEFT JOIN, statistics
+      // gathered while vector_owners was nearly empty made SQLite scan it, or
+      // build a Bloom filter over every owner, for a small collection.
+      sql: `SELECT ${columns} FROM (
+        SELECT d.id AS documentId, d.mirror_hash AS mirrorHash, d.title AS title,
+          c.seq AS seq, c.text AS text,
+          (SELECT o.mirror_hash ${owner}) AS boundMirror,
+          (SELECT v.input_hash FROM vector_variants v
+            WHERE v.partition_id = ? AND v.variant_id = (SELECT o.variant_id ${owner})
+          ) AS boundHash
+        FROM documents d${collectionScanHint(this.db, collection)}
+        CROSS JOIN content_chunks c${chunkKeyHint(this.db)} ON c.mirror_hash = d.mirror_hash
+        WHERE d.active = 1${collection ? " AND d.collection = ?" : ""}
+      ) WHERE 1${where}`,
+      params: [
+        this.partitionId,
+        this.partitionId,
+        this.partitionId,
+        ...(collection ? [collection] : []),
+      ],
+    };
+  }
+
+  /** Rows with no current binding: pending without formatting or hashing. */
+  private static readonly UNBOUND =
+    " AND (boundHash IS NULL OR boundMirror IS NOT mirrorHash)";
+  /** Rows whose binding matches the mirror: only the input hash can differ. */
+  private static readonly BOUND =
+    " AND boundHash IS NOT NULL AND boundMirror IS mirrorHash";
+
+  /** Bound rows whose current input no longer matches their variant (title or format change). */
+  private *staleBound(collection: string | undefined): Generator<true> {
+    const { sql, params } = this.candidates(
+      collection,
+      "documentId, mirrorHash, seq, text, title, boundHash",
+      VectorVariantStore.BOUND
+    );
+    const statement = this.db.prepare<
+      OwnerRow & { boundHash: string },
+      (string | number)[]
+    >(sql);
+    try {
+      for (const row of statement.iterate(...params))
+        if (this.input(row).inputHash !== row.boundHash) yield true;
+    } finally {
+      // Early exit must not leave a cached Bun statement mid-iteration.
+      statement.finalize();
+    }
+  }
+
+  /**
+   * Number of owners pending() would return across a complete pass. Unbound
+   * rows are counted in SQL; only bound rows are formatted and hashed. Both
+   * reads share one snapshot so a concurrent writer cannot hide a row.
+   */
+  countPending(options: { collection?: string } = {}): number {
+    const collection = options.collection || undefined;
+    const { sql, params } = this.candidates(
+      collection,
+      "count(*) AS n",
+      VectorVariantStore.UNBOUND
+    );
+    return this.db
+      .transaction(() => {
+        let count = this.db
+          .query<{ n: number }, (string | number)[]>(sql)
+          .get(...params)!.n;
+        for (const _ of this.staleBound(collection)) count += 1;
+        return count;
+      })
+      .deferred();
+  }
+
+  /**
+   * Active chunk rows with their binding in `(document id, seq)` order,
+   * resuming after `after`. The cursor document's remaining chunks and the
+   * later documents are two statements, so each is a range on its index
+   * (`content_chunks` primary key, then the collection index or rowid) and a
+   * large document is never rescanned from its first chunk.
+   */
+  private *ownerRows(
+    collection: string | undefined,
+    after: { documentId: number; seq: number } | undefined
+  ): Generator<CandidateRow> {
+    const columns =
+      "documentId, mirrorHash, seq, text, title, boundHash, boundMirror";
+    const parts = after
+      ? [
+          {
+            where: " AND documentId = ? AND seq > ? ORDER BY seq",
+            params: [after.documentId, after.seq],
+          },
+          {
+            where: " AND documentId > ? ORDER BY documentId, seq",
+            params: [after.documentId],
+          },
+        ]
+      : [{ where: " ORDER BY documentId, seq", params: [] as number[] }];
+    for (const part of parts) {
+      const { sql, params } = this.candidates(collection, columns, part.where);
+      const statement = this.db.prepare<CandidateRow, (string | number)[]>(sql);
+      try {
+        yield* statement.iterate(...params, ...part.params);
+      } finally {
+        // Early exit must not leave a cached Bun statement mid-iteration.
+        statement.finalize();
+      }
+    }
+  }
+
+  /**
+   * Runs reads in one deferred transaction: every statement sees the same
+   * snapshot, so a write committed between the two cursor statements cannot
+   * make a page look like the end of the backlog.
+   */
+  private snapshot<T>(read: () => T): T {
+    return this.db.transaction(read).deferred();
+  }
+
+  /** The row needs embedding: no current binding, or its input changed. */
+  private isPending(row: CandidateRow, input?: VectorOwnerInput): boolean {
+    if (row.boundHash === null || row.boundMirror !== row.mirrorHash)
+      return true;
+    return (input ?? this.input(row)).inputHash !== row.boundHash;
+  }
+
+  /**
+   * Same answer as `pending({ limit: 1 }).length > 0`. Walks owners in order
+   * and stops at the first pending one; unbound rows are not hashed.
+   */
+  hasPending(options: { collection?: string } = {}): boolean {
+    return this.snapshot(() => {
+      for (const row of this.ownerRows(
+        options.collection || undefined,
+        undefined
+      ))
+        if (this.isPending(row)) return true;
+      return false;
+    });
+  }
+
   /** Resumable owner cursor; repeat from start after epoch changes or a completed pass. */
   pending(
     options: {
       limit?: number;
       after?: { documentId: number; seq: number };
+      /** Only owners of active documents in this collection. */
+      collection?: string;
     } = {}
   ): VectorOwnerInput[] {
     const limit = options.limit ?? 1000;
     if (!Number.isSafeInteger(limit) || limit < 1)
       throw new Error("Invalid pending limit");
-    const statement = this.db.prepare<OwnerRow, [number, number, number]>(`
-      SELECT d.id AS documentId, d.mirror_hash AS mirrorHash, c.seq, c.text, d.title
-      FROM documents d JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
-      WHERE d.active = 1 AND (d.id > ? OR (d.id = ? AND c.seq > ?)) ORDER BY d.id, c.seq
-    `);
-    const rows = statement.iterate(
-      options.after?.documentId ?? -1,
-      options.after?.documentId ?? -1,
-      options.after?.seq ?? -1
-    );
-    const pending: VectorOwnerInput[] = [];
-    try {
-      for (const row of rows) {
+    return this.snapshot(() => {
+      const pending: VectorOwnerInput[] = [];
+      for (const row of this.ownerRows(
+        options.collection || undefined,
+        options.after
+      )) {
         const input = this.input(row);
-        const binding = this.db
-          .query<
-            { input_hash: string; mirror_hash: string },
-            [number, number, string]
-          >(`
-        SELECT v.input_hash, o.mirror_hash FROM vector_owners o
-        JOIN vector_variants v ON v.variant_id = o.variant_id AND v.partition_id = o.partition_id
-        WHERE o.document_id = ? AND o.seq = ? AND o.partition_id = ?
-      `)
-          .get(input.documentId, input.seq, this.partitionId);
-        if (
-          binding?.input_hash !== input.inputHash ||
-          binding.mirror_hash !== input.mirrorHash
-        )
-          pending.push(input);
+        if (this.isPending(row, input)) pending.push(input);
         if (pending.length === limit) break;
       }
-    } finally {
-      // Early cursor exit must not leave a cached Bun statement mid-iteration.
-      statement.finalize();
-    }
-    return pending;
+      return pending;
+    });
+  }
+
+  /**
+   * Every current owner input in order (a forced pass), read with its IDs in
+   * one statement so a concurrent rechunk cannot empty a page.
+   */
+  currentPage(options: {
+    limit: number;
+    after?: { documentId: number; seq: number };
+    collection?: string;
+  }): VectorOwnerInput[] {
+    if (!Number.isSafeInteger(options.limit) || options.limit < 1)
+      throw new Error("Invalid page limit");
+    return this.snapshot(() => {
+      const page: VectorOwnerInput[] = [];
+      for (const row of this.ownerRows(
+        options.collection || undefined,
+        options.after
+      )) {
+        page.push(this.input(row));
+        if (page.length === options.limit) break;
+      }
+      return page;
+    });
   }
 
   /** Activation is fenced by a caller-observed epoch and complete current coverage. */
@@ -357,8 +561,7 @@ export class VectorVariantStore {
       .transaction(() => {
         if (this.epoch() !== expectedEpoch)
           throw new Error("Variant mutation epoch changed");
-        if (this.pending({ limit: 1 }).length)
-          throw new Error("Variant coverage incomplete");
+        if (this.hasPending()) throw new Error("Variant coverage incomplete");
         if (!this.searchAvailable) throw new Error("Variant index unavailable");
         const mismatch = this.db
           .query<{ count: number }, [string]>(`
