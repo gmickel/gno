@@ -8,6 +8,24 @@ import { decodeEmbedding, encodeEmbedding } from "./sqlite-vec";
 
 export const SELECTED_VECTOR_PARTITION_PREFIX = "vector_selected_partition:";
 
+/**
+ * Index hint for collection-scoped scans of `documents`. With statistics
+ * from ANALYZE, SQLite can prefer a full scan of documents for a small
+ * collection; the collection index keeps the scan proportional to the
+ * collection. Empty when unscoped or when the index does not exist.
+ */
+export function collectionScanHint(
+  db: Database,
+  collection: string | undefined
+): string {
+  if (!collection) return "";
+  return db
+    .query("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?")
+    .get("idx_documents_collection")
+    ? " INDEXED BY idx_documents_collection"
+    : "";
+}
+
 export function embeddingInputHash(input: string): string {
   return new Bun.CryptoHasher("sha256").update(input).digest("hex");
 }
@@ -320,11 +338,12 @@ export class VectorVariantStore {
     where = ""
   ): { sql: string; params: (string | number)[] } {
     return {
-      // CROSS JOIN keeps documents as the outer loop, so a scoped scan
-      // starts from the collection index even when statistics favour
-      // walking content_chunks.
+      // CROSS JOIN keeps documents as the outer loop and the index hint
+      // makes a scoped scan start from the collection index, even when
+      // statistics favour walking content_chunks or scanning documents.
       sql: `SELECT ${columns}
-      FROM documents d CROSS JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
+      FROM documents d${collectionScanHint(this.db, collection)}
+      CROSS JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
       LEFT JOIN vector_owners o ON o.document_id = d.id AND o.seq = c.seq
         AND o.partition_id = ?
       LEFT JOIN vector_variants v ON v.variant_id = o.variant_id
