@@ -29,6 +29,8 @@ const DIMENSIONS = 4;
 interface FakeEmbedServer {
   port: number;
   texts: () => string[];
+  /** Inputs of every request, recorded before any failure is injected. */
+  requests: () => string[][];
   poisonRequests: () => number;
   stop: () => void;
 }
@@ -42,6 +44,7 @@ function startFakeEmbedServer(
   failBatches = false
 ): FakeEmbedServer {
   const texts: string[] = [];
+  const requests: string[][] = [];
   let poisonRequests = 0;
   const server = Bun.serve({
     hostname: "127.0.0.1",
@@ -49,6 +52,7 @@ function startFakeEmbedServer(
     async fetch(req) {
       const body = (await req.json()) as { input: string | string[] };
       const inputs = Array.isArray(body.input) ? body.input : [body.input];
+      requests.push(inputs);
       if (delayMs) await Bun.sleep(delayMs);
       if (inputs.some((text) => text.includes("poison"))) {
         poisonRequests += 1;
@@ -75,6 +79,7 @@ function startFakeEmbedServer(
   return {
     port: server.port as number,
     texts: () => texts,
+    requests: () => requests,
     poisonRequests: () => poisonRequests,
     stop: () => server.stop(true),
   };
@@ -423,11 +428,15 @@ describe("gno embed bounded runs", () => {
         remaining: DOC_COUNT - 2,
       });
       expect(assertValid(receipt, receiptSchema)).toBe(true);
-      // Only the first batch's two chunks were embedded (one at a time);
-      // the other texts are the port's dimension probes.
-      expect(
-        pairsFail.texts().filter((text) => text.includes("bounded topic"))
-      ).toHaveLength(2);
+      // Document requests (the rest are the port's dimension probes): the
+      // failed pair, then each chunk alone. The next batch was never sent.
+      const documentBatches = pairsFail
+        .requests()
+        .filter((inputs) =>
+          inputs.some((text) => text.includes("bounded topic"))
+        )
+        .map((inputs) => inputs.length);
+      expect(documentBatches).toEqual([2, 1, 1]);
     } finally {
       pairsFail.stop();
     }

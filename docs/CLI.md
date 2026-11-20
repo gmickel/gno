@@ -1207,7 +1207,8 @@ gno embed --max-chunks 5000 --json   # receipt includes "remaining" and "stopped
 ```
 
 `--max-chunks` counts every chunk sent to the embedding model, including
-retries of a failed batch, so a run stops sooner when batches fail.
+retries of a failed batch and the few stored chunks re-embedded to check a
+changed runtime, so a run stops sooner when batches fail.
 
 A bounded run stops at a batch boundary, keeps what it embedded, exits 0 and
 releases the index lock, also when some chunks were deferred by index contention

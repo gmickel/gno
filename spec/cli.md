@@ -1145,7 +1145,10 @@ gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-
   after the batch that reaches either limit. Chunks count every chunk the run
   submitted to the embedding provider, embedded or failed, including
   resubmissions: a retry after a model reset and the smaller requests of
-  adaptive recovery (a failed batch retried in halves or one chunk at a time).
+  adaptive recovery (a failed batch retried in halves or one chunk at a time),
+  and the stored chunks re-embedded to verify a changed runtime before the
+  first batch. When verification alone reaches the limit, the run stops
+  before its first batch; the verdict is cached, so the next run embeds.
   Seconds run from the start of embedding. Batches are never split, so a run
   can go past the limit by the submissions of one batch and its recovery.
 - A stopped run exits 0, also when some chunks were deferred by SQLite

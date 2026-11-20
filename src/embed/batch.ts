@@ -83,6 +83,42 @@ function meteredPort(
   };
 }
 
+/**
+ * A port that reports each `embed`/`embedBatch` request to `onSubmit` while
+ * `meter.active` is true; every other member is the original port's. Used to
+ * charge requests made outside the embedding loop (runtime verification)
+ * against a bounded run.
+ */
+export function meterEmbeddingPort(
+  embedPort: EmbeddingPort,
+  onSubmit: (texts: number) => void
+): { port: EmbeddingPort; meter: { active: boolean } } {
+  const meter = { active: true };
+  const port = new Proxy(embedPort, {
+    get(target, prop) {
+      if (meter.active && prop === "embed")
+        return (
+          text: string,
+          options?: Parameters<EmbeddingPort["embed"]>[1]
+        ) => {
+          onSubmit(1);
+          return target.embed(text, options);
+        };
+      if (meter.active && prop === "embedBatch")
+        return (
+          texts: string[],
+          options?: Parameters<EmbeddingPort["embedBatch"]>[1]
+        ) => {
+          onSubmit(texts.length);
+          return target.embedBatch(texts, options);
+        };
+      const value: unknown = Reflect.get(target, prop, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  return { port, meter };
+}
+
 export async function embedTextsWithRecovery(
   embedPort: EmbeddingPort,
   texts: string[],

@@ -13,7 +13,11 @@ import type { EmbedBacklogDeps } from "../../src/embed/backlog";
 import type { EmbeddingPort } from "../../src/llm/types";
 import type { VectorIndexPort } from "../../src/store/vector";
 
-import { embedStageOutcome, formatEmbed } from "../../src/cli/commands/embed";
+import {
+  embedStageOutcome,
+  finishEmbedStageMarker,
+  formatEmbed,
+} from "../../src/cli/commands/embed";
 import { embedBacklog } from "../../src/embed/backlog";
 import {
   countVariantBacklog,
@@ -672,4 +676,51 @@ test("a first page that submits nothing still stops before the next page once ti
   });
   expect(embedBatch).not.toHaveBeenCalled();
   expect(countVariantBacklog(deps)).toBe(2);
+});
+
+test("chunks spent by runtime verification count; a spent budget stops before the first page", async () => {
+  const { deps, embedBatch } = await limitsFixture(4);
+  const result = await embedBacklog({
+    ...deps,
+    batchSize: 1,
+    limits: { maxChunks: 1, spent: 8, pendingAtStart: 4 },
+  });
+  expect(result).toEqual({
+    ok: true,
+    value: { embedded: 0, errors: 0, contentionErrors: 0, stopped: "limit" },
+  });
+  expect(embedBatch).not.toHaveBeenCalled();
+  expect(countVariantBacklog(deps)).toBe(4);
+
+  // Spent below the limit leaves the rest of the budget to the loop.
+  const next = await embedBacklog({
+    ...deps,
+    batchSize: 1,
+    limits: { maxChunks: 3, spent: 1, pendingAtStart: 4 },
+  });
+  expect(next).toMatchObject({
+    ok: true,
+    value: { embedded: 2, stopped: "limit" },
+  });
+});
+
+test("a stage marker that cannot be written never discards the receipt", async () => {
+  const db = new Database(":memory:");
+  databases.push(db);
+  let calls = 0;
+  const busyTwice = (() => {
+    calls += 1;
+    if (calls <= 2) throw new Error("SQLITE_BUSY: database is locked");
+  }) as never;
+  expect(
+    await finishEmbedStageMarker(db, "completed", busyTwice, [0, 0, 0])
+  ).toBe(true);
+  expect(calls).toBe(3);
+
+  const alwaysBusy = (() => {
+    throw new Error("SQLITE_BUSY: database is locked");
+  }) as never;
+  expect(
+    await finishEmbedStageMarker(db, "completed", alwaysBusy, [0, 0])
+  ).toBe(false);
 });

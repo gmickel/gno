@@ -27,6 +27,7 @@ import {
   withCliWriteLease,
 } from "../../core/write-lease";
 import { embedBacklog, prepareEmbeddingBacklog } from "../../embed/backlog";
+import { meterEmbeddingPort } from "../../embed/batch";
 import { getEmbeddingFingerprint } from "../../embed/fingerprint";
 import {
   compareChunkCursor,
@@ -213,7 +214,7 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
   // Chunks charged against --max-chunks: every chunk submitted to the
   // provider, so a disposed-port retry and adaptive recovery resubmissions
   // count. Charged at batch boundaries, where the limit is checked.
-  let attempted = 0;
+  let attempted = ctx.limits?.spent ?? 0;
   let batchesStarted = 0;
   const onSubmit = (texts: number): void => {
     attempted += texts;
@@ -410,8 +411,9 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
 
     // Time can run out while the batch is fetched: stop before inference,
     // keeping this batch eligible for the next run (the cursor stays put).
-    // Every run processes at least one batch, even one that submits nothing.
-    if (batchesStarted > 0 && limitReached()) {
+    // Every run processes at least one batch, even one that submits nothing,
+    // unless runtime verification already spent the chunk budget.
+    if ((batchesStarted > 0 || attempted > 0) && limitReached()) {
       stopped = "limit";
       break;
     }
@@ -531,6 +533,34 @@ function setSchemaMeta(
      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
     [key, value]
   );
+}
+
+/** Waits between attempts to record the embed stage as finished. */
+const STAGE_MARKER_RETRY_DELAYS_MS = [50, 200, 500];
+
+/**
+ * Record the embed stage as finished, retrying briefly while another
+ * connection holds the database. Never throws: the receipt of a run that
+ * already committed its batches must survive a marker that cannot be written.
+ * A marker left `running` makes the next run print a resume note and continue
+ * from the committed vectors; it gates nothing.
+ */
+export async function finishEmbedStageMarker(
+  db: Database,
+  outcome: "completed" | "failed",
+  write: typeof markIndexStageFinished = markIndexStageFinished,
+  delaysMs: readonly number[] = STAGE_MARKER_RETRY_DELAYS_MS
+): Promise<boolean> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      write(db, "embed", outcome);
+      return true;
+    } catch {
+      const delay = delaysMs[attempt];
+      if (delay === undefined) return false;
+      await Bun.sleep(delay);
+    }
+  }
 }
 
 /** A bounded run stops at the first batch boundary at or past either limit. */
@@ -772,9 +802,15 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
               }
             : {};
 
+        // Runtime verification during preparation can re-embed stored chunks;
+        // a bounded run charges those requests against --max-chunks too.
+        let verificationSpent = 0;
+        const verification = meterEmbeddingPort(embedPort, (texts) => {
+          verificationSpent += texts;
+        });
         const backlogDeps = {
           statsPort: stats,
-          embedPort,
+          embedPort: verification.port,
           vectorIndex,
           modelUri,
           collection: options.collection,
@@ -796,8 +832,10 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
             ...backlogDeps,
             allowNewPartition: true,
           });
+        verification.meter.active = false;
         if (!prepared.ok)
           return { success: false, error: prepared.error.message };
+        const runLimits = limits && { ...limits, spent: verificationSpent };
         if (prepared.value.variantStore) {
           totalToEmbed = countVariantBacklog(prepared.value);
           const startedAt = performance.now();
@@ -814,7 +852,10 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
             };
           const processed = await embedBacklog({
             ...prepared.value,
-            limits: limits && { ...limits, pendingAtStart: totalToEmbed },
+            limits: runLimits && {
+              ...runLimits,
+              pendingAtStart: totalToEmbed,
+            },
             onProgress: !options.json
               ? (embedded, errors) =>
                   process.stderr.write(
@@ -930,7 +971,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           totalToEmbed,
           verbose: options.verbose ?? false,
           recreateEmbedPort,
-          limits,
+          limits: runLimits,
         });
 
         if (!result.ok) {
@@ -1057,9 +1098,8 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
     } finally {
       // The stage marker is advisory resume metadata: a database still busy
       // after the run must not discard its receipt or leave the store open.
-      // If the write fails, the next run reports the stage as interrupted.
       try {
-        markIndexStageFinished(db, "embed", outcome);
+        await finishEmbedStageMarker(db, outcome);
       } finally {
         await store.close();
       }

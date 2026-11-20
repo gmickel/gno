@@ -80,6 +80,12 @@ export interface EmbedRunLimits {
    * uses this count minus committed owners instead of probing the backlog.
    */
   pendingAtStart?: number;
+  /**
+   * Chunks already sent to the provider for this run before the embedding
+   * loop (runtime verification). They count toward `maxChunks`; when they
+   * reach it, the run stops before its first batch.
+   */
+  spent?: number;
 }
 
 export interface EmbedBacklogResult {
