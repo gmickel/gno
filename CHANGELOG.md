@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- With an embedding model that reports a verified runtime identity (the default local models), counting and paging the embedding backlog for `gno embed --collection <name>` (and its `--dry-run`) now cost time in proportion to that collection instead of the whole index. Both used to read, format and hash every active chunk in every collection and drop the other collections afterwards; on an index of 1.48M chunks a dry run for a small collection took over 11 minutes. The collection is now part of the query, and counting no longer formats or hashes a chunk that has no vector in the current partition or whose vector belongs to older document content; chunks whose vector matches the current content are still hashed to catch title or format changes. Backlog counts and embedded chunks are unchanged (#348).
+- With an embedding model that reports a verified runtime identity (the default local models), counting and paging the embedding backlog for `gno embed --collection <name>` (and its `--dry-run`) now cost time in proportion to that collection instead of the whole index. Both used to read, format and hash every active chunk in every collection and drop the other collections afterwards; on an index of 1.48M chunks a dry run for a small collection took over 11 minutes. The collection is now part of the query, and counting no longer formats or hashes a chunk whose owner has no binding in the current partition, or whose binding refers to the document's older content; chunks bound to the current content are still hashed to catch title or format changes. Backlog counts and embedded chunks are unchanged (#348).
 
 ## [2.14.0] - 2026-10-23
 
