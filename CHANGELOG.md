@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Bounded embed runs: `gno embed --max-chunks <n>` and `--max-seconds <n>` stop after the batch that reaches either limit, exit 0, keep the embedded batches and release the write lease, so a large backlog can be embedded in slices. The `--json` receipt of an embedding run now reports `remaining` (chunks still pending for the scope, 0 when done) and `stopped: "limit"` when a limit ended the run early; the next run continues where it stopped. A stopped run skips only the final activation that a complete pass performs and is never reported as interrupted.
+
 ### Fixed
 
 - `gno embed --collection <name>` (and its `--dry-run`) now costs time in proportion to that collection instead of the whole index. Counting and paging the backlog used to read, format and hash every active chunk in every collection and drop the other collections afterwards; on an index of 1.48M chunks a dry run for a small collection took over 11 minutes. The collection is now part of the query, chunks without a current vector are counted as pending without formatting or hashing them, and the end-of-pass coverage check stops at the first unembedded chunk. Backlog counts and embedded chunks are unchanged (#348).

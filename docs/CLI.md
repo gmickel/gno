@@ -1198,6 +1198,21 @@ gno embed --no-wait          # Exit 4 immediately if a writer holds the lease
 If you only want one collection to catch up after a model change, use the
 positional collection argument or `--collection`.
 
+To embed a large backlog in slices, bound each run:
+
+```bash
+gno embed --max-chunks 5000      # stop after the batch that reaches 5,000 chunks
+gno embed notes --max-seconds 600
+gno embed --max-chunks 5000 --json   # receipt includes "remaining" and "stopped"
+```
+
+A bounded run stops at a batch boundary, keeps what it embedded, exits 0 and
+releases the index lock. The receipt reports `remaining`, the chunks still to
+embed for that scope, and `"stopped": "limit"` when the limit ended the run
+early. Run the same command again to continue; the run that finishes the
+backlog reports `remaining: 0` and makes the new vectors searchable as a
+complete run always does. `--dry-run` ignores the limits.
+
 Switching backend (`GNO_LLAMA_GPU`), Bun version or thread count resumes the
 backlog in the existing partition when a measured sample of stored chunks
 reproduces its vectors. When it does not, embedding would build a separate

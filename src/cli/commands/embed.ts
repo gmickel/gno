@@ -10,6 +10,7 @@ import type { Database } from "bun:sqlite";
 // node:readline/promises is the platform line-input API; Bun has no equivalent
 import { createInterface } from "node:readline/promises";
 
+import type { EmbedRunLimits } from "../../embed/backlog";
 import type { EmbeddingPort } from "../../llm/types";
 import type { StoreResult } from "../../store/types";
 
@@ -80,6 +81,10 @@ export interface EmbedOptions extends CliWriteLeaseOptions {
   force?: boolean;
   /** Show what would be done without embedding */
   dryRun?: boolean;
+  /** Stop after the batch that reaches this many attempted chunks */
+  maxChunks?: number;
+  /** Stop after the batch that reaches this many seconds of embedding */
+  maxSeconds?: number;
   /** Skip confirmation prompts (never confirms a separate vector partition) */
   yes?: boolean;
   /** Explicitly confirm building a separate vector partition */
@@ -111,6 +116,10 @@ export type EmbedResult = (
       errorSamples?: string[];
       suggestion?: string;
       syncError?: string;
+      /** Chunks still pending for the scope after this run (not set for dry runs). */
+      remaining?: number;
+      /** Set when `--max-chunks`/`--max-seconds` ended the run with work pending. */
+      stopped?: "limit";
     }
   | { success: false; error: string; contention?: WriteLeaseContention }
 ) & {
@@ -161,6 +170,7 @@ interface BatchContext {
   recreateEmbedPort?: () => Promise<
     { ok: true; value: EmbeddingPort } | { ok: false; error: string }
   >;
+  limits?: EmbedRunLimits;
 }
 
 type BatchResult =
@@ -172,6 +182,7 @@ type BatchResult =
       duration: number;
       errorSamples: string[];
       suggestion?: string;
+      stopped?: "limit";
     }
   | { ok: false; error: string };
 
@@ -188,6 +199,7 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
   const errorSamples: string[] = [];
   let suggestion: string | undefined;
   let cursor: Cursor | undefined;
+  let stopped: "limit" | undefined;
   const retryQueue = new Map<string, { item: BacklogItem; attempts: number }>();
   const embedFingerprint = getEmbeddingFingerprint({
     modelUri: ctx.modelUri,
@@ -373,6 +385,14 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
     }
 
     renderProgress();
+
+    if (
+      embedded + errors < ctx.totalToEmbed &&
+      runLimitReached(ctx.limits, embedded + errors, startTime)
+    ) {
+      stopped = "limit";
+      break;
+    }
   }
 
   await drainRetryQueue();
@@ -397,7 +417,22 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
     duration: (Date.now() - startTime) / 1000,
     errorSamples,
     suggestion,
+    stopped,
   };
+}
+
+/** A bounded run stops at the first batch boundary at or past either limit. */
+function runLimitReached(
+  limits: EmbedRunLimits | undefined,
+  attempted: number,
+  startedAtMs: number
+): boolean {
+  if (!limits) return false;
+  return (
+    (limits.maxChunks !== undefined && attempted >= limits.maxChunks) ||
+    (limits.maxSeconds !== undefined &&
+      (Date.now() - startedAtMs) / 1000 >= limits.maxSeconds)
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -484,6 +519,10 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
   const batchSize = options.batchSize ?? 32;
   const force = options.force ?? false;
   const dryRun = options.dryRun ?? false;
+  const limits: EmbedRunLimits | undefined =
+    options.maxChunks !== undefined || options.maxSeconds !== undefined
+      ? { maxChunks: options.maxChunks, maxSeconds: options.maxSeconds }
+      : undefined;
 
   return await withCliWriteLease(options, async () => {
     // Initialize config and store
@@ -639,6 +678,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
             };
           const processed = await embedBacklog({
             ...prepared.value,
+            limits,
             onProgress: !options.json
               ? (embedded, errors) =>
                   process.stderr.write(
@@ -649,6 +689,21 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           if (!options.json) process.stderr.write("\n");
           if (!processed.ok)
             return { success: false, error: processed.error.message };
+          const { stopped } = processed.value;
+          const attempted = processed.value.embedded + processed.value.errors;
+          // Recount only when work can be left: a limit stop, failures or
+          // deferral. A forced run counts what it has not yet re-embedded.
+          let remaining = 0;
+          if (force) {
+            if (stopped) remaining = Math.max(0, totalToEmbed - attempted);
+          } else if (
+            stopped ||
+            processed.value.errors ||
+            processed.value.contentionErrors ||
+            processed.value.deferred
+          ) {
+            remaining = countVariantBacklog(prepared.value);
+          }
           return {
             success: true,
             ...processed.value,
@@ -657,6 +712,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
             model: modelUri,
             searchAvailable: prepared.value.variantStore.searchAvailable,
             errorSamples: [],
+            remaining,
           };
         }
         if (force) {
@@ -673,6 +729,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
               model: modelUri,
               searchAvailable: vectorIndex.searchAvailable,
               errorSamples: [],
+              ...(dryRun ? {} : { remaining: 0 }),
             };
         }
 
@@ -705,6 +762,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
               model: modelUri,
               searchAvailable: vectorIndex.searchAvailable,
               errorSamples: [],
+              ...(dryRun ? {} : { remaining: 0 }),
             };
           }
         }
@@ -723,11 +781,31 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           totalToEmbed,
           verbose: options.verbose ?? false,
           recreateEmbedPort,
+          limits,
         });
 
         if (!result.ok) {
           return { success: false, error: result.error };
         }
+        const legacyRemaining = async (): Promise<number> => {
+          const attempted = result.embedded + result.errors;
+          if (force)
+            return result.stopped ? Math.max(0, totalToEmbed - attempted) : 0;
+          if (!result.stopped && !result.errors && !result.contentionErrors)
+            return 0;
+          const recount = await stats.countBacklog(
+            modelUri,
+            getEmbeddingFingerprint({ modelUri, dimensions }),
+            { collection: options.collection }
+          );
+          return recount.ok
+            ? recount.value
+            : Math.max(0, totalToEmbed - result.embedded);
+        };
+        const stoppedFields = {
+          remaining: await legacyRemaining(),
+          ...(result.stopped ? { stopped: result.stopped } : {}),
+        };
 
         // Sync vec index if any vec0 writes failed (matches embedBacklog behavior)
         if (vectorIndex.vecDirty) {
@@ -763,6 +841,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
               suggestion:
                 "Vector index sync failed after embedding. Rerun `gno embed` once more. If it repeats, run `gno vec sync`.",
               syncError: syncResult.error.message,
+              ...stoppedFields,
             };
           }
         }
@@ -777,6 +856,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           searchAvailable: vectorIndex.searchAvailable,
           errorSamples: result.errorSamples,
           suggestion: result.suggestion,
+          ...stoppedFields,
         };
       };
 
@@ -922,6 +1002,8 @@ export function formatEmbed(
         errorSamples: result.errorSamples ?? [],
         suggestion: result.suggestion,
         syncError: result.syncError,
+        remaining: result.remaining,
+        stopped: result.stopped,
       },
       null,
       2
@@ -935,7 +1017,8 @@ export function formatEmbed(
   if (
     result.embedded === 0 &&
     result.errors === 0 &&
-    result.contentionErrors === 0
+    result.contentionErrors === 0 &&
+    !result.stopped
   ) {
     return "No chunks need embedding. All up to date.";
   }
@@ -944,6 +1027,11 @@ export function formatEmbed(
   lines.push(
     `Embedded ${result.embedded.toLocaleString()} chunks in ${formatDuration(result.duration)}`
   );
+  if (result.stopped === "limit") {
+    lines.push(
+      `Stopped at the run limit; ${(result.remaining ?? 0).toLocaleString()} chunks remaining. Run \`gno embed\` again to continue.`
+    );
+  }
 
   if (result.errors > 0) {
     lines.push(`${result.errors} chunks failed to embed.`);

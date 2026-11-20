@@ -1123,7 +1123,7 @@ Generate embeddings for indexed chunks.
 **Synopsis:**
 
 ```bash
-gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--yes] [--json]
+gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--max-chunks <n>] [--max-seconds <n>] [--yes] [--json]
 ```
 
 **Arguments:**
@@ -1135,6 +1135,24 @@ gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-
 
 - `[collection]` and `--collection <name>` are aliases
 - if provided, embedding work is scoped to that collection only
+
+**Bounded runs:**
+
+- `--max-chunks <n>` and `--max-seconds <n>` (positive integers) stop the run
+  after the batch that reaches either limit. Chunks count every chunk the run
+  attempted, embedded or failed; seconds run from the start of embedding.
+  Batches are never split, so a run can go past the limit by up to one batch.
+- A stopped run exits 0, keeps every committed batch and releases the write
+  lease. It skips the final vector-index activation that only a complete pass
+  performs, and the index stage marker records the run as finished, not
+  interrupted. The next `gno embed` continues with the remaining chunks.
+- A limit reached on the batch that empties the backlog is a complete run.
+- `--dry-run` ignores both limits.
+- The JSON receipt of a run that embeds (not a dry run) adds `remaining`, the
+  chunks still pending for the scope (0 when the backlog is done), and
+  `stopped: "limit"` when a limit ended the run with work pending. Without
+  `--json`, a stopped run adds the line "Stopped at the run limit; <n> chunks
+  remaining. Run `gno embed` again to continue."
 
 ````
 

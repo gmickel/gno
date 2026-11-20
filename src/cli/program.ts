@@ -3683,6 +3683,14 @@ function wireManagementCommands(program: Command): void {
         "confirm building a separate vector partition for an incompatible runtime"
       )
       .option("--dry-run", "show what would be done")
+      .option(
+        "--max-chunks <num>",
+        "stop after the batch that reaches this many chunks"
+      )
+      .option(
+        "--max-seconds <num>",
+        "stop after the batch that reaches this many seconds"
+      )
       .option("--json", "JSON output")
   ).action(
     async (
@@ -3704,6 +3712,14 @@ function wireManagementCommands(program: Command): void {
         batchSize: parsePositiveInt("batch-size", cmdOpts.batchSize),
         force: Boolean(cmdOpts.force),
         dryRun: Boolean(cmdOpts.dryRun),
+        maxChunks:
+          cmdOpts.maxChunks === undefined
+            ? undefined
+            : parsePositiveInt("max-chunks", cmdOpts.maxChunks),
+        maxSeconds:
+          cmdOpts.maxSeconds === undefined
+            ? undefined
+            : parsePositiveInt("max-seconds", cmdOpts.maxSeconds),
         yes: globals.yes,
         newPartition: Boolean(cmdOpts.newPartition),
         json: format === "json",

@@ -38,6 +38,21 @@ export async function embedVariantBacklog(
     return err("INVALID_INPUT", "Invalid embedding batch size");
   const total = { embedded: 0, errors: 0, contentionErrors: 0 };
   let after: { documentId: number; seq: number } | undefined;
+  const limits = deps.limits;
+  const startedAt = performance.now();
+  let attempted = 0;
+  /** True once a bound is reached and the next page still has owners. */
+  const stopAtLimit = (): boolean => {
+    if (!limits) return false;
+    const chunksReached =
+      limits.maxChunks !== undefined && attempted >= limits.maxChunks;
+    const secondsReached =
+      limits.maxSeconds !== undefined &&
+      (performance.now() - startedAt) / 1000 >= limits.maxSeconds;
+    if (!chunksReached && !secondsReached) return false;
+    // A bound reached on the last page is a finished pass: activate as usual.
+    return variantBacklogPage(deps, store, 1, after).length > 0;
+  };
   try {
     while (true) {
       // A failed request drops the port's cached identity (a timed-out native
@@ -76,6 +91,8 @@ export async function embedVariantBacklog(
         // Past its deadline: this page stays pending for the next pass.
         total.errors += owners.length;
         deps.onProgress?.(total.embedded, total.errors);
+        attempted += owners.length;
+        if (stopAtLimit()) return ok({ ...total, stopped: "limit" });
         await Bun.sleep(0);
         continue;
       }
@@ -97,6 +114,8 @@ export async function embedVariantBacklog(
         total.contentionErrors += result.contentionErrors;
       }
       deps.onProgress?.(total.embedded, total.errors);
+      attempted += owners.length;
+      if (stopAtLimit()) return ok({ ...total, stopped: "limit" });
       if (background) await Bun.sleep(0);
     }
     assertInferenceActive();
