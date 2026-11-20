@@ -36,14 +36,12 @@ export function variantBacklogPage(
   const rows = forcedDatabase(deps)
     .query<{ documentId: number; seq: number }, (string | number)[]>(`
     SELECT d.id AS documentId, c.seq ${scope.from}
-      AND (d.id > ? OR (d.id = ? AND c.seq > ?))
+      ${after ? "AND d.id >= ? AND (d.id > ? OR c.seq > ?)" : ""}
     ORDER BY d.id, c.seq LIMIT ?
   `)
     .all(
       ...scope.params,
-      after?.documentId ?? -1,
-      after?.documentId ?? -1,
-      after?.seq ?? -1,
+      ...(after ? [after.documentId, after.documentId, after.seq] : []),
       limit
     );
   return rows.flatMap((row) => {

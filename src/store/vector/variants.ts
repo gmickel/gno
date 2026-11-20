@@ -356,7 +356,8 @@ export class VectorVariantStore {
 
   /**
    * Number of owners pending() would return across a complete pass. Unbound
-   * rows are counted in SQL; only bound rows are formatted and hashed.
+   * rows are counted in SQL; only bound rows are formatted and hashed. Both
+   * reads share one snapshot so a concurrent writer cannot hide a row.
    */
   countPending(options: { collection?: string } = {}): number {
     const collection = options.collection || undefined;
@@ -365,11 +366,15 @@ export class VectorVariantStore {
       "count(*) AS n",
       VectorVariantStore.UNBOUND
     );
-    let count = this.db
-      .query<{ n: number }, (string | number)[]>(sql)
-      .get(...params)!.n;
-    for (const _ of this.staleBound(collection)) count += 1;
-    return count;
+    return this.db
+      .transaction(() => {
+        let count = this.db
+          .query<{ n: number }, (string | number)[]>(sql)
+          .get(...params)!.n;
+        for (const _ of this.staleBound(collection)) count += 1;
+        return count;
+      })
+      .deferred();
   }
 
   /** Same answer as `pending({ limit: 1 }).length > 0`, unbound rows first. */
@@ -380,12 +385,18 @@ export class VectorVariantStore {
       "1 AS found",
       `${VectorVariantStore.UNBOUND} LIMIT 1`
     );
-    if (
-      this.db.query<{ found: number }, (string | number)[]>(sql).get(...params)
-    )
-      return true;
-    for (const _ of this.staleBound(collection)) return true;
-    return false;
+    return this.db
+      .transaction(() => {
+        if (
+          this.db
+            .query<{ found: number }, (string | number)[]>(sql)
+            .get(...params)
+        )
+          return true;
+        for (const _ of this.staleBound(collection)) return true;
+        return false;
+      })
+      .deferred();
   }
 
   /** Resumable owner cursor; repeat from start after epoch changes or a completed pass. */
@@ -400,11 +411,14 @@ export class VectorVariantStore {
     const limit = options.limit ?? 1000;
     if (!Number.isSafeInteger(limit) || limit < 1)
       throw new Error("Invalid pending limit");
+    const after = options.after;
+    // The cursor applies only when resuming; `d.id >= ?` keeps the scan a
+    // range on the collection index instead of rereading earlier documents.
     const { sql, params } = this.candidates(
       options.collection || undefined,
       `d.id AS documentId, d.mirror_hash AS mirrorHash, c.seq, c.text, d.title,
         v.input_hash AS boundHash, o.mirror_hash AS boundMirror`,
-      " AND (d.id > ? OR (d.id = ? AND c.seq > ?)) ORDER BY d.id, c.seq"
+      `${after ? " AND d.id >= ? AND (d.id > ? OR c.seq > ?)" : ""} ORDER BY d.id, c.seq`
     );
     const statement = this.db.prepare<
       OwnerRow & { boundHash: string | null; boundMirror: string | null },
@@ -412,9 +426,7 @@ export class VectorVariantStore {
     >(sql);
     const rows = statement.iterate(
       ...params,
-      options.after?.documentId ?? -1,
-      options.after?.documentId ?? -1,
-      options.after?.seq ?? -1
+      ...(after ? [after.documentId, after.documentId, after.seq] : [])
     );
     const pending: VectorOwnerInput[] = [];
     try {

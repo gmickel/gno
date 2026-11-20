@@ -388,12 +388,20 @@ test("hasPending agrees with pending once only bound rows remain", async () => {
 test("collection pass embeds only that collection and leaves global coverage pending", async () => {
   const { db, store, deps } = await scopeFixture();
   const before = oracleOwners(db, store, {});
+  const syncIndex = spyOn(store, "syncIndex");
+  const activate = spyOn(store, "activate");
   const result = await embedBacklog({
     ...deps,
     collection: "small",
     batchSize: 4,
   });
-  expect(result).toMatchObject({ ok: true, value: { embedded: 9, errors: 0 } });
+  expect(result).toEqual({
+    ok: true,
+    value: { embedded: 9, errors: 0, contentionErrors: 0 },
+  });
+  // The end-of-pass coverage check stays global: `big` is still pending.
+  expect(syncIndex).not.toHaveBeenCalled();
+  expect(activate).not.toHaveBeenCalled();
   const texts = (
     deps.embedPort.embedBatch as ReturnType<typeof mock>
   ).mock.calls.flatMap((call) => call[0] as string[]);
@@ -403,4 +411,36 @@ test("collection pass embeds only that collection and leaves global coverage pen
     before.filter((o) => !inCollection(db, o.documentId, "small"))
   );
   expect(store.hasActivated()).toBe(false);
+});
+
+test("scoped pages resume with a range on the collection index", async () => {
+  const { db, store } = await scopeFixture();
+  const plan = (sql: string, ...params: (string | number)[]) =>
+    db
+      .query<{ detail: string }, (string | number)[]>(
+        `EXPLAIN QUERY PLAN ${sql}`
+      )
+      .all(...params)
+      .map((row) => row.detail)
+      .join(" | ");
+  const traced: string[] = [];
+  const prepare = db.prepare.bind(db);
+  const spy = spyOn(db, "prepare").mockImplementation(((sql: string) => {
+    traced.push(sql);
+    return prepare(sql);
+  }) as typeof db.prepare);
+  try {
+    store.pending({
+      limit: 1,
+      after: { documentId: 101, seq: 0 },
+      collection: "small",
+    });
+  } finally {
+    spy.mockRestore();
+  }
+  const sql = traced.find((text) => text.includes("d.collection = ?"));
+  expect(sql).toBeDefined();
+  expect(plan(sql!, store.partitionId, "small", 101, 101, 0)).toContain(
+    "idx_documents_collection (collection=? AND rowid>?)"
+  );
 });
