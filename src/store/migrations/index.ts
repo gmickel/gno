@@ -49,7 +49,6 @@ import { migration as m032 } from "./032-vector-runtime-callers";
 import { migration as m033 } from "./033-drop-documents-active-index";
 import { migration as m034 } from "./034-collection-link-workspace";
 import { migration as m035 } from "./035-vector-length-index";
-import { migration as m036 } from "./036-vector-mirror-state";
 
 /** All migrations in order */
 export const migrations = [
@@ -88,5 +87,4 @@ export const migrations = [
   m033,
   m034,
   m035,
-  m036,
 ];
