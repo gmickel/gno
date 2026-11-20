@@ -4,6 +4,7 @@ import type { Database } from "bun:sqlite";
 import type { VectorOwnerInput, VectorVariantIdentity } from "./types";
 
 import { formatDocForEmbedding } from "../../pipeline/contextual";
+import { markMirrorClean } from "./partition-index";
 import { decodeEmbedding, encodeEmbedding } from "./sqlite-vec";
 
 export const SELECTED_VECTOR_PARTITION_PREFIX = "vector_selected_partition:";
@@ -118,10 +119,13 @@ export class VectorVariantStore {
           !db
             .query("SELECT 1 FROM sqlite_master WHERE name = ?")
             .get(this.tableName)
-        )
+        ) {
           db.run(
             "UPDATE vector_variant_epoch SET epoch = epoch + 1 WHERE id = 1"
           );
+          // A new, empty mirror is stale for any variants already stored.
+          this.setMirrorMark(1);
+        }
         db.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS ${this.tableName} USING vec0(
           variant_id INTEGER PRIMARY KEY,
           embedding FLOAT[${identity.dimensions}] distance_metric=cosine
@@ -227,58 +231,61 @@ export class VectorVariantStore {
   ): number[] {
     this.assertWritable();
     return this.db
-      .transaction(() =>
-        rows.map(({ owner, embedding }) => {
-          this.validate(owner);
-          if (
-            embedding &&
-            (embedding.length !== this.identity.dimensions ||
-              !embedding.every(Number.isFinite))
-          )
-            throw new Error("Invalid vector dimensions or values");
-          let row = this.variant(owner);
-          if (!row) {
-            if (!embedding)
-              throw new Error("Exact input variant needs embedding");
-            this.db.run(
-              `INSERT INTO vector_variants(partition_id, input_hash, embedding)
+      .transaction(() => this.keepingMirrorMark(() => this.writeRows(rows)))
+      .immediate();
+  }
+
+  private writeRows(
+    rows: { owner: VectorOwnerInput; embedding?: Float32Array }[]
+  ): number[] {
+    return rows.map(({ owner, embedding }) => {
+      this.validate(owner);
+      if (
+        embedding &&
+        (embedding.length !== this.identity.dimensions ||
+          !embedding.every(Number.isFinite))
+      )
+        throw new Error("Invalid vector dimensions or values");
+      let row = this.variant(owner);
+      if (!row) {
+        if (!embedding) throw new Error("Exact input variant needs embedding");
+        this.db.run(
+          `INSERT INTO vector_variants(partition_id, input_hash, embedding)
           VALUES (?, ?, ?)`,
-              [this.partitionId, owner.inputHash, encodeEmbedding(embedding)]
-            );
-            row = this.variant(owner)!;
-          }
-          if (embedding && row) {
-            this.db.run(
-              "UPDATE vector_variants SET embedding = ? WHERE variant_id = ? AND partition_id = ?",
-              [encodeEmbedding(embedding), row.variant_id, this.partitionId]
-            );
-            row = this.variant(owner)!;
-          }
-          if (this.searchAvailable) {
-            this.db.run(`DELETE FROM ${this.tableName} WHERE variant_id = ?`, [
-              row.variant_id,
-            ]);
-            this.db.run(
-              `INSERT INTO ${this.tableName}(variant_id, embedding) VALUES (?, ?)`,
-              [row.variant_id, row.embedding]
-            );
-          }
-          this.db.run(
-            `INSERT INTO vector_owners(document_id, mirror_hash, seq, partition_id, variant_id)
+          [this.partitionId, owner.inputHash, encodeEmbedding(embedding)]
+        );
+        row = this.variant(owner)!;
+      }
+      if (embedding && row) {
+        this.db.run(
+          "UPDATE vector_variants SET embedding = ? WHERE variant_id = ? AND partition_id = ?",
+          [encodeEmbedding(embedding), row.variant_id, this.partitionId]
+        );
+        row = this.variant(owner)!;
+      }
+      if (this.searchAvailable) {
+        this.db.run(`DELETE FROM ${this.tableName} WHERE variant_id = ?`, [
+          row.variant_id,
+        ]);
+        this.db.run(
+          `INSERT INTO ${this.tableName}(variant_id, embedding) VALUES (?, ?)`,
+          [row.variant_id, row.embedding]
+        );
+      }
+      this.db.run(
+        `INSERT INTO vector_owners(document_id, mirror_hash, seq, partition_id, variant_id)
         VALUES (?, ?, ?, ?, ?) ON CONFLICT(document_id, seq, partition_id) DO UPDATE SET
         mirror_hash = excluded.mirror_hash, variant_id = excluded.variant_id`,
-            [
-              owner.documentId,
-              owner.mirrorHash,
-              owner.seq,
-              this.partitionId,
-              row.variant_id,
-            ]
-          );
-          return row.variant_id;
-        })
-      )
-      .immediate();
+        [
+          owner.documentId,
+          owner.mirrorHash,
+          owner.seq,
+          this.partitionId,
+          row.variant_id,
+        ]
+      );
+      return row.variant_id;
+    });
   }
 
   /** Resolve only correct current active owners, never every document sharing a mirror. */
@@ -525,6 +532,8 @@ export class VectorVariantStore {
       `)
           .get(this.partitionId)!.count;
         if (mismatch || orphans) throw new Error("Variant index inconsistent");
+        // The mirror was just verified against every stored variant.
+        this.setMirrorMark(0);
         this.db.run(
           `UPDATE vector_partitions SET state = 'active', activated_epoch = ? WHERE partition_id = ?`,
           [expectedEpoch, this.partitionId]
@@ -567,6 +576,71 @@ export class VectorVariantStore {
       .get(this.partitionId);
   }
 
+  /** Whether this database tracks vec0 mirror freshness (migration 036). */
+  private mirrorTracked(): boolean {
+    return !!this.db
+      .query("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get("vector_mirror_state");
+  }
+
+  /** The partition's mark: 0 clean; 1 or null (no row) dirty. */
+  private mirrorMark(): number | null {
+    return (
+      this.db
+        .query<{ dirty: number }, [string]>(
+          "SELECT dirty FROM vector_mirror_state WHERE partition_id = ?"
+        )
+        .get(this.partitionId)?.dirty ?? null
+    );
+  }
+
+  private setMirrorMark(mark: number | null): void {
+    if (!this.mirrorTracked()) return;
+    if (mark !== 0)
+      this.db.run("DELETE FROM vector_mirror_state WHERE partition_id = ?", [
+        this.partitionId,
+      ]);
+    else markMirrorClean(this.db, this.partitionId);
+  }
+
+  /**
+   * Runs a store write that keeps vec0 in step. The vector_variants triggers
+   * mark the partition dirty on every change; when this write also updated
+   * vec0, the mark it found is restored, so only changes made outside the
+   * store leave the mirror marked stale.
+   */
+  private keepingMirrorMark<T>(write: () => T): T {
+    if (!this.searchAvailable || !this.mirrorTracked()) return write();
+    const before = this.mirrorMark();
+    const result = write();
+    this.setMirrorMark(before);
+    return result;
+  }
+
+  /**
+   * vec0 mirror freshness for an activated partition: `clean` when no change
+   * to stored vectors happened outside the store since the last verified
+   * sync or activation, `dirty` otherwise (including never recorded), and
+   * `untracked` on databases without migration 036 or without sqlite-vec.
+   */
+  mirrorState(): "clean" | "dirty" | "untracked" {
+    if (!this.searchAvailable || !this.mirrorTracked()) return "untracked";
+    if (this.mirrorMark() !== 0) return "dirty";
+    // vec0 is a virtual table without triggers, so rows removed or added
+    // there directly are caught by comparing row counts (one count each).
+    return this.snapshot(() => {
+      const stored = this.db
+        .query<{ n: number }, [string]>(
+          "SELECT count(*) AS n FROM vector_variants WHERE partition_id = ?"
+        )
+        .get(this.partitionId)!.n;
+      const mirrored = this.db
+        .query<{ n: number }, []>(`SELECT count(*) AS n FROM ${this.tableName}`)
+        .get()!.n;
+      return stored === mirrored ? "clean" : "dirty";
+    });
+  }
+
   /** Repair materialization after storage-only backfill; never changes legacy authority. */
   syncIndex(): void {
     if (!this.searchAvailable) throw new Error("Variant index unavailable");
@@ -584,6 +658,7 @@ export class VectorVariantStore {
             [row.variant_id, row.embedding]
           );
         }
+        this.setMirrorMark(0);
       })
       .immediate();
   }
@@ -592,45 +667,51 @@ export class VectorVariantStore {
   release(documentId: number): void {
     this.assertWritable();
     this.db
-      .transaction(() => {
-        this.db.run(
-          "DELETE FROM vector_owners WHERE document_id = ? AND partition_id = ?",
-          [documentId, this.partitionId]
-        );
-        this.collectGarbage();
-      })
+      .transaction(() =>
+        this.keepingMirrorMark(() => {
+          this.db.run(
+            "DELETE FROM vector_owners WHERE document_id = ? AND partition_id = ?",
+            [documentId, this.partitionId]
+          );
+          this.collectGarbage();
+        })
+      )
       .immediate();
   }
 
   collectGarbage(): number {
     this.assertWritable();
     return this.db
-      .transaction(() => {
-        let removed = 0;
-        const rows = this.db
-          .query<{ variant_id: number }, [string]>(
-            "SELECT variant_id FROM vector_variants WHERE partition_id = ?"
-          )
-          .all(this.partitionId);
-        for (const { variant_id: id } of rows) {
-          if (this.owners(id).length) continue;
-          if (this.searchAvailable)
-            this.db.run(`DELETE FROM ${this.tableName} WHERE variant_id = ?`, [
-              id,
-            ]);
-          this.db.run(
-            "DELETE FROM vector_owners WHERE partition_id = ? AND variant_id = ?",
-            [this.partitionId, id]
-          );
-          this.db.run(
-            "DELETE FROM vector_variants WHERE partition_id = ? AND variant_id = ?",
-            [this.partitionId, id]
-          );
-          removed++;
-        }
-        return removed;
-      })
+      .transaction(() => this.keepingMirrorMark(() => this.removeUnowned()))
       .immediate();
+  }
+
+  private removeUnowned(): number {
+    {
+      let removed = 0;
+      const rows = this.db
+        .query<{ variant_id: number }, [string]>(
+          "SELECT variant_id FROM vector_variants WHERE partition_id = ?"
+        )
+        .all(this.partitionId);
+      for (const { variant_id: id } of rows) {
+        if (this.owners(id).length) continue;
+        if (this.searchAvailable)
+          this.db.run(`DELETE FROM ${this.tableName} WHERE variant_id = ?`, [
+            id,
+          ]);
+        this.db.run(
+          "DELETE FROM vector_owners WHERE partition_id = ? AND variant_id = ?",
+          [this.partitionId, id]
+        );
+        this.db.run(
+          "DELETE FROM vector_variants WHERE partition_id = ? AND variant_id = ?",
+          [this.partitionId, id]
+        );
+        removed++;
+      }
+      return removed;
+    }
   }
 }
 

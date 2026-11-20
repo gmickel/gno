@@ -298,6 +298,45 @@ CREATE INDEX IF NOT EXISTS idx_vector_owners_variant ON vector_owners(variant_id
 -- No chunk FK: replacing shared canonical chunks must not cascade vector loss.
 -- The writer validates bindings against current document/chunk/formatted input.
 -- vec_v1_<partition SHA256> uses variant_id INTEGER PRIMARY KEY and FLOAT[dims].
+-- vec0 mirror freshness per partition (migration 036). A partition is clean
+-- only while it has a row with dirty = 0. Triggers on vector_variants delete
+-- the row on any change (deletes never conflict, so outer conflict clauses
+-- cannot cancel them); the store's own writes, which update vec0 in the same
+-- transaction, restore the previous mark; syncIndex(), a verified activation,
+-- `gno vec sync` and `gno vec rebuild` mark it clean.
+CREATE TABLE IF NOT EXISTS vector_mirror_state (
+  partition_id TEXT PRIMARY KEY,
+  dirty INTEGER NOT NULL CHECK (dirty IN (0, 1))
+);
+CREATE TRIGGER IF NOT EXISTS vector_variants_mirror_before_insert
+BEFORE INSERT ON vector_variants BEGIN
+  DELETE FROM vector_mirror_state WHERE partition_id IN (
+    SELECT partition_id FROM vector_variants
+    WHERE variant_id = NEW.variant_id
+      OR (partition_id = NEW.partition_id AND input_hash = NEW.input_hash)
+  );
+END;
+CREATE TRIGGER IF NOT EXISTS vector_variants_mirror_insert
+AFTER INSERT ON vector_variants BEGIN
+  DELETE FROM vector_mirror_state WHERE partition_id = NEW.partition_id;
+END;
+CREATE TRIGGER IF NOT EXISTS vector_variants_mirror_before_update
+BEFORE UPDATE ON vector_variants BEGIN
+  DELETE FROM vector_mirror_state WHERE partition_id IN (
+    SELECT partition_id FROM vector_variants
+    WHERE variant_id = NEW.variant_id
+      OR (partition_id = NEW.partition_id AND input_hash = NEW.input_hash)
+  );
+END;
+CREATE TRIGGER IF NOT EXISTS vector_variants_mirror_update
+AFTER UPDATE ON vector_variants BEGIN
+  DELETE FROM vector_mirror_state
+  WHERE partition_id IN (OLD.partition_id, NEW.partition_id);
+END;
+CREATE TRIGGER IF NOT EXISTS vector_variants_mirror_delete
+AFTER DELETE ON vector_variants BEGIN
+  DELETE FROM vector_mirror_state WHERE partition_id = OLD.partition_id;
+END;
 -- Its writes/deletes share the authoritative variant transaction; no best effort.
 -- Mutation epoch fences all old and new writers, including raw SQL. Active state
 -- records durable variant authority after initial promotion. activated_epoch
