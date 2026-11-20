@@ -644,10 +644,11 @@ export class VectorVariantStore {
    */
   mirrorState(): "clean" | "dirty" | "untracked" {
     if (!this.searchAvailable || !this.mirrorTracked()) return "untracked";
-    if (this.mirrorMark() !== 0) return "dirty";
     // vec0 is a virtual table without triggers, so rows removed or added
     // there directly are caught by comparing row counts (one count each).
+    // The mark and both counts are read in one snapshot.
     return this.snapshot(() => {
+      if (this.mirrorMark() !== 0) return "dirty";
       const stored = this.db
         .query<{ n: number }, [string]>(
           "SELECT count(*) AS n FROM vector_variants WHERE partition_id = ?"

@@ -699,7 +699,50 @@ test("outer conflict clauses cannot leave the mirror marked clean", async () => 
       new Uint8Array(new Float32Array([1, 0, 0]).buffer),
     ]
   );
+  // The BEFORE trigger itself removed the displaced partition's clean row
+  // (not only the row-count difference the displacement causes).
+  expect(cleanRow(db, store.partitionId)).toBeNull();
   expect(store.mirrorState()).toBe("dirty");
+});
+
+const cleanRow = (db: DatabaseType, partitionId: string) =>
+  db
+    .query<{ dirty: number }, [string]>(
+      "SELECT dirty FROM vector_mirror_state WHERE partition_id = ?"
+    )
+    .get(partitionId);
+
+test("UPDATE OR REPLACE with recursive triggers off still invalidates the displaced partition", async () => {
+  const { db, store } = await activatedFixture();
+  const other = await createVectorVariantStore(db, {
+    ...identity,
+    modelFingerprint: "other-weights",
+  });
+  other.write(
+    other
+      .pending({ limit: 1 })
+      .map((owner) => ({ owner, embedding: new Float32Array([1, 1, 0]) }))
+  );
+  other.syncIndex();
+  store.syncIndex();
+  expect(cleanRow(db, store.partitionId)).toEqual({ dirty: 0 });
+  expect(cleanRow(db, other.partitionId)).toEqual({ dirty: 0 });
+  db.run("PRAGMA foreign_keys = OFF");
+  db.run("PRAGMA recursive_triggers = OFF");
+  const ids = (partitionId: string) =>
+    db
+      .query<{ id: number }, [string]>(
+        "SELECT min(variant_id) AS id FROM vector_variants WHERE partition_id = ?"
+      )
+      .get(partitionId)!.id;
+  // Move a variant of the other partition onto an id of this partition,
+  // replacing (deleting) this partition's row.
+  db.run(
+    "UPDATE OR REPLACE vector_variants SET variant_id = ? WHERE variant_id = ?",
+    [ids(store.partitionId), ids(other.partitionId)]
+  );
+  expect(cleanRow(db, store.partitionId)).toBeNull();
+  expect(cleanRow(db, other.partitionId)).toBeNull();
 });
 
 test("gno vec sync records the mirror as clean", async () => {

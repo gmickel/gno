@@ -1226,8 +1226,10 @@ variants when they changed outside GNO's own writes (for example while
 sqlite-vec was unavailable), even when no owner needs another embedding;
 `gno vec sync` rebuilds it on demand. Once a model's vectors have been
 activated and the vector index is known to match the stored vectors, a run does
-not re-check coverage of the whole index, so its cost follows the chunks it
-embeds; otherwise it repairs the index and re-checks coverage as before. Repeated
+not re-check coverage of the whole index; it only compares the row counts of
+the stored vectors and the vector index. Otherwise it repairs the index and
+re-checks coverage as before. Vector index bytes edited directly (outside GNO)
+with an unchanged row count are not detected; `gno vec sync` repairs them. Repeated
 unchanged runs reuse proven inputs. Providers without verified identity retain
 legacy compatibility only before variant authority has been activated; missing
 identity afterward is an error, not permission to reuse legacy vectors.
