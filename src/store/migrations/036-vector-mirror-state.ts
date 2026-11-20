@@ -26,7 +26,9 @@ export const migration: Migration = {
     // conflict clause (UPDATE OR IGNORE, INSERT OR REPLACE) cannot cancel the
     // invalidation. The BEFORE triggers also invalidate partitions whose rows
     // a REPLACE would displace (their delete triggers do not fire unless
-    // recursive_triggers is on).
+    // recursive_triggers is on). Each conflict is its own unique-key lookup:
+    // as one OR, statistics gathered while vector_variants was small made
+    // SQLite scan the table's index on every write.
     db.exec(`
       CREATE TABLE IF NOT EXISTS vector_mirror_state (
         partition_id TEXT PRIMARY KEY,
@@ -37,7 +39,9 @@ export const migration: Migration = {
         DELETE FROM vector_mirror_state WHERE partition_id IN (
           SELECT partition_id FROM vector_variants
           WHERE variant_id = NEW.variant_id
-            OR (partition_id = NEW.partition_id AND input_hash = NEW.input_hash)
+          UNION ALL
+          SELECT partition_id FROM vector_variants
+          WHERE partition_id = NEW.partition_id AND input_hash = NEW.input_hash
         );
       END;
       CREATE TRIGGER IF NOT EXISTS vector_variants_mirror_insert
@@ -49,7 +53,9 @@ export const migration: Migration = {
         DELETE FROM vector_mirror_state WHERE partition_id IN (
           SELECT partition_id FROM vector_variants
           WHERE variant_id = NEW.variant_id
-            OR (partition_id = NEW.partition_id AND input_hash = NEW.input_hash)
+          UNION ALL
+          SELECT partition_id FROM vector_variants
+          WHERE partition_id = NEW.partition_id AND input_hash = NEW.input_hash
         );
       END;
       CREATE TRIGGER IF NOT EXISTS vector_variants_mirror_update

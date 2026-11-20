@@ -876,3 +876,42 @@ test("scoped reads look owners up by key even with stale statistics", async () =
     ).toEqual([]);
   }
 });
+
+test("mirror triggers find conflicting variants by key even with stale statistics", async () => {
+  const { db, store } = await activatedFixture();
+  // Statistics gathered with one variant, before thousands more were added,
+  // made the trigger's combined conflict lookup scan vector_variants on every
+  // write.
+  db.exec(`CREATE TEMP TABLE kept_variants AS SELECT * FROM vector_variants;
+    PRAGMA foreign_keys = OFF;
+    DELETE FROM vector_variants WHERE rowid <> (SELECT min(rowid) FROM vector_variants);
+    ANALYZE;
+    INSERT OR IGNORE INTO vector_variants SELECT * FROM temp.kept_variants;`);
+  db.run(
+    `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 4000)
+    INSERT INTO vector_variants(partition_id, input_hash, embedding)
+    SELECT ?, printf('%064d', i), x'00' FROM n`,
+    [store.partitionId]
+  );
+  const triggers = db
+    .query<{ name: string; sql: string }, []>(
+      "SELECT name, sql FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'vector_variants_mirror_before_%'"
+    )
+    .all();
+  expect(triggers.map((t) => t.name).sort()).toEqual([
+    "vector_variants_mirror_before_insert",
+    "vector_variants_mirror_before_update",
+  ]);
+  for (const { sql } of triggers) {
+    // The subquery that finds the partitions a write could displace.
+    const lookup = /partition_id IN \(([\s\S]*?)\);\s*END/.exec(sql)?.[1];
+    expect(lookup).toBeDefined();
+    const steps = db
+      .query<{ detail: string }, (string | number)[]>(
+        `EXPLAIN QUERY PLAN ${lookup!.replaceAll(/NEW\.\w+/g, "?")}`
+      )
+      .all(1, store.partitionId, "0".repeat(64))
+      .map((row) => row.detail);
+    expect(steps.filter((step) => step.startsWith("SCAN"))).toEqual([]);
+  }
+});
