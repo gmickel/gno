@@ -8,6 +8,9 @@ import type { Database as DatabaseType } from "bun:sqlite";
 
 import { Database } from "bun:sqlite";
 import { afterEach, expect, mock, spyOn, test } from "bun:test";
+// Bun has no temporary-directory path API.
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import type { EmbedBacklogDeps } from "../../src/embed/backlog";
 import type { EmbeddingPort } from "../../src/llm/types";
@@ -48,9 +51,10 @@ const identity = {
  * title-changed, mirror-changed, unbound, inactive and other-partition owners,
  * and shares one mirror with `big`.
  */
-async function scopeFixture() {
-  const db = new Database(":memory:");
+async function scopeFixture(path = ":memory:") {
+  const db = new Database(path);
   databases.push(db);
+  if (path !== ":memory:") db.exec("PRAGMA journal_mode = WAL");
   db.exec(`CREATE TABLE schema_meta(key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT);
     CREATE TABLE documents(id INTEGER PRIMARY KEY, mirror_hash TEXT, title TEXT, active INTEGER, collection TEXT);
     CREATE INDEX idx_documents_collection ON documents(collection);
@@ -489,4 +493,87 @@ test("a resumed page inside a large document matches the oracle", async () => {
     expect(pagedOwners({ ...deps, ...scope }, store, 7)).toEqual(
       oracleOwners(db, store, scope)
     );
+});
+
+test.each([false, true])(
+  "a write committed between the cursor statements cannot end the pass (force=%p)",
+  async (force) => {
+    const path = join(
+      tmpdir(),
+      `scope-snapshot-${force ? "force" : "pending"}-${Date.now()}.sqlite`
+    );
+    const { db, store, deps } = await scopeFixture(path);
+    const writer = new Database(path);
+    databases.push(writer);
+    writer.exec("PRAGMA busy_timeout = 5000");
+    const prepare = db.prepare.bind(db);
+    let committed = false;
+    const spy = spyOn(db, "prepare").mockImplementation(((sql: string) => {
+      if (!committed && sql.includes("d.id > ?")) {
+        committed = true;
+        // One atomic write: the cursor document gains a chunk and every
+        // later document in the collection is deactivated.
+        writer.exec(`BEGIN IMMEDIATE;
+          INSERT INTO content_chunks VALUES ('s-current', 2, 'late chunk');
+          UPDATE documents SET active = 0 WHERE collection = 'small' AND id > 101;
+          COMMIT;`);
+      }
+      return prepare(sql);
+    }) as typeof db.prepare);
+    try {
+      const page = variantBacklogPage(
+        { ...deps, collection: "small", force },
+        store,
+        32,
+        { documentId: 101, seq: 1 }
+      );
+      expect(committed).toBe(true);
+      // Either snapshot alone has owners; a mixed read would return none.
+      expect(page.length).toBeGreaterThan(0);
+    } finally {
+      spy.mockRestore();
+    }
+  }
+);
+
+test("after activation a pass skips the index-wide coverage proof while the mirror is intact", async () => {
+  const { db, store, deps } = await scopeFixture();
+  store.write(
+    store
+      .pending({ limit: 1000 })
+      .map((owner, i) => ({ owner, embedding: new Float32Array([0, i, 1]) }))
+  );
+  store.activate(store.epoch());
+  expect(store.hasActivated()).toBe(true);
+  db.run("UPDATE documents SET title = 'Renamed' WHERE id = 101");
+  const hasPending = spyOn(store, "hasPending");
+  const syncIndex = spyOn(store, "syncIndex");
+  const activate = spyOn(store, "activate");
+  expect(
+    await embedBacklog({ ...deps, collection: "small", batchSize: 4 })
+  ).toEqual({
+    ok: true,
+    value: { embedded: 2, errors: 0, contentionErrors: 0 },
+  });
+  expect(hasPending).not.toHaveBeenCalled();
+  expect(syncIndex).not.toHaveBeenCalled();
+  expect(activate).not.toHaveBeenCalled();
+  expect(store.hasActivated()).toBe(true);
+  expect(countVariantBacklog(deps)).toBe(0);
+
+  // A mirror that lost a row takes the full repair and activation path.
+  db.run(
+    `DELETE FROM ${store.tableName} WHERE variant_id = (SELECT min(variant_id) FROM ${store.tableName})`
+  );
+  expect(store.materializationMatches()).toBe(false);
+  expect(
+    await embedBacklog({ ...deps, collection: "small", batchSize: 4 })
+  ).toEqual({
+    ok: true,
+    value: { embedded: 0, errors: 0, contentionErrors: 0 },
+  });
+  expect(syncIndex).toHaveBeenCalledTimes(1);
+  expect(activate).toHaveBeenCalledTimes(1);
+  expect(store.materializationMatches()).toBe(true);
+  expect(store.isActive()).toBe(true);
 });

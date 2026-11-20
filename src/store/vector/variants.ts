@@ -419,6 +419,15 @@ export class VectorVariantStore {
     }
   }
 
+  /**
+   * Runs reads in one deferred transaction: every statement sees the same
+   * snapshot, so a write committed between the two cursor statements cannot
+   * make a page look like the end of the backlog.
+   */
+  private snapshot<T>(read: () => T): T {
+    return this.db.transaction(read).deferred();
+  }
+
   /** The row needs embedding: no current binding, or its input changed. */
   private isPending(row: CandidateRow, input?: VectorOwnerInput): boolean {
     if (row.boundHash === null || row.boundMirror !== row.mirrorHash)
@@ -431,12 +440,14 @@ export class VectorVariantStore {
    * and stops at the first pending one; unbound rows are not hashed.
    */
   hasPending(options: { collection?: string } = {}): boolean {
-    for (const row of this.ownerRows(
-      options.collection || undefined,
-      undefined
-    ))
-      if (this.isPending(row)) return true;
-    return false;
+    return this.snapshot(() => {
+      for (const row of this.ownerRows(
+        options.collection || undefined,
+        undefined
+      ))
+        if (this.isPending(row)) return true;
+      return false;
+    });
   }
 
   /** Resumable owner cursor; repeat from start after epoch changes or a completed pass. */
@@ -451,16 +462,18 @@ export class VectorVariantStore {
     const limit = options.limit ?? 1000;
     if (!Number.isSafeInteger(limit) || limit < 1)
       throw new Error("Invalid pending limit");
-    const pending: VectorOwnerInput[] = [];
-    for (const row of this.ownerRows(
-      options.collection || undefined,
-      options.after
-    )) {
-      const input = this.input(row);
-      if (this.isPending(row, input)) pending.push(input);
-      if (pending.length === limit) break;
-    }
-    return pending;
+    return this.snapshot(() => {
+      const pending: VectorOwnerInput[] = [];
+      for (const row of this.ownerRows(
+        options.collection || undefined,
+        options.after
+      )) {
+        const input = this.input(row);
+        if (this.isPending(row, input)) pending.push(input);
+        if (pending.length === limit) break;
+      }
+      return pending;
+    });
   }
 
   /**
@@ -474,15 +487,17 @@ export class VectorVariantStore {
   }): VectorOwnerInput[] {
     if (!Number.isSafeInteger(options.limit) || options.limit < 1)
       throw new Error("Invalid page limit");
-    const page: VectorOwnerInput[] = [];
-    for (const row of this.ownerRows(
-      options.collection || undefined,
-      options.after
-    )) {
-      page.push(this.input(row));
-      if (page.length === options.limit) break;
-    }
-    return page;
+    return this.snapshot(() => {
+      const page: VectorOwnerInput[] = [];
+      for (const row of this.ownerRows(
+        options.collection || undefined,
+        options.after
+      )) {
+        page.push(this.input(row));
+        if (page.length === options.limit) break;
+      }
+      return page;
+    });
   }
 
   /** Activation is fenced by a caller-observed epoch and complete current coverage. */
@@ -547,6 +562,33 @@ export class VectorVariantStore {
         AND state = 'active' AND activated_epoch = (SELECT epoch FROM vector_variant_epoch WHERE id = 1)
     `)
       .get(this.partitionId);
+  }
+
+  /**
+   * Cheap materialization check: the vec0 mirror holds one row per stored
+   * variant of this partition. Writes, releases and garbage collection change
+   * both in one transaction, so a count difference means storage-only
+   * backfill or outside interference and calls for syncIndex().
+   */
+  materializationMatches(): boolean {
+    if (!this.searchAvailable) return true;
+    if (
+      !this.db
+        .query("SELECT 1 FROM sqlite_master WHERE name = ?")
+        .get(this.tableName)
+    )
+      return false;
+    return this.snapshot(() => {
+      const stored = this.db
+        .query<{ n: number }, [string]>(
+          "SELECT count(*) AS n FROM vector_variants WHERE partition_id = ?"
+        )
+        .get(this.partitionId)!.n;
+      const materialized = this.db
+        .query<{ n: number }, []>(`SELECT count(*) AS n FROM ${this.tableName}`)
+        .get()!.n;
+      return stored === materialized;
+    });
   }
 
   /** Repair materialization after storage-only backfill; never changes legacy authority. */
