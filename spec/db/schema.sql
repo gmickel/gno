@@ -303,7 +303,9 @@ CREATE INDEX IF NOT EXISTS idx_vector_owners_variant ON vector_owners(variant_id
 -- the row on any change (deletes never conflict, so outer conflict clauses
 -- cannot cancel them); the store's own writes, which update vec0 in the same
 -- transaction, restore the previous mark; syncIndex(), a verified activation,
--- `gno vec sync` and `gno vec rebuild` mark it clean.
+-- `gno vec sync` and `gno vec rebuild` mark it clean. The BEFORE triggers look
+-- up each conflict by its own key, so stale statistics cannot make every write
+-- scan the variants index.
 CREATE TABLE IF NOT EXISTS vector_mirror_state (
   partition_id TEXT PRIMARY KEY,
   dirty INTEGER NOT NULL CHECK (dirty IN (0, 1))
@@ -313,7 +315,9 @@ BEFORE INSERT ON vector_variants BEGIN
   DELETE FROM vector_mirror_state WHERE partition_id IN (
     SELECT partition_id FROM vector_variants
     WHERE variant_id = NEW.variant_id
-      OR (partition_id = NEW.partition_id AND input_hash = NEW.input_hash)
+    UNION ALL
+    SELECT partition_id FROM vector_variants
+    WHERE partition_id = NEW.partition_id AND input_hash = NEW.input_hash
   );
 END;
 CREATE TRIGGER IF NOT EXISTS vector_variants_mirror_insert
@@ -325,7 +329,9 @@ BEFORE UPDATE ON vector_variants BEGIN
   DELETE FROM vector_mirror_state WHERE partition_id IN (
     SELECT partition_id FROM vector_variants
     WHERE variant_id = NEW.variant_id
-      OR (partition_id = NEW.partition_id AND input_hash = NEW.input_hash)
+    UNION ALL
+    SELECT partition_id FROM vector_variants
+    WHERE partition_id = NEW.partition_id AND input_hash = NEW.input_hash
   );
 END;
 CREATE TRIGGER IF NOT EXISTS vector_variants_mirror_update
