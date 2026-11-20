@@ -333,14 +333,16 @@ describe("gno embed bounded runs", () => {
       env,
       "embed",
       "--max-chunks",
-      "2",
+      "4",
       "--batch-size",
       "1",
       "--json"
     );
     expect(run.code).toBe(0);
-    // The first attempt and one retry.
-    expect(server.poisonRequests() - before).toBeGreaterThanOrEqual(2);
+    // Each attempt submits the chunk three times (the batch, then alone, then
+    // alone after a model reset). The first attempt spends 3 of the 4, so only
+    // the final retry drain reaches the limit: two attempts, six submissions.
+    expect(server.poisonRequests() - before).toBe(6);
     expect(JSON.parse(run.stdout)).toMatchObject({
       stopped: "limit",
       remaining: 1,
