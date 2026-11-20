@@ -209,7 +209,14 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
   let suggestion: string | undefined;
   let cursor: Cursor | undefined;
   let stopped: "limit" | undefined;
+  // Chunks charged against --max-chunks: every chunk submitted to the
+  // provider, so a disposed-port retry and adaptive recovery resubmissions
+  // count, and at least each chunk of every batch the run attempted.
   let attempted = 0;
+  let submitted = 0;
+  const onSubmit = (texts: number): void => {
+    submitted += texts;
+  };
   const limitReached = (): boolean =>
     runLimitReached(ctx.limits, attempted, startTime);
   const resumeKey = resumeCursorKey(
@@ -273,6 +280,7 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
       items: batch,
       modelUri: ctx.modelUri,
       embedFingerprint,
+      onSubmit,
     });
 
     if (
@@ -295,6 +303,7 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
           items: batch,
           modelUri: ctx.modelUri,
           embedFingerprint,
+          onSubmit,
         });
         if (ctx.verbose && result.embedded > 0) {
           process.stderr.write("\n[embed] Retry after port reset succeeded\n");
@@ -333,15 +342,16 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
       // Retries count against the run limits; the rest stay queued.
       if (limitReached()) break;
       const slice = entries.slice(idx, idx + ctx.batchSize);
-      attempted += slice.length;
       for (const entry of slice) {
         retryQueue.delete(chunkRetryKey(entry.item));
         entry.attempts += 1;
       }
 
+      const submittedBefore = submitted;
       const retryResult = await processStoreBatch(
         slice.map((entry) => entry.item)
       );
+      attempted += Math.max(slice.length, submitted - submittedBefore);
       writeBatchDiagnostics(
         slice.map((entry) => entry.item),
         retryResult
@@ -413,6 +423,7 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
     }
 
     const beforeEmbedded = embedded;
+    const submittedBefore = submitted;
     const batchStoreResult = await processStoreBatch(batch);
     writeBatchDiagnostics(batch, batchStoreResult);
     pushErrorSamples(batchStoreResult.errorSamples);
@@ -421,7 +432,7 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
     errors += batchStoreResult.errors;
     contentionErrors += batchStoreResult.contentionErrors;
     enqueueRetryItems(batchStoreResult.retryItems, 1);
-    attempted += batch.length;
+    attempted += Math.max(batch.length, submitted - submittedBefore);
 
     if (embedded > beforeEmbedded && !limitReached()) {
       await drainRetryQueue();

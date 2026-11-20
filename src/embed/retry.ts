@@ -199,6 +199,8 @@ export async function embedAndStoreBatch(params: {
   delays?: number[];
   /** Gate held only around persistence, never around inference. */
   acquireWriteTurn?: AcquireWriteTurn;
+  /** Called with the text count of each provider request (see `embedTextsWithRecovery`). */
+  onSubmit?: (texts: number) => void;
 }): Promise<EmbedStoreBatchResult> {
   const { embedPort, vectorIndex, items, modelUri, embedFingerprint } = params;
   const db = params.statsPort && getVectorStatsDatabase(params.statsPort);
@@ -215,7 +217,8 @@ export async function embedAndStoreBatch(params: {
     embedPort,
     items.map((item) =>
       formatDocForEmbedding(item.text, item.title ?? undefined, modelUri)
-    )
+    ),
+    { onSubmit: params.onSubmit }
   );
 
   if (!embedResult.ok) {

@@ -587,3 +587,31 @@ test("time spent fetching a page past --max-seconds stops before inference", asy
   const next = await embedBacklog({ ...deps, batchSize: 2 });
   expect(next).toMatchObject({ ok: true, value: { embedded: 4 } });
 });
+
+test("adaptive recovery resubmissions count toward --max-chunks", async () => {
+  const { deps } = await limitsFixture(4);
+  const submissions: string[][] = [];
+  // Pairs fail; single chunks succeed. A two-chunk page then costs four
+  // provider submissions: the pair, then each chunk on its own.
+  deps.embedPort.embedBatch = mock(async (texts: string[]) => {
+    submissions.push(texts);
+    return { ok: false as const, error: { code: "MODEL", message: "batch" } };
+  }) as never;
+  deps.embedPort.embed = mock(async (text: string) => {
+    submissions.push([text]);
+    return { ok: true as const, value: [0.1, 0.2, 0.3] };
+  }) as never;
+
+  const result = await embedBacklog({
+    ...deps,
+    batchSize: 2,
+    limits: { maxChunks: 3 },
+  });
+  expect(result).toMatchObject({
+    ok: true,
+    value: { embedded: 2, errors: 0, stopped: "limit" },
+  });
+  expect(submissions.flat()).toHaveLength(4);
+  // The second page was never submitted; it stays pending.
+  expect(countVariantBacklog(deps)).toBe(2);
+});

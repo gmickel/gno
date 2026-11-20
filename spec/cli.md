@@ -1143,8 +1143,11 @@ gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-
 
 - `--max-chunks <n>` and `--max-seconds <n>` (positive integers) stop the run
   after the batch that reaches either limit. Chunks count every chunk the run
-  attempted, embedded or failed; seconds run from the start of embedding.
-  Batches are never split, so a run can go past the limit by up to one batch.
+  submitted to the embedding provider, embedded or failed, including
+  resubmissions: a retry after a model reset and the smaller requests of
+  adaptive recovery (a failed batch retried in halves or one chunk at a time).
+  Seconds run from the start of embedding. Batches are never split, so a run
+  can go past the limit by the submissions of one batch and its recovery.
 - A stopped run exits 0, also when some chunks were deferred by SQLite
   contention (the receipt still reports `contentionErrors`). It keeps every
   committed batch and releases the write lease. It skips the final
@@ -1184,6 +1187,9 @@ gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-
   "stopped": "limit"
 }
 ```
+
+Schema: [`embed-receipt@1.0`](./output-schemas/embed-receipt.schema.json)
+(a failed run prints the error envelope instead).
 
 `remaining` and `stopped` appear on runs that embed (not `--dry-run`);
 `stopped` only when a limit ended the run with work pending. `incomplete: true`

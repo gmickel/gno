@@ -56,7 +56,14 @@ export async function embedVariantBacklog(
   const total = { embedded: 0, errors: 0, contentionErrors: 0 };
   const limits = deps.limits;
   const startedAt = performance.now();
+  // Chunks charged against --max-chunks: every text submitted to the
+  // provider (adaptive recovery resubmissions included), and at least each
+  // owner of every page or retry batch the run attempted.
   let attempted = 0;
+  let submitted = 0;
+  const onSubmit = (texts: number): void => {
+    submitted += texts;
+  };
   let identityLost = false;
   // Bounded runs resume after the previous slice and wrap to the start, so a
   // chunk that keeps failing stays pending without blocking later chunks.
@@ -178,15 +185,21 @@ export async function embedVariantBacklog(
           identityStillCurrent,
           force: deps.force,
           acquireWriteTurn: deps.acquireWriteTurn,
+          onSubmit,
         });
+      const pageSubmittedBefore = submitted;
       let result = background
         ? await withInferencePage(embedPage)
         : await embedPage();
+      const pageCharge = Math.max(
+        owners.length,
+        submitted - pageSubmittedBefore
+      );
       if (!result) {
         // Past its deadline: this page stays pending for the next pass.
         total.errors += owners.length;
         deps.onProgress?.(total.embedded, total.errors);
-        attempted += owners.length;
+        attempted += pageCharge;
         const verdict = await stopAtLimit();
         if (verdict === "limit") return await stop();
         if (verdict === "incomplete") {
@@ -214,19 +227,21 @@ export async function embedVariantBacklog(
       total.errors += result.errors;
       total.contentionErrors += result.contentionErrors;
       if (background) total.errors += result.retryOwners.length;
-      attempted += owners.length;
+      attempted += pageCharge;
       // A retry counts toward the limits; once they are reached, failed
       // owners stay pending for the next run instead of a further batch.
       if (!background && result.retryOwners.length && !limitReached()) {
-        attempted += result.retryOwners.length;
         const retrying = result.retryOwners.length;
+        const retrySubmittedBefore = submitted;
         result = await embedVariantBatch({
           store,
           embedPort: deps.embedPort,
           owners: result.retryOwners,
           identityStillCurrent,
           force: deps.force,
+          onSubmit,
         });
+        attempted += Math.max(retrying, submitted - retrySubmittedBefore);
         total.embedded += result.embedded;
         total.errors += result.errors + result.retryOwners.length;
         total.contentionErrors += result.contentionErrors;

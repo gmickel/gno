@@ -34,6 +34,8 @@ export async function embedVariantBatch(params: {
   force?: boolean;
   /** Gate held only around the checkpoint write, never around inference. */
   acquireWriteTurn?: AcquireWriteTurn;
+  /** Called with the text count of each provider request (see `embedTextsWithRecovery`). */
+  onSubmit?: (texts: number) => void;
 }): Promise<{
   embedded: number;
   errors: number;
@@ -61,7 +63,9 @@ export async function embedVariantBatch(params: {
     else inputs.set(owner.inputHash, owner.formattedInput);
   }
   const keys = [...inputs.keys()];
-  const result = await embedTextsWithRecovery(embedPort, [...inputs.values()]);
+  const result = await embedTextsWithRecovery(embedPort, [...inputs.values()], {
+    onSubmit: params.onSubmit,
+  });
   if (!identityStillCurrent()) return empty;
   const current = owners.filter((owner) => isCurrent(store, owner));
   const vectors = new Map<string, Float32Array>();

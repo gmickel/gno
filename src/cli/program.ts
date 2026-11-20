@@ -3686,7 +3686,7 @@ function wireManagementCommands(program: Command): void {
       .option("--dry-run", "show what would be done")
       .option(
         "--max-chunks <num>",
-        "stop after the batch that reaches this many chunks"
+        "stop after the batch that reaches this many chunks sent to the model (retries count)"
       )
       .option(
         "--max-seconds <num>",

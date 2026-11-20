@@ -11,15 +11,18 @@
 
 import { Database } from "bun:sqlite";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-// Bun has no temporary-directory creation API.
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+// Bun has no temporary-directory creation API (structure ops only; file
+// contents are written with Bun.write).
+import { mkdtemp } from "node:fs/promises";
+// Bun has no OS temp-directory lookup.
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+// Bun has no path utilities.
+import { join, resolve } from "node:path";
 
 import { safeRm } from "../helpers/cleanup";
+import { assertValid, loadSchema } from "../spec/schemas/validator";
 
-const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const PROJECT_ROOT = resolve(import.meta.dir, "../..");
 const DOC_COUNT = 20;
 const DIMENSIONS = 4;
 
@@ -30,8 +33,14 @@ interface FakeEmbedServer {
   stop: () => void;
 }
 
-/** Fails every request that contains the text "poison". */
-function startFakeEmbedServer(delayMs = 0): FakeEmbedServer {
+/**
+ * Fails every request that contains the text "poison"; with `failBatches`,
+ * also every request that submits more than one text.
+ */
+function startFakeEmbedServer(
+  delayMs = 0,
+  failBatches = false
+): FakeEmbedServer {
   const texts: string[] = [];
   let poisonRequests = 0;
   const server = Bun.serve({
@@ -45,6 +54,8 @@ function startFakeEmbedServer(delayMs = 0): FakeEmbedServer {
         poisonRequests += 1;
         return new Response("injected failure", { status: 500 });
       }
+      if (failBatches && inputs.length > 1)
+        return new Response("injected batch failure", { status: 500 });
       texts.push(...inputs);
       return Response.json({
         object: "list",
@@ -72,10 +83,10 @@ function startFakeEmbedServer(delayMs = 0): FakeEmbedServer {
 async function writeHome(port: number, poison = 0) {
   const home = await mkdtemp(join(tmpdir(), "gno-embed-bounded-"));
   const docs = join(home, "docs");
-  await mkdir(docs, { recursive: true });
+  // Bun.write creates the missing parent directories.
   for (let i = 1; i <= DOC_COUNT; i += 1) {
     const body = i <= poison ? "poison" : `paragraph about bounded topic ${i}`;
-    await writeFile(
+    await Bun.write(
       join(docs, `d${String(i).padStart(2, "0")}.md`),
       `# Doc ${i}\n\n${body}\n`
     );
@@ -104,8 +115,7 @@ async function writeHome(port: number, poison = 0) {
       ],
     },
   };
-  await mkdir(join(home, "config"), { recursive: true });
-  await writeFile(join(home, "config", "index.yml"), JSON.stringify(config));
+  await Bun.write(join(home, "config", "index.yml"), JSON.stringify(config));
   const env = {
     ...(process.env as Record<string, string>),
     GNO_CONFIG_DIR: join(home, "config"),
@@ -151,10 +161,12 @@ function embedStageState(home: string): string | undefined {
 
 describe("gno embed bounded runs", () => {
   let server: FakeEmbedServer;
+  let receiptSchema: object;
   const homes: string[] = [];
 
-  beforeAll(() => {
+  beforeAll(async () => {
     server = startFakeEmbedServer();
+    receiptSchema = await loadSchema("embed-receipt");
   });
 
   afterAll(async () => {
@@ -184,6 +196,21 @@ describe("gno embed bounded runs", () => {
       stopped: "limit",
       remaining: DOC_COUNT - 8,
     });
+    expect(assertValid(receipt, receiptSchema)).toBe(true);
+
+    const dry = await runGno(
+      env,
+      "embed",
+      "--dry-run",
+      "--max-chunks",
+      "5",
+      "--json"
+    );
+    expect(dry.code).toBe(0);
+    const dryReceipt = JSON.parse(dry.stdout);
+    expect(dryReceipt).toMatchObject({ embedded: DOC_COUNT - 8 });
+    expect(dryReceipt).not.toHaveProperty("remaining");
+    expect(assertValid(dryReceipt, receiptSchema)).toBe(true);
     // Finished, not left `running` (which the next run would report as a crash).
     expect(embedStageState(home)).toBe("completed");
 
@@ -194,6 +221,7 @@ describe("gno embed bounded runs", () => {
     const done = JSON.parse(second.stdout);
     expect(done).toMatchObject({ embedded: DOC_COUNT - 8, remaining: 0 });
     expect(done).not.toHaveProperty("stopped");
+    expect(assertValid(done, receiptSchema)).toBe(true);
     expect(embedStageState(home)).toBe("completed");
 
     const human = await runGno(env, "embed", "--max-chunks", "5");
@@ -364,6 +392,43 @@ describe("gno embed bounded runs", () => {
     expect(done.code).toBe(0);
     expect(JSON.parse(done.stdout).remaining).toBe(0);
     expect(meta()).toBeNull();
+  }, 120_000);
+
+  test("recovery resubmissions count toward --max-chunks", async () => {
+    // Pairs fail; single chunks succeed. The first two-chunk batch costs four
+    // submissions (the pair, then each chunk alone), which reaches a limit of
+    // three, so the next batch stays pending.
+    const pairsFail = startFakeEmbedServer(0, true);
+    try {
+      const { home, env } = await writeHome(pairsFail.port);
+      homes.push(home);
+      expect((await runGno(env, "update")).code).toBe(0);
+      const run = await runGno(
+        env,
+        "embed",
+        "--max-chunks",
+        "3",
+        "--batch-size",
+        "2",
+        "--json"
+      );
+      expect(run.code).toBe(0);
+      const receipt = JSON.parse(run.stdout);
+      expect(receipt).toMatchObject({
+        embedded: 2,
+        errors: 0,
+        stopped: "limit",
+        remaining: DOC_COUNT - 2,
+      });
+      expect(assertValid(receipt, receiptSchema)).toBe(true);
+      // Only the first batch's two chunks were embedded (one at a time);
+      // the other texts are the port's dimension probes.
+      expect(
+        pairsFail.texts().filter((text) => text.includes("bounded topic"))
+      ).toHaveLength(2);
+    } finally {
+      pairsFail.stop();
+    }
   }, 120_000);
 
   test("--force with a limit is a validation error", async () => {
