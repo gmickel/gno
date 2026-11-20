@@ -64,13 +64,12 @@ function startFakeEmbedServer(delayMs = 0): FakeEmbedServer {
   };
 }
 
-async function writeHome(port: number, poison = false) {
+async function writeHome(port: number, poison = 0) {
   const home = await mkdtemp(join(tmpdir(), "gno-embed-bounded-"));
   const docs = join(home, "docs");
   await mkdir(docs, { recursive: true });
   for (let i = 1; i <= DOC_COUNT; i += 1) {
-    const body =
-      poison && i === 1 ? "poison" : `paragraph about bounded topic ${i}`;
+    const body = i <= poison ? "poison" : `paragraph about bounded topic ${i}`;
     await writeFile(
       join(docs, `d${String(i).padStart(2, "0")}.md`),
       `# Doc ${i}\n\n${body}\n`
@@ -242,7 +241,7 @@ describe("gno embed bounded runs", () => {
   }, 120_000);
 
   test("a chunk that keeps failing does not block later chunks across bounded runs", async () => {
-    const { home, env } = await writeHome(server.port, true);
+    const { home, env } = await writeHome(server.port, 1);
     homes.push(home);
     expect((await runGno(env, "update")).code).toBe(0);
     const slice = () =>
@@ -258,7 +257,7 @@ describe("gno embed bounded runs", () => {
   }, 120_000);
 
   test("remaining counts the real backlog after an unbounded --force run that left work", async () => {
-    const { home, env } = await writeHome(server.port, true);
+    const { home, env } = await writeHome(server.port, 1);
     homes.push(home);
     expect((await runGno(env, "update")).code).toBe(0);
     const first = JSON.parse((await runGno(env, "embed", "--json")).stdout);
@@ -268,6 +267,25 @@ describe("gno embed bounded runs", () => {
     );
     expect(forced.errors).toBeGreaterThan(0);
     expect(forced.remaining).toBe(1);
+  }, 120_000);
+
+  test("retries that reach the limit leave the run stopped with failures pending", async () => {
+    const { home, env } = await writeHome(server.port, 2);
+    homes.push(home);
+    expect((await runGno(env, "update")).code).toBe(0);
+    const run = await runGno(
+      env,
+      "embed",
+      "--max-chunks",
+      "3",
+      "--batch-size",
+      "1",
+      "--json"
+    );
+    expect(run.code).toBe(0);
+    const receipt = JSON.parse(run.stdout);
+    expect(receipt.stopped).toBe("limit");
+    expect(receipt.remaining).toBe(DOC_COUNT - receipt.embedded);
   }, 120_000);
 
   test("--force with a limit is a validation error", async () => {

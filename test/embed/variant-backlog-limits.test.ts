@@ -316,3 +316,100 @@ test("a runtime change during the batch that reaches the limit is incomplete, no
   expect(value?.incomplete).toBe(true);
   expect(value?.stopped).toBeUndefined();
 });
+
+test("a port that drops its identity on failure still lets later chunks progress", async () => {
+  const { db, deps } = await limitsFixture(3);
+  db.run("UPDATE content_chunks SET text = 'poison' WHERE mirror_hash = 'm1'");
+  poisonPort(deps);
+  // Native-style: a failed request drops the cached identity until init().
+  let identity = true;
+  const batch = deps.embedPort.embedBatch.bind(deps.embedPort);
+  deps.embedPort.embedBatch = (async (texts: string[], options?: unknown) => {
+    const result = await batch(texts, options as never);
+    if (!result.ok) identity = false;
+    return result;
+  }) as never;
+  const single = deps.embedPort.embed.bind(deps.embedPort);
+  deps.embedPort.embed = (async (text: string, options?: unknown) => {
+    const result = await single(text, options as never);
+    if (!result.ok) identity = false;
+    return result;
+  }) as never;
+  deps.embedPort.init = (async () => {
+    identity = true;
+    return { ok: true };
+  }) as never;
+  const bounded = {
+    ...deps,
+    batchSize: 1,
+    limits: { maxChunks: 1 },
+    identityStillCurrent: () => identity,
+  };
+  const first = await embedBacklog(bounded);
+  expect(first).toMatchObject({ ok: true, value: { stopped: "limit" } });
+  expect(first.ok && first.value.incomplete).toBeFalsy();
+  expect(await embedBacklog(bounded)).toMatchObject({
+    ok: true,
+    value: { embedded: 1 },
+  });
+  expect(countVariantBacklog(deps)).toBe(2);
+});
+
+test("no retry batch starts once a limit is reached", async () => {
+  const { db, deps } = await limitsFixture(4);
+  db.run("UPDATE content_chunks SET text = 'poison' WHERE mirror_hash = 'm1'");
+  poisonPort(deps);
+  const poisonCalls = () =>
+    [
+      ...(deps.embedPort.embedBatch as ReturnType<typeof mock>).mock.calls.map(
+        (call) => call[0] as string[]
+      ),
+      ...(deps.embedPort.embed as ReturnType<typeof mock>).mock.calls.map(
+        (call) => [call[0] as string]
+      ),
+    ].filter((texts) => texts.some((text) => text.includes("poison"))).length;
+  const unbounded = await limitsFixture(4);
+  unbounded.db.run(
+    "UPDATE content_chunks SET text = 'poison' WHERE mirror_hash = 'm1'"
+  );
+  poisonPort(unbounded.deps);
+  await embedBacklog({ ...unbounded.deps, batchSize: 2 });
+  const unboundedPoison = [
+    ...(unbounded.deps.embedPort.embedBatch as ReturnType<typeof mock>).mock
+      .calls,
+    ...(unbounded.deps.embedPort.embed as ReturnType<typeof mock>).mock.calls,
+  ].filter((call) => JSON.stringify(call[0]).includes("poison")).length;
+
+  const result = await embedBacklog({
+    ...deps,
+    batchSize: 2,
+    limits: { maxChunks: 2 },
+  });
+  expect(result).toMatchObject({ ok: true, value: { stopped: "limit" } });
+  // Fewer attempts at the failing chunk than a pass that retries it.
+  expect(poisonCalls()).toBeLessThan(unboundedPoison);
+});
+
+test("the receipt and human output surface a runtime change", () => {
+  const result = {
+    success: true as const,
+    embedded: 0,
+    errors: 0,
+    contentionErrors: 0,
+    duration: 0.2,
+    model: "test-model",
+    searchAvailable: true,
+    errorSamples: [],
+    remaining: 6,
+    incomplete: true,
+  };
+  expect(JSON.parse(formatEmbed(result, { json: true }))).toMatchObject({
+    incomplete: true,
+    remaining: 6,
+  });
+  const human = formatEmbed(result, {});
+  expect(human).not.toContain("All up to date");
+  expect(human).toContain(
+    "Stopped early because the embedding runtime changed; 6 chunks remaining."
+  );
+});

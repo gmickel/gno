@@ -3740,7 +3740,9 @@ function wireManagementCommands(program: Command): void {
         throw new CliError("RUNTIME", result.error ?? "Embed failed");
       }
       process.stdout.write(`${formatEmbed(result, opts)}\n`);
-      if (result.contentionErrors > 0) {
+      // A run stopped by --max-chunks/--max-seconds exits 0 as requested;
+      // its receipt still reports contentionErrors.
+      if (result.contentionErrors > 0 && result.stopped !== "limit") {
         throw new CliError(
           "BUSY",
           "Some chunks were deferred by index contention",

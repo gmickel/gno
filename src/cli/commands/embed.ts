@@ -127,6 +127,8 @@ export type EmbedResult = (
       remaining?: number;
       /** Set when `--max-chunks`/`--max-seconds` ended the run with work pending. */
       stopped?: "limit";
+      /** The run ended early because the embedding runtime changed. */
+      incomplete?: boolean;
     }
   | { success: false; error: string; contention?: WriteLeaseContention }
 ) & {
@@ -426,19 +428,30 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
     }
   }
 
+  if (!stopped) {
+    await drainRetryQueue();
+    // The final drain can itself reach the limit with retries still queued.
+    if (
+      limitReached() &&
+      [...retryQueue.values()].some(
+        (entry) => entry.attempts < MAX_EMBED_CHUNK_ATTEMPTS
+      )
+    )
+      stopped = "limit";
+  }
+  if (stopped) {
+    // Queued retries stay pending for the next run instead of spending more
+    // than the limit; they are counted in `remaining`, not as failures.
+    // Retries that used every attempt remain failures.
+    for (const [key, entry] of retryQueue)
+      if (entry.attempts < MAX_EMBED_CHUNK_ATTEMPTS) retryQueue.delete(key);
+  }
+
   // Bounded runs continue after this slice next time; a finished traversal
   // leaves nothing to resume.
   if (stopped) writeResumeCursor(ctx.db, resumeKey, cursor);
   else if (readResumeCursor(ctx.db, resumeKey, isChunkCursor))
     writeResumeCursor(ctx.db, resumeKey, undefined);
-
-  if (stopped) {
-    // Queued retries stay pending for the next run instead of spending more
-    // than the limit; they are counted in `remaining`, not as failures.
-    retryQueue.clear();
-  } else {
-    await drainRetryQueue();
-  }
 
   if (retryQueue.size > 0) {
     errors += retryQueue.size;
@@ -743,9 +756,17 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
             processed.value.contentionErrors ||
             processed.value.deferred ||
             processed.value.incomplete;
-          const remaining = leftWork
-            ? countVariantBacklog({ ...prepared.value, force: false })
-            : 0;
+          // Under the CLI write lease nothing else changes the backlog, so a
+          // limit stop leaves the starting backlog minus what it embedded
+          // (failed owners stay pending) without another pass over the scope.
+          let remaining = 0;
+          if (stopped && !force)
+            remaining = Math.max(0, totalToEmbed - processed.value.embedded);
+          else if (leftWork)
+            remaining = countVariantBacklog({
+              ...prepared.value,
+              force: false,
+            });
           return {
             success: true,
             ...processed.value,
@@ -832,6 +853,10 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
         const legacyRemaining = async (): Promise<number> => {
           if (!result.stopped && !result.errors && !result.contentionErrors)
             return 0;
+          // Under the CLI write lease: the starting backlog minus what this
+          // run embedded (failed chunks stay pending).
+          if (result.stopped && !force)
+            return Math.max(0, totalToEmbed - result.embedded);
           // The real pending backlog, also after `--force`.
           const recount = await stats.countBacklog(
             modelUri,
@@ -846,6 +871,24 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           remaining: await legacyRemaining(),
           ...(result.stopped ? { stopped: result.stopped } : {}),
         };
+
+        // A bounded run that stopped at its limit does not start a
+        // model-wide vec index scan while holding the lease.
+        if (vectorIndex.vecDirty && result.stopped) {
+          return {
+            success: true,
+            embedded: result.embedded,
+            errors: result.errors,
+            contentionErrors: result.contentionErrors,
+            duration: result.duration,
+            model: modelUri,
+            searchAvailable: vectorIndex.searchAvailable,
+            errorSamples: result.errorSamples,
+            suggestion:
+              "Some vector index writes failed. Run `gno vec sync` (a bounded run does not sync the vector index).",
+            ...stoppedFields,
+          };
+        }
 
         // Sync vec index if any vec0 writes failed (matches embedBacklog behavior)
         if (vectorIndex.vecDirty) {
@@ -1044,6 +1087,7 @@ export function formatEmbed(
         syncError: result.syncError,
         remaining: result.remaining,
         stopped: result.stopped,
+        incomplete: result.incomplete || undefined,
       },
       null,
       2
@@ -1058,7 +1102,8 @@ export function formatEmbed(
     result.embedded === 0 &&
     result.errors === 0 &&
     result.contentionErrors === 0 &&
-    !result.stopped
+    !result.stopped &&
+    !result.incomplete
   ) {
     return "No chunks need embedding. All up to date.";
   }
@@ -1067,6 +1112,11 @@ export function formatEmbed(
   lines.push(
     `Embedded ${result.embedded.toLocaleString()} chunks in ${formatDuration(result.duration)}`
   );
+  if (result.incomplete) {
+    lines.push(
+      `Stopped early because the embedding runtime changed; ${(result.remaining ?? 0).toLocaleString()} chunks remaining. Run \`gno embed\` again to continue.`
+    );
+  }
   if (result.stopped === "limit") {
     lines.push(
       `Stopped at the run limit; ${(result.remaining ?? 0).toLocaleString()} chunks remaining. Run \`gno embed\` again to continue.`

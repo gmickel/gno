@@ -1145,11 +1145,13 @@ gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-
   after the batch that reaches either limit. Chunks count every chunk the run
   attempted, embedded or failed; seconds run from the start of embedding.
   Batches are never split, so a run can go past the limit by up to one batch.
-- A stopped run exits 0 (exit 4 still reports chunks deferred by SQLite
-  contention, as for any run), keeps every committed batch and releases the
-  write lease. It skips the final vector-index activation that only a complete pass
-  performs, and the index stage marker records the run as finished, not
-  interrupted. The next `gno embed` continues with the remaining chunks.
+- A stopped run exits 0, also when some chunks were deferred by SQLite
+  contention (the receipt still reports `contentionErrors`). It keeps every
+  committed batch and releases the write lease. It skips the final
+  vector-index activation that only a complete pass performs, does not start a
+  model-wide vector index sync, and the index stage marker records the run as
+  finished, not interrupted. The next `gno embed` continues with the remaining
+  chunks.
 - A limit reached on the batch that empties the backlog is a complete run.
 - A bounded run starts after the position where the previous bounded run for
   the same scope stopped, reaches the end of the backlog and then wraps to the
@@ -1183,8 +1185,9 @@ gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-
 ```
 
 `remaining` and `stopped` appear on runs that embed (not `--dry-run`);
-`stopped` only when a limit ended the run with work pending. `suggestion` and
-`syncError` appear when relevant.
+`stopped` only when a limit ended the run with work pending. `incomplete: true`
+appears when the run ended early because the embedding runtime changed.
+`suggestion` and `syncError` appear when relevant.
 
 **Exit Codes:**
 
@@ -1193,7 +1196,8 @@ gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-
   or a limit combined with `--force`)
 - 2: Runtime error (model, partition or index failure)
 - 4: Busy: the write lease is held, or some chunks were deferred by SQLite
-  contention (the receipt is still printed)
+  contention in a run that was not stopped by a limit (the receipt is still
+  printed)
 
 ---
 

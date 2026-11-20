@@ -67,22 +67,34 @@ export async function embedVariantBacklog(
       writeResumeCursor(db, resumeKey, cursor)
     );
   };
+  /**
+   * A failed request can drop the port's cached identity (a native worker is
+   * retired). Reload it once before treating the runtime as changed, so a
+   * chunk that keeps failing is a failure, not an identity change.
+   */
+  const identityCurrent = async (): Promise<boolean> => {
+    if (identityStillCurrent()) return true;
+    if (!background) await deps.embedPort.init();
+    return identityStillCurrent();
+  };
+  const limitReached = (): boolean =>
+    !!limits &&
+    ((limits.maxChunks !== undefined && attempted >= limits.maxChunks) ||
+      (limits.maxSeconds !== undefined &&
+        (performance.now() - startedAt) / 1000 >= limits.maxSeconds));
   /** True once a bound is reached while owners in scope are still pending. */
-  const stopAtLimit = (): boolean => {
-    if (!limits) return false;
+  const stopAtLimit = async (): Promise<boolean> => {
+    if (!limitReached()) return false;
     // A runtime change is an incomplete pass, never a limit stop.
-    if (!identityStillCurrent()) return false;
-    const chunksReached =
-      limits.maxChunks !== undefined && attempted >= limits.maxChunks;
-    const secondsReached =
-      limits.maxSeconds !== undefined &&
-      (performance.now() - startedAt) / 1000 >= limits.maxSeconds;
-    if (!chunksReached && !secondsReached) return false;
+    if (!(await identityCurrent())) return false;
     // A bound reached on the batch that empties the backlog is a finished
-    // pass. Failed owners still count as pending work.
-    return deps.force
-      ? variantBacklogPage(deps, store, 1, after).length > 0
-      : store.hasPending({ collection: deps.collection || undefined });
+    // pass. Owners after the cursor are the common case and cheap to find;
+    // otherwise the first pending owner from the start (including chunks
+    // that failed in this run, which stay pending).
+    return (
+      variantBacklogPage(deps, store, 1, after).length > 0 ||
+      variantBacklogPage(deps, store, 1).length > 0
+    );
   };
   const stop = async () => {
     await saveResume(after);
@@ -102,7 +114,7 @@ export async function embedVariantBacklog(
               "Embedding model reload exceeded its inference deadline"
           );
       }
-      if (!identityStillCurrent()) {
+      if (!(await identityCurrent())) {
         identityLost = true;
         break;
       }
@@ -140,7 +152,7 @@ export async function embedVariantBacklog(
         total.errors += owners.length;
         deps.onProgress?.(total.embedded, total.errors);
         attempted += owners.length;
-        if (stopAtLimit()) return await stop();
+        if (await stopAtLimit()) return await stop();
         await Bun.sleep(0);
         continue;
       }
@@ -149,7 +161,11 @@ export async function embedVariantBacklog(
       total.errors += result.errors;
       total.contentionErrors += result.contentionErrors;
       if (background) total.errors += result.retryOwners.length;
-      if (!background && result.retryOwners.length) {
+      attempted += owners.length;
+      // A retry counts toward the limits; once they are reached, failed
+      // owners stay pending for the next run instead of a further batch.
+      if (!background && result.retryOwners.length && !limitReached()) {
+        attempted += result.retryOwners.length;
         result = await embedVariantBatch({
           store,
           embedPort: deps.embedPort,
@@ -160,10 +176,12 @@ export async function embedVariantBacklog(
         total.embedded += result.embedded;
         total.errors += result.errors + result.retryOwners.length;
         total.contentionErrors += result.contentionErrors;
+      } else if (!background) {
+        // Failed in this run; left pending without a retry past the limit.
+        total.errors += result.retryOwners.length;
       }
       deps.onProgress?.(total.embedded, total.errors);
-      attempted += owners.length;
-      if (stopAtLimit()) return await stop();
+      if (await stopAtLimit()) return await stop();
       if (background) await Bun.sleep(0);
     }
     // A traversal that reached its end leaves nothing to resume.
