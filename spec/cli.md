@@ -1150,8 +1150,8 @@ gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-
   first batch. Verification is not interrupted: it submits at most one
   sample of up to eight chunks per stored partition of the model, once per
   runtime (the verdict is cached), so it can take a run past the limit by
-  those samples. When verification alone reaches the limit, the run stops
-  before its first batch, and the next run embeds.
+  those samples. Every run still embeds at least one batch, so a run whose
+  verification reached the limit embeds one batch and stops.
   Seconds run from the start of embedding. Batches are never split, so a run
   can go past the limit by the submissions of one batch and its recovery.
 - A stopped run exits 0, also when some chunks were deferred by SQLite
@@ -1160,8 +1160,9 @@ gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-
   vector-index activation that only a complete pass performs, does not start a
   model-wide vector index sync (a later run that is not stopped performs it),
   and the index stage marker records the run as
-  finished, not interrupted. The next `gno embed` continues with the remaining
-  chunks.
+  finished, not interrupted (best effort: if the database stays busy past its
+  timeout, the receipt is still printed and the next run only shows a resume
+  note). The next `gno embed` continues with the remaining chunks.
 - A limit reached on the batch that empties the backlog is a complete run.
 - A bounded run starts after the position where the previous bounded run for
   the same scope stopped, reaches the end of the backlog and then wraps to the

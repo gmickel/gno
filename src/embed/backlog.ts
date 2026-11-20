@@ -82,8 +82,8 @@ export interface EmbedRunLimits {
   pendingAtStart?: number;
   /**
    * Chunks already sent to the provider for this run before the embedding
-   * loop (runtime verification). They count toward `maxChunks`; when they
-   * reach it, the run stops before its first batch.
+   * loop (runtime verification). They count toward `maxChunks`; the run
+   * still embeds its first batch, so it always progresses.
    */
   spent?: number;
 }

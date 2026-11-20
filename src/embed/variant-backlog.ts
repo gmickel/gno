@@ -173,10 +173,10 @@ export async function embedVariantBacklog(
       }
       // Time can run out while the page is fetched: stop before inference,
       // keeping this page eligible for the next run (the cursor stays put).
-      // Every run processes at least one page, even one that submits nothing,
-      // unless runtime verification already spent the chunk budget.
-      if ((pagesStarted > 0 || attempted > 0) && limitReached())
-        return await stop();
+      // Every run processes at least one page, even one that submits nothing
+      // or follows a runtime verification that spent the budget, so bounded
+      // runs always progress.
+      if (pagesStarted > 0 && limitReached()) return await stop();
       pagesStarted += 1;
       const last = pending.at(-1)!;
       after = { documentId: last.documentId, seq: last.seq };

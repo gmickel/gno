@@ -411,9 +411,10 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
 
     // Time can run out while the batch is fetched: stop before inference,
     // keeping this batch eligible for the next run (the cursor stays put).
-    // Every run processes at least one batch, even one that submits nothing,
-    // unless runtime verification already spent the chunk budget.
-    if ((batchesStarted > 0 || attempted > 0) && limitReached()) {
+    // Every run processes at least one batch, even one that submits nothing
+    // or follows a runtime verification that spent the budget, so bounded
+    // runs always progress.
+    if (batchesStarted > 0 && limitReached()) {
       stopped = "limit";
       break;
     }

@@ -678,25 +678,26 @@ test("a first page that submits nothing still stops before the next page once ti
   expect(countVariantBacklog(deps)).toBe(2);
 });
 
-test("chunks spent by runtime verification count; a spent budget stops before the first page", async () => {
+test("chunks spent by runtime verification count; a spent budget still embeds one page", async () => {
   const { deps, embedBatch } = await limitsFixture(4);
   const result = await embedBacklog({
     ...deps,
     batchSize: 1,
     limits: { maxChunks: 1, spent: 8, pendingAtStart: 4 },
   });
+  // One page always runs, so progress never depends on a cached verdict.
   expect(result).toEqual({
     ok: true,
-    value: { embedded: 0, errors: 0, contentionErrors: 0, stopped: "limit" },
+    value: { embedded: 1, errors: 0, contentionErrors: 0, stopped: "limit" },
   });
-  expect(embedBatch).not.toHaveBeenCalled();
-  expect(countVariantBacklog(deps)).toBe(4);
+  expect(embedBatch).toHaveBeenCalledTimes(1);
+  expect(countVariantBacklog(deps)).toBe(3);
 
   // Spent below the limit leaves the rest of the budget to the loop.
   const next = await embedBacklog({
     ...deps,
     batchSize: 1,
-    limits: { maxChunks: 3, spent: 1, pendingAtStart: 4 },
+    limits: { maxChunks: 3, spent: 1, pendingAtStart: 3 },
   });
   expect(next).toMatchObject({
     ok: true,
