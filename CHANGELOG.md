@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `gno embed --collection <name>` (and its `--dry-run`) now costs time in proportion to that collection instead of the whole index. Counting and paging the backlog used to read, format and hash every active chunk in every collection and drop the other collections afterwards; on an index of 1.48M chunks a dry run for a small collection took over 11 minutes. The collection is now part of the query, chunks without a current vector are counted as pending without formatting or hashing them, and the end-of-pass coverage check stops at the first unembedded chunk. Backlog counts and embedded chunks are unchanged (#348).
+
 ## [2.14.0] - 2026-10-23
 
 ### Added

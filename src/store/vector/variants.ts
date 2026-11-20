@@ -303,22 +303,115 @@ export class VectorVariantStore {
     });
   }
 
+  /**
+   * Active chunk rows joined to this partition's binding, optionally limited
+   * to one collection. The collection predicate is added only when requested:
+   * activation and unscoped passes need the whole index, and some callers'
+   * schemas have no collection column.
+   */
+  private candidates(
+    collection: string | undefined,
+    columns: string,
+    where = ""
+  ): { sql: string; params: (string | number)[] } {
+    return {
+      sql: `SELECT ${columns}
+      FROM documents d JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
+      LEFT JOIN vector_owners o ON o.document_id = d.id AND o.seq = c.seq
+        AND o.partition_id = ?
+      LEFT JOIN vector_variants v ON v.variant_id = o.variant_id
+        AND v.partition_id = o.partition_id
+      WHERE d.active = 1${collection ? " AND d.collection = ?" : ""}${where}`,
+      params: collection ? [this.partitionId, collection] : [this.partitionId],
+    };
+  }
+
+  /** Rows with no current binding: pending without formatting or hashing. */
+  private static readonly UNBOUND =
+    " AND (v.input_hash IS NULL OR o.mirror_hash IS NOT d.mirror_hash)";
+  /** Rows whose binding matches the mirror: only the input hash can differ. */
+  private static readonly BOUND =
+    " AND v.input_hash IS NOT NULL AND o.mirror_hash IS d.mirror_hash";
+
+  /** Bound rows whose current input no longer matches their variant (title or format change). */
+  private *staleBound(collection: string | undefined): Generator<true> {
+    const { sql, params } = this.candidates(
+      collection,
+      `d.id AS documentId, d.mirror_hash AS mirrorHash, c.seq, c.text, d.title,
+        v.input_hash AS boundHash`,
+      VectorVariantStore.BOUND
+    );
+    const statement = this.db.prepare<
+      OwnerRow & { boundHash: string },
+      (string | number)[]
+    >(sql);
+    try {
+      for (const row of statement.iterate(...params))
+        if (this.input(row).inputHash !== row.boundHash) yield true;
+    } finally {
+      // Early exit must not leave a cached Bun statement mid-iteration.
+      statement.finalize();
+    }
+  }
+
+  /**
+   * Number of owners pending() would return across a complete pass. Unbound
+   * rows are counted in SQL; only bound rows are formatted and hashed.
+   */
+  countPending(options: { collection?: string } = {}): number {
+    const collection = options.collection || undefined;
+    const { sql, params } = this.candidates(
+      collection,
+      "count(*) AS n",
+      VectorVariantStore.UNBOUND
+    );
+    let count = this.db
+      .query<{ n: number }, (string | number)[]>(sql)
+      .get(...params)!.n;
+    for (const _ of this.staleBound(collection)) count += 1;
+    return count;
+  }
+
+  /** Same answer as `pending({ limit: 1 }).length > 0`, unbound rows first. */
+  hasPending(options: { collection?: string } = {}): boolean {
+    const collection = options.collection || undefined;
+    const { sql, params } = this.candidates(
+      collection,
+      "1 AS found",
+      `${VectorVariantStore.UNBOUND} LIMIT 1`
+    );
+    if (
+      this.db.query<{ found: number }, (string | number)[]>(sql).get(...params)
+    )
+      return true;
+    for (const _ of this.staleBound(collection)) return true;
+    return false;
+  }
+
   /** Resumable owner cursor; repeat from start after epoch changes or a completed pass. */
   pending(
     options: {
       limit?: number;
       after?: { documentId: number; seq: number };
+      /** Only owners of active documents in this collection. */
+      collection?: string;
     } = {}
   ): VectorOwnerInput[] {
     const limit = options.limit ?? 1000;
     if (!Number.isSafeInteger(limit) || limit < 1)
       throw new Error("Invalid pending limit");
-    const statement = this.db.prepare<OwnerRow, [number, number, number]>(`
-      SELECT d.id AS documentId, d.mirror_hash AS mirrorHash, c.seq, c.text, d.title
-      FROM documents d JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
-      WHERE d.active = 1 AND (d.id > ? OR (d.id = ? AND c.seq > ?)) ORDER BY d.id, c.seq
-    `);
+    const { sql, params } = this.candidates(
+      options.collection || undefined,
+      `d.id AS documentId, d.mirror_hash AS mirrorHash, c.seq, c.text, d.title,
+        v.input_hash AS boundHash, o.mirror_hash AS boundMirror`,
+      " AND (d.id > ? OR (d.id = ? AND c.seq > ?)) ORDER BY d.id, c.seq"
+    );
+    const statement = this.db.prepare<
+      OwnerRow & { boundHash: string | null; boundMirror: string | null },
+      (string | number)[]
+    >(sql);
     const rows = statement.iterate(
+      ...params,
       options.after?.documentId ?? -1,
       options.after?.documentId ?? -1,
       options.after?.seq ?? -1
@@ -327,19 +420,9 @@ export class VectorVariantStore {
     try {
       for (const row of rows) {
         const input = this.input(row);
-        const binding = this.db
-          .query<
-            { input_hash: string; mirror_hash: string },
-            [number, number, string]
-          >(`
-        SELECT v.input_hash, o.mirror_hash FROM vector_owners o
-        JOIN vector_variants v ON v.variant_id = o.variant_id AND v.partition_id = o.partition_id
-        WHERE o.document_id = ? AND o.seq = ? AND o.partition_id = ?
-      `)
-          .get(input.documentId, input.seq, this.partitionId);
         if (
-          binding?.input_hash !== input.inputHash ||
-          binding.mirror_hash !== input.mirrorHash
+          row.boundHash !== input.inputHash ||
+          row.boundMirror !== input.mirrorHash
         )
           pending.push(input);
         if (pending.length === limit) break;
@@ -357,8 +440,7 @@ export class VectorVariantStore {
       .transaction(() => {
         if (this.epoch() !== expectedEpoch)
           throw new Error("Variant mutation epoch changed");
-        if (this.pending({ limit: 1 }).length)
-          throw new Error("Variant coverage incomplete");
+        if (this.hasPending()) throw new Error("Variant coverage incomplete");
         if (!this.searchAvailable) throw new Error("Variant index unavailable");
         const mismatch = this.db
           .query<{ count: number }, [string]>(`

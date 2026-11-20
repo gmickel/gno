@@ -58,16 +58,8 @@ export async function embedVariantBacklog(
       if (!pending.length) break;
       const last = pending.at(-1)!;
       after = { documentId: last.documentId, seq: last.seq };
-      const owners = deps.collection
-        ? pending.filter(
-            (owner) =>
-              !!db!
-                .query(
-                  "SELECT 1 FROM documents WHERE id = ? AND collection = ? AND active = 1"
-                )
-                .get(owner.documentId, deps.collection!)
-          )
-        : pending;
+      // Pages are already limited to deps.collection in SQL.
+      const owners = pending;
       const embedPage = () =>
         embedVariantBatch({
           store,
@@ -110,7 +102,7 @@ export async function embedVariantBacklog(
     assertInferenceActive();
     // Capture the epoch before checking completeness; activate rechecks under write lock.
     const epoch = store.epoch();
-    if (identityStillCurrent() && !store.pending({ limit: 1 }).length) {
+    if (identityStillCurrent() && !store.hasPending()) {
       const turn = await inWriteTurn(deps.acquireWriteTurn, async () => {
         try {
           if (!store.isActive()) store.syncIndex();
