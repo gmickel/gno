@@ -442,16 +442,24 @@ test("resumed pages seek within the cursor document and across documents", async
   } finally {
     spy.mockRestore();
   }
-  const within = traced.find((text) => text.includes("d.id = ? AND c.seq > ?"));
-  const later = traced.find((text) => text.includes("d.id > ?"));
+  const owner = [
+    store.partitionId,
+    store.partitionId,
+    store.partitionId,
+    "small",
+  ];
+  const within = traced.find((text) =>
+    text.includes("documentId = ? AND seq > ?")
+  );
+  const later = traced.find((text) => text.includes("documentId > ?"));
   expect(within).toBeDefined();
   expect(later).toBeDefined();
   // The cursor document's chunks are a range on (mirror_hash, seq), so a
   // large document is not reread from its first chunk on every page.
-  expect(plan(within!, store.partitionId, "small", 105, 0)).toMatch(
+  expect(plan(within!, ...owner, 105, 0)).toMatch(
     /content_chunks.*\(mirror_hash=\? AND seq>\?\)/
   );
-  expect(plan(later!, store.partitionId, "small", 105)).toContain(
+  expect(plan(later!, ...owner, 105)).toContain(
     "idx_documents_collection (collection=? AND rowid>?)"
   );
 });
@@ -509,7 +517,7 @@ test.each([false, true])(
     const prepare = db.prepare.bind(db);
     let committed = false;
     const spy = spyOn(db, "prepare").mockImplementation(((sql: string) => {
-      if (!committed && sql.includes("d.id > ?")) {
+      if (!committed && sql.includes("documentId > ?")) {
         committed = true;
         // One atomic write: the cursor document gains a chunk and every
         // later document in the collection is deactivated.
@@ -536,14 +544,15 @@ test.each([false, true])(
   }
 );
 
-test("scoped counts read the collection index and owner key even with stale statistics", async () => {
+test("scoped reads look owners up by key even with stale statistics", async () => {
   const { db, store, deps } = await scopeFixture();
   // Skewed, with the production documents(mirror_hash) index, and statistics
   // gathered while every document was in one collection (the small collection
   // was filled afterwards): without a hint the planner scans documents or
   // walks content_chunks instead of using the collection index. Statistics
-  // gathered with one owner binding make it scan vector_owners per chunk,
-  // which walks every other collection's bindings once the table fills.
+  // gathered with one owner binding, before 4,000 bindings in the other
+  // collection were added, made a joined vector_owners a scan or a Bloom
+  // filter built over every binding for each scoped read.
   db.exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 4000)
     INSERT INTO documents SELECT 10000 + i, 'skew-' || i, 'Skew', 1, 'big' FROM n;
     WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 4000)
@@ -555,26 +564,51 @@ test("scoped counts read the collection index and owner key even with stale stat
     ANALYZE;
     INSERT OR IGNORE INTO vector_owners SELECT * FROM temp.kept_owners;
     UPDATE documents SET collection = 'small' WHERE id IN (101, 103, 105, 107, 109, 111);`);
+  const { variant_id } = db
+    .query<{ variant_id: number }, [string]>(
+      "SELECT variant_id FROM vector_variants WHERE partition_id = ? LIMIT 1"
+    )
+    .get(store.partitionId)!;
+  db.run(
+    `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 4000)
+    INSERT INTO vector_owners(document_id, mirror_hash, seq, partition_id, variant_id)
+    SELECT 10000 + i, 'skew-' || i, 0, ?, ? FROM n`,
+    [store.partitionId, variant_id]
+  );
+  const before = countVariantBacklog({ ...deps, collection: "small" });
   const traced: string[] = [];
   const query = db.query.bind(db);
-  const spy = spyOn(db, "query").mockImplementation(((sql: string) => {
-    traced.push(sql);
-    return query(sql);
-  }) as typeof db.query);
+  const prepare = db.prepare.bind(db);
+  const spies = [
+    spyOn(db, "query").mockImplementation(((sql: string) => {
+      traced.push(sql);
+      return query(sql);
+    }) as typeof db.query),
+    spyOn(db, "prepare").mockImplementation(((sql: string) => {
+      traced.push(sql);
+      return prepare(sql);
+    }) as typeof db.prepare),
+  ];
   try {
-    countVariantBacklog({ ...deps, collection: "small" });
+    expect(countVariantBacklog({ ...deps, collection: "small" })).toBe(before);
     countVariantBacklog({ ...deps, collection: "small", force: true });
+    store.pending({ limit: 1000, collection: "small" });
   } finally {
-    spy.mockRestore();
+    for (const spy of spies) spy.mockRestore();
   }
-  const counts = traced.filter(
-    (sql) => sql.includes("count(*)") && sql.includes("d.collection = ?")
-  );
-  expect(counts.length).toBe(2);
-  for (const sql of counts) {
-    const params = sql.includes("o.partition_id")
-      ? [store.partitionId, "small"]
-      : ["small"];
+  const scoped = [
+    ...new Set(traced.filter((sql) => sql.includes("d.collection = ?"))),
+  ];
+  // Unbound count, stale-bound walk, forced count and page.
+  expect(scoped.length).toBe(4);
+  for (const sql of scoped) {
+    // Partition ids first, then the collection; these reads have no cursor.
+    const params = [
+      ...Array<string>((sql.match(/\?/g)?.length ?? 1) - 1).fill(
+        store.partitionId
+      ),
+      "small",
+    ];
     const steps = db
       .query<{ detail: string }, string[]>(`EXPLAIN QUERY PLAN ${sql}`)
       .all(...params)
@@ -583,13 +617,22 @@ test("scoped counts read the collection index and owner key even with stale stat
     expect(steps[0]).toMatch(
       /^SEARCH d USING (COVERING )?INDEX idx_documents_collection/
     );
-    // No table is scanned; each chunk's owner is one key lookup.
-    expect(steps.filter((step) => step.startsWith("SCAN"))).toEqual([]);
-    if (sql.includes("o.partition_id"))
+    // No table is scanned and no Bloom filter is built over a whole table.
+    expect(steps.filter((step) => /^SCAN|BLOOM FILTER/.test(step))).toEqual([]);
+    if (sql.includes("vector_owners"))
       expect(steps).toContainEqual(
         expect.stringMatching(
           /^SEARCH o USING INDEX \S+ \(document_id=\? AND seq=\? AND partition_id=\?\)/
         )
       );
+    // The same in the compiled program, independent of the plan wording: no
+    // loop from the start of a table (Rewind) and no Bloom filter build.
+    const opcodes = db
+      .query<{ opcode: string }, string[]>(`EXPLAIN ${sql}`)
+      .all(...params)
+      .map((row) => row.opcode);
+    expect(
+      opcodes.filter((op) => op === "Rewind" || op === "FilterAdd")
+    ).toEqual([]);
   }
 });

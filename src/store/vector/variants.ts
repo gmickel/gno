@@ -26,21 +26,6 @@ export function collectionScanHint(
     : "";
 }
 
-/**
- * Index hint for the per-chunk owner lookup: the `vector_owners` primary key
- * `(document_id, seq, partition_id)`. Statistics gathered while the table was
- * nearly empty make SQLite scan it for every chunk, which walks every other
- * collection's bindings once the table fills. Empty if the key has no index.
- */
-function ownerKeyHint(db: Database): string {
-  const key = db
-    .query<{ name: string }, []>(
-      "SELECT name FROM pragma_index_list('vector_owners') WHERE origin = 'pk'"
-    )
-    .get();
-  return key ? ` INDEXED BY "${key.name.replaceAll('"', '""')}"` : "";
-}
-
 export function embeddingInputHash(input: string): string {
   return new Bun.CryptoHasher("sha256").update(input).digest("hex");
 }
@@ -342,46 +327,60 @@ export class VectorVariantStore {
   }
 
   /**
-   * Active chunk rows joined to this partition's binding, optionally limited
-   * to one collection. The collection predicate is added only when requested:
-   * activation and unscoped passes need the whole index, and some callers'
-   * schemas have no collection column.
+   * Active chunk rows with this partition's binding, optionally limited to
+   * one collection, as columns `documentId, mirrorHash, title, seq, text,
+   * boundMirror, boundHash` that `columns` and `where` refer to. The
+   * collection predicate is added only when requested: activation and
+   * unscoped passes need the whole index, and some callers' schemas have no
+   * collection column.
    */
   private candidates(
     collection: string | undefined,
     columns: string,
     where = ""
   ): { sql: string; params: (string | number)[] } {
+    const owner = `FROM vector_owners o
+          WHERE o.document_id = d.id AND o.seq = c.seq AND o.partition_id = ?`;
     return {
-      // CROSS JOIN keeps documents as the outer loop and the index hints
-      // make a scoped scan start from the collection index and look each
-      // chunk's owner up by its key, even when statistics favour walking
-      // content_chunks, scanning documents or scanning vector_owners.
-      sql: `SELECT ${columns}
-      FROM documents d${collectionScanHint(this.db, collection)}
-      CROSS JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
-      LEFT JOIN vector_owners o${ownerKeyHint(this.db)} ON o.document_id = d.id AND o.seq = c.seq
-        AND o.partition_id = ?
-      LEFT JOIN vector_variants v ON v.variant_id = o.variant_id
-        AND v.partition_id = o.partition_id
-      WHERE d.active = 1${collection ? " AND d.collection = ?" : ""}${where}`,
-      params: collection ? [this.partitionId, collection] : [this.partitionId],
+      // CROSS JOIN keeps documents as the outer loop and the index hint
+      // makes a scoped scan start from the collection index, even when
+      // statistics favour walking content_chunks or scanning documents.
+      // Each binding is a correlated subquery on the full owner key, so it is
+      // always one primary-key lookup per chunk. As a LEFT JOIN, statistics
+      // gathered while vector_owners was nearly empty made SQLite scan it, or
+      // build a Bloom filter over every owner, for a small collection.
+      sql: `SELECT ${columns} FROM (
+        SELECT d.id AS documentId, d.mirror_hash AS mirrorHash, d.title AS title,
+          c.seq AS seq, c.text AS text,
+          (SELECT o.mirror_hash ${owner}) AS boundMirror,
+          (SELECT v.input_hash FROM vector_variants v
+            WHERE v.partition_id = ? AND v.variant_id = (SELECT o.variant_id ${owner})
+          ) AS boundHash
+        FROM documents d${collectionScanHint(this.db, collection)}
+        CROSS JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
+        WHERE d.active = 1${collection ? " AND d.collection = ?" : ""}
+      ) WHERE 1${where}`,
+      params: [
+        this.partitionId,
+        this.partitionId,
+        this.partitionId,
+        ...(collection ? [collection] : []),
+      ],
     };
   }
 
   /** Rows with no current binding: pending without formatting or hashing. */
   private static readonly UNBOUND =
-    " AND (v.input_hash IS NULL OR o.mirror_hash IS NOT d.mirror_hash)";
+    " AND (boundHash IS NULL OR boundMirror IS NOT mirrorHash)";
   /** Rows whose binding matches the mirror: only the input hash can differ. */
   private static readonly BOUND =
-    " AND v.input_hash IS NOT NULL AND o.mirror_hash IS d.mirror_hash";
+    " AND boundHash IS NOT NULL AND boundMirror IS mirrorHash";
 
   /** Bound rows whose current input no longer matches their variant (title or format change). */
   private *staleBound(collection: string | undefined): Generator<true> {
     const { sql, params } = this.candidates(
       collection,
-      `d.id AS documentId, d.mirror_hash AS mirrorHash, c.seq, c.text, d.title,
-        v.input_hash AS boundHash`,
+      "documentId, mirrorHash, seq, text, title, boundHash",
       VectorVariantStore.BOUND
     );
     const statement = this.db.prepare<
@@ -431,20 +430,20 @@ export class VectorVariantStore {
     collection: string | undefined,
     after: { documentId: number; seq: number } | undefined
   ): Generator<CandidateRow> {
-    const columns = `d.id AS documentId, d.mirror_hash AS mirrorHash, c.seq,
-      c.text, d.title, v.input_hash AS boundHash, o.mirror_hash AS boundMirror`;
+    const columns =
+      "documentId, mirrorHash, seq, text, title, boundHash, boundMirror";
     const parts = after
       ? [
           {
-            where: " AND d.id = ? AND c.seq > ? ORDER BY c.seq",
+            where: " AND documentId = ? AND seq > ? ORDER BY seq",
             params: [after.documentId, after.seq],
           },
           {
-            where: " AND d.id > ? ORDER BY d.id, c.seq",
+            where: " AND documentId > ? ORDER BY documentId, seq",
             params: [after.documentId],
           },
         ]
-      : [{ where: " ORDER BY d.id, c.seq", params: [] as number[] }];
+      : [{ where: " ORDER BY documentId, seq", params: [] as number[] }];
     for (const part of parts) {
       const { sql, params } = this.candidates(collection, columns, part.where);
       const statement = this.db.prepare<CandidateRow, (string | number)[]>(sql);
