@@ -26,6 +26,22 @@ export function collectionScanHint(
     : "";
 }
 
+/**
+ * Index hint that makes `content_chunks` a key lookup by mirror. Statistics
+ * gathered while the table held a row or two make a scan look cheaper, and
+ * the scan then runs once per selected document over every collection's
+ * chunks. The primary key index serves both the mirror lookup and the
+ * `(mirror_hash, seq)` cursor range.
+ */
+export function chunkKeyHint(db: Database): string {
+  const pk = db
+    .query<{ name: string }, []>(
+      "SELECT name FROM pragma_index_list('content_chunks') WHERE origin = 'pk'"
+    )
+    .get();
+  return pk ? ` INDEXED BY "${pk.name.replaceAll('"', '""')}"` : "";
+}
+
 export function embeddingInputHash(input: string): string {
   return new Bun.CryptoHasher("sha256").update(input).digest("hex");
 }
@@ -344,7 +360,8 @@ export class VectorVariantStore {
     return {
       // CROSS JOIN keeps documents as the outer loop and the index hint
       // makes a scoped scan start from the collection index, even when
-      // statistics favour walking content_chunks or scanning documents.
+      // statistics favour walking content_chunks or scanning documents; the
+      // chunk hint keeps each document's chunks a key lookup by mirror.
       // Each binding column is a correlated subquery on the full owner key,
       // so it is only primary-key lookups for the scoped chunks (a few per
       // chunk, never a pass over other bindings). As a LEFT JOIN, statistics
@@ -358,7 +375,7 @@ export class VectorVariantStore {
             WHERE v.partition_id = ? AND v.variant_id = (SELECT o.variant_id ${owner})
           ) AS boundHash
         FROM documents d${collectionScanHint(this.db, collection)}
-        CROSS JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
+        CROSS JOIN content_chunks c${chunkKeyHint(this.db)} ON c.mirror_hash = d.mirror_hash
         WHERE d.active = 1${collection ? " AND d.collection = ?" : ""}
       ) WHERE 1${where}`,
       params: [
