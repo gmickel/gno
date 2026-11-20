@@ -556,3 +556,34 @@ test("owners discarded by an identity drop during the retry count as failed", as
   // Every owner still pending is accounted for as a failure.
   expect(value?.errors).toBeGreaterThanOrEqual(pending);
 });
+
+test("time spent fetching a page past --max-seconds stops before inference", async () => {
+  const { store, deps, embedBatch } = await limitsFixture(6);
+  const pending = store.pending.bind(store);
+  let calls = 0;
+  spyOn(store, "pending").mockImplementation((options) => {
+    calls += 1;
+    if (calls === 2) {
+      // The second page fetch outlasts the time limit.
+      const until = performance.now() + 120;
+      while (performance.now() < until) {
+        // busy wait
+      }
+    }
+    return pending(options);
+  });
+  const result = await embedBacklog({
+    ...deps,
+    batchSize: 2,
+    limits: { maxSeconds: 0.08 },
+  });
+  expect(result).toMatchObject({
+    ok: true,
+    value: { embedded: 2, stopped: "limit" },
+  });
+  expect(embedBatch).toHaveBeenCalledTimes(1);
+  expect(countVariantBacklog(deps)).toBe(4);
+  // The next run resumes with the page that was fetched but not embedded.
+  const next = await embedBacklog({ ...deps, batchSize: 2 });
+  expect(next).toMatchObject({ ok: true, value: { embedded: 4 } });
+});

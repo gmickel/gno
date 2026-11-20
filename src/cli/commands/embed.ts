@@ -399,6 +399,13 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
       continue;
     }
 
+    // Time can run out while the batch is fetched: stop before inference,
+    // keeping this batch eligible for the next run (the cursor stays put).
+    if (attempted > 0 && limitReached()) {
+      stopped = "limit";
+      break;
+    }
+
     // Advance cursor to last item (even on failure, to avoid infinite loops)
     const lastItem = batch.at(-1);
     if (lastItem) {
@@ -740,7 +747,10 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           if (!vecSyncOwed || !vectorIndex) return undefined;
           const synced = await vectorIndex.syncVecIndex();
           if (!synced.ok) return synced.error.message;
-          setSchemaMeta(db, vecSyncOwedKey, undefined);
+          // Without sqlite-vec the sync is a no-op; keep the marker for a
+          // run that can repair the vector index.
+          if (vectorIndex.searchAvailable)
+            setSchemaMeta(db, vecSyncOwedKey, undefined);
           return undefined;
         };
         const owedSyncFields = (error: string | undefined) =>
@@ -976,7 +986,8 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
               }
             }
             vectorIndex.vecDirty = false;
-            if (vecSyncOwed) setSchemaMeta(db, vecSyncOwedKey, undefined);
+            if (vecSyncOwed && vectorIndex.searchAvailable)
+              setSchemaMeta(db, vecSyncOwedKey, undefined);
           } else {
             if (!options.json) {
               process.stdout.write(
@@ -1034,8 +1045,14 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
       outcome = embedStageOutcome(result);
       return { ...result, resumedFrom };
     } finally {
-      markIndexStageFinished(db, "embed", outcome);
-      await store.close();
+      // The stage marker is advisory resume metadata: a database still busy
+      // after the run must not discard its receipt or leave the store open.
+      // If the write fails, the next run reports the stage as interrupted.
+      try {
+        markIndexStageFinished(db, "embed", outcome);
+      } finally {
+        await store.close();
+      }
     }
   });
 }

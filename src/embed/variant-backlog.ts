@@ -163,6 +163,9 @@ export async function embedVariantBacklog(
         after = undefined;
         continue;
       }
+      // Time can run out while the page is fetched: stop before inference,
+      // keeping this page eligible for the next run (the cursor stays put).
+      if (attempted > 0 && limitReached()) return await stop();
       const last = pending.at(-1)!;
       after = { documentId: last.documentId, seq: last.seq };
       // Pages are already limited to deps.collection in SQL.

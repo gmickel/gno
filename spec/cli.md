@@ -1452,24 +1452,11 @@ never confirms; without confirmation embed exits 2 and writes nothing.
 
 Waits by default for the same write lease as `index` / `update` / MCP writers. `--no-wait` opts out.
 
-**Exit Codes:**
+**Exit Codes and JSON Output:**
 
-- 0: Success
-- 1: User cancelled or invalid `--lock-wait`
-- 2: Model not available or embedding failure
-- 4: Write lease busy (contention, not corruption)
-
-**JSON Output:**
-
-```json
-{
-  "embedded": 1234,
-  "errors": 0,
-  "duration": 45.2,
-  "model": "hf:BAAI/bge-m3-gguf/bge-m3-q8_0.gguf",
-  "searchAvailable": true
-}
-```
+See the receipt and exit codes in the first [gno embed](#gno-embed) section
+(including `remaining`, `stopped`, `incomplete`, limit validation and
+contention).
 
 **Verbose Mode:**
 
