@@ -345,8 +345,9 @@ export class VectorVariantStore {
       // CROSS JOIN keeps documents as the outer loop and the index hint
       // makes a scoped scan start from the collection index, even when
       // statistics favour walking content_chunks or scanning documents.
-      // Each binding is a correlated subquery on the full owner key, so it is
-      // always one primary-key lookup per chunk. As a LEFT JOIN, statistics
+      // Each binding column is a correlated subquery on the full owner key,
+      // so it is only primary-key lookups for the scoped chunks (a few per
+      // chunk, never a pass over other bindings). As a LEFT JOIN, statistics
       // gathered while vector_owners was nearly empty made SQLite scan it, or
       // build a Bloom filter over every owner, for a small collection.
       sql: `SELECT ${columns} FROM (
