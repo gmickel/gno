@@ -1147,8 +1147,11 @@ gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-
   resubmissions: a retry after a model reset and the smaller requests of
   adaptive recovery (a failed batch retried in halves or one chunk at a time),
   and the stored chunks re-embedded to verify a changed runtime before the
-  first batch. When verification alone reaches the limit, the run stops
-  before its first batch; the verdict is cached, so the next run embeds.
+  first batch. Verification is not interrupted: it submits at most one
+  sample of up to eight chunks per stored partition of the model, once per
+  runtime (the verdict is cached), so it can take a run past the limit by
+  those samples. When verification alone reaches the limit, the run stops
+  before its first batch, and the next run embeds.
   Seconds run from the start of embedding. Batches are never split, so a run
   can go past the limit by the submissions of one batch and its recovery.
 - A stopped run exits 0, also when some chunks were deferred by SQLite

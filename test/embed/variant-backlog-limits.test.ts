@@ -704,23 +704,18 @@ test("chunks spent by runtime verification count; a spent budget stops before th
   });
 });
 
-test("a stage marker that cannot be written never discards the receipt", async () => {
+test("a stage marker that cannot be written never discards the receipt", () => {
   const db = new Database(":memory:");
   databases.push(db);
   let calls = 0;
-  const busyTwice = (() => {
+  const busy = (() => {
     calls += 1;
-    if (calls <= 2) throw new Error("SQLITE_BUSY: database is locked");
-  }) as never;
-  expect(
-    await finishEmbedStageMarker(db, "completed", busyTwice, [0, 0, 0])
-  ).toBe(true);
-  expect(calls).toBe(3);
-
-  const alwaysBusy = (() => {
     throw new Error("SQLITE_BUSY: database is locked");
   }) as never;
-  expect(
-    await finishEmbedStageMarker(db, "completed", alwaysBusy, [0, 0])
-  ).toBe(false);
+  // One attempt (the busy timeout already waited), reported, never thrown.
+  expect(finishEmbedStageMarker(db, "completed", busy)).toBe(false);
+  expect(calls).toBe(1);
+  expect(finishEmbedStageMarker(db, "completed", (() => {}) as never)).toBe(
+    true
+  );
 });

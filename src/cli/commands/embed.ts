@@ -535,31 +535,24 @@ function setSchemaMeta(
   );
 }
 
-/** Waits between attempts to record the embed stage as finished. */
-const STAGE_MARKER_RETRY_DELAYS_MS = [50, 200, 500];
-
 /**
- * Record the embed stage as finished, retrying briefly while another
- * connection holds the database. Never throws: the receipt of a run that
- * already committed its batches must survive a marker that cannot be written.
- * A marker left `running` makes the next run print a resume note and continue
- * from the committed vectors; it gates nothing.
+ * Record the embed stage as finished. One attempt: the connection's busy
+ * timeout already waits for other writers, and retrying would hold the
+ * receipt and the write lease for several timeouts. Never throws: the receipt
+ * of a run that already committed its batches must survive a marker that
+ * cannot be written. A marker left `running` makes the next run print a
+ * resume note and continue from the committed vectors; it gates nothing.
  */
-export async function finishEmbedStageMarker(
+export function finishEmbedStageMarker(
   db: Database,
   outcome: "completed" | "failed",
-  write: typeof markIndexStageFinished = markIndexStageFinished,
-  delaysMs: readonly number[] = STAGE_MARKER_RETRY_DELAYS_MS
-): Promise<boolean> {
-  for (let attempt = 0; ; attempt += 1) {
-    try {
-      write(db, "embed", outcome);
-      return true;
-    } catch {
-      const delay = delaysMs[attempt];
-      if (delay === undefined) return false;
-      await Bun.sleep(delay);
-    }
+  write: typeof markIndexStageFinished = markIndexStageFinished
+): boolean {
+  try {
+    write(db, "embed", outcome);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -804,6 +797,9 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
 
         // Runtime verification during preparation can re-embed stored chunks;
         // a bounded run charges those requests against --max-chunks too.
+        // Verification is not interrupted midway (the run needs a resolved
+        // partition): it is at most one sample per stored partition, and the
+        // verdict is cached, so it happens once per runtime.
         let verificationSpent = 0;
         const verification = meterEmbeddingPort(embedPort, (texts) => {
           verificationSpent += texts;
@@ -1099,7 +1095,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
       // The stage marker is advisory resume metadata: a database still busy
       // after the run must not discard its receipt or leave the store open.
       try {
-        await finishEmbedStageMarker(db, outcome);
+        finishEmbedStageMarker(db, outcome);
       } finally {
         await store.close();
       }
