@@ -552,7 +552,8 @@ test("scoped reads look owners up by key even with stale statistics", async () =
   // walks content_chunks instead of using the collection index. Statistics
   // gathered with one owner binding, before 4,000 bindings in the other
   // collection were added, made a joined vector_owners a scan or a Bloom
-  // filter built over every binding for each scoped read.
+  // filter built over every binding for each scoped read. Statistics gathered
+  // with one chunk made SQLite walk content_chunks once per scoped document.
   db.exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 4000)
     INSERT INTO documents SELECT 10000 + i, 'skew-' || i, 'Skew', 1, 'big' FROM n;
     WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 4000)
@@ -561,7 +562,10 @@ test("scoped reads look owners up by key even with stale statistics", async () =
     UPDATE documents SET collection = 'big' WHERE collection = 'small';
     CREATE TEMP TABLE kept_owners AS SELECT * FROM vector_owners;
     DELETE FROM vector_owners WHERE rowid <> (SELECT min(rowid) FROM vector_owners);
+    CREATE TEMP TABLE kept_chunks AS SELECT * FROM content_chunks;
+    DELETE FROM content_chunks WHERE rowid <> (SELECT min(rowid) FROM content_chunks);
     ANALYZE;
+    INSERT OR IGNORE INTO content_chunks SELECT * FROM temp.kept_chunks;
     INSERT OR IGNORE INTO vector_owners SELECT * FROM temp.kept_owners;
     UPDATE documents SET collection = 'small' WHERE id IN (101, 103, 105, 107, 109, 111);`);
   const { variant_id } = db
@@ -618,7 +622,15 @@ test("scoped reads look owners up by key even with stale statistics", async () =
       /^SEARCH d USING (COVERING )?INDEX idx_documents_collection/
     );
     // No table is scanned and no Bloom filter is built over a whole table.
-    expect(steps.filter((step) => /^SCAN|BLOOM FILTER/.test(step))).toEqual([]);
+    expect(steps.filter((step) => /^(?:SCAN|BLOOM FILTER)/.test(step))).toEqual(
+      []
+    );
+    // Chunks are found by their mirror, never by walking content_chunks.
+    expect(steps).toContainEqual(
+      expect.stringMatching(
+        /^SEARCH c USING (?:COVERING )?INDEX \S+ \(mirror_hash=\?/
+      )
+    );
     if (sql.includes("vector_owners"))
       expect(steps).toContainEqual(
         expect.stringMatching(

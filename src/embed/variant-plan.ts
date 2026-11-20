@@ -4,14 +4,15 @@ import type { VectorVariantStore } from "../store/vector/variants";
 import type { EmbedBacklogDeps } from "./backlog";
 
 import { getVectorStatsDatabase } from "../store/vector/stats";
-import { collectionScanHint } from "../store/vector/variants";
+import { chunkKeyHint, collectionScanHint } from "../store/vector/variants";
 
 /** Active chunks in scope; the collection predicate is added only when set. */
 function activeChunkScope(db: Database, collection: string | undefined) {
   return {
-    // CROSS JOIN and the index hint keep the collection index as the outer loop.
+    // CROSS JOIN and the index hints keep the collection index as the outer
+    // loop and each document's chunks a key lookup by mirror.
     from: `FROM documents d${collectionScanHint(db, collection)}
-    CROSS JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
+    CROSS JOIN content_chunks c${chunkKeyHint(db)} ON c.mirror_hash = d.mirror_hash
     WHERE d.active = 1${collection ? " AND d.collection = ?" : ""}`,
     params: collection ? [collection] : [],
   };
