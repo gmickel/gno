@@ -546,7 +546,8 @@ test.each([false, true])(
 
 test("scoped reads look owners up by key even with stale statistics", async () => {
   const { db, store, deps } = await scopeFixture();
-  // Skewed, with the production documents(mirror_hash) index, and statistics
+  // Skewed, with the production documents(mirror_hash) and
+  // content_chunks(mirror_hash) indexes, and statistics
   // gathered while every document was in one collection (the small collection
   // was filled afterwards): without a hint the planner scans documents or
   // walks content_chunks instead of using the collection index. Statistics
@@ -559,6 +560,7 @@ test("scoped reads look owners up by key even with stale statistics", async () =
     WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 4000)
     INSERT INTO content_chunks SELECT 'skew-' || i, 0, 'skew text' FROM n;
     CREATE INDEX idx_documents_mirror_hash ON documents(mirror_hash);
+    CREATE INDEX idx_chunks_mirror_hash ON content_chunks(mirror_hash);
     UPDATE documents SET collection = 'big' WHERE collection = 'small';
     CREATE TEMP TABLE kept_owners AS SELECT * FROM vector_owners;
     DELETE FROM vector_owners WHERE rowid <> (SELECT min(rowid) FROM vector_owners);
