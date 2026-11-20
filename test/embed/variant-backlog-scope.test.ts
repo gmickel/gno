@@ -413,7 +413,7 @@ test("collection pass embeds only that collection and leaves global coverage pen
   expect(store.hasActivated()).toBe(false);
 });
 
-test("scoped pages resume with a range on the collection index", async () => {
+test("resumed pages seek within the cursor document and across documents", async () => {
   const { db, store } = await scopeFixture();
   const plan = (sql: string, ...params: (string | number)[]) =>
     db
@@ -431,16 +431,62 @@ test("scoped pages resume with a range on the collection index", async () => {
   }) as typeof db.prepare);
   try {
     store.pending({
-      limit: 1,
-      after: { documentId: 101, seq: 0 },
+      limit: 1000,
+      after: { documentId: 105, seq: 0 },
       collection: "small",
     });
   } finally {
     spy.mockRestore();
   }
-  const sql = traced.find((text) => text.includes("d.collection = ?"));
-  expect(sql).toBeDefined();
-  expect(plan(sql!, store.partitionId, "small", 101, 101, 0)).toContain(
+  const within = traced.find((text) => text.includes("d.id = ? AND c.seq > ?"));
+  const later = traced.find((text) => text.includes("d.id > ?"));
+  expect(within).toBeDefined();
+  expect(later).toBeDefined();
+  // The cursor document's chunks are a range on (mirror_hash, seq), so a
+  // large document is not reread from its first chunk on every page.
+  expect(plan(within!, store.partitionId, "small", 105, 0)).toMatch(
+    /content_chunks.*\(mirror_hash=\? AND seq>\?\)/
+  );
+  expect(plan(later!, store.partitionId, "small", 105)).toContain(
     "idx_documents_collection (collection=? AND rowid>?)"
   );
+});
+
+test("hasPending stops at the first stale owner without hashing the rest", async () => {
+  const { db, store } = await scopeFixture();
+  store.write(
+    store
+      .pending({ limit: 1000 })
+      .map((owner, i) => ({ owner, embedding: new Float32Array([0, i, 1]) }))
+  );
+  // The first owner in order (document 100) changes title.
+  db.run("UPDATE documents SET title = 'Renamed' WHERE id = 100");
+  const hashed = spyOn(
+    VectorVariantStore.prototype as unknown as {
+      input: (row: unknown) => VectorOwnerInput;
+    },
+    "input"
+  );
+  try {
+    expect(store.hasPending()).toBe(true);
+    expect(hashed).toHaveBeenCalledTimes(1);
+  } finally {
+    hashed.mockRestore();
+  }
+});
+
+test("a resumed page inside a large document matches the oracle", async () => {
+  const { db, store, deps } = await scopeFixture();
+  for (let seq = 3; seq < 300; seq++)
+    db.run("INSERT INTO content_chunks VALUES ('big-0', ?, ?)", [
+      seq,
+      `big-0 chunk ${seq}`,
+    ]);
+  for (const scope of [
+    { collection: "big" },
+    { collection: "big", force: true },
+  ])
+    expect(pagedOwners({ ...deps, ...scope }, store, 7)).toEqual(
+      oracleOwners(db, store, scope)
+    );
 });

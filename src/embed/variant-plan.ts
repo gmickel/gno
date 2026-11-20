@@ -32,22 +32,9 @@ export function variantBacklogPage(
 ) {
   const collection = deps.collection || undefined;
   if (!deps.force) return store.pending({ limit, after, collection });
-  const scope = activeChunkScope(collection);
-  const rows = forcedDatabase(deps)
-    .query<{ documentId: number; seq: number }, (string | number)[]>(`
-    SELECT d.id AS documentId, c.seq ${scope.from}
-      ${after ? "AND d.id >= ? AND (d.id > ? OR c.seq > ?)" : ""}
-    ORDER BY d.id, c.seq LIMIT ?
-  `)
-    .all(
-      ...scope.params,
-      ...(after ? [after.documentId, after.documentId, after.seq] : []),
-      limit
-    );
-  return rows.flatMap((row) => {
-    const owner = store.current(row.documentId, row.seq);
-    return owner ? [owner] : [];
-  });
+  // Same guard as before: forced passes need document ownership storage.
+  forcedDatabase(deps);
+  return store.currentPage({ limit, after, collection });
 }
 
 /** Owners a complete variantBacklogPage pass would return, without paging. */

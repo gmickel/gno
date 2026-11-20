@@ -54,6 +54,11 @@ interface OwnerRow {
   title: string | null;
 }
 
+interface CandidateRow extends OwnerRow {
+  boundHash: string | null;
+  boundMirror: string | null;
+}
+
 interface VariantRow {
   variant_id: number;
   input_hash: string;
@@ -377,26 +382,61 @@ export class VectorVariantStore {
       .deferred();
   }
 
-  /** Same answer as `pending({ limit: 1 }).length > 0`, unbound rows first. */
+  /**
+   * Active chunk rows with their binding in `(document id, seq)` order,
+   * resuming after `after`. The cursor document's remaining chunks and the
+   * later documents are two statements, so each is a range on its index
+   * (`content_chunks` primary key, then the collection index or rowid) and a
+   * large document is never rescanned from its first chunk.
+   */
+  private *ownerRows(
+    collection: string | undefined,
+    after: { documentId: number; seq: number } | undefined
+  ): Generator<CandidateRow> {
+    const columns = `d.id AS documentId, d.mirror_hash AS mirrorHash, c.seq,
+      c.text, d.title, v.input_hash AS boundHash, o.mirror_hash AS boundMirror`;
+    const parts = after
+      ? [
+          {
+            where: " AND d.id = ? AND c.seq > ? ORDER BY c.seq",
+            params: [after.documentId, after.seq],
+          },
+          {
+            where: " AND d.id > ? ORDER BY d.id, c.seq",
+            params: [after.documentId],
+          },
+        ]
+      : [{ where: " ORDER BY d.id, c.seq", params: [] as number[] }];
+    for (const part of parts) {
+      const { sql, params } = this.candidates(collection, columns, part.where);
+      const statement = this.db.prepare<CandidateRow, (string | number)[]>(sql);
+      try {
+        yield* statement.iterate(...params, ...part.params);
+      } finally {
+        // Early exit must not leave a cached Bun statement mid-iteration.
+        statement.finalize();
+      }
+    }
+  }
+
+  /** The row needs embedding: no current binding, or its input changed. */
+  private isPending(row: CandidateRow, input?: VectorOwnerInput): boolean {
+    if (row.boundHash === null || row.boundMirror !== row.mirrorHash)
+      return true;
+    return (input ?? this.input(row)).inputHash !== row.boundHash;
+  }
+
+  /**
+   * Same answer as `pending({ limit: 1 }).length > 0`. Walks owners in order
+   * and stops at the first pending one; unbound rows are not hashed.
+   */
   hasPending(options: { collection?: string } = {}): boolean {
-    const collection = options.collection || undefined;
-    const { sql, params } = this.candidates(
-      collection,
-      "1 AS found",
-      `${VectorVariantStore.UNBOUND} LIMIT 1`
-    );
-    return this.db
-      .transaction(() => {
-        if (
-          this.db
-            .query<{ found: number }, (string | number)[]>(sql)
-            .get(...params)
-        )
-          return true;
-        for (const _ of this.staleBound(collection)) return true;
-        return false;
-      })
-      .deferred();
+    for (const row of this.ownerRows(
+      options.collection || undefined,
+      undefined
+    ))
+      if (this.isPending(row)) return true;
+    return false;
   }
 
   /** Resumable owner cursor; repeat from start after epoch changes or a completed pass. */
@@ -411,39 +451,38 @@ export class VectorVariantStore {
     const limit = options.limit ?? 1000;
     if (!Number.isSafeInteger(limit) || limit < 1)
       throw new Error("Invalid pending limit");
-    const after = options.after;
-    // The cursor applies only when resuming; `d.id >= ?` keeps the scan a
-    // range on the collection index instead of rereading earlier documents.
-    const { sql, params } = this.candidates(
-      options.collection || undefined,
-      `d.id AS documentId, d.mirror_hash AS mirrorHash, c.seq, c.text, d.title,
-        v.input_hash AS boundHash, o.mirror_hash AS boundMirror`,
-      `${after ? " AND d.id >= ? AND (d.id > ? OR c.seq > ?)" : ""} ORDER BY d.id, c.seq`
-    );
-    const statement = this.db.prepare<
-      OwnerRow & { boundHash: string | null; boundMirror: string | null },
-      (string | number)[]
-    >(sql);
-    const rows = statement.iterate(
-      ...params,
-      ...(after ? [after.documentId, after.documentId, after.seq] : [])
-    );
     const pending: VectorOwnerInput[] = [];
-    try {
-      for (const row of rows) {
-        const input = this.input(row);
-        if (
-          row.boundHash !== input.inputHash ||
-          row.boundMirror !== input.mirrorHash
-        )
-          pending.push(input);
-        if (pending.length === limit) break;
-      }
-    } finally {
-      // Early cursor exit must not leave a cached Bun statement mid-iteration.
-      statement.finalize();
+    for (const row of this.ownerRows(
+      options.collection || undefined,
+      options.after
+    )) {
+      const input = this.input(row);
+      if (this.isPending(row, input)) pending.push(input);
+      if (pending.length === limit) break;
     }
     return pending;
+  }
+
+  /**
+   * Every current owner input in order (a forced pass), read with its IDs in
+   * one statement so a concurrent rechunk cannot empty a page.
+   */
+  currentPage(options: {
+    limit: number;
+    after?: { documentId: number; seq: number };
+    collection?: string;
+  }): VectorOwnerInput[] {
+    if (!Number.isSafeInteger(options.limit) || options.limit < 1)
+      throw new Error("Invalid page limit");
+    const page: VectorOwnerInput[] = [];
+    for (const row of this.ownerRows(
+      options.collection || undefined,
+      options.after
+    )) {
+      page.push(this.input(row));
+      if (page.length === options.limit) break;
+    }
+    return page;
   }
 
   /** Activation is fenced by a caller-observed epoch and complete current coverage. */
