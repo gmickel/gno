@@ -25,8 +25,6 @@ import {
 import { formatDocForEmbedding } from "../../src/pipeline/contextual";
 import { migration } from "../../src/store/migrations/028-vector-variants";
 import { migration as runtimeMigration } from "../../src/store/migrations/031-runtime-independent-vectors";
-import { migration as mirrorMigration } from "../../src/store/migrations/036-vector-mirror-state";
-import { syncPartitionIndex } from "../../src/store/vector/partition-index";
 import { createVectorStatsPort } from "../../src/store/vector/stats";
 import {
   createVectorVariantStore,
@@ -108,7 +106,6 @@ async function scopeFixture(path = ":memory:") {
   doc(113, "shared", "Shared big", "big");
   migration.up(db, "unicode61");
   runtimeMigration.up(db, "unicode61");
-  mirrorMigration.up(db, "unicode61");
 
   const store = await createVectorVariantStore(db, identity);
   const other = await createVectorVariantStore(db, {
@@ -538,186 +535,6 @@ test.each([false, true])(
     }
   }
 );
-
-async function activatedFixture() {
-  const fixture = await scopeFixture();
-  const { store } = fixture;
-  store.write(
-    store
-      .pending({ limit: 1000 })
-      .map((owner, i) => ({ owner, embedding: new Float32Array([0, i, 1]) }))
-  );
-  store.activate(store.epoch());
-  return fixture;
-}
-
-const vecBytes = (db: DatabaseType, table: string, variantId: number) =>
-  db
-    .query<{ embedding: Uint8Array }, [number]>(
-      `SELECT embedding FROM ${table} WHERE variant_id = ?`
-    )
-    .get(variantId)?.embedding;
-
-const mirrorCounts = (db: DatabaseType, store: VectorVariantStore) => [
-  db.query(`SELECT count(*) AS n FROM ${store.tableName}`).get(),
-  db
-    .query("SELECT count(*) AS n FROM vector_variants WHERE partition_id = ?")
-    .get(store.partitionId),
-];
-
-test("after activation a pass with a clean mirror skips the index-wide coverage proof", async () => {
-  const { db, store, deps } = await activatedFixture();
-  expect(store.mirrorState()).toBe("clean");
-  db.run("UPDATE documents SET title = 'Renamed' WHERE id = 101");
-  const hasPending = spyOn(store, "hasPending");
-  const syncIndex = spyOn(store, "syncIndex");
-  const activate = spyOn(store, "activate");
-  expect(
-    await embedBacklog({ ...deps, collection: "small", batchSize: 4 })
-  ).toEqual({
-    ok: true,
-    value: { embedded: 2, errors: 0, contentionErrors: 0 },
-  });
-  expect(hasPending).not.toHaveBeenCalled();
-  expect(syncIndex).not.toHaveBeenCalled();
-  expect(activate).not.toHaveBeenCalled();
-  // The store's own writes keep the mirror in step and the mark clean.
-  expect(store.mirrorState()).toBe("clean");
-  expect(countVariantBacklog(deps)).toBe(0);
-});
-
-test("a vector changed outside the store marks the mirror dirty and the next pass rebuilds it", async () => {
-  const { db, store, deps } = await activatedFixture();
-  const id = db
-    .query<{ id: number }, []>(
-      "SELECT min(variant_id) AS id FROM vector_variants"
-    )
-    .get()!.id;
-  const before = vecBytes(db, store.tableName, id);
-  // Same row counts, different bytes.
-  db.run("UPDATE vector_variants SET embedding = ? WHERE variant_id = ?", [
-    new Uint8Array(new Float32Array([1, 1, 1]).buffer),
-    id,
-  ]);
-  expect(store.mirrorState()).toBe("dirty");
-  const syncIndex = spyOn(store, "syncIndex");
-  expect(await embedBacklog({ ...deps, collection: "small" })).toEqual({
-    ok: true,
-    value: { embedded: 0, errors: 0, contentionErrors: 0 },
-  });
-  expect(syncIndex).toHaveBeenCalledTimes(1);
-  expect(vecBytes(db, store.tableName, id)).not.toEqual(before);
-  expect(store.mirrorState()).toBe("clean");
-  expect(store.isActive()).toBe(true);
-});
-
-test("a dirty mirror is repaired even while another collection is pending", async () => {
-  const { db, store, deps } = await activatedFixture();
-  db.run(
-    `DELETE FROM ${store.tableName} WHERE variant_id = (SELECT min(variant_id) FROM ${store.tableName})`
-  );
-  // A vec0-only change: no trigger fires, the row-count check catches it.
-  expect(store.mirrorState()).toBe("dirty");
-  db.run("INSERT INTO documents VALUES (900, 'big-1', 'New big', 1, 'big')");
-  const syncIndex = spyOn(store, "syncIndex");
-  const activate = spyOn(store, "activate");
-  expect(await embedBacklog({ ...deps, collection: "small" })).toEqual({
-    ok: true,
-    value: { embedded: 0, errors: 0, contentionErrors: 0 },
-  });
-  expect(syncIndex).toHaveBeenCalledTimes(1);
-  // Coverage is incomplete elsewhere, so no re-activation; search keeps the
-  // first activation's authority.
-  expect(activate).not.toHaveBeenCalled();
-  expect(store.hasActivated()).toBe(true);
-  const [mirrored, stored] = mirrorCounts(db, store);
-  expect(mirrored).toEqual(stored);
-});
-
-test("a recreated empty mirror is dirty and rebuilt by the next pass", async () => {
-  const { db, store, deps } = await activatedFixture();
-  db.exec(`DROP TABLE ${store.tableName}`);
-  const reopened = await createVectorVariantStore(db, store.identity);
-  expect(reopened.mirrorState()).toBe("dirty");
-  expect(
-    await embedBacklog({ ...deps, variantStore: reopened, collection: "small" })
-  ).toEqual({
-    ok: true,
-    value: { embedded: 0, errors: 0, contentionErrors: 0 },
-  });
-  expect(reopened.mirrorState()).toBe("clean");
-  const [mirrored, stored] = mirrorCounts(db, store);
-  expect(mirrored).toEqual(stored);
-});
-
-test("without sqlite-vec an activated partition still reports the unavailable index", async () => {
-  const { db, store, deps } = await activatedFixture();
-  const noVec = new VectorVariantStore(db, store.identity, false);
-  expect(noVec.mirrorState()).toBe("untracked");
-  expect(
-    await embedBacklog({ ...deps, variantStore: noVec, collection: "small" })
-  ).toEqual({
-    ok: true,
-    value: {
-      embedded: 0,
-      errors: 0,
-      contentionErrors: 0,
-      syncError: "Variant index unavailable",
-    },
-  });
-});
-
-test("outer conflict clauses cannot leave the mirror marked clean", async () => {
-  const { db, store } = await activatedFixture();
-  const other = await createVectorVariantStore(db, {
-    ...identity,
-    modelFingerprint: "other-weights",
-  });
-  // UPDATE OR IGNORE: the trigger's invalidation still applies.
-  db.run(
-    "UPDATE OR IGNORE vector_variants SET embedding = ? WHERE variant_id = (SELECT min(variant_id) FROM vector_variants WHERE partition_id = ?)",
-    [new Uint8Array(new Float32Array([9, 9, 9]).buffer), store.partitionId]
-  );
-  expect(store.mirrorState()).toBe("dirty");
-  store.syncIndex();
-  expect(store.mirrorState()).toBe("clean");
-
-  // INSERT OR REPLACE that takes a variant id from this partition into
-  // another one invalidates the displaced partition too.
-  db.run("PRAGMA foreign_keys = OFF");
-  const id = db
-    .query<{ id: number }, [string]>(
-      "SELECT min(variant_id) AS id FROM vector_variants WHERE partition_id = ?"
-    )
-    .get(store.partitionId)!.id;
-  db.run(
-    "INSERT OR REPLACE INTO vector_variants (variant_id, partition_id, input_hash, embedding) VALUES (?, ?, ?, ?)",
-    [
-      id,
-      other.partitionId,
-      "f".repeat(64),
-      new Uint8Array(new Float32Array([1, 0, 0]).buffer),
-    ]
-  );
-  expect(store.mirrorState()).toBe("dirty");
-});
-
-test("gno vec sync records the mirror as clean", async () => {
-  const { db, store } = await activatedFixture();
-  db.run(
-    `DELETE FROM ${store.tableName} WHERE variant_id = (SELECT min(variant_id) FROM ${store.tableName})`
-  );
-  db.run(
-    "UPDATE vector_variants SET embedding = embedding WHERE partition_id = ?",
-    [store.partitionId]
-  );
-  expect(store.mirrorState()).toBe("dirty");
-  syncPartitionIndex(db, {
-    partitionId: store.partitionId,
-    dimensions: store.identity.dimensions,
-  });
-  expect(store.mirrorState()).toBe("clean");
-});
 
 test("scoped counts keep documents as the outer loop even after ANALYZE", async () => {
   const { db, store, deps } = await scopeFixture();

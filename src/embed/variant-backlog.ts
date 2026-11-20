@@ -100,38 +100,6 @@ export async function embedVariantBacklog(
       if (background) await Bun.sleep(0);
     }
     assertInferenceActive();
-    // Retrieval authority was established by the first activation, and
-    // search validates every owner at query time, so a later pass does not
-    // re-prove index-wide coverage (O(index) on every run) while the vec0
-    // mirror is known to be current. A dirty mirror is rebuilt whether or not
-    // other collections are still pending, and the partition is re-activated
-    // when coverage is complete. Databases without mirror tracking, or without
-    // sqlite-vec, keep the full check below.
-    if (identityStillCurrent() && store.hasActivated()) {
-      const mirror = store.mirrorState();
-      if (mirror === "clean") {
-        assertInferenceActive();
-        return ok(total);
-      }
-      if (mirror === "dirty") {
-        const repairEpoch = store.epoch();
-        const turn = await inWriteTurn(deps.acquireWriteTurn, async () => {
-          try {
-            store.syncIndex();
-            if (identityStillCurrent() && !store.hasPending())
-              store.activate(repairEpoch);
-            return undefined;
-          } catch (cause) {
-            return cause instanceof Error ? cause.message : String(cause);
-          }
-        });
-        if (turn.deferred) return ok({ ...total, deferred: true });
-        if (turn.value !== undefined)
-          return ok({ ...total, syncError: turn.value });
-        assertInferenceActive();
-        return ok(total);
-      }
-    }
     // Capture the epoch before checking completeness; activate rechecks under write lock.
     const epoch = store.epoch();
     if (identityStillCurrent() && !store.hasPending()) {
