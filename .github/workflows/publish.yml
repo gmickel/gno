@@ -124,7 +124,12 @@ jobs:
 
       - name: Build desktop shell
         working-directory: desktop/electrobun-shell
-        run: bun run build
+        # Electrobun calls Windows PowerShell to extract Bun. Load its built-in
+        # Archive module, which matches the .NET Framework used by powershell.exe.
+        shell: pwsh
+        run: |
+          $env:PSModulePath = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\Modules"
+          bun run build
 
       - name: Verify packaged runtime
         working-directory: desktop/electrobun-shell
