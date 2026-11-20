@@ -298,6 +298,14 @@ CREATE INDEX IF NOT EXISTS idx_vector_owners_variant ON vector_owners(variant_id
 -- No chunk FK: replacing shared canonical chunks must not cascade vector loss.
 -- The writer validates bindings against current document/chunk/formatted input.
 -- vec_v1_<partition SHA256> uses variant_id INTEGER PRIMARY KEY and FLOAT[dims].
+-- vec0 mirror freshness per partition (migration 036). Triggers on
+-- vector_variants mark a partition dirty on any change; the store's own writes,
+-- which update vec0 in the same transaction, restore the previous mark, and
+-- syncIndex()/a verified activation mark it clean (0).
+CREATE TABLE IF NOT EXISTS vector_mirror_state (
+  partition_id TEXT PRIMARY KEY,
+  dirty INTEGER NOT NULL CHECK (dirty IN (0, 1))
+);
 -- Its writes/deletes share the authoritative variant transaction; no best effort.
 -- Mutation epoch fences all old and new writers, including raw SQL. Active state
 -- records durable variant authority after initial promotion. activated_epoch
