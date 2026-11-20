@@ -438,15 +438,9 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
       const queued = [...retryQueue.values()].some(
         (entry) => entry.attempts < MAX_EMBED_CHUNK_ATTEMPTS
       );
-      let pending = queued;
-      if (!pending && !ctx.force) {
-        const backlog = await ctx.stats.countBacklog(
-          ctx.modelUri,
-          embedFingerprint,
-          { collection: ctx.collection }
-        );
-        pending = backlog.ok && backlog.value > 0;
-      }
+      // Under the CLI write lease the starting backlog minus what was
+      // embedded is exact (chunks that failed stay pending).
+      const pending = queued || (!ctx.force && ctx.totalToEmbed - embedded > 0);
       if (pending) stopped = "limit";
     }
   }
@@ -741,11 +735,22 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
         const vecSyncOwedKey = `embed_vec_sync_owed:${modelUri}`;
         const vecSyncOwed =
           !dryRun && getSchemaMeta(db, vecSyncOwedKey) === "1";
-        const settleOwedVecSync = async (): Promise<void> => {
-          if (!vecSyncOwed || !vectorIndex) return;
+        /** Performs a deferred sync; returns its error, keeping the marker. */
+        const settleOwedVecSync = async (): Promise<string | undefined> => {
+          if (!vecSyncOwed || !vectorIndex) return undefined;
           const synced = await vectorIndex.syncVecIndex();
-          if (synced.ok) setSchemaMeta(db, vecSyncOwedKey, undefined);
+          if (!synced.ok) return synced.error.message;
+          setSchemaMeta(db, vecSyncOwedKey, undefined);
+          return undefined;
         };
+        const owedSyncFields = (error: string | undefined) =>
+          error
+            ? {
+                syncError: error,
+                suggestion:
+                  "Vector index sync failed. Rerun `gno embed` once more. If it repeats, run `gno vec sync`.",
+              }
+            : {};
 
         const backlogDeps = {
           statsPort: stats,
@@ -838,9 +843,11 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           const count = await getActiveChunkCount(db, options.collection);
           if (!count.ok) return { success: false, error: count.error.message };
           totalToEmbed = count.value;
-          if (!dryRun && !totalToEmbed) await settleOwedVecSync();
+          const owedError =
+            !dryRun && !totalToEmbed ? await settleOwedVecSync() : undefined;
           if (dryRun || !totalToEmbed)
             return {
+              ...owedSyncFields(owedError),
               success: true,
               embedded: totalToEmbed,
               errors: 0,
@@ -873,8 +880,9 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           totalToEmbed = backlogResult.value;
 
           if (totalToEmbed === 0 || dryRun) {
-            if (!dryRun) await settleOwedVecSync();
+            const owedError = dryRun ? undefined : await settleOwedVecSync();
             return {
+              ...owedSyncFields(owedError),
               success: true,
               embedded: totalToEmbed,
               errors: 0,
@@ -932,12 +940,13 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
         // A bounded run that stopped at its limit does not start a
         // model-wide vec index scan while holding the lease; it records that
         // a sync is owed, and the next run that is not stopped performs it.
-        if (vectorIndex.vecDirty && result.stopped) {
-          try {
-            setSchemaMeta(db, vecSyncOwedKey, "1");
-          } catch {
-            // The suggestion below still tells the user to sync.
-          }
+        if (result.stopped && (vectorIndex.vecDirty || vecSyncOwed)) {
+          if (vectorIndex.vecDirty)
+            try {
+              setSchemaMeta(db, vecSyncOwedKey, "1");
+            } catch {
+              // The suggestion below still tells the user to sync.
+            }
           return {
             success: true,
             embedded: result.embedded,
@@ -1168,7 +1177,8 @@ export function formatEmbed(
     result.errors === 0 &&
     result.contentionErrors === 0 &&
     !result.stopped &&
-    !result.incomplete
+    !result.incomplete &&
+    !result.syncError
   ) {
     return "No chunks need embedding. All up to date.";
   }

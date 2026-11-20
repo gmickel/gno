@@ -476,3 +476,83 @@ test("with the starting backlog known, a limit stop needs no backlog probe", asy
   // One call for the page itself, none to classify the stop.
   expect(pending).toHaveBeenCalledTimes(1);
 });
+
+test("a reload that fails once at the limit ends the pass instead of running another batch", async () => {
+  const { db, deps } = await limitsFixture(4);
+  db.run("UPDATE content_chunks SET text = 'poison' WHERE mirror_hash = 'm1'");
+  poisonPort(deps);
+  let identity = true;
+  let failingInits = 0;
+  const single = deps.embedPort.embed.bind(deps.embedPort);
+  deps.embedPort.embed = (async (text: string, options?: unknown) => {
+    const result = await single(text, options as never);
+    if (!result.ok) {
+      identity = false;
+      failingInits = 2;
+    }
+    return result;
+  }) as never;
+  deps.embedPort.init = (async () => {
+    // The recovery reset and the boundary reload after the failure fail;
+    // a later reload would succeed.
+    if (failingInits > 0) {
+      failingInits -= 1;
+      return { ok: false, error: { code: "MODEL", message: "busy" } };
+    }
+    identity = true;
+    return { ok: true };
+  }) as never;
+  const batch = deps.embedPort.embedBatch.bind(deps.embedPort);
+  let batchCalls = 0;
+  deps.embedPort.embedBatch = (async (texts: string[], options?: unknown) => {
+    batchCalls += 1;
+    const result = await batch(texts, options as never);
+    if (!result.ok) {
+      identity = false;
+      failingInits = 2;
+    }
+    return result;
+  }) as never;
+  const result = await embedBacklog({
+    ...deps,
+    batchSize: 1,
+    limits: { maxChunks: 1 },
+    identityStillCurrent: () => identity,
+  });
+  expect(result).toMatchObject({ ok: true, value: { incomplete: true } });
+  expect(batchCalls).toBe(1);
+});
+
+test("owners discarded by an identity drop during the retry count as failed", async () => {
+  const { db, deps } = await limitsFixture(2);
+  db.run("UPDATE content_chunks SET text = 'poison' WHERE mirror_hash = 'm1'");
+  let identity = true;
+  let batchCalls = 0;
+  deps.embedPort.embedBatch = mock(async (texts: string[]) => {
+    batchCalls += 1;
+    // The retry of the failed owner drops the identity mid-inference.
+    if (batchCalls > 1) identity = false;
+    if (texts.some((text) => text.includes("poison")) && batchCalls === 1)
+      return { ok: false as const, error: { code: "MODEL", message: "bad" } };
+    return { ok: true as const, value: texts.map(() => [0.1, 0.2, 0.3]) };
+  }) as never;
+  deps.embedPort.embed = mock(async (text: string) =>
+    text.includes("poison")
+      ? { ok: false as const, error: { code: "MODEL", message: "bad" } }
+      : { ok: true as const, value: [0.1, 0.2, 0.3] }
+  ) as never;
+  deps.embedPort.init = (async () => {
+    identity = true;
+    return { ok: true };
+  }) as never;
+  const result = await embedBacklog({
+    ...deps,
+    batchSize: 2,
+    identityStillCurrent: () => identity,
+  });
+  expect(result.ok).toBe(true);
+  const value = result.ok ? result.value : undefined;
+  const pending = countVariantBacklog(deps);
+  // Every owner still pending is accounted for as a failure.
+  expect(value?.errors).toBeGreaterThanOrEqual(pending);
+});

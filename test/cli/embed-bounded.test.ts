@@ -26,12 +26,14 @@ const DIMENSIONS = 4;
 interface FakeEmbedServer {
   port: number;
   texts: () => string[];
+  poisonRequests: () => number;
   stop: () => void;
 }
 
 /** Fails every request that contains the text "poison". */
 function startFakeEmbedServer(delayMs = 0): FakeEmbedServer {
   const texts: string[] = [];
+  let poisonRequests = 0;
   const server = Bun.serve({
     hostname: "127.0.0.1",
     port: 0,
@@ -39,8 +41,10 @@ function startFakeEmbedServer(delayMs = 0): FakeEmbedServer {
       const body = (await req.json()) as { input: string | string[] };
       const inputs = Array.isArray(body.input) ? body.input : [body.input];
       if (delayMs) await Bun.sleep(delayMs);
-      if (inputs.some((text) => text.includes("poison")))
+      if (inputs.some((text) => text.includes("poison"))) {
+        poisonRequests += 1;
         return new Response("injected failure", { status: 500 });
+      }
       texts.push(...inputs);
       return Response.json({
         object: "list",
@@ -60,6 +64,7 @@ function startFakeEmbedServer(delayMs = 0): FakeEmbedServer {
   return {
     port: server.port as number,
     texts: () => texts,
+    poisonRequests: () => poisonRequests,
     stop: () => server.stop(true),
   };
 }
@@ -292,6 +297,10 @@ describe("gno embed bounded runs", () => {
     const { home, env } = await writeHome(server.port, 1);
     homes.push(home);
     expect((await runGno(env, "update")).code).toBe(0);
+    // Leave only the poisoned chunk pending.
+    const seed = JSON.parse((await runGno(env, "embed", "--json")).stdout);
+    expect(seed.remaining).toBe(1);
+    const before = server.poisonRequests();
     const run = await runGno(
       env,
       "embed",
@@ -302,9 +311,59 @@ describe("gno embed bounded runs", () => {
       "--json"
     );
     expect(run.code).toBe(0);
-    const receipt = JSON.parse(run.stdout);
-    expect(receipt.stopped).toBe("limit");
-    expect(receipt.remaining).toBe(DOC_COUNT - receipt.embedded);
+    // The first attempt and one retry.
+    expect(server.poisonRequests() - before).toBeGreaterThanOrEqual(2);
+    expect(JSON.parse(run.stdout)).toMatchObject({
+      stopped: "limit",
+      remaining: 1,
+    });
+  }, 120_000);
+
+  test("a deferred vec index sync is kept across stopped slices and settled by a complete run", async () => {
+    const { home, env } = await writeHome(server.port);
+    homes.push(home);
+    expect((await runGno(env, "update")).code).toBe(0);
+    const key = `embed_vec_sync_owed:http://127.0.0.1:${server.port}/v1/embeddings#fake`;
+    const meta = (value?: string) => {
+      const db = new Database(join(home, "data", "index-default.sqlite"));
+      try {
+        if (value !== undefined)
+          db.run(
+            "INSERT OR REPLACE INTO schema_meta (key, value, updated_at) VALUES (?, ?, datetime('now'))",
+            [key, value]
+          );
+        return (
+          db
+            .query<{ value: string }, [string]>(
+              "SELECT value FROM schema_meta WHERE key = ?"
+            )
+            .get(key)?.value ?? null
+        );
+      } finally {
+        db.close();
+      }
+    };
+    meta("1");
+    for (let i = 0; i < 2; i += 1) {
+      const slice = await runGno(
+        env,
+        "embed",
+        "--max-chunks",
+        "4",
+        "--batch-size",
+        "4",
+        "--json"
+      );
+      expect(slice.code).toBe(0);
+      const receipt = JSON.parse(slice.stdout);
+      expect(receipt.stopped).toBe("limit");
+      expect(receipt.suggestion).toContain("gno vec sync");
+      expect(meta()).toBe("1");
+    }
+    const done = await runGno(env, "embed", "--json");
+    expect(done.code).toBe(0);
+    expect(JSON.parse(done.stdout).remaining).toBe(0);
+    expect(meta()).toBeNull();
   }, 120_000);
 
   test("--force with a limit is a validation error", async () => {

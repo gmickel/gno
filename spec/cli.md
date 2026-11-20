@@ -1420,7 +1420,7 @@ memory pressure prevents creating the full pool.
 **Synopsis:**
 
 ```bash
-gno embed [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--yes] [--new-partition] [--json] [--lock-wait <duration>] [--no-wait]
+gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--max-chunks <n>] [--max-seconds <n>] [--yes] [--new-partition] [--json] [--lock-wait <duration>] [--no-wait]
 ```
 
 Vector partitions are keyed on model weights, formatter, dimensions, context
@@ -1436,17 +1436,19 @@ never confirms; without confirmation embed exits 2 and writes nothing.
 
 **Options:**
 
-| Option                   | Type     | Default | Description                                                                 |
-| ------------------------ | -------- | ------- | --------------------------------------------------------------------------- |
-| `--force`                | boolean  | false   | Re-embed all chunks (ignore existing vectors)                               |
-| `--model`                | string   | config  | Override embedding model URI                                                |
-| `--batch-size`           | integer  | 32      | Chunks per batch                                                            |
-| `--dry-run`              | boolean  | false   | Show what would be embedded without doing it                                |
-| `--yes`, `-y`            | boolean  | false   | Skip confirmation prompts (never confirms a separate vector partition)      |
-| `--new-partition`        | boolean  | false   | Confirm building a separate vector partition for an incompatible runtime    |
-| `--json`                 | boolean  | false   | Output result as JSON                                                       |
-| `--lock-wait <duration>` | duration | `120s`  | How long to wait for the index write lease. Accepts `120`, `120s`, or `2m`. |
-| `--no-wait`              | boolean  | false   | Do not wait; fail immediately if another writer holds the lease             |
+| Option                   | Type     | Default | Description                                                                  |
+| ------------------------ | -------- | ------- | ---------------------------------------------------------------------------- |
+| `--force`                | boolean  | false   | Re-embed all chunks (ignore existing vectors)                                |
+| `--model`                | string   | config  | Override embedding model URI                                                 |
+| `--batch-size`           | integer  | 32      | Chunks per batch                                                             |
+| `--dry-run`              | boolean  | false   | Show what would be embedded without doing it                                 |
+| `--max-chunks <n>`       | integer  | -       | Stop after the batch that reaches this many chunks (see Bounded runs above)  |
+| `--max-seconds <n>`      | integer  | -       | Stop after the batch that reaches this many seconds (see Bounded runs above) |
+| `--yes`, `-y`            | boolean  | false   | Skip confirmation prompts (never confirms a separate vector partition)       |
+| `--new-partition`        | boolean  | false   | Confirm building a separate vector partition for an incompatible runtime     |
+| `--json`                 | boolean  | false   | Output result as JSON                                                        |
+| `--lock-wait <duration>` | duration | `120s`  | How long to wait for the index write lease. Accepts `120`, `120s`, or `2m`.  |
+| `--no-wait`              | boolean  | false   | Do not wait; fail immediately if another writer holds the lease              |
 
 Waits by default for the same write lease as `index` / `update` / MCP writers. `--no-wait` opts out.
 

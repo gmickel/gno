@@ -104,22 +104,29 @@ export async function embedVariantBacklog(
     ((limits.maxChunks !== undefined && attempted >= limits.maxChunks) ||
       (limits.maxSeconds !== undefined &&
         (performance.now() - startedAt) / 1000 >= limits.maxSeconds));
-  /** True once a bound is reached while owners in scope are still pending. */
-  const stopAtLimit = async (): Promise<boolean> => {
-    if (!limitReached()) return false;
+  /**
+   * At a batch boundary: "limit" once a bound is reached while owners in
+   * scope are still pending, "incomplete" when the runtime cannot be
+   * re-established there (never another batch past the limit), else
+   * "continue".
+   */
+  const stopAtLimit = async (): Promise<
+    "limit" | "incomplete" | "continue"
+  > => {
+    if (!limitReached()) return "continue";
     // A runtime change is an incomplete pass, never a limit stop.
-    if (!(await identityCurrent())) return false;
+    if (!(await identityCurrent())) return "incomplete";
     // A bound reached on the batch that empties the backlog is a finished
     // pass. Under the CLI write lease the starting backlog minus what was
     // committed is exact (failed owners stay pending), so no scan is needed.
-    if (limits?.pendingAtStart !== undefined)
-      return limits.pendingAtStart - total.embedded > 0;
-    // Otherwise probe: owners after the cursor first, then the first pending
-    // owner from the start (including chunks that failed in this run).
-    return (
-      variantBacklogPage(deps, store, 1, after).length > 0 ||
-      variantBacklogPage(deps, store, 1).length > 0
-    );
+    const pending =
+      limits?.pendingAtStart !== undefined
+        ? limits.pendingAtStart - total.embedded > 0
+        : // Otherwise probe: owners after the cursor first, then the first
+          // pending owner from the start (including this run's failures).
+          variantBacklogPage(deps, store, 1, after).length > 0 ||
+          variantBacklogPage(deps, store, 1).length > 0;
+    return pending ? "limit" : "continue";
   };
   const stop = async () => {
     await saveResume(after);
@@ -177,7 +184,12 @@ export async function embedVariantBacklog(
         total.errors += owners.length;
         deps.onProgress?.(total.embedded, total.errors);
         attempted += owners.length;
-        if (await stopAtLimit()) return await stop();
+        const verdict = await stopAtLimit();
+        if (verdict === "limit") return await stop();
+        if (verdict === "incomplete") {
+          identityLost = true;
+          break;
+        }
         await Bun.sleep(0);
         continue;
       }
@@ -204,6 +216,7 @@ export async function embedVariantBacklog(
       // owners stay pending for the next run instead of a further batch.
       if (!background && result.retryOwners.length && !limitReached()) {
         attempted += result.retryOwners.length;
+        const retrying = result.retryOwners.length;
         result = await embedVariantBatch({
           store,
           embedPort: deps.embedPort,
@@ -214,12 +227,27 @@ export async function embedVariantBacklog(
         total.embedded += result.embedded;
         total.errors += result.errors + result.retryOwners.length;
         total.contentionErrors += result.contentionErrors;
+        // Same accounting when the identity drops during the retry.
+        if (!identityHolds())
+          total.errors += Math.max(
+            0,
+            retrying -
+              result.embedded -
+              result.errors -
+              result.contentionErrors -
+              result.retryOwners.length
+          );
       } else if (!background) {
         // Failed in this run; left pending without a retry past the limit.
         total.errors += result.retryOwners.length;
       }
       deps.onProgress?.(total.embedded, total.errors);
-      if (await stopAtLimit()) return await stop();
+      const verdict = await stopAtLimit();
+      if (verdict === "limit") return await stop();
+      if (verdict === "incomplete") {
+        identityLost = true;
+        break;
+      }
       if (background) await Bun.sleep(0);
     }
     // A traversal that reached its end leaves nothing to resume.
