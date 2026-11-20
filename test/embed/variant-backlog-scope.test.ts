@@ -536,17 +536,20 @@ test.each([false, true])(
   }
 );
 
-test("scoped counts keep documents as the outer loop even after ANALYZE", async () => {
+test("scoped counts read the collection index even with stale statistics", async () => {
   const { db, store, deps } = await scopeFixture();
-  // Skewed, with the production documents(mirror_hash) index: thousands of
-  // single-chunk documents elsewhere make walking content_chunks and looking
-  // documents up by mirror hash look cheap to the planner.
+  // Skewed, with the production documents(mirror_hash) index, and statistics
+  // gathered while every document was in one collection (the small collection
+  // was filled afterwards): without a hint the planner scans documents or
+  // walks content_chunks instead of using the collection index.
   db.exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 4000)
     INSERT INTO documents SELECT 10000 + i, 'skew-' || i, 'Skew', 1, 'big' FROM n;
     WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 4000)
     INSERT INTO content_chunks SELECT 'skew-' || i, 0, 'skew text' FROM n;
     CREATE INDEX idx_documents_mirror_hash ON documents(mirror_hash);
-    ANALYZE;`);
+    UPDATE documents SET collection = 'big' WHERE collection = 'small';
+    ANALYZE;
+    UPDATE documents SET collection = 'small' WHERE id IN (101, 103, 105, 107, 109, 111);`);
   const traced: string[] = [];
   const query = db.query.bind(db);
   const spy = spyOn(db, "query").mockImplementation(((sql: string) => {
@@ -570,7 +573,9 @@ test("scoped counts keep documents as the outer loop even after ANALYZE", async 
     const first = db
       .query<{ detail: string }, string[]>(`EXPLAIN QUERY PLAN ${sql}`)
       .all(...params)[0]?.detail;
-    // documents is the outer loop, never content_chunks.
-    expect(first).toMatch(/^(SCAN|SEARCH) d\b/);
+    // documents is the outer loop, read through the collection index.
+    expect(first).toMatch(
+      /^SEARCH d USING (COVERING )?INDEX idx_documents_collection/
+    );
   }
 });
