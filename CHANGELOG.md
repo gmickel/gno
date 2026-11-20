@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Bounded embed runs: `gno embed --max-chunks <n>` and `--max-seconds <n>` stop after the batch that reaches either limit, exit 0, keep the embedded batches and release the write lease, so a large backlog can be embedded in slices. The `--json` receipt of an embedding run now reports `remaining` (chunks still pending for the scope, 0 when done) and `stopped: "limit"` when a limit ended the run early; the next bounded run continues after the previous slice and wraps to the start, so a chunk that keeps failing stays pending without blocking later chunks. `remaining` is the real pending backlog, also after `--force`. A stopped run skips only the final activation that a complete pass performs and is never reported as interrupted. `--max-chunks` counts every chunk submitted to the embedding provider, retries, adaptive-recovery resubmissions and runtime-verification samples included. The receipt shape is published as the `embed-receipt@1.0` JSON schema.
+
 ### Fixed
 
 - With an embedding model that reports a verified runtime identity (the default local models), counting and paging the embedding backlog for `gno embed --collection <name>` (and its `--dry-run`) now cost time in proportion to that collection instead of the whole index. Both used to read, format and hash every active chunk in every collection and drop the other collections afterwards; on an index of 1.48M chunks a dry run for a small collection took over 11 minutes. The collection is now part of the query, and counting no longer formats or hashes a chunk whose owner has no binding in the current partition, or whose binding refers to the document's older content; chunks bound to the current content are still hashed to catch title or format changes. Backlog counts and embedded chunks are unchanged (#348).

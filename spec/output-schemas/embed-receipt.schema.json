@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/embed-receipt@1.0",
+  "title": "GNO Embed Receipt",
+  "description": "Receipt emitted by `gno embed --json` for a run that reached a result (failures emit the error envelope instead). A dry run reports the pending chunk count as `embedded` and omits `remaining`. A run that embeds adds `remaining`; a run ended by `--max-chunks` or `--max-seconds` with work pending adds `stopped`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "embedded",
+    "errors",
+    "contentionErrors",
+    "duration",
+    "model",
+    "searchAvailable",
+    "errorSamples"
+  ],
+  "properties": {
+    "embedded": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Chunks embedded and stored by this run; for `--dry-run`, the chunks that would be embedded."
+    },
+    "errors": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Chunks that failed to embed in this run; they stay pending."
+    },
+    "contentionErrors": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Chunks deferred by SQLITE_BUSY/LOCKED - not embedding failures."
+    },
+    "duration": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Seconds."
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Embedding model URI."
+    },
+    "searchAvailable": {
+      "type": "boolean",
+      "description": "False when sqlite-vec is unavailable: vectors are stored but KNN search is disabled."
+    },
+    "errorSamples": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Up to a few distinct failure messages."
+    },
+    "suggestion": {
+      "type": "string",
+      "description": "Next step for the user, when one applies."
+    },
+    "syncError": {
+      "type": "string",
+      "description": "Vector index sync failure after embedding."
+    },
+    "remaining": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Chunks still pending for the scope after this run (0 when the backlog is done). Present on runs that embed, absent on `--dry-run`."
+    },
+    "stopped": {
+      "const": "limit",
+      "description": "A run limit (`--max-chunks` or `--max-seconds`) ended the run with work pending. Absent otherwise."
+    },
+    "incomplete": {
+      "const": true,
+      "description": "The run ended early because the embedding runtime changed. Absent otherwise."
+    }
+  },
+  "dependencies": {
+    "stopped": ["remaining"],
+    "incomplete": ["remaining"]
+  },
+  "if": {
+    "properties": { "stopped": { "const": "limit" } },
+    "required": ["stopped"]
+  },
+  "then": {
+    "description": "A limit stop leaves work pending and is never a runtime change.",
+    "properties": {
+      "remaining": { "type": "integer", "minimum": 1 },
+      "incomplete": false
+    }
+  }
+}

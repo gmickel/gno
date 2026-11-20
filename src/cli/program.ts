@@ -58,6 +58,7 @@ import {
   parseCliMetadataFilter,
   parseOptionalFloat,
   parsePositiveInt,
+  parseRunLimit,
 } from "./options";
 import { resolveCliQueryText } from "./query-text";
 
@@ -3683,6 +3684,14 @@ function wireManagementCommands(program: Command): void {
         "confirm building a separate vector partition for an incompatible runtime"
       )
       .option("--dry-run", "show what would be done")
+      .option(
+        "--max-chunks <num>",
+        "stop after the batch that reaches this many chunks sent to the model (retries count)"
+      )
+      .option(
+        "--max-seconds <num>",
+        "stop after the batch that reaches this many seconds"
+      )
       .option("--json", "JSON output")
   ).action(
     async (
@@ -3696,6 +3705,16 @@ function wireManagementCommands(program: Command): void {
       const collection =
         collectionArg ?? (cmdOpts.collection as string | undefined);
       const lease = parseWriteLeaseFlags(cmdOpts);
+      if (
+        cmdOpts.force &&
+        (cmdOpts.maxChunks !== undefined || cmdOpts.maxSeconds !== undefined)
+      )
+        // A forced pass restarts from the first chunk, so a bounded one
+        // would re-embed the same prefix on every run.
+        throw new CliError(
+          "VALIDATION",
+          "--max-chunks and --max-seconds cannot be combined with --force"
+        );
       const opts = {
         configPath: globals.config,
         indexName: globals.index,
@@ -3704,6 +3723,8 @@ function wireManagementCommands(program: Command): void {
         batchSize: parsePositiveInt("batch-size", cmdOpts.batchSize),
         force: Boolean(cmdOpts.force),
         dryRun: Boolean(cmdOpts.dryRun),
+        maxChunks: parseRunLimit("max-chunks", cmdOpts.maxChunks),
+        maxSeconds: parseRunLimit("max-seconds", cmdOpts.maxSeconds),
         yes: globals.yes,
         newPartition: Boolean(cmdOpts.newPartition),
         json: format === "json",
@@ -3719,7 +3740,9 @@ function wireManagementCommands(program: Command): void {
         throw new CliError("RUNTIME", result.error ?? "Embed failed");
       }
       process.stdout.write(`${formatEmbed(result, opts)}\n`);
-      if (result.contentionErrors > 0) {
+      // A run stopped by --max-chunks/--max-seconds exits 0 as requested;
+      // its receipt still reports contentionErrors.
+      if (result.contentionErrors > 0 && result.stopped !== "limit") {
         throw new CliError(
           "BUSY",
           "Some chunks were deferred by index contention",
