@@ -1207,16 +1207,18 @@ gno embed --max-chunks 5000 --json   # receipt includes "remaining" and "stopped
 ```
 
 A bounded run stops at a batch boundary, keeps what it embedded, exits 0 and
-releases the index lock, also when some chunks were deferred by index
-contention (the receipt still counts them). The receipt reports `remaining`,
-the chunks still to embed for that scope, and `"stopped": "limit"` when the
-limit ended the run early. Run the same command again to continue: the next
-bounded run picks up after the previous slice and wraps to the start, so a
-chunk that keeps failing stays pending without holding up the rest. A model's
-first set of vectors becomes searchable once every collection that uses it is
-fully embedded; after that, newly embedded chunks are searchable as soon as
-each batch is written. `--dry-run` ignores the limits, and the limits
-cannot be combined with `--force`.
+releases the index lock, also when some chunks were deferred by index contention
+(the receipt still counts them). The receipt reports `remaining`, the chunks
+still to embed for that scope, and `"stopped": "limit"` when the limit ended the
+run early. Run the same command again to continue: the next bounded run picks up
+after the previous slice and wraps to the start, so a chunk that keeps failing
+stays pending without holding up the rest. With a model that reports a verified
+runtime identity, its first set of vectors becomes searchable once every
+collection that uses it is fully embedded; after that, newly embedded chunks are
+searchable as soon as each batch is written. With other models (for example an
+HTTP embedding endpoint), each batch is searchable as soon as it is written.
+`--dry-run` ignores the limits, and the limits cannot be combined with
+`--force`.
 
 Switching backend (`GNO_LLAMA_GPU`), Bun version or thread count resumes the
 backlog in the existing partition when a measured sample of stored chunks
