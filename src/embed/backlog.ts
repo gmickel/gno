@@ -74,6 +74,12 @@ export interface EmbedBacklogDeps {
 export interface EmbedRunLimits {
   maxChunks?: number;
   maxSeconds?: number;
+  /**
+   * Pending owners in scope when the pass started, for callers that hold the
+   * write lease for the whole pass (the CLI): the stop classification then
+   * uses this count minus committed owners instead of probing the backlog.
+   */
+  pendingAtStart?: number;
 }
 
 export interface EmbedBacklogResult {

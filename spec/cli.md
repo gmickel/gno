@@ -1149,7 +1149,8 @@ gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-
   contention (the receipt still reports `contentionErrors`). It keeps every
   committed batch and releases the write lease. It skips the final
   vector-index activation that only a complete pass performs, does not start a
-  model-wide vector index sync, and the index stage marker records the run as
+  model-wide vector index sync (a later run that is not stopped performs it),
+  and the index stage marker records the run as
   finished, not interrupted. The next `gno embed` continues with the remaining
   chunks.
 - A limit reached on the batch that empties the backlog is a complete run.

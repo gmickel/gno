@@ -430,14 +430,25 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
 
   if (!stopped) {
     await drainRetryQueue();
-    // The final drain can itself reach the limit with retries still queued.
-    if (
-      limitReached() &&
-      [...retryQueue.values()].some(
+    // The limit can be reached by the last batch or the final retry drain.
+    // It ended the run with work pending when chunks are still queued for a
+    // retry or, for a non-forced run, still in the backlog (including
+    // chunks that used every attempt).
+    if (limitReached()) {
+      const queued = [...retryQueue.values()].some(
         (entry) => entry.attempts < MAX_EMBED_CHUNK_ATTEMPTS
-      )
-    )
-      stopped = "limit";
+      );
+      let pending = queued;
+      if (!pending && !ctx.force) {
+        const backlog = await ctx.stats.countBacklog(
+          ctx.modelUri,
+          embedFingerprint,
+          { collection: ctx.collection }
+        );
+        pending = backlog.ok && backlog.value > 0;
+      }
+      if (pending) stopped = "limit";
+    }
   }
   if (stopped) {
     // Queued retries stay pending for the next run instead of spending more
@@ -449,9 +460,13 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
 
   // Bounded runs continue after this slice next time; a finished traversal
   // leaves nothing to resume.
-  if (stopped) writeResumeCursor(ctx.db, resumeKey, cursor);
-  else if (readResumeCursor(ctx.db, resumeKey, isChunkCursor))
-    writeResumeCursor(ctx.db, resumeKey, undefined);
+  try {
+    if (stopped) writeResumeCursor(ctx.db, resumeKey, cursor);
+    else if (readResumeCursor(ctx.db, resumeKey, isChunkCursor))
+      writeResumeCursor(ctx.db, resumeKey, undefined);
+  } catch {
+    // Advisory: a busy database must not fail a finished slice.
+  }
 
   if (retryQueue.size > 0) {
     errors += retryQueue.size;
@@ -475,6 +490,36 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
     suggestion,
     stopped,
   };
+}
+
+function getSchemaMeta(db: Database, key: string): string | undefined {
+  try {
+    return (
+      db
+        .query<{ value: string }, [string]>(
+          "SELECT value FROM schema_meta WHERE key = ?"
+        )
+        .get(key)?.value ?? undefined
+    );
+  } catch {
+    return undefined;
+  }
+}
+
+function setSchemaMeta(
+  db: Database,
+  key: string,
+  value: string | undefined
+): void {
+  if (value === undefined) {
+    db.run("DELETE FROM schema_meta WHERE key = ?", [key]);
+    return;
+  }
+  db.run(
+    `INSERT INTO schema_meta (key, value, updated_at) VALUES (?, ?, datetime('now'))
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+    [key, value]
+  );
 }
 
 /** A bounded run stops at the first batch boundary at or past either limit. */
@@ -691,6 +736,16 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           return { success: false, error: vectorResult.error.message };
         }
         vectorIndex = vectorResult.value;
+        // A bounded legacy run that skipped its vec index sync leaves this
+        // marker; the next run that is not stopped by a limit syncs.
+        const vecSyncOwedKey = `embed_vec_sync_owed:${modelUri}`;
+        const vecSyncOwed =
+          !dryRun && getSchemaMeta(db, vecSyncOwedKey) === "1";
+        const settleOwedVecSync = async (): Promise<void> => {
+          if (!vecSyncOwed || !vectorIndex) return;
+          const synced = await vectorIndex.syncVecIndex();
+          if (synced.ok) setSchemaMeta(db, vecSyncOwedKey, undefined);
+        };
 
         const backlogDeps = {
           statsPort: stats,
@@ -734,7 +789,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
             };
           const processed = await embedBacklog({
             ...prepared.value,
-            limits,
+            limits: limits && { ...limits, pendingAtStart: totalToEmbed },
             onProgress: !options.json
               ? (embedded, errors) =>
                   process.stderr.write(
@@ -757,10 +812,11 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
             processed.value.deferred ||
             processed.value.incomplete;
           // Under the CLI write lease nothing else changes the backlog, so a
-          // limit stop leaves the starting backlog minus what it embedded
-          // (failed owners stay pending) without another pass over the scope.
+          // non-forced run leaves the starting backlog minus what it embedded
+          // (failed or discarded owners stay pending), with no further pass.
+          // A forced run recounts the real backlog when it may have left work.
           let remaining = 0;
-          if (stopped && !force)
+          if (!force)
             remaining = Math.max(0, totalToEmbed - processed.value.embedded);
           else if (leftWork)
             remaining = countVariantBacklog({
@@ -782,6 +838,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           const count = await getActiveChunkCount(db, options.collection);
           if (!count.ok) return { success: false, error: count.error.message };
           totalToEmbed = count.value;
+          if (!dryRun && !totalToEmbed) await settleOwedVecSync();
           if (dryRun || !totalToEmbed)
             return {
               success: true,
@@ -816,6 +873,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           totalToEmbed = backlogResult.value;
 
           if (totalToEmbed === 0 || dryRun) {
+            if (!dryRun) await settleOwedVecSync();
             return {
               success: true,
               embedded: totalToEmbed,
@@ -851,12 +909,11 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           return { success: false, error: result.error };
         }
         const legacyRemaining = async (): Promise<number> => {
-          if (!result.stopped && !result.errors && !result.contentionErrors)
-            return 0;
           // Under the CLI write lease: the starting backlog minus what this
           // run embedded (failed chunks stay pending).
-          if (result.stopped && !force)
-            return Math.max(0, totalToEmbed - result.embedded);
+          if (!force) return Math.max(0, totalToEmbed - result.embedded);
+          if (!result.stopped && !result.errors && !result.contentionErrors)
+            return 0;
           // The real pending backlog, also after `--force`.
           const recount = await stats.countBacklog(
             modelUri,
@@ -873,8 +930,14 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
         };
 
         // A bounded run that stopped at its limit does not start a
-        // model-wide vec index scan while holding the lease.
+        // model-wide vec index scan while holding the lease; it records that
+        // a sync is owed, and the next run that is not stopped performs it.
         if (vectorIndex.vecDirty && result.stopped) {
+          try {
+            setSchemaMeta(db, vecSyncOwedKey, "1");
+          } catch {
+            // The suggestion below still tells the user to sync.
+          }
           return {
             success: true,
             embedded: result.embedded,
@@ -890,8 +953,9 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
           };
         }
 
-        // Sync vec index if any vec0 writes failed (matches embedBacklog behavior)
-        if (vectorIndex.vecDirty) {
+        // Sync vec index if any vec0 writes failed (matches embedBacklog
+        // behavior), or if an earlier bounded run deferred its sync.
+        if (vectorIndex.vecDirty || vecSyncOwed) {
           const syncResult = await vectorIndex.syncVecIndex();
           if (syncResult.ok) {
             const { added, removed } = syncResult.value;
@@ -903,6 +967,7 @@ export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
               }
             }
             vectorIndex.vecDirty = false;
+            if (vecSyncOwed) setSchemaMeta(db, vecSyncOwedKey, undefined);
           } else {
             if (!options.json) {
               process.stdout.write(
@@ -1116,6 +1181,9 @@ export function formatEmbed(
     lines.push(
       `Stopped early because the embedding runtime changed; ${(result.remaining ?? 0).toLocaleString()} chunks remaining. Run \`gno embed\` again to continue.`
     );
+  }
+  if (result.errors === 0 && result.suggestion) {
+    lines.push(`Hint: ${result.suggestion}`);
   }
   if (result.stopped === "limit") {
     lines.push(

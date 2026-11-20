@@ -288,6 +288,25 @@ describe("gno embed bounded runs", () => {
     expect(receipt.remaining).toBe(DOC_COUNT - receipt.embedded);
   }, 120_000);
 
+  test("a limit reached by the final retry is still a limit stop", async () => {
+    const { home, env } = await writeHome(server.port, 1);
+    homes.push(home);
+    expect((await runGno(env, "update")).code).toBe(0);
+    const run = await runGno(
+      env,
+      "embed",
+      "--max-chunks",
+      "2",
+      "--batch-size",
+      "1",
+      "--json"
+    );
+    expect(run.code).toBe(0);
+    const receipt = JSON.parse(run.stdout);
+    expect(receipt.stopped).toBe("limit");
+    expect(receipt.remaining).toBe(DOC_COUNT - receipt.embedded);
+  }, 120_000);
+
   test("--force with a limit is a validation error", async () => {
     const { home, env } = await writeHome(server.port);
     homes.push(home);

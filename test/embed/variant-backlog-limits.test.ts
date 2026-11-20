@@ -413,3 +413,66 @@ test("the receipt and human output surface a runtime change", () => {
     "Stopped early because the embedding runtime changed; 6 chunks remaining."
   );
 });
+
+test("a reload that cannot restore the runtime ends the pass as incomplete", async () => {
+  const { db, deps } = await limitsFixture(3);
+  db.run("UPDATE content_chunks SET text = 'poison' WHERE mirror_hash = 'm1'");
+  poisonPort(deps);
+  let identity = true;
+  const single = deps.embedPort.embed.bind(deps.embedPort);
+  deps.embedPort.embed = (async (text: string, options?: unknown) => {
+    const result = await single(text, options as never);
+    if (!result.ok) identity = false;
+    return result;
+  }) as never;
+  deps.embedPort.init = (async () => ({
+    ok: false,
+    error: { code: "MODEL", message: "reload failed" },
+  })) as never;
+  const result = await embedBacklog({
+    ...deps,
+    batchSize: 1,
+    limits: { maxChunks: 1 },
+    identityStillCurrent: () => {
+      if (!identity) throw new Error("dimensions unavailable");
+      return true;
+    },
+  });
+  expect(result).toMatchObject({ ok: true, value: { incomplete: true } });
+  expect(result.ok && result.value.stopped).toBeFalsy();
+});
+
+test("a page discarded by an identity drop counts as failed and stays pending", async () => {
+  const { deps, embedBatch } = await limitsFixture(4);
+  let identity = true;
+  let calls = 0;
+  embedBatch.mockImplementation(async (texts: string[]) => {
+    calls += 1;
+    if (calls === 1) identity = false;
+    return { ok: true as const, value: texts.map(() => [0.1, 0.2, 0.3]) };
+  });
+  deps.embedPort.init = (async () => {
+    identity = true;
+    return { ok: true };
+  }) as never;
+  const result = await embedBacklog({
+    ...deps,
+    batchSize: 2,
+    identityStillCurrent: () => identity,
+  });
+  expect(result).toMatchObject({ ok: true, value: { embedded: 2, errors: 2 } });
+  expect(countVariantBacklog(deps)).toBe(2);
+});
+
+test("with the starting backlog known, a limit stop needs no backlog probe", async () => {
+  const { store, deps } = await limitsFixture(6);
+  const pending = spyOn(store, "pending");
+  const result = await embedBacklog({
+    ...deps,
+    batchSize: 2,
+    limits: { maxChunks: 2, pendingAtStart: 6 },
+  });
+  expect(result).toMatchObject({ ok: true, value: { stopped: "limit" } });
+  // One call for the page itself, none to classify the stop.
+  expect(pending).toHaveBeenCalledTimes(1);
+});

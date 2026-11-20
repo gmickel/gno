@@ -26,12 +26,21 @@ export async function embedVariantBacklog(
   deps: EmbedBacklogDeps,
   store: VectorVariantStore
 ): Promise<StoreResult<EmbedBacklogResult>> {
-  const identityStillCurrent = deps.identityStillCurrent;
-  if (!identityStillCurrent)
+  const checkIdentity = deps.identityStillCurrent;
+  if (!checkIdentity)
     return err(
       "INVALID_INPUT",
       "Variant embedding requires an effective runtime identity check"
     );
+  // The predicate can throw while a port is half re-initialized (its
+  // dimensions are cleared); treat that as "not current" everywhere.
+  const identityStillCurrent = (): boolean => {
+    try {
+      return checkIdentity();
+    } catch {
+      return false;
+    }
+  };
   const db = getVectorStatsDatabase(deps.statsPort);
   if (deps.collection && !db)
     return err(
@@ -63,19 +72,32 @@ export async function embedVariantBacklog(
   const saveResume = async (cursor: OwnerCursor | undefined) => {
     if (!db || !resumeKey) return;
     if (!cursor && !readResumeCursor(db, resumeKey, isOwnerCursor)) return;
-    await inWriteTurn(deps.acquireWriteTurn, async () =>
-      writeResumeCursor(db, resumeKey, cursor)
-    );
+    // Advisory: a busy database must not turn a finished slice into a
+    // failure. The next run then starts from the previous position.
+    try {
+      await inWriteTurn(deps.acquireWriteTurn, async () =>
+        writeResumeCursor(db, resumeKey, cursor)
+      );
+    } catch {
+      // Keep the receipt; resumption is best effort.
+    }
   };
+  const identityHolds = identityStillCurrent;
   /**
    * A failed request can drop the port's cached identity (a native worker is
    * retired). Reload it once before treating the runtime as changed, so a
    * chunk that keeps failing is a failure, not an identity change.
    */
   const identityCurrent = async (): Promise<boolean> => {
-    if (identityStillCurrent()) return true;
-    if (!background) await deps.embedPort.init();
-    return identityStillCurrent();
+    if (identityHolds()) return true;
+    if (background) return false;
+    let reloaded: { ok: boolean } | undefined;
+    try {
+      reloaded = await deps.embedPort.init();
+    } catch {
+      return false;
+    }
+    return !!reloaded?.ok && identityHolds();
   };
   const limitReached = (): boolean =>
     !!limits &&
@@ -88,9 +110,12 @@ export async function embedVariantBacklog(
     // A runtime change is an incomplete pass, never a limit stop.
     if (!(await identityCurrent())) return false;
     // A bound reached on the batch that empties the backlog is a finished
-    // pass. Owners after the cursor are the common case and cheap to find;
-    // otherwise the first pending owner from the start (including chunks
-    // that failed in this run, which stay pending).
+    // pass. Under the CLI write lease the starting backlog minus what was
+    // committed is exact (failed owners stay pending), so no scan is needed.
+    if (limits?.pendingAtStart !== undefined)
+      return limits.pendingAtStart - total.embedded > 0;
+    // Otherwise probe: owners after the cursor first, then the first pending
+    // owner from the start (including chunks that failed in this run).
     return (
       variantBacklogPage(deps, store, 1, after).length > 0 ||
       variantBacklogPage(deps, store, 1).length > 0
@@ -157,6 +182,19 @@ export async function embedVariantBacklog(
         continue;
       }
       if (result.deferred) return ok({ ...total, deferred: true });
+      // The identity dropped during inference: the batch discarded its
+      // results. Its owners stay pending and count as this run's failures
+      // (the port is reloaded at the top of the loop).
+      if (!identityHolds()) {
+        total.errors += Math.max(
+          0,
+          owners.length -
+            result.embedded -
+            result.errors -
+            result.contentionErrors -
+            result.retryOwners.length
+        );
+      }
       total.embedded += result.embedded;
       total.errors += result.errors;
       total.contentionErrors += result.contentionErrors;
