@@ -6,8 +6,9 @@ import { getVectorStatsDatabase } from "../store/vector/stats";
 /** Active chunks in scope; the collection predicate is added only when set. */
 function activeChunkScope(collection: string | undefined) {
   return {
+    // CROSS JOIN keeps the collection index as the outer loop.
     from: `FROM documents d
-    JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
+    CROSS JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
     WHERE d.active = 1${collection ? " AND d.collection = ?" : ""}`,
     params: collection ? [collection] : [],
   };

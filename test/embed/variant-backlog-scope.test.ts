@@ -26,6 +26,7 @@ import { formatDocForEmbedding } from "../../src/pipeline/contextual";
 import { migration } from "../../src/store/migrations/028-vector-variants";
 import { migration as runtimeMigration } from "../../src/store/migrations/031-runtime-independent-vectors";
 import { migration as mirrorMigration } from "../../src/store/migrations/036-vector-mirror-state";
+import { syncPartitionIndex } from "../../src/store/vector/partition-index";
 import { createVectorStatsPort } from "../../src/store/vector/stats";
 import {
   createVectorVariantStore,
@@ -615,10 +616,8 @@ test("a dirty mirror is repaired even while another collection is pending", asyn
   db.run(
     `DELETE FROM ${store.tableName} WHERE variant_id = (SELECT min(variant_id) FROM ${store.tableName})`
   );
-  // An outside change to stored vectors marks the partition dirty.
-  db.run(
-    "UPDATE vector_variants SET embedding = embedding WHERE variant_id = (SELECT min(variant_id) FROM vector_variants)"
-  );
+  // A vec0-only change: no trigger fires, the row-count check catches it.
+  expect(store.mirrorState()).toBe("dirty");
   db.run("INSERT INTO documents VALUES (900, 'big-1', 'New big', 1, 'big')");
   const syncIndex = spyOn(store, "syncIndex");
   const activate = spyOn(store, "activate");
@@ -666,4 +665,95 @@ test("without sqlite-vec an activated partition still reports the unavailable in
       syncError: "Variant index unavailable",
     },
   });
+});
+
+test("outer conflict clauses cannot leave the mirror marked clean", async () => {
+  const { db, store } = await activatedFixture();
+  const other = await createVectorVariantStore(db, {
+    ...identity,
+    modelFingerprint: "other-weights",
+  });
+  // UPDATE OR IGNORE: the trigger's invalidation still applies.
+  db.run(
+    "UPDATE OR IGNORE vector_variants SET embedding = ? WHERE variant_id = (SELECT min(variant_id) FROM vector_variants WHERE partition_id = ?)",
+    [new Uint8Array(new Float32Array([9, 9, 9]).buffer), store.partitionId]
+  );
+  expect(store.mirrorState()).toBe("dirty");
+  store.syncIndex();
+  expect(store.mirrorState()).toBe("clean");
+
+  // INSERT OR REPLACE that takes a variant id from this partition into
+  // another one invalidates the displaced partition too.
+  db.run("PRAGMA foreign_keys = OFF");
+  const id = db
+    .query<{ id: number }, [string]>(
+      "SELECT min(variant_id) AS id FROM vector_variants WHERE partition_id = ?"
+    )
+    .get(store.partitionId)!.id;
+  db.run(
+    "INSERT OR REPLACE INTO vector_variants (variant_id, partition_id, input_hash, embedding) VALUES (?, ?, ?, ?)",
+    [
+      id,
+      other.partitionId,
+      "f".repeat(64),
+      new Uint8Array(new Float32Array([1, 0, 0]).buffer),
+    ]
+  );
+  expect(store.mirrorState()).toBe("dirty");
+});
+
+test("gno vec sync records the mirror as clean", async () => {
+  const { db, store } = await activatedFixture();
+  db.run(
+    `DELETE FROM ${store.tableName} WHERE variant_id = (SELECT min(variant_id) FROM ${store.tableName})`
+  );
+  db.run(
+    "UPDATE vector_variants SET embedding = embedding WHERE partition_id = ?",
+    [store.partitionId]
+  );
+  expect(store.mirrorState()).toBe("dirty");
+  syncPartitionIndex(db, {
+    partitionId: store.partitionId,
+    dimensions: store.identity.dimensions,
+  });
+  expect(store.mirrorState()).toBe("clean");
+});
+
+test("scoped counts keep documents as the outer loop even after ANALYZE", async () => {
+  const { db, store, deps } = await scopeFixture();
+  // Skewed, with the production documents(mirror_hash) index: thousands of
+  // single-chunk documents elsewhere make walking content_chunks and looking
+  // documents up by mirror hash look cheap to the planner.
+  db.exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 4000)
+    INSERT INTO documents SELECT 10000 + i, 'skew-' || i, 'Skew', 1, 'big' FROM n;
+    WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 4000)
+    INSERT INTO content_chunks SELECT 'skew-' || i, 0, 'skew text' FROM n;
+    CREATE INDEX idx_documents_mirror_hash ON documents(mirror_hash);
+    ANALYZE;`);
+  const traced: string[] = [];
+  const query = db.query.bind(db);
+  const spy = spyOn(db, "query").mockImplementation(((sql: string) => {
+    traced.push(sql);
+    return query(sql);
+  }) as typeof db.query);
+  try {
+    countVariantBacklog({ ...deps, collection: "small" });
+    countVariantBacklog({ ...deps, collection: "small", force: true });
+  } finally {
+    spy.mockRestore();
+  }
+  const counts = traced.filter(
+    (sql) => sql.includes("count(*)") && sql.includes("d.collection = ?")
+  );
+  expect(counts.length).toBe(2);
+  for (const sql of counts) {
+    const params = sql.includes("o.partition_id")
+      ? [store.partitionId, "small"]
+      : ["small"];
+    const first = db
+      .query<{ detail: string }, string[]>(`EXPLAIN QUERY PLAN ${sql}`)
+      .all(...params)[0]?.detail;
+    // documents is the outer loop, never content_chunks.
+    expect(first).toMatch(/^(SCAN|SEARCH) d\b/);
+  }
 });

@@ -13,6 +13,24 @@ export interface StoredPartition {
   dimensions: number;
 }
 
+/**
+ * Records that the partition's vec0 mirror matches its stored variants
+ * (migration 036). A no-op on databases without mirror tracking. Callers run
+ * it inside the transaction that made the mirror current.
+ */
+export function markMirrorClean(db: Database, partitionId: string): void {
+  if (
+    !db
+      .query("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get("vector_mirror_state")
+  )
+    return;
+  db.run(
+    "INSERT OR REPLACE INTO vector_mirror_state (partition_id, dirty) VALUES (?, 0)",
+    [partitionId]
+  );
+}
+
 const tableName = (partition: StoredPartition): string =>
   `vec_v1_${partition.partitionId}`;
 
@@ -69,10 +87,9 @@ export function syncPartitionIndex(
           WHERE v.partition_id = ? AND x.variant_id IS NULL
         `)
         .all(partition.partitionId);
-      return {
-        added: insertVariants(db, partition, missing),
-        removed: stale.length,
-      };
+      const added = insertVariants(db, partition, missing);
+      markMirrorClean(db, partition.partitionId);
+      return { added, removed: stale.length };
     })
     .immediate();
 }
@@ -86,7 +103,7 @@ export function rebuildPartitionIndex(
     .transaction(() => {
       db.exec(`DROP TABLE IF EXISTS ${tableName(partition)}`);
       createTable(db, partition);
-      return insertVariants(
+      const inserted = insertVariants(
         db,
         partition,
         db
@@ -95,6 +112,8 @@ export function rebuildPartitionIndex(
           )
           .iterate(partition.partitionId)
       );
+      markMirrorClean(db, partition.partitionId);
+      return inserted;
     })
     .immediate();
 }
