@@ -123,6 +123,18 @@ export async function embedVariantBacklog(
       if (background) await Bun.sleep(0);
     }
     assertInferenceActive();
+    // Retrieval authority was established by the first activation and search
+    // validates every owner at query time, so a later pass with an intact vec0
+    // mirror does not re-prove index-wide coverage (O(index) on every run).
+    // A mirror that lost rows takes the full repair and activation path below.
+    if (
+      identityStillCurrent() &&
+      store.hasActivated() &&
+      store.materializationMatches()
+    ) {
+      assertInferenceActive();
+      return ok(total);
+    }
     // Capture the epoch before checking completeness; activate rechecks under write lock.
     const epoch = store.epoch();
     if (identityStillCurrent() && !store.hasPending()) {
