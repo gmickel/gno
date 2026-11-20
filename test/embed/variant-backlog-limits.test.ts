@@ -615,3 +615,20 @@ test("adaptive recovery resubmissions count toward --max-chunks", async () => {
   // The second page was never submitted; it stays pending.
   expect(countVariantBacklog(deps)).toBe(2);
 });
+
+test("owners that share an input or reuse a vector cost no extra submissions", async () => {
+  const { db, deps, embedBatch } = await limitsFixture(6);
+  db.run("UPDATE content_chunks SET text = 'same body'");
+  db.run("UPDATE documents SET title = 'Same'");
+  // Every page dedups to one input; after the first page the input is
+  // reusable and later pages submit nothing, so a limit of two never binds.
+  const result = await embedBacklog({
+    ...deps,
+    batchSize: 2,
+    limits: { maxChunks: 2 },
+  });
+  expect(result).toMatchObject({ ok: true, value: { embedded: 6 } });
+  expect(result.ok && result.value.stopped).toBeFalsy();
+  expect(embedBatch.mock.calls.flat(2).length).toBeLessThanOrEqual(2);
+  expect(countVariantBacklog(deps)).toBe(0);
+});

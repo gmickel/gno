@@ -211,11 +211,10 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
   let stopped: "limit" | undefined;
   // Chunks charged against --max-chunks: every chunk submitted to the
   // provider, so a disposed-port retry and adaptive recovery resubmissions
-  // count, and at least each chunk of every batch the run attempted.
+  // count. Charged at batch boundaries, where the limit is checked.
   let attempted = 0;
-  let submitted = 0;
   const onSubmit = (texts: number): void => {
-    submitted += texts;
+    attempted += texts;
   };
   const limitReached = (): boolean =>
     runLimitReached(ctx.limits, attempted, startTime);
@@ -347,11 +346,9 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
         entry.attempts += 1;
       }
 
-      const submittedBefore = submitted;
       const retryResult = await processStoreBatch(
         slice.map((entry) => entry.item)
       );
-      attempted += Math.max(slice.length, submitted - submittedBefore);
       writeBatchDiagnostics(
         slice.map((entry) => entry.item),
         retryResult
@@ -423,7 +420,6 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
     }
 
     const beforeEmbedded = embedded;
-    const submittedBefore = submitted;
     const batchStoreResult = await processStoreBatch(batch);
     writeBatchDiagnostics(batch, batchStoreResult);
     pushErrorSamples(batchStoreResult.errorSamples);
@@ -432,7 +428,6 @@ async function processBatches(ctx: BatchContext): Promise<BatchResult> {
     errors += batchStoreResult.errors;
     contentionErrors += batchStoreResult.contentionErrors;
     enqueueRetryItems(batchStoreResult.retryItems, 1);
-    attempted += Math.max(batch.length, submitted - submittedBefore);
 
     if (embedded > beforeEmbedded && !limitReached()) {
       await drainRetryQueue();

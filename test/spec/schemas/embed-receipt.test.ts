@@ -77,5 +77,15 @@ describe("embed-receipt schema", () => {
     );
     expect(assertInvalid({ ...completed, attempted: 4 }, schema)).toBe(true);
     expect(assertInvalid({ ...completed, remaining: -1 }, schema)).toBe(true);
+    // A limit stop leaves work pending and is not a runtime change.
+    expect(assertInvalid({ ...completed, stopped: "limit" }, schema)).toBe(
+      true
+    );
+    expect(
+      assertInvalid(
+        { ...completed, remaining: 4, stopped: "limit", incomplete: true },
+        schema
+      )
+    ).toBe(true);
   });
 });

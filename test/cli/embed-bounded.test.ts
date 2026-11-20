@@ -197,6 +197,8 @@ describe("gno embed bounded runs", () => {
       remaining: DOC_COUNT - 8,
     });
     expect(assertValid(receipt, receiptSchema)).toBe(true);
+    // Finished, not left `running` (which the next run would report as a crash).
+    expect(embedStageState(home)).toBe("completed");
 
     const dry = await runGno(
       env,
@@ -211,8 +213,6 @@ describe("gno embed bounded runs", () => {
     expect(dryReceipt).toMatchObject({ embedded: DOC_COUNT - 8 });
     expect(dryReceipt).not.toHaveProperty("remaining");
     expect(assertValid(dryReceipt, receiptSchema)).toBe(true);
-    // Finished, not left `running` (which the next run would report as a crash).
-    expect(embedStageState(home)).toBe("completed");
 
     // --no-wait proves the write lease was released.
     const second = await runGno(env, "embed", "--no-wait", "--json");

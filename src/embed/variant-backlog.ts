@@ -57,12 +57,12 @@ export async function embedVariantBacklog(
   const limits = deps.limits;
   const startedAt = performance.now();
   // Chunks charged against --max-chunks: every text submitted to the
-  // provider (adaptive recovery resubmissions included), and at least each
-  // owner of every page or retry batch the run attempted.
+  // provider, adaptive recovery resubmissions included. Owners that share an
+  // input or reuse a stored vector cost nothing. The limit is checked at
+  // batch boundaries.
   let attempted = 0;
-  let submitted = 0;
   const onSubmit = (texts: number): void => {
-    submitted += texts;
+    attempted += texts;
   };
   let identityLost = false;
   // Bounded runs resume after the previous slice and wrap to the start, so a
@@ -187,19 +187,13 @@ export async function embedVariantBacklog(
           acquireWriteTurn: deps.acquireWriteTurn,
           onSubmit,
         });
-      const pageSubmittedBefore = submitted;
       let result = background
         ? await withInferencePage(embedPage)
         : await embedPage();
-      const pageCharge = Math.max(
-        owners.length,
-        submitted - pageSubmittedBefore
-      );
       if (!result) {
         // Past its deadline: this page stays pending for the next pass.
         total.errors += owners.length;
         deps.onProgress?.(total.embedded, total.errors);
-        attempted += pageCharge;
         const verdict = await stopAtLimit();
         if (verdict === "limit") return await stop();
         if (verdict === "incomplete") {
@@ -227,12 +221,10 @@ export async function embedVariantBacklog(
       total.errors += result.errors;
       total.contentionErrors += result.contentionErrors;
       if (background) total.errors += result.retryOwners.length;
-      attempted += pageCharge;
       // A retry counts toward the limits; once they are reached, failed
       // owners stay pending for the next run instead of a further batch.
       if (!background && result.retryOwners.length && !limitReached()) {
         const retrying = result.retryOwners.length;
-        const retrySubmittedBefore = submitted;
         result = await embedVariantBatch({
           store,
           embedPort: deps.embedPort,
@@ -241,7 +233,6 @@ export async function embedVariantBacklog(
           force: deps.force,
           onSubmit,
         });
-        attempted += Math.max(retrying, submitted - retrySubmittedBefore);
         total.embedded += result.embedded;
         total.errors += result.errors + result.retryOwners.length;
         total.contentionErrors += result.contentionErrors;

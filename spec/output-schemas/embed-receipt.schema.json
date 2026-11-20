@@ -74,5 +74,16 @@
   "dependencies": {
     "stopped": ["remaining"],
     "incomplete": ["remaining"]
+  },
+  "if": {
+    "properties": { "stopped": { "const": "limit" } },
+    "required": ["stopped"]
+  },
+  "then": {
+    "description": "A limit stop leaves work pending and is never a runtime change.",
+    "properties": {
+      "remaining": { "type": "integer", "minimum": 1 },
+      "incomplete": false
+    }
   }
 }
