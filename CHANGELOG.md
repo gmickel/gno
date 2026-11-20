@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.15.0] - 2026-11-20
+
+Thanks to @DanielKillenberger for reporting the collection-scoping issue and contributing all three changes (#349, #350, #351).
+
 ### Added
 
 - Bounded embed runs: `gno embed --max-chunks <n>` and `--max-seconds <n>` stop after the batch that reaches either limit, exit 0, keep the embedded batches and release the write lease, so a large backlog can be embedded in slices. The `--json` receipt of an embedding run now reports `remaining` (chunks still pending for the scope, 0 when done) and `stopped: "limit"` when a limit ended the run early; the next bounded run continues after the previous slice and wraps to the start, so a chunk that keeps failing stays pending without blocking later chunks. `remaining` is the real pending backlog, also after `--force`. A stopped run skips only the final activation that a complete pass performs and is never reported as interrupted. `--max-chunks` counts every chunk submitted to the embedding provider, retries, adaptive-recovery resubmissions and runtime-verification samples included. The receipt shape is published as the `embed-receipt@1.0` JSON schema.
@@ -3077,7 +3081,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.14.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.15.0...HEAD
+[2.15.0]: https://github.com/gmickel/gno/compare/v2.14.0...v2.15.0
 [2.14.0]: https://github.com/gmickel/gno/compare/v2.13.0...v2.14.0
 [2.13.0]: https://github.com/gmickel/gno/compare/v2.12.2...v2.13.0
 [2.12.2]: https://github.com/gmickel/gno/compare/v2.12.1...v2.12.2
