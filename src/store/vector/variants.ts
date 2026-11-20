@@ -4,6 +4,7 @@ import type { Database } from "bun:sqlite";
 import type { VectorOwnerInput, VectorVariantIdentity } from "./types";
 
 import { formatDocForEmbedding } from "../../pipeline/contextual";
+import { markMirrorClean } from "./partition-index";
 import { decodeEmbedding, encodeEmbedding } from "./sqlite-vec";
 
 export const SELECTED_VECTOR_PARTITION_PREFIX = "vector_selected_partition:";
@@ -326,8 +327,11 @@ export class VectorVariantStore {
     where = ""
   ): { sql: string; params: (string | number)[] } {
     return {
+      // CROSS JOIN keeps documents as the outer loop, so a scoped scan
+      // starts from the collection index even when statistics favour
+      // walking content_chunks.
       sql: `SELECT ${columns}
-      FROM documents d JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
+      FROM documents d CROSS JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
       LEFT JOIN vector_owners o ON o.document_id = d.id AND o.seq = c.seq
         AND o.partition_id = ?
       LEFT JOIN vector_variants v ON v.variant_id = o.variant_id
@@ -579,7 +583,7 @@ export class VectorVariantStore {
       .get("vector_mirror_state");
   }
 
-  /** The partition's mark: 1 dirty, 0 clean, null never recorded. */
+  /** The partition's mark: 0 clean; 1 or null (no row) dirty. */
   private mirrorMark(): number | null {
     return (
       this.db
@@ -592,15 +596,11 @@ export class VectorVariantStore {
 
   private setMirrorMark(mark: number | null): void {
     if (!this.mirrorTracked()) return;
-    if (mark === null)
+    if (mark !== 0)
       this.db.run("DELETE FROM vector_mirror_state WHERE partition_id = ?", [
         this.partitionId,
       ]);
-    else
-      this.db.run(
-        "INSERT OR REPLACE INTO vector_mirror_state (partition_id, dirty) VALUES (?, ?)",
-        [this.partitionId, mark]
-      );
+    else markMirrorClean(this.db, this.partitionId);
   }
 
   /**
@@ -625,7 +625,20 @@ export class VectorVariantStore {
    */
   mirrorState(): "clean" | "dirty" | "untracked" {
     if (!this.searchAvailable || !this.mirrorTracked()) return "untracked";
-    return this.mirrorMark() === 0 ? "clean" : "dirty";
+    if (this.mirrorMark() !== 0) return "dirty";
+    // vec0 is a virtual table without triggers, so rows removed or added
+    // there directly are caught by comparing row counts (one count each).
+    return this.snapshot(() => {
+      const stored = this.db
+        .query<{ n: number }, [string]>(
+          "SELECT count(*) AS n FROM vector_variants WHERE partition_id = ?"
+        )
+        .get(this.partitionId)!.n;
+      const mirrored = this.db
+        .query<{ n: number }, []>(`SELECT count(*) AS n FROM ${this.tableName}`)
+        .get()!.n;
+      return stored === mirrored ? "clean" : "dirty";
+    });
   }
 
   /** Repair materialization after storage-only backfill; never changes legacy authority. */
