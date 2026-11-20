@@ -27,6 +27,21 @@ export function collectionScanHint(
     : "";
 }
 
+/**
+ * Index hint for the per-chunk owner lookup: the `vector_owners` primary key
+ * `(document_id, seq, partition_id)`. Statistics gathered while the table was
+ * nearly empty make SQLite scan it for every chunk, which walks every other
+ * collection's bindings once the table fills. Empty if the key has no index.
+ */
+function ownerKeyHint(db: Database): string {
+  const key = db
+    .query<{ name: string }, []>(
+      "SELECT name FROM pragma_index_list('vector_owners') WHERE origin = 'pk'"
+    )
+    .get();
+  return key ? ` INDEXED BY "${key.name.replaceAll('"', '""')}"` : "";
+}
+
 export function embeddingInputHash(input: string): string {
   return new Bun.CryptoHasher("sha256").update(input).digest("hex");
 }
@@ -345,13 +360,14 @@ export class VectorVariantStore {
     where = ""
   ): { sql: string; params: (string | number)[] } {
     return {
-      // CROSS JOIN keeps documents as the outer loop and the index hint
-      // makes a scoped scan start from the collection index, even when
-      // statistics favour walking content_chunks or scanning documents.
+      // CROSS JOIN keeps documents as the outer loop and the index hints
+      // make a scoped scan start from the collection index and look each
+      // chunk's owner up by its key, even when statistics favour walking
+      // content_chunks, scanning documents or scanning vector_owners.
       sql: `SELECT ${columns}
       FROM documents d${collectionScanHint(this.db, collection)}
       CROSS JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
-      LEFT JOIN vector_owners o ON o.document_id = d.id AND o.seq = c.seq
+      LEFT JOIN vector_owners o${ownerKeyHint(this.db)} ON o.document_id = d.id AND o.seq = c.seq
         AND o.partition_id = ?
       LEFT JOIN vector_variants v ON v.variant_id = o.variant_id
         AND v.partition_id = o.partition_id

@@ -762,19 +762,24 @@ test("gno vec sync records the mirror as clean", async () => {
   expect(store.mirrorState()).toBe("clean");
 });
 
-test("scoped counts read the collection index even with stale statistics", async () => {
+test("scoped counts read the collection index and owner key even with stale statistics", async () => {
   const { db, store, deps } = await scopeFixture();
   // Skewed, with the production documents(mirror_hash) index, and statistics
   // gathered while every document was in one collection (the small collection
   // was filled afterwards): without a hint the planner scans documents or
-  // walks content_chunks instead of using the collection index.
+  // walks content_chunks instead of using the collection index. Statistics
+  // gathered with one owner binding make it scan vector_owners per chunk,
+  // which walks every other collection's bindings once the table fills.
   db.exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 4000)
     INSERT INTO documents SELECT 10000 + i, 'skew-' || i, 'Skew', 1, 'big' FROM n;
     WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 4000)
     INSERT INTO content_chunks SELECT 'skew-' || i, 0, 'skew text' FROM n;
     CREATE INDEX idx_documents_mirror_hash ON documents(mirror_hash);
     UPDATE documents SET collection = 'big' WHERE collection = 'small';
+    CREATE TEMP TABLE kept_owners AS SELECT * FROM vector_owners;
+    DELETE FROM vector_owners WHERE rowid <> (SELECT min(rowid) FROM vector_owners);
     ANALYZE;
+    INSERT OR IGNORE INTO vector_owners SELECT * FROM temp.kept_owners;
     UPDATE documents SET collection = 'small' WHERE id IN (101, 103, 105, 107, 109, 111);`);
   const traced: string[] = [];
   const query = db.query.bind(db);
@@ -796,12 +801,21 @@ test("scoped counts read the collection index even with stale statistics", async
     const params = sql.includes("o.partition_id")
       ? [store.partitionId, "small"]
       : ["small"];
-    const first = db
+    const steps = db
       .query<{ detail: string }, string[]>(`EXPLAIN QUERY PLAN ${sql}`)
-      .all(...params)[0]?.detail;
+      .all(...params)
+      .map((row) => row.detail);
     // documents is the outer loop, read through the collection index.
-    expect(first).toMatch(
+    expect(steps[0]).toMatch(
       /^SEARCH d USING (COVERING )?INDEX idx_documents_collection/
     );
+    // No table is scanned; each chunk's owner is one key lookup.
+    expect(steps.filter((step) => step.startsWith("SCAN"))).toEqual([]);
+    if (sql.includes("o.partition_id"))
+      expect(steps).toContainEqual(
+        expect.stringMatching(
+          /^SEARCH o USING INDEX \S+ \(document_id=\? AND seq=\? AND partition_id=\?\)/
+        )
+      );
   }
 });
