@@ -236,7 +236,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@ai-sdk/openai": "3.0.108",
+    "@ai-sdk/openai": "4.0.98",
     "@biomejs/biome": "2.5.12",
     "@tailwindcss/cli": "4.3.3",
     "@testing-library/react": "16.3.3",
