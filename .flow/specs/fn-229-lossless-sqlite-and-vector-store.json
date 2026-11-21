@@ -484,7 +484,7 @@
     "impl:fn-229-lossless-sqlite-and-vector-store.1": 0
   },
   "spec_path": ".flow/specs/fn-229-lossless-sqlite-and-vector-store.md",
-  "status": "open",
+  "status": "done",
   "title": "Lossless SQLite and vector store performance",
   "tracker": {
     "baseHashFlow": null,
@@ -497,5 +497,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-11-21T15:03:10.629102Z"
+  "updated_at": "2026-11-21T15:07:08.601930Z"
 }

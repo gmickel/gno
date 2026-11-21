@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-229-lossless-sqlite-and-vector-store",
   "spec_path": ".flow/tasks/fn-229-lossless-sqlite-and-vector-store.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Lossless SQLite and vector store performance",
   "updated_at": "2026-11-21T14:02:22.586011Z"
 }
