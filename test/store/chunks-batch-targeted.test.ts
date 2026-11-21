@@ -279,7 +279,7 @@ test("exact batch deduplicates, omits missing pairs, sorts across SQL batches, a
       { mirrorHash: "absent", seq: 0 },
       { mirrorHash: "", seq: 0 },
     ]);
-    expect(queries).toHaveBeenCalledTimes(3);
+    expect(queries).toHaveBeenCalledTimes(1);
     const all = await adapter.getChunksBatch([hash]);
     expect(actual).toEqual(all);
     expect(perRow).not.toHaveBeenCalled();

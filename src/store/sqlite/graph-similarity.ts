@@ -29,8 +29,36 @@ export interface StoredSimilarityEdge {
 
 function dot(a: Float32Array, b: Float32Array): number {
   let sum = 0;
-  for (let i = 0; i < a.length; i++) sum += (a[i] ?? 0) * (b[i] ?? 0);
+  for (let i = 0; i < a.length; i++) sum += a[i]! * b[i]!;
   return sum;
+}
+
+function compareSimilarityEdge(
+  a: StoredSimilarityEdge,
+  b: StoredSimilarityEdge
+): number {
+  return b.score - a.score || a.target.localeCompare(b.target);
+}
+
+function insertTopK(
+  buffer: StoredSimilarityEdge[],
+  candidate: StoredSimilarityEdge,
+  topK: number
+): void {
+  if (
+    buffer.length >= topK &&
+    compareSimilarityEdge(candidate, buffer[topK - 1]!) >= 0
+  ) {
+    return;
+  }
+  let pos = buffer.length;
+  while (pos > 0 && compareSimilarityEdge(candidate, buffer[pos - 1]!) < 0) {
+    pos -= 1;
+  }
+  buffer.splice(pos, 0, candidate);
+  if (buffer.length > topK) {
+    buffer.pop();
+  }
 }
 
 /**
@@ -63,23 +91,42 @@ export function storedSimilarityEdges(
       const vector = vectors.get(document.id);
       return vector ? [{ ...document, vector }] : [];
     });
-    const edges: StoredSimilarityEdge[] = [];
-    for (const node of nodes) {
-      const scored: StoredSimilarityEdge[] = [];
-      for (const other of nodes) {
+    if (topK <= 0 || nodes.length < 2) {
+      return { embeddedNodes: nodes.length, edges: [] };
+    }
+    const buffers: StoredSimilarityEdge[][] = Array.from(
+      { length: nodes.length },
+      () => []
+    );
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i]!;
+      const nodeBuf = buffers[i]!;
+      for (let j = i + 1; j < nodes.length; j++) {
+        const other = nodes[j]!;
         if (
           other.mirrorHash === node.mirrorHash ||
           other.vector.length !== node.vector.length
-        )
+        ) {
           continue;
+        }
         const score = Math.max(0, Math.min(1, dot(node.vector, other.vector)));
-        if (score >= threshold)
-          scored.push({ source: node.docid, target: other.docid, score });
+        if (score >= threshold) {
+          insertTopK(
+            nodeBuf,
+            { source: node.docid, target: other.docid, score },
+            topK
+          );
+          insertTopK(
+            buffers[j]!,
+            { source: other.docid, target: node.docid, score },
+            topK
+          );
+        }
       }
-      scored.sort(
-        (a, b) => b.score - a.score || a.target.localeCompare(b.target)
-      );
-      edges.push(...scored.slice(0, topK));
+    }
+    const edges: StoredSimilarityEdge[] = [];
+    for (const buf of buffers) {
+      edges.push(...buf);
     }
     return { embeddedNodes: nodes.length, edges };
   } catch {

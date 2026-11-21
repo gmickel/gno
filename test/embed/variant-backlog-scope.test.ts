@@ -445,12 +445,7 @@ test("resumed pages seek within the cursor document and across documents", async
   } finally {
     spy.mockRestore();
   }
-  const owner = [
-    store.partitionId,
-    store.partitionId,
-    store.partitionId,
-    "small",
-  ];
+  const owner = [store.partitionId, "small"];
   const within = traced.find((text) =>
     text.includes("documentId = ? AND seq > ?")
   );

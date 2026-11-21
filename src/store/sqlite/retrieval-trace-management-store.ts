@@ -33,7 +33,6 @@ import {
   traceWriteError,
   validateTraceId,
 } from "./retrieval-trace-rows";
-import { getTrace } from "./retrieval-trace-store";
 
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 const REDACTION_SECRET_KEY = "retrieval_trace_redaction_secret_v1";
@@ -74,32 +73,49 @@ export const getBoundedTrace = (
           )
           .get(traceId);
         if (!trace) return null;
-        const runs = db
+        const fetchLimit = detailLimit + 1;
+        const runsRaw = db
           .query<DbRetrievalTraceRunRow, [string, number]>(
             `SELECT * FROM retrieval_trace_runs WHERE trace_id = ?
              ORDER BY created_at_ms, run_id LIMIT ?`
           )
-          .all(traceId, detailLimit);
-        const events = db
+          .all(traceId, fetchLimit);
+        const eventsRaw = db
           .query<DbRetrievalTraceEventRow, [string, number]>(
             `SELECT * FROM retrieval_trace_events WHERE trace_id = ?
              ORDER BY created_at_ms, event_id LIMIT ?`
           )
-          .all(traceId, detailLimit);
-        const judgments = db
+          .all(traceId, fetchLimit);
+        const judgmentsRaw = db
           .query<DbRetrievalTraceJudgmentRow, [string, number]>(
             `SELECT * FROM retrieval_trace_judgments WHERE trace_id = ?
              ORDER BY created_at_ms, judgment_id LIMIT ?`
           )
-          .all(traceId, detailLimit);
-        const exports = db
+          .all(traceId, fetchLimit);
+        const exportsRaw = db
           .query<DbRetrievalTraceExportRow, [string, number]>(
             `SELECT x.*, et.trace_id FROM retrieval_trace_exports x
              JOIN retrieval_trace_export_traces et USING (export_id)
              WHERE et.trace_id = ?
              ORDER BY x.created_at_ms, x.export_id LIMIT ?`
           )
-          .all(traceId, detailLimit);
+          .all(traceId, fetchLimit);
+        const runs =
+          runsRaw.length > detailLimit
+            ? runsRaw.slice(0, detailLimit)
+            : runsRaw;
+        const events =
+          eventsRaw.length > detailLimit
+            ? eventsRaw.slice(0, detailLimit)
+            : eventsRaw;
+        const judgments =
+          judgmentsRaw.length > detailLimit
+            ? judgmentsRaw.slice(0, detailLimit)
+            : judgmentsRaw;
+        const exports =
+          exportsRaw.length > detailLimit
+            ? exportsRaw.slice(0, detailLimit)
+            : exportsRaw;
         return {
           bundle: {
             trace: mapTraceRow(trace),
@@ -109,14 +125,22 @@ export const getBoundedTrace = (
             exports: exports.map(mapExportRow),
           },
           totals: {
-            runs: countForTrace(db, "retrieval_trace_runs", traceId),
-            events: countForTrace(db, "retrieval_trace_events", traceId),
-            judgments: countForTrace(db, "retrieval_trace_judgments", traceId),
-            exports: countForTrace(
-              db,
-              "retrieval_trace_export_traces",
-              traceId
-            ),
+            runs:
+              runsRaw.length > detailLimit
+                ? countForTrace(db, "retrieval_trace_runs", traceId)
+                : runs.length,
+            events:
+              eventsRaw.length > detailLimit
+                ? countForTrace(db, "retrieval_trace_events", traceId)
+                : events.length,
+            judgments:
+              judgmentsRaw.length > detailLimit
+                ? countForTrace(db, "retrieval_trace_judgments", traceId)
+                : judgments.length,
+            exports:
+              exportsRaw.length > detailLimit
+                ? countForTrace(db, "retrieval_trace_export_traces", traceId)
+                : exports.length,
           },
         };
       }
@@ -242,14 +266,20 @@ export const appendExportManifest = (
           "Export artifact already belongs to a different manifest"
         );
       }
+      const traceRows = db
+        .query<
+          { trace_id: string; status: string; egress_lineage_json: string },
+          [string]
+        >(
+          `SELECT trace_id, status, egress_lineage_json
+           FROM retrieval_traces
+           WHERE trace_id IN (SELECT value FROM json_each(?))`
+        )
+        .all(JSON.stringify(manifest.traceIds));
+      const traceById = new Map(traceRows.map((row) => [row.trace_id, row]));
       const sourceLineages = [];
       for (const traceId of manifest.traceIds) {
-        const trace = db
-          .query<{ status: string; egress_lineage_json: string }, [string]>(
-            `SELECT status, egress_lineage_json
-             FROM retrieval_traces WHERE trace_id = ?`
-          )
-          .get(traceId);
+        const trace = traceById.get(traceId);
         if (!trace) {
           throw new RetrievalTraceConflictError(
             "Export manifest references a missing retrieval trace"
@@ -306,12 +336,12 @@ export const appendExportManifest = (
           "Export ID already exists with different content"
         );
       }
+      const insertExportLink = db.query<unknown, [string, string]>(
+        `INSERT OR IGNORE INTO retrieval_trace_export_traces
+         (export_id, trace_id) VALUES (?, ?)`
+      );
       for (const traceId of manifest.traceIds) {
-        db.run(
-          `INSERT OR IGNORE INTO retrieval_trace_export_traces
-           (export_id, trace_id) VALUES (?, ?)`,
-          [manifest.exportId, traceId]
-        );
+        insertExportLink.run(manifest.exportId, traceId);
       }
       const stored = readManifest(db, manifest.exportId);
       if (
@@ -358,17 +388,80 @@ export const getExportBundle = (
       (): StoreResult<RetrievalTraceExportBundle | null> => {
         const manifest = readManifest(db, exportId);
         if (!manifest) return ok(null);
-        const traces = [];
+        const idsJson = JSON.stringify(manifest.traceIds);
+        const traceRows = db
+          .query<DbRetrievalTraceRow, [string]>(
+            `SELECT * FROM retrieval_traces
+             WHERE trace_id IN (SELECT value FROM json_each(?))`
+          )
+          .all(idsJson);
+        const traceById = new Map(traceRows.map((row) => [row.trace_id, row]));
         for (const traceId of manifest.traceIds) {
-          const trace = getTrace(db, traceId);
-          if (!trace.ok) return trace;
-          if (!trace.value) {
+          if (!traceById.has(traceId)) {
             throw new RetrievalTraceConflictError(
               "Export manifest references a missing retrieval trace"
             );
           }
-          traces.push(trace.value);
         }
+        const runsByTrace = new Map<string, DbRetrievalTraceRunRow[]>();
+        for (const row of db
+          .query<DbRetrievalTraceRunRow, [string]>(
+            `SELECT * FROM retrieval_trace_runs
+             WHERE trace_id IN (SELECT value FROM json_each(?))
+             ORDER BY trace_id, created_at_ms, run_id`
+          )
+          .all(idsJson)) {
+          const list = runsByTrace.get(row.trace_id);
+          if (list) list.push(row);
+          else runsByTrace.set(row.trace_id, [row]);
+        }
+        const eventsByTrace = new Map<string, DbRetrievalTraceEventRow[]>();
+        for (const row of db
+          .query<DbRetrievalTraceEventRow, [string]>(
+            `SELECT * FROM retrieval_trace_events
+             WHERE trace_id IN (SELECT value FROM json_each(?))
+             ORDER BY trace_id, created_at_ms, event_id`
+          )
+          .all(idsJson)) {
+          const list = eventsByTrace.get(row.trace_id);
+          if (list) list.push(row);
+          else eventsByTrace.set(row.trace_id, [row]);
+        }
+        const judgmentsByTrace = new Map<
+          string,
+          DbRetrievalTraceJudgmentRow[]
+        >();
+        for (const row of db
+          .query<DbRetrievalTraceJudgmentRow, [string]>(
+            `SELECT * FROM retrieval_trace_judgments
+             WHERE trace_id IN (SELECT value FROM json_each(?))
+             ORDER BY trace_id, created_at_ms, judgment_id`
+          )
+          .all(idsJson)) {
+          const list = judgmentsByTrace.get(row.trace_id);
+          if (list) list.push(row);
+          else judgmentsByTrace.set(row.trace_id, [row]);
+        }
+        const exportsByTrace = new Map<string, DbRetrievalTraceExportRow[]>();
+        for (const row of db
+          .query<DbRetrievalTraceExportRow, [string]>(
+            `SELECT x.*, et.trace_id FROM retrieval_trace_exports x
+             JOIN retrieval_trace_export_traces et USING (export_id)
+             WHERE et.trace_id IN (SELECT value FROM json_each(?))
+             ORDER BY et.trace_id, x.created_at_ms, x.export_id`
+          )
+          .all(idsJson)) {
+          const list = exportsByTrace.get(row.trace_id);
+          if (list) list.push(row);
+          else exportsByTrace.set(row.trace_id, [row]);
+        }
+        const traces = manifest.traceIds.map((traceId) => ({
+          trace: mapTraceRow(traceById.get(traceId)!),
+          runs: (runsByTrace.get(traceId) ?? []).map(mapRunRow),
+          events: (eventsByTrace.get(traceId) ?? []).map(mapEventRow),
+          judgments: (judgmentsByTrace.get(traceId) ?? []).map(mapJudgmentRow),
+          exports: (exportsByTrace.get(traceId) ?? []).map(mapExportRow),
+        }));
         return ok({ manifest, traces });
       }
     );

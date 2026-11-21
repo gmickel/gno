@@ -70,6 +70,74 @@ export const typedMetadataSchema = z
       )
   );
 
+function isValidScalar(value: unknown): value is MetadataScalar {
+  if (typeof value === "string") {
+    return value.length <= METADATA_LIMITS.stringLength;
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value);
+  }
+  return typeof value === "boolean";
+}
+
+/**
+ * Direct validator for stored `documents.typed_metadata` JSON strings.
+ * Avoids `JSON.stringify` + `TextEncoder` when raw UTF-8 length plus the
+ * worst-case numeric re-serialization bound (24 bytes per finite JS number)
+ * proves the canonical JSON fits within 64 KiB; otherwise checks exact
+ * canonical `JSON.stringify(parsed)` byte length.
+ */
+const MAX_JSON_NUMBER_BYTES = 24;
+
+export function parseStoredTypedMetadata(raw: string): TypedMetadata {
+  const parsed: unknown = JSON.parse(raw);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Invalid typed metadata: expected object");
+  }
+  const entries = Object.entries(parsed);
+  if (entries.length > METADATA_LIMITS.keys) {
+    throw new Error("Too many metadata keys");
+  }
+  let numberCount = 0;
+  for (const [key, value] of entries) {
+    if (key.length < 1 || key.length > METADATA_LIMITS.keyLength) {
+      throw new Error("Invalid metadata key length");
+    }
+    if (reserved.has(key)) {
+      throw new Error("Reserved metadata key");
+    }
+    if (Array.isArray(value)) {
+      if (value.length > METADATA_LIMITS.members) {
+        throw new Error("Too many metadata array members");
+      }
+      const firstType = value.length > 0 ? typeof value[0] : null;
+      for (const member of value) {
+        if (!isValidScalar(member)) {
+          throw new Error("Invalid metadata array member");
+        }
+        if (typeof member !== firstType) {
+          throw new Error("Array members must have one scalar type");
+        }
+        if (typeof member === "number") {
+          numberCount++;
+        }
+      }
+    } else if (!isValidScalar(value)) {
+      throw new Error("Invalid metadata value");
+    } else if (typeof value === "number") {
+      numberCount++;
+    }
+  }
+  const rawBytes = Buffer.byteLength(raw, "utf8");
+  if (
+    rawBytes + numberCount * MAX_JSON_NUMBER_BYTES > METADATA_LIMITS.bytes &&
+    Buffer.byteLength(JSON.stringify(parsed), "utf8") > METADATA_LIMITS.bytes
+  ) {
+    throw new Error("Metadata exceeds 64 KiB");
+  }
+  return parsed as TypedMetadata;
+}
+
 const leafSchemas = [
   z
     .object({ op: z.enum(["eq", "ne"]), key: keySchema, value: scalarSchema })

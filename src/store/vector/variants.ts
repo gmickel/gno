@@ -5,7 +5,8 @@ import type { VectorOwnerInput, VectorVariantIdentity } from "./types";
 
 import { formatDocForEmbedding } from "../../pipeline/contextual";
 import { markMirrorClean } from "./partition-index";
-import { decodeEmbedding, encodeEmbedding } from "./sqlite-vec";
+import { provenOwners, vectorProofKey } from "./proof-cache";
+import { decodeEmbedding } from "./sqlite-vec";
 
 export const SELECTED_VECTOR_PARTITION_PREFIX = "vector_selected_partition:";
 
@@ -41,6 +42,68 @@ export function chunkKeyHint(db: Database): string {
     )
     .get();
   return pk ? ` INDEXED BY "${pk.name.replaceAll('"', '""')}"` : "";
+}
+
+/** Covering index hint for document-driven `vector_owners` lookups (migration 037). */
+export function ownerDocPartHint(db: Database): string {
+  if (
+    db
+      .query("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?")
+      .get("idx_vector_owners_doc_part")
+  ) {
+    return " INDEXED BY idx_vector_owners_doc_part";
+  }
+  return "";
+}
+
+/**
+ * Document-keyed index hint for `vector_owners`: prefers migration 037's
+ * covering index, else falls back to the primary key index so stale stats
+ * never trigger a table scan or Bloom filter.
+ */
+function ownerDocOrPkHint(db: Database): string {
+  const covering = ownerDocPartHint(db);
+  if (covering) return covering;
+  const pk = db
+    .query<{ name: string }, []>(
+      "SELECT name FROM pragma_index_list('vector_owners') WHERE origin = 'pk'"
+    )
+    .get();
+  return pk ? ` INDEXED BY "${pk.name.replaceAll('"', '""')}"` : "";
+}
+
+/** Covering index hint for partition-driven `vector_owners` scans (migration 037). */
+export function ownerPartitionVariantHint(db: Database): string {
+  return db
+    .query("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?")
+    .get("idx_vector_owners_partition_variant")
+    ? " INDEXED BY idx_vector_owners_partition_variant"
+    : "";
+}
+
+/** Unique `(partition_id, variant_id)` index hint on `vector_variants`. */
+export function variantPartitionIdHint(db: Database): string {
+  const indexes = db
+    .query<{ name: string }, []>(
+      "SELECT name FROM pragma_index_list('vector_variants')"
+    )
+    .all();
+  for (const { name } of indexes) {
+    const cols = db
+      .query<{ name: string }, []>(
+        `SELECT name FROM pragma_index_info('${name.replaceAll("'", "''")}') ORDER BY seqno`
+      )
+      .all()
+      .map((row) => row.name);
+    if (
+      cols.length === 2 &&
+      cols[0] === "partition_id" &&
+      cols[1] === "variant_id"
+    ) {
+      return ` INDEXED BY "${name.replaceAll('"', '""')}"`;
+    }
+  }
+  return "";
 }
 
 export function embeddingInputHash(input: string): string {
@@ -91,7 +154,6 @@ interface OwnerRow {
 
 interface CandidateRow extends OwnerRow {
   boundHash: string | null;
-  boundMirror: string | null;
 }
 
 interface VariantRow {
@@ -272,137 +334,228 @@ export class VectorVariantStore {
   private writeRows(
     rows: { owner: VectorOwnerInput; embedding?: Float32Array }[]
   ): number[] {
-    return rows.map(({ owner, embedding }) => {
-      this.validate(owner);
+    if (rows.length === 0) return [];
+    for (const { embedding } of rows) {
       if (
         embedding &&
         (embedding.length !== this.identity.dimensions ||
           !embedding.every(Number.isFinite))
-      )
+      ) {
         throw new Error("Invalid vector dimensions or values");
-      let row = this.variant(owner);
-      if (!row) {
+      }
+    }
+
+    // Batch-validate all owners in one SQL query instead of N per-row lookups.
+    const uniquePairs = new Map<string, [number, number]>();
+    for (const { owner } of rows) {
+      const key = `${owner.documentId}:${owner.seq}`;
+      if (!uniquePairs.has(key)) {
+        uniquePairs.set(key, [owner.documentId, owner.seq]);
+      }
+    }
+    const fetchedOwners = this.db
+      .query<OwnerRow, [string]>(`
+        WITH req AS (
+          SELECT
+            json_extract(value, '$[0]') AS document_id,
+            json_extract(value, '$[1]') AS seq
+          FROM json_each(?)
+        )
+        SELECT d.id AS documentId, d.mirror_hash AS mirrorHash, c.seq, c.text, d.title
+        FROM req r
+        JOIN documents d ON d.id = r.document_id AND d.active = 1
+        JOIN content_chunks c ON c.mirror_hash = d.mirror_hash AND c.seq = r.seq
+      `)
+      .all(JSON.stringify([...uniquePairs.values()]));
+    const currentByKey = new Map<string, VectorOwnerInput>();
+    for (const row of fetchedOwners) {
+      currentByKey.set(`${row.documentId}:${row.seq}`, this.input(row));
+    }
+    for (const { owner } of rows) {
+      const current = currentByKey.get(`${owner.documentId}:${owner.seq}`);
+      if (
+        !current ||
+        current.mirrorHash !== owner.mirrorHash ||
+        current.formattedInput !== owner.formattedInput ||
+        current.inputHash !== owner.inputHash
+      ) {
+        throw new Error("Stale or invalid vector owner input");
+      }
+    }
+
+    const selectVariant = this.db.query<
+      { variant_id: number; embedding: Uint8Array },
+      [string, string]
+    >(
+      "SELECT variant_id, embedding FROM vector_variants WHERE partition_id = ? AND input_hash = ?"
+    );
+    const insertVariant = this.db.query<
+      { variant_id: number },
+      [string, string, Uint8Array]
+    >(
+      "INSERT INTO vector_variants(partition_id, input_hash, embedding) VALUES (?, ?, ?) RETURNING variant_id"
+    );
+    const updateVariant = this.db.query<unknown, [Uint8Array, number, string]>(
+      "UPDATE vector_variants SET embedding = ? WHERE variant_id = ? AND partition_id = ?"
+    );
+    const deleteVec = this.searchAvailable
+      ? this.db.query<unknown, [number]>(
+          `DELETE FROM ${this.tableName} WHERE variant_id = ?`
+        )
+      : null;
+    const insertVec = this.searchAvailable
+      ? this.db.query<unknown, [number, Uint8Array]>(
+          `INSERT INTO ${this.tableName}(variant_id, embedding) VALUES (?, ?)`
+        )
+      : null;
+    const upsertOwner = this.db.query<
+      unknown,
+      [number, string, number, string, number]
+    >(
+      `INSERT INTO vector_owners(document_id, mirror_hash, seq, partition_id, variant_id)
+       VALUES (?, ?, ?, ?, ?) ON CONFLICT(document_id, seq, partition_id) DO UPDATE SET
+       mirror_hash = excluded.mirror_hash, variant_id = excluded.variant_id`
+    );
+
+    const variantIds: number[] = [];
+    for (const { owner, embedding } of rows) {
+      const existing = selectVariant.get(this.partitionId, owner.inputHash);
+      let variantId: number;
+      if (!existing) {
         if (!embedding) throw new Error("Exact input variant needs embedding");
-        this.db.run(
-          `INSERT INTO vector_variants(partition_id, input_hash, embedding)
-          VALUES (?, ?, ?)`,
-          [this.partitionId, owner.inputHash, encodeEmbedding(embedding)]
+        const blob = new Uint8Array(
+          embedding.buffer,
+          embedding.byteOffset,
+          embedding.byteLength
         );
-        row = this.variant(owner)!;
-      }
-      if (embedding && row) {
-        this.db.run(
-          "UPDATE vector_variants SET embedding = ? WHERE variant_id = ? AND partition_id = ?",
-          [encodeEmbedding(embedding), row.variant_id, this.partitionId]
-        );
-        row = this.variant(owner)!;
-      }
-      if (this.searchAvailable) {
-        this.db.run(`DELETE FROM ${this.tableName} WHERE variant_id = ?`, [
-          row.variant_id,
-        ]);
-        this.db.run(
-          `INSERT INTO ${this.tableName}(variant_id, embedding) VALUES (?, ?)`,
-          [row.variant_id, row.embedding]
-        );
-      }
-      this.db.run(
-        `INSERT INTO vector_owners(document_id, mirror_hash, seq, partition_id, variant_id)
-        VALUES (?, ?, ?, ?, ?) ON CONFLICT(document_id, seq, partition_id) DO UPDATE SET
-        mirror_hash = excluded.mirror_hash, variant_id = excluded.variant_id`,
-        [
-          owner.documentId,
-          owner.mirrorHash,
-          owner.seq,
+        variantId = insertVariant.get(
           this.partitionId,
-          row.variant_id,
-        ]
+          owner.inputHash,
+          blob
+        )!.variant_id;
+        if (insertVec) {
+          try {
+            insertVec.run(variantId, blob);
+          } catch (cause) {
+            // A dirty vec0 mirror can retain an orphan row for a reused
+            // SQLite rowid after deletion; replace only on collision.
+            if (
+              deleteVec &&
+              cause instanceof Error &&
+              cause.message.includes("UNIQUE")
+            ) {
+              deleteVec.run(variantId);
+              insertVec.run(variantId, blob);
+            } else {
+              throw cause;
+            }
+          }
+        }
+      } else if (embedding) {
+        variantId = existing.variant_id;
+        const blob = new Uint8Array(
+          embedding.buffer,
+          embedding.byteOffset,
+          embedding.byteLength
+        );
+        updateVariant.run(blob, variantId, this.partitionId);
+        if (deleteVec && insertVec) {
+          deleteVec.run(variantId);
+          insertVec.run(variantId, blob);
+        }
+      } else {
+        variantId = existing.variant_id;
+        if (deleteVec && insertVec) {
+          deleteVec.run(variantId);
+          insertVec.run(variantId, existing.embedding);
+        }
+      }
+      upsertOwner.run(
+        owner.documentId,
+        owner.mirrorHash,
+        owner.seq,
+        this.partitionId,
+        variantId
       );
-      return row.variant_id;
-    });
+      variantIds.push(variantId);
+    }
+    return variantIds;
   }
 
   /** Resolve only correct current active owners, never every document sharing a mirror. */
   owners(variantId: number): VectorOwnerInput[] {
     const variant = this.db
-      .query<VariantRow, [string, number]>(`
-      SELECT variant_id, input_hash, embedding FROM vector_variants
-      WHERE partition_id = ? AND variant_id = ?
-    `)
+      .query<{ input_hash: string }, [string, number]>(
+        "SELECT input_hash FROM vector_variants WHERE partition_id = ? AND variant_id = ?"
+      )
       .get(this.partitionId, variantId);
     if (!variant) return [];
     const rows = this.db
-      .query<
-        { document_id: number; seq: number; mirror_hash: string },
-        [string, number]
-      >(`
-      SELECT document_id, seq, mirror_hash FROM vector_owners WHERE partition_id = ? AND variant_id = ?
-    `)
+      .query<OwnerRow, [string, number]>(`
+        SELECT d.id AS documentId, d.mirror_hash AS mirrorHash, c.seq, c.text, d.title
+        FROM vector_owners o
+        JOIN documents d ON d.id = o.document_id AND d.active = 1
+          AND d.mirror_hash = o.mirror_hash
+        JOIN content_chunks c ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
+        WHERE o.partition_id = ? AND o.variant_id = ?
+      `)
       .all(this.partitionId, variantId);
-    return rows.flatMap((row) => {
-      const current = this.current(row.document_id, row.seq);
-      return current &&
-        current.mirrorHash === row.mirror_hash &&
-        current.inputHash === variant.input_hash
-        ? [current]
-        : [];
-    });
+    const matched: VectorOwnerInput[] = [];
+    for (const row of rows) {
+      const current = this.input(row);
+      if (current.inputHash === variant.input_hash) {
+        matched.push(current);
+      }
+    }
+    return matched;
   }
 
   /**
    * Active chunk rows with this partition's binding, optionally limited to
    * one collection, as columns `documentId, mirrorHash, title, seq, text,
-   * boundMirror, boundHash` that `columns` and `where` refer to. The
-   * collection predicate is added only when requested: activation and
-   * unscoped passes need the whole index, and some callers' schemas have no
-   * collection column.
+   * boundHash` that `columns` and `where` refer to. The collection predicate
+   * is added only when requested: activation and unscoped passes need the
+   * whole index, and some callers' schemas have no collection column.
    */
   private candidates(
     collection: string | undefined,
     columns: string,
     where = ""
   ): { sql: string; params: (string | number)[] } {
-    const owner = `FROM vector_owners o
-          WHERE o.document_id = d.id AND o.seq = c.seq AND o.partition_id = ?`;
     return {
-      // CROSS JOIN keeps documents as the outer loop and the index hint
-      // makes a scoped scan start from the collection index, even when
-      // statistics favour walking content_chunks or scanning documents; the
-      // chunk hint keeps each document's chunks a key lookup by mirror.
-      // Each binding column is a correlated subquery on the full owner key,
-      // so it is only primary-key lookups for the scoped chunks (a few per
-      // chunk, never a pass over other bindings). As a LEFT JOIN, statistics
-      // gathered while vector_owners was nearly empty made SQLite scan it, or
-      // build a Bloom filter over every owner, for a small collection.
+      // CROSS JOIN keeps documents as the outer loop and the index hints keep
+      // every join a key/covering-index lookup even with stale statistics.
+      // A single correlated subquery joining vector_owners and vector_variants
+      // checks mirror_hash in the covering index and prevents SQLite from
+      // building a whole-table Bloom filter on LEFT JOIN under stale stats.
       sql: `SELECT ${columns} FROM (
         SELECT d.id AS documentId, d.mirror_hash AS mirrorHash, d.title AS title,
           c.seq AS seq, c.text AS text,
-          (SELECT o.mirror_hash ${owner}) AS boundMirror,
-          (SELECT v.input_hash FROM vector_variants v
-            WHERE v.partition_id = ? AND v.variant_id = (SELECT o.variant_id ${owner})
+          (SELECT v.input_hash
+            FROM vector_owners o${ownerDocOrPkHint(this.db)}
+            CROSS JOIN vector_variants v${variantPartitionIdHint(this.db)}
+              ON v.partition_id = o.partition_id AND v.variant_id = o.variant_id
+            WHERE o.document_id = d.id AND o.seq = c.seq
+              AND o.partition_id = ? AND o.mirror_hash = d.mirror_hash
           ) AS boundHash
         FROM documents d${collectionScanHint(this.db, collection)}
         CROSS JOIN content_chunks c${chunkKeyHint(this.db)} ON c.mirror_hash = d.mirror_hash
         WHERE d.active = 1${collection ? " AND d.collection = ?" : ""}
       ) WHERE 1${where}`,
-      params: [
-        this.partitionId,
-        this.partitionId,
-        this.partitionId,
-        ...(collection ? [collection] : []),
-      ],
+      params: [this.partitionId, ...(collection ? [collection] : [])],
     };
   }
 
   /** Rows with no current binding: pending without formatting or hashing. */
-  private static readonly UNBOUND =
-    " AND (boundHash IS NULL OR boundMirror IS NOT mirrorHash)";
+  private static readonly UNBOUND = " AND boundHash IS NULL";
   /** Rows whose binding matches the mirror: only the input hash can differ. */
-  private static readonly BOUND =
-    " AND boundHash IS NOT NULL AND boundMirror IS mirrorHash";
+  private static readonly BOUND = " AND boundHash IS NOT NULL";
 
   /** Bound rows whose current input no longer matches their variant (title or format change). */
-  private *staleBound(collection: string | undefined): Generator<true> {
+  private *staleBound(
+    collection: string | undefined,
+    proofs: Map<string, boolean>
+  ): Generator<true> {
     const { sql, params } = this.candidates(
       collection,
       "documentId, mirrorHash, seq, text, title, boundHash",
@@ -413,8 +566,21 @@ export class VectorVariantStore {
       (string | number)[]
     >(sql);
     try {
-      for (const row of statement.iterate(...params))
-        if (this.input(row).inputHash !== row.boundHash) yield true;
+      for (const row of statement.iterate(...params)) {
+        const key = vectorProofKey(
+          this.identity.model,
+          row.documentId,
+          row.mirrorHash,
+          row.seq,
+          row.boundHash
+        );
+        let valid = proofs.get(key);
+        if (valid === undefined) {
+          valid = this.input(row).inputHash === row.boundHash;
+          proofs.set(key, valid);
+        }
+        if (!valid) yield true;
+      }
     } finally {
       // Early exit must not leave a cached Bun statement mid-iteration.
       statement.finalize();
@@ -428,6 +594,7 @@ export class VectorVariantStore {
    */
   countPending(options: { collection?: string } = {}): number {
     const collection = options.collection || undefined;
+    const inOuterTx = this.db.inTransaction;
     const { sql, params } = this.candidates(
       collection,
       "count(*) AS n",
@@ -435,10 +602,11 @@ export class VectorVariantStore {
     );
     return this.db
       .transaction(() => {
+        const proofs = provenOwners(this.db, inOuterTx);
         let count = this.db
           .query<{ n: number }, (string | number)[]>(sql)
           .get(...params)!.n;
-        for (const _ of this.staleBound(collection)) count += 1;
+        for (const _ of this.staleBound(collection, proofs)) count += 1;
         return count;
       })
       .deferred();
@@ -455,8 +623,7 @@ export class VectorVariantStore {
     collection: string | undefined,
     after: { documentId: number; seq: number } | undefined
   ): Generator<CandidateRow> {
-    const columns =
-      "documentId, mirrorHash, seq, text, title, boundHash, boundMirror";
+    const columns = "documentId, mirrorHash, seq, text, title, boundHash";
     const parts = after
       ? [
           {
@@ -491,10 +658,24 @@ export class VectorVariantStore {
   }
 
   /** The row needs embedding: no current binding, or its input changed. */
-  private isPending(row: CandidateRow, input?: VectorOwnerInput): boolean {
-    if (row.boundHash === null || row.boundMirror !== row.mirrorHash)
-      return true;
-    return (input ?? this.input(row)).inputHash !== row.boundHash;
+  private isPending(
+    row: CandidateRow,
+    proofs?: Map<string, boolean>,
+    input?: VectorOwnerInput
+  ): boolean {
+    if (row.boundHash === null) return true;
+    const key = vectorProofKey(
+      this.identity.model,
+      row.documentId,
+      row.mirrorHash,
+      row.seq,
+      row.boundHash
+    );
+    const cached = proofs?.get(key);
+    if (cached !== undefined) return !cached;
+    const valid = (input ?? this.input(row)).inputHash === row.boundHash;
+    proofs?.set(key, valid);
+    return !valid;
   }
 
   /**
@@ -502,12 +683,14 @@ export class VectorVariantStore {
    * and stops at the first pending one; unbound rows are not hashed.
    */
   hasPending(options: { collection?: string } = {}): boolean {
+    const inOuterTx = this.db.inTransaction;
     return this.snapshot(() => {
+      const proofs = provenOwners(this.db, inOuterTx);
       for (const row of this.ownerRows(
         options.collection || undefined,
         undefined
       ))
-        if (this.isPending(row)) return true;
+        if (this.isPending(row, proofs)) return true;
       return false;
     });
   }
@@ -524,14 +707,26 @@ export class VectorVariantStore {
     const limit = options.limit ?? 1000;
     if (!Number.isSafeInteger(limit) || limit < 1)
       throw new Error("Invalid pending limit");
+    const inOuterTx = this.db.inTransaction;
     return this.snapshot(() => {
+      const proofs = provenOwners(this.db, inOuterTx);
       const pending: VectorOwnerInput[] = [];
       for (const row of this.ownerRows(
         options.collection || undefined,
         options.after
       )) {
+        if (row.boundHash !== null) {
+          const key = vectorProofKey(
+            this.identity.model,
+            row.documentId,
+            row.mirrorHash,
+            row.seq,
+            row.boundHash
+          );
+          if (proofs.get(key) === true) continue;
+        }
         const input = this.input(row);
-        if (this.isPending(row, input)) pending.push(input);
+        if (this.isPending(row, proofs, input)) pending.push(input);
         if (pending.length === limit) break;
       }
       return pending;
@@ -700,17 +895,12 @@ export class VectorVariantStore {
     this.db
       .transaction(() => {
         this.db.exec(`DELETE FROM ${this.tableName}`);
-        const rows = this.db
-          .query<VariantRow, [string]>(
-            "SELECT variant_id, input_hash, embedding FROM vector_variants WHERE partition_id = ?"
+        this.db
+          .query(
+            `INSERT INTO ${this.tableName}(variant_id, embedding)
+             SELECT variant_id, embedding FROM vector_variants WHERE partition_id = ?`
           )
-          .iterate(this.partitionId);
-        for (const row of rows) {
-          this.db.run(
-            `INSERT INTO ${this.tableName}(variant_id, embedding) VALUES (?, ?)`,
-            [row.variant_id, row.embedding]
-          );
-        }
+          .run(this.partitionId);
         this.setMirrorMark(0);
       })
       .immediate();
@@ -722,11 +912,12 @@ export class VectorVariantStore {
     this.db
       .transaction(() =>
         this.keepingMirrorMark(() => {
-          this.db.run(
-            "DELETE FROM vector_owners WHERE document_id = ? AND partition_id = ?",
-            [documentId, this.partitionId]
-          );
-          this.collectGarbage();
+          this.db
+            .query(
+              "DELETE FROM vector_owners WHERE document_id = ? AND partition_id = ?"
+            )
+            .run(documentId, this.partitionId);
+          this.removeUnowned(true);
         })
       )
       .immediate();
@@ -734,37 +925,112 @@ export class VectorVariantStore {
 
   collectGarbage(): number {
     this.assertWritable();
+    const inOuterTx = this.db.inTransaction;
     return this.db
-      .transaction(() => this.keepingMirrorMark(() => this.removeUnowned()))
+      .transaction(() =>
+        this.keepingMirrorMark(() => this.removeUnowned(inOuterTx))
+      )
       .immediate();
   }
 
-  private removeUnowned(): number {
-    {
-      let removed = 0;
-      const rows = this.db
-        .query<{ variant_id: number }, [string]>(
-          "SELECT variant_id FROM vector_variants WHERE partition_id = ?"
-        )
-        .all(this.partitionId);
-      for (const { variant_id: id } of rows) {
-        if (this.owners(id).length) continue;
-        if (this.searchAvailable)
-          this.db.run(`DELETE FROM ${this.tableName} WHERE variant_id = ?`, [
-            id,
-          ]);
-        this.db.run(
-          "DELETE FROM vector_owners WHERE partition_id = ? AND variant_id = ?",
-          [this.partitionId, id]
+  private removeUnowned(inOuterTx: boolean): number {
+    // 1. Collect variants with zero active mirror-matching owners in pure SQL
+    // without touching any embedding BLOBs.
+    const noActiveOwners = this.db
+      .query<{ variant_id: number }, [string]>(`
+        SELECT v.variant_id
+        FROM vector_variants v
+        WHERE v.partition_id = ?
+          AND NOT EXISTS (
+            SELECT 1
+            FROM vector_owners o
+            JOIN documents d ON d.id = o.document_id AND d.active = 1
+              AND d.mirror_hash = o.mirror_hash
+            JOIN content_chunks c ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
+            WHERE o.partition_id = v.partition_id AND o.variant_id = v.variant_id
+          )
+      `)
+      .all(this.partitionId);
+
+    const toRemove: number[] = noActiveOwners.map((row) => row.variant_id);
+
+    // 2. Stream remaining candidates ordered by variant_id (never reading
+    // v.embedding), consulting the epoch-keyed proof cache and short-circuiting
+    // as soon as a variant has one valid owner.
+    const proofs = provenOwners(this.db, inOuterTx);
+    const candidateStmt = this.db.prepare<
+      OwnerRow & { variant_id: number; input_hash: string },
+      [string]
+    >(`
+      SELECT v.variant_id, v.input_hash,
+        d.id AS documentId, d.mirror_hash AS mirrorHash,
+        c.seq, c.text, d.title
+      FROM vector_variants v
+      JOIN vector_owners o${ownerPartitionVariantHint(this.db)}
+        ON o.partition_id = v.partition_id AND o.variant_id = v.variant_id
+      JOIN documents d ON d.id = o.document_id AND d.active = 1
+        AND d.mirror_hash = o.mirror_hash
+      JOIN content_chunks c${chunkKeyHint(this.db)}
+        ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
+      WHERE v.partition_id = ?
+      ORDER BY v.variant_id
+    `);
+    try {
+      let currentVariantId: number | null = null;
+      let hasValidOwner = false;
+      for (const row of candidateStmt.iterate(this.partitionId)) {
+        if (row.variant_id !== currentVariantId) {
+          if (currentVariantId !== null && !hasValidOwner) {
+            toRemove.push(currentVariantId);
+          }
+          currentVariantId = row.variant_id;
+          hasValidOwner = false;
+        }
+        if (hasValidOwner) continue;
+        const key = vectorProofKey(
+          this.identity.model,
+          row.documentId,
+          row.mirrorHash,
+          row.seq,
+          row.input_hash
         );
-        this.db.run(
-          "DELETE FROM vector_variants WHERE partition_id = ? AND variant_id = ?",
-          [this.partitionId, id]
-        );
-        removed++;
+        let valid = proofs.get(key);
+        if (valid === undefined) {
+          valid = this.input(row).inputHash === row.input_hash;
+          proofs.set(key, valid);
+        }
+        if (valid) {
+          hasValidOwner = true;
+        }
       }
-      return removed;
+      if (currentVariantId !== null && !hasValidOwner) {
+        toRemove.push(currentVariantId);
+      }
+    } finally {
+      candidateStmt.finalize();
     }
+
+    if (toRemove.length === 0) return 0;
+
+    const removeJson = JSON.stringify(toRemove);
+    if (this.searchAvailable) {
+      this.db
+        .query(
+          `DELETE FROM ${this.tableName} WHERE variant_id IN (SELECT value FROM json_each(?))`
+        )
+        .run(removeJson);
+    }
+    this.db
+      .query(
+        "DELETE FROM vector_owners WHERE partition_id = ? AND variant_id IN (SELECT value FROM json_each(?))"
+      )
+      .run(this.partitionId, removeJson);
+    this.db
+      .query(
+        "DELETE FROM vector_variants WHERE partition_id = ? AND variant_id IN (SELECT value FROM json_each(?))"
+      )
+      .run(this.partitionId, removeJson);
+    return toRemove.length;
   }
 }
 

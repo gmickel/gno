@@ -3,6 +3,7 @@ import type { Database } from "bun:sqlite";
 
 import { getEmbeddingFingerprint } from "../../embed/fingerprint";
 import { formatDocForEmbedding } from "../../pipeline/contextual";
+import { provenOwners, vectorProofKey } from "./proof-cache";
 import {
   currentOwnerCount,
   identityPartitionId,
@@ -257,7 +258,6 @@ interface OwnerCoverage {
   collection: string;
   mirror_hash: string;
   seq: number;
-  text: string;
   title: string | null;
   input_hash: string | null;
   embedding_bytes: number | null;
@@ -269,6 +269,7 @@ export function getVariantStatus(
   db: Database,
   options?: { embedModel?: string; embedFingerprint?: string }
 ): { backlog: number; embeddedByCollection: Map<string, number> } | null {
+  const inOuterTx = db.inTransaction;
   return db.transaction(() => {
     if (!hasPartitionTable(db)) return null;
     const partitions = readPartitions(db, options?.embedModel ?? null);
@@ -308,71 +309,169 @@ export function getVariantStatus(
         usablePartitions.set(partition.partition_id, partition);
     }
     if (authoritativeModels.size === 0) return null;
+    const proofs = provenOwners(db, inOuterTx);
+    const usableJson = JSON.stringify([...usablePartitions.keys()]);
+    const scopedToModel = Boolean(options?.embedModel);
     // Unscoped legacy coverage remains valid only for models that have never
-    // selected or activated verified authority; legacy rows cannot repair it.
-    const statement = db.prepare<
-      OwnerCoverage,
-      [string | null, string, string]
-    >(`
-      WITH legacy_vectors AS (
-        SELECT mirror_hash, seq, MAX(embedded_at) AS embedded_at
-        FROM content_vectors
-        WHERE ? IS NULL AND model NOT IN (SELECT value FROM json_each(?))
-        GROUP BY mirror_hash, seq
-      )
-      SELECT d.id AS document_id, o.partition_id, d.collection, d.mirror_hash, c.seq, c.text, d.title,
-        v.input_hash, length(v.embedding) AS embedding_bytes,
-        CASE WHEN lv.embedded_at >= c.created_at THEN 1 ELSE 0 END AS legacy_embedded
-      FROM documents d
-      JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
-      LEFT JOIN vector_owners o ON o.document_id = d.id AND o.seq = c.seq
-        AND o.mirror_hash = d.mirror_hash
-        AND o.partition_id IN (SELECT value FROM json_each(?))
-      LEFT JOIN vector_variants v ON v.variant_id = o.variant_id
-        AND v.partition_id = o.partition_id
-      LEFT JOIN legacy_vectors lv ON lv.mirror_hash = c.mirror_hash AND lv.seq = c.seq
-      WHERE d.active = 1
-    `);
+    // selected or activated verified authority; omit the legacy CTE entirely
+    // when embedModel is set, and defer c.text reads to uncached bound rows.
+    const sql = scopedToModel
+      ? `
+          SELECT d.id AS document_id, o.partition_id, d.collection, d.mirror_hash, c.seq, d.title,
+            v.input_hash, length(v.embedding) AS embedding_bytes,
+            0 AS legacy_embedded
+          FROM documents d
+          JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
+          LEFT JOIN vector_owners o ON o.document_id = d.id AND o.seq = c.seq
+            AND o.mirror_hash = d.mirror_hash
+            AND o.partition_id IN (SELECT value FROM json_each(?))
+          LEFT JOIN vector_variants v ON v.variant_id = o.variant_id
+            AND v.partition_id = o.partition_id
+          WHERE d.active = 1
+        `
+      : `
+          WITH legacy_vectors AS (
+            SELECT mirror_hash, seq, MAX(embedded_at) AS embedded_at
+            FROM content_vectors
+            WHERE model NOT IN (SELECT value FROM json_each(?))
+            GROUP BY mirror_hash, seq
+          )
+          SELECT d.id AS document_id, o.partition_id, d.collection, d.mirror_hash, c.seq, d.title,
+            v.input_hash, length(v.embedding) AS embedding_bytes,
+            CASE WHEN lv.embedded_at >= c.created_at THEN 1 ELSE 0 END AS legacy_embedded
+          FROM documents d
+          JOIN content_chunks c ON c.mirror_hash = d.mirror_hash
+          LEFT JOIN vector_owners o ON o.document_id = d.id AND o.seq = c.seq
+            AND o.mirror_hash = d.mirror_hash
+            AND o.partition_id IN (SELECT value FROM json_each(?))
+          LEFT JOIN vector_variants v ON v.variant_id = o.variant_id
+            AND v.partition_id = o.partition_id
+          LEFT JOIN legacy_vectors lv ON lv.mirror_hash = c.mirror_hash AND lv.seq = c.seq
+          WHERE d.active = 1
+        `;
+    const statement = db.prepare<OwnerCoverage, string[]>(sql);
+    const statementParams = scopedToModel
+      ? [usableJson]
+      : [JSON.stringify([...authoritativeModels]), usableJson];
     const owners = new Map<
       string,
       { collection: string; chunk: string; embedded: boolean }
     >();
+    const pendingProofs: Array<{
+      ownerKey: string;
+      proofKey: string;
+      mirrorHash: string;
+      seq: number;
+      title: string | null;
+      model: string;
+      inputHash: string;
+    }> = [];
+    const neededChunks = new Map<string, [string, number]>();
+    const PROOF_TEXT_BATCH_SIZE = 512;
+    const fetchChunkTexts = db.query<
+      { mirror_hash: string; seq: number; text: string },
+      [string]
+    >(`
+      WITH req AS (
+        SELECT
+          json_extract(value, '$[0]') AS mirror_hash,
+          json_extract(value, '$[1]') AS seq
+        FROM json_each(?)
+      )
+      SELECT c.mirror_hash, c.seq, c.text
+      FROM req r
+      JOIN content_chunks c ON c.mirror_hash = r.mirror_hash AND c.seq = r.seq
+    `);
+    const flushPendingProofs = (): void => {
+      if (pendingProofs.length === 0) return;
+      const textByChunk = new Map<string, string>();
+      const chunkEntries = [...neededChunks.values()];
+      for (const row of fetchChunkTexts.all(JSON.stringify(chunkEntries))) {
+        textByChunk.set(`${row.mirror_hash}\0${row.seq}`, row.text);
+      }
+      for (const item of pendingProofs) {
+        const owner = owners.get(item.ownerKey);
+        if (!owner) continue;
+        let valid = proofs.get(item.proofKey);
+        if (valid === undefined) {
+          const text = textByChunk.get(`${item.mirrorHash}\0${item.seq}`);
+          valid =
+            text !== undefined &&
+            item.inputHash ===
+              embeddingInputHash(
+                formatDocForEmbedding(text, item.title ?? undefined, item.model)
+              );
+          proofs.set(item.proofKey, valid);
+        }
+        if (valid) owner.embedded = true;
+      }
+      pendingProofs.length = 0;
+      neededChunks.clear();
+    };
     try {
-      for (const row of statement.iterate(
-        options?.embedModel ?? null,
-        JSON.stringify([...authoritativeModels]),
-        JSON.stringify([...usablePartitions.keys()])
-      )) {
+      for (const row of statement.iterate(...statementParams)) {
+        const ownerKey = `${row.document_id}:${row.seq}`;
+        let owner = owners.get(ownerKey);
+        if (!owner) {
+          owner = {
+            collection: row.collection,
+            chunk: `${row.mirror_hash}\0${row.seq}`,
+            embedded: false,
+          };
+          owners.set(ownerKey, owner);
+        }
+        if (owner.embedded) continue;
+        if (row.legacy_embedded) {
+          owner.embedded = true;
+          continue;
+        }
         const partition = row.partition_id
           ? usablePartitions.get(row.partition_id)
           : undefined;
-        const embedded = Boolean(
-          row.legacy_embedded ||
-          (partition &&
-            row.embedding_bytes ===
-              partition.dimensions * Float32Array.BYTES_PER_ELEMENT &&
-            row.input_hash ===
-              embeddingInputHash(
-                formatDocForEmbedding(
-                  row.text,
-                  row.title ?? undefined,
-                  partition.model
-                )
-              ))
+        if (
+          !partition ||
+          row.input_hash === null ||
+          row.embedding_bytes !==
+            partition.dimensions * Float32Array.BYTES_PER_ELEMENT
+        ) {
+          continue;
+        }
+        const pKey = vectorProofKey(
+          partition.model,
+          row.document_id,
+          row.mirror_hash,
+          row.seq,
+          row.input_hash
         );
-        const key = `${row.document_id}:${row.seq}`;
-        const previous = owners.get(key);
-        if (previous) previous.embedded ||= embedded;
-        else
-          owners.set(key, {
-            collection: row.collection,
-            chunk: JSON.stringify([row.mirror_hash, row.seq]),
-            embedded,
-          });
+        const cached = proofs.get(pKey);
+        if (cached !== undefined) {
+          if (cached) owner.embedded = true;
+          continue;
+        }
+        pendingProofs.push({
+          ownerKey,
+          proofKey: pKey,
+          mirrorHash: row.mirror_hash,
+          seq: row.seq,
+          title: row.title,
+          model: partition.model,
+          inputHash: row.input_hash,
+        });
+        const chunkKey = `${row.mirror_hash}\0${row.seq}`;
+        if (!neededChunks.has(chunkKey)) {
+          neededChunks.set(chunkKey, [row.mirror_hash, row.seq]);
+        }
+        if (
+          neededChunks.size >= PROOF_TEXT_BATCH_SIZE ||
+          pendingProofs.length >= PROOF_TEXT_BATCH_SIZE
+        ) {
+          flushPendingProofs();
+        }
       }
     } finally {
       statement.finalize();
     }
+    flushPendingProofs();
     const collections = new Map<string, Map<string, boolean>>();
     let backlog = 0;
     for (const owner of owners.values()) {

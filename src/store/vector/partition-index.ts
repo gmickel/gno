@@ -41,21 +41,9 @@ const createTable = (db: Database, partition: StoredPartition): void => {
   )`);
 };
 
-const insertVariants = (
-  db: Database,
-  partition: StoredPartition,
-  rows: Iterable<{ variantId: number; embedding: Uint8Array }>
-): number => {
-  let inserted = 0;
-  for (const row of rows) {
-    db.run(
-      `INSERT INTO ${tableName(partition)}(variant_id, embedding) VALUES (?, ?)`,
-      [row.variantId, row.embedding]
-    );
-    inserted += 1;
-  }
-  return inserted;
-};
+const logicalChanges = (db: Database): number =>
+  db.query<{ changes: number }, []>("SELECT changes() AS changes").get()
+    ?.changes ?? 0;
 
 /**
  * Remove index rows without a matching variant (orphans and stale
@@ -69,27 +57,25 @@ export function syncPartitionIndex(
   return db
     .transaction(() => {
       createTable(db, partition);
-      const stale = db
-        .query<{ variantId: number }, [string]>(`
-          SELECT x.variant_id AS variantId FROM ${table} x
-          LEFT JOIN vector_variants v ON v.variant_id = x.variant_id
-            AND v.partition_id = ?
-          WHERE v.variant_id IS NULL OR x.embedding != v.embedding
-        `)
-        .all(partition.partitionId);
-      for (const { variantId } of stale) {
-        db.run(`DELETE FROM ${table} WHERE variant_id = ?`, [variantId]);
-      }
-      const missing = db
-        .query<{ variantId: number; embedding: Uint8Array }, [string]>(`
-          SELECT v.variant_id AS variantId, v.embedding FROM vector_variants v
-          LEFT JOIN ${table} x ON x.variant_id = v.variant_id
-          WHERE v.partition_id = ? AND x.variant_id IS NULL
-        `)
-        .all(partition.partitionId);
-      const added = insertVariants(db, partition, missing);
+      db.query(
+        `DELETE FROM ${table}
+         WHERE variant_id IN (
+           SELECT x.variant_id FROM ${table} x
+           LEFT JOIN vector_variants v ON v.variant_id = x.variant_id
+             AND v.partition_id = ?
+           WHERE v.variant_id IS NULL OR x.embedding != v.embedding
+         )`
+      ).run(partition.partitionId);
+      const removed = logicalChanges(db);
+      db.query(
+        `INSERT INTO ${table}(variant_id, embedding)
+         SELECT v.variant_id, v.embedding FROM vector_variants v
+         LEFT JOIN ${table} x ON x.variant_id = v.variant_id
+         WHERE v.partition_id = ? AND x.variant_id IS NULL`
+      ).run(partition.partitionId);
+      const added = logicalChanges(db);
       markMirrorClean(db, partition.partitionId);
-      return { added, removed: stale.length };
+      return { added, removed };
     })
     .immediate();
 }
@@ -99,19 +85,16 @@ export function rebuildPartitionIndex(
   db: Database,
   partition: StoredPartition
 ): number {
+  const table = tableName(partition);
   return db
     .transaction(() => {
-      db.exec(`DROP TABLE IF EXISTS ${tableName(partition)}`);
+      db.exec(`DROP TABLE IF EXISTS ${table}`);
       createTable(db, partition);
-      const inserted = insertVariants(
-        db,
-        partition,
-        db
-          .query<{ variantId: number; embedding: Uint8Array }, [string]>(
-            "SELECT variant_id AS variantId, embedding FROM vector_variants WHERE partition_id = ?"
-          )
-          .iterate(partition.partitionId)
-      );
+      db.query(
+        `INSERT INTO ${table}(variant_id, embedding)
+         SELECT variant_id, embedding FROM vector_variants WHERE partition_id = ?`
+      ).run(partition.partitionId);
+      const inserted = logicalChanges(db);
       markMirrorClean(db, partition.partitionId);
       return inserted;
     })

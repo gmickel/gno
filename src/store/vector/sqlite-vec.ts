@@ -18,7 +18,7 @@ import type {
 } from "./types";
 
 import { err, ok } from "../types";
-import { buildEligibleVectorQuery } from "./eligibility";
+import { buildEligibleVectorChunksQuery } from "./eligibility";
 import { searchVectorVariants } from "./variant-search";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -240,20 +240,59 @@ export async function createVectorIndexPort(
     rows: VectorRow[],
     checkpoint?: (rows: VectorRow[]) => VectorRow[]
   ): Promise<StoreResult<number>> {
-    // 1. Always store in content_vectors first (critical path)
+    // Combine content_vectors write and best-effort vec0 update into one
+    // outer transaction; a SAVEPOINT isolates vec0 failures so committed
+    // content_vectors rows are preserved identically.
     try {
-      db.transaction(() => {
+      const count = db.transaction(() => {
         rows = checkpoint?.(rows) ?? rows;
-        for (const row of rows) {
+        const encoded = rows.map(
+          (row) =>
+            new Uint8Array(
+              row.embedding.buffer,
+              row.embedding.byteOffset,
+              row.embedding.byteLength
+            )
+        );
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i]!;
           upsertVectorStmt.run(
             row.mirrorHash,
             row.seq,
             row.model,
             row.embedFingerprint,
-            encodeEmbedding(row.embedding)
+            encoded[i]!
           );
         }
+
+        if (deleteVecChunkStmt && insertVecStmt && rows.length > 0) {
+          db.exec("SAVEPOINT vec0_upsert");
+          try {
+            for (let i = 0; i < rows.length; i++) {
+              const row = rows[i]!;
+              const chunkId = `${row.mirrorHash}:${row.seq}`;
+              // sqlite-vec vec0 tables do not reliably support OR REPLACE semantics.
+              // Delete first, then insert the fresh vector row.
+              deleteVecChunkStmt.run(chunkId);
+              insertVecStmt.run(chunkId, encoded[i]!);
+            }
+            db.exec("RELEASE SAVEPOINT vec0_upsert");
+          } catch (e) {
+            db.exec("ROLLBACK TO SAVEPOINT vec0_upsert");
+            db.exec("RELEASE SAVEPOINT vec0_upsert");
+            // Vec0 write failed - storage succeeded, search needs sync
+            vecDirty = true;
+            if (!vecErrorLogged) {
+              vecErrorLogged = true;
+              console.warn(
+                `[vec] Index write failed, will sync after embed: ${e instanceof Error ? e.message : String(e)}`
+              );
+            }
+          }
+        }
+        return rows.length;
       })();
+      return Promise.resolve(ok(count));
     } catch (e) {
       return Promise.resolve(
         err(
@@ -263,32 +302,6 @@ export async function createVectorIndexPort(
         )
       );
     }
-
-    // 2. Best-effort update vec0 (graceful degradation)
-    if (deleteVecChunkStmt && insertVecStmt) {
-      try {
-        db.transaction(() => {
-          for (const row of rows) {
-            const chunkId = `${row.mirrorHash}:${row.seq}`;
-            // sqlite-vec vec0 tables do not reliably support OR REPLACE semantics.
-            // Delete first, then insert the fresh vector row.
-            deleteVecChunkStmt.run(chunkId);
-            insertVecStmt.run(chunkId, encodeEmbedding(row.embedding));
-          }
-        })();
-      } catch (e) {
-        // Vec0 write failed - storage succeeded, search needs sync
-        vecDirty = true;
-        if (!vecErrorLogged) {
-          vecErrorLogged = true;
-          console.warn(
-            `[vec] Index write failed, will sync after embed: ${e instanceof Error ? e.message : String(e)}`
-          );
-        }
-      }
-    }
-
-    return Promise.resolve(ok(rows.length));
   }
 
   const port: VectorIndexPort = {
@@ -363,7 +376,7 @@ export async function createVectorIndexPort(
         );
         if (variants !== null) return Promise.resolve(ok(variants));
         if (searchOptions?.eligibility) {
-          const eligible = buildEligibleVectorQuery(db, searchOptions);
+          const eligible = buildEligibleVectorChunksQuery(db, searchOptions);
           const distanceFunction =
             distanceMetric === "cosine"
               ? "vec_distance_cosine"
@@ -375,11 +388,16 @@ export async function createVectorIndexPort(
             >(`
             SELECT v.mirror_hash AS mirrorHash, v.seq,
               ${distanceFunction}(v.embedding, ?) AS distance
-            FROM content_vectors v
-            WHERE v.model = ? AND EXISTS (${eligible.sql})
+            FROM (
+              ${eligible.sql}
+            ) e
+            JOIN content_vectors v
+              ON v.mirror_hash = e.mirror_hash
+              AND v.seq = e.seq
+              AND v.model = ?
             ORDER BY distance, v.mirror_hash, v.seq LIMIT ?
           `)
-            .all(encodeEmbedding(embedding), model, ...eligible.params, k);
+            .all(encodeEmbedding(embedding), ...eligible.params, model, k);
           return Promise.resolve(
             ok(
               rows.filter(
@@ -400,50 +418,87 @@ export async function createVectorIndexPort(
             distanceMetric === "cosine"
               ? "vec_distance_cosine"
               : "vec_distance_L2";
-          const scoped: VectorSearchResult[] = [];
-          for (
-            let index = 0;
-            index < hashes.length;
-            index += ALLOWED_HASH_BATCH_SIZE
+          const queryVector = encodeEmbedding(embedding);
+          const scopedStmt = db.query<
+            {
+              mirror_hash: string;
+              seq: number;
+              distance: number;
+            },
+            [Uint8Array, string, string, number]
+          >(
+            `SELECT mirror_hash, seq,
+                    ${distanceFunction}(embedding, ?) AS distance
+             FROM content_vectors
+             WHERE model = ?
+               AND mirror_hash IN (SELECT value FROM json_each(?))
+             ORDER BY distance, mirror_hash, seq
+             LIMIT ?`
+          );
+          const rows = scopedStmt.all(
+            queryVector,
+            model,
+            JSON.stringify(hashes),
+            k
+          );
+          const minScore = searchOptions.minScore;
+          // SQLite sorts NULL distances (e.g. zero vectors under cosine) first.
+          // When hashes span multiple legacy batches and a NULL distance appears
+          // in the top-k, preserve exact per-batch SQL selection + JS merge order.
+          if (
+            hashes.length > ALLOWED_HASH_BATCH_SIZE &&
+            rows.length > 0 &&
+            rows[0]!.distance === null
           ) {
-            const batch = hashes.slice(index, index + ALLOWED_HASH_BATCH_SIZE);
-            const placeholders = batch.map(() => "?").join(",");
-            const rows = db
-              .query<
-                {
-                  mirror_hash: string;
-                  seq: number;
-                  distance: number;
-                },
-                (Uint8Array | string | number)[]
-              >(
-                `SELECT mirror_hash, seq,
-                        ${distanceFunction}(embedding, ?) AS distance
-                 FROM content_vectors
-                 WHERE model = ?
-                   AND mirror_hash IN (${placeholders})
-                 ORDER BY distance, mirror_hash, seq
-                 LIMIT ?`
+            const scoped: VectorSearchResult[] = [];
+            for (
+              let index = 0;
+              index < hashes.length;
+              index += ALLOWED_HASH_BATCH_SIZE
+            ) {
+              const batch = hashes.slice(
+                index,
+                index + ALLOWED_HASH_BATCH_SIZE
+              );
+              const batchRows = scopedStmt.all(
+                queryVector,
+                model,
+                JSON.stringify(batch),
+                k
+              );
+              scoped.push(
+                ...batchRows.map((row) => ({
+                  mirrorHash: row.mirror_hash,
+                  seq: row.seq,
+                  distance: row.distance,
+                }))
+              );
+            }
+            return Promise.resolve(
+              ok(
+                scoped
+                  .sort(compareVectorResults)
+                  .filter(
+                    (row) =>
+                      minScore === undefined || 1 - row.distance >= minScore
+                  )
+                  .slice(0, k)
               )
-              .all(encodeEmbedding(embedding), model, ...batch, k);
-            scoped.push(
-              ...rows.map((row) => ({
-                mirrorHash: row.mirror_hash,
-                seq: row.seq,
-                distance: row.distance,
-              }))
             );
           }
-          const minScore = searchOptions.minScore;
           return Promise.resolve(
             ok(
-              scoped
+              rows
+                .map((row) => ({
+                  mirrorHash: row.mirror_hash,
+                  seq: row.seq,
+                  distance: row.distance,
+                }))
                 .sort(compareVectorResults)
                 .filter(
                   (row) =>
                     minScore === undefined || 1 - row.distance >= minScore
                 )
-                .slice(0, k)
             )
           );
         }
@@ -492,35 +547,21 @@ export async function createVectorIndexPort(
       }
 
       try {
-        // Drop and recreate vec table from content_vectors
-        db.exec(`DROP TABLE IF EXISTS ${tableName}`);
-        db.exec(`
-          CREATE VIRTUAL TABLE ${tableName} USING vec0(
-            chunk_id TEXT PRIMARY KEY,
-            embedding FLOAT[${dimensions}] distance_metric=${distanceMetric}
-          );
-        `);
-
-        // Repopulate from content_vectors
-        const rows = db
-          .prepare(
-            "SELECT mirror_hash, seq, embedding FROM content_vectors WHERE model = ?"
-          )
-          .all(model) as {
-          mirror_hash: string;
-          seq: number;
-          embedding: Uint8Array;
-        }[];
-
-        const insertStmt = db.prepare(`
-          INSERT INTO ${tableName} (chunk_id, embedding) VALUES (?, ?)
-        `);
-
+        // Drop, recreate, and repopulate vec table in pure SQL inside one transaction
         db.transaction(() => {
-          for (const row of rows) {
-            const chunkId = `${row.mirror_hash}:${row.seq}`;
-            insertStmt.run(chunkId, row.embedding);
-          }
+          db.exec(`DROP TABLE IF EXISTS ${tableName}`);
+          db.exec(`
+            CREATE VIRTUAL TABLE ${tableName} USING vec0(
+              chunk_id TEXT PRIMARY KEY,
+              embedding FLOAT[${dimensions}] distance_metric=${distanceMetric}
+            );
+          `);
+          db.query(
+            `INSERT INTO ${tableName} (chunk_id, embedding)
+             SELECT mirror_hash || ':' || seq, embedding
+             FROM content_vectors
+             WHERE model = ?`
+          ).run(model);
         })();
 
         return Promise.resolve(ok(undefined));
@@ -540,52 +581,32 @@ export async function createVectorIndexPort(
       }
 
       try {
-        // Wrap entire sync in transaction for atomicity
+        // Wrap entire sync in transaction for atomicity, pure SQL without pulling BLOBs into JS
         const result = db.transaction(() => {
           // 1. Remove orphans from vec table (not in content_vectors for this model)
-          const orphanResult = db
-            .prepare(
-              `
-              DELETE FROM ${tableName}
-              WHERE chunk_id NOT IN (
-                SELECT mirror_hash || ':' || seq
-                FROM content_vectors
-                WHERE model = ?
-              )
-            `
-            )
-            .run(model);
-          const removed = orphanResult.changes;
+          db.query(
+            `DELETE FROM ${tableName}
+             WHERE chunk_id NOT IN (
+               SELECT mirror_hash || ':' || seq
+               FROM content_vectors
+               WHERE model = ?
+             )`
+          ).run(model);
+          const removed =
+            db.query<{ c: number }, []>("SELECT changes() AS c").get()?.c ?? 0;
 
           // 2. Add missing entries (in content_vectors but not in vec table)
-          const missing = db
-            .prepare(
-              `
-              SELECT cv.mirror_hash, cv.seq, cv.embedding
-              FROM content_vectors cv
-              WHERE cv.model = ?
-                AND (cv.mirror_hash || ':' || cv.seq) NOT IN (
-                  SELECT chunk_id FROM ${tableName}
-                )
-            `
-            )
-            .all(model) as {
-            mirror_hash: string;
-            seq: number;
-            embedding: Uint8Array;
-          }[];
-
-          let added = 0;
-          if (missing.length > 0) {
-            const insertStmt = db.prepare(`
-              INSERT INTO ${tableName} (chunk_id, embedding) VALUES (?, ?)
-            `);
-            for (const row of missing) {
-              const chunkId = `${row.mirror_hash}:${row.seq}`;
-              insertStmt.run(chunkId, row.embedding);
-            }
-            added = missing.length;
-          }
+          db.query(
+            `INSERT INTO ${tableName} (chunk_id, embedding)
+             SELECT cv.mirror_hash || ':' || cv.seq, cv.embedding
+             FROM content_vectors cv
+             WHERE cv.model = ?
+               AND (cv.mirror_hash || ':' || cv.seq) NOT IN (
+                 SELECT chunk_id FROM ${tableName}
+               )`
+          ).run(model);
+          const added =
+            db.query<{ c: number }, []>("SELECT changes() AS c").get()?.c ?? 0;
 
           return { added, removed };
         })();

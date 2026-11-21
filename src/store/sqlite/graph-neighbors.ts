@@ -103,9 +103,6 @@ const matchesWikiKey = (targetRefNorm: string, keys: Set<string>): boolean => {
   return false;
 };
 
-const escapeLike = (value: string): string =>
-  value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
-
 /** Effective graph allowlist; undefined means unrestricted. */
 export const graphCollectionAllowlist = (options: {
   collection?: string;
@@ -125,8 +122,8 @@ const inScopeClause = (
         sql:
           allowlist.size === 0
             ? "AND 0"
-            : `AND ${column} IN (${[...allowlist].map(() => "?").join(",")})`,
-        params: [...allowlist],
+            : `AND ${column} IN (SELECT value FROM json_each(?))`,
+        params: allowlist.size === 0 ? [] : [JSON.stringify([...allowlist])],
       }
     : { sql: "", params: [] };
 
@@ -137,15 +134,14 @@ const loadSeeds = (db: Database, seedDocumentIds: number[]): SeedDocRow[] => {
   if (uniqueIds.length === 0) {
     return [];
   }
-  const placeholders = uniqueIds.map(() => "?").join(",");
   return db
-    .query<SeedDocRow, number[]>(
+    .query<SeedDocRow, [string]>(
       `SELECT id, docid, title, rel_path, collection
        FROM documents
-       WHERE active = 1 AND id IN (${placeholders})
+       WHERE active = 1 AND id IN (SELECT value FROM json_each(?))
        ORDER BY id ASC`
     )
-    .all(...uniqueIds);
+    .all(JSON.stringify(uniqueIds));
 };
 
 const collectIncomingCandidateLinks = (
@@ -159,17 +155,20 @@ const collectIncomingCandidateLinks = (
   const sourceScope = inScopeClause(allowlist, "src.collection");
 
   const wikiKeysByCollection = new Map<string, Set<string>>();
+  const allWikiKeys = new Set<string>();
   for (const seed of seeds) {
     const keys = wikiKeysByCollection.get(seed.collection) ?? new Set<string>();
     for (const key of wikiKeysForSeed(seed)) {
       keys.add(key);
+      allWikiKeys.add(key);
     }
     wikiKeysByCollection.set(seed.collection, keys);
   }
 
   const targetCollections = [...wikiKeysByCollection.keys()];
-  if (targetCollections.length > 0) {
-    const collectionPlaceholders = targetCollections.map(() => "?").join(",");
+  if (targetCollections.length > 0 && allWikiKeys.size > 0) {
+    const targetCollectionsJson = JSON.stringify(targetCollections);
+    const exactKeysJson = JSON.stringify([...allWikiKeys]);
     const wikiRows = db
       .query<RawLinkRow & { source_doc_id: number }, string[]>(
         `SELECT dl.source_doc_id, ${RAW_LINK_COLUMNS}
@@ -178,12 +177,26 @@ const collectIncomingCandidateLinks = (
          WHERE dl.link_type = 'wiki'
            AND (
              (dl.target_collection IS NULL
-               AND src.collection IN (${collectionPlaceholders}))
-             OR dl.target_collection IN (${collectionPlaceholders})
+               AND src.collection IN (SELECT value FROM json_each(?)))
+             OR dl.target_collection IN (SELECT value FROM json_each(?))
+           )
+           AND (
+             dl.target_ref_norm IN (SELECT value FROM json_each(?))
+             OR EXISTS (
+               SELECT 1 FROM json_each(?) sk
+               WHERE length(dl.target_ref_norm) > length(sk.value)
+                 AND substr(dl.target_ref_norm, -length(sk.value) - 1) = '/' || sk.value
+             )
            )
            ${sourceScope.sql}`
       )
-      .all(...targetCollections, ...targetCollections, ...sourceScope.params);
+      .all(
+        targetCollectionsJson,
+        targetCollectionsJson,
+        exactKeysJson,
+        exactKeysJson,
+        ...sourceScope.params
+      );
     examinedLinkRows += wikiRows.length;
 
     for (const row of wikiRows) {
@@ -221,24 +234,21 @@ const collectIncomingCandidateLinks = (
       memberships,
       new Set(workspaceSeeds.map(({ wsKey }) => wsKey))
     );
-    const conditions: string[] = [];
-    const params: string[] = [];
+    const wsExactKeys = new Set<string>();
+    const wsSuffixKeys = new Set<string>();
     for (const { seed } of workspaceSeeds) {
       const base = stripWikiMdExt(
         normalizeWikiName(seed.rel_path.split("/").pop() ?? seed.rel_path)
       );
       for (const value of [base, `${base}.md`]) {
-        conditions.push(
-          "dl.target_ref_norm = ? OR dl.target_ref_norm LIKE ? ESCAPE '\\'"
-        );
-        params.push(value, `%/${escapeLike(value)}`);
+        wsExactKeys.add(value);
+        wsSuffixKeys.add(value);
       }
       for (const key of wikiKeysForSeed(seed)) {
-        conditions.push("dl.target_ref_norm = ?");
-        params.push(key);
+        wsExactKeys.add(key);
       }
     }
-    if (members.length > 0 && conditions.length > 0) {
+    if (members.length > 0 && wsExactKeys.size > 0) {
       const rows = db
         .query<RawLinkRow & { source_doc_id: number }, string[]>(
           `SELECT dl.source_doc_id, ${RAW_LINK_COLUMNS}
@@ -246,11 +256,23 @@ const collectIncomingCandidateLinks = (
            JOIN documents src ON src.id = dl.source_doc_id AND src.active = 1
            WHERE dl.link_type = 'wiki'
              AND dl.target_collection IS NULL
-             AND src.collection IN (${members.map(() => "?").join(",")})
-             AND (${conditions.join(" OR ")})
+             AND src.collection IN (SELECT value FROM json_each(?))
+             AND (
+               dl.target_ref_norm IN (SELECT value FROM json_each(?))
+               OR EXISTS (
+                 SELECT 1 FROM json_each(?) sk
+                 WHERE length(dl.target_ref_norm) > length(sk.value)
+                   AND substr(dl.target_ref_norm, -length(sk.value) - 1) = '/' || sk.value
+               )
+             )
              ${sourceScope.sql}`
         )
-        .all(...members, ...params, ...sourceScope.params);
+        .all(
+          JSON.stringify(members),
+          JSON.stringify([...wsExactKeys]),
+          JSON.stringify([...wsSuffixKeys]),
+          ...sourceScope.params
+        );
       examinedLinkRows += rows.length;
       for (const row of rows) {
         if (!seedIdSet.has(row.source_doc_id)) linksById.set(row.id, row);
@@ -258,26 +280,30 @@ const collectIncomingCandidateLinks = (
     }
   }
 
-  for (const seed of seeds) {
+  // Batch markdown backlink lookup across all seeds in one SQL query.
+  const mdSeedPairs = seeds.map((seed) => [seed.rel_path, seed.collection]);
+  if (mdSeedPairs.length > 0) {
     const mdRows = db
       .query<RawLinkRow & { source_doc_id: number }, string[]>(
-        `SELECT dl.source_doc_id, ${RAW_LINK_COLUMNS}
-         FROM doc_links dl
+        `WITH seed_targets AS (
+           SELECT DISTINCT
+             json_extract(value, '$[0]') AS rel_path,
+             json_extract(value, '$[1]') AS collection
+           FROM json_each(?)
+         )
+         SELECT dl.source_doc_id, ${RAW_LINK_COLUMNS}
+         FROM seed_targets st
+         JOIN doc_links dl
+           ON dl.link_type = 'markdown'
+           AND dl.target_ref_norm = st.rel_path
          JOIN documents src ON src.id = dl.source_doc_id AND src.active = 1
-         WHERE dl.link_type = 'markdown'
-           AND dl.target_ref_norm = ?
-           AND (
-             (dl.target_collection IS NULL AND src.collection = ?)
-             OR dl.target_collection = ?
-           )
-           ${sourceScope.sql}`
+         WHERE (
+           (dl.target_collection IS NULL AND src.collection = st.collection)
+           OR dl.target_collection = st.collection
+         )
+         ${sourceScope.sql}`
       )
-      .all(
-        seed.rel_path,
-        seed.collection,
-        seed.collection,
-        ...sourceScope.params
-      );
+      .all(JSON.stringify(mdSeedPairs), ...sourceScope.params);
     examinedLinkRows += mdRows.length;
     for (const row of mdRows) {
       if (!seedIdSet.has(row.source_doc_id)) {
@@ -297,19 +323,18 @@ const loadRawLinksForSources = (
   if (sourceIds.length === 0) {
     return [];
   }
-  const sourcePlaceholders = sourceIds.map(() => "?").join(",");
   const sourceScope = inScopeClause(allowlist, "src.collection");
   return db
-    .query<RawLinkRow, (string | number)[]>(
+    .query<RawLinkRow, string[]>(
       `SELECT ${RAW_LINK_COLUMNS}
        FROM documents src
        JOIN doc_links dl ON dl.source_doc_id = src.id
        WHERE src.active = 1
-         AND src.id IN (${sourcePlaceholders})
+         AND src.id IN (SELECT value FROM json_each(?))
          ${sourceScope.sql}
        ORDER BY src.id ASC, dl.id ASC`
     )
-    .all(...sourceIds, ...sourceScope.params);
+    .all(JSON.stringify(sourceIds), ...sourceScope.params);
 };
 
 const resolveRawEdges = (

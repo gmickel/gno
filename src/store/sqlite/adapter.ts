@@ -149,6 +149,7 @@ import {
 import { normalizeWikiName, stripWikiMdExt } from "../../core/links";
 import { tracePhase } from "../../core/phase-trace";
 import {
+  parseStoredTypedMetadata,
   TYPED_METADATA_INGEST_VERSION,
   typedMetadataSchema,
 } from "../../core/typed-metadata";
@@ -185,6 +186,7 @@ import {
 } from "./capsule-registry-store";
 import {
   appendDocumentChange as appendStoredDocumentChange,
+  type DocumentChangeSnapshot,
   enforceDocumentChangeRetention as enforceStoredDocumentChangeRetention,
   listDocumentChanges as listStoredDocumentChanges,
   purgeDocumentChanges as purgeStoredDocumentChanges,
@@ -272,7 +274,6 @@ const WHITESPACE_REGEX = /\s+/;
 const SINGLE_LINE_QUERY_PATTERN = /[\r\n]/;
 const DOUBLE_QUOTE_PATTERN = /"/g;
 const DOC_EDGE_TYPE_PATTERN = /^[a-z][a-z0-9_]*$/;
-const SQLITE_SAFE_PARAMETER_BATCH_SIZE = 900;
 
 /**
  * Effective physical source path for watcher fallback queries.
@@ -657,17 +658,21 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       );
 
       // Keep WAL everywhere so readers can continue while a writer is active.
-      // CI still relaxes fsync/temp-store for speed, but MEMORY journal mode
-      // breaks the cross-process read/write behavior we rely on in CLI tests.
+      // CI still relaxes fsync for speed, but MEMORY journal mode breaks the
+      // cross-process read/write behavior we rely on in CLI tests.
+      let isWal = false;
       try {
-        const journalMode = this.db
+        let journalMode = this.db
           .query<{ journal_mode: string }, []>("PRAGMA journal_mode")
           .get()?.journal_mode;
         tracePhase(`db: journal_mode ${journalMode}`);
         if (journalMode?.toLowerCase() !== "wal") {
-          this.db.exec("PRAGMA journal_mode = WAL");
-          tracePhase("db: journal_mode set to wal");
+          journalMode = this.db
+            .query<{ journal_mode: string }, []>("PRAGMA journal_mode = WAL")
+            .get()?.journal_mode;
+          tracePhase(`db: journal_mode set to ${journalMode}`);
         }
+        isWal = journalMode?.toLowerCase() === "wal";
       } catch (cause) {
         if (!isDatabaseLockedError(cause)) {
           throw cause;
@@ -677,9 +682,18 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         // rely on the existing DB journal mode instead of failing open().
       }
 
+      this.db.exec("PRAGMA temp_store = MEMORY");
+      this.db.exec("PRAGMA cache_size = -64000");
+      try {
+        this.db.exec("PRAGMA mmap_size = 268435456");
+      } catch {
+        // Platforms/filesystems that reject mmap_size keep default file I/O.
+      }
+
       if (process.env.CI) {
         this.db.exec("PRAGMA synchronous = OFF");
-        this.db.exec("PRAGMA temp_store = MEMORY");
+      } else if (isWal) {
+        this.db.exec("PRAGMA synchronous = NORMAL");
       }
 
       // Load fts5-snowball extension if using snowball tokenizer
@@ -729,6 +743,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       this.db.exec(
         `PRAGMA busy_timeout = ${resolveBusyTimeoutMs(busyTimeoutMs)}`
       );
+      this.db.exec("PRAGMA temp_store = MEMORY");
+      this.db.exec("PRAGMA cache_size = -32000");
+      try {
+        this.db.exec("PRAGMA mmap_size = 268435456");
+      } catch {
+        // Platforms/filesystems that reject mmap_size keep default file I/O.
+      }
       this.contextGeneration += 1;
       return ok(undefined);
     } catch (cause) {
@@ -831,6 +852,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         main.query<{ timeout: number }, []>("PRAGMA busy_timeout").get()
           ?.timeout ?? DEFAULT_BUSY_TIMEOUT_MS;
       db.exec(`PRAGMA busy_timeout = ${busyTimeout}`);
+      db.exec("PRAGMA temp_store = MEMORY");
+      db.exec("PRAGMA cache_size = -32000");
+      try {
+        db.exec("PRAGMA mmap_size = 268435456");
+      } catch {
+        // Platforms/filesystems that reject mmap_size keep default file I/O.
+      }
       if (this.ftsTokenizer.startsWith("snowball")) {
         const snowball = loadFts5Snowball(db);
         if (!snowball.loaded)
@@ -1773,9 +1801,23 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const uri = buildUri(doc.collection, doc.relPath);
 
       const transaction = db.transaction((): UpsertDocumentResult => {
+        interface PreviousDocumentSnapshotRow {
+          id: number;
+          collection: string;
+          rel_path: string;
+          docid: string;
+          uri: string;
+          source_hash: string;
+          mirror_hash: string | null;
+          active: number;
+          title: string | null;
+        }
         const previousRow = db
-          .query<DbDocumentRow, [string, string]>(
-            "SELECT * FROM documents WHERE collection = ? AND rel_path = ?"
+          .query<PreviousDocumentSnapshotRow, [string, string]>(
+            `SELECT id, collection, rel_path, docid, uri, source_hash,
+                    mirror_hash, active, title
+             FROM documents
+             WHERE collection = ? AND rel_path = ?`
           )
           .get(doc.collection, doc.relPath);
         const legacyTitles = snapshotLegacyTitles(
@@ -1788,8 +1830,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             : []
         );
 
-        db.run(
-          `
+        const idRow = db
+          .query<{ id: number }, (string | number | null)[]>(
+            `
         INSERT INTO documents (
           collection, rel_path, source_hash, source_mime, source_ext,
           source_size, source_mtime, source_ctime, docid, uri, title, mirror_hash,
@@ -1837,8 +1880,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           last_error_at = excluded.last_error_at,
           ingest_version = excluded.ingest_version,
           updated_at = datetime('now')
-      `,
-          [
+        RETURNING id
+      `
+          )
+          .get(
             doc.collection,
             doc.relPath,
             doc.sourceHash,
@@ -1874,16 +1919,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             doc.lastErrorCode ?? null,
             doc.lastErrorMessage ?? null,
             doc.lastErrorCode ? new Date().toISOString() : null,
-            doc.ingestVersion ?? null,
-          ]
-        );
-
-        // Get the row id (either inserted or updated)
-        const idRow = db
-          .query<{ id: number }, [string, string]>(
-            "SELECT id FROM documents WHERE collection = ? AND rel_path = ?"
-          )
-          .get(doc.collection, doc.relPath);
+            doc.ingestVersion ?? null
+          );
 
         if (!idRow) {
           throw new Error("Failed to get document id after upsert");
@@ -1898,32 +1935,44 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           (previousRow.mirror_hash !== (doc.mirrorHash ?? null) ||
             previousRow.title !== (doc.title ?? null))
         ) {
-          db.run("DELETE FROM vector_owners WHERE document_id = ?", [idRow.id]);
+          db.query("DELETE FROM vector_owners WHERE document_id = ?").run(
+            idRow.id
+          );
         }
 
         // Conversion failures deliberately drop mirror ownership. Remove the
         // old lexical projection in the same transaction so stale content can
         // never join against the newly updated document metadata.
         if (doc.mirrorHash == null) {
-          db.run("DELETE FROM documents_fts WHERE rowid = ?", [idRow.id]);
-          db.run("UPDATE documents SET fts_mirror_hash = NULL WHERE id = ?", [
-            idRow.id,
-          ]);
+          db.query("DELETE FROM documents_fts WHERE rowid = ?").run(idRow.id);
+          db.query(
+            "UPDATE documents SET fts_mirror_hash = NULL WHERE id = ?"
+          ).run(idRow.id);
         }
 
         if (doc.changeJournal !== false) {
-          const nextRow = db
-            .query<DbDocumentRow, [number]>(
-              "SELECT * FROM documents WHERE id = ?"
-            )
-            .get(idRow.id);
-          if (!nextRow) {
-            throw new Error("Failed to read document after upsert");
-          }
-          const previous = previousRow
-            ? snapshotDocumentChange(mapDocumentRow(previousRow))
+          const previous: DocumentChangeSnapshot | null = previousRow
+            ? {
+                id: previousRow.id,
+                collection: previousRow.collection,
+                relPath: previousRow.rel_path,
+                docid: previousRow.docid,
+                uri: previousRow.uri,
+                sourceHash: previousRow.source_hash,
+                mirrorHash: previousRow.mirror_hash,
+                active: previousRow.active === 1,
+              }
             : null;
-          const next = snapshotDocumentChange(mapDocumentRow(nextRow));
+          const next: DocumentChangeSnapshot = {
+            id: idRow.id,
+            collection: doc.collection,
+            relPath: doc.relPath,
+            docid,
+            uri,
+            sourceHash: doc.sourceHash,
+            mirrorHash: doc.mirrorHash ?? null,
+            active: true,
+          };
           const kind: DocumentChangeKind | null =
             previous === null
               ? "create"
@@ -2412,33 +2461,23 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }
 
       const db = this.ensureOpen();
-      const rows: DbDocumentRow[] = [];
+      const clauses = ["mirror_hash IN (SELECT value FROM json_each(?))"];
+      const params: string[] = [JSON.stringify(uniqueHashes)];
 
-      // SQLite SQLITE_LIMIT_VARIABLE_NUMBER defaults to 999.
-      // Reserve headroom for optional non-IN parameters.
-      const SQL_PARAM_LIMIT = 898;
-
-      for (let i = 0; i < uniqueHashes.length; i += SQL_PARAM_LIMIT) {
-        const batch = uniqueHashes.slice(i, i + SQL_PARAM_LIMIT);
-        const placeholders = batch.map(() => "?").join(",");
-        const clauses = [`mirror_hash IN (${placeholders})`];
-        const params: string[] = [...batch];
-
-        if (options.activeOnly ?? true) {
-          clauses.push("active = 1");
-        }
-        if (options.collection) {
-          clauses.push("collection = ?");
-          params.push(options.collection);
-        }
-        if (options.collections !== undefined) {
-          clauses.push("collection IN (SELECT value FROM json_each(?))");
-          params.push(JSON.stringify(options.collections));
-        }
-
-        const sql = `SELECT * FROM documents INDEXED BY idx_documents_mirror_hash WHERE ${clauses.join(" AND ")} ORDER BY id`;
-        rows.push(...db.query<DbDocumentRow, string[]>(sql).all(...params));
+      if (options.activeOnly ?? true) {
+        clauses.push("active = 1");
       }
+      if (options.collection) {
+        clauses.push("collection = ?");
+        params.push(options.collection);
+      }
+      if (options.collections !== undefined) {
+        clauses.push("collection IN (SELECT value FROM json_each(?))");
+        params.push(JSON.stringify(options.collections));
+      }
+
+      const sql = `SELECT * FROM documents INDEXED BY idx_documents_mirror_hash WHERE ${clauses.join(" AND ")} ORDER BY id`;
+      const rows = db.query<DbDocumentRow, string[]>(sql).all(...params);
 
       return ok(rows.map(mapDocumentRow));
     } catch (cause) {
@@ -2473,33 +2512,26 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }
 
       const db = this.ensureOpen();
-      const rows: DbDocumentRow[] = [];
-      const SQL_PARAM_LIMIT = options.collection ? 899 : 900;
+      const clauses = ["docid IN (SELECT value FROM json_each(?))"];
+      const params: (string | number)[] = [JSON.stringify(uniqueDocids)];
 
-      for (let i = 0; i < uniqueDocids.length; i += SQL_PARAM_LIMIT) {
-        const batch = uniqueDocids.slice(i, i + SQL_PARAM_LIMIT);
-        const placeholders = batch.map(() => "?").join(",");
-        const clauses = [`docid IN (${placeholders})`];
-        const params: (string | number)[] = [...batch];
-
-        if (options.activeOnly ?? true) {
-          clauses.push("active = 1");
-        }
-        if (options.collection) {
-          clauses.push("collection = ?");
-          params.push(options.collection);
-        }
-
-        if (options.eligibility) {
-          const eligible = buildEligibleDocumentQuery(options.eligibility, db);
-          clauses.push(`id IN (SELECT id FROM (${eligible.sql}))`);
-          params.push(...eligible.params);
-        }
-        const sql = `SELECT * FROM documents WHERE ${clauses.join(" AND ")} ORDER BY id`;
-        rows.push(
-          ...db.query<DbDocumentRow, (string | number)[]>(sql).all(...params)
-        );
+      if (options.activeOnly ?? true) {
+        clauses.push("active = 1");
       }
+      if (options.collection) {
+        clauses.push("collection = ?");
+        params.push(options.collection);
+      }
+
+      if (options.eligibility) {
+        const eligible = buildEligibleDocumentQuery(options.eligibility, db);
+        clauses.push(`id IN (SELECT id FROM (${eligible.sql}))`);
+        params.push(...eligible.params);
+      }
+      const sql = `SELECT * FROM documents WHERE ${clauses.join(" AND ")} ORDER BY id`;
+      const rows = db
+        .query<DbDocumentRow, (string | number)[]>(sql)
+        .all(...params);
 
       return ok(rows.map(mapDocumentRow));
     } catch (cause) {
@@ -2576,11 +2608,11 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }
 
       if (options.categories && options.categories.length > 0) {
-        const placeholders = options.categories.map(() => "?").join(",");
+        const categoriesJson = JSON.stringify(options.categories);
         conditions.push(
-          `(d.content_type IN (${placeholders}) OR EXISTS (SELECT 1 FROM json_each(COALESCE(d.categories, '[]')) jc WHERE jc.value IN (${placeholders})))`
+          "(d.content_type IN (SELECT value FROM json_each(?)) OR EXISTS (SELECT 1 FROM json_each(COALESCE(d.categories, '[]')) jc WHERE jc.value IN (SELECT value FROM json_each(?))))"
         );
-        params.push(...options.categories, ...options.categories);
+        params.push(categoriesJson, categoriesJson);
       }
 
       if (options.author) {
@@ -2590,11 +2622,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
       // tagsAny: document has at least one of these tags (OR)
       if (tagsAny && tagsAny.length > 0) {
-        const placeholders = tagsAny.map(() => "?").join(",");
         conditions.push(
-          `EXISTS (SELECT 1 FROM doc_tags dt WHERE dt.document_id = d.id AND dt.tag IN (${placeholders}))`
+          "EXISTS (SELECT 1 FROM doc_tags dt WHERE dt.document_id = d.id AND dt.tag IN (SELECT value FROM json_each(?)))"
         );
-        params.push(...tagsAny);
+        params.push(JSON.stringify(tagsAny));
       }
 
       // tagsAll: document has all of these tags (AND)
@@ -2692,18 +2723,29 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }
 
       const uniquePaths = [...new Set(relPaths)];
-      const placeholders = uniquePaths.map(() => "?").join(",");
+      const pathsJson = JSON.stringify(uniquePaths);
       const transaction = db.transaction((): number => {
         const activeRows = db
-          .query<DbDocumentRow, (string | number)[]>(
-            `SELECT *
+          .query<
+            {
+              id: number;
+              collection: string;
+              rel_path: string;
+              docid: string;
+              uri: string;
+              source_hash: string;
+              mirror_hash: string | null;
+            },
+            [string, string]
+          >(
+            `SELECT id, collection, rel_path, docid, uri, source_hash, mirror_hash
              FROM documents
              WHERE collection = ?
                AND active = 1
-               AND rel_path IN (${placeholders})
+               AND rel_path IN (SELECT value FROM json_each(?))
              ORDER BY rel_path ASC, id ASC`
           )
-          .all(collection, ...uniquePaths);
+          .all(collection, pathsJson);
         if (activeRows.length === 0) {
           return 0;
         }
@@ -2711,13 +2753,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           db,
           activeRows.map((row) => row.mirror_hash)
         );
-        db.run(
+        db.query(
           `UPDATE documents SET active = 0, updated_at = datetime('now')
            WHERE collection = ?
              AND active = 1
-             AND rel_path IN (${placeholders})`,
-          [collection, ...uniquePaths]
-        );
+             AND rel_path IN (SELECT value FROM json_each(?))`
+        ).run(collection, pathsJson);
         // Bun run().changes includes trigger writes; report logical document rows.
         const changed =
           db.query<{ count: number }, []>("SELECT changes() AS count").get()
@@ -2725,7 +2766,16 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         reconcileLegacyTitles(db, legacyTitles);
         const observedAtMs = Date.now();
         for (const activeRow of activeRows) {
-          const previous = snapshotDocumentChange(mapDocumentRow(activeRow));
+          const previous: DocumentChangeSnapshot = {
+            id: activeRow.id,
+            collection: activeRow.collection,
+            relPath: activeRow.rel_path,
+            docid: activeRow.docid,
+            uri: activeRow.uri,
+            sourceHash: activeRow.source_hash,
+            mirrorHash: activeRow.mirror_hash,
+            active: true,
+          };
           appendStoredDocumentChange(db, {
             documentId: activeRow.id,
             collection,
@@ -2973,24 +3023,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }
 
       const result = new Map<string, string>();
-      for (
-        let offset = 0;
-        offset < uniqueHashes.length;
-        offset += SQLITE_SAFE_PARAMETER_BATCH_SIZE
-      ) {
-        const batch = uniqueHashes.slice(
-          offset,
-          offset + SQLITE_SAFE_PARAMETER_BATCH_SIZE
-        );
-        const placeholders = batch.map(() => "?").join(", ");
-        const rows = db
-          .query<DbContentRow, string[]>(
-            `SELECT mirror_hash, markdown FROM content
-             WHERE mirror_hash IN (${placeholders})`
-          )
-          .all(...batch);
-        for (const row of rows) result.set(row.mirror_hash, row.markdown);
-      }
+      const rows = db
+        .query<DbContentRow, [string]>(
+          `SELECT mirror_hash, markdown FROM content
+           WHERE mirror_hash IN (SELECT value FROM json_each(?))`
+        )
+        .all(JSON.stringify(uniqueHashes));
+      for (const row of rows) result.set(row.mirror_hash, row.markdown);
 
       return ok(result);
     } catch (cause) {
@@ -3024,29 +3063,43 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         );
         // Retain stable rows: DELETE cascades erase valid legacy vectors even
         // when duplicate ingestion produces exactly the same embedding input.
-        const nextBySequence = new Map(
-          chunks.map((chunk) => [chunk.seq, chunk])
-        );
         const existing = db
           .query<{ seq: number; text: string }, [string]>(
             "SELECT seq, text FROM content_chunks WHERE mirror_hash = ?"
           )
           .all(mirrorHash);
-        for (const old of existing) {
-          const next = nextBySequence.get(old.seq);
-          if (!next || next.text !== old.text) {
-            db.run(
-              "DELETE FROM vector_owners WHERE mirror_hash = ? AND seq = ?",
-              [mirrorHash, old.seq]
-            );
-            db.run(
-              "DELETE FROM content_chunks WHERE mirror_hash = ? AND seq = ?",
-              [mirrorHash, old.seq]
-            );
+        if (existing.length > 0) {
+          const nextBySequence = new Map(
+            chunks.map((chunk) => [chunk.seq, chunk])
+          );
+          const deleteOwner = db.query<unknown, [string, number]>(
+            "DELETE FROM vector_owners WHERE mirror_hash = ? AND seq = ?"
+          );
+          const deleteChunk = db.query<unknown, [string, number]>(
+            "DELETE FROM content_chunks WHERE mirror_hash = ? AND seq = ?"
+          );
+          for (const old of existing) {
+            const next = nextBySequence.get(old.seq);
+            if (!next || next.text !== old.text) {
+              deleteOwner.run(mirrorHash, old.seq);
+              deleteChunk.run(mirrorHash, old.seq);
+            }
           }
         }
 
-        const stmt = db.prepare(`
+        const stmt = db.query<
+          unknown,
+          [
+            string,
+            number,
+            number,
+            string,
+            number,
+            number,
+            string | null,
+            number | null,
+          ]
+        >(`
           INSERT INTO content_chunks (mirror_hash, seq, pos, text, start_line, end_line, language, token_count)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(mirror_hash, seq) DO UPDATE SET
@@ -3192,32 +3245,20 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
       const db = this.ensureOpen();
       const result = new Map<string, ChunkRow[]>();
+      const rows = db
+        .query<DbChunkRow, [string]>(
+          `SELECT * FROM content_chunks
+           WHERE mirror_hash IN (SELECT value FROM json_each(?))
+           ORDER BY mirror_hash, seq`
+        )
+        .all(JSON.stringify(uniqueHashes));
 
-      // SQLite SQLITE_LIMIT_VARIABLE_NUMBER defaults to 999
-      // Reserve 99 for potential future filter params (collection, language, etc.)
-      // Batch queries to respect SQLite parameter limit
-      for (
-        let i = 0;
-        i < uniqueHashes.length;
-        i += SQLITE_SAFE_PARAMETER_BATCH_SIZE
-      ) {
-        const batch = uniqueHashes.slice(
-          i,
-          i + SQLITE_SAFE_PARAMETER_BATCH_SIZE
-        );
-        const placeholders = batch.map(() => "?").join(",");
-        const sql = `SELECT * FROM content_chunks
-                     WHERE mirror_hash IN (${placeholders})
-                     ORDER BY mirror_hash, seq`;
-        const rows = db.query<DbChunkRow, string[]>(sql).all(...batch);
-
-        // Group by mirrorHash, preserving seq order from ORDER BY
-        for (const row of rows) {
-          const mapped = mapChunkRow(row);
-          const existing = result.get(mapped.mirrorHash) ?? [];
-          existing.push(mapped);
-          result.set(mapped.mirrorHash, existing);
-        }
+      // Group by mirrorHash, preserving seq order from ORDER BY
+      for (const row of rows) {
+        const mapped = mapChunkRow(row);
+        const existing = result.get(mapped.mirrorHash);
+        if (existing) existing.push(mapped);
+        else result.set(mapped.mirrorHash, [mapped]);
       }
 
       return ok(result);
@@ -3243,27 +3284,27 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const result = new Map<string, ChunkRow[]>();
       if (pairs.length === 0) return ok(result);
       const db = this.ensureOpen();
-      const batchSize = Math.floor(SQLITE_SAFE_PARAMETER_BATCH_SIZE / 2);
-      for (let offset = 0; offset < pairs.length; offset += batchSize) {
-        const batch = pairs.slice(offset, offset + batchSize);
-        const values = batch.map(() => "(?, ?)").join(",");
-        const rows = db
-          .query<DbChunkRow, (string | number)[]>(`
-          WITH requested(mirror_hash, seq) AS (VALUES ${values})
+      const rows = db
+        .query<DbChunkRow, [string]>(`
+          WITH requested AS (
+            SELECT
+              json_extract(value, '$[0]') AS mirror_hash,
+              json_extract(value, '$[1]') AS seq
+            FROM json_each(?)
+          )
           SELECT c.* FROM requested r JOIN content_chunks c
             ON c.mirror_hash = r.mirror_hash AND c.seq = r.seq
           ORDER BY c.mirror_hash, c.seq
         `)
-          .all(...batch.flatMap(({ mirrorHash, seq }) => [mirrorHash, seq]));
-        for (const row of rows) {
-          const mapped = mapChunkRow(row);
-          const chunks = result.get(mapped.mirrorHash) ?? [];
-          chunks.push(mapped);
-          result.set(mapped.mirrorHash, chunks);
-        }
+        .all(
+          JSON.stringify(pairs.map(({ mirrorHash, seq }) => [mirrorHash, seq]))
+        );
+      for (const row of rows) {
+        const mapped = mapChunkRow(row);
+        const chunks = result.get(mapped.mirrorHash);
+        if (chunks) chunks.push(mapped);
+        else result.set(mapped.mirrorHash, [mapped]);
       }
-      for (const chunks of result.values())
-        chunks.sort((a, b) => a.seq - b.seq);
       return ok(result);
     } catch (cause) {
       return err(
@@ -3286,41 +3327,52 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const uniqueHashes = uniqueNonEmptyValues(mirrorHashes);
       if (uniqueHashes.length === 0 || terms.length === 0) return ok([]);
       const db = this.ensureOpen();
-      // SQLite lower() folds ASCII only, so a non-ASCII term is also looked
-      // up in its upper-case and capitalized spellings (ÜBERBLICK, Überblick).
-      const spellings = terms.flatMap((term) => [
-        term,
-        term.toUpperCase(),
-        `${term.charAt(0).toUpperCase()}${term.slice(1)}`,
-      ]);
+      // Compute lower(text) once per chunk in a derived table. SQLite lower()
+      // folds ASCII only, so lowercase ASCII terms need only one instr(ltext, ?)
+      // check, while non-ASCII or mixed-case terms check upper/capitalized too.
+      const spellings: string[] = [];
       const columns = terms
-        .map(
-          () =>
-            "(instr(lower(text), ?) > 0 OR instr(text, ?) > 0 OR instr(text, ?) > 0)"
-        )
+        .map((term) => {
+          let isAscii = true;
+          for (let i = 0; i < term.length; i++) {
+            if (term.charCodeAt(i) > 0x7f) {
+              isAscii = false;
+              break;
+            }
+          }
+          const isLowerAscii = isAscii && term === term.toLowerCase();
+          if (isLowerAscii) {
+            spellings.push(term);
+            return "instr(ltext, ?) > 0";
+          }
+          spellings.push(
+            term,
+            term.toUpperCase(),
+            `${term.charAt(0).toUpperCase()}${term.slice(1)}`
+          );
+          return "(instr(ltext, ?) > 0 OR instr(text, ?) > 0 OR instr(text, ?) > 0)";
+        })
         .join(", ");
-      const batchSize = Math.max(
-        1,
-        SQLITE_SAFE_PARAMETER_BATCH_SIZE - spellings.length
-      );
+      const values = db
+        .query<unknown, string[]>(
+          `WITH scoped AS MATERIALIZED (
+             SELECT mirror_hash, seq, text, lower(text) AS ltext
+             FROM content_chunks
+             WHERE mirror_hash IN (SELECT value FROM json_each(?))
+           )
+           SELECT mirror_hash, seq, ${columns}
+           FROM scoped
+           ORDER BY mirror_hash, seq`
+        )
+        .values(JSON.stringify(uniqueHashes), ...spellings) as unknown[][];
       const rows: { mirrorHash: string; seq: number; present: boolean[] }[] =
         [];
-      for (let i = 0; i < uniqueHashes.length; i += batchSize) {
-        const batch = uniqueHashes.slice(i, i + batchSize);
-        const values = db
-          .query<unknown, string[]>(
-            `SELECT mirror_hash, seq, ${columns} FROM content_chunks
-             WHERE mirror_hash IN (${batch.map(() => "?").join(",")})
-             ORDER BY mirror_hash, seq`
-          )
-          .values(...spellings, ...batch) as unknown[][];
-        for (const [mirrorHash, seq, ...present] of values) {
-          rows.push({
-            mirrorHash: String(mirrorHash),
-            seq: Number(seq),
-            present: present.map((flag) => flag === 1),
-          });
-        }
+      for (const [mirrorHash, seq, ...present] of values) {
+        rows.push({
+          mirrorHash: String(mirrorHash),
+          seq: Number(seq),
+          present: present.map((flag) => flag === 1),
+        });
       }
       return ok(rows);
     } catch (cause) {
@@ -3534,22 +3586,21 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           return; // Document not found or inactive
         }
 
-        // Delete existing FTS entry for this doc
-        db.run("DELETE FROM documents_fts WHERE rowid = ?", [doc.id]);
-        db.run("UPDATE documents SET fts_mirror_hash = NULL WHERE id = ?", [
-          doc.id,
-        ]);
+        // Delete existing FTS entry for this doc and update fts_mirror_hash once
+        db.query("DELETE FROM documents_fts WHERE rowid = ?").run(doc.id);
 
-        // Insert new FTS entry if we have content
         if (doc.markdown !== null) {
-          db.run(
-            "INSERT INTO documents_fts (rowid, filepath, title, body) VALUES (?, ?, ?, ?)",
-            [doc.id, doc.rel_path, doc.title ?? "", doc.markdown]
-          );
-          db.run("UPDATE documents SET fts_mirror_hash = ? WHERE id = ?", [
+          db.query(
+            "INSERT INTO documents_fts (rowid, filepath, title, body) VALUES (?, ?, ?, ?)"
+          ).run(doc.id, doc.rel_path, doc.title ?? "", doc.markdown);
+          db.query("UPDATE documents SET fts_mirror_hash = ? WHERE id = ?").run(
             doc.mirror_hash,
-            doc.id,
-          ]);
+            doc.id
+          );
+        } else {
+          db.query(
+            "UPDATE documents SET fts_mirror_hash = NULL WHERE id = ?"
+          ).run(doc.id);
         }
       });
 
@@ -3574,41 +3625,28 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       let count = 0;
 
       const transaction = db.transaction(() => {
-        // Clear FTS table
-        db.run("DELETE FROM documents_fts");
-        db.run("UPDATE documents SET fts_mirror_hash = NULL");
-
-        // Get all active documents with content
-        interface DocWithContent {
-          id: number;
-          rel_path: string;
-          title: string | null;
-          mirror_hash: string;
-          markdown: string;
-        }
-
-        const docs = db
-          .query<DocWithContent, []>(
-            `SELECT d.id, d.rel_path, d.title, d.mirror_hash, c.markdown
-             FROM documents d
-             JOIN content c ON c.mirror_hash = d.mirror_hash
-             WHERE d.active = 1 AND d.mirror_hash IS NOT NULL`
-          )
-          .all();
-
-        // Insert FTS entries
-        const stmt = db.prepare(
-          "INSERT INTO documents_fts (rowid, filepath, title, body) VALUES (?, ?, ?, ?)"
+        // Clear FTS table and rebuild purely in SQL without loading bodies into JS
+        db.exec("DELETE FROM documents_fts");
+        db.exec("UPDATE documents SET fts_mirror_hash = NULL");
+        db.query(
+          `INSERT INTO documents_fts (rowid, filepath, title, body)
+           SELECT d.id, d.rel_path, COALESCE(d.title, ''), c.markdown
+           FROM documents d
+           JOIN content c ON c.mirror_hash = d.mirror_hash
+           WHERE d.active = 1 AND d.mirror_hash IS NOT NULL`
+        ).run();
+        count =
+          db.query<{ count: number }, []>("SELECT changes() AS count").get()
+            ?.count ?? 0;
+        db.exec(
+          `UPDATE documents
+           SET fts_mirror_hash = mirror_hash
+           WHERE active = 1
+             AND mirror_hash IS NOT NULL
+             AND EXISTS (
+               SELECT 1 FROM content c WHERE c.mirror_hash = documents.mirror_hash
+             )`
         );
-        const markSynced = db.prepare(
-          "UPDATE documents SET fts_mirror_hash = ? WHERE id = ?"
-        );
-
-        for (const doc of docs) {
-          stmt.run(doc.id, doc.rel_path, doc.title ?? "", doc.markdown);
-          markSynced.run(doc.mirror_hash, doc.id);
-          count++;
-        }
       });
 
       transaction();
@@ -3657,20 +3695,26 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           return;
         }
 
-        // Update FTS for each document using this hash
+        const deleteFts = db.query<unknown, [number]>(
+          "DELETE FROM documents_fts WHERE rowid = ?"
+        );
+        const insertFts = db.query<unknown, [number, string, string, string]>(
+          "INSERT INTO documents_fts (rowid, filepath, title, body) VALUES (?, ?, ?, ?)"
+        );
+        const markSynced = db.query<unknown, [string, number]>(
+          "UPDATE documents SET fts_mirror_hash = ? WHERE id = ?"
+        );
+
+        // Update FTS for each document using this hash (single fts_mirror_hash update)
         for (const doc of docs) {
-          db.run("DELETE FROM documents_fts WHERE rowid = ?", [doc.id]);
-          db.run("UPDATE documents SET fts_mirror_hash = NULL WHERE id = ?", [
+          deleteFts.run(doc.id);
+          insertFts.run(
             doc.id,
-          ]);
-          db.run(
-            "INSERT INTO documents_fts (rowid, filepath, title, body) VALUES (?, ?, ?, ?)",
-            [doc.id, doc.rel_path, doc.title ?? "", content.markdown]
+            doc.rel_path,
+            doc.title ?? "",
+            content.markdown
           );
-          db.run("UPDATE documents SET fts_mirror_hash = ? WHERE id = ?", [
-            mirrorHash,
-            doc.id,
-          ]);
+          markSynced.run(mirrorHash, doc.id);
         }
       });
 
@@ -3789,11 +3833,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       if (options.scopes.length === 0) {
         return ok([]);
       }
-      const placeholders = options.scopes.map(() => "?").join(",");
       const rows = db
         .query<
           { id: number; docid: string; uri: string; mirror_hash: string },
-          string[]
+          [string, string]
         >(
           `
           SELECT d.id, d.docid, d.uri, d.mirror_hash
@@ -3801,12 +3844,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           WHERE d.active = 1
             AND d.collection = ?
             AND d.mirror_hash IS NOT NULL
-            AND EXISTS (SELECT 1 FROM doc_memory_scopes ms WHERE ms.document_id = d.id AND ms.scope IN (${placeholders}))
+            AND EXISTS (SELECT 1 FROM doc_memory_scopes ms WHERE ms.document_id = d.id AND ms.scope IN (SELECT value FROM json_each(?)))
             ${options.excludeSuperseded ? SUPERSEDED_EXCLUSION_SQL("d.id") : ""}
           ORDER BY d.id
           `
         )
-        .all(options.collection, ...options.scopes);
+        .all(options.collection, JSON.stringify(options.scopes));
       return ok(
         rows.map((row) => ({
           id: row.id,
@@ -3876,14 +3919,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         source: "frontmatter" | "user";
       }
 
-      // Use parameterized IN clause to prevent SQL injection
-      const placeholders = documentIds.map(() => "?").join(", ");
       const rows = db
-        .query<DbTagRow, number[]>(
+        .query<DbTagRow, [string]>(
           `SELECT document_id, tag, source FROM doc_tags
-           WHERE document_id IN (${placeholders}) ORDER BY document_id, tag`
+           WHERE document_id IN (SELECT value FROM json_each(?)) ORDER BY document_id, tag`
         )
-        .all(...documentIds);
+        .all(JSON.stringify(documentIds));
 
       // Group by document_id
       const result = new Map<number, TagRow[]>();
@@ -3996,7 +4037,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
       const params: (string | number)[] = [];
       let sql = `
-        SELECT dt.tag, COUNT(DISTINCT dt.document_id) as count
+        SELECT dt.tag, COUNT(*) as count
         FROM doc_tags dt
         JOIN documents d ON d.id = dt.document_id AND d.active = 1
       `;
@@ -4262,9 +4303,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const sourceScopeSql = sourceAllowlist
         ? sourceAllowlist.length === 0
           ? "AND 0"
-          : `AND src.collection IN (${sourceAllowlist.map(() => "?").join(",")})`
+          : "AND src.collection IN (SELECT value FROM json_each(?))"
         : "";
-      const sourceScopeParams = sourceAllowlist ?? [];
+      const sourceScopeParams =
+        sourceAllowlist && sourceAllowlist.length > 0
+          ? [JSON.stringify(sourceAllowlist)]
+          : [];
       const backlinkColumns = `dl.id AS link_id, dl.source_doc_id, src.docid,
         src.uri, src.title, src.collection AS source_collection,
         src.rel_path AS source_rel_path, dl.target_ref_norm,
@@ -4349,21 +4393,21 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                  JOIN documents src ON src.id = dl.source_doc_id AND src.active = 1
                  WHERE dl.link_type = 'wiki'
                    AND dl.target_collection IS NULL
-                   AND src.collection IN (${members.map(() => "?").join(",")})
+                   AND src.collection IN (SELECT value FROM json_each(?))
                    AND (dl.target_ref_norm IN (?, ?)
                      OR dl.target_ref_norm LIKE ? ESCAPE '\\'
                      OR dl.target_ref_norm LIKE ? ESCAPE '\\'
-                     OR dl.target_ref_norm IN (${[...keySet].map(() => "?").join(",") || "NULL"}))
+                     OR dl.target_ref_norm IN (SELECT value FROM json_each(?)))
                    ${sourceScopeSql}
                  ORDER BY src.uri, dl.start_line, dl.start_col`
               )
               .all(
-                ...members,
+                JSON.stringify(members),
                 base,
                 `${base}.md`,
                 `%/${escapeLike(base)}`,
                 `%/${escapeLike(`${base}.md`)}`,
-                ...keySet,
+                JSON.stringify([...keySet]),
                 ...sourceScopeParams
               )
           );
@@ -4373,40 +4417,53 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       for (const row of [...wikiBacklinks, ...workspaceBacklinks]) {
         candidates.set(row.link_id, row);
       }
-      const candidateRows = [...candidates.values()];
-      const resolutions = resolveGraphLinkTargets(
-        db,
-        candidateRows.map((row) => ({
-          targetRefNorm: row.target_ref_norm,
-          targetCollection: row.target_collection ?? row.source_collection,
-          linkType: "wiki" as const,
-          source: linkSourceIdentity(row),
-        }))
-      );
       const legacyLinkIds = new Set(wikiBacklinks.map((row) => row.link_id));
-      const resolvedWikiBacklinks = candidateRows
-        .filter((row, index) => {
-          const workspaceLink =
-            !row.target_collection &&
-            workspaceKeyForDocument(
-              memberships,
-              row.source_collection,
-              row.source_rel_path
-            ) !== null;
-          // Collection-scoped links keep their key-match semantics.
-          if (!workspaceLink) return legacyLinkIds.has(row.link_id);
-          const resolution = resolutions[index];
-          return (
+      const directWikiBacklinks: DbBacklinkRow[] = [];
+      const workspaceCandidateRows: DbBacklinkRow[] = [];
+      for (const row of candidates.values()) {
+        const workspaceLink =
+          !row.target_collection &&
+          workspaceKeyForDocument(
+            memberships,
+            row.source_collection,
+            row.source_rel_path
+          ) !== null;
+        if (workspaceLink) {
+          workspaceCandidateRows.push(row);
+        } else if (legacyLinkIds.has(row.link_id)) {
+          directWikiBacklinks.push(row);
+        }
+      }
+      const resolvedWorkspaceBacklinks: DbBacklinkRow[] = [];
+      if (workspaceCandidateRows.length > 0) {
+        const resolutions = resolveGraphLinkTargets(
+          db,
+          workspaceCandidateRows.map((row) => ({
+            targetRefNorm: row.target_ref_norm,
+            targetCollection: row.target_collection ?? row.source_collection,
+            linkType: "wiki" as const,
+            source: linkSourceIdentity(row),
+          }))
+        );
+        for (let i = 0; i < workspaceCandidateRows.length; i++) {
+          const resolution = resolutions[i];
+          if (
             isTraversableResolution(resolution) &&
             resolution.targetId === documentId
-          );
-        })
-        .sort(
-          (left, right) =>
-            (left.uri < right.uri ? -1 : left.uri > right.uri ? 1 : 0) ||
-            left.start_line - right.start_line ||
-            left.start_col - right.start_col
-        );
+          ) {
+            resolvedWorkspaceBacklinks.push(workspaceCandidateRows[i]!);
+          }
+        }
+      }
+      const resolvedWikiBacklinks = [
+        ...directWikiBacklinks,
+        ...resolvedWorkspaceBacklinks,
+      ].sort(
+        (left, right) =>
+          (left.uri < right.uri ? -1 : left.uri > right.uri ? 1 : 0) ||
+          left.start_line - right.start_line ||
+          left.start_col - right.start_col
+      );
 
       // Query markdown backlinks (link_type='markdown')
       // NULL target_collection means "same collection as source" - enforce this in SQL
@@ -4487,8 +4544,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         number,
         { docid: string; uri: string; title: string | null; collection: string }
       >();
-      for (let offset = 0; offset < ids.length; offset += 900) {
-        const batch = ids.slice(offset, offset + 900);
+      if (ids.length > 0) {
         for (const row of db
           .query<
             {
@@ -4498,11 +4554,11 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
               title: string | null;
               collection: string;
             },
-            number[]
+            [string]
           >(
-            `SELECT id, docid, uri, title, collection FROM documents WHERE id IN (${batch.map(() => "?").join(",")})`
+            "SELECT id, docid, uri, title, collection FROM documents WHERE id IN (SELECT value FROM json_each(?))"
           )
-          .all(...batch)) {
+          .all(JSON.stringify(ids))) {
           byId.set(row.id, {
             docid: row.docid,
             uri: row.uri,
@@ -4752,144 +4808,118 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
       const referrers: FileRefactorResolutionReferrerDocument[] = [];
       let totalContentChars = sourceContent?.length ?? 0;
+      const boundedCandidateIds = sortedCandidateIds.slice(0, maxReferrers);
 
-      for (const referrerId of sortedCandidateIds.slice(0, maxReferrers)) {
-        const referrerRow = db
-          .query<
-            {
-              id: number;
-              uri: string;
-              rel_path: string;
-              collection: string;
-              title: string | null;
-              mirror_hash: string | null;
-              source_ext: string;
-              source_mime: string;
-              record_key: string | null;
-            },
-            [number]
-          >(
-            `SELECT id, uri, rel_path, collection, title, mirror_hash,
-                    source_ext, source_mime, record_key
-             FROM documents
-             WHERE id = ? AND active = 1`
-          )
-          .get(referrerId);
-        if (!referrerRow) continue;
-
-        const caps = getDocumentCapabilities({
-          sourceExt: referrerRow.source_ext,
-          sourceMime: referrerRow.source_mime,
-          contentAvailable: Boolean(referrerRow.mirror_hash),
-          recordKey: referrerRow.record_key,
-        });
-
-        if (!referrerRow.mirror_hash) {
-          truncationReasons.push("referrer_content_missing");
-          referrers.push({
-            id: referrerRow.id,
-            uri: referrerRow.uri,
-            relPath: referrerRow.rel_path,
-            collection: referrerRow.collection,
-            title: referrerRow.title,
-            content: null,
-            contentTruncated: false,
-            contentMissing: true,
-            editable: caps.editable,
-            editableReason: caps.editable
+      if (boundedCandidateIds.length > 0) {
+        interface ReferrerJoinedRow {
+          id: number;
+          uri: string;
+          rel_path: string;
+          collection: string;
+          title: string | null;
+          mirror_hash: string | null;
+          source_ext: string;
+          source_mime: string;
+          record_key: string | null;
+          markdown: string | null;
+          has_content: number;
+        }
+        const referrerStmt = db.prepare<ReferrerJoinedRow, [number, string]>(
+          `SELECT d.id, d.uri, d.rel_path, d.collection, d.title, d.mirror_hash,
+                  d.source_ext, d.source_mime, d.record_key,
+                  substr(c.markdown, 1, ?) AS markdown,
+                  CASE WHEN c.mirror_hash IS NOT NULL THEN 1 ELSE 0 END AS has_content
+           FROM documents d
+           LEFT JOIN content c ON c.mirror_hash = d.mirror_hash
+           WHERE d.active = 1
+             AND d.id IN (SELECT value FROM json_each(?))
+           ORDER BY d.id ASC`
+        );
+        try {
+          for (const referrerRow of referrerStmt.iterate(
+            maxChars + 1,
+            JSON.stringify(boundedCandidateIds)
+          )) {
+            const caps = getDocumentCapabilities({
+              sourceExt: referrerRow.source_ext,
+              sourceMime: referrerRow.source_mime,
+              contentAvailable: Boolean(referrerRow.mirror_hash),
+              recordKey: referrerRow.record_key,
+            });
+            const editableReason = caps.editable
               ? undefined
               : caps.reason
-                ? "read_only_document"
-                : "capability_denied",
-            sourceExt: referrerRow.source_ext,
-            sourceMime: referrerRow.source_mime,
-            recordKey: referrerRow.record_key,
-          });
-          continue;
-        }
+                ? ("read_only_document" as const)
+                : ("capability_denied" as const);
 
-        const contentRow = db
-          .query<{ markdown: string }, [number, string]>(
-            `SELECT substr(markdown, 1, ?) AS markdown
-             FROM content WHERE mirror_hash = ?`
-          )
-          .get(maxChars + 1, referrerRow.mirror_hash);
+            if (!referrerRow.mirror_hash || referrerRow.has_content !== 1) {
+              truncationReasons.push("referrer_content_missing");
+              referrers.push({
+                id: referrerRow.id,
+                uri: referrerRow.uri,
+                relPath: referrerRow.rel_path,
+                collection: referrerRow.collection,
+                title: referrerRow.title,
+                content: null,
+                contentTruncated: false,
+                contentMissing: true,
+                editable: caps.editable,
+                editableReason,
+                sourceExt: referrerRow.source_ext,
+                sourceMime: referrerRow.source_mime,
+                recordKey: referrerRow.record_key,
+              });
+              continue;
+            }
 
-        if (!contentRow) {
-          truncationReasons.push("referrer_content_missing");
-          referrers.push({
-            id: referrerRow.id,
-            uri: referrerRow.uri,
-            relPath: referrerRow.rel_path,
-            collection: referrerRow.collection,
-            title: referrerRow.title,
-            content: null,
-            contentTruncated: false,
-            contentMissing: true,
-            editable: caps.editable,
-            editableReason: caps.editable
-              ? undefined
-              : caps.reason
-                ? "read_only_document"
-                : "capability_denied",
-            sourceExt: referrerRow.source_ext,
-            sourceMime: referrerRow.source_mime,
-            recordKey: referrerRow.record_key,
-          });
-          continue;
-        }
+            const rawMarkdown = referrerRow.markdown ?? "";
+            const contentTruncated = rawMarkdown.length > maxChars;
+            if (contentTruncated) {
+              truncationReasons.push("referrer_content_truncated");
+            }
+            const content = contentTruncated
+              ? rawMarkdown.slice(0, maxChars)
+              : rawMarkdown;
+            totalContentChars += content.length;
+            if (totalContentChars > maxTotalChars) {
+              truncationReasons.push("total_content_truncated");
+              referrers.push({
+                id: referrerRow.id,
+                uri: referrerRow.uri,
+                relPath: referrerRow.rel_path,
+                collection: referrerRow.collection,
+                title: referrerRow.title,
+                content: null,
+                contentTruncated: false,
+                contentMissing: true,
+                editable: caps.editable,
+                editableReason,
+                sourceExt: referrerRow.source_ext,
+                sourceMime: referrerRow.source_mime,
+                recordKey: referrerRow.record_key,
+              });
+              continue;
+            }
 
-        const contentTruncated = contentRow.markdown.length > maxChars;
-        if (contentTruncated) {
-          truncationReasons.push("referrer_content_truncated");
+            referrers.push({
+              id: referrerRow.id,
+              uri: referrerRow.uri,
+              relPath: referrerRow.rel_path,
+              collection: referrerRow.collection,
+              title: referrerRow.title,
+              content,
+              contentTruncated,
+              contentMissing: false,
+              editable: caps.editable,
+              editableReason,
+              sourceExt: referrerRow.source_ext,
+              sourceMime: referrerRow.source_mime,
+              recordKey: referrerRow.record_key,
+            });
+          }
+        } finally {
+          referrerStmt.finalize();
         }
-        const content = contentTruncated
-          ? contentRow.markdown.slice(0, maxChars)
-          : contentRow.markdown;
-        totalContentChars += content.length;
-        if (totalContentChars > maxTotalChars) {
-          truncationReasons.push("total_content_truncated");
-          referrers.push({
-            id: referrerRow.id,
-            uri: referrerRow.uri,
-            relPath: referrerRow.rel_path,
-            collection: referrerRow.collection,
-            title: referrerRow.title,
-            content: null,
-            contentTruncated: false,
-            contentMissing: true,
-            editable: caps.editable,
-            editableReason: caps.editable
-              ? undefined
-              : caps.reason
-                ? "read_only_document"
-                : "capability_denied",
-            sourceExt: referrerRow.source_ext,
-            sourceMime: referrerRow.source_mime,
-            recordKey: referrerRow.record_key,
-          });
-          continue;
-        }
-
-        referrers.push({
-          id: referrerRow.id,
-          uri: referrerRow.uri,
-          relPath: referrerRow.rel_path,
-          collection: referrerRow.collection,
-          title: referrerRow.title,
-          content,
-          contentTruncated,
-          contentMissing: false,
-          editable: caps.editable,
-          editableReason: caps.editable
-            ? undefined
-            : caps.reason
-              ? "read_only_document"
-              : "capability_denied",
-          sourceExt: referrerRow.source_ext,
-          sourceMime: referrerRow.source_mime,
-          recordKey: referrerRow.record_key,
-        });
       }
 
       const snapshot: FileRefactorResolutionSnapshot = {
@@ -5898,16 +5928,17 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }
 
       const connectedIdList = [...connectedNodeIds].sort((a, b) => a - b);
+      const connectedIdsJson =
+        connectedIdList.length > 0 ? JSON.stringify(connectedIdList) : null;
       const connectedMetaMap = new Map<number, NodeMetaRow>();
-      if (connectedIdList.length > 0) {
-        const placeholders = connectedIdList.map(() => "?").join(",");
+      if (connectedIdsJson) {
         const connectedRows = db
-          .query<NodeMetaRow, number[]>(
+          .query<NodeMetaRow, [string]>(
             `SELECT id, docid, uri, title, collection, rel_path
              FROM documents
-             WHERE id IN (${placeholders})`
+             WHERE id IN (SELECT value FROM json_each(?))`
           )
-          .all(...connectedIdList);
+          .all(connectedIdsJson);
         for (const row of connectedRows) {
           connectedMetaMap.set(row.id, row);
         }
@@ -5946,10 +5977,11 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         isolatedBaseConditions.push("collection = ?");
         isolatedBaseParams.push(collection);
       }
-      if (connectedIdList.length > 0) {
-        const placeholders = connectedIdList.map(() => "?").join(",");
-        isolatedBaseConditions.push(`id NOT IN (${placeholders})`);
-        isolatedBaseParams.push(...connectedIdList);
+      if (connectedIdsJson) {
+        isolatedBaseConditions.push(
+          "id NOT IN (SELECT value FROM json_each(?))"
+        );
+        isolatedBaseParams.push(connectedIdsJson);
       }
       const isolatedWhereClause = isolatedBaseConditions.join(" AND ");
       const isolatedCountRow = db
@@ -5998,9 +6030,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           isolatedParams.push(collection);
         }
         if (excluded.length > 0) {
-          const placeholders = excluded.map(() => "?").join(",");
-          conditions.push(`id NOT IN (${placeholders})`);
-          isolatedParams.push(...excluded);
+          conditions.push("id NOT IN (SELECT value FROM json_each(?))");
+          isolatedParams.push(JSON.stringify(excluded));
         }
         isolatedParams.push(remaining);
 
@@ -6296,7 +6327,67 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           .replace(SQLITE_EXT_REGEX, "")
           .replace(INDEX_PREFIX_REGEX, "") || "default";
 
-      // Get collection stats with chunk counts
+      // Single pass over `documents` gathers per-collection counts, configured
+      // totals, global lastUpdatedAt, and global typed-metadata coverage.
+      interface DocumentAggregateRow {
+        collection: string;
+        total: number;
+        active: number;
+        errored: number;
+        chunked: number;
+        last_updated: string | null;
+        meta_pending: number;
+        meta_invalid: number;
+      }
+      const docAggregateRows = db
+        .query<DocumentAggregateRow, []>(
+          `
+          SELECT
+            collection,
+            COUNT(*) AS total,
+            SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END) AS active,
+            SUM(CASE WHEN last_error_code IS NOT NULL THEN 1 ELSE 0 END) AS errored,
+            SUM(CASE WHEN mirror_hash IS NOT NULL THEN 1 ELSE 0 END) AS chunked,
+            strftime('%Y-%m-%dT%H:%M:%fZ', MAX(updated_at)) AS last_updated,
+            SUM(CASE WHEN active = 1 AND mirror_hash IS NOT NULL AND (
+              ingest_version IS NULL OR ingest_version < ${TYPED_METADATA_INGEST_VERSION}
+              OR (typed_metadata IS NULL AND metadata_error IS NULL)
+            ) THEN 1 ELSE 0 END) AS meta_pending,
+            SUM(CASE WHEN active = 1 AND mirror_hash IS NOT NULL AND metadata_error IS NOT NULL
+              THEN 1 ELSE 0 END) AS meta_invalid
+          FROM documents
+          GROUP BY collection
+        `
+        )
+        .all();
+
+      const configuredSet = options?.configuredCollections
+        ? new Set(options.configuredCollections)
+        : null;
+      const docStatsByCollection = new Map<string, DocumentAggregateRow>();
+      let totalDocuments = 0;
+      let activeDocuments = 0;
+      let lastUpdatedAt: string | null = null;
+      let metaPending = 0;
+      let metaInvalid = 0;
+      for (const row of docAggregateRows) {
+        docStatsByCollection.set(row.collection, row);
+        if (!configuredSet || configuredSet.has(row.collection)) {
+          totalDocuments += row.total;
+          activeDocuments += row.active;
+        }
+        if (
+          row.last_updated !== null &&
+          (lastUpdatedAt === null || row.last_updated > lastUpdatedAt)
+        ) {
+          lastUpdatedAt = row.last_updated;
+        }
+        metaPending += row.meta_pending;
+        metaInvalid += row.meta_invalid;
+      }
+
+      // Get collection metadata + chunk counts; skip legacy vector scans when
+      // variantStatus is authoritative.
       interface CollectionStat {
         name: string;
         path: string;
@@ -6304,107 +6395,104 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         egress_policy_source: EgressPolicySource;
         workspace_root: string | null;
         workspace_source: LinkWorkspaceSource | null;
-        total: number;
-        active: number;
-        errored: number;
-        chunked: number;
         chunk_count: number;
         embedded_count: number;
       }
 
-      const collectionStats = db
-        .query<
-          CollectionStat,
-          [
-            string | null,
-            string | null,
-            string | null,
-            string | null,
-            string | null,
-          ]
-        >(
-          `
-          WITH document_stats AS (
-            SELECT
-              collection,
-              COUNT(*) AS total,
-              SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END) AS active,
-              SUM(CASE WHEN last_error_code IS NOT NULL THEN 1 ELSE 0 END) AS errored,
-              SUM(CASE WHEN mirror_hash IS NOT NULL THEN 1 ELSE 0 END) AS chunked
-            FROM documents
-            GROUP BY collection
-          ),
-          active_collection_mirrors AS (
-            SELECT DISTINCT collection, mirror_hash
-            FROM documents
-            WHERE active = 1 AND mirror_hash IS NOT NULL
-          ),
-          matching_vectors AS (
-            SELECT mirror_hash, seq, MAX(embedded_at) AS embedded_at
-            FROM content_vectors
-            WHERE (? IS NULL OR (
-              model = ? AND embed_fingerprint = ?
-            ))
-            GROUP BY mirror_hash, seq
-          ),
-          collection_chunks AS (
-            SELECT
-              acm.collection,
-              COUNT(*) AS chunk_count,
-              SUM(CASE
-                WHEN mv.embedded_at >= cc.created_at THEN 1
-                ELSE 0
-              END) AS embedded_count
-            FROM active_collection_mirrors acm
-            JOIN content_chunks cc ON cc.mirror_hash = acm.mirror_hash
-            LEFT JOIN matching_vectors mv
-              ON mv.mirror_hash = cc.mirror_hash AND mv.seq = cc.seq
-            GROUP BY acm.collection
-          )
-          SELECT
-            c.name,
-            c.path,
-            c.egress_policy,
-            c.egress_policy_source,
-            c.workspace_root,
-            c.workspace_source,
-            COALESCE(ds.total, 0) AS total,
-            COALESCE(ds.active, 0) AS active,
-            COALESCE(ds.errored, 0) AS errored,
-            COALESCE(ds.chunked, 0) AS chunked,
-            COALESCE(ch.chunk_count, 0) AS chunk_count,
-            COALESCE(ch.embedded_count, 0) AS embedded_count
-          FROM collections c
-          LEFT JOIN document_stats ds ON ds.collection = c.name
-          LEFT JOIN collection_chunks ch ON ch.collection = c.name
-          WHERE ? IS NULL OR c.name IN (SELECT value FROM json_each(?))
-          ORDER BY c.name
-        `
-        )
-        .all(
-          embedModel,
-          embedModel,
-          embedFingerprint,
-          configuredJson,
-          configuredJson
-        );
-
-      // Totals cover the configured collections only, so a collection removed
-      // from config stops counting before the next update prunes its rows.
-      const totalsRow = db
-        .query<
-          { total: number; active: number },
-          [string | null, string | null]
-        >(
-          `
-          SELECT
-            COUNT(*) as total,
-            SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END) as active
-          FROM documents
-          WHERE ? IS NULL OR collection IN (SELECT value FROM json_each(?))
-        `
-        )
-        .get(configuredJson, configuredJson);
+      const collectionStats = variantStatus
+        ? db
+            .query<CollectionStat, [string | null, string | null]>(
+              `
+              WITH active_collection_mirrors AS (
+                SELECT DISTINCT collection, mirror_hash
+                FROM documents
+                WHERE active = 1 AND mirror_hash IS NOT NULL
+              ),
+              collection_chunks AS (
+                SELECT
+                  acm.collection,
+                  COUNT(*) AS chunk_count
+                FROM active_collection_mirrors acm
+                JOIN content_chunks cc ON cc.mirror_hash = acm.mirror_hash
+                GROUP BY acm.collection
+              )
+              SELECT
+                c.name,
+                c.path,
+                c.egress_policy,
+                c.egress_policy_source,
+                c.workspace_root,
+                c.workspace_source,
+                COALESCE(ch.chunk_count, 0) AS chunk_count,
+                0 AS embedded_count
+              FROM collections c
+              LEFT JOIN collection_chunks ch ON ch.collection = c.name
+              WHERE ? IS NULL OR c.name IN (SELECT value FROM json_each(?))
+              ORDER BY c.name
+            `
+            )
+            .all(configuredJson, configuredJson)
+        : db
+            .query<
+              CollectionStat,
+              [
+                string | null,
+                string | null,
+                string | null,
+                string | null,
+                string | null,
+              ]
+            >(
+              `
+              WITH active_collection_mirrors AS (
+                SELECT DISTINCT collection, mirror_hash
+                FROM documents
+                WHERE active = 1 AND mirror_hash IS NOT NULL
+              ),
+              matching_vectors AS (
+                SELECT mirror_hash, seq, MAX(embedded_at) AS embedded_at
+                FROM content_vectors
+                WHERE (? IS NULL OR (
+                  model = ? AND embed_fingerprint = ?
+                ))
+                GROUP BY mirror_hash, seq
+              ),
+              collection_chunks AS (
+                SELECT
+                  acm.collection,
+                  COUNT(*) AS chunk_count,
+                  SUM(CASE
+                    WHEN mv.embedded_at >= cc.created_at THEN 1
+                    ELSE 0
+                  END) AS embedded_count
+                FROM active_collection_mirrors acm
+                JOIN content_chunks cc ON cc.mirror_hash = acm.mirror_hash
+                LEFT JOIN matching_vectors mv
+                  ON mv.mirror_hash = cc.mirror_hash AND mv.seq = cc.seq
+                GROUP BY acm.collection
+              )
+              SELECT
+                c.name,
+                c.path,
+                c.egress_policy,
+                c.egress_policy_source,
+                c.workspace_root,
+                c.workspace_source,
+                COALESCE(ch.chunk_count, 0) AS chunk_count,
+                COALESCE(ch.embedded_count, 0) AS embedded_count
+              FROM collections c
+              LEFT JOIN collection_chunks ch ON ch.collection = c.name
+              WHERE ? IS NULL OR c.name IN (SELECT value FROM json_each(?))
+              ORDER BY c.name
+            `
+            )
+            .all(
+              embedModel,
+              embedModel,
+              embedFingerprint,
+              configuredJson,
+              configuredJson
+            );
 
       // Chunks of active documents only (deduplicated by canonical chunk);
       // content_chunks keeps rows of deleted documents until cleanup.
@@ -6423,51 +6511,52 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           )
           .get(configuredJson, configuredJson)?.count ?? 0;
 
-      // Embedding backlog: chunks from active docs of configured collections
-      // without vectors. DISTINCT avoids duplicates when docs share mirror_hash.
-      const backlogRow = db
-        .query<
-          { count: number },
-          [
-            string | null,
-            string | null,
-            string | null,
-            string | null,
-            string | null,
-          ]
-        >(
-          `
-          WITH active_mirrors AS (
-            SELECT DISTINCT mirror_hash
-            FROM documents
-            WHERE active = 1 AND mirror_hash IS NOT NULL
-              AND (? IS NULL OR collection IN (SELECT value FROM json_each(?)))
-          ),
-          matching_vectors AS (
-            SELECT mirror_hash, seq, MAX(embedded_at) AS embedded_at
-            FROM content_vectors
-            WHERE (? IS NULL OR (
-              model = ? AND embed_fingerprint = ?
-            ))
-            GROUP BY mirror_hash, seq
-          )
-          SELECT COUNT(*) AS count
-          FROM active_mirrors am
-          JOIN content_chunks c ON c.mirror_hash = am.mirror_hash
-          LEFT JOIN matching_vectors mv
-            ON mv.mirror_hash = c.mirror_hash
-            AND mv.seq = c.seq
-            AND mv.embedded_at >= c.created_at
-          WHERE mv.mirror_hash IS NULL
-        `
-        )
-        .get(
-          configuredJson,
-          configuredJson,
-          embedModel,
-          embedModel,
-          embedFingerprint
-        );
+      // Embedding backlog: skip legacy content_vectors scan when variantStatus is present.
+      const embeddingBacklog = variantStatus
+        ? variantStatus.backlog
+        : (db
+            .query<
+              { count: number },
+              [
+                string | null,
+                string | null,
+                string | null,
+                string | null,
+                string | null,
+              ]
+            >(
+              `
+              WITH active_mirrors AS (
+                SELECT DISTINCT mirror_hash
+                FROM documents
+                WHERE active = 1 AND mirror_hash IS NOT NULL
+                  AND (? IS NULL OR collection IN (SELECT value FROM json_each(?)))
+              ),
+              matching_vectors AS (
+                SELECT mirror_hash, seq, MAX(embedded_at) AS embedded_at
+                FROM content_vectors
+                WHERE (? IS NULL OR (
+                  model = ? AND embed_fingerprint = ?
+                ))
+                GROUP BY mirror_hash, seq
+              )
+              SELECT COUNT(*) AS count
+              FROM active_mirrors am
+              JOIN content_chunks c ON c.mirror_hash = am.mirror_hash
+              LEFT JOIN matching_vectors mv
+                ON mv.mirror_hash = c.mirror_hash
+                AND mv.seq = c.seq
+                AND mv.embedded_at >= c.created_at
+              WHERE mv.mirror_hash IS NULL
+            `
+            )
+            .get(
+              configuredJson,
+              configuredJson,
+              embedModel,
+              embedModel,
+              embedFingerprint
+            )?.count ?? 0);
 
       // Recent errors (last 24h)
       const recentErrorsRow = db
@@ -6479,42 +6568,36 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         )
         .get();
 
-      // Last updated (max updated_at from documents)
-      const lastUpdatedRow = db
-        .query<{ last_updated: string | null }, []>(
-          "SELECT strftime('%Y-%m-%dT%H:%M:%fZ', MAX(updated_at)) as last_updated FROM documents"
-        )
-        .get();
-
       // Health check: no recent errors and DB is accessible
       const recentErrors = recentErrorsRow?.count ?? 0;
       const healthy = recentErrors === 0;
 
-      const metadataCoverage = await this.getTypedMetadataCoverage({});
-      if (!metadataCoverage.ok) return metadataCoverage;
       return ok({
-        typedMetadata: metadataCoverage.value,
+        typedMetadata: { pending: metaPending, invalid: metaInvalid },
         version,
         indexName,
         configPath: this.configPath,
         dbPath: this.dbPath,
         ftsTokenizer: this.ftsTokenizer,
-        collections: collectionStats.map((s) => ({
-          name: s.name,
-          path: s.path,
-          egressPolicy: s.egress_policy,
-          egressPolicySource: s.egress_policy_source,
-          workspaceRoot: s.workspace_root,
-          workspaceSource: s.workspace_source ?? "none",
-          totalDocuments: s.total,
-          activeDocuments: s.active,
-          errorDocuments: s.errored,
-          chunkedDocuments: s.chunked,
-          totalChunks: s.chunk_count,
-          embeddedChunks: variantStatus
-            ? (variantStatus.embeddedByCollection.get(s.name) ?? 0)
-            : s.embedded_count,
-        })),
+        collections: collectionStats.map((s) => {
+          const ds = docStatsByCollection.get(s.name);
+          return {
+            name: s.name,
+            path: s.path,
+            egressPolicy: s.egress_policy,
+            egressPolicySource: s.egress_policy_source,
+            workspaceRoot: s.workspace_root,
+            workspaceSource: s.workspace_source ?? "none",
+            totalDocuments: ds?.total ?? 0,
+            activeDocuments: ds?.active ?? 0,
+            errorDocuments: ds?.errored ?? 0,
+            chunkedDocuments: ds?.chunked ?? 0,
+            totalChunks: s.chunk_count,
+            embeddedChunks: variantStatus
+              ? (variantStatus.embeddedByCollection.get(s.name) ?? 0)
+              : s.embedded_count,
+          };
+        }),
         ...(vectorPartitions.length
           ? {
               vectorPartitions,
@@ -6523,13 +6606,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
                 : {}),
             }
           : {}),
-        totalDocuments: totalsRow?.total ?? 0,
-        activeDocuments: totalsRow?.active ?? 0,
+        totalDocuments,
+        activeDocuments,
         totalChunks: chunkCount,
-        embeddingBacklog: variantStatus?.backlog ?? backlogRow?.count ?? 0,
+        embeddingBacklog,
         chunking: getChunkingStatus(db, options?.chunking),
         recentErrors,
-        lastUpdatedAt: lastUpdatedRow?.last_updated ?? null,
+        lastUpdatedAt,
         healthy,
       });
     } catch (cause) {
@@ -7036,7 +7119,7 @@ function mapDocumentRow(row: DbDocumentRow): DocumentRow {
     frontmatterDate: row.frontmatter_date,
     dateFields,
     typedMetadata: row.typed_metadata
-      ? typedMetadataSchema.parse(JSON.parse(row.typed_metadata))
+      ? parseStoredTypedMetadata(row.typed_metadata)
       : null,
     metadataError: row.metadata_error,
     recordKey: row.record_key,

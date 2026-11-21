@@ -57,10 +57,10 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
     countVectors(model: string): Promise<StoreResult<number>> {
       try {
         const result = db
-          .prepare(
+          .query<{ count: number }, [string]>(
             "SELECT COUNT(*) as count FROM content_vectors WHERE model = ?"
           )
-          .get(model) as { count: number };
+          .get(model)!;
         return Promise.resolve(ok(result.count));
       } catch (e) {
         return Promise.resolve(
@@ -84,21 +84,17 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
         const sql = `
           SELECT COUNT(*) as count
           FROM content_chunks c
+          LEFT JOIN content_vectors v
+            ON v.mirror_hash = c.mirror_hash
+            AND v.seq = c.seq
+            AND v.model = ?
+            AND v.embed_fingerprint = ?
           WHERE ${activeDoc.sql}
-          AND NOT EXISTS (
-            SELECT 1 FROM content_vectors v
-            WHERE v.mirror_hash = c.mirror_hash
-              AND v.seq = c.seq
-              AND v.model = ?
-              AND v.embed_fingerprint = ?
-              AND v.embedded_at >= c.created_at
-          )
+            AND (v.mirror_hash IS NULL OR v.embedded_at IS NULL OR v.embedded_at < c.created_at)
         `;
         const result = db
-          .prepare(sql)
-          .get(...activeDoc.params, model, embedFingerprint) as {
-          count: number;
-        };
+          .query<{ count: number }, string[]>(sql)
+          .get(model, embedFingerprint, ...activeDoc.params)!;
         return Promise.resolve(ok(result.count));
       } catch (e) {
         return Promise.resolve(
@@ -124,86 +120,46 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
         const after = options?.after;
         const activeDoc = buildActiveDocumentExistsClause(options?.collection);
 
-        // Seek pagination: use cursor to avoid skipping items as backlog shrinks
-        // Query structure changes based on whether we have a cursor
-        // Include document title for contextual embedding
-        const sql = after
-          ? `
+        // Seek pagination: single LEFT JOIN computes both pending eligibility
+        // and 'new' vs 'changed' reason without double NOT EXISTS lookups.
+        const cursorClause = after
+          ? "AND (c.mirror_hash > ? OR (c.mirror_hash = ? AND c.seq > ?))"
+          : "";
+        const sql = `
           SELECT c.mirror_hash as mirrorHash, c.seq, c.text,
             (SELECT d.title FROM documents d WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 ORDER BY d.id LIMIT 1) as title,
             CASE
-              WHEN NOT EXISTS (
-                SELECT 1 FROM content_vectors v
-                WHERE v.mirror_hash = c.mirror_hash
-                  AND v.seq = c.seq
-                  AND v.model = ?
-                  AND v.embed_fingerprint = ?
-              ) THEN 'new'
+              WHEN v.mirror_hash IS NULL THEN 'new'
               ELSE 'changed'
             END as reason
           FROM content_chunks c
+          LEFT JOIN content_vectors v
+            ON v.mirror_hash = c.mirror_hash
+            AND v.seq = c.seq
+            AND v.model = ?
+            AND v.embed_fingerprint = ?
           WHERE ${activeDoc.sql}
-          AND NOT EXISTS (
-            SELECT 1 FROM content_vectors v
-            WHERE v.mirror_hash = c.mirror_hash
-              AND v.seq = c.seq
-              AND v.model = ?
-              AND v.embed_fingerprint = ?
-              AND v.embedded_at >= c.created_at
-          )
-          AND (c.mirror_hash > ? OR (c.mirror_hash = ? AND c.seq > ?))
-          ORDER BY c.mirror_hash, c.seq
-          LIMIT ?
-        `
-          : `
-          SELECT c.mirror_hash as mirrorHash, c.seq, c.text,
-            (SELECT d.title FROM documents d WHERE d.mirror_hash = c.mirror_hash AND d.active = 1 ORDER BY d.id LIMIT 1) as title,
-            CASE
-              WHEN NOT EXISTS (
-                SELECT 1 FROM content_vectors v
-                WHERE v.mirror_hash = c.mirror_hash
-                  AND v.seq = c.seq
-                  AND v.model = ?
-                  AND v.embed_fingerprint = ?
-              ) THEN 'new'
-              ELSE 'changed'
-            END as reason
-          FROM content_chunks c
-          WHERE ${activeDoc.sql}
-          AND NOT EXISTS (
-            SELECT 1 FROM content_vectors v
-            WHERE v.mirror_hash = c.mirror_hash
-              AND v.seq = c.seq
-              AND v.model = ?
-              AND v.embed_fingerprint = ?
-              AND v.embedded_at >= c.created_at
-          )
+            AND (v.mirror_hash IS NULL OR v.embedded_at IS NULL OR v.embedded_at < c.created_at)
+            ${cursorClause}
           ORDER BY c.mirror_hash, c.seq
           LIMIT ?
         `;
 
-        const params = after
+        const params: (string | number)[] = after
           ? [
               model,
               embedFingerprint,
               ...activeDoc.params,
-              model,
-              embedFingerprint,
               after.mirrorHash,
               after.mirrorHash,
               after.seq,
               limit,
             ]
-          : [
-              model,
-              embedFingerprint,
-              ...activeDoc.params,
-              model,
-              embedFingerprint,
-              limit,
-            ];
+          : [model, embedFingerprint, ...activeDoc.params, limit];
 
-        const results = db.prepare(sql).all(...params) as BacklogItem[];
+        const results = db
+          .query<BacklogItem, (string | number)[]>(sql)
+          .all(...params);
         return Promise.resolve(ok(results));
       } catch (e) {
         return Promise.resolve(

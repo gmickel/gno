@@ -10,6 +10,7 @@ import type { Database } from "bun:sqlite";
 import type { VectorSearchResult } from "./types";
 
 import { formatDocForEmbedding } from "../../pipeline/contextual";
+import { provenOwners, vectorProofKey } from "./proof-cache";
 import { decodeEmbedding } from "./sqlite-vec";
 import { storedVectorPartition } from "./status";
 import { embeddingInputHash } from "./variants";
@@ -47,17 +48,27 @@ export interface StoredVectorDocument {
 
 interface PartitionVectorRow {
   documentId: number;
+  mirrorHash: string;
+  seq: number;
   text: string;
   title: string | null;
   inputHash: string;
   embedding: Uint8Array;
 }
 
-const unitVector = (vector: Float32Array): Float32Array => {
+const unitVectorInPlace = (vector: Float32Array): Float32Array => {
   let norm = 0;
-  for (const value of vector) norm += value * value;
+  for (let i = 0; i < vector.length; i++) {
+    const value = vector[i]!;
+    norm += value * value;
+  }
   norm = Math.sqrt(norm);
-  return norm > 0 ? vector.map((value) => value / norm) : vector;
+  if (norm > 0) {
+    for (let i = 0; i < vector.length; i++) {
+      vector[i] = vector[i]! / norm;
+    }
+  }
+  return vector;
 };
 
 /**
@@ -76,40 +87,81 @@ export function readSimilaritySourceVectors(
   const vectors = new Map<number, Float32Array>();
   const add = (documentId: number, blob: Uint8Array): void => {
     if (!vectors.has(documentId))
-      vectors.set(documentId, unitVector(decodeEmbedding(blob)));
+      vectors.set(documentId, unitVectorInPlace(decodeEmbedding(blob)));
   };
   if (documents.length === 0) return vectors;
 
   if (source.kind === "partition") {
-    const rows = db
-      .query<PartitionVectorRow, [string, string]>(`
-        SELECT o.document_id AS documentId, c.text, d.title,
-          v.input_hash AS inputHash, v.embedding
-        FROM vector_owners o
-        JOIN documents d ON d.id = o.document_id AND d.active = 1
-          AND d.mirror_hash = o.mirror_hash
-        JOIN content_chunks c ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
-        JOIN vector_variants v ON v.variant_id = o.variant_id
-          AND v.partition_id = o.partition_id
-        WHERE o.partition_id = ?
-          AND o.document_id IN (SELECT value FROM json_each(?))
-        ORDER BY o.document_id, o.seq
-      `)
-      .all(
-        source.partitionId,
-        JSON.stringify(documents.map((document) => document.id))
-      );
-    for (const row of rows) {
-      if (vectors.has(row.documentId)) continue;
-      const input = formatDocForEmbedding(
-        row.text,
-        row.title ?? undefined,
-        source.model
-      );
-      if (row.inputHash === embeddingInputHash(input))
-        add(row.documentId, row.embedding);
-    }
-    return vectors;
+    const inOuterTransaction = db.inTransaction;
+    return db
+      .transaction(() => {
+        const proofs = provenOwners(db, inOuterTransaction);
+        const processRows = (rows: PartitionVectorRow[]): void => {
+          for (const row of rows) {
+            if (vectors.has(row.documentId)) continue;
+            const pKey = vectorProofKey(
+              source.model,
+              row.documentId,
+              row.mirrorHash,
+              row.seq,
+              row.inputHash
+            );
+            let valid = proofs.get(pKey);
+            if (valid === undefined) {
+              const input = formatDocForEmbedding(
+                row.text,
+                row.title ?? undefined,
+                source.model
+              );
+              valid = row.inputHash === embeddingInputHash(input);
+              proofs.set(pKey, valid);
+            }
+            if (valid) add(row.documentId, row.embedding);
+          }
+        };
+
+        const allIds = documents.map((document) => document.id);
+        const seqZeroRows = db
+          .query<PartitionVectorRow, [string, string]>(`
+            SELECT o.document_id AS documentId, o.mirror_hash AS mirrorHash, o.seq,
+              c.text, d.title, v.input_hash AS inputHash, v.embedding
+            FROM vector_owners o
+            JOIN documents d ON d.id = o.document_id AND d.active = 1
+              AND d.mirror_hash = o.mirror_hash
+            JOIN content_chunks c ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
+            JOIN vector_variants v ON v.variant_id = o.variant_id
+              AND v.partition_id = o.partition_id
+            WHERE o.partition_id = ?
+              AND o.seq = 0
+              AND o.document_id IN (SELECT value FROM json_each(?))
+            ORDER BY o.document_id
+          `)
+          .all(source.partitionId, JSON.stringify(allIds));
+        processRows(seqZeroRows);
+
+        const missingIds = allIds.filter((id) => !vectors.has(id));
+        if (missingIds.length > 0) {
+          const fallbackRows = db
+            .query<PartitionVectorRow, [string, string]>(`
+              SELECT o.document_id AS documentId, o.mirror_hash AS mirrorHash, o.seq,
+                c.text, d.title, v.input_hash AS inputHash, v.embedding
+              FROM vector_owners o
+              JOIN documents d ON d.id = o.document_id AND d.active = 1
+                AND d.mirror_hash = o.mirror_hash
+              JOIN content_chunks c ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
+              JOIN vector_variants v ON v.variant_id = o.variant_id
+                AND v.partition_id = o.partition_id
+              WHERE o.partition_id = ?
+                AND o.seq > 0
+                AND o.document_id IN (SELECT value FROM json_each(?))
+              ORDER BY o.document_id, o.seq
+            `)
+            .all(source.partitionId, JSON.stringify(missingIds));
+          processRows(fallbackRows);
+        }
+        return vectors;
+      })
+      .deferred();
   }
 
   const idsByMirror = new Map<string, number[]>();
@@ -118,18 +170,52 @@ export function readSimilaritySourceVectors(
     if (ids) ids.push(document.id);
     else idsByMirror.set(document.mirrorHash, [document.id]);
   }
-  const rows = db
-    .query<{ mirrorHash: string; embedding: Uint8Array }, [string, string]>(`
-      SELECT mirror_hash AS mirrorHash, embedding FROM content_vectors
-      WHERE model = ? AND mirror_hash IN (SELECT value FROM json_each(?))
-      ORDER BY mirror_hash, seq
-    `)
-    .all(source.model, JSON.stringify([...idsByMirror.keys()]));
-  for (const row of rows) {
-    for (const id of idsByMirror.get(row.mirrorHash) ?? [])
-      add(id, row.embedding);
-  }
-  return vectors;
+  const allMirrors = [...idsByMirror.keys()];
+  return db
+    .transaction(() => {
+      const seqZeroRows = db
+        .query<
+          { mirrorHash: string; embedding: Uint8Array },
+          [string, string]
+        >(`
+          SELECT mirror_hash AS mirrorHash, embedding
+          FROM content_vectors
+          WHERE model = ? AND seq = 0
+            AND mirror_hash IN (SELECT value FROM json_each(?))
+        `)
+        .all(source.model, JSON.stringify(allMirrors));
+      const foundMirrors = new Set<string>();
+      for (const row of seqZeroRows) {
+        foundMirrors.add(row.mirrorHash);
+        for (const id of idsByMirror.get(row.mirrorHash) ?? [])
+          add(id, row.embedding);
+      }
+      const missingMirrors = allMirrors.filter(
+        (mirror) => !foundMirrors.has(mirror)
+      );
+      if (missingMirrors.length > 0) {
+        const fallbackRows = db
+          .query<
+            { mirrorHash: string; embedding: Uint8Array },
+            [string, string]
+          >(`
+            SELECT mirrorHash, embedding FROM (
+              SELECT mirror_hash AS mirrorHash, embedding,
+                ROW_NUMBER() OVER (PARTITION BY mirror_hash ORDER BY seq) AS rn
+              FROM content_vectors
+              WHERE model = ? AND seq > 0
+                AND mirror_hash IN (SELECT value FROM json_each(?))
+            ) WHERE rn = 1
+          `)
+          .all(source.model, JSON.stringify(missingMirrors));
+        for (const row of fallbackRows) {
+          for (const id of idsByMirror.get(row.mirrorHash) ?? [])
+            add(id, row.embedding);
+        }
+      }
+      return vectors;
+    })
+    .deferred();
 }
 
 /**

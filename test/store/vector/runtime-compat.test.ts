@@ -640,7 +640,9 @@ test("an index already at schema 31 gains the runtime caller table", () => {
       true
     );
     const upgraded = runMigrations(db, migrations, "unicode61");
-    expect(upgraded.ok && upgraded.value.applied).toEqual([32, 33, 34, 35, 36]);
+    expect(upgraded.ok && upgraded.value.applied).toEqual([
+      32, 33, 34, 35, 36, 37,
+    ]);
     expect(vectorRuntimeStatus(db, MODEL)).toEqual({
       label: null,
       state: "unresolved",
