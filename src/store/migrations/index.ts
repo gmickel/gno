@@ -50,6 +50,7 @@ import { migration as m033 } from "./033-drop-documents-active-index";
 import { migration as m034 } from "./034-collection-link-workspace";
 import { migration as m035 } from "./035-vector-length-index";
 import { migration as m036 } from "./036-vector-mirror-state";
+import { migration as m037 } from "./037-performance-indexes";
 
 /** All migrations in order */
 export const migrations = [
@@ -89,4 +90,5 @@ export const migrations = [
   m034,
   m035,
   m036,
+  m037,
 ];

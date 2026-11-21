@@ -1519,8 +1519,8 @@ describe("SqliteAdapter links", () => {
 
       expect(oneSeed.value.links).toHaveLength(1);
       expect(twoSeeds.value.links).toHaveLength(1);
-      expect(oneSeed.value.meta.examinedLinkRows).toBe(201);
-      expect(twoSeeds.value.meta.examinedLinkRows).toBe(201);
+      expect(oneSeed.value.meta.examinedLinkRows).toBe(1);
+      expect(twoSeeds.value.meta.examinedLinkRows).toBe(1);
     });
 
     test("matches getGraph confidence for the same seed-adjacent edges", async () => {

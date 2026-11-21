@@ -32,7 +32,75 @@ interface StorageRow {
 const storageRows = (db: Database): StorageRow[] =>
   db
     .query<StorageRow, []>(
-      `SELECT
+      `WITH run_stats AS (
+         SELECT
+           trace_id,
+           COUNT(*) AS cnt,
+           SUM(
+             length(CAST(run_id AS BLOB))
+             + length(CAST(trace_id AS BLOB))
+             + length(CAST(idempotency_key AS BLOB))
+             + length(CAST(kind AS BLOB))
+             + payload_bytes
+             + length(CAST(canonical_digest AS BLOB))
+             + 8
+           ) AS bytes
+         FROM retrieval_trace_runs
+         GROUP BY trace_id
+       ),
+       event_stats AS (
+         SELECT
+           trace_id,
+           COUNT(*) AS cnt,
+           SUM(
+             length(CAST(event_id AS BLOB))
+             + length(CAST(trace_id AS BLOB))
+             + length(CAST(COALESCE(run_id, '') AS BLOB))
+             + length(CAST(idempotency_key AS BLOB))
+             + length(CAST(kind AS BLOB))
+             + payload_bytes
+             + length(CAST(canonical_digest AS BLOB))
+             + 8
+           ) AS bytes
+         FROM retrieval_trace_events
+         GROUP BY trace_id
+       ),
+       judgment_stats AS (
+         SELECT
+           trace_id,
+           COUNT(*) AS cnt,
+           SUM(
+             length(CAST(judgment_id AS BLOB))
+             + length(CAST(trace_id AS BLOB))
+             + length(CAST(COALESCE(run_id, '') AS BLOB))
+             + length(CAST(idempotency_key AS BLOB))
+             + length(CAST(label AS BLOB))
+             + length(CAST(target_kind AS BLOB))
+             + length(CAST(target_ref AS BLOB))
+             + target_bytes
+             + length(CAST(canonical_digest AS BLOB))
+             + 8
+           ) AS bytes
+         FROM retrieval_trace_judgments
+         GROUP BY trace_id
+       ),
+       export_stats AS (
+         SELECT
+           et.trace_id,
+           COUNT(*) AS cnt,
+           SUM(
+             length(CAST(x.export_id AS BLOB))
+             + length(CAST(et.trace_id AS BLOB))
+             + length(CAST(x.format AS BLOB))
+             + length(CAST(x.artifact_hash AS BLOB))
+             + x.egress_lineage_bytes
+             + 8
+           ) AS bytes
+         FROM retrieval_trace_export_traces et
+         JOIN retrieval_trace_exports x USING (export_id)
+         GROUP BY et.trace_id
+       )
+       SELECT
          t.trace_id,
          t.created_at_ms,
          t.expires_at_ms,
@@ -56,73 +124,19 @@ const storageRows = (db: Database): StorageRow[] =>
            + length(CAST(t.creation_digest AS BLOB))
            + 40
          )
-           + COALESCE((
-               SELECT SUM(
-                 length(CAST(r.run_id AS BLOB))
-                   + length(CAST(r.trace_id AS BLOB))
-                   + length(CAST(r.idempotency_key AS BLOB))
-                   + length(CAST(r.kind AS BLOB))
-                   + r.payload_bytes
-                   + length(CAST(r.canonical_digest AS BLOB))
-                   + 8
-               ) FROM retrieval_trace_runs r
-               WHERE r.trace_id = t.trace_id
-             ), 0)
-           + COALESCE((
-               SELECT SUM(
-                 length(CAST(e.event_id AS BLOB))
-                   + length(CAST(e.trace_id AS BLOB))
-                   + length(CAST(COALESCE(e.run_id, '') AS BLOB))
-                   + length(CAST(e.idempotency_key AS BLOB))
-                   + length(CAST(e.kind AS BLOB))
-                   + e.payload_bytes
-                   + length(CAST(e.canonical_digest AS BLOB))
-                   + 8
-               ) FROM retrieval_trace_events e
-               WHERE e.trace_id = t.trace_id
-             ), 0)
-           + COALESCE((
-               SELECT SUM(
-                 length(CAST(j.judgment_id AS BLOB))
-                   + length(CAST(j.trace_id AS BLOB))
-                   + length(CAST(COALESCE(j.run_id, '') AS BLOB))
-                   + length(CAST(j.idempotency_key AS BLOB))
-                   + length(CAST(j.label AS BLOB))
-                   + length(CAST(j.target_kind AS BLOB))
-                   + length(CAST(j.target_ref AS BLOB))
-                   + j.target_bytes
-                   + length(CAST(j.canonical_digest AS BLOB))
-                   + 8
-               ) FROM retrieval_trace_judgments j
-               WHERE j.trace_id = t.trace_id
-             ), 0)
-           + COALESCE((
-               SELECT SUM(
-                 length(CAST(x.export_id AS BLOB))
-                   + length(CAST(et.trace_id AS BLOB))
-                   + length(CAST(x.format AS BLOB))
-                   + length(CAST(x.artifact_hash AS BLOB))
-                   + x.egress_lineage_bytes
-                   + 8
-               )
-               FROM retrieval_trace_export_traces et
-               JOIN retrieval_trace_exports x USING (export_id)
-               WHERE et.trace_id = t.trace_id
-             ), 0) AS total_bytes,
-         (
-           SELECT COUNT(*) FROM retrieval_trace_runs r
-           WHERE r.trace_id = t.trace_id
-         ) + (
-           SELECT COUNT(*) FROM retrieval_trace_events e
-           WHERE e.trace_id = t.trace_id
-         ) + (
-           SELECT COUNT(*) FROM retrieval_trace_judgments j
-           WHERE j.trace_id = t.trace_id
-         ) + (
-           SELECT COUNT(*) FROM retrieval_trace_export_traces et
-           WHERE et.trace_id = t.trace_id
-         ) AS record_count
+           + COALESCE(rs.bytes, 0)
+           + COALESCE(es.bytes, 0)
+           + COALESCE(js.bytes, 0)
+           + COALESCE(xs.bytes, 0) AS total_bytes,
+         COALESCE(rs.cnt, 0)
+           + COALESCE(es.cnt, 0)
+           + COALESCE(js.cnt, 0)
+           + COALESCE(xs.cnt, 0) AS record_count
        FROM retrieval_traces t
+       LEFT JOIN run_stats rs ON rs.trace_id = t.trace_id
+       LEFT JOIN event_stats es ON es.trace_id = t.trace_id
+       LEFT JOIN judgment_stats js ON js.trace_id = t.trace_id
+       LEFT JOIN export_stats xs ON xs.trace_id = t.trace_id
        ORDER BY t.created_at_ms ASC, t.trace_id ASC`
     )
     .all();
@@ -283,15 +297,17 @@ export const enforceRetention = (
         0
       );
 
+      const deleteTraceStmt = db.query<unknown, [string]>(
+        "DELETE FROM retrieval_traces WHERE trace_id = ?"
+      );
+
       for (const row of byExpiry) {
         const effectiveExpiry = Math.min(
           row.expires_at_ms,
           row.created_at_ms + ageMs
         );
         if (effectiveExpiry > nowMs) break;
-        db.run("DELETE FROM retrieval_traces WHERE trace_id = ?", [
-          row.trace_id,
-        ]);
+        deleteTraceStmt.run(row.trace_id);
         deleted.add(row.trace_id);
         deletedTraceIds.push(row.trace_id);
         remainingTraces -= 1;
@@ -305,9 +321,7 @@ export const enforceRetention = (
         ) {
           continue;
         }
-        db.run("DELETE FROM retrieval_traces WHERE trace_id = ?", [
-          row.trace_id,
-        ]);
+        deleteTraceStmt.run(row.trace_id);
         deleted.add(row.trace_id);
         deletedTraceIds.push(row.trace_id);
         remainingTraces -= 1;
@@ -322,9 +336,7 @@ export const enforceRetention = (
           break;
         }
         if (deleted.has(row.trace_id)) continue;
-        db.run("DELETE FROM retrieval_traces WHERE trace_id = ?", [
-          row.trace_id,
-        ]);
+        deleteTraceStmt.run(row.trace_id);
         deleted.add(row.trace_id);
         deletedTraceIds.push(row.trace_id);
         remainingTraces -= 1;

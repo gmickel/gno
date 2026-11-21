@@ -17,7 +17,6 @@ import type {
 } from "../types";
 
 import { egressLineageSchema } from "../../core/egress-provenance";
-import { traceJsonObjectSchema } from "../retrieval-trace-codec";
 import { err } from "../types";
 
 export interface DbRetrievalTraceRow {
@@ -94,8 +93,13 @@ export interface DbRetrievalTraceExportRow {
   created_at_ms: number;
 }
 
-const parseJsonObject = (raw: string): Record<string, unknown> =>
-  traceJsonObjectSchema.parse(JSON.parse(raw));
+const parseJsonObject = (raw: string): Record<string, unknown> => {
+  const parsed: unknown = JSON.parse(raw);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Expected JSON object in retrieval trace row");
+  }
+  return parsed as Record<string, unknown>;
+};
 
 export const mapTraceRow = (row: DbRetrievalTraceRow): RetrievalTraceRow => ({
   traceId: row.trace_id,

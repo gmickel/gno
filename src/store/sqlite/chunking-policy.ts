@@ -19,6 +19,11 @@ import { ChunkingPolicyConflictError } from "../chunking";
 const TARGET_KEY = "chunking_policy_v1";
 const LAYOUT_PREFIX = "chunking_mirror_v1:";
 
+const chunkingTargetCache = new WeakMap<
+  Database,
+  { raw: string; token: ChunkingPolicyToken }
+>();
+
 export function readChunkingTarget(db: Database): ChunkingPolicyToken {
   const row = db
     .query<{ value: string }, [string]>(
@@ -26,6 +31,13 @@ export function readChunkingTarget(db: Database): ChunkingPolicyToken {
     )
     .get(TARGET_KEY);
   if (!row) return { params: { ...DEFAULT_CHUNKING_PARAMS }, generation: 0 };
+  const cached = chunkingTargetCache.get(db);
+  if (cached && cached.raw === row.value) {
+    return {
+      params: { ...cached.token.params },
+      generation: cached.token.generation,
+    };
+  }
   const parsed: unknown = JSON.parse(row.value);
   if (
     !parsed ||
@@ -38,10 +50,12 @@ export function readChunkingTarget(db: Database): ChunkingPolicyToken {
   ) {
     throw new Error("Invalid stored chunking policy");
   }
-  return {
+  const token: ChunkingPolicyToken = {
     params: ChunkingConfigSchema.parse(parsed.params),
     generation: parsed.generation,
   };
+  chunkingTargetCache.set(db, { raw: row.value, token });
+  return { params: { ...token.params }, generation: token.generation };
 }
 
 export function assertChunkingTarget(
