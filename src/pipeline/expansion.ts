@@ -629,46 +629,42 @@ export async function expandQueryCached(
   query: string,
   options: ExpansionOptions = {}
 ): Promise<StoreResult<ExpansionResult | null>> {
-  const keyOptions: ExpansionCacheKeyOptions = {
-    contextSize: options.contextSize,
-    modelFingerprint: deps.modelFingerprint ?? deps.genPort.modelFingerprint,
-    modelPath: deps.modelPath ?? deps.genPort.modelPath,
-  };
-  const resolvedIdentity = resolveModelIdentityFingerprint(
-    deps.genPort.modelUri,
-    keyOptions
-  );
-  // Skip persistent cache when the effective model artifact cannot be identified
-  // (e.g. an `hf:` URI with no resolved local file path or fingerprint).
-  if (resolvedIdentity === null) {
-    return expandQuery(deps.genPort, query, options);
-  }
+  const resolveIdentity = (): string | null =>
+    resolveModelIdentityFingerprint(deps.genPort.modelUri, {
+      contextSize: options.contextSize,
+      modelFingerprint: deps.modelFingerprint ?? deps.genPort.modelFingerprint,
+      modelPath: deps.modelPath ?? deps.genPort.modelPath,
+    });
 
   const lang = options.lang ?? "auto";
-  const cacheKey = generateCacheKey(
-    deps.genPort.modelUri,
-    query,
-    lang,
-    options.intent,
-    {
-      contextSize: keyOptions.contextSize,
-      modelFingerprint: resolvedIdentity,
-    }
-  );
+  const initialIdentity = resolveIdentity();
+  let cacheKey: string | null = null;
+  if (initialIdentity !== null) {
+    cacheKey = generateCacheKey(
+      deps.genPort.modelUri,
+      query,
+      lang,
+      options.intent,
+      {
+        contextSize: options.contextSize,
+        modelFingerprint: initialIdentity,
+      }
+    );
 
-  // Check cache (corrupt entries or read errors degrade cleanly to live expansion)
-  deps.onCacheLookup?.();
-  let cached: string | null = null;
-  try {
-    cached = await deps.getCache(cacheKey);
-  } catch {
-    cached = null;
-  }
-  if (cached) {
-    const parsed = parseCachedExpansionResult(cached);
-    if (parsed) {
-      deps.onCacheHit?.();
-      return ok(applyExpansionGuardrails(query, parsed));
+    // Check cache (corrupt entries or read errors degrade cleanly to live expansion)
+    deps.onCacheLookup?.();
+    let cached: string | null = null;
+    try {
+      cached = await deps.getCache(cacheKey);
+    } catch {
+      cached = null;
+    }
+    if (cached) {
+      const parsed = parseCachedExpansionResult(cached);
+      if (parsed) {
+        deps.onCacheHit?.();
+        return ok(applyExpansionGuardrails(query, parsed));
+      }
     }
   }
 
@@ -678,12 +674,25 @@ export async function expandQueryCached(
     return result;
   }
 
-  // Cache result (write failures never fail retrieval)
+  // Cache result (write failures never fail retrieval). Re-check identity after
+  // generation so lazy ports that initialize on first call populate the cache
+  // for subsequent lookups.
   if (result.value) {
-    try {
-      await deps.setCache(cacheKey, JSON.stringify(result.value));
-    } catch {
-      // Ignore cache persistence errors (e.g. read-only store or busy lock)
+    const postIdentity = initialIdentity ?? resolveIdentity();
+    const writeKey =
+      cacheKey ??
+      (postIdentity !== null
+        ? generateCacheKey(deps.genPort.modelUri, query, lang, options.intent, {
+            contextSize: options.contextSize,
+            modelFingerprint: postIdentity,
+          })
+        : null);
+    if (writeKey) {
+      try {
+        await deps.setCache(writeKey, JSON.stringify(result.value));
+      } catch {
+        // Ignore cache persistence errors (e.g. read-only store or busy lock)
+      }
     }
   }
 

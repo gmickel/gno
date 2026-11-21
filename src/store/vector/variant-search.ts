@@ -375,7 +375,7 @@ function resolveActivePartition(
   dimensions: number,
   embeddings: readonly Float32Array[],
   options: VectorSearchOptions
-): { partitionId: string; tableName: string } | null {
+): { partitionId: string; tableName: string; hasMirror: boolean } | null {
   if (
     !db
       .query("SELECT 1 FROM sqlite_master WHERE name = 'vector_partitions'")
@@ -449,12 +449,10 @@ function resolveActivePartition(
     }
   }
   const tableName = `vec_v1_${partitionId}`;
-  // Fail closed on index loss (enforced by vector-input-identity.test.ts):
-  // an activated partition whose vec0 table was dropped must error until
-  // recreated (marked dirty) via createVectorVariantStore / gno embed.
-  if (!db.query("SELECT 1 FROM sqlite_master WHERE name = ?").get(tableName))
-    throw new Error("Activated variant index unavailable; run gno embed");
-  return { partitionId, tableName };
+  const hasMirror = Boolean(
+    db.query("SELECT 1 FROM sqlite_master WHERE name = ?").get(tableName)
+  );
+  return { partitionId, tableName, hasMirror };
 }
 
 /**
@@ -695,7 +693,7 @@ function searchVectorVariantsInSnapshot(
     options
   );
   if (!resolved) return null;
-  const { partitionId, tableName } = resolved;
+  const { partitionId, tableName, hasMirror } = resolved;
   const spec = buildEligibleVariantQuerySpec(db, partitionId, options);
   const minScore = options.minScore;
   if (minScore !== undefined && Number.isNaN(minScore)) {
@@ -705,6 +703,7 @@ function searchVectorVariantsInSnapshot(
   const proofs = provenOwners(db, inOuterTransaction);
 
   if (
+    hasMirror &&
     !hasSelectiveEligibility(options) &&
     !options.eligibility?.language &&
     isMirrorClean(db, partitionId) &&
@@ -758,7 +757,7 @@ function searchVectorVariantsBatchInSnapshot(
     options
   );
   if (!resolved) return null;
-  const { partitionId, tableName } = resolved;
+  const { partitionId, tableName, hasMirror } = resolved;
   const spec = buildEligibleVariantQuerySpec(db, partitionId, options);
   const minScore = options.minScore;
   if (minScore !== undefined && Number.isNaN(minScore)) {
@@ -769,6 +768,7 @@ function searchVectorVariantsBatchInSnapshot(
 
   // Clean unfiltered mirror: use vec0 per query inside this single snapshot.
   const canUseVec0 =
+    hasMirror &&
     !hasSelectiveEligibility(options) &&
     !options.eligibility?.language &&
     isMirrorClean(db, partitionId) &&

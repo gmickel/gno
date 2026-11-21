@@ -21,6 +21,7 @@ import type {
 
 import { sha256Text } from "../../src/core/context-capsule-validation";
 import { verifyContextCapsule } from "../../src/core/context-verifier";
+import { lazyGenerationPort } from "../../src/llm/lazy-ports";
 import { generateGroundedAnswer } from "../../src/pipeline/answer";
 import {
   applySemanticJudgments,
@@ -1586,16 +1587,8 @@ describe("Round 1 Codex regression guards (F1–F9)", () => {
       vstore.activate(vstore.epoch());
 
       const q = new Float32Array([1, 0, 0, 0]);
-      // Dropped mirror table fails closed on index loss (enforced by vector-input-identity.test.ts).
+      // Missing vec0 mirror table falls back seamlessly to authoritative vector_variants.
       db.run(`DROP TABLE vec_v1_${vstore.partitionId}`);
-      expect(() =>
-        searchVectorVariants(db!, identity.model, 4, q, 5, {
-          partitionId: vstore.partitionId,
-        })
-      ).toThrow("Activated variant index unavailable");
-
-      // Reopening recreates an empty dirty mirror; both single and batch fall back to vector_variants.
-      await createVectorVariantStore(db, identity);
       const single = searchVectorVariants(db, identity.model, 4, q, 5, {
         partitionId: vstore.partitionId,
       });
@@ -1865,5 +1858,67 @@ describe("Round 1 Codex regression guards (F1–F9)", () => {
     expect(result.ok).toBe(true);
     // Original query ran once and failed; identical trimmed variant reused that failure.
     expect(ftsQueries).toEqual(["  same query  ", "same query variant"]);
+  });
+
+  test("Round 2: lazyGenerationPort propagates underlying modelPath so server expansion hits llm_cache on repeat queries", async () => {
+    const dir = await makeTempDir("gno-lazy-exp-");
+    const modelPath = join(dir, "lazy-expand.gguf");
+    await writeFile(modelPath, "lazy-gguf-v1");
+    const cache = new Map<string, string>();
+    const generate = mock(async () => ({
+      ok: true as const,
+      value: JSON.stringify({
+        lexicalQueries: ["lazy cache query", "lazy cache hit"],
+        vectorQueries: ["lazy cache expansion"],
+      }),
+    }));
+    const lazyPort = lazyGenerationPort(
+      "hf:test/lazy-expand.gguf",
+      async () => ({
+        ok: true as const,
+        value: {
+          modelUri: "hf:test/lazy-expand.gguf",
+          modelPath,
+          structuredOutput: "json_schema" as const,
+          generate,
+          dispose: async () => undefined,
+        },
+      })
+    );
+    let lookups = 0;
+    let hits = 0;
+    const deps = {
+      genPort: lazyPort,
+      getCache: async (k: string) => cache.get(k) ?? null,
+      setCache: async (k: string, v: string) => {
+        cache.set(k, v);
+      },
+      onCacheLookup: () => {
+        lookups += 1;
+      },
+      onCacheHit: () => {
+        hits += 1;
+      },
+    };
+
+    // Cold first call initializes lazyPort, generates once, and populates cache via post-init modelPath.
+    const first = await expandQueryCached(deps, "lazy cache query", {
+      lang: "en",
+      contextSize: 2048,
+    });
+    expect(first.ok).toBe(true);
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(cache.size).toBe(1);
+    expect(lazyPort.modelPath).toBe(modelPath);
+
+    // Repeat call reads modelPath from lazyPort and hits cache with zero extra generations.
+    const second = await expandQueryCached(deps, "lazy cache query", {
+      lang: "en",
+      contextSize: 2048,
+    });
+    expect(second.ok).toBe(true);
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(lookups).toBe(1);
+    expect(hits).toBe(1);
   });
 });

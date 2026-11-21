@@ -89,11 +89,17 @@ export function lazyGenerationPort(
   const owner = lazyOwner(modelUri, create);
   return {
     modelUri,
+    get modelPath() {
+      return owner.peek()?.modelPath;
+    },
+    get modelFingerprint() {
+      return owner.peek()?.modelFingerprint;
+    },
     // These are the fixed native/HTTP adapter contracts; no probing required.
     structuredOutput: isHttpGenUri(modelUri) ? "none" : "json_schema",
-    async generate(prompt, params) {
+    async generate(prompt, params, options) {
       const port = await owner.get();
-      return port.ok ? port.value.generate(prompt, params) : port;
+      return port.ok ? port.value.generate(prompt, params, options) : port;
     },
     dispose: () => owner.dispose(),
   };

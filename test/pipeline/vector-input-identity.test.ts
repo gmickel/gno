@@ -134,7 +134,12 @@ test("shadow retains legacy; promotion never falls back on identity loss, partit
     value: [{ documentIds: [2] }],
   });
   f.db.exec(`DROP TABLE ${f.variants.tableName}`);
-  expect((await f.search()).ok).toBe(false);
+  // Missing vec0 mirror falls back to authoritative vector_variants of the
+  // activated partition — never to legacy vectors.
+  expect(await f.search()).toMatchObject({
+    ok: true,
+    value: [{ documentIds: [2] }],
+  });
   const reopened = await createVectorVariantStore(f.db, identity);
   expect(reopened.hasActivated()).toBe(true);
   // Ranking reads the authoritative variants, never the (now empty) vec0
