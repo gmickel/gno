@@ -28,24 +28,34 @@ export function normalizeExcludeTerms(values: string[]): string[] {
   return out;
 }
 
-function includesTerm(haystack: string, term: string): boolean {
-  return haystack.toLowerCase().includes(term.toLowerCase());
+export function compileExcludeTerms(
+  excludeTerms: string[] | undefined
+): string[] | undefined {
+  if (!excludeTerms?.length) {
+    return undefined;
+  }
+  return excludeTerms.map((term) => term.toLowerCase());
 }
 
 export function matchesExcludedText(
   haystacks: string[],
-  excludeTerms: string[] | undefined
+  excludeTerms: string[] | undefined,
+  preLowercased = false
 ): boolean {
   if (!excludeTerms?.length) {
     return false;
   }
+  const lowerTerms = preLowercased
+    ? excludeTerms
+    : excludeTerms.map((term) => term.toLowerCase());
 
   for (const haystack of haystacks) {
     if (!haystack) {
       continue;
     }
-    for (const term of excludeTerms) {
-      if (includesTerm(haystack, term)) {
+    const lowerHaystack = haystack.toLowerCase();
+    for (const term of lowerTerms) {
+      if (lowerHaystack.includes(term)) {
         return true;
       }
     }
@@ -55,15 +65,28 @@ export function matchesExcludedText(
 }
 
 export function matchesExcludedChunks(
-  chunks: ChunkRow[],
-  excludeTerms: string[] | undefined
+  chunks: readonly ChunkRow[],
+  excludeTerms: string[] | undefined,
+  preLowercased = false
 ): boolean {
   if (!excludeTerms?.length || chunks.length === 0) {
     return false;
   }
+  const lowerTerms = preLowercased
+    ? excludeTerms
+    : excludeTerms.map((term) => term.toLowerCase());
 
-  return matchesExcludedText(
-    chunks.map((chunk) => chunk.text),
-    excludeTerms
-  );
+  for (const chunk of chunks) {
+    if (!chunk.text) {
+      continue;
+    }
+    const lowerText = chunk.text.toLowerCase();
+    for (const term of lowerTerms) {
+      if (lowerText.includes(term)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }

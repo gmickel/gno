@@ -6744,6 +6744,60 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  async getLlmCache(key: string): Promise<StoreResult<string | null>> {
+    try {
+      const db = this.ensureOpen();
+      const row = db
+        .query<{ value: string }, [string]>(
+          `SELECT value FROM llm_cache
+           WHERE key = ? AND (expires_at IS NULL OR expires_at >= datetime('now'))`
+        )
+        .get(key);
+      return ok(row?.value ?? null);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to read LLM cache",
+        cause
+      );
+    }
+  }
+
+  async setLlmCache(
+    key: string,
+    value: string,
+    expiresAt?: string
+  ): Promise<StoreResult<void>> {
+    try {
+      const db = this.ensureOpen();
+      db.query<unknown, [string, string, string | null]>(
+        `INSERT OR REPLACE INTO llm_cache (key, value, created_at, expires_at)
+         VALUES (?, ?, datetime('now'), ?)`
+      ).run(key, value, expiresAt ?? null);
+      return ok(undefined);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : String(cause);
+      const rawCode =
+        cause && typeof cause === "object" && "code" in cause
+          ? (cause as { code?: unknown }).code
+          : undefined;
+      const code = typeof rawCode === "string" ? rawCode : "";
+      if (
+        code.includes("READONLY") ||
+        code.includes("BUSY") ||
+        code.includes("LOCKED") ||
+        /readonly|locked|busy/i.test(message)
+      ) {
+        return ok(undefined);
+      }
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to write LLM cache",
+        cause
+      );
+    }
+  }
+
   async clearEmbeddingsForCollection(
     collection: string,
     options: { mode: "stale" | "all"; activeModel?: string }

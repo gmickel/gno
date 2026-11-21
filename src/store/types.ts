@@ -2492,4 +2492,24 @@ export interface StorePort {
     collection: string,
     options: { mode: "stale" | "all"; activeModel?: string }
   ): Promise<StoreResult<EmbeddingCleanupStats>>;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // LLM Cache (optional)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Read a non-expired value from the persistent `llm_cache` table.
+   * Optional: mocks or read-only custom stores may omit this method.
+   */
+  getLlmCache?(key: string): Promise<StoreResult<string | null>>;
+
+  /**
+   * Write a value to the persistent `llm_cache` table.
+   * Read-only connections and write-lock contention should no-op cleanly.
+   */
+  setLlmCache?(
+    key: string,
+    value: string,
+    expiresAt?: string
+  ): Promise<StoreResult<void>>;
 }

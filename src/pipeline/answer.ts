@@ -19,6 +19,7 @@ import {
   assertInferenceActive,
   assertInferenceResult,
 } from "../llm/inference-scope";
+import { getContentBatch } from "../store/content-batch";
 import { buildAnswerPrompt, type AnswerPromptSource } from "./answer-prompt";
 import { attachCitationTraceMetadata } from "./trace-metadata";
 import {
@@ -114,28 +115,60 @@ const sha256 = (value: string): string =>
 const completeLinePrefix = (
   content: string,
   startLine: number,
-  maxChars: number
+  maxChars: number,
+  knownFullHash?: string
 ): ExactAnswerPassage | null => {
-  const lines = content.split("\n");
-  if (lines.length === 0) return null;
-  const selected: string[] = [];
-  let characters = 0;
-  for (const line of lines) {
+  let lineCount = 0;
+  let endIdx = 0;
+  let pos = 0;
+  for (;;) {
     assertInferenceActive();
-    const addition = selected.length === 0 ? line.length : line.length + 1;
-    if (characters + addition > maxChars) break;
-    selected.push(line);
-    characters += addition;
+    const nl = content.indexOf("\n", pos);
+    const lineEnd = nl === -1 ? content.length : nl;
+    if (lineEnd > maxChars) break;
+    lineCount += 1;
+    endIdx = lineEnd;
+    if (nl === -1) break;
+    pos = nl + 1;
   }
-  if (selected.length === 0) return null;
-  const text = selected.join("\n");
+  if (lineCount === 0) return null;
+  const text = endIdx === content.length ? content : content.slice(0, endIdx);
   if (!text.trim()) return null;
   return {
     text,
     startLine,
-    endLine: startLine + selected.length - 1,
-    passageHash: sha256(text),
+    endLine: startLine + lineCount - 1,
+    passageHash:
+      knownFullHash && endIdx === content.length ? knownFullHash : sha256(text),
   };
+};
+
+const sliceLinesRange = (
+  content: string,
+  startLine: number,
+  endLine: number
+): string | null => {
+  if (startLine < 1 || endLine < startLine) return null;
+  let currentLine = 1;
+  let pos = 0;
+  while (currentLine < startLine) {
+    assertInferenceActive();
+    const nl = content.indexOf("\n", pos);
+    if (nl === -1) return null;
+    pos = nl + 1;
+    currentLine += 1;
+  }
+  const rangeStart = pos;
+  while (currentLine < endLine) {
+    assertInferenceActive();
+    const nl = content.indexOf("\n", pos);
+    if (nl === -1) return null;
+    pos = nl + 1;
+    currentLine += 1;
+  }
+  const endNl = content.indexOf("\n", pos);
+  const rangeEnd = endNl === -1 ? content.length : endNl;
+  return content.slice(rangeStart, rangeEnd);
 };
 
 const anchoredCompleteLines = (
@@ -150,15 +183,16 @@ const anchoredCompleteLines = (
   ) {
     return null;
   }
-  const lines = content.split("\n");
-  const text = lines.slice(metadata.startLine - 1, metadata.endLine).join("\n");
-  if (
-    text.split("\n").length !== metadata.endLine - metadata.startLine + 1 ||
-    sha256(text) !== metadata.passageHash
-  ) {
+  const text = sliceLinesRange(content, metadata.startLine, metadata.endLine);
+  if (text === null || sha256(text) !== metadata.passageHash) {
     return null;
   }
-  return completeLinePrefix(text, metadata.startLine, MAX_DOC_CHARS);
+  return completeLinePrefix(
+    text,
+    metadata.startLine,
+    MAX_DOC_CHARS,
+    metadata.passageHash
+  );
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -238,7 +272,8 @@ export interface AnswerGenerationDeps {
   genPort: GenerationPort;
   store: StorePort | null;
   /** Raw request-owned content only; passage/hash validation still runs. */
-  hydration?: Pick<RequestHydration, "getContent">;
+  hydration?: Pick<RequestHydration, "getContent"> &
+    Partial<Pick<RequestHydration, "getContentBatch">>;
 }
 
 function normalizeScore(score: number): number {
@@ -516,6 +551,47 @@ export async function generateGroundedAnswer(
   const citations: Citation[] = [];
   let citationIndex = 0;
 
+  const selectedHashes = store
+    ? [
+        ...new Set(
+          sourceSelection.selected
+            .map((r) => r.conversion?.mirrorHash)
+            .filter((hash): hash is string => Boolean(hash))
+        ),
+      ]
+    : [];
+  const contentByHash = new Map<string, string>();
+  if (store && selectedHashes.length > 0) {
+    const hydration = deps.hydration;
+    if (hydration?.getContentBatch) {
+      const batchResult = await hydration.getContentBatch(selectedHashes);
+      if (batchResult.ok) {
+        for (const [hash, value] of batchResult.value) {
+          contentByHash.set(hash, value);
+        }
+      }
+    } else if (hydration) {
+      const fetched = await Promise.all(
+        selectedHashes.map(async (hash) => ({
+          hash,
+          result: await hydration.getContent(hash),
+        }))
+      );
+      for (const { hash, result } of fetched) {
+        if (result.ok && result.value) {
+          contentByHash.set(hash, result.value);
+        }
+      }
+    } else {
+      const batchResult = await getContentBatch(store, selectedHashes);
+      if (batchResult.ok) {
+        for (const [hash, value] of batchResult.value) {
+          contentByHash.set(hash, value);
+        }
+      }
+    }
+  }
+
   for (const r of sourceSelection.selected) {
     assertInferenceActive();
     let passage: ExactAnswerPassage | null = null;
@@ -523,17 +599,13 @@ export async function generateGroundedAnswer(
     const sourceHash = r.source.sourceHash;
     const mirrorHash = r.conversion?.mirrorHash;
 
-    // Try to fetch full document content if store available
+    // Try to use batched full document content if store available
     if (store && mirrorHash) {
-      const contentResult = await (deps.hydration ?? store).getContent(
-        mirrorHash
-      );
-      if (contentResult.ok && contentResult.value) {
-        if (sha256(contentResult.value) === mirrorHash) {
-          passage =
-            anchoredCompleteLines(contentResult.value, plannerMetadata) ??
-            completeLinePrefix(contentResult.value, 1, MAX_DOC_CHARS);
-        }
+      const fullContent = contentByHash.get(mirrorHash);
+      if (fullContent && sha256(fullContent) === mirrorHash) {
+        passage =
+          anchoredCompleteLines(fullContent, plannerMetadata) ??
+          completeLinePrefix(fullContent, 1, MAX_DOC_CHARS, mirrorHash);
       }
     }
 
@@ -544,15 +616,25 @@ export async function generateGroundedAnswer(
       plannerMetadata?.passageHash &&
       plannerMetadata.startLine !== undefined &&
       plannerMetadata.endLine !== undefined &&
-      sha256(r.snippet) === plannerMetadata.passageHash &&
-      r.snippet.split("\n").length ===
-        plannerMetadata.endLine - plannerMetadata.startLine + 1
+      sha256(r.snippet) === plannerMetadata.passageHash
     ) {
-      passage = completeLinePrefix(
-        r.snippet,
-        plannerMetadata.startLine,
-        MAX_SNIPPET_CHARS
-      );
+      let snippetLines = 1;
+      let pos = 0;
+      while ((pos = r.snippet.indexOf("\n", pos)) !== -1) {
+        snippetLines += 1;
+        pos += 1;
+      }
+      if (
+        snippetLines ===
+        plannerMetadata.endLine - plannerMetadata.startLine + 1
+      ) {
+        passage = completeLinePrefix(
+          r.snippet,
+          plannerMetadata.startLine,
+          MAX_SNIPPET_CHARS,
+          plannerMetadata.passageHash
+        );
+      }
     }
     if (!(passage && sourceHash && mirrorHash)) continue;
 

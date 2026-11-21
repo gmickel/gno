@@ -27,9 +27,13 @@ import {
   sortByFinalScoreStable,
 } from "./content-type-boost";
 import { attachSearchResultEgressLineage } from "./egress-lineage";
-import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
+import {
+  compileExcludeTerms,
+  matchesExcludedChunks,
+  matchesExcludedText,
+} from "./exclude";
 import { typedMetadataWarnings } from "./filters";
-import { selectBestChunkForSteering } from "./intent";
+import { extractSteeringTerms, selectBestChunkForSteering } from "./intent";
 import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
 import {
@@ -100,11 +104,19 @@ interface BuildResultContext {
   collectionPath?: string;
   options?: SearchOptions;
   fullContent?: string;
+  deferPassageHash?: boolean;
 }
 
 /** Build SearchResult from FtsResult and related data */
 function buildSearchResult(ctx: BuildResultContext): SearchResult {
-  const { fts, chunk, collectionPath, options, fullContent } = ctx;
+  const {
+    fts,
+    chunk,
+    collectionPath,
+    options,
+    fullContent,
+    deferPassageHash = false,
+  } = ctx;
   const sourceRelPath = fts.recordSourcePath ?? fts.relPath ?? "";
   const source: SearchResultSource = {
     relPath: sourceRelPath,
@@ -135,17 +147,16 @@ function buildSearchResult(ctx: BuildResultContext): SearchResult {
     // --line-numbers: use raw chunk text (not FTS snippet with markers)
     snippet = chunk.text;
     snippetRange = { startLine: chunk.startLine, endLine: chunk.endLine };
-  } else {
+  } else if (chunk) {
     // Default: chunk text until attachChunkSnippets replaces it for the final
     // rows, with leading frontmatter stripped
-    const cleaned = cleanDisplaySnippet(chunk?.text ?? "", chunk?.text);
+    const cleaned = cleanDisplaySnippet(chunk.text, chunk.text);
     snippet = cleaned.text;
-    if (chunk) {
-      line = chunk.startLine + cleaned.startLineOffset;
-      snippetRange = { startLine: line, endLine: chunk.endLine };
-    } else {
-      snippetRange = undefined;
-    }
+    line = chunk.startLine + cleaned.startLineOffset;
+    snippetRange = { startLine: line, endLine: chunk.endLine };
+  } else {
+    snippet = "";
+    snippetRange = undefined;
   }
 
   const result: SearchResult = {
@@ -172,7 +183,7 @@ function buildSearchResult(ctx: BuildResultContext): SearchResult {
     graphExpanded: false,
     startLine: chunk.startLine,
     endLine: chunk.endLine,
-    passageHash: passageHash(chunk.text),
+    passageHash: deferPassageHash ? "" : passageHash(chunk.text),
   });
 }
 
@@ -255,10 +266,10 @@ async function attachChunkSnippets(
   });
   let chunks = read.chunks;
   if (!chunks) {
+    const chosenKeys = chosen.filter((key) => key !== undefined);
+    if (chosenKeys.length === 0) return;
     const fetched = store.getChunksBySequenceBatch
-      ? await store.getChunksBySequenceBatch(
-          chosen.filter((key) => key !== undefined)
-        )
+      ? await store.getChunksBySequenceBatch(chosenKeys)
       : await store.getChunksBatch(hashes);
     if (!fetched.ok) return;
     chunks = fetched.value;
@@ -334,8 +345,7 @@ export async function searchBm25(
   );
 
   // Detect query language for metadata (DOES NOT affect retrieval filtering)
-  const detection = detectQueryLanguage(query);
-  const queryLanguage = options.lang ?? detection.bcp47;
+  const queryLanguage = options.lang ?? detectQueryLanguage(query).bcp47;
 
   // Run FTS search (ranking only; snippets come from chunks of the final rows)
   const ftsResult = await store.searchFts(query, {
@@ -389,27 +399,44 @@ export async function searchBm25(
   >();
 
   // Exact sequences suffice unless selection needs whole-document evidence.
+  // In default mode (no --full, --line-numbers, --intent, or --exclude), defer
+  // chunk loading, display-snippet cleaning, and passage hashing until after
+  // slicing to the final `limit` rows.
   const uniqueHashes = [
     ...new Set(
       ftsResult.value.map((f) => f.mirrorHash).filter((h): h is string => !!h)
     ),
   ];
   const needsAllChunks = Boolean(options.intent || options.exclude?.length);
-  const chunksMapResult =
-    store.getChunksBySequenceBatch && !needsAllChunks
-      ? await store.getChunksBySequenceBatch(
-          ftsResult.value
-            .filter((row) => !!row.mirrorHash)
-            .map((row) => ({ mirrorHash: row.mirrorHash!, seq: row.seq }))
-        )
-      : await store.getChunksBatch(uniqueHashes);
-  const getChunk = chunksMapResult.ok
+  const deferDefaultChunks =
+    !options.full && !options.lineNumbers && !needsAllChunks;
+  let chunksMapResult:
+    | Awaited<ReturnType<StorePort["getChunksBatch"]>>
+    | undefined;
+  if (!deferDefaultChunks) {
+    chunksMapResult =
+      store.getChunksBySequenceBatch && !needsAllChunks
+        ? await store.getChunksBySequenceBatch(
+            ftsResult.value
+              .filter((row) => !!row.mirrorHash)
+              .map((row) => ({ mirrorHash: row.mirrorHash!, seq: row.seq }))
+          )
+        : await store.getChunksBatch(uniqueHashes);
+  }
+  const getChunk = chunksMapResult?.ok
     ? createChunkLookup(chunksMapResult.value)
     : () => undefined;
   const allChunks =
-    chunksMapResult.ok && (needsAllChunks || !store.getChunksBySequenceBatch)
+    chunksMapResult?.ok && (needsAllChunks || !store.getChunksBySequenceBatch)
       ? chunksMapResult.value
       : undefined;
+  const excludeTermsLower = compileExcludeTerms(options.exclude);
+  const queryTerms = options.intent ? extractSteeringTerms(query) : undefined;
+  const intentTerms = options.intent
+    ? extractSteeringTerms(options.intent)
+    : undefined;
+  const deferredChunkByResult = new WeakMap<SearchResult, ChunkRow>();
+  const deferredFtsByResult = new WeakMap<SearchResult, FtsResult>();
 
   // Dedup: multiple docs can share mirror_hash (content-addressed storage)
   // Track seen uri+seq to eliminate duplicate rows from join fan-out
@@ -437,14 +464,15 @@ export async function searchBm25(
     }
     seenUriSeq.add(uriSeqKey);
 
-    // Get chunk via O(1) lookup
-    const rawChunk = fts.mirrorHash
-      ? (getChunk(fts.mirrorHash, fts.seq) ?? null)
-      : null;
+    // Get chunk via O(1) lookup (skipped when deferring default-mode chunks)
+    const rawChunk =
+      !deferDefaultChunks && fts.mirrorHash
+        ? (getChunk(fts.mirrorHash, fts.seq) ?? null)
+        : null;
     const chunk =
       options.intent && fts.mirrorHash
         ? (selectBestChunkForSteering(
-            chunksMapResult.ok
+            chunksMapResult?.ok
               ? (chunksMapResult.value.get(fts.mirrorHash) ?? [])
               : [],
             query,
@@ -452,23 +480,29 @@ export async function searchBm25(
             {
               preferredSeq: rawChunk?.seq ?? fts.seq,
               intentWeight: 0.3,
+              queryTerms,
+              intentTerms,
             }
           ) ?? rawChunk)
         : rawChunk;
 
-    const excluded =
-      matchesExcludedText(
-        [fts.title ?? "", fts.recordSourcePath ?? fts.relPath ?? ""],
-        options.exclude
-      ) ||
-      matchesExcludedChunks(
-        chunksMapResult.ok && fts.mirrorHash
-          ? (chunksMapResult.value.get(fts.mirrorHash) ?? [])
-          : [],
-        options.exclude
-      );
-    if (excluded) {
-      continue;
+    if (excludeTermsLower) {
+      const excluded =
+        matchesExcludedText(
+          [fts.title ?? "", fts.recordSourcePath ?? fts.relPath ?? ""],
+          excludeTermsLower,
+          true
+        ) ||
+        matchesExcludedChunks(
+          chunksMapResult?.ok && fts.mirrorHash
+            ? (chunksMapResult.value.get(fts.mirrorHash) ?? [])
+            : [],
+          excludeTermsLower,
+          true
+        );
+      if (excluded) {
+        continue;
+      }
     }
 
     // For --full, de-dupe by docid (keep best scoring chunk per doc)
@@ -489,7 +523,15 @@ export async function searchBm25(
     const collectionPath = fts.collection
       ? collectionPaths.get(fts.collection)
       : undefined;
-    const result = buildSearchResult({ fts, chunk, collectionPath, options });
+    const result = buildSearchResult({
+      fts,
+      chunk,
+      collectionPath,
+      options,
+      deferPassageHash: true,
+    });
+    if (chunk) deferredChunkByResult.set(result, chunk);
+    if (deferDefaultChunks) deferredFtsByResult.set(result, fts);
     if (fts.collection) {
       scoringByResult.set(result, {
         collection: fts.collection,
@@ -500,27 +542,14 @@ export async function searchBm25(
     results.push(result);
   }
 
-  // For --full, fetch full content and build results
+  // For --full, defer full content fetch until after filtering, sorting, and slicing to `limit`
   if (options.full) {
     // Sort by raw BM25 score (smaller = better) before building results
     const sortedEntries = (
       auxiliaryRankingActive ? fullAffinityEntries : [...bestByDocid.values()]
     ).sort((a, b) => a.score - b.score);
-    const fullContentResult = await getContentBatch(
-      store,
-      sortedEntries
-        .map(({ fts }) => fts.mirrorHash)
-        .filter((mirrorHash): mirrorHash is string => Boolean(mirrorHash))
-    );
-    if (!fullContentResult.ok) {
-      return err("QUERY_FAILED", fullContentResult.error.message);
-    }
-    const fullContentByHash = fullContentResult.value;
 
     for (const { fts, chunk } of sortedEntries) {
-      const fullContent = fts.mirrorHash
-        ? fullContentByHash.get(fts.mirrorHash)
-        : undefined;
       const collectionPath = fts.collection
         ? collectionPaths.get(fts.collection)
         : undefined;
@@ -529,8 +558,9 @@ export async function searchBm25(
         chunk,
         collectionPath,
         options,
-        fullContent,
+        deferPassageHash: true,
       });
+      if (chunk) deferredChunkByResult.set(result, chunk);
       if (fts.collection) {
         scoringByResult.set(result, {
           collection: fts.collection,
@@ -573,15 +603,16 @@ export async function searchBm25(
       : dedupedResults;
 
   if (recencySort) {
+    const recencyTs = new Map<SearchResult, number>();
+    for (const r of filteredResults) {
+      recencyTs.set(
+        r,
+        resolveRecencyTimestamp(r.source.documentDate, r.source.modifiedAt)
+      );
+    }
     filteredResults.sort((a, b) => {
-      const aTs = resolveRecencyTimestamp(
-        a.source.documentDate,
-        a.source.modifiedAt
-      );
-      const bTs = resolveRecencyTimestamp(
-        b.source.documentDate,
-        b.source.modifiedAt
-      );
+      const aTs = recencyTs.get(a) ?? 0;
+      const bTs = recencyTs.get(b) ?? 0;
       if (aTs !== bTs) {
         return bTs - aTs;
       }
@@ -592,20 +623,106 @@ export async function searchBm25(
   }
 
   const finalResults = filteredResults.slice(0, limit);
-  if (!(options.full || options.lineNumbers)) {
+  if (options.full && finalResults.length > 0) {
+    const fullHashes = [
+      ...new Set(
+        finalResults
+          .map((r) => r.conversion?.mirrorHash)
+          .filter((mirrorHash): mirrorHash is string => Boolean(mirrorHash))
+      ),
+    ];
+    if (fullHashes.length > 0) {
+      const fullContentResult = await getContentBatch(store, fullHashes);
+      if (!fullContentResult.ok) {
+        return err("QUERY_FAILED", fullContentResult.error.message);
+      }
+      for (const result of finalResults) {
+        const hash = result.conversion?.mirrorHash;
+        const fullContent = hash
+          ? fullContentResult.value.get(hash)
+          : undefined;
+        if (fullContent) {
+          result.snippet = fullContent;
+          result.snippetRange = undefined;
+        }
+      }
+    }
+  } else if (!(options.full || options.lineNumbers)) {
     await attachChunkSnippets(store, finalResults, query, options, allChunks);
+    if (deferDefaultChunks) {
+      const missingFallback: Array<{ result: SearchResult; fts: FtsResult }> =
+        [];
+      for (const result of finalResults) {
+        if (result[SEARCH_RESULT_PLANNER_METADATA]) continue;
+        const fts = deferredFtsByResult.get(result);
+        if (fts?.mirrorHash) {
+          missingFallback.push({ result, fts });
+        }
+      }
+      if (missingFallback.length > 0) {
+        const fallbackHashes = [
+          ...new Set(missingFallback.map(({ fts }) => fts.mirrorHash!)),
+        ];
+        const fallbackRes = store.getChunksBySequenceBatch
+          ? await store.getChunksBySequenceBatch(
+              missingFallback.map(({ fts }) => ({
+                mirrorHash: fts.mirrorHash!,
+                seq: fts.seq,
+              }))
+            )
+          : await store.getChunksBatch(fallbackHashes);
+        if (fallbackRes.ok) {
+          const getFallbackChunk = createChunkLookup(fallbackRes.value);
+          for (const { result, fts } of missingFallback) {
+            const chunk = getFallbackChunk(fts.mirrorHash!, fts.seq);
+            if (!chunk) continue;
+            const cleaned = cleanDisplaySnippet(chunk.text, chunk.text);
+            result.snippet = cleaned.text;
+            result.line = chunk.startLine + cleaned.startLineOffset;
+            result.snippetLanguage = chunk.language ?? undefined;
+            result.snippetRange = {
+              startLine: result.line,
+              endLine: chunk.endLine,
+            };
+            attachSearchResultPlannerMetadata(result, {
+              retrievalRank: 0,
+              mirrorHash: fts.mirrorHash!,
+              seq: chunk.seq,
+              sources: ["bm25"],
+              graphExpanded: false,
+              startLine: chunk.startLine,
+              endLine: chunk.endLine,
+              passageHash: passageHash(chunk.text),
+            });
+          }
+        }
+      }
+    }
   }
   for (const [index, result] of finalResults.entries()) {
     const metadata = result[SEARCH_RESULT_PLANNER_METADATA];
-    if (metadata) metadata.retrievalRank = index + 1;
+    if (metadata) {
+      metadata.retrievalRank = index + 1;
+      if (!metadata.passageHash) {
+        const chunk = deferredChunkByResult.get(result);
+        if (chunk) metadata.passageHash = passageHash(chunk.text);
+      }
+    }
   }
   await attachSearchResultContexts(store, finalResults);
   await attachSupersession(store, finalResults);
+  const finalHashes = [
+    ...new Set(
+      finalResults
+        .map((r) => r.conversion?.mirrorHash)
+        .filter((hash): hash is string => Boolean(hash))
+    ),
+  ];
   const lineageResult = await attachSearchResultEgressLineage(
     store,
     finalResults,
     {
-      ownershipHashes: uniqueHashes,
+      ownershipHashes: finalHashes,
       collections: collectionsResult.ok ? collectionsResult.value : undefined,
     }
   );

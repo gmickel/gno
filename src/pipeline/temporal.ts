@@ -11,6 +11,8 @@ const RECENCY_SORT_RE =
 export interface TemporalRange {
   since?: string;
   until?: string;
+  sinceMs?: number;
+  untilMs?: number;
 }
 
 type BoundKind = "since" | "until";
@@ -197,6 +199,31 @@ export function resolveTemporalRange(
   return inferFromQuery(query, now);
 }
 
+/** Pre-parse temporal range ISO bounds once per query to avoid per-doc Date parsing. */
+export function compileTemporalRange(range: TemporalRange): TemporalRange {
+  if (!range.since && !range.until) return range;
+  const sinceMs =
+    range.sinceMs !== undefined
+      ? range.sinceMs
+      : range.since
+        ? new Date(range.since).getTime()
+        : undefined;
+  const untilMs =
+    range.untilMs !== undefined
+      ? range.untilMs
+      : range.until
+        ? new Date(range.until).getTime()
+        : undefined;
+  return {
+    since: range.since,
+    until: range.until,
+    sinceMs:
+      sinceMs !== undefined && !Number.isNaN(sinceMs) ? sinceMs : undefined,
+    untilMs:
+      untilMs !== undefined && !Number.isNaN(untilMs) ? untilMs : undefined,
+  };
+}
+
 /**
  * Return true when timestamp falls inside optional range.
  */
@@ -204,6 +231,14 @@ export function isWithinTemporalRange(
   timestamp: string | undefined,
   range: TemporalRange
 ): boolean {
+  if (
+    !range.since &&
+    !range.until &&
+    range.sinceMs === undefined &&
+    range.untilMs === undefined
+  ) {
+    return true;
+  }
   if (!timestamp) {
     return true;
   }
@@ -211,17 +246,23 @@ export function isWithinTemporalRange(
   if (Number.isNaN(t)) {
     return true;
   }
-  if (range.since) {
-    const since = new Date(range.since).getTime();
-    if (!Number.isNaN(since) && t < since) {
-      return false;
-    }
+  const since =
+    range.sinceMs !== undefined
+      ? range.sinceMs
+      : range.since
+        ? new Date(range.since).getTime()
+        : Number.NaN;
+  if (!Number.isNaN(since) && t < since) {
+    return false;
   }
-  if (range.until) {
-    const until = new Date(range.until).getTime();
-    if (!Number.isNaN(until) && t > until) {
-      return false;
-    }
+  const until =
+    range.untilMs !== undefined
+      ? range.untilMs
+      : range.until
+        ? new Date(range.until).getTime()
+        : Number.NaN;
+  if (!Number.isNaN(until) && t > until) {
+    return false;
   }
   return true;
 }

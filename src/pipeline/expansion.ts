@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto"; // No Bun alternative for hashing
+import { statSync } from "node:fs"; // No Bun sync stat alternative for local model file mtime/size
+import { fileURLToPath } from "node:url"; // No Bun alternative for file:// URL decoding
 
 import type { InferenceOptions } from "../llm/types";
 /**
@@ -65,19 +67,46 @@ const STOPWORDS = new Set([
 // Cache Key Generation
 // ─────────────────────────────────────────────────────────────────────────────
 
+export interface ExpansionCacheKeyOptions {
+  /** Effective context size used for expansion generation. */
+  contextSize?: number;
+  /** Optional explicit model fingerprint; falls back to local file mtime/size when `file:` URI. */
+  modelFingerprint?: string;
+}
+
+function resolveLocalModelFingerprint(modelUri: string): string {
+  if (!modelUri.startsWith("file:")) return "";
+  try {
+    const filePath = modelUri.startsWith("file://")
+      ? fileURLToPath(modelUri)
+      : modelUri.slice("file:".length);
+    const stat = statSync(filePath);
+    return `file:${stat.size}:${Math.trunc(stat.mtimeMs)}`;
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Generate cache key for expansion results.
- * Key = SHA256(promptVersion || modelUri || query || lang)
+ * Key = SHA256(promptVersion || modelUri || modelFingerprint || contextSize || query || lang || intent)
  */
 export function generateCacheKey(
   modelUri: string,
   query: string,
   lang: string,
-  intent?: string
+  intent?: string,
+  options?: ExpansionCacheKeyOptions
 ): string {
+  const fingerprint =
+    options?.modelFingerprint ?? resolveLocalModelFingerprint(modelUri);
+  const contextSize =
+    options?.contextSize !== undefined ? String(options.contextSize) : "";
   const data = [
     EXPANSION_PROMPT_VERSION,
     modelUri,
+    fingerprint,
+    contextSize,
     query,
     lang,
     intent?.trim() ?? "",
@@ -519,6 +548,9 @@ export interface CachedExpansionDeps {
   genPort: GenerationPort;
   getCache: (key: string) => Promise<string | null>;
   setCache: (key: string, value: string) => Promise<void>;
+  modelFingerprint?: string;
+  onCacheLookup?: () => void;
+  onCacheHit?: () => void;
 }
 
 /**
@@ -534,14 +566,25 @@ export async function expandQueryCached(
     deps.genPort.modelUri,
     query,
     lang,
-    options.intent
+    options.intent,
+    {
+      contextSize: options.contextSize,
+      modelFingerprint: deps.modelFingerprint,
+    }
   );
 
-  // Check cache
-  const cached = await deps.getCache(cacheKey);
+  // Check cache (corrupt entries or read errors degrade cleanly to live expansion)
+  deps.onCacheLookup?.();
+  let cached: string | null = null;
+  try {
+    cached = await deps.getCache(cacheKey);
+  } catch {
+    cached = null;
+  }
   if (cached) {
     const parsed = parseExpansionResult(cached);
     if (parsed) {
+      deps.onCacheHit?.();
       return ok(applyExpansionGuardrails(query, parsed));
     }
   }
@@ -552,9 +595,13 @@ export async function expandQueryCached(
     return result;
   }
 
-  // Cache result
+  // Cache result (write failures never fail retrieval)
   if (result.value) {
-    await deps.setCache(cacheKey, JSON.stringify(result.value));
+    try {
+      await deps.setCache(cacheKey, JSON.stringify(result.value));
+    } catch {
+      // Ignore cache persistence errors (e.g. read-only store or busy lock)
+    }
   }
 
   return result;

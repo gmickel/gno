@@ -47,7 +47,8 @@ import {
 } from "./content-type-boost";
 import { formatQueryForEmbedding } from "./contextual";
 import { attachSearchResultEgressLineage } from "./egress-lineage";
-import { expandQuery } from "./expansion";
+import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
+import { expandQuery, expandQueryCached } from "./expansion";
 import {
   buildExplainResults,
   type ExpansionStatus,
@@ -60,11 +61,15 @@ import {
   explainTimings,
   explainVector,
 } from "./explain";
-import { evaluateDocumentChunkFilters, typedMetadataWarnings } from "./filters";
+import {
+  compileDocumentFilters,
+  typedMetadataFilterReason,
+  typedMetadataWarnings,
+} from "./filters";
 import { type RankedInput, rrfFuse, toRankedInput } from "./fusion";
 import { expandGraphCandidates } from "./graph-retrieval";
 import { RequestHydration } from "./hydration";
-import { selectBestChunkForSteering } from "./intent";
+import { extractSteeringTerms, selectBestChunkForSteering } from "./intent";
 import { OwnerMetadataError, resolveFusionOwners } from "./owner-fusion";
 import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
@@ -79,6 +84,7 @@ import {
 } from "./result-context";
 import { cleanDisplaySnippet } from "./snippet";
 import {
+  compileTemporalRange,
   isWithinTemporalRange,
   resolveRecencyTimestamp,
   resolveTemporalRange,
@@ -141,60 +147,17 @@ const STRONG_TOP_SCORE = 0.84; // ~84th percentile confidence
 const STRONG_GAP = 0.14; // Clear separation from #2
 
 /**
- * Check if BM25 results are strong enough to skip expansion.
+ * Compute whether top-5 BM25 results are strong enough to skip expansion.
  * Returns true if top result is both confident AND clearly separated.
- * This prevents skipping on weak-but-separated results.
  */
-async function checkBm25Strength(
-  store: StorePort,
-  query: string,
-  options?: {
-    collection?: string;
-    collections?: string[];
-    lang?: string;
-    tagsAll?: string[];
-    tagsAny?: string[];
-    since?: string;
-    until?: string;
-    categories?: string[];
-    author?: string;
-    filter?: HybridSearchOptions["filter"];
-    relPathPrefix?: string;
-    allowedMirrorHashes?: string[];
-    exclude?: string[];
-    memoryScopesAny?: string[];
-    excludeSuperseded?: boolean;
-  }
-): Promise<boolean> {
-  const result = await store.searchFts(query, {
-    limit: 5,
-    collection: options?.collection,
-    collections: options?.collections,
-    relPathPrefix: options?.relPathPrefix,
-    language: options?.lang,
-    chunkLanguage: options?.lang,
-    allowedMirrorHashes: options?.allowedMirrorHashes,
-    exclude: options?.exclude,
-    excludeMetadata: true,
-    semanticMetadata: true,
-    memoryScopesAny: options?.memoryScopesAny,
-    excludeSuperseded: options?.excludeSuperseded,
-    tagsAll: options?.tagsAll,
-    tagsAny: options?.tagsAny,
-    since: options?.since,
-    until: options?.until,
-    categories: options?.categories,
-    author: options?.author,
-    filter: options?.filter,
-  });
-
-  if (!result.ok || result.value.length === 0) {
+function hasStrongBm25Signal(chunks: readonly ChunkId[]): boolean {
+  if (chunks.length === 0) {
     return false;
   }
 
-  // Normalize scores (higher = better)
-  const scores = result.value
-    .map((r) => normalizeBm25Score(r.score))
+  const scores = chunks
+    .slice(0, 5)
+    .map((r) => normalizeBm25Score(r.score ?? 0))
     .sort((a, b) => b - a); // Descending
 
   const topScore = scores[0] ?? 0;
@@ -465,18 +428,17 @@ async function searchHybridWithHydration(
   //    Priority: queryLanguageHint (MCP) > lang (CLI) > detection
   // ─────────────────────────────────────────────────────────────────────────
   const langStartedAt = performance.now();
-  const detection = detectQueryLanguage(query);
-  // Use explicit hint > lang filter > detected language
-  const queryLanguage =
-    options.queryLanguageHint ?? options.lang ?? detection.bcp47;
-
-  // Build explain message for language detection
+  let queryLanguage: string;
   let langMessage: string;
   if (options.queryLanguageHint) {
+    queryLanguage = options.queryLanguageHint;
     langMessage = `queryLanguage=${queryLanguage} (hint)`;
   } else if (options.lang) {
+    queryLanguage = options.lang;
     langMessage = `queryLanguage=${queryLanguage} (explicit)`;
   } else {
+    const detection = detectQueryLanguage(query);
+    queryLanguage = detection.bcp47;
     const confidence = detection.confident ? "" : ", low confidence";
     langMessage = `queryLanguage=${queryLanguage} (detected${confidence})`;
   }
@@ -484,9 +446,8 @@ async function searchHybridWithHydration(
   timings.langMs = performance.now() - langStartedAt;
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 1. Check if expansion needed
+  // 1. Original BM25 query (once; fail-fast on INVALID_INPUT) + expansion
   // ─────────────────────────────────────────────────────────────────────────
-  const expansionStartedAt = performance.now();
   const shouldExpand = !options.noExpand && expandPort !== null;
   let expansionStatus: ExpansionStatus = "disabled";
   let queryModeSummary: ReturnType<typeof summarizeQueryModes> | undefined =
@@ -499,38 +460,84 @@ async function searchHybridWithHydration(
     expansionStatus = "provided";
   }
 
+  const bm25BaseOptions = {
+    collection: options.collection,
+    collections: options.collections,
+    lang: options.lang,
+    memoryScopesAny: options.memoryFilter?.scopes,
+    excludeSuperseded: options.memoryFilter?.excludeSuperseded,
+    exclude: options.exclude,
+    allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
+    tagsAll: options.tagsAll,
+    tagsAny: options.tagsAny,
+    since: temporalRange.since,
+    until: temporalRange.until,
+    categories: options.categories,
+    author: options.author,
+    filter: options.filter,
+    relPathPrefix: options.retrievalScope?.relPathPrefix,
+  };
+  const needsStrengthCheck =
+    expansionStatus !== "provided" && shouldExpand && !options.intent?.trim();
+  const originalBm25TargetLimit = limit * 2 * retrievalMultiplier;
+  const bm25InitialStartedAt = performance.now();
+  const bm25Result = await searchFtsChunks(store, query, {
+    ...bm25BaseOptions,
+    limit: needsStrengthCheck
+      ? Math.max(5, originalBm25TargetLimit)
+      : originalBm25TargetLimit,
+  });
+  timings.bm25Ms = performance.now() - bm25InitialStartedAt;
+
+  // Propagate FTS syntax errors as INVALID_INPUT before invoking LLM expansion
+  if (!bm25Result.ok && bm25Result.code === "INVALID_INPUT") {
+    return err("INVALID_INPUT", `Invalid search query: ${bm25Result.message}`);
+  }
+  const bm25AllChunks = bm25Result.ok ? bm25Result.chunks : [];
+  const bm25Chunks = bm25AllChunks.slice(0, originalBm25TargetLimit);
+  const bm25Count = bm25Chunks.length;
+
+  const expansionStartedAt = performance.now();
   if (expansionStatus !== "provided" && shouldExpand) {
     const hasStrongSignal = options.intent?.trim()
       ? false
-      : await checkBm25Strength(store, query, {
-          collection: options.collection,
-          collections: options.collections,
-          lang: options.lang,
-          memoryScopesAny: options.memoryFilter?.scopes,
-          excludeSuperseded: options.memoryFilter?.excludeSuperseded,
-          exclude: options.exclude,
-          allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
-          tagsAll: options.tagsAll,
-          tagsAny: options.tagsAny,
-          since: temporalRange.since,
-          until: temporalRange.until,
-          categories: options.categories,
-          author: options.author,
-          filter: options.filter,
-          relPathPrefix: options.retrievalScope?.relPathPrefix,
-        });
+      : hasStrongBm25Signal(bm25AllChunks);
 
     if (hasStrongSignal) {
       expansionStatus = "skipped_strong";
       counters.fallbackEvents.push("expansion_skipped_strong");
     } else {
       expansionStatus = "attempted";
-      const expandResult = await expandQuery(expandPort, query, {
+      const expandOptions = {
         // Use queryLanguage for prompt selection, NOT options.lang (retrieval filter)
         lang: queryLanguage,
         intent: options.intent,
         contextSize: deps.config.models?.expandContextSize,
-      });
+      };
+      const expandResult =
+        typeof store.getLlmCache === "function" &&
+        typeof store.setLlmCache === "function"
+          ? await expandQueryCached(
+              {
+                genPort: expandPort,
+                getCache: async (key) => {
+                  const res = await store.getLlmCache!(key);
+                  return res.ok ? res.value : null;
+                },
+                setCache: async (key, value) => {
+                  await store.setLlmCache!(key, value);
+                },
+                onCacheLookup: () => {
+                  counters.expansionCacheLookups += 1;
+                },
+                onCacheHit: () => {
+                  counters.expansionCacheHits += 1;
+                },
+              },
+              query,
+              expandOptions
+            )
+          : await expandQuery(expandPort, query, expandOptions);
       if (expandResult.ok) {
         expansion = expandResult.value;
       } else {
@@ -546,7 +553,7 @@ async function searchHybridWithHydration(
   timings.expansionMs = performance.now() - expansionStartedAt;
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 2. Parallel retrieval using raw store/vector APIs for correct seq tracking
+  // 2. Concurrent retrieval: lexical variants + vector leg
   // ─────────────────────────────────────────────────────────────────────────
   const rankedInputs: RankedInput[] = [];
   const diagnoseTrace: QueryDiagnoseTrace | undefined = options.diagnoseTrace
@@ -571,36 +578,7 @@ async function searchHybridWithHydration(
     semanticMetadata: true,
     language: options.lang,
   };
-  const bm25StartedAt = performance.now();
 
-  // BM25: original query
-  const bm25Result = await searchFtsChunks(store, query, {
-    limit: limit * 2 * retrievalMultiplier,
-    memoryScopesAny: options.memoryFilter?.scopes,
-    excludeSuperseded: options.memoryFilter?.excludeSuperseded,
-    exclude: options.exclude,
-    allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
-    collection: options.collection,
-    collections: options.collections,
-    lang: options.lang,
-    tagsAll: options.tagsAll,
-    tagsAny: options.tagsAny,
-    since: temporalRange.since,
-    until: temporalRange.until,
-    categories: options.categories,
-    author: options.author,
-    filter: options.filter,
-    relPathPrefix: options.retrievalScope?.relPathPrefix,
-  });
-
-  // Propagate FTS syntax errors as INVALID_INPUT
-  if (!bm25Result.ok && bm25Result.code === "INVALID_INPUT") {
-    return err("INVALID_INPUT", `Invalid search query: ${bm25Result.message}`);
-  }
-  // Other errors: continue with empty BM25 results
-
-  const bm25Chunks = bm25Result.ok ? bm25Result.chunks : [];
-  const bm25Count = bm25Chunks.length;
   diagnoseTrace?.stages.push({
     id: "bm25",
     status: "active",
@@ -611,64 +589,79 @@ async function searchHybridWithHydration(
     rankedInputs.push(toRankedInput("bm25", bm25Chunks));
   }
 
-  // BM25: lexical variants (optional; run in parallel and ignore failures)
-  if (expansion?.lexicalQueries?.length) {
-    const lexicalVariantResults = await Promise.allSettled(
-      expansion.lexicalQueries.map((variant) =>
-        searchFtsChunks(store, variant, {
-          limit: limit * retrievalMultiplier,
-          memoryScopesAny: options.memoryFilter?.scopes,
-          excludeSuperseded: options.memoryFilter?.excludeSuperseded,
-          exclude: options.exclude,
-          allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
-          collection: options.collection,
-          collections: options.collections,
-          lang: options.lang,
-          tagsAll: options.tagsAll,
-          tagsAny: options.tagsAny,
-          since: temporalRange.since,
-          until: temporalRange.until,
-          categories: options.categories,
-          author: options.author,
-          filter: options.filter,
-          relPathPrefix: options.retrievalScope?.relPathPrefix,
-        })
-      )
-    );
-
-    for (const settled of lexicalVariantResults) {
-      assertInferenceActive();
-      if (settled.status !== "fulfilled") {
-        continue;
-      }
-      const variantResult = settled.value;
-      if (variantResult.ok && variantResult.chunks.length > 0) {
-        rankedInputs.push(toRankedInput("bm25_variant", variantResult.chunks));
-      }
-    }
-  }
-  timings.bm25Ms = performance.now() - bm25StartedAt;
-
-  explainLines.push(explainBm25(bm25Count));
-
-  // Vector search
-  let vecCount = 0;
-  let vectorsUsed = false;
-  let vectorNotice: string | undefined;
   const vectorAvailable =
     (vectorIndex?.searchAvailable && embedPort !== null) ?? false;
-  if (!vectorAvailable) {
-    counters.fallbackEvents.push("vector_unavailable");
-  }
 
-  const vectorStartedAt = performance.now();
-  const vectorTraceChunks: ChunkId[] = [];
+  const runLexicalVariants = async (): Promise<{
+    inputs: RankedInput[];
+    durationMs: number;
+  }> => {
+    const lexicalQueries = expansion?.lexicalQueries;
+    if (!lexicalQueries?.length) {
+      return { inputs: [], durationMs: 0 };
+    }
+    const started = performance.now();
+    const trimmedQuery = query.trim();
+    const variantLimit = limit * retrievalMultiplier;
+    const settledResults = await Promise.allSettled(
+      lexicalQueries.map((variant) => {
+        if (bm25Result.ok && variant.trim() === trimmedQuery) {
+          return Promise.resolve<FtsChunksResult>({
+            ok: true,
+            chunks: bm25AllChunks.slice(0, variantLimit),
+          });
+        }
+        return searchFtsChunks(store, variant, {
+          ...bm25BaseOptions,
+          limit: variantLimit,
+        });
+      })
+    );
+    const inputs: RankedInput[] = [];
+    for (const settled of settledResults) {
+      assertInferenceActive();
+      if (settled.status !== "fulfilled") continue;
+      const variantResult = settled.value;
+      if (variantResult.ok && variantResult.chunks.length > 0) {
+        inputs.push(toRankedInput("bm25_variant", variantResult.chunks));
+      }
+    }
+    return { inputs, durationMs: performance.now() - started };
+  };
 
-  if (vectorAvailable && vectorIndex && embedPort) {
+  const runVectorLeg = async (): Promise<{
+    inputs: RankedInput[];
+    traceChunks: ChunkId[];
+    vecCount: number;
+    vectorsUsed: boolean;
+    vectorNotice?: string;
+    fallbacks: string[];
+    durationMs: number;
+  }> => {
+    const fallbacks: string[] = [];
+    if (!vectorAvailable || !vectorIndex || !embedPort) {
+      fallbacks.push("vector_unavailable");
+      return {
+        inputs: [],
+        traceChunks: [],
+        vecCount: 0,
+        vectorsUsed: false,
+        fallbacks,
+        durationMs: 0,
+      };
+    }
+
+    const started = performance.now();
+    const inputs: RankedInput[] = [];
+    const traceChunks: ChunkId[] = [];
+    let localVecCount = 0;
+    let localVectorsUsed = false;
+    let localNotice: string | undefined;
+
     const vectorVariantQueries = [
-      ...(expansion?.vectorQueries?.map((query) => ({
+      ...(expansion?.vectorQueries?.map((q) => ({
         source: "vector_variant" as const,
-        query,
+        query: q,
       })) ?? []),
       ...(expansion?.hyde
         ? [{ source: "hyde" as const, query: expansion.hyde }]
@@ -688,14 +681,16 @@ async function searchHybridWithHydration(
       );
 
       if (!vectorResult.ok) {
-        counters.fallbackEvents.push(vectorResult.reason);
-        vectorNotice = vectorResult.notice;
-      } else vectorsUsed = true;
+        fallbacks.push(vectorResult.reason);
+        localNotice = vectorResult.notice;
+      } else {
+        localVectorsUsed = true;
+      }
       const vecChunks = vectorResult.ok ? vectorResult.chunks : [];
-      vecCount = vecChunks.length;
-      vectorTraceChunks.push(...vecChunks);
-      if (vecCount > 0) {
-        rankedInputs.push(toRankedInput("vector", vecChunks));
+      localVecCount = vecChunks.length;
+      traceChunks.push(...vecChunks);
+      if (localVecCount > 0) {
+        inputs.push(toRankedInput("vector", vecChunks));
       }
     } else {
       const batchedQueries = [
@@ -710,11 +705,32 @@ async function searchHybridWithHydration(
         })),
       ];
 
+      // Deduplicate identical formatted query strings before embedding & searching,
+      // retaining every variant's RRF input contribution via per-variant slicing.
+      const uniqueFormatted: string[] = [];
+      const uniqueMaxLimits: number[] = [];
+      const formattedToUniqueIdx = new Map<string, number>();
+      const variantToUniqueIdx: number[] = [];
+      for (const variant of batchedQueries) {
+        const formatted = formatQueryForEmbedding(
+          variant.query,
+          embedPort.modelUri
+        );
+        let uIdx = formattedToUniqueIdx.get(formatted);
+        if (uIdx === undefined) {
+          uIdx = uniqueFormatted.length;
+          formattedToUniqueIdx.set(formatted, uIdx);
+          uniqueFormatted.push(formatted);
+          uniqueMaxLimits.push(variant.limit);
+        } else if (variant.limit > uniqueMaxLimits[uIdx]!) {
+          uniqueMaxLimits[uIdx] = variant.limit;
+        }
+        variantToUniqueIdx.push(uIdx);
+      }
+
       const embedResult = await embedTextsWithRecovery(
         embedPort,
-        batchedQueries.map((variant) =>
-          formatQueryForEmbedding(variant.query, embedPort.modelUri)
-        )
+        uniqueFormatted
       );
 
       assertInferenceResult(embedResult);
@@ -722,63 +738,147 @@ async function searchHybridWithHydration(
         ? await resolveVectorSearchIdentity(embedPort, vectorIndex)
         : undefined;
       if (!embedResult.ok) {
-        counters.fallbackEvents.push("vector_embed_error");
+        fallbacks.push("vector_embed_error");
       } else if (partition?.unavailable) {
-        counters.fallbackEvents.push(VECTOR_RUNTIME_INCOMPATIBLE);
-        vectorNotice = lexicalFallbackNotice(partition.unavailable);
+        fallbacks.push(VECTOR_RUNTIME_INCOMPATIBLE);
+        localNotice = lexicalFallbackNotice(partition.unavailable);
       } else {
         if (embedResult.value.batchFailed) {
-          counters.fallbackEvents.push("vector_embed_batch_fallback");
+          fallbacks.push("vector_embed_batch_fallback");
+        }
+
+        const searchOpts: VectorSearchOptions = {
+          embeddingIdentity: partition?.identity,
+          allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
+          eligibility: vectorEligibility,
+        };
+        const uniqueResults = new Map<number, ChunkId[]>();
+        const uniqueFailed = new Set<number>();
+
+        const validUniqueIndices: number[] = [];
+        const validEmbeddings: Float32Array[] = [];
+        const validLimits: number[] = [];
+        for (let uIdx = 0; uIdx < uniqueFormatted.length; uIdx++) {
+          const emb = embedResult.value.vectors[uIdx];
+          if (!emb) continue;
+          validUniqueIndices.push(uIdx);
+          validEmbeddings.push(new Float32Array(emb));
+          validLimits.push(uniqueMaxLimits[uIdx]!);
+        }
+
+        if (
+          typeof vectorIndex.searchNearestBatch === "function" &&
+          validEmbeddings.length > 1
+        ) {
+          assertInferenceActive();
+          const batchRes = await vectorIndex.searchNearestBatch(
+            validEmbeddings,
+            validLimits,
+            searchOpts
+          );
+          if (batchRes.ok) {
+            localVectorsUsed = true;
+            for (let i = 0; i < validUniqueIndices.length; i++) {
+              const uIdx = validUniqueIndices[i]!;
+              const hits = batchRes.value[i] ?? [];
+              uniqueResults.set(
+                uIdx,
+                hits.map((item) => ({
+                  documentIds: item.documentIds,
+                  mirrorHash: item.mirrorHash,
+                  seq: item.seq,
+                }))
+              );
+            }
+          } else {
+            for (const uIdx of validUniqueIndices) {
+              uniqueFailed.add(uIdx);
+            }
+          }
+        } else {
+          for (let i = 0; i < validUniqueIndices.length; i++) {
+            assertInferenceActive();
+            const uIdx = validUniqueIndices[i]!;
+            const searchResult = await vectorIndex.searchNearest(
+              validEmbeddings[i]!,
+              validLimits[i]!,
+              searchOpts
+            );
+            if (!searchResult.ok) {
+              uniqueFailed.add(uIdx);
+              continue;
+            }
+            localVectorsUsed = true;
+            uniqueResults.set(
+              uIdx,
+              searchResult.value.map((item) => ({
+                documentIds: item.documentIds,
+                mirrorHash: item.mirrorHash,
+                seq: item.seq,
+              }))
+            );
+          }
         }
 
         for (const [index, variant] of batchedQueries.entries()) {
           assertInferenceActive();
-          const embedding = embedResult.value.vectors[index];
-          if (!embedding || !variant) {
+          const uIdx = variantToUniqueIdx[index]!;
+          if (uniqueFailed.has(uIdx)) {
+            fallbacks.push("vector_search_error");
             continue;
           }
-
-          const searchResult = await vectorIndex.searchNearest(
-            new Float32Array(embedding),
-            variant.limit,
-            {
-              embeddingIdentity: partition?.identity,
-              allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
-              eligibility: vectorEligibility,
-            }
-          );
-          if (!searchResult.ok) {
-            counters.fallbackEvents.push("vector_search_error");
-            continue;
-          }
-          vectorsUsed = true;
-          if (searchResult.value.length === 0) continue;
-
-          const chunks = searchResult.value.map((item) => ({
-            documentIds: item.documentIds,
-            mirrorHash: item.mirrorHash,
-            seq: item.seq,
-          }));
+          const fullChunks = uniqueResults.get(uIdx);
+          if (!fullChunks || fullChunks.length === 0) continue;
+          const chunks = fullChunks.slice(0, variant.limit);
           if (variant.source === "vector") {
-            vecCount = chunks.length;
+            localVecCount = chunks.length;
           }
-          vectorTraceChunks.push(...chunks);
-          if (chunks.length === 0) {
-            continue;
-          }
-          rankedInputs.push(toRankedInput(variant.source, chunks));
+          traceChunks.push(...chunks);
+          if (chunks.length === 0) continue;
+          inputs.push(toRankedInput(variant.source, chunks));
         }
       }
     }
-  }
-  timings.vectorMs = performance.now() - vectorStartedAt;
+
+    return {
+      inputs,
+      traceChunks,
+      vecCount: localVecCount,
+      vectorsUsed: localVectorsUsed,
+      vectorNotice: localNotice,
+      fallbacks,
+      durationMs: performance.now() - started,
+    };
+  };
+
+  // Run lexical expansion variants concurrently with out-of-process vector leg;
+  // Promise.allSettled guarantees no unhandled rejections on abort/timeout.
+  const [lexSettled, vecSettled] = await Promise.allSettled([
+    runLexicalVariants(),
+    runVectorLeg(),
+  ]);
+  if (lexSettled.status === "rejected") throw lexSettled.reason;
+  if (vecSettled.status === "rejected") throw vecSettled.reason;
+
+  const lexOutcome = lexSettled.value;
+  const vecOutcome = vecSettled.value;
+  rankedInputs.push(...lexOutcome.inputs);
+  timings.bm25Ms += lexOutcome.durationMs;
+  explainLines.push(explainBm25(bm25Count));
+
+  const vecCount = vecOutcome.vecCount;
+  const vectorsUsed = vecOutcome.vectorsUsed;
+  const vectorNotice = vecOutcome.vectorNotice;
+  counters.fallbackEvents.push(...vecOutcome.fallbacks);
+  rankedInputs.push(...vecOutcome.inputs);
+  timings.vectorMs = vecOutcome.durationMs;
 
   diagnoseTrace?.stages.push({
     id: "vector",
     status: vectorAvailable ? "active" : "skipped",
     reason: vectorAvailable ? undefined : "vector_unavailable",
     sourceCount: vectorAvailable ? 1 : 0,
-    candidates: toTraceCandidates(vectorTraceChunks),
+    candidates: toTraceCandidates(vecOutcome.traceChunks),
   });
 
   explainLines.push(
@@ -796,10 +896,17 @@ async function searchHybridWithHydration(
   const fusionStartedAt = performance.now();
   const candidateLimit =
     options.candidateLimit ?? pipelineConfig.rerankCandidates;
-  let fusedCandidates = rrfFuse(
-    await resolveFusionOwners(rankedInputs, store, hydration, query, options),
-    pipelineConfig.rrf
+  const hasVariantOwners = rankedInputs.some((input) =>
+    input.results.some((result) => result.documentId !== undefined)
   );
+  const resolvedInputs = await resolveFusionOwners(
+    rankedInputs,
+    store,
+    hydration,
+    query,
+    options
+  );
+  let fusedCandidates = rrfFuse(resolvedInputs, pipelineConfig.rrf);
   diagnoseTrace?.stages.push({
     id: "fusion",
     status: "active",
@@ -835,11 +942,20 @@ async function searchHybridWithHydration(
   timings.graphMs = performance.now() - graphStartedAt;
   if (graphExpansion.candidates.length > 0) {
     const graphFusionStartedAt = performance.now();
-    rankedInputs.push(toRankedInput("graph", graphExpansion.candidates));
-    fusedCandidates = rrfFuse(
-      await resolveFusionOwners(rankedInputs, store, hydration, query, options),
-      pipelineConfig.rrf
-    );
+    const graphInput = toRankedInput("graph", graphExpansion.candidates);
+    rankedInputs.push(graphInput);
+    const resolvedGraph = hasVariantOwners
+      ? await resolveFusionOwners(
+          [graphInput],
+          store,
+          hydration,
+          query,
+          options,
+          true
+        )
+      : [graphInput];
+    resolvedInputs.push(...resolvedGraph);
+    fusedCandidates = rrfFuse(resolvedInputs, pipelineConfig.rrf);
     timings.fusionMs += performance.now() - graphFusionStartedAt;
   }
   diagnoseTrace?.stages.push({
@@ -1011,7 +1127,13 @@ async function searchHybridWithHydration(
   }
   const collectionsResult = await store.getCollections();
 
-  // Build lookup maps.
+  // Build lookup maps with pre-compiled query-invariant filters.
+  const compiledFilters = compileDocumentFilters(
+    query,
+    options,
+    undefined,
+    compileTemporalRange(temporalRange)
+  );
   const docsByMirrorHash = new Map<string, DocumentRow[]>();
   const addDocument = (doc: DocumentRow): void => {
     if (!doc.mirrorHash) return;
@@ -1020,6 +1142,9 @@ async function searchHybridWithHydration(
     docsByMirrorHash.set(doc.mirrorHash, docs);
   };
   const matchesMetadataFilters = (doc: DocumentRow): boolean => {
+    if (typedMetadataFilterReason(doc, options.filter)) {
+      return false;
+    }
     const relPathPrefix = options.retrievalScope?.relPathPrefix;
     const sourceRelPath = doc.recordSourcePath ?? doc.relPath;
     if (
@@ -1029,22 +1154,23 @@ async function searchHybridWithHydration(
     ) {
       return false;
     }
-    if (!isWithinTemporalRange(doc.sourceMtime, temporalRange)) {
-      return false;
-    }
     if (
-      options.author &&
-      !doc.author?.toLowerCase().includes(options.author.toLowerCase())
+      !isWithinTemporalRange(doc.sourceMtime, compiledFilters.temporalRange)
     ) {
       return false;
     }
-    if (options.categories?.length) {
-      const allowed = new Set(options.categories.map((c) => c.toLowerCase()));
+    if (
+      compiledFilters.authorLower &&
+      !doc.author?.toLowerCase().includes(compiledFilters.authorLower)
+    ) {
+      return false;
+    }
+    if (compiledFilters.allowedCategories) {
       const contentTypeMatch = doc.contentType
-        ? allowed.has(doc.contentType.toLowerCase())
+        ? compiledFilters.allowedCategories.has(doc.contentType.toLowerCase())
         : false;
       const categoryMatch = (doc.categories ?? []).some((c) =>
-        allowed.has(c.toLowerCase())
+        compiledFilters.allowedCategories!.has(c.toLowerCase())
       );
       if (!contentTypeMatch && !categoryMatch) {
         return false;
@@ -1063,13 +1189,14 @@ async function searchHybridWithHydration(
     if (!doc.mirrorHash) {
       continue;
     }
+    if (!matchesMetadataFilters(doc)) {
+      continue;
+    }
     if (needsTagFilter) {
       docIdsForTagCheck.push(doc.id);
       candidateDocs.push(doc);
     } else {
-      if (matchesMetadataFilters(doc)) {
-        addDocument(doc);
-      }
+      addDocument(doc);
     }
   }
 
@@ -1096,9 +1223,7 @@ async function searchHybridWithHydration(
           if (!hasAny) continue;
         }
 
-        if (doc.mirrorHash && matchesMetadataFilters(doc)) {
-          addDocument(doc);
-        }
+        addDocument(doc);
       }
     }
   }
@@ -1120,21 +1245,92 @@ async function searchHybridWithHydration(
     }
   }
 
-  // Pre-fetch all chunks in one batch query (eliminates N+1)
-  const chunksMapResult = await hydration.getChunksBatch([...neededHashes]);
-  if (!chunksMapResult.ok) {
-    return err("QUERY_FAILED", chunksMapResult.error.message);
+  // Pre-fetch chunks: use sequence-scoped loading when neither intent nor
+  // exclude needs full chunk sets, reusing already-hydrated hashes when warm.
+  const needsAllChunksForAssembly = Boolean(
+    options.intent?.trim() || options.exclude?.length
+  );
+  let chunksMap: Map<string, import("../store/types").ChunkRow[]>;
+  if (
+    !needsAllChunksForAssembly &&
+    typeof store.getChunksBySequenceBatch === "function"
+  ) {
+    const cachedHashes: string[] = [];
+    const uncachedSeqRequests: Array<{ mirrorHash: string; seq: number }> = [];
+    const seenReq = new Set<string>();
+    for (const candidate of filteredCandidates) {
+      if (hydration.hasChunks(candidate.mirrorHash)) {
+        cachedHashes.push(candidate.mirrorHash);
+      } else {
+        const reqKey = `${candidate.mirrorHash}:${candidate.seq}`;
+        if (!seenReq.has(reqKey)) {
+          seenReq.add(reqKey);
+          uncachedSeqRequests.push({
+            mirrorHash: candidate.mirrorHash,
+            seq: candidate.seq,
+          });
+        }
+      }
+    }
+    const [cachedRes, seqRes] = await Promise.all([
+      cachedHashes.length > 0
+        ? hydration.getChunksBatch(cachedHashes)
+        : Promise.resolve(
+            ok(new Map<string, import("../store/types").ChunkRow[]>())
+          ),
+      uncachedSeqRequests.length > 0
+        ? store.getChunksBySequenceBatch(uncachedSeqRequests)
+        : Promise.resolve(
+            ok(new Map<string, import("../store/types").ChunkRow[]>())
+          ),
+    ]);
+    if (!cachedRes.ok) {
+      return err("QUERY_FAILED", cachedRes.error.message);
+    }
+    if (!seqRes.ok) {
+      return err("QUERY_FAILED", seqRes.error.message);
+    }
+    chunksMap = new Map(cachedRes.value);
+    for (const [hash, rows] of seqRes.value) {
+      chunksMap.set(hash, rows);
+    }
+    // For doc-level FTS (seq=0) missing seq=0, fall back to full batch for only those hashes.
+    const missingSeqZeroHashes: string[] = [];
+    for (const req of uncachedSeqRequests) {
+      if (req.seq === 0 && (chunksMap.get(req.mirrorHash)?.length ?? 0) === 0) {
+        missingSeqZeroHashes.push(req.mirrorHash);
+      }
+    }
+    if (missingSeqZeroHashes.length > 0) {
+      const fallbackRes = await hydration.getChunksBatch(missingSeqZeroHashes);
+      if (!fallbackRes.ok) {
+        return err("QUERY_FAILED", fallbackRes.error.message);
+      }
+      for (const [hash, rows] of fallbackRes.value) {
+        chunksMap.set(hash, rows);
+      }
+    }
+  } else {
+    const chunksMapResult = await hydration.getChunksBatch([...neededHashes]);
+    if (!chunksMapResult.ok) {
+      return err("QUERY_FAILED", chunksMapResult.error.message);
+    }
+    chunksMap = chunksMapResult.value;
   }
-  const chunksMap = chunksMapResult.value;
   const getChunk = createChunkLookup(chunksMap);
-
-  // Cache full content by mirrorHash for --full mode
-  const contentCache = new Map<
-    string,
-    Awaited<ReturnType<typeof store.getContent>>
-  >();
+  const excludeTermsLower = compiledFilters.excludeTermsLower;
+  const excludedChunksCache = excludeTermsLower
+    ? new Map<string, boolean>()
+    : undefined;
+  const queryTerms = options.intent?.trim()
+    ? extractSteeringTerms(query)
+    : undefined;
+  const intentTerms = options.intent?.trim()
+    ? extractSteeringTerms(options.intent)
+    : undefined;
 
   const results: SearchResult[] = [];
+  const deferredChunkTextByResult = new WeakMap<SearchResult, string>();
   const assemblyLimit = recencySort ? limit * 3 : limit;
   const docidMap = new Map<string, string>();
   // Track seen docids for --full de-duplication
@@ -1149,13 +1345,13 @@ async function searchHybridWithHydration(
     }
 
     // Find document from pre-fetched map
-    const candidateDocs = (
+    const candidateDocsForHit = (
       docsByMirrorHash.get(candidate.mirrorHash) ?? []
     ).filter(
       (doc) =>
         candidate.documentId === undefined || candidate.documentId === doc.id
     );
-    if (candidateDocs.length === 0) {
+    if (candidateDocsForHit.length === 0) {
       continue;
     }
 
@@ -1165,8 +1361,7 @@ async function searchHybridWithHydration(
     let chunk = getChunk(candidate.mirrorHash, candidate.seq);
     if (!chunk && candidate.seq === 0) {
       // Doc-level FTS uses seq=0 as placeholder - try first chunk
-      const docChunks = chunksMap.get(candidate.mirrorHash);
-      chunk = docChunks?.[0];
+      chunk = docChunks[0];
     }
     if (!chunk) {
       continue;
@@ -1177,19 +1372,33 @@ async function searchHybridWithHydration(
       continue;
     }
 
-    // For --full mode, fetch full mirror content
+    if (excludeTermsLower) {
+      let chunksExcluded = excludedChunksCache!.get(candidate.mirrorHash);
+      if (chunksExcluded === undefined) {
+        chunksExcluded = matchesExcludedChunks(
+          docChunks,
+          excludeTermsLower,
+          true
+        );
+        excludedChunksCache!.set(candidate.mirrorHash, chunksExcluded);
+      }
+      if (chunksExcluded) continue;
+    }
+
     const snippetChunk =
       options.full || !options.intent?.trim()
         ? chunk
         : (selectBestChunkForSteering(
-            (chunksMap.get(candidate.mirrorHash) ?? []).filter(
-              (chunk) => !options.lang || chunk.language === options.lang
+            docChunks.filter(
+              (c) => !options.lang || c.language === options.lang
             ),
             query,
             options.intent,
             {
               preferredSeq: chunk.seq,
               intentWeight: 0.3,
+              queryTerms,
+              intentTerms,
             }
           ) ?? chunk);
 
@@ -1200,20 +1409,7 @@ async function searchHybridWithHydration(
       endLine: snippetChunk.endLine,
     };
 
-    if (options.full) {
-      // Get or fetch full content for this mirrorHash
-      let contentResult = contentCache.get(candidate.mirrorHash);
-      if (!contentResult) {
-        contentResult = await hydration.getContent(candidate.mirrorHash);
-        contentCache.set(candidate.mirrorHash, contentResult);
-      }
-
-      if (contentResult.ok && contentResult.value) {
-        snippet = contentResult.value;
-        snippetRange = undefined; // Full content has no range
-      }
-      // Fallback to chunk text if content unavailable
-    } else {
+    if (!options.full) {
       const cleanedSnippet = cleanDisplaySnippet(
         snippetChunk.text,
         snippetChunk.text
@@ -1227,18 +1423,29 @@ async function searchHybridWithHydration(
       };
     }
 
-    for (const doc of candidateDocs) {
+    for (const doc of candidateDocsForHit) {
       assertInferenceActive();
       if (!auxiliaryRankingActive && results.length >= assemblyLimit) break;
-      const filterEval = evaluateDocumentChunkFilters(
-        query,
-        doc,
-        docChunks,
-        options
-      );
       if (
-        !filterEval.matches ||
-        (options.full && !auxiliaryRankingActive && seenDocids.has(doc.docid))
+        excludeTermsLower &&
+        matchesExcludedText(
+          [
+            doc.title ?? "",
+            doc.recordSourcePath ?? doc.relPath,
+            doc.author ?? "",
+            doc.contentType ?? "",
+            ...(doc.categories ?? []),
+          ],
+          excludeTermsLower,
+          true
+        )
+      ) {
+        continue;
+      }
+      if (
+        options.full &&
+        !auxiliaryRankingActive &&
+        seenDocids.has(doc.docid)
       ) {
         continue;
       }
@@ -1278,65 +1485,57 @@ async function searchHybridWithHydration(
         },
         record: projectRecordEvidenceMetadata(doc),
       };
-      const auxiliaryBaseScore =
-        auxiliaryBaseScores.get(
-          `${candidate.mirrorHash}:${candidate.seq}:${candidate.documentId ?? ""}`
-        ) ?? candidate.blendedScore;
-      const candidateKey = `${candidate.mirrorHash}:${candidate.seq}:${candidate.documentId ?? ""}`;
-      const composedBeforeRerank =
-        preRerankAdjustedCandidates.has(candidateKey);
-      const scoringBaseScore =
-        rerankResult.reranked && !composedBeforeRerank
-          ? candidate.blendedScore
-          : auxiliaryBaseScore;
-      const scored = scoreContentTypeBoost(
-        scoringBaseScore,
-        doc.contentType ?? undefined,
-        doc.contentTypeSource,
-        doc.relPath,
-        doc.collection,
-        contentTypeRules,
-        options.projectAffinity,
-        { kind: "hybrid_blended", score: scoringBaseScore }
-      );
-      const scoredResult = attachAuxiliaryScoreMetadata(
-        baseResult,
-        scored,
-        rerankResult.reranked && composedBeforeRerank
-          ? candidate.blendedScore
-          : scored.projectAffinity.finalScore,
-        hasProjectAffinity(options.projectAffinity)
-      );
+      let scoredResult = baseResult;
+      if (auxiliaryRankingActive) {
+        const candidateKey = `${candidate.mirrorHash}:${candidate.seq}:${candidate.documentId ?? ""}`;
+        const auxiliaryBaseScore =
+          auxiliaryBaseScores.get(candidateKey) ?? candidate.blendedScore;
+        const composedBeforeRerank =
+          preRerankAdjustedCandidates.has(candidateKey);
+        const scoringBaseScore =
+          rerankResult.reranked && !composedBeforeRerank
+            ? candidate.blendedScore
+            : auxiliaryBaseScore;
+        const scored = scoreContentTypeBoost(
+          scoringBaseScore,
+          doc.contentType ?? undefined,
+          doc.contentTypeSource,
+          doc.relPath,
+          doc.collection,
+          contentTypeRules,
+          options.projectAffinity,
+          { kind: "hybrid_blended", score: scoringBaseScore }
+        );
+        scoredResult = attachAuxiliaryScoreMetadata(
+          baseResult,
+          scored,
+          rerankResult.reranked && composedBeforeRerank
+            ? candidate.blendedScore
+            : scored.projectAffinity.finalScore,
+          hasProjectAffinity(options.projectAffinity)
+        );
+      }
       if (scoredResult.score < minScore) continue;
-      results.push(
-        attachSearchResultPlannerMetadata(scoredResult, {
-          retrievalRank: candidateIndex + 1,
-          mirrorHash: candidate.mirrorHash,
-          seq: snippetChunk.seq,
-          ...(auxiliaryRankingActive && snippetChunk.seq !== candidate.seq
-            ? { retrievalSeq: candidate.seq }
-            : {}),
-          sources: [...candidate.sources].sort(),
-          graphExpanded: candidate.sources.includes("graph"),
-          startLine: snippetChunk.startLine,
-          endLine: snippetChunk.endLine,
-          passageHash: new Bun.CryptoHasher("sha256")
-            .update(snippetChunk.text)
-            .digest("hex"),
-        })
-      );
+      const attached = attachSearchResultPlannerMetadata(scoredResult, {
+        retrievalRank: candidateIndex + 1,
+        mirrorHash: candidate.mirrorHash,
+        seq: snippetChunk.seq,
+        ...(auxiliaryRankingActive && snippetChunk.seq !== candidate.seq
+          ? { retrievalSeq: candidate.seq }
+          : {}),
+        sources: [...candidate.sources].sort(),
+        graphExpanded: candidate.sources.includes("graph"),
+        startLine: snippetChunk.startLine,
+        endLine: snippetChunk.endLine,
+        passageHash: "",
+      });
+      deferredChunkTextByResult.set(attached, snippetChunk.text);
+      results.push(attached);
     }
   }
-  timings.assemblyMs = performance.now() - assemblyStartedAt;
-  timings.totalMs = performance.now() - runStartedAt;
-  explainLines.push(explainTimings(timings));
-  explainLines.push(explainCounters(counters));
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 6. Build explain data (if requested)
-  // ─────────────────────────────────────────────────────────────────────────
-  // ─────────────────────────────────────────────────────────────────────────
-  // 7. Return results
+  // 6. Sort, slice, hydrate deferred --full content and passage hashes
   // ─────────────────────────────────────────────────────────────────────────
   const dedupedResults =
     options.full && auxiliaryRankingActive
@@ -1344,15 +1543,16 @@ async function searchHybridWithHydration(
       : results;
 
   if (recencySort) {
+    const recencyTs = new Map<SearchResult, number>();
+    for (const r of dedupedResults) {
+      recencyTs.set(
+        r,
+        resolveRecencyTimestamp(r.source.documentDate, r.source.modifiedAt)
+      );
+    }
     dedupedResults.sort((a, b) => {
-      const aTs = resolveRecencyTimestamp(
-        a.source.documentDate,
-        a.source.modifiedAt
-      );
-      const bTs = resolveRecencyTimestamp(
-        b.source.documentDate,
-        b.source.modifiedAt
-      );
+      const aTs = recencyTs.get(a) ?? 0;
+      const bTs = recencyTs.get(b) ?? 0;
       if (aTs !== bTs) {
         return bTs - aTs;
       }
@@ -1363,11 +1563,49 @@ async function searchHybridWithHydration(
   }
 
   const finalResults = dedupedResults.slice(0, limit);
+  if (options.full && finalResults.length > 0) {
+    const fullHashes = [
+      ...new Set(
+        finalResults
+          .map((r) => r.conversion?.mirrorHash)
+          .filter((hash): hash is string => Boolean(hash))
+      ),
+    ];
+    if (fullHashes.length > 0) {
+      const contentBatch = await hydration.getContentBatch(fullHashes);
+      if (contentBatch.ok) {
+        for (const result of finalResults) {
+          const hash = result.conversion?.mirrorHash;
+          const fullContent = hash ? contentBatch.value.get(hash) : undefined;
+          if (fullContent) {
+            result.snippet = fullContent;
+            result.snippetRange = undefined;
+          }
+        }
+      }
+    }
+  }
   for (const [index, result] of finalResults.entries()) {
     assertInferenceActive();
     const metadata = result[SEARCH_RESULT_PLANNER_METADATA];
-    if (metadata) metadata.retrievalRank = index + 1;
+    if (metadata) {
+      metadata.retrievalRank = index + 1;
+      if (!metadata.passageHash) {
+        const text = deferredChunkTextByResult.get(result);
+        if (text !== undefined) {
+          metadata.passageHash = new Bun.CryptoHasher("sha256")
+            .update(text)
+            .digest("hex");
+        }
+      }
+    }
   }
+
+  timings.assemblyMs = performance.now() - assemblyStartedAt;
+  timings.totalMs = performance.now() - runStartedAt;
+  explainLines.push(explainTimings(timings));
+  explainLines.push(explainCounters(counters));
+
   const explainData = options.explain
     ? {
         lines: explainLines,
@@ -1378,11 +1616,18 @@ async function searchHybridWithHydration(
     : undefined;
   await attachSearchResultContexts(store, finalResults);
   await attachSupersession(store, finalResults);
+  const finalHashes = [
+    ...new Set(
+      finalResults
+        .map((r) => r.conversion?.mirrorHash)
+        .filter((hash): hash is string => Boolean(hash))
+    ),
+  ];
   const lineageResult = await attachSearchResultEgressLineage(
     store,
     finalResults,
     {
-      ownershipHashes: [...neededHashes],
+      ownershipHashes: finalHashes,
       ownershipDocuments:
         options.collection === undefined && options.collections === undefined
           ? documents

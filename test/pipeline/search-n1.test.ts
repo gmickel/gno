@@ -208,7 +208,10 @@ test("targeted lexical reads match full hydration; final rows read their chunks 
     const expected = await searchBm25(baseline as StorePort, "query");
     const actual = await searchBm25(candidate as StorePort, "query");
     expect(actual).toEqual(expected);
-    expect(calls).toBe(1);
+    // Default lexical mode defers chunk hydration until snippet assembly; when
+    // getChunksBatch succeeds without getChunkTermPresence it supplies the
+    // snippet directly (0 extra seq-0 calls), and only falls back on failure.
+    expect(calls).toBe(fail ? 1 : 0);
     expect(fullReads).toEqual([["hash"]]);
     if (actual.ok) {
       expect(actual.value.results).toHaveLength(1);

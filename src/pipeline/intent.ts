@@ -71,12 +71,11 @@ export function extractSteeringTerms(text: string): string[] {
   return dedupe(terms);
 }
 
-function scoreTextForTerms(text: string, terms: string[]): number {
-  if (terms.length === 0 || text.length === 0) {
+function scoreLowerTextForTerms(haystack: string, terms: string[]): number {
+  if (terms.length === 0 || haystack.length === 0) {
     return 0;
   }
 
-  const haystack = text.toLowerCase();
   let score = 0;
 
   for (const term of terms) {
@@ -91,6 +90,9 @@ function scoreTextForTerms(text: string, terms: string[]): number {
 export interface ChunkSelectionOptions {
   preferredSeq?: number | null;
   intentWeight: number;
+  /** Optional pre-extracted steering terms hoisted across documents. */
+  queryTerms?: string[];
+  intentTerms?: string[];
 }
 
 /**
@@ -105,17 +107,23 @@ export function selectBestChunkForSteering(
   if (chunks.length === 0) {
     return null;
   }
+  if (chunks.length === 1) {
+    return chunks[0] ?? null;
+  }
 
-  const queryTerms = extractSteeringTerms(query);
-  const intentTerms = extractSteeringTerms(intent ?? "");
+  const queryTerms = options.queryTerms ?? extractSteeringTerms(query);
+  const intentTerms = options.intentTerms ?? extractSteeringTerms(intent ?? "");
+  const needsTextScan = queryTerms.length > 0 || intentTerms.length > 0;
   const preferredSeq = options.preferredSeq ?? null;
   let bestChunk: ChunkRow | null = null;
   let bestScore = Number.NEGATIVE_INFINITY;
 
   for (const chunk of chunks) {
-    const queryScore = scoreTextForTerms(chunk.text, queryTerms);
+    const haystack =
+      needsTextScan && chunk.text.length > 0 ? chunk.text.toLowerCase() : "";
+    const queryScore = scoreLowerTextForTerms(haystack, queryTerms);
     const intentScore =
-      scoreTextForTerms(chunk.text, intentTerms) * options.intentWeight;
+      scoreLowerTextForTerms(haystack, intentTerms) * options.intentWeight;
     const preferredBonus =
       preferredSeq !== null && chunk.seq === preferredSeq
         ? MATCH_ANCHOR_BONUS

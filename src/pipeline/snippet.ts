@@ -65,7 +65,7 @@ export function cleanDisplaySnippet(
   const canFallback =
     chunkText !== undefined &&
     chunkText !== snippet &&
-    isFrontmatterDominatedSnippet(snippet);
+    isFrontmatterDominatedSnippetInner(snippet, true);
   if (canFallback) {
     const cleanedChunk = stripLeadingFrontmatterBlock(chunkText);
     if (cleanedChunk.text.length > 0) {
@@ -86,6 +86,13 @@ export function cleanDisplaySnippet(
 
 /** True for FTS-style snippets that are only (or start as) YAML frontmatter. */
 export function isFrontmatterDominatedSnippet(text: string): boolean {
+  return isFrontmatterDominatedSnippetInner(text, false);
+}
+
+function isFrontmatterDominatedSnippetInner(
+  text: string,
+  skipEmbeddedFenceCheck: boolean
+): boolean {
   const unmarked = text.replace(MARK_TAG_REGEX, "");
   const trimmed = unmarked.trimStart();
   const withoutLeadingEllipsis = trimmed.startsWith("...")
@@ -105,7 +112,10 @@ export function isFrontmatterDominatedSnippet(text: string): boolean {
   if (contentLines.every(isYamlFrontmatterLine)) {
     return true;
   }
-  return proseAfterEmbeddedFrontmatterFence(text) !== undefined;
+  return (
+    !skipEmbeddedFenceCheck &&
+    proseAfterEmbeddedFrontmatterFence(text) !== undefined
+  );
 }
 
 /**
@@ -113,6 +123,9 @@ export function isFrontmatterDominatedSnippet(text: string): boolean {
  * Keep the prose after that fence when the prefix looks like YAML.
  */
 function proseAfterEmbeddedFrontmatterFence(text: string): string | undefined {
+  if (!text.includes("-")) {
+    return undefined;
+  }
   const lines = text.split(/\r?\n/);
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];

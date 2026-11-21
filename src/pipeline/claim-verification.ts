@@ -1,10 +1,7 @@
 import type { ContextCapsuleV1 } from "../core/context-capsule";
 import type { ContextCapsuleVerification } from "../core/context-capsule-verification";
 
-import {
-  contextCapsuleV1Schema,
-  parseContextCapsuleV1,
-} from "../core/context-capsule";
+import { parseContextCapsuleV1 } from "../core/context-capsule";
 import { sha256Text } from "../core/context-capsule-validation";
 import { contextCapsuleVerificationSchema } from "../core/context-capsule-verification";
 import {
@@ -129,17 +126,6 @@ const isAbbreviationPeriod = (answer: string, index: number): boolean => {
 const fencedCodeEnd = (answer: string, start: number): number => {
   const closing = answer.indexOf("```", start + 3);
   return closing === -1 ? answer.length : closing + 3;
-};
-
-const assertCitationLimit = (answer: string): void => {
-  CITATION_PATTERN.lastIndex = 0;
-  let count = 0;
-  for (const _match of answer.matchAll(CITATION_PATTERN)) {
-    count += 1;
-    if (count > MAX_CITATIONS) {
-      throw new Error(`Citation limit exceeded (${MAX_CITATIONS})`);
-    }
-  }
 };
 
 const claimIdentity = (
@@ -275,67 +261,37 @@ const evidenceReference = (evidence: Evidence): ClaimEvidenceReference => ({
   passageHash: evidence.passageHash,
 });
 
-const citationsForClaim = (
-  answer: string,
-  claim: ClaimSpan,
-  evidenceById: ReadonlyMap<string, Evidence>,
-  freshness: FreshnessState
-): { accepted: Evidence[]; rejected: RejectedCitation[] } => {
-  const accepted = new Map<string, Evidence>();
-  const rejected: RejectedCitation[] = [];
-  CITATION_PATTERN.lastIndex = claim.start;
-  for (const match of answer.matchAll(CITATION_PATTERN)) {
-    const start = match.index;
-    const end = start + match[0].length;
-    if (start >= claim.end) break;
-    if (start < claim.start) continue;
-    const rawId = match[1] ?? "";
-    const closed = match[2] === "]";
-    const evidenceId = closed && SHA256_PATTERN.test(rawId) ? rawId : null;
-    const evidence =
-      evidenceId === null ? undefined : evidenceById.get(evidenceId);
-    const reason =
-      evidenceId === null
-        ? "malformed_citation"
-        : rejectedReason(evidence, freshness);
-    if (reason) {
-      rejected.push({
-        marker: match[0],
-        start,
-        end,
-        evidenceId,
-        reason,
-      });
-    } else if (evidence) {
-      accepted.set(evidence.evidenceId, evidence);
-    }
-    if (accepted.size + rejected.length > MAX_CITATIONS) {
-      throw new Error(`Citation limit exceeded (${MAX_CITATIONS})`);
-    }
+const parseSemanticJudgmentsIndex = (
+  inputs: readonly unknown[]
+): Map<string, SemanticClaimJudgment[]> => {
+  const byClaimId = new Map<string, SemanticClaimJudgment[]>();
+  for (const input of inputs) {
+    const parsed = semanticClaimJudgmentSchema.safeParse(input);
+    if (!parsed.success) continue;
+    const list = byClaimId.get(parsed.data.claimId);
+    if (list) list.push(parsed.data);
+    else byClaimId.set(parsed.data.claimId, [parsed.data]);
   }
-  return { accepted: [...accepted.values()], rejected };
+  return byClaimId;
 };
 
 const judgmentForClaim = (
   claim: ClaimSpan,
   acceptedIds: ReadonlySet<string>,
-  inputs: readonly unknown[]
+  judgmentsByClaimId: ReadonlyMap<string, readonly SemanticClaimJudgment[]>
 ): SemanticClaimJudgment | null => {
-  const matches: SemanticClaimJudgment[] = [];
-  for (const input of inputs) {
-    const parsed = semanticClaimJudgmentSchema.safeParse(input);
-    if (
-      parsed.success &&
-      parsed.data.claimId === claim.claimId &&
-      parsed.data.evidenceIds.every((id) => acceptedIds.has(id))
-    ) {
-      matches.push(parsed.data);
+  const candidates = judgmentsByClaimId.get(claim.claimId);
+  if (!candidates || candidates.length === 0) return null;
+  let matched: SemanticClaimJudgment | null = null;
+  for (const judgment of candidates) {
+    if (judgment.evidenceIds.every((id) => acceptedIds.has(id))) {
+      if (matched !== null) return null;
+      matched = judgment;
     }
   }
-  return matches.length === 1 ? (matches[0] ?? null) : null;
+  return matched;
 };
 
-/** Straight or curly double-quoted spans of at least two words. */
 /**
  * Quotations by delimiter pair. A single quote opens only after the start, a
  * space or a bracket and closes only before the end, a space, punctuation or
@@ -347,6 +303,8 @@ const QUOTATION_PATTERNS = [
   /(?<=^|[\s([{])'(.+?)'(?=$|[\s.,;:!?)\]}])/g,
   /(?<=^|[\s([{])\u2018(.+?)\u2019(?=$|[\s.,;:!?)\]}])/g,
 ] as const;
+
+const QUOTE_DELIMITER_PATTERN = /["'\u2018\u2019\u201C\u201D]/;
 
 /** Whitespace, quote style and case differences are not misquotes. */
 const normalizeQuoted = (text: string): string =>
@@ -360,154 +318,236 @@ const normalizeQuoted = (text: string): string =>
 
 const quotesFoundInEvidence = (
   claimText: string,
-  evidence: readonly Evidence[]
+  evidence: readonly Evidence[],
+  normalizedCache: Map<string, string>
 ): boolean => {
-  const haystacks = evidence.map((item) => normalizeQuoted(item.text));
+  if (!QUOTE_DELIMITER_PATTERN.test(claimText)) return true;
+  let quotedSpans: string[] | null = null;
   for (const pattern of QUOTATION_PATTERNS) {
     for (const match of claimText.matchAll(pattern)) {
       // Closing punctuation inside a quote often ends the claim's sentence.
       const quoted = normalizeQuoted(match[1] ?? "").replace(/[.,;:!?]+$/, "");
       if (quoted === "") continue;
-      if (!haystacks.some((text) => text.includes(quoted))) return false;
+      quotedSpans ??= [];
+      quotedSpans.push(quoted);
     }
+  }
+  if (!quotedSpans) return true;
+  const haystacks = evidence.map((item) => {
+    let normalized = normalizedCache.get(item.evidenceId);
+    if (normalized === undefined) {
+      normalized = normalizeQuoted(item.text);
+      normalizedCache.set(item.evidenceId, normalized);
+    }
+    return normalized;
+  });
+  for (const quoted of quotedSpans) {
+    if (!haystacks.some((text) => text.includes(quoted))) return false;
   }
   return true;
 };
 
-const verifyClaim = (
-  answer: string,
-  claim: ClaimSpan,
-  evidenceById: ReadonlyMap<string, Evidence>,
-  freshness: FreshnessState,
-  judgments: readonly unknown[]
-): VerifiedClaim => {
-  const citations = citationsForClaim(answer, claim, evidenceById, freshness);
-  const references = citations.accepted.map(evidenceReference);
-  const acceptedIds = new Set(references.map((item) => item.evidenceId));
-  const judgment = judgmentForClaim(claim, acceptedIds, judgments);
-  if (references.length === 0) {
-    return {
-      ...claim,
-      status: "insufficient",
-      confidence: null,
-      rationaleCode: "no_valid_evidence",
-      verifierFingerprint: null,
-      evidence: [],
-      rejectedCitations: citations.rejected,
-    };
-  }
-  // An explicit quotation must appear in the cited evidence; the semantic
-  // judgment cannot vouch for wording it never compared.
-  if (!quotesFoundInEvidence(claim.text, citations.accepted)) {
-    return {
-      ...claim,
-      status: "uncertain",
-      confidence: null,
-      rationaleCode: "quote_not_in_evidence",
-      verifierFingerprint: null,
-      evidence: references,
-      rejectedCitations: citations.rejected,
-    };
-  }
-  if (!judgment) {
-    return {
-      ...claim,
-      status: "uncertain",
-      confidence: null,
-      rationaleCode: "semantic_judgment_unavailable",
-      verifierFingerprint: null,
-      evidence: references,
-      rejectedCitations: citations.rejected,
-    };
-  }
-  const selected = new Set(judgment.evidenceIds);
-  return {
-    ...claim,
-    status: judgment.verdict,
-    confidence: judgment.confidence,
-    rationaleCode: judgment.rationaleCode,
-    verifierFingerprint: judgment.verifierFingerprint,
-    evidence: references.filter((item) => selected.has(item.evidenceId)),
-    rejectedCitations: citations.rejected,
-  };
-};
+interface PreparedClaim {
+  claim: ClaimSpan;
+  references: ClaimEvidenceReference[];
+  acceptedIds: Set<string>;
+  rejectedCitations: RejectedCitation[];
+  quotesValid: boolean;
+}
 
-const orphanCitations = (
-  answer: string,
-  claims: readonly ClaimSpan[],
-  evidenceById: ReadonlyMap<string, Evidence>,
-  freshness: FreshnessState
-): RejectedCitation[] => {
-  const rejected: RejectedCitation[] = [];
+export interface PreparedClaimVerification {
+  capsuleId: string;
+  answerHash: string;
+  claims: PreparedClaim[];
+  rejectedCitations: RejectedCitation[];
+}
+
+/**
+ * Run deterministic capsule parsing, claim segmentation, single-pass two-pointer
+ * citation attribution, and quote checking once so semantic verifiers can apply
+ * judgments without repeating deterministic work.
+ */
+export const prepareClaimVerification = (
+  input: Omit<VerifyClaimsInput, "semanticJudgments">
+): PreparedClaimVerification => {
+  const capsule = parseContextCapsuleV1(input.capsule);
+  // Single pass over CITATION_PATTERN enforces MAX_CITATIONS before claim
+  // segmentation (preserving exact error priority), then attributes claim and
+  // orphan citations via a two-pointer sweep over sorted non-overlapping claims.
   CITATION_PATTERN.lastIndex = 0;
-  for (const match of answer.matchAll(CITATION_PATTERN)) {
-    const start = match.index;
-    const end = start + match[0].length;
-    if (claims.some((claim) => start >= claim.start && start < claim.end)) {
-      continue;
-    }
-    const rawId = match[1] ?? "";
-    const evidenceId =
-      match[2] === "]" && SHA256_PATTERN.test(rawId) ? rawId : null;
-    const evidence =
-      evidenceId === null ? undefined : evidenceById.get(evidenceId);
-    rejected.push({
-      marker: match[0],
-      start,
-      end,
-      evidenceId,
-      reason:
-        evidenceId === null
-          ? "malformed_citation"
-          : (rejectedReason(evidence, freshness) ?? "orphan_citation"),
-    });
-    if (rejected.length > MAX_CITATIONS) {
+  const rawCitations: Array<{
+    marker: string;
+    start: number;
+    end: number;
+    evidenceId: string | null;
+  }> = [];
+  for (const match of input.answer.matchAll(CITATION_PATTERN)) {
+    if (rawCitations.length >= MAX_CITATIONS) {
       throw new Error(`Citation limit exceeded (${MAX_CITATIONS})`);
     }
+    const start = match.index;
+    const rawId = match[1] ?? "";
+    rawCitations.push({
+      marker: match[0],
+      start,
+      end: start + match[0].length,
+      evidenceId: match[2] === "]" && SHA256_PATTERN.test(rawId) ? rawId : null,
+    });
   }
-  return rejected;
-};
-
-export const verifyClaimsDeterministically = (
-  input: VerifyClaimsInput
-): ClaimVerificationResult => {
-  if ((input.semanticJudgments?.length ?? 0) > MAX_CLAIMS) {
-    throw new Error(`Semantic judgment limit exceeded (${MAX_CLAIMS})`);
-  }
-  const capsule = parseContextCapsuleV1(input.capsule);
-  // A second strict parse makes the identity and nested contract requirement
-  // explicit at this pipeline boundary.
-  contextCapsuleV1Schema.parse(capsule);
-  assertCitationLimit(input.answer);
   const claims = segmentSubstantiveClaims(input.answer, capsule.capsuleId);
   const freshness = freshnessState(capsule, input.freshness);
   const evidenceById = new Map(
     capsule.evidence.map((evidence) => [evidence.evidenceId, evidence])
   );
-  const verifiedClaims = claims.map((claim) =>
-    verifyClaim(
-      input.answer,
+  const perClaimAccepted: Map<string, Evidence>[] = claims.map(() => new Map());
+  const perClaimRejected: RejectedCitation[][] = claims.map(() => []);
+  const orphanRejected: RejectedCitation[] = [];
+
+  let claimIdx = 0;
+  for (const citation of rawCitations) {
+    const { marker, start, end, evidenceId } = citation;
+    while (claimIdx < claims.length && claims[claimIdx]!.end <= start) {
+      claimIdx += 1;
+    }
+    const evidence =
+      evidenceId === null ? undefined : evidenceById.get(evidenceId);
+    const inClaim =
+      claimIdx < claims.length &&
+      start >= claims[claimIdx]!.start &&
+      start < claims[claimIdx]!.end;
+    if (inClaim) {
+      const reason =
+        evidenceId === null
+          ? "malformed_citation"
+          : rejectedReason(evidence, freshness);
+      if (reason) {
+        perClaimRejected[claimIdx]!.push({
+          marker,
+          start,
+          end,
+          evidenceId,
+          reason,
+        });
+      } else if (evidence) {
+        perClaimAccepted[claimIdx]!.set(evidence.evidenceId, evidence);
+      }
+    } else {
+      orphanRejected.push({
+        marker,
+        start,
+        end,
+        evidenceId,
+        reason:
+          evidenceId === null
+            ? "malformed_citation"
+            : (rejectedReason(evidence, freshness) ?? "orphan_citation"),
+      });
+    }
+  }
+
+  const normalizedEvidenceCache = new Map<string, string>();
+  const preparedClaims: PreparedClaim[] = claims.map((claim, index) => {
+    const accepted = [...perClaimAccepted[index]!.values()];
+    const references = accepted.map(evidenceReference);
+    const acceptedIds = new Set(references.map((item) => item.evidenceId));
+    const quotesValid =
+      references.length === 0
+        ? true
+        : quotesFoundInEvidence(claim.text, accepted, normalizedEvidenceCache);
+    return {
       claim,
-      evidenceById,
-      freshness,
-      input.semanticJudgments ?? []
-    )
-  );
-  const rejectedCitations = orphanCitations(
-    input.answer,
-    claims,
-    evidenceById,
-    freshness
-  );
-  const count = (status: ClaimVerificationStatus): number =>
-    verifiedClaims.filter((claim) => claim.status === status).length;
-  const supportedClaims = count("supported");
+      references,
+      acceptedIds,
+      rejectedCitations: perClaimRejected[index]!,
+      quotesValid,
+    };
+  });
+
+  return {
+    capsuleId: capsule.capsuleId,
+    answerHash: sha256Text(input.answer),
+    claims: preparedClaims,
+    rejectedCitations: orphanRejected,
+  };
+};
+
+export const applySemanticJudgments = (
+  prepared: PreparedClaimVerification,
+  semanticJudgments: readonly unknown[] = []
+): ClaimVerificationResult => {
+  if (semanticJudgments.length > MAX_CLAIMS) {
+    throw new Error(`Semantic judgment limit exceeded (${MAX_CLAIMS})`);
+  }
+  const judgmentsByClaimId = parseSemanticJudgmentsIndex(semanticJudgments);
+  const verifiedClaims: VerifiedClaim[] = prepared.claims.map((entry) => {
+    const { claim, references, acceptedIds, rejectedCitations, quotesValid } =
+      entry;
+    if (references.length === 0) {
+      return {
+        ...claim,
+        status: "insufficient",
+        confidence: null,
+        rationaleCode: "no_valid_evidence",
+        verifierFingerprint: null,
+        evidence: [],
+        rejectedCitations,
+      };
+    }
+    // An explicit quotation must appear in the cited evidence; the semantic
+    // judgment cannot vouch for wording it never compared.
+    if (!quotesValid) {
+      return {
+        ...claim,
+        status: "uncertain",
+        confidence: null,
+        rationaleCode: "quote_not_in_evidence",
+        verifierFingerprint: null,
+        evidence: references,
+        rejectedCitations,
+      };
+    }
+    const judgment = judgmentForClaim(claim, acceptedIds, judgmentsByClaimId);
+    if (!judgment) {
+      return {
+        ...claim,
+        status: "uncertain",
+        confidence: null,
+        rationaleCode: "semantic_judgment_unavailable",
+        verifierFingerprint: null,
+        evidence: references,
+        rejectedCitations,
+      };
+    }
+    const selected = new Set(judgment.evidenceIds);
+    return {
+      ...claim,
+      status: judgment.verdict,
+      confidence: judgment.confidence,
+      rationaleCode: judgment.rationaleCode,
+      verifierFingerprint: judgment.verifierFingerprint,
+      evidence: references.filter((item) => selected.has(item.evidenceId)),
+      rejectedCitations,
+    };
+  });
+
+  let supportedClaims = 0;
+  let contradictedClaims = 0;
+  let insufficientClaims = 0;
+  let uncertainClaims = 0;
+  let anyClaimRejected = false;
+  for (const claim of verifiedClaims) {
+    if (claim.status === "supported") supportedClaims += 1;
+    else if (claim.status === "contradicted") contradictedClaims += 1;
+    else if (claim.status === "insufficient") insufficientClaims += 1;
+    else uncertainClaims += 1;
+    if (claim.rejectedCitations.length > 0) anyClaimRejected = true;
+  }
   const coverage = {
     totalClaims: verifiedClaims.length,
     supportedClaims,
-    contradictedClaims: count("contradicted"),
-    insufficientClaims: count("insufficient"),
-    uncertainClaims: count("uncertain"),
+    contradictedClaims,
+    insufficientClaims,
+    uncertainClaims,
     supportedRatio:
       verifiedClaims.length === 0 ? 0 : supportedClaims / verifiedClaims.length,
   };
@@ -516,8 +556,7 @@ export const verifyClaimsDeterministically = (
       ? "no_substantive_claims"
       : coverage.contradictedClaims > 0
         ? "contradiction_detected"
-        : rejectedCitations.length > 0 ||
-            verifiedClaims.some((claim) => claim.rejectedCitations.length > 0)
+        : prepared.rejectedCitations.length > 0 || anyClaimRejected
           ? "citation_hygiene_failed"
           : coverage.supportedRatio < COVERAGE_THRESHOLD
             ? "coverage_below_threshold"
@@ -526,15 +565,25 @@ export const verifyClaimsDeterministically = (
   return claimVerificationResultSchema.parse({
     schemaVersion: CLAIM_VERIFICATION_SCHEMA_VERSION,
     coordinateSpace: CLAIM_COORDINATE_SPACE,
-    capsuleId: capsule.capsuleId,
-    answerHash: sha256Text(input.answer),
+    capsuleId: prepared.capsuleId,
+    answerHash: prepared.answerHash,
     coverageThreshold: COVERAGE_THRESHOLD,
     claims: verifiedClaims,
-    rejectedCitations,
+    rejectedCitations: prepared.rejectedCitations,
     coverage,
     answerStatus: abstained ? "abstained" : "verified",
     abstained,
     abstentionReason,
     abstentionText: abstained ? CLAIM_ABSTENTION_TEXT : null,
   });
+};
+
+export const verifyClaimsDeterministically = (
+  input: VerifyClaimsInput
+): ClaimVerificationResult => {
+  if ((input.semanticJudgments?.length ?? 0) > MAX_CLAIMS) {
+    throw new Error(`Semantic judgment limit exceeded (${MAX_CLAIMS})`);
+  }
+  const prepared = prepareClaimVerification(input);
+  return applySemanticJudgments(prepared, input.semanticJudgments ?? []);
 };
