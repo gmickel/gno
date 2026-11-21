@@ -856,6 +856,20 @@ describe("Review regression checks (R3, R4, R6, R7, R8)", () => {
       expect(res.value).toHaveLength(1);
       expect(res.value[0]!.mirrorHash).toBe("h0000");
     }
+
+    // Single-batch (<= 800 hashes) preserves SQLite NULLS FIRST selection
+    const singleBatch = await portRes.value.searchNearest(
+      new Float32Array([1, 0, 0]),
+      1,
+      {
+        allowedMirrorHashes: ["h0000", "h0800"],
+      }
+    );
+    expect(singleBatch.ok).toBe(true);
+    if (singleBatch.ok) {
+      expect(singleBatch.value).toHaveLength(1);
+      expect(singleBatch.value[0]!.mirrorHash).toBe("h0800");
+    }
   });
 
   test("R8: getGraphNeighborsForSeeds handles >50,000-char seed title without LIKE error and matches suffix wiki links", async () => {

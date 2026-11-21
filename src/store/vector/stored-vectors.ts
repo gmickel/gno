@@ -171,41 +171,51 @@ export function readSimilaritySourceVectors(
     else idsByMirror.set(document.mirrorHash, [document.id]);
   }
   const allMirrors = [...idsByMirror.keys()];
-  const seqZeroRows = db
-    .query<{ mirrorHash: string; embedding: Uint8Array }, [string, string]>(`
-      SELECT mirror_hash AS mirrorHash, embedding
-      FROM content_vectors
-      WHERE model = ? AND seq = 0
-        AND mirror_hash IN (SELECT value FROM json_each(?))
-    `)
-    .all(source.model, JSON.stringify(allMirrors));
-  const foundMirrors = new Set<string>();
-  for (const row of seqZeroRows) {
-    foundMirrors.add(row.mirrorHash);
-    for (const id of idsByMirror.get(row.mirrorHash) ?? [])
-      add(id, row.embedding);
-  }
-  const missingMirrors = allMirrors.filter(
-    (mirror) => !foundMirrors.has(mirror)
-  );
-  if (missingMirrors.length > 0) {
-    const fallbackRows = db
-      .query<{ mirrorHash: string; embedding: Uint8Array }, [string, string]>(`
-        SELECT mirrorHash, embedding FROM (
-          SELECT mirror_hash AS mirrorHash, embedding,
-            ROW_NUMBER() OVER (PARTITION BY mirror_hash ORDER BY seq) AS rn
+  return db
+    .transaction(() => {
+      const seqZeroRows = db
+        .query<
+          { mirrorHash: string; embedding: Uint8Array },
+          [string, string]
+        >(`
+          SELECT mirror_hash AS mirrorHash, embedding
           FROM content_vectors
-          WHERE model = ? AND seq > 0
+          WHERE model = ? AND seq = 0
             AND mirror_hash IN (SELECT value FROM json_each(?))
-        ) WHERE rn = 1
-      `)
-      .all(source.model, JSON.stringify(missingMirrors));
-    for (const row of fallbackRows) {
-      for (const id of idsByMirror.get(row.mirrorHash) ?? [])
-        add(id, row.embedding);
-    }
-  }
-  return vectors;
+        `)
+        .all(source.model, JSON.stringify(allMirrors));
+      const foundMirrors = new Set<string>();
+      for (const row of seqZeroRows) {
+        foundMirrors.add(row.mirrorHash);
+        for (const id of idsByMirror.get(row.mirrorHash) ?? [])
+          add(id, row.embedding);
+      }
+      const missingMirrors = allMirrors.filter(
+        (mirror) => !foundMirrors.has(mirror)
+      );
+      if (missingMirrors.length > 0) {
+        const fallbackRows = db
+          .query<
+            { mirrorHash: string; embedding: Uint8Array },
+            [string, string]
+          >(`
+            SELECT mirrorHash, embedding FROM (
+              SELECT mirror_hash AS mirrorHash, embedding,
+                ROW_NUMBER() OVER (PARTITION BY mirror_hash ORDER BY seq) AS rn
+              FROM content_vectors
+              WHERE model = ? AND seq > 0
+                AND mirror_hash IN (SELECT value FROM json_each(?))
+            ) WHERE rn = 1
+          `)
+          .all(source.model, JSON.stringify(missingMirrors));
+        for (const row of fallbackRows) {
+          for (const id of idsByMirror.get(row.mirrorHash) ?? [])
+            add(id, row.embedding);
+        }
+      }
+      return vectors;
+    })
+    .deferred();
 }
 
 /**

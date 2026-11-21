@@ -129,6 +129,16 @@ function formatUnavailableMessage(loadError?: string): string {
   return `Vector search requires sqlite-vec. Embeddings are stored, but KNN search is disabled.${reason} ${SQLITE_VEC_GUIDANCE}`;
 }
 
+const ALLOWED_HASH_BATCH_SIZE = 800;
+
+const compareVectorResults = (
+  left: VectorSearchResult,
+  right: VectorSearchResult
+): number =>
+  left.distance - right.distance ||
+  left.mirrorHash.localeCompare(right.mirrorHash) ||
+  left.seq - right.seq;
+
 /**
  * Create a VectorIndexPort for a specific model.
  * sqlite-vec is optional - storage works without it, search disabled.
@@ -408,37 +418,87 @@ export async function createVectorIndexPort(
             distanceMetric === "cosine"
               ? "vec_distance_cosine"
               : "vec_distance_L2";
-          const rows = db
-            .query<
-              {
-                mirror_hash: string;
-                seq: number;
-                distance: number;
-              },
-              [Uint8Array, string, string, number]
-            >(
-              `SELECT mirror_hash, seq,
-                      ${distanceFunction}(embedding, ?) AS distance
-               FROM content_vectors
-               WHERE model = ?
-                 AND mirror_hash IN (SELECT value FROM json_each(?))
-               ORDER BY COALESCE(distance, 0), mirror_hash, seq
-               LIMIT ?`
-            )
-            .all(encodeEmbedding(embedding), model, JSON.stringify(hashes), k);
+          const queryVector = encodeEmbedding(embedding);
+          const scopedStmt = db.query<
+            {
+              mirror_hash: string;
+              seq: number;
+              distance: number;
+            },
+            [Uint8Array, string, string, number]
+          >(
+            `SELECT mirror_hash, seq,
+                    ${distanceFunction}(embedding, ?) AS distance
+             FROM content_vectors
+             WHERE model = ?
+               AND mirror_hash IN (SELECT value FROM json_each(?))
+             ORDER BY distance, mirror_hash, seq
+             LIMIT ?`
+          );
+          const rows = scopedStmt.all(
+            queryVector,
+            model,
+            JSON.stringify(hashes),
+            k
+          );
           const minScore = searchOptions.minScore;
+          // SQLite sorts NULL distances (e.g. zero vectors under cosine) first.
+          // When hashes span multiple legacy batches and a NULL distance appears
+          // in the top-k, preserve exact per-batch SQL selection + JS merge order.
+          if (
+            hashes.length > ALLOWED_HASH_BATCH_SIZE &&
+            rows.length > 0 &&
+            rows[0]!.distance === null
+          ) {
+            const scoped: VectorSearchResult[] = [];
+            for (
+              let index = 0;
+              index < hashes.length;
+              index += ALLOWED_HASH_BATCH_SIZE
+            ) {
+              const batch = hashes.slice(
+                index,
+                index + ALLOWED_HASH_BATCH_SIZE
+              );
+              const batchRows = scopedStmt.all(
+                queryVector,
+                model,
+                JSON.stringify(batch),
+                k
+              );
+              scoped.push(
+                ...batchRows.map((row) => ({
+                  mirrorHash: row.mirror_hash,
+                  seq: row.seq,
+                  distance: row.distance,
+                }))
+              );
+            }
+            return Promise.resolve(
+              ok(
+                scoped
+                  .sort(compareVectorResults)
+                  .filter(
+                    (row) =>
+                      minScore === undefined || 1 - row.distance >= minScore
+                  )
+                  .slice(0, k)
+              )
+            );
+          }
           return Promise.resolve(
             ok(
               rows
-                .filter(
-                  (row) =>
-                    minScore === undefined || 1 - row.distance >= minScore
-                )
                 .map((row) => ({
                   mirrorHash: row.mirror_hash,
                   seq: row.seq,
                   distance: row.distance,
                 }))
+                .sort(compareVectorResults)
+                .filter(
+                  (row) =>
+                    minScore === undefined || 1 - row.distance >= minScore
+                )
             )
           );
         }
