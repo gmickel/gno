@@ -13,8 +13,9 @@ import {
   assertInferenceResult,
 } from "../llm/inference-scope";
 import {
+  applySemanticJudgments,
+  prepareClaimVerification,
   semanticClaimJudgmentSchema,
-  verifyClaimsDeterministically,
 } from "./claim-verification";
 
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
@@ -317,7 +318,8 @@ export const verifyClaimsSemantically = async (
   }
   const now = input.now ?? performance.now.bind(performance);
   const startedAt = now();
-  const deterministic = verifyClaimsDeterministically(input);
+  const prepared = prepareClaimVerification(input);
+  const deterministic = applySemanticJudgments(prepared, []);
   const candidates = candidateClaims(deterministic);
   const modelFingerprint = input.genPort
     ? sha256Text(input.genPort.modelUri)
@@ -402,7 +404,7 @@ export const verifyClaimsSemantically = async (
     deterministic.answerHash,
     candidates
   );
-  if (new TextEncoder().encode(prompt).byteLength > MAX_PROMPT_BYTES) {
+  if (Buffer.byteLength(prompt, "utf8") > MAX_PROMPT_BYTES) {
     return failedResult(
       deterministic,
       "input_limit_exceeded",
@@ -453,10 +455,7 @@ export const verifyClaimsSemantically = async (
       verifierFingerprint
     );
   }
-  const verification = verifyClaimsDeterministically({
-    ...input,
-    semanticJudgments: envelope.judgments,
-  });
+  const verification = applySemanticJudgments(prepared, envelope.judgments);
   return {
     verification,
     semanticVerification: capability(

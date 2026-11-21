@@ -15,6 +15,7 @@ import {
 } from "../llm/inference-scope";
 import {
   buildIntentAwareRerankQuery,
+  extractSteeringTerms,
   selectBestChunkForSteering,
 } from "./intent";
 import { DEFAULT_BLENDING_SCHEDULE } from "./types";
@@ -119,40 +120,32 @@ async function fetchChunkTexts(
   const chunksByHash: Map<string, ChunkRow[]> = chunksBatchResult.ok
     ? chunksBatchResult.value
     : new Map();
-  const preferredSeqByHash = new Map<string, number>();
-  const ownerHashes = new Map(
-    toRerank.map((candidate) => [
-      rerankOwnerKey(candidate),
-      candidate.mirrorHash,
-    ])
-  );
+  const bestByOwner = new Map<string, FusionCandidate>();
+  const ownerHashes = new Map<string, string>();
 
   for (const candidate of toRerank) {
     assertInferenceActive();
-    const existingSeq = preferredSeqByHash.get(rerankOwnerKey(candidate));
-    if (existingSeq !== undefined) {
-      const existingCandidate = toRerank.find(
-        (entry) =>
-          rerankOwnerKey(entry) === rerankOwnerKey(candidate) &&
-          entry.seq === existingSeq
-      );
-      if (
-        existingCandidate &&
-        existingCandidate.fusionScore >= candidate.fusionScore
-      ) {
-        continue;
-      }
+    const ownerKey = rerankOwnerKey(candidate);
+    if (!ownerHashes.has(ownerKey)) {
+      ownerHashes.set(ownerKey, candidate.mirrorHash);
     }
-    preferredSeqByHash.set(rerankOwnerKey(candidate), candidate.seq);
+    const existing = bestByOwner.get(ownerKey);
+    if (!existing || candidate.fusionScore > existing.fusionScore) {
+      bestByOwner.set(ownerKey, candidate);
+    }
   }
 
+  const queryTerms = extractSteeringTerms(query);
+  const intentTerms = extractSteeringTerms(intent ?? "");
   const chunkTexts = new Map<string, string>();
   for (const [hash, mirrorHash] of ownerHashes) {
     assertInferenceActive();
     const chunks = chunksByHash.get(mirrorHash);
     const bestChunk = selectBestChunkForSteering(chunks ?? [], query, intent, {
-      preferredSeq: preferredSeqByHash.get(hash) ?? null,
+      preferredSeq: bestByOwner.get(hash)?.seq ?? null,
       intentWeight: 0.5,
+      queryTerms,
+      intentTerms,
     });
     const text = bestChunk?.text ?? "";
     chunkTexts.set(

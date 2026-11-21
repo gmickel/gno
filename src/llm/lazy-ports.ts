@@ -1,6 +1,7 @@
 /** Defer model resolution/download until an actual inference operation. */
 import type {
   EmbeddingPort,
+  GenerationModelIdentity,
   GenerationPort,
   LlmResult,
   RerankPort,
@@ -82,18 +83,47 @@ export function lazyEmbeddingPort(
   };
 }
 
+export interface LazyGenerationPortOptions {
+  /** Read-only identity probe used before the underlying port is initialized. */
+  resolveModelIdentity?: () => Promise<GenerationModelIdentity | null>;
+}
+
 export function lazyGenerationPort(
   modelUri: string,
-  create: () => Promise<LlmResult<GenerationPort>>
+  create: () => Promise<LlmResult<GenerationPort>>,
+  options?: LazyGenerationPortOptions
 ): GenerationPort {
   const owner = lazyOwner(modelUri, create);
   return {
     modelUri,
+    get modelPath() {
+      return owner.peek()?.modelPath;
+    },
+    get modelFingerprint() {
+      return owner.peek()?.modelFingerprint;
+    },
+    async resolveModelIdentity() {
+      const existing = owner.peek();
+      if (existing) {
+        return existing.modelPath || existing.modelFingerprint
+          ? {
+              modelPath: existing.modelPath,
+              modelFingerprint: existing.modelFingerprint,
+            }
+          : null;
+      }
+      if (!options?.resolveModelIdentity) return null;
+      try {
+        return await options.resolveModelIdentity();
+      } catch {
+        return null;
+      }
+    },
     // These are the fixed native/HTTP adapter contracts; no probing required.
     structuredOutput: isHttpGenUri(modelUri) ? "none" : "json_schema",
-    async generate(prompt, params) {
+    async generate(prompt, params, genOptions) {
       const port = await owner.get();
-      return port.ok ? port.value.generate(prompt, params) : port;
+      return port.ok ? port.value.generate(prompt, params, genOptions) : port;
     },
     dispose: () => owner.dispose(),
   };

@@ -96,7 +96,7 @@ export class NodeLlamaCppGeneration implements GenerationPort {
   private readonly manager: ModelManager;
   readonly modelUri: string;
   readonly structuredOutput = "json_schema" as const;
-  private readonly modelPath: string;
+  readonly modelPath: string;
 
   constructor(manager: ModelManager, modelUri: string, modelPath: string) {
     this.manager = manager;

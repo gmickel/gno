@@ -19,7 +19,11 @@ const MAX_CACHED_PROOFS = 100_000;
 
 const proofCaches = new WeakMap<
   Database,
-  { epoch: number; proofs: Map<string, boolean> }
+  {
+    epoch: number;
+    proofs: Map<string, boolean>;
+    nullCosinePartitions: Map<string, boolean>;
+  }
 >();
 
 export function vectorProofKey(
@@ -32,12 +36,15 @@ export function vectorProofKey(
   return `${model}\0${documentId}\0${mirrorHash}\0${seq}\0${inputHash}`;
 }
 
-export function provenOwners(
+function getEpochCache(
   db: Database,
   inOuterTransaction: boolean
-): Map<string, boolean> {
+): {
+  proofs: Map<string, boolean>;
+  nullCosinePartitions: Map<string, boolean>;
+} | null {
   if (inOuterTransaction) {
-    return new Map<string, boolean>();
+    return null;
   }
   const row = db
     .query<{ epoch: number }, []>(
@@ -45,12 +52,52 @@ export function provenOwners(
     )
     .get();
   if (!row) {
-    return new Map<string, boolean>();
+    return null;
   }
   let cache = proofCaches.get(db);
   if (cache?.epoch !== row.epoch || cache.proofs.size > MAX_CACHED_PROOFS) {
-    cache = { epoch: row.epoch, proofs: new Map() };
+    cache = {
+      epoch: row.epoch,
+      proofs: new Map(),
+      nullCosinePartitions: new Map(),
+    };
     proofCaches.set(db, cache);
   }
-  return cache.proofs;
+  return cache;
+}
+
+export function provenOwners(
+  db: Database,
+  inOuterTransaction: boolean
+): Map<string, boolean> {
+  return getEpochCache(db, inOuterTransaction)?.proofs ?? new Map();
+}
+
+/**
+ * True if the partition contains any variant whose cosine distance can be NULL
+ * (e.g. an all-zero vector). Cached per (db, partitionId, epoch) so the vec0
+ * fast path stays O(1) while preserving exact SQLite NULLS FIRST parity.
+ */
+export function hasNullCosineVariant(
+  db: Database,
+  partitionId: string,
+  inOuterTransaction: boolean
+): boolean {
+  const cache = getEpochCache(db, inOuterTransaction);
+  const cached = cache?.nullCosinePartitions.get(partitionId);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const found = Boolean(
+    db
+      .query<unknown, [string]>(
+        `SELECT 1 FROM vector_variants
+         WHERE partition_id = ?
+           AND vec_distance_cosine(embedding, embedding) IS NULL
+         LIMIT 1`
+      )
+      .get(partitionId)
+  );
+  cache?.nullCosinePartitions.set(partitionId, found);
+  return found;
 }

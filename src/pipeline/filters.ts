@@ -4,7 +4,7 @@
  * @module src/pipeline/filters
  */
 
-import type { ChunkRow, DocumentRow, StorePort } from "../store/types";
+import type { ChunkRow, DocumentRow, StorePort, TagRow } from "../store/types";
 import type { HybridSearchOptions } from "./types";
 
 import {
@@ -12,12 +12,82 @@ import {
   TYPED_METADATA_INGEST_VERSION,
   type MetadataPredicate,
 } from "../core/typed-metadata";
-import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
-import { isWithinTemporalRange, resolveTemporalRange } from "./temporal";
+import {
+  compileExcludeTerms,
+  matchesExcludedChunks,
+  matchesExcludedText,
+} from "./exclude";
+import {
+  compileTemporalRange,
+  isWithinTemporalRange,
+  resolveTemporalRange,
+  type TemporalRange,
+} from "./temporal";
 
 export interface QueryFilterEvaluation {
   matches: boolean;
   reasons: string[];
+}
+
+export interface CompiledDocumentFilters {
+  temporalRange: TemporalRange;
+  authorLower?: string;
+  allowedCategories?: Set<string>;
+  excludeTermsLower?: string[];
+  collection?: string;
+  collectionsSet?: Set<string>;
+  allowedMirrorHashSet?: Set<string>;
+  callerCollection?: string;
+  callerCollectionsSet?: Set<string>;
+  callerAllowedMirrorHashSet?: Set<string>;
+}
+
+/** Pre-compile query-invariant filter sets and bounds once per search. */
+export function compileDocumentFilters(
+  query: string,
+  options: Pick<
+    HybridSearchOptions,
+    | "since"
+    | "until"
+    | "author"
+    | "categories"
+    | "exclude"
+    | "collection"
+    | "collections"
+    | "retrievalScope"
+  >,
+  callerScope?: Pick<
+    HybridSearchOptions,
+    "collection" | "collections" | "retrievalScope"
+  >,
+  preResolvedTemporal?: TemporalRange
+): CompiledDocumentFilters {
+  const temporalRange = compileTemporalRange(
+    preResolvedTemporal ??
+      resolveTemporalRange(query, options.since, options.until)
+  );
+  return {
+    temporalRange,
+    authorLower: options.author ? options.author.toLowerCase() : undefined,
+    allowedCategories: options.categories?.length
+      ? new Set(options.categories.map((c) => c.toLowerCase()))
+      : undefined,
+    excludeTermsLower: compileExcludeTerms(options.exclude),
+    collection: options.collection,
+    collectionsSet: options.collections
+      ? new Set(options.collections)
+      : undefined,
+    allowedMirrorHashSet: options.retrievalScope
+      ? new Set(options.retrievalScope.allowedMirrorHashes)
+      : undefined,
+    callerCollection: callerScope?.collection,
+    callerCollectionsSet: callerScope?.collections
+      ? new Set(callerScope.collections)
+      : undefined,
+    callerAllowedMirrorHashSet: callerScope?.retrievalScope
+      ? new Set(callerScope.retrievalScope.allowedMirrorHashes)
+      : undefined,
+  };
 }
 
 /** Internal pre-budget contract. Undefined metadata is a failed lookup, never
@@ -28,9 +98,11 @@ export interface QueryFilterEvaluation {
 /** True when `collection` falls outside the request's collection scope. */
 function outsideCollectionScope(
   scope: Pick<HybridSearchOptions, "collection" | "collections">,
-  collection: string
+  collection: string,
+  collectionsSet?: Set<string>
 ): boolean {
   if (scope.collection && collection !== scope.collection) return true;
+  if (collectionsSet !== undefined) return !collectionsSet.has(collection);
   return (
     scope.collections !== undefined && !scope.collections.includes(collection)
   );
@@ -45,7 +117,9 @@ export async function evaluateRetrievalEligibility(
   callerScope?: Pick<
     HybridSearchOptions,
     "collection" | "collections" | "retrievalScope"
-  >
+  >,
+  compiled?: CompiledDocumentFilters,
+  prefetchedTags?: ReadonlyMap<number, TagRow[]> | null
 ): Promise<QueryFilterEvaluation & { chunks: ChunkRow[] }> {
   if (!doc || !chunks || !doc.mirrorHash) {
     return { matches: false, reasons: ["metadata"], chunks: [] };
@@ -53,12 +127,39 @@ export async function evaluateRetrievalEligibility(
   const reasons: string[] = [];
   if (!doc.active) reasons.push("inactive");
   const sourcePath = doc.recordSourcePath ?? doc.relPath;
-  for (const scope of [callerScope, options]) {
-    if (scope && outsideCollectionScope(scope, doc.collection)) {
+  const scopeEntries: Array<{
+    scope:
+      | Pick<
+          HybridSearchOptions,
+          "collection" | "collections" | "retrievalScope"
+        >
+      | undefined;
+    collectionsSet?: Set<string>;
+    allowedMirrorHashSet?: Set<string>;
+  }> = [
+    {
+      scope: callerScope,
+      collectionsSet: compiled?.callerCollectionsSet,
+      allowedMirrorHashSet: compiled?.callerAllowedMirrorHashSet,
+    },
+    {
+      scope: options,
+      collectionsSet: compiled?.collectionsSet,
+      allowedMirrorHashSet: compiled?.allowedMirrorHashSet,
+    },
+  ];
+  for (const { scope, collectionsSet, allowedMirrorHashSet } of scopeEntries) {
+    if (
+      scope &&
+      outsideCollectionScope(scope, doc.collection, collectionsSet)
+    ) {
       reasons.push("collection");
     }
     if (scope?.retrievalScope) {
-      if (!scope.retrievalScope.allowedMirrorHashes.includes(doc.mirrorHash)) {
+      const allowed = allowedMirrorHashSet
+        ? allowedMirrorHashSet.has(doc.mirrorHash)
+        : scope.retrievalScope.allowedMirrorHashes.includes(doc.mirrorHash);
+      if (!allowed) {
         reasons.push("scope");
       }
       const prefix = scope.retrievalScope.relPathPrefix;
@@ -80,7 +181,15 @@ export async function evaluateRetrievalEligibility(
     try {
       reasons.push(
         ...(
-          await evaluateQueryTargetFilters(store, query, doc, chunks, options)
+          await evaluateQueryTargetFilters(
+            store,
+            query,
+            doc,
+            chunks,
+            options,
+            compiled,
+            prefetchedTags
+          )
         ).reasons
       );
     } catch {
@@ -101,36 +210,43 @@ export function evaluateDocumentChunkFilters(
   query: string,
   doc: DocumentRow,
   chunks: ChunkRow[],
-  options: HybridSearchOptions
+  options: HybridSearchOptions,
+  compiled?: CompiledDocumentFilters
 ): QueryFilterEvaluation {
   const reasons: string[] = [];
   const metadataReason = typedMetadataFilterReason(doc, options.filter);
   if (metadataReason) reasons.push(metadataReason);
-  const temporalRange = resolveTemporalRange(
-    query,
-    options.since,
-    options.until
-  );
+  const temporalRange =
+    compiled?.temporalRange ??
+    resolveTemporalRange(query, options.since, options.until);
 
-  if (outsideCollectionScope(options, doc.collection)) {
+  if (
+    outsideCollectionScope(options, doc.collection, compiled?.collectionsSet)
+  ) {
     reasons.push("collection");
   }
   if (!isWithinTemporalRange(doc.sourceMtime, temporalRange)) {
     reasons.push("date");
   }
-  if (
-    options.author &&
-    !doc.author?.toLowerCase().includes(options.author.toLowerCase())
-  ) {
+  const authorLower =
+    compiled !== undefined
+      ? compiled.authorLower
+      : options.author?.toLowerCase();
+  if (authorLower && !doc.author?.toLowerCase().includes(authorLower)) {
     reasons.push("author");
   }
-  if (options.categories?.length) {
-    const allowed = new Set(options.categories.map((c) => c.toLowerCase()));
+  const allowedCategories =
+    compiled !== undefined
+      ? compiled.allowedCategories
+      : options.categories?.length
+        ? new Set(options.categories.map((c) => c.toLowerCase()))
+        : undefined;
+  if (allowedCategories) {
     const contentTypeMatch = doc.contentType
-      ? allowed.has(doc.contentType.toLowerCase())
+      ? allowedCategories.has(doc.contentType.toLowerCase())
       : false;
     const categoryMatch = (doc.categories ?? []).some((c) =>
-      allowed.has(c.toLowerCase())
+      allowedCategories.has(c.toLowerCase())
     );
     if (!contentTypeMatch && !categoryMatch) {
       reasons.push("category");
@@ -142,8 +258,12 @@ export function evaluateDocumentChunkFilters(
   ) {
     reasons.push("lang");
   }
+  const excludeTerms =
+    compiled !== undefined ? compiled.excludeTermsLower : options.exclude;
+  const preLowercased = compiled !== undefined;
   if (
-    matchesExcludedText(
+    excludeTerms?.length &&
+    (matchesExcludedText(
       [
         doc.title ?? "",
         doc.recordSourcePath ?? doc.relPath,
@@ -151,9 +271,10 @@ export function evaluateDocumentChunkFilters(
         doc.contentType ?? "",
         ...(doc.categories ?? []),
       ],
-      options.exclude
+      excludeTerms,
+      preLowercased
     ) ||
-    matchesExcludedChunks(chunks, options.exclude)
+      matchesExcludedChunks(chunks, excludeTerms, preLowercased))
   ) {
     reasons.push("exclude");
   }
@@ -169,18 +290,33 @@ export async function evaluateQueryTargetFilters(
   query: string,
   doc: DocumentRow,
   chunks: ChunkRow[],
-  options: HybridSearchOptions
+  options: HybridSearchOptions,
+  compiled?: CompiledDocumentFilters,
+  prefetchedTags?: ReadonlyMap<number, TagRow[]> | null
 ): Promise<QueryFilterEvaluation> {
   const reasons = [
-    ...evaluateDocumentChunkFilters(query, doc, chunks, options).reasons,
+    ...evaluateDocumentChunkFilters(query, doc, chunks, options, compiled)
+      .reasons,
   ];
 
   if (options.tagsAll?.length || options.tagsAny?.length) {
-    const tagsResult = await store.getTagsForDoc(doc.id);
-    if (!tagsResult.ok) {
-      reasons.push("tags");
+    let docTagRows: TagRow[] | null = null;
+    if (prefetchedTags !== undefined) {
+      if (prefetchedTags === null) {
+        reasons.push("tags");
+      } else {
+        docTagRows = prefetchedTags.get(doc.id) ?? [];
+      }
     } else {
-      const docTags = new Set(tagsResult.value.map((tag) => tag.tag));
+      const tagsResult = await store.getTagsForDoc(doc.id);
+      if (!tagsResult.ok) {
+        reasons.push("tags");
+      } else {
+        docTagRows = tagsResult.value;
+      }
+    }
+    if (docTagRows !== null) {
+      const docTags = new Set(docTagRows.map((tag) => tag.tag));
       if (
         options.tagsAll?.length &&
         !options.tagsAll.every((tag) => docTags.has(tag))

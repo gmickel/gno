@@ -70,36 +70,47 @@ export const attachSearchResultEgressLineage = async (
       },
     ])
   );
+  const collectionsByHash = new Map<string, Set<string>>();
+  const addOwnerCollection = (hash: string, collection: string): void => {
+    let set = collectionsByHash.get(hash);
+    if (!set) {
+      set = new Set();
+      collectionsByHash.set(hash, set);
+    }
+    set.add(collection);
+  };
+  for (const document of ownershipDocuments) {
+    if (document.mirrorHash) {
+      addOwnerCollection(document.mirrorHash, document.collection);
+    }
+  }
+  for (const result of results) {
+    const hash = result.conversion?.mirrorHash;
+    if (!hash) continue;
+    const collection = parseUri(result.uri)?.collection;
+    if (collection) {
+      addOwnerCollection(hash, collection);
+    }
+  }
+
   const lineageByMirrorHash = new Map<string, EgressLineage>();
   for (const mirrorHash of mirrorHashes) {
-    const ownerCollections = [
-      ...new Set([
-        ...ownershipDocuments
-          .filter((document) => document.mirrorHash === mirrorHash)
-          .map((owner) => owner.collection),
-        ...results
-          .filter((result) => result.conversion?.mirrorHash === mirrorHash)
-          .map((result) => parseUri(result.uri)?.collection)
-          .filter((collection): collection is string => Boolean(collection)),
-      ]),
-    ];
-    const policies = ownerCollections.map((collection) =>
-      policyByCollection.get(collection)
-    );
-    if (policies.some((policy) => policy === undefined)) {
-      return err(
-        "INVALID_INPUT",
-        "Search result policy lineage references an unknown collection"
-      );
+    const ownerCollections = collectionsByHash.get(mirrorHash);
+    if (!ownerCollections || ownerCollections.size === 0) continue;
+    const policies: NonNullable<ReturnType<typeof policyByCollection.get>>[] =
+      [];
+    for (const collection of ownerCollections) {
+      const policy = policyByCollection.get(collection);
+      if (policy === undefined) {
+        return err(
+          "INVALID_INPUT",
+          "Search result policy lineage references an unknown collection"
+        );
+      }
+      policies.push(policy);
     }
-    if (policies.length === 0) continue;
     try {
-      lineageByMirrorHash.set(
-        mirrorHash,
-        createEgressLineage(
-          policies as NonNullable<(typeof policies)[number]>[]
-        )
-      );
+      lineageByMirrorHash.set(mirrorHash, createEgressLineage(policies));
     } catch (error) {
       return err(
         "INVALID_INPUT",

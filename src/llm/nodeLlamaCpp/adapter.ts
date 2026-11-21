@@ -5,7 +5,8 @@
  * @module src/llm/nodeLlamaCpp/adapter
  */
 
-// Bun has no canonical-path API. Approval binds the real file identity.
+// Bun has no canonical-path or sync stat API. Approval binds the real file identity.
+import { statSync } from "node:fs";
 import { realpath } from "node:fs/promises";
 
 import type { Config } from "../../config/types";
@@ -131,7 +132,7 @@ export class LlmAdapter {
     if (!approved.ok) return approved;
     return {
       ok: true,
-      value: new NativeEmbeddingPort(this.worker, approved.value, uri),
+      value: new NativeEmbeddingPort(this.worker, approved.value.id, uri),
     };
   }
 
@@ -175,7 +176,13 @@ export class LlmAdapter {
     if (!approved.ok) return approved;
     return {
       ok: true,
-      value: new NativeGenerationPort(this.worker, approved.value, uri),
+      value: new NativeGenerationPort(
+        this.worker,
+        approved.value.id,
+        uri,
+        approved.value.path,
+        approved.value.fingerprint
+      ),
     };
   }
 
@@ -216,7 +223,13 @@ export class LlmAdapter {
     if (!approved.ok) return approved;
     return {
       ok: true,
-      value: new NativeGenerationPort(this.worker, approved.value, uri),
+      value: new NativeGenerationPort(
+        this.worker,
+        approved.value.id,
+        uri,
+        approved.value.path,
+        approved.value.fingerprint
+      ),
     };
   }
 
@@ -261,7 +274,7 @@ export class LlmAdapter {
     if (!approved.ok) return approved;
     return {
       ok: true,
-      value: new NativeRerankPort(this.worker, approved.value, uri),
+      value: new NativeRerankPort(this.worker, approved.value.id, uri),
     };
   }
 
@@ -269,16 +282,24 @@ export class LlmAdapter {
     uri: string,
     path: string,
     type: ModelType
-  ): Promise<LlmResult<string>> {
+  ): Promise<LlmResult<{ id: string; path: string; fingerprint?: string }>> {
     try {
       const id = `${type}:${uri}`;
+      const canonicalPath = await realpath(path);
+      let fingerprint: string | undefined;
+      try {
+        const stat = statSync(canonicalPath);
+        fingerprint = `file:${stat.size}:${Math.trunc(stat.mtimeMs)}`;
+      } catch {
+        fingerprint = undefined;
+      }
       await this.worker.registerModel({
         id,
         modelUri: uri,
-        path: await realpath(path),
+        path: canonicalPath,
         type,
       });
-      return { ok: true, value: id };
+      return { ok: true, value: { id, path: canonicalPath, fingerprint } };
     } catch (cause) {
       return {
         ok: false,

@@ -19,7 +19,10 @@ import type {
 
 import { err, ok } from "../types";
 import { buildEligibleVectorChunksQuery } from "./eligibility";
-import { searchVectorVariants } from "./variant-search";
+import {
+  searchVectorVariants,
+  searchVectorVariantsBatch,
+} from "./variant-search";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BLOB Encoding Helpers (avoid Buffer.buffer footgun)
@@ -539,6 +542,73 @@ export async function createVectorIndexPort(
           )
         );
       }
+    },
+
+    async searchNearestBatch(
+      embeddings: Float32Array[],
+      limits: number[],
+      searchOptions?: VectorSearchOptions
+    ): Promise<StoreResult<VectorSearchResult[][]>> {
+      if (!searchAvailable || !(searchStmt || noVectorsYet)) {
+        return err(
+          "VEC_SEARCH_UNAVAILABLE",
+          formatUnavailableMessage(loadError)
+        );
+      }
+      if (embeddings.length !== limits.length) {
+        return err(
+          "INVALID_INPUT",
+          "Vector batch search embeddings and limits must have equal length"
+        );
+      }
+      for (const k of limits) {
+        if (!Number.isSafeInteger(k) || k < 1) {
+          return err(
+            "INVALID_INPUT",
+            "Vector search limit must be a positive integer"
+          );
+        }
+      }
+      if (embeddings.length === 0) {
+        return ok([]);
+      }
+      if (embeddings.length === 1) {
+        const single = await port.searchNearest(
+          embeddings[0]!,
+          limits[0]!,
+          searchOptions
+        );
+        return single.ok ? ok([single.value]) : single;
+      }
+
+      try {
+        const batch = searchVectorVariantsBatch(
+          db,
+          model,
+          dimensions,
+          embeddings,
+          limits,
+          searchOptions
+        );
+        if (batch !== null) return ok(batch);
+      } catch (e) {
+        return err(
+          "VEC_SEARCH_FAILED",
+          `Vector search failed: ${e instanceof Error ? e.message : String(e)}`
+        );
+      }
+
+      const legacyResults: VectorSearchResult[][] = [];
+      for (let i = 0; i < embeddings.length; i++) {
+        const single = await port.searchNearest(
+          embeddings[i]!,
+          limits[i]!,
+          searchOptions
+        );
+        if (!single.ok) return single;
+        legacyResults.push(single.value);
+      }
+      return ok(legacyResults);
     },
 
     rebuildVecIndex(): Promise<StoreResult<void>> {

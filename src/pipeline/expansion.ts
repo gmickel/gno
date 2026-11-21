@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto"; // No Bun alternative for hashing
+import { statSync } from "node:fs"; // No Bun sync stat alternative for local model file mtime/size
+import { fileURLToPath } from "node:url"; // No Bun alternative for file:// URL decoding
 
 import type { InferenceOptions } from "../llm/types";
 /**
@@ -65,12 +67,68 @@ const STOPWORDS = new Set([
 // Cache Key Generation
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Generate cache key for expansion results.
- * Key = SHA256(promptVersion || modelUri || query || lang)
- */
-export function generateCacheKey(
+export interface ExpansionCacheKeyOptions {
+  /** Effective context size used for expansion generation. */
+  contextSize?: number;
+  /** Optional explicit model fingerprint; falls back to local file mtime/size. */
+  modelFingerprint?: string;
+  /** Resolved local model file path (e.g. cached GGUF for `hf:` or `file:` URIs). */
+  modelPath?: string;
+}
+
+function statFileFingerprint(filePath: string): string | null {
+  try {
+    const stat = statSync(filePath);
+    return `file:${stat.size}:${Math.trunc(stat.mtimeMs)}`;
+  } catch {
+    return null;
+  }
+}
+
+function resolveLocalModelPath(
   modelUri: string,
+  options?: ExpansionCacheKeyOptions
+): string | null {
+  if (options?.modelPath) return options.modelPath;
+  if (modelUri.startsWith("file:")) {
+    try {
+      return modelUri.startsWith("file://")
+        ? fileURLToPath(modelUri)
+        : modelUri.slice("file:".length);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function resolveModelIdentityFingerprint(
+  modelUri: string,
+  options?: ExpansionCacheKeyOptions
+): string | null {
+  if (options?.modelFingerprint) {
+    if (options.modelPath) {
+      const diskFp = statFileFingerprint(options.modelPath);
+      if (diskFp !== options.modelFingerprint) {
+        return null;
+      }
+    }
+    return options.modelFingerprint;
+  }
+  const localPath = resolveLocalModelPath(modelUri, options);
+  if (localPath) {
+    return statFileFingerprint(localPath);
+  }
+  if (modelUri.startsWith("http://") || modelUri.startsWith("https://")) {
+    return `uri:${modelUri}`;
+  }
+  return null;
+}
+
+function hashExpansionCacheKey(
+  modelUri: string,
+  fingerprint: string,
+  contextSize: number | undefined,
   query: string,
   lang: string,
   intent?: string
@@ -78,11 +136,35 @@ export function generateCacheKey(
   const data = [
     EXPANSION_PROMPT_VERSION,
     modelUri,
+    fingerprint,
+    contextSize !== undefined ? String(contextSize) : "",
     query,
     lang,
     intent?.trim() ?? "",
   ].join("\0");
   return createHash("sha256").update(data).digest("hex");
+}
+
+/**
+ * Generate cache key for expansion results.
+ * Key = SHA256(promptVersion || modelUri || modelFingerprint || contextSize || query || lang || intent)
+ */
+export function generateCacheKey(
+  modelUri: string,
+  query: string,
+  lang: string,
+  intent?: string,
+  options?: ExpansionCacheKeyOptions
+): string {
+  const fingerprint = resolveModelIdentityFingerprint(modelUri, options) ?? "";
+  return hashExpansionCacheKey(
+    modelUri,
+    fingerprint,
+    options?.contextSize,
+    query,
+    lang,
+    intent
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -519,6 +601,54 @@ export interface CachedExpansionDeps {
   genPort: GenerationPort;
   getCache: (key: string) => Promise<string | null>;
   setCache: (key: string, value: string) => Promise<void>;
+  modelFingerprint?: string;
+  modelPath?: string;
+  onCacheLookup?: () => void;
+  onCacheHit?: () => void;
+}
+
+/**
+ * Strictly validate persisted expansion cache JSON written by expandQueryCached.
+ * Rejects structurally corrupt entries (e.g. non-string array items or missing fields)
+ * so they degrade cleanly to a cache miss and live generation.
+ */
+function parseCachedExpansionResult(raw: string): ExpansionResult | null {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return null;
+    }
+    const obj = parsed as Record<string, unknown>;
+    if (
+      !Array.isArray(obj.lexicalQueries) ||
+      !Array.isArray(obj.vectorQueries)
+    ) {
+      return null;
+    }
+    const lexicalQueries: string[] = [];
+    for (const item of obj.lexicalQueries) {
+      if (typeof item !== "string" || item.trim().length === 0) return null;
+      lexicalQueries.push(item.trim());
+    }
+    const vectorQueries: string[] = [];
+    for (const item of obj.vectorQueries) {
+      if (typeof item !== "string" || item.trim().length === 0) return null;
+      vectorQueries.push(item.trim());
+    }
+    let hyde: string | undefined;
+    if (obj.hyde !== undefined) {
+      if (typeof obj.hyde !== "string" || obj.hyde.trim().length === 0) {
+        return null;
+      }
+      hyde = obj.hyde.trim();
+    }
+    if (lexicalQueries.length === 0 && vectorQueries.length === 0 && !hyde) {
+      return null;
+    }
+    return { lexicalQueries, vectorQueries, hyde };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -529,20 +659,63 @@ export async function expandQueryCached(
   query: string,
   options: ExpansionOptions = {}
 ): Promise<StoreResult<ExpansionResult | null>> {
-  const lang = options.lang ?? "auto";
-  const cacheKey = generateCacheKey(
-    deps.genPort.modelUri,
-    query,
-    lang,
-    options.intent
-  );
+  const resolveIdentity = (): string | null =>
+    resolveModelIdentityFingerprint(deps.genPort.modelUri, {
+      contextSize: options.contextSize,
+      modelFingerprint: deps.modelFingerprint ?? deps.genPort.modelFingerprint,
+      modelPath: deps.modelPath ?? deps.genPort.modelPath,
+    });
 
-  // Check cache
-  const cached = await deps.getCache(cacheKey);
-  if (cached) {
-    const parsed = parseExpansionResult(cached);
-    if (parsed) {
-      return ok(applyExpansionGuardrails(query, parsed));
+  const lang = options.lang ?? "auto";
+  const initialIdentity = resolveIdentity();
+  // On a cold lazy port, probe cached local model identity read-only so
+  // persistent cache hits skip worker initialization and generation.
+  let lookupIdentity = initialIdentity;
+  if (
+    lookupIdentity === null &&
+    typeof deps.genPort.resolveModelIdentity === "function"
+  ) {
+    try {
+      const probed = await deps.genPort.resolveModelIdentity();
+      if (probed) {
+        lookupIdentity = resolveModelIdentityFingerprint(
+          deps.genPort.modelUri,
+          {
+            contextSize: options.contextSize,
+            modelFingerprint: deps.modelFingerprint ?? probed.modelFingerprint,
+            modelPath: deps.modelPath ?? probed.modelPath,
+          }
+        );
+      }
+    } catch {
+      lookupIdentity = null;
+    }
+  }
+  let cacheKey: string | null = null;
+  if (lookupIdentity !== null) {
+    cacheKey = hashExpansionCacheKey(
+      deps.genPort.modelUri,
+      lookupIdentity,
+      options.contextSize,
+      query,
+      lang,
+      options.intent
+    );
+
+    // Check cache (corrupt entries or read errors degrade cleanly to live expansion)
+    deps.onCacheLookup?.();
+    let cached: string | null = null;
+    try {
+      cached = await deps.getCache(cacheKey);
+    } catch {
+      cached = null;
+    }
+    if (cached) {
+      const parsed = parseCachedExpansionResult(cached);
+      if (parsed) {
+        deps.onCacheHit?.();
+        return ok(applyExpansionGuardrails(query, parsed));
+      }
     }
   }
 
@@ -552,9 +725,50 @@ export async function expandQueryCached(
     return result;
   }
 
-  // Cache result
+  // Cache result (write failures never fail retrieval).
+  // - Warm path (initialIdentity !== null): verify the on-disk file did not
+  //   change mid-flight before persisting under initialIdentity.
+  // - Cold lazy path (initialIdentity === null): only persist when the
+  //   initialized port supplies a pre-generation modelFingerprint AND any
+  //   associated local file still matches it, preventing a mid-flight model
+  //   replacement from caching model A's output under model B's fingerprint.
   if (result.value) {
-    await deps.setCache(cacheKey, JSON.stringify(result.value));
+    let writeIdentity: string | null = null;
+    if (initialIdentity !== null) {
+      const currentIdentity = resolveIdentity();
+      if (currentIdentity === initialIdentity) {
+        writeIdentity = initialIdentity;
+      }
+    } else {
+      const postFingerprint =
+        deps.modelFingerprint ?? deps.genPort.modelFingerprint;
+      if (postFingerprint) {
+        const postPath = resolveLocalModelPath(deps.genPort.modelUri, {
+          modelPath: deps.modelPath ?? deps.genPort.modelPath,
+        });
+        if (!postPath || statFileFingerprint(postPath) === postFingerprint) {
+          writeIdentity = postFingerprint;
+        }
+      }
+    }
+    if (writeIdentity !== null) {
+      const writeKey =
+        writeIdentity === lookupIdentity && cacheKey
+          ? cacheKey
+          : hashExpansionCacheKey(
+              deps.genPort.modelUri,
+              writeIdentity,
+              options.contextSize,
+              query,
+              lang,
+              options.intent
+            );
+      try {
+        await deps.setCache(writeKey, JSON.stringify(result.value));
+      } catch {
+        // Ignore cache persistence errors (e.g. read-only store or busy lock)
+      }
+    }
   }
 
   return result;

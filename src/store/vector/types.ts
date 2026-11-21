@@ -128,6 +128,16 @@ export interface VectorIndexPort {
     options?: VectorSearchOptions
   ): Promise<StoreResult<VectorSearchResult[]>>;
 
+  /**
+   * Optional batched nearest-neighbor search sharing one eligible scan /
+   * snapshot across multiple query embeddings (e.g. expanded hybrid queries).
+   */
+  searchNearestBatch?(
+    embeddings: Float32Array[],
+    limits: number[],
+    options?: VectorSearchOptions
+  ): Promise<StoreResult<VectorSearchResult[][]>>;
+
   // ─────────────────────────────────────────────────────────────────────────
   // Index maintenance
   // ─────────────────────────────────────────────────────────────────────────

@@ -29,13 +29,18 @@ import { createChunkLookup } from "./chunk-lookup";
 import {
   applyContentTypeBoost,
   hasAuxiliaryRanking,
+  scoreContentTypeBoost,
   sortByFinalScoreStable,
 } from "./content-type-boost";
 import { formatQueryForEmbedding } from "./contextual";
 import { attachSearchResultEgressLineage } from "./egress-lineage";
-import { matchesExcludedChunks, matchesExcludedText } from "./exclude";
+import {
+  compileExcludeTerms,
+  matchesExcludedChunks,
+  matchesExcludedText,
+} from "./exclude";
 import { typedMetadataWarnings, typedMetadataFilterReason } from "./filters";
-import { selectBestChunkForSteering } from "./intent";
+import { extractSteeringTerms, selectBestChunkForSteering } from "./intent";
 import { hasProjectAffinity } from "./project-affinity";
 import { detectQueryLanguage } from "./query-language";
 import {
@@ -44,6 +49,7 @@ import {
 } from "./result-context";
 import { cleanDisplaySnippet } from "./snippet";
 import {
+  compileTemporalRange,
   resolveRecencyTimestamp,
   isWithinTemporalRange,
   resolveTemporalRange,
@@ -140,8 +146,7 @@ async function searchVectorWithEmbeddingOwned(
   );
 
   // Detect query language for metadata (DOES NOT affect retrieval filtering)
-  const detection = detectQueryLanguage(query);
-  const queryLanguage = options.lang ?? detection.bcp47;
+  const queryLanguage = options.lang ?? detectQueryLanguage(query).bcp47;
 
   // Check if vector search is available
   if (!vectorIndex.searchAvailable) {
@@ -245,6 +250,15 @@ async function searchVectorWithEmbeddingOwned(
 
   // Build search results
   const results: SearchResult[] = [];
+  const deferredChunkTextByResult = new WeakMap<SearchResult, string>();
+  const excludeTermsLower = compileExcludeTerms(options.exclude);
+  const excludedMirrorCache = excludeTermsLower
+    ? new Map<string, boolean>()
+    : undefined;
+  const queryTerms = options.intent ? extractSteeringTerms(query) : undefined;
+  const intentTerms = options.intent
+    ? extractSteeringTerms(options.intent)
+    : undefined;
 
   // For --full, track best score per docid to de-dupe
   const bestByDocid = new Map<
@@ -277,6 +291,8 @@ async function searchVectorWithEmbeddingOwned(
           {
             preferredSeq: rawChunk?.seq ?? vec.seq,
             intentWeight: 0.3,
+            queryTerms,
+            intentTerms,
           }
         ) ?? rawChunk)
       : rawChunk;
@@ -303,11 +319,26 @@ async function searchVectorWithEmbeddingOwned(
       auxiliaryRankingActive || vec.documentIds !== undefined
         ? matchingDocs
         : [matchingDocs.at(-1)!];
+    let chunksExcluded = false;
+    if (excludeTermsLower) {
+      const cached = excludedMirrorCache!.get(vec.mirrorHash);
+      if (cached !== undefined) {
+        chunksExcluded = cached;
+      } else {
+        chunksExcluded = matchesExcludedChunks(
+          chunksMap.get(vec.mirrorHash) ?? [],
+          excludeTermsLower,
+          true
+        );
+        excludedMirrorCache!.set(vec.mirrorHash, chunksExcluded);
+      }
+      if (chunksExcluded) continue;
+    }
     for (const doc of docs) {
       assertInferenceActive();
-      const collectionPath = collectionPaths.get(doc.collection);
       const sourceRelPath = doc.recordSourcePath ?? doc.relPath;
-      const excluded =
+      if (
+        excludeTermsLower &&
         matchesExcludedText(
           [
             doc.title ?? "",
@@ -316,66 +347,31 @@ async function searchVectorWithEmbeddingOwned(
             doc.contentType ?? "",
             ...(doc.categories ?? []),
           ],
-          options.exclude
-        ) ||
-        matchesExcludedChunks(
-          chunksMap.get(vec.mirrorHash) ?? [],
-          options.exclude
-        );
-      if (excluded) {
+          excludeTermsLower,
+          true
+        )
+      ) {
         continue;
       }
 
-      const cleanedSnippet = cleanDisplaySnippet(chunk.text, chunk.text);
-      const snippetStartLine = chunk.startLine + cleanedSnippet.startLineOffset;
-      const scoredResult = applyContentTypeBoost(
-        {
-          docid: doc.docid,
-          score: baseScore,
-          uri: doc.uri,
-          title: doc.title ?? undefined,
-          contentType: doc.contentType ?? undefined,
-          categories: doc.categories ?? undefined,
-          line: snippetStartLine,
-          snippet: cleanedSnippet.text,
-          snippetLanguage: chunk.language ?? undefined,
-          snippetRange: {
-            startLine: snippetStartLine,
-            endLine: chunk.endLine,
-          },
-          source: {
-            relPath: sourceRelPath,
-            absPath: collectionPath
-              ? `${collectionPath}/${sourceRelPath}`
-              : undefined,
-            mime: doc.sourceMime,
-            ext: doc.sourceExt,
-            modifiedAt: doc.sourceMtime,
-            documentDate: doc.frontmatterDate ?? undefined,
-            sizeBytes: doc.sourceSize,
-            sourceHash: doc.sourceHash,
-          },
-          conversion: doc.mirrorHash
-            ? {
-                mirrorHash: doc.mirrorHash,
-                converterId: doc.converterId ?? undefined,
-                converterVersion: doc.converterVersion ?? undefined,
-              }
-            : undefined,
-          record: projectRecordEvidenceMetadata(doc),
-        },
-        doc.collection,
-        contentTypeRules,
-        options.projectAffinity,
-        doc.contentTypeSource,
-        { kind: "vector_distance", score: vec.distance }
-      );
-      if (scoredResult.score < minScore) continue;
-
-      // For --full, de-dupe by docid (keep best scoring chunk per doc)
+      // For --full, avoid throwaway snippet cleaning / SearchResult construction;
+      // compute only the final score needed for dedupe/filtering/ranking.
       if (options.full) {
+        const rankingScore = auxiliaryRankingActive
+          ? scoreContentTypeBoost(
+              baseScore,
+              doc.contentType ?? undefined,
+              doc.contentTypeSource,
+              sourceRelPath,
+              doc.collection,
+              contentTypeRules,
+              options.projectAffinity,
+              { kind: "vector_distance", score: vec.distance }
+            ).projectAffinity.finalScore
+          : baseScore;
+        if (rankingScore < minScore) continue;
         const existing = bestByDocid.get(doc.docid);
-        if (!existing || scoredResult.score > existing.rankingScore) {
+        if (!existing || rankingScore > existing.rankingScore) {
           bestByDocid.set(doc.docid, {
             doc,
             chunk: {
@@ -385,7 +381,7 @@ async function searchVectorWithEmbeddingOwned(
               endLine: chunk.endLine,
               seq: chunk.seq,
             },
-            rankingScore: scoredResult.score,
+            rankingScore,
             rawDistance: vec.distance,
             score: baseScore,
           });
@@ -393,28 +389,106 @@ async function searchVectorWithEmbeddingOwned(
         continue;
       }
 
-      results.push(
-        attachSearchResultPlannerMetadata(scoredResult, {
-          retrievalRank: 0,
-          mirrorHash: vec.mirrorHash,
-          seq: chunk.seq,
-          sources: ["vector"],
-          graphExpanded: false,
-          startLine: chunk.startLine,
+      const collectionPath = collectionPaths.get(doc.collection);
+      const cleanedSnippet = cleanDisplaySnippet(chunk.text, chunk.text);
+      const snippetStartLine = chunk.startLine + cleanedSnippet.startLineOffset;
+      const baseResult: SearchResult = {
+        docid: doc.docid,
+        score: baseScore,
+        uri: doc.uri,
+        title: doc.title ?? undefined,
+        contentType: doc.contentType ?? undefined,
+        categories: doc.categories ?? undefined,
+        line: snippetStartLine,
+        snippet: cleanedSnippet.text,
+        snippetLanguage: chunk.language ?? undefined,
+        snippetRange: {
+          startLine: snippetStartLine,
           endLine: chunk.endLine,
-          passageHash: new Bun.CryptoHasher("sha256")
-            .update(chunk.text)
-            .digest("hex"),
-        })
-      );
+        },
+        source: {
+          relPath: sourceRelPath,
+          absPath: collectionPath
+            ? `${collectionPath}/${sourceRelPath}`
+            : undefined,
+          mime: doc.sourceMime,
+          ext: doc.sourceExt,
+          modifiedAt: doc.sourceMtime,
+          documentDate: doc.frontmatterDate ?? undefined,
+          sizeBytes: doc.sourceSize,
+          sourceHash: doc.sourceHash,
+        },
+        conversion: doc.mirrorHash
+          ? {
+              mirrorHash: doc.mirrorHash,
+              converterId: doc.converterId ?? undefined,
+              converterVersion: doc.converterVersion ?? undefined,
+            }
+          : undefined,
+        record: projectRecordEvidenceMetadata(doc),
+      };
+      const scoredResult = auxiliaryRankingActive
+        ? applyContentTypeBoost(
+            baseResult,
+            doc.collection,
+            contentTypeRules,
+            options.projectAffinity,
+            doc.contentTypeSource,
+            { kind: "vector_distance", score: vec.distance }
+          )
+        : baseResult;
+      if (scoredResult.score < minScore) continue;
+
+      const attached = attachSearchResultPlannerMetadata(scoredResult, {
+        retrievalRank: 0,
+        mirrorHash: vec.mirrorHash,
+        seq: chunk.seq,
+        sources: ["vector"],
+        graphExpanded: false,
+        startLine: chunk.startLine,
+        endLine: chunk.endLine,
+        passageHash: "",
+      });
+      deferredChunkTextByResult.set(attached, chunk.text);
+      results.push(attached);
     }
   }
 
-  // For --full, fetch full content and build results
+  let finalResults: SearchResult[];
+  // For --full, sort and slice BEFORE fetching full content via getContentBatch
   if (options.full) {
+    const entries = [...bestByDocid.values()];
+    if (recencySort) {
+      const recencyTs = new Map<(typeof entries)[number], number>();
+      for (const entry of entries) {
+        recencyTs.set(
+          entry,
+          resolveRecencyTimestamp(
+            entry.doc.frontmatterDate,
+            entry.doc.sourceMtime
+          )
+        );
+      }
+      entries.sort((a, b) => {
+        const aTs = recencyTs.get(a) ?? 0;
+        const bTs = recencyTs.get(b) ?? 0;
+        if (aTs !== bTs) return bTs - aTs;
+        return b.rankingScore - a.rankingScore;
+      });
+    } else if (auxiliaryRankingActive) {
+      const originalRank = new Map(
+        entries.map((entry, idx) => [entry, idx] as const)
+      );
+      entries.sort(
+        (left, right) =>
+          right.rankingScore - left.rankingScore ||
+          (originalRank.get(left) ?? 0) - (originalRank.get(right) ?? 0)
+      );
+    }
+    const survivingEntries = entries.slice(0, limit);
     const fullContentResult = await getContentBatch(
       store,
-      [...bestByDocid.values()]
+      survivingEntries
         .map(({ doc }) => doc.mirrorHash)
         .filter((mirrorHash): mirrorHash is string => Boolean(mirrorHash))
     );
@@ -423,7 +497,8 @@ async function searchVectorWithEmbeddingOwned(
     }
     const fullContentByHash = fullContentResult.value;
 
-    for (const { doc, chunk, rawDistance, score } of bestByDocid.values()) {
+    finalResults = [];
+    for (const { doc, chunk, rawDistance, score } of survivingEntries) {
       assertInferenceActive();
       const fullContent = doc.mirrorHash
         ? fullContentByHash.get(doc.mirrorHash)
@@ -438,49 +513,52 @@ async function searchVectorWithEmbeddingOwned(
         ? chunk.startLine + cleanedChunk.startLineOffset
         : chunk.startLine;
 
-      const result = applyContentTypeBoost(
-        {
-          docid: doc.docid,
-          score,
-          uri: doc.uri,
-          title: doc.title ?? undefined,
-          contentType: doc.contentType ?? undefined,
-          categories: doc.categories ?? undefined,
-          line: snippetStartLine,
-          snippet: fullContent ?? cleanedChunk?.text ?? chunk.text,
-          snippetLanguage: chunk.language ?? undefined,
-          // --full: no snippetRange (full doc content)
-          snippetRange: fullContent
-            ? undefined
-            : { startLine: snippetStartLine, endLine: chunk.endLine },
-          source: {
-            relPath: sourceRelPath,
-            absPath: collectionPath
-              ? `${collectionPath}/${sourceRelPath}`
-              : undefined,
-            mime: doc.sourceMime,
-            ext: doc.sourceExt,
-            modifiedAt: doc.sourceMtime,
-            documentDate: doc.frontmatterDate ?? undefined,
-            sizeBytes: doc.sourceSize,
-            sourceHash: doc.sourceHash,
-          },
-          conversion: doc.mirrorHash
-            ? {
-                mirrorHash: doc.mirrorHash,
-                converterId: doc.converterId ?? undefined,
-                converterVersion: doc.converterVersion ?? undefined,
-              }
+      const baseResult: SearchResult = {
+        docid: doc.docid,
+        score,
+        uri: doc.uri,
+        title: doc.title ?? undefined,
+        contentType: doc.contentType ?? undefined,
+        categories: doc.categories ?? undefined,
+        line: snippetStartLine,
+        snippet: fullContent ?? cleanedChunk?.text ?? chunk.text,
+        snippetLanguage: chunk.language ?? undefined,
+        // --full: no snippetRange (full doc content)
+        snippetRange: fullContent
+          ? undefined
+          : { startLine: snippetStartLine, endLine: chunk.endLine },
+        source: {
+          relPath: sourceRelPath,
+          absPath: collectionPath
+            ? `${collectionPath}/${sourceRelPath}`
             : undefined,
-          record: projectRecordEvidenceMetadata(doc),
+          mime: doc.sourceMime,
+          ext: doc.sourceExt,
+          modifiedAt: doc.sourceMtime,
+          documentDate: doc.frontmatterDate ?? undefined,
+          sizeBytes: doc.sourceSize,
+          sourceHash: doc.sourceHash,
         },
-        doc.collection,
-        contentTypeRules,
-        options.projectAffinity,
-        doc.contentTypeSource,
-        { kind: "vector_distance", score: rawDistance }
-      );
-      results.push(
+        conversion: doc.mirrorHash
+          ? {
+              mirrorHash: doc.mirrorHash,
+              converterId: doc.converterId ?? undefined,
+              converterVersion: doc.converterVersion ?? undefined,
+            }
+          : undefined,
+        record: projectRecordEvidenceMetadata(doc),
+      };
+      const result = auxiliaryRankingActive
+        ? applyContentTypeBoost(
+            baseResult,
+            doc.collection,
+            contentTypeRules,
+            options.projectAffinity,
+            doc.contentTypeSource,
+            { kind: "vector_distance", score: rawDistance }
+          )
+        : baseResult;
+      finalResults.push(
         doc.mirrorHash
           ? attachSearchResultPlannerMetadata(result, {
               retrievalRank: 0,
@@ -497,40 +575,58 @@ async function searchVectorWithEmbeddingOwned(
           : result
       );
     }
-  }
-
-  if (recencySort) {
-    results.sort((a, b) => {
-      const aTs = resolveRecencyTimestamp(
-        a.source.documentDate,
-        a.source.modifiedAt
-      );
-      const bTs = resolveRecencyTimestamp(
-        b.source.documentDate,
-        b.source.modifiedAt
-      );
-      if (aTs !== bTs) {
-        return bTs - aTs;
+  } else {
+    if (recencySort) {
+      const recencyTs = new Map<SearchResult, number>();
+      for (const r of results) {
+        recencyTs.set(
+          r,
+          resolveRecencyTimestamp(r.source.documentDate, r.source.modifiedAt)
+        );
       }
-      return b.score - a.score;
-    });
-  } else if (auxiliaryRankingActive) {
-    sortByFinalScoreStable(results);
+      results.sort((a, b) => {
+        const aTs = recencyTs.get(a) ?? 0;
+        const bTs = recencyTs.get(b) ?? 0;
+        if (aTs !== bTs) {
+          return bTs - aTs;
+        }
+        return b.score - a.score;
+      });
+    } else if (auxiliaryRankingActive) {
+      sortByFinalScoreStable(results);
+    }
+    finalResults = results.slice(0, limit);
   }
 
-  const finalResults = results.slice(0, limit);
   for (const [index, result] of finalResults.entries()) {
     assertInferenceActive();
     const metadata = result[SEARCH_RESULT_PLANNER_METADATA];
-    if (metadata) metadata.retrievalRank = index + 1;
+    if (metadata) {
+      metadata.retrievalRank = index + 1;
+      if (!metadata.passageHash) {
+        const text = deferredChunkTextByResult.get(result);
+        if (text !== undefined) {
+          metadata.passageHash = new Bun.CryptoHasher("sha256")
+            .update(text)
+            .digest("hex");
+        }
+      }
+    }
   }
   await attachSearchResultContexts(store, finalResults);
   await attachSupersession(store, finalResults);
+  const finalHashes = [
+    ...new Set(
+      finalResults
+        .map((r) => r.conversion?.mirrorHash)
+        .filter((hash): hash is string => Boolean(hash))
+    ),
+  ];
   const lineageResult = await attachSearchResultEgressLineage(
     store,
     finalResults,
     {
-      ownershipHashes: uniqueHashes,
+      ownershipHashes: finalHashes,
       ownershipDocuments,
       collections: collectionsResult.ok ? collectionsResult.value : undefined,
     }
@@ -683,16 +779,17 @@ interface DocumentMapOptions {
 
 function matchesCategoryFilter(
   doc: { contentType?: string | null; categories?: string[] | null },
-  categories?: string[]
+  allowedCategories?: Set<string>
 ): boolean {
-  if (!categories || categories.length === 0) {
+  if (!allowedCategories || allowedCategories.size === 0) {
     return true;
   }
-  const allowed = new Set(categories.map((c) => c.toLowerCase()));
-  if (doc.contentType && allowed.has(doc.contentType.toLowerCase())) {
+  if (doc.contentType && allowedCategories.has(doc.contentType.toLowerCase())) {
     return true;
   }
-  return (doc.categories ?? []).some((c) => allowed.has(c.toLowerCase()));
+  return (doc.categories ?? []).some((c) =>
+    allowedCategories.has(c.toLowerCase())
+  );
 }
 
 async function buildDocumentMap(
@@ -728,10 +825,14 @@ async function buildDocumentMap(
       (options.collections === undefined ||
         options.collections.includes(document.collection))
   );
-  const temporalRange: TemporalRange = {
+  const temporalRange: TemporalRange = compileTemporalRange({
     since: options.since,
     until: options.until,
-  };
+  });
+  const allowedCategories = options.categories?.length
+    ? new Set(options.categories.map((c) => c.toLowerCase()))
+    : undefined;
+  const authorLower = options.author ? options.author.toLowerCase() : undefined;
 
   // Apply tag filters if specified (batch fetch to avoid N+1)
   const needsTagFilter = options.tagsAll?.length || options.tagsAny?.length;
@@ -783,13 +884,10 @@ async function buildDocumentMap(
     if (!isWithinTemporalRange(doc.sourceMtime, temporalRange)) {
       continue;
     }
-    if (!matchesCategoryFilter(doc, options.categories)) {
+    if (!matchesCategoryFilter(doc, allowedCategories)) {
       continue;
     }
-    if (
-      options.author &&
-      !doc.author?.toLowerCase().includes(options.author.toLowerCase())
-    ) {
+    if (authorLower && !doc.author?.toLowerCase().includes(authorLower)) {
       continue;
     }
 

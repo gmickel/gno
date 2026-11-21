@@ -16,7 +16,11 @@ import type {
 import type { FusionCandidate } from "./types";
 
 import { typedMetadataFilterReason } from "./filters";
-import { isWithinTemporalRange } from "./temporal";
+import {
+  compileTemporalRange,
+  isWithinTemporalRange,
+  type TemporalRange,
+} from "./temporal";
 
 export interface GraphRetrievalMeta {
   attempted: boolean;
@@ -61,39 +65,33 @@ const confidenceWeight = (confidence: GraphEdgeConfidence): number => {
   }
 };
 
+interface CompiledNeighborFilters {
+  temporalRange: TemporalRange;
+  authorLower?: string;
+  allowedCategories?: Set<string>;
+  filter?: MetadataPredicate;
+}
+
 const matchesDocumentFilters = (
   doc: DocumentRow,
-  options: {
-    since?: string;
-    until?: string;
-    categories?: string[];
-    author?: string;
-    filter?: MetadataPredicate;
-    relPathPrefix?: string;
-  }
+  compiled: CompiledNeighborFilters
 ): boolean => {
-  if (typedMetadataFilterReason(doc, options.filter)) return false;
-  if (
-    !isWithinTemporalRange(doc.sourceMtime, {
-      since: options.since,
-      until: options.until,
-    })
-  ) {
+  if (typedMetadataFilterReason(doc, compiled.filter)) return false;
+  if (!isWithinTemporalRange(doc.sourceMtime, compiled.temporalRange)) {
     return false;
   }
   if (
-    options.author &&
-    !doc.author?.toLowerCase().includes(options.author.toLowerCase())
+    compiled.authorLower &&
+    !doc.author?.toLowerCase().includes(compiled.authorLower)
   ) {
     return false;
   }
-  if (options.categories?.length) {
-    const allowed = new Set(options.categories.map((c) => c.toLowerCase()));
+  if (compiled.allowedCategories) {
     const contentTypeMatch = doc.contentType
-      ? allowed.has(doc.contentType.toLowerCase())
+      ? compiled.allowedCategories.has(doc.contentType.toLowerCase())
       : false;
     const categoryMatch = (doc.categories ?? []).some((c) =>
-      allowed.has(c.toLowerCase())
+      compiled.allowedCategories!.has(c.toLowerCase())
     );
     if (!contentTypeMatch && !categoryMatch) {
       return false;
@@ -416,50 +414,112 @@ export async function expandGraphCandidates(
 
   // A plural allowlist hydrates across its collections; scope is enforced on
   // each neighbour's own collection below, never widened past the allowlist.
+  // Paginate ranked neighbours in chunks of maxCandidates * 3 so high-degree
+  // graphs stop hydrating as soon as maxCandidates survive filters.
   const plural = options.collections !== undefined;
-  const docsResult = await store.getDocumentsByDocids(rankedNeighborDocids, {
-    eligibility:
-      plural && options.eligibility
-        ? { ...options.eligibility, collection: undefined }
-        : options.eligibility,
-    collection: plural ? undefined : options.collection,
-    activeOnly: true,
-  });
-  if (!docsResult.ok) {
-    meta.fallbackReasons.push("graph_neighbor_lookup_failed");
-    return { candidates: [], meta };
+  const docEligibility =
+    plural && options.eligibility
+      ? { ...options.eligibility, collection: undefined }
+      : options.eligibility;
+  const docCollection = plural ? undefined : options.collection;
+  const compiledFilters: CompiledNeighborFilters = {
+    temporalRange: compileTemporalRange({
+      since: options.since,
+      until: options.until,
+    }),
+    authorLower: options.author ? options.author.toLowerCase() : undefined,
+    allowedCategories: options.categories?.length
+      ? new Set(options.categories.map((c) => c.toLowerCase()))
+      : undefined,
+    filter: options.filter,
+  };
+  const pageSize = Math.max(maxCandidates * 3, 1);
+  const rankedDocs: DocumentRow[] = [];
+  for (
+    let offset = 0;
+    offset < rankedNeighborDocids.length && rankedDocs.length < maxCandidates;
+    offset += pageSize
+  ) {
+    const pageDocids = rankedNeighborDocids.slice(offset, offset + pageSize);
+    const docsResult = await store.getDocumentsByDocids(pageDocids, {
+      eligibility: docEligibility,
+      collection: docCollection,
+      activeOnly: true,
+    });
+    if (!docsResult.ok) {
+      meta.fallbackReasons.push("graph_neighbor_lookup_failed");
+      return { candidates: [], meta };
+    }
+    const metadataFilteredDocs = docsResult.value.filter(
+      (doc) =>
+        doc.mirrorHash &&
+        (!graphAllowlist || graphAllowlist.has(doc.collection)) &&
+        (options.relPathPrefix === undefined ||
+          sourceRelPath(doc) === options.relPathPrefix ||
+          sourceRelPath(doc).startsWith(`${options.relPathPrefix}/`)) &&
+        matchesDocumentFilters(doc, compiledFilters)
+    );
+    const docs = await filterDocsByTags(store, metadataFilteredDocs, options);
+    const docByDocid = new Map(docs.map((doc) => [doc.docid, doc]));
+    for (const docid of pageDocids) {
+      const doc = docByDocid.get(docid);
+      if (doc?.mirrorHash) {
+        rankedDocs.push(doc);
+        if (rankedDocs.length >= maxCandidates) break;
+      }
+    }
   }
 
-  const metadataFilteredDocs = docsResult.value.filter(
-    (doc) =>
-      doc.mirrorHash &&
-      (!graphAllowlist || graphAllowlist.has(doc.collection)) &&
-      (options.relPathPrefix === undefined ||
-        sourceRelPath(doc) === options.relPathPrefix ||
-        sourceRelPath(doc).startsWith(`${options.relPathPrefix}/`)) &&
-      matchesDocumentFilters(doc, options)
+  const hashes = [
+    ...new Set(
+      rankedDocs
+        .map((doc) => doc.mirrorHash)
+        .filter((hash): hash is string => Boolean(hash))
+    ),
+  ];
+  let chunksMap: Map<string, ChunkRow[]>;
+  if (!options.lang && typeof store.getChunksBySequenceBatch === "function") {
+    const seqRequests = hashes.map((mirrorHash) => ({
+      mirrorHash,
+      seq: preferredSeqByHash.get(mirrorHash) ?? 0,
+    }));
+    const seqResult = await store.getChunksBySequenceBatch(seqRequests);
+    if (!seqResult.ok) {
+      meta.fallbackReasons.push("graph_neighbor_chunks_failed");
+      return { candidates: [], meta };
+    }
+    chunksMap = new Map(seqResult.value);
+    const missingHashes = hashes.filter(
+      (hash) => (chunksMap.get(hash)?.length ?? 0) === 0
+    );
+    if (missingHashes.length > 0) {
+      const fallbackResult = await hydration.getChunksBatch(missingHashes);
+      if (!fallbackResult.ok) {
+        meta.fallbackReasons.push("graph_neighbor_chunks_failed");
+        return { candidates: [], meta };
+      }
+      for (const [hash, rows] of fallbackResult.value) {
+        chunksMap.set(hash, rows);
+      }
+    }
+  } else {
+    const chunksResult = await hydration.getChunksBatch(hashes);
+    if (!chunksResult.ok) {
+      meta.fallbackReasons.push("graph_neighbor_chunks_failed");
+      return { candidates: [], meta };
+    }
+    chunksMap = chunksResult.value;
+  }
+
+  const hasDocumentIds = fusedCandidates.some(
+    (candidate) => candidate.documentId !== undefined
   );
-  const docs = await filterDocsByTags(store, metadataFilteredDocs, options);
-  const docByDocid = new Map(docs.map((doc) => [doc.docid, doc]));
-  const rankedDocs = rankedNeighborDocids
-    .map((docid) => docByDocid.get(docid))
-    .filter((doc): doc is DocumentRow => Boolean(doc?.mirrorHash))
-    .slice(0, maxCandidates);
-  const hashes = rankedDocs
-    .map((doc) => doc.mirrorHash)
-    .filter((hash): hash is string => Boolean(hash));
-  const chunksResult = await hydration.getChunksBatch(hashes);
-  if (!chunksResult.ok) {
-    meta.fallbackReasons.push("graph_neighbor_chunks_failed");
-    return { candidates: [], meta };
-  }
-
   const candidates = rankedDocs
     .map((doc) => {
       const mirrorHash = doc.mirrorHash as string;
       const seq = chooseCandidateSeq(
         doc,
-        chunksResult.value.get(mirrorHash) ?? [],
+        chunksMap.get(mirrorHash) ?? [],
         preferredSeqByHash,
         options.lang
       );
@@ -468,11 +528,7 @@ export async function expandGraphCandidates(
         : {
             mirrorHash,
             seq,
-            ...(fusedCandidates.some(
-              (candidate) => candidate.documentId !== undefined
-            )
-              ? { sourceDocid: doc.docid }
-              : {}),
+            ...(hasDocumentIds ? { sourceDocid: doc.docid } : {}),
           };
     })
     .filter(

@@ -153,10 +153,19 @@ export async function createServerContext(
       embedPort
     );
     const expandUri = preset.expand ?? preset.gen;
-    expandPort = lazyGenerationPort(expandUri, () =>
-      resolvePort(() =>
-        llm.createExpansionPort(expandUri, createPortOptions("expand"))
-      )
+    expandPort = lazyGenerationPort(
+      expandUri,
+      () =>
+        resolvePort(() =>
+          llm.createExpansionPort(expandUri, createPortOptions("expand"))
+        ),
+      {
+        resolveModelIdentity: async () => {
+          const resolved = await llm.getCache().resolve(expandUri, "expand");
+          if (!resolved.ok) return null;
+          return { modelPath: resolved.value };
+        },
+      }
     );
     answerPort = lazyGenerationPort(preset.gen, () =>
       resolvePort(() =>

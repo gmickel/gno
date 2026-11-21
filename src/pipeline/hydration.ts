@@ -23,6 +23,22 @@ function freezeDeep<T>(value: T): T {
   return value;
 }
 
+function freezeChunkRows(rows: ChunkRow[]): ChunkRow[] {
+  const copy = Array.from<ChunkRow>({ length: rows.length });
+  for (let i = 0; i < rows.length; i++) {
+    copy[i] = Object.freeze({ ...rows[i]! });
+  }
+  return Object.freeze(copy) as ChunkRow[];
+}
+
+function cloneAndFreeze<T>(value: T): T {
+  return freezeDeep(structuredClone(value));
+}
+
+function identitySnapshot<T>(value: T): T {
+  return value;
+}
+
 /** Each caller owns its Map; cached rows are detached, recursively frozen data.
  * The StorePort-compatible types let existing consumers read these snapshots.
  * Consumers that need to mutate a row/array must copy it first.
@@ -30,7 +46,8 @@ function freezeDeep<T>(value: T): T {
 async function loadBatch<T>(
   cache: BatchCache<T>,
   keys: string[],
-  load: (missing: string[]) => Promise<StoreResult<Map<string, T>>>
+  load: (missing: string[]) => Promise<StoreResult<Map<string, T>>>,
+  snapshot: (value: T) => T = cloneAndFreeze
 ): Promise<StoreResult<Map<string, T>>> {
   const unique = [...new Set(keys)];
   const missing = unique.filter((key) => !cache.has(key));
@@ -43,10 +60,7 @@ async function loadBatch<T>(
       const snapshots = new Map<string, T>();
       for (const key of missing) {
         if (result.value.has(key)) {
-          snapshots.set(
-            key,
-            freezeDeep(structuredClone(result.value.get(key)!))
-          );
+          snapshots.set(key, snapshot(result.value.get(key)!));
         }
       }
       return ok(snapshots);
@@ -104,14 +118,21 @@ export class RequestHydration {
     this.documents.clear();
   };
 
+  hasChunks(hash: string): boolean {
+    return this.chunks.has(hash);
+  }
+
   getChunksBatch(
     hashes: string[]
   ): Promise<StoreResult<Map<string, ChunkRow[]>>> {
     const store = this.store;
     if (!store)
       return Promise.resolve(err("QUERY_FAILED", "Hydration request released"));
-    return loadBatch(this.chunks, hashes, (missing) =>
-      store.getChunksBatch(missing)
+    return loadBatch(
+      this.chunks,
+      hashes,
+      (missing) => store.getChunksBatch(missing),
+      freezeChunkRows
     );
   }
 
@@ -119,19 +140,29 @@ export class RequestHydration {
     const store = this.store;
     if (!store)
       return Promise.resolve(err("QUERY_FAILED", "Hydration request released"));
-    return loadBatch(this.content, hashes, (missing) =>
-      getContentBatch(store, missing)
+    return loadBatch(
+      this.content,
+      hashes,
+      (missing) => getContentBatch(store, missing),
+      identitySnapshot
     );
   }
 
   async getContent(hash: string): Promise<StoreResult<string | null>> {
     const store = this.store;
     if (!store) return err("QUERY_FAILED", "Hydration request released");
-    const result = await loadBatch(this.content, [hash], async () => {
-      const content = await store.getContent(hash);
-      if (!content.ok) return content;
-      return ok(new Map(content.value === null ? [] : [[hash, content.value]]));
-    });
+    const result = await loadBatch(
+      this.content,
+      [hash],
+      async () => {
+        const content = await store.getContent(hash);
+        if (!content.ok) return content;
+        return ok(
+          new Map(content.value === null ? [] : [[hash, content.value]])
+        );
+      },
+      identitySnapshot
+    );
     return result.ok ? ok(result.value.get(hash) ?? null) : result;
   }
 
@@ -141,6 +172,8 @@ export class RequestHydration {
   ): Promise<StoreResult<DocumentRow[]>> {
     const store = this.store;
     if (!store) return err("QUERY_FAILED", "Hydration request released");
+    const uniqueHashes = [...new Set(hashes)];
+    if (uniqueHashes.length === 0) return ok([]);
     // Capture caller-owned options before any asynchronous read. Collection
     // scope and activity are part of the lookup identity; titles never key by
     // hash.
@@ -148,19 +181,48 @@ export class RequestHydration {
       ...options,
       collections: options?.collections ? [...options.collections] : undefined,
     };
-    // Cache the exact lookup, retaining the adapter's ordering (including SQL
-    // batch boundaries). Regrouping by content hash would reorder documents.
-    const requested = [...hashes];
-    const identity = JSON.stringify([
+    const scopeKey = JSON.stringify([
       scope.collection ?? null,
       scope.collections ?? null,
       scope.activeOnly ?? null,
-      requested,
     ]);
-    const result = await loadBatch(this.documents, [identity], async () => {
-      const rows = await store.getDocumentsByMirrorHashes(requested, scope);
-      return rows.ok ? ok(new Map([[identity, rows.value]])) : rows;
-    });
-    return result.ok ? ok([...(result.value.get(identity) ?? [])]) : result;
+    const cacheKeys = uniqueHashes.map((hash) => `${scopeKey}\0${hash}`);
+    const keyToHash = new Map<string, string>();
+    for (let i = 0; i < uniqueHashes.length; i++) {
+      keyToHash.set(cacheKeys[i]!, uniqueHashes[i]!);
+    }
+    const result = await loadBatch(
+      this.documents,
+      cacheKeys,
+      async (missingKeys) => {
+        const missingHashes = missingKeys.map((key) => keyToHash.get(key)!);
+        const rows = await store.getDocumentsByMirrorHashes(
+          missingHashes,
+          scope
+        );
+        if (!rows.ok) return rows;
+        const grouped = new Map<string, DocumentRow[]>();
+        for (const key of missingKeys) {
+          grouped.set(key, []);
+        }
+        for (const row of rows.value) {
+          if (!row.mirrorHash) continue;
+          const key = `${scopeKey}\0${row.mirrorHash}`;
+          const list = grouped.get(key);
+          if (list) list.push(row);
+        }
+        return ok(grouped);
+      }
+    );
+    if (!result.ok) return result;
+    const merged: DocumentRow[] = [];
+    for (const key of cacheKeys) {
+      const list = result.value.get(key);
+      if (list) {
+        for (const doc of list) merged.push(doc);
+      }
+    }
+    merged.sort((left, right) => left.id - right.id);
+    return ok(merged);
   }
 }

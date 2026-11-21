@@ -1,9 +1,12 @@
-import type { StorePort } from "../store/types";
+import type { StorePort, TagRow } from "../store/types";
 import type { RankedInput } from "./fusion";
 import type { RequestHydration } from "./hydration";
 import type { HybridSearchOptions } from "./types";
 
-import { evaluateRetrievalEligibility } from "./filters";
+import {
+  compileDocumentFilters,
+  evaluateRetrievalEligibility,
+} from "./filters";
 
 export class OwnerMetadataError extends Error {}
 
@@ -13,9 +16,11 @@ export async function resolveFusionOwners(
   store: StorePort,
   hydration: RequestHydration,
   query: string,
-  options: HybridSearchOptions
+  options: HybridSearchOptions,
+  forceResolve = false
 ): Promise<RankedInput[]> {
   if (
+    !forceResolve &&
     !inputs.some((input) =>
       input.results.some((result) => result.documentId !== undefined)
     )
@@ -28,30 +33,64 @@ export async function resolveFusionOwners(
       )
     ),
   ];
-  const documents = await hydration.getDocumentsByMirrorHashes(hashes, {
-    collection: options.collection,
-    collections: options.collections,
-    activeOnly: true,
-  });
-  const chunks = await hydration.getChunksBatch(hashes);
+  if (hashes.length === 0) return inputs;
+  const [documents, chunks] = await Promise.all([
+    hydration.getDocumentsByMirrorHashes(hashes, {
+      collection: options.collection,
+      collections: options.collections,
+      activeOnly: true,
+    }),
+    hydration.getChunksBatch(hashes),
+  ]);
   if (!documents.ok || !chunks.ok)
     throw new OwnerMetadataError("Vector owner metadata unavailable");
+
   let memoryIds: Set<number> | undefined;
-  if (options.memoryFilter) {
+  const needsTags = Boolean(options.tagsAll?.length || options.tagsAny?.length);
+  const candidateDocs = documents.value.filter((doc) =>
+    Boolean(doc.mirrorHash)
+  );
+
+  const memoryPromise = options.memoryFilter
+    ? Promise.all(
+        [...new Set(documents.value.map((doc) => doc.collection))].map(
+          (collection) =>
+            store.listMemoryEligibleDocuments({
+              collection,
+              scopes: options.memoryFilter!.scopes,
+              excludeSuperseded: options.memoryFilter!.excludeSuperseded,
+            })
+        )
+      )
+    : undefined;
+
+  const tagsPromise =
+    needsTags &&
+    candidateDocs.length > 0 &&
+    typeof store.getTagsBatch === "function"
+      ? store.getTagsBatch(candidateDocs.map((doc) => doc.id))
+      : undefined;
+
+  const [memoryResults, tagsResult] = await Promise.all([
+    memoryPromise,
+    tagsPromise,
+  ]);
+
+  if (memoryResults) {
     memoryIds = new Set();
-    for (const collection of new Set(
-      documents.value.map((doc) => doc.collection)
-    )) {
-      const eligible = await store.listMemoryEligibleDocuments({
-        collection,
-        scopes: options.memoryFilter.scopes,
-        excludeSuperseded: options.memoryFilter.excludeSuperseded,
-      });
+    for (const eligible of memoryResults) {
       if (!eligible.ok)
         throw new OwnerMetadataError("Memory owner metadata unavailable");
       for (const doc of eligible.value) memoryIds.add(doc.id);
     }
   }
+
+  let prefetchedTags: Map<number, TagRow[]> | null | undefined;
+  if (tagsPromise) {
+    prefetchedTags = tagsResult?.ok ? tagsResult.value : null;
+  }
+
+  const compiledFilters = compileDocumentFilters(query, options);
   const docids = new Map(documents.value.map((doc) => [doc.id, doc.docid]));
   const owners = new Map<string, number[]>();
   for (const doc of documents.value) {
@@ -61,7 +100,10 @@ export async function resolveFusionOwners(
       query,
       doc,
       chunks.value.get(doc.mirrorHash),
-      options
+      options,
+      undefined,
+      compiledFilters,
+      prefetchedTags
     );
     for (const chunk of eligibility.chunks) {
       const key = `${doc.mirrorHash}:${chunk.seq}`;

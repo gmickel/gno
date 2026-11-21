@@ -72,6 +72,23 @@ export async function createLazyVectorIndex(
       async searchNearest(embedding, k, options) {
         return (await get()).searchNearest(embedding, k, options);
       },
+      async searchNearestBatch(embeddings, limits, options) {
+        const port = await get();
+        if (port.searchNearestBatch) {
+          return port.searchNearestBatch(embeddings, limits, options);
+        }
+        const results = [];
+        for (let i = 0; i < embeddings.length; i++) {
+          const res = await port.searchNearest(
+            embeddings[i]!,
+            limits[i]!,
+            options
+          );
+          if (!res.ok) return res;
+          results.push(res.value);
+        }
+        return { ok: true as const, value: results };
+      },
       async rebuildVecIndex() {
         return (await get()).rebuildVecIndex();
       },
