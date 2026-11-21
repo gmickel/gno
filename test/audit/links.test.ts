@@ -411,14 +411,21 @@ describe("link integrity audit", () => {
   });
 
   test("source and target lookups retain supporting indexes", () => {
-    const indexes = adapter
-      .getRawDb()
+    const db = adapter.getRawDb();
+    const indexes = db
       .query<{ name: string }, []>("PRAGMA index_list('doc_links')")
       .all()
       .map(({ name }) => name);
-    expect(indexes.some((name) => name.includes("source"))).toBe(true);
-    const documentIndexes = adapter
-      .getRawDb()
+    const hasSourceIndex = indexes.some((indexName) =>
+      db
+        .query<{ seqno: number; name: string }, []>(
+          `PRAGMA index_info('${indexName.replaceAll("'", "''")}')`
+        )
+        .all()
+        .some((col) => col.seqno === 0 && col.name === "source_doc_id")
+    );
+    expect(hasSourceIndex).toBe(true);
+    const documentIndexes = db
       .query<{ name: string }, []>("PRAGMA index_list('documents')")
       .all()
       .map(({ name }) => name);
