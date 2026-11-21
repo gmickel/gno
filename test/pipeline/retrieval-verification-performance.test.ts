@@ -1,8 +1,8 @@
 import { Database } from "bun:sqlite";
 import { afterAll, describe, expect, mock, test } from "bun:test";
-// Bun has no directory-creation, sync stat, file-write, or OS/path equivalents.
+// Bun has no directory-creation, sync stat, symlink, file-write, or OS/path equivalents.
 import { statSync } from "node:fs";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -2008,5 +2008,90 @@ describe("Round 1 Codex regression guards (F1–F9)", () => {
         "race query model B semantic",
       ]);
     }
+  });
+
+  test("Round 4: retargeting a file: symlink does not collapse cache keys for ports bound to distinct canonical targets", async () => {
+    const dir = await makeTempDir("gno-symlink-exp-");
+    const targetA = join(dir, "model-a.gguf");
+    const targetB = join(dir, "model-b.gguf");
+    const targetC = join(dir, "model-c.gguf");
+    const linkPath = join(dir, "current.gguf");
+    await writeFile(targetA, "weights-A");
+    await writeFile(targetB, "weights-BB-distinct-size");
+    await writeFile(targetC, "weights-CCC-even-longer-size");
+    await symlink(targetC, linkPath);
+
+    const fpA = `file:${statSync(targetA).size}:${Math.trunc(statSync(targetA).mtimeMs)}`;
+    const fpB = `file:${statSync(targetB).size}:${Math.trunc(statSync(targetB).mtimeMs)}`;
+    const cache = new Map<string, string>();
+    const genA = mock(async () => ({
+      ok: true as const,
+      value: JSON.stringify({
+        lexicalQueries: ["symlink query", "symlink query alpha"],
+        vectorQueries: ["symlink query alpha semantic"],
+      }),
+    }));
+    const genB = mock(async () => ({
+      ok: true as const,
+      value: JSON.stringify({
+        lexicalQueries: ["symlink query", "symlink query beta"],
+        vectorQueries: ["symlink query beta semantic"],
+      }),
+    }));
+
+    const fileUri = `file:${linkPath}`;
+    const portA: GenerationPort = {
+      modelUri: fileUri,
+      modelPath: targetA,
+      modelFingerprint: fpA,
+      structuredOutput: "json_schema",
+      generate: genA,
+      dispose: async () => undefined,
+    };
+    const portB: GenerationPort = {
+      modelUri: fileUri,
+      modelPath: targetB,
+      modelFingerprint: fpB,
+      structuredOutput: "json_schema",
+      generate: genB,
+      dispose: async () => undefined,
+    };
+
+    const resA = await expandQueryCached(
+      {
+        genPort: portA,
+        getCache: async (k) => cache.get(k) ?? null,
+        setCache: async (k, v) => {
+          cache.set(k, v);
+        },
+      },
+      "symlink query",
+      { lang: "en", contextSize: 2048 }
+    );
+    const resB = await expandQueryCached(
+      {
+        genPort: portB,
+        getCache: async (k) => cache.get(k) ?? null,
+        setCache: async (k, v) => {
+          cache.set(k, v);
+        },
+      },
+      "symlink query",
+      { lang: "en", contextSize: 2048 }
+    );
+
+    expect(resA.ok && resB.ok).toBe(true);
+    expect(genA).toHaveBeenCalledTimes(1);
+    expect(genB).toHaveBeenCalledTimes(1);
+    expect(cache.size).toBe(2);
+    if (resA.ok && resB.ok) {
+      expect(resA.value?.vectorQueries).toEqual([
+        "symlink query alpha semantic",
+      ]);
+      expect(resB.value?.vectorQueries).toEqual([
+        "symlink query beta semantic",
+      ]);
+    }
+    await unlink(linkPath);
   });
 });

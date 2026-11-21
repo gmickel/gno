@@ -106,16 +106,16 @@ function resolveModelIdentityFingerprint(
   modelUri: string,
   options?: ExpansionCacheKeyOptions
 ): string | null {
-  const localPath = resolveLocalModelPath(modelUri, options);
   if (options?.modelFingerprint) {
-    if (localPath) {
-      const diskFp = statFileFingerprint(localPath);
+    if (options.modelPath) {
+      const diskFp = statFileFingerprint(options.modelPath);
       if (diskFp !== options.modelFingerprint) {
         return null;
       }
     }
     return options.modelFingerprint;
   }
+  const localPath = resolveLocalModelPath(modelUri, options);
   if (localPath) {
     return statFileFingerprint(localPath);
   }
@@ -123,6 +123,26 @@ function resolveModelIdentityFingerprint(
     return `uri:${modelUri}`;
   }
   return null;
+}
+
+function hashExpansionCacheKey(
+  modelUri: string,
+  fingerprint: string,
+  contextSize: number | undefined,
+  query: string,
+  lang: string,
+  intent?: string
+): string {
+  const data = [
+    EXPANSION_PROMPT_VERSION,
+    modelUri,
+    fingerprint,
+    contextSize !== undefined ? String(contextSize) : "",
+    query,
+    lang,
+    intent?.trim() ?? "",
+  ].join("\0");
+  return createHash("sha256").update(data).digest("hex");
 }
 
 /**
@@ -137,18 +157,14 @@ export function generateCacheKey(
   options?: ExpansionCacheKeyOptions
 ): string {
   const fingerprint = resolveModelIdentityFingerprint(modelUri, options) ?? "";
-  const contextSize =
-    options?.contextSize !== undefined ? String(options.contextSize) : "";
-  const data = [
-    EXPANSION_PROMPT_VERSION,
+  return hashExpansionCacheKey(
     modelUri,
     fingerprint,
-    contextSize,
+    options?.contextSize,
     query,
     lang,
-    intent?.trim() ?? "",
-  ].join("\0");
-  return createHash("sha256").update(data).digest("hex");
+    intent
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -654,15 +670,13 @@ export async function expandQueryCached(
   const initialIdentity = resolveIdentity();
   let cacheKey: string | null = null;
   if (initialIdentity !== null) {
-    cacheKey = generateCacheKey(
+    cacheKey = hashExpansionCacheKey(
       deps.genPort.modelUri,
+      initialIdentity,
+      options.contextSize,
       query,
       lang,
-      options.intent,
-      {
-        contextSize: options.contextSize,
-        modelFingerprint: initialIdentity,
-      }
+      options.intent
     );
 
     // Check cache (corrupt entries or read errors degrade cleanly to live expansion)
@@ -717,10 +731,14 @@ export async function expandQueryCached(
     if (writeIdentity !== null) {
       const writeKey =
         cacheKey ??
-        generateCacheKey(deps.genPort.modelUri, query, lang, options.intent, {
-          contextSize: options.contextSize,
-          modelFingerprint: writeIdentity,
-        });
+        hashExpansionCacheKey(
+          deps.genPort.modelUri,
+          writeIdentity,
+          options.contextSize,
+          query,
+          lang,
+          options.intent
+        );
       try {
         await deps.setCache(writeKey, JSON.stringify(result.value));
       } catch {
