@@ -1,0 +1,56 @@
+{
+  "branch": "fn-230-lossless-retrieval-and-verification",
+  "findings": {
+    "backend": "receipt",
+    "headSha": "79a62d244afd680b40702a0833bc6ba855b3f474",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-2b1a6227847cc4015a53d69c8604541437061ca6a4c75abbe8fbf2fc6d30367c"
+  },
+  "head_sha": "79a62d244afd680b40702a0833bc6ba855b3f474",
+  "id": "fn-230-lossless-retrieval-and-verification",
+  "mode": "receipt",
+  "na_reason": "All acceptance criteria (R1-R7) are internal retrieval, vector-store, expansion-cache, hydration, graph-retrieval, and claim-verification pipeline optimizations with no user-observable Web/desktop UI surface; verified by 2,123+ unit/integration tests across pipeline/store/llm/audit/sdk/cli/mcp, 23 dedicated fn-230 regression tests, typecheck (0 errors), oxlint (0 warnings/errors), eval:memory (100%), eval:sessions (100%), vector-search benchmark (unscoped 3.0ms p50 vs 14.86ms baseline), and 5 rounds of Codex impl-review (SHIP).",
+  "open_p0p1": [],
+  "qa_outcome": "NA",
+  "rid_coverage": {
+    "covered": 7,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R6"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R7"
+      }
+    ],
+    "total": 7
+  },
+  "scenarios": [],
+  "timestamp": "2026-11-21T22:44:27Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
