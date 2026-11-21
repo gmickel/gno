@@ -21,6 +21,7 @@ const MAX_OVERLAP_PERCENT = 0.5;
 
 /** Regex for sentence ending followed by whitespace and capital letter (global) */
 const SENTENCE_END_REGEX = /[.!?](\s+)[A-Z]/g;
+const NON_WHITESPACE_REGEX = /\S/;
 const MIN_CODE_CHUNK_PERCENT = 0.35;
 
 type CodeChunkLanguage =
@@ -93,6 +94,22 @@ const CODE_BREAKPOINT_PATTERNS: Record<CodeChunkLanguage, RegExp[]> = {
   ],
 };
 
+const combinePatterns = (patterns: readonly RegExp[]): RegExp =>
+  new RegExp(
+    patterns.map((pattern) => `(?:${pattern.source})`).join("|"),
+    "gm"
+  );
+
+const COMBINED_CODE_BREAKPOINT_PATTERNS: Record<CodeChunkLanguage, RegExp> = {
+  typescript: combinePatterns(CODE_BREAKPOINT_PATTERNS.typescript),
+  tsx: combinePatterns(CODE_BREAKPOINT_PATTERNS.tsx),
+  javascript: combinePatterns(CODE_BREAKPOINT_PATTERNS.javascript),
+  jsx: combinePatterns(CODE_BREAKPOINT_PATTERNS.jsx),
+  python: combinePatterns(CODE_BREAKPOINT_PATTERNS.python),
+  go: combinePatterns(CODE_BREAKPOINT_PATTERNS.go),
+  rust: combinePatterns(CODE_BREAKPOINT_PATTERNS.rust),
+};
+
 export interface CodeChunkingStatus {
   mode: typeof CODE_CHUNK_MODE;
   supportedExtensions: string[];
@@ -133,27 +150,25 @@ function collectStructuralBreakPoints(
     return [];
   }
 
-  const patterns = CODE_BREAKPOINT_PATTERNS[language];
-  if (!patterns) {
+  const pattern = COMBINED_CODE_BREAKPOINT_PATTERNS[language];
+  if (!pattern) {
     return [];
   }
 
-  const points = new Set<number>();
-  for (const pattern of patterns) {
-    pattern.lastIndex = 0;
-    let match: RegExpExecArray | null = null;
-    while (true) {
-      match = pattern.exec(text);
-      if (!match) {
-        break;
-      }
-      if (match.index > 0) {
-        points.add(match.index);
-      }
+  const points: number[] = [];
+  pattern.lastIndex = 0;
+  let match: RegExpExecArray | null = null;
+  while (true) {
+    match = pattern.exec(text);
+    if (!match) {
+      break;
+    }
+    if (match.index > 0) {
+      points.push(match.index);
     }
   }
 
-  return [...points].sort((a, b) => a - b);
+  return points;
 }
 
 function findStructuralBreakPoint(
@@ -163,26 +178,52 @@ function findStructuralBreakPoint(
   windowSize: number,
   minChunkChars: number
 ): number | null {
-  if (breakPoints.length === 0) {
+  const len = breakPoints.length;
+  if (len === 0) {
     return null;
   }
 
   const minStart = currentPos + minChunkChars;
   const start = Math.max(minStart, target - windowSize);
   const end = target + windowSize;
-  const candidates = breakPoints.filter(
-    (point) => point >= start && point <= end
-  );
-  if (candidates.length === 0) {
+  if (start > end) {
     return null;
   }
 
-  const beforeTarget = candidates.filter((point) => point <= target);
-  if (beforeTarget.length > 0) {
-    return beforeTarget.at(-1) ?? null;
+  // Lower bound: first index with breakPoints[idx] >= start
+  let low = 0;
+  let high = len;
+  while (low < high) {
+    const mid = (low + high) >>> 1;
+    if ((breakPoints[mid] ?? 0) < start) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
   }
 
-  return candidates[0] ?? null;
+  const first = breakPoints[low];
+  if (first === undefined || first > end) {
+    return null;
+  }
+  if (first > target) {
+    return first;
+  }
+
+  // Upper bound: first index with breakPoints[idx] > target
+  let uLow = low;
+  let uHigh = len;
+  const limit = Math.min(target, end);
+  while (uLow < uHigh) {
+    const mid = (uLow + uHigh) >>> 1;
+    if ((breakPoints[mid] ?? 0) <= limit) {
+      uLow = mid + 1;
+    } else {
+      uHigh = mid;
+    }
+  }
+
+  return breakPoints[uLow - 1] ?? null;
 }
 
 /**
@@ -199,10 +240,10 @@ interface LineIndex {
  */
 function buildLineIndex(text: string): LineIndex {
   const newlines: number[] = [];
-  for (let i = 0; i < text.length; i += 1) {
-    if (text[i] === "\n") {
-      newlines.push(i);
-    }
+  let pos = text.indexOf("\n");
+  while (pos !== -1) {
+    newlines.push(pos);
+    pos = text.indexOf("\n", pos + 1);
   }
   return { newlines };
 }
@@ -326,7 +367,7 @@ export class MarkdownChunker implements ChunkerPort {
     documentLanguageHint?: string,
     sourcePath?: string
   ): ChunkOutput[] {
-    if (!markdown || markdown.trim().length === 0) {
+    if (!markdown || !NON_WHITESPACE_REGEX.test(markdown)) {
       return [];
     }
 
@@ -384,7 +425,7 @@ export class MarkdownChunker implements ChunkerPort {
       const text = markdown.slice(pos, endPos);
 
       // Only skip truly empty chunks (all whitespace after full content consumed)
-      if (text.trim().length > 0) {
+      if (NON_WHITESPACE_REGEX.test(text)) {
         const startLine = lineAtPosition(lineIndex, pos);
         const endLine = lineAtPosition(lineIndex, endPos - 1);
 

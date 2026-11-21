@@ -29,8 +29,6 @@ import type {
 } from "./types";
 
 import { fingerprintContentTypeMetadataRules } from "../config";
-import { createJsonlAdapter } from "../converters/adapters/jsonl/adapter";
-import { createTranscriptAdapter } from "../converters/adapters/transcript/adapter";
 import { getDefaultMimeDetector, type MimeDetector } from "../converters/mime";
 import { markdownConverter } from "../converters/native/markdown";
 import {
@@ -100,6 +98,28 @@ const MAX_CONCURRENCY = 16;
 interface FileBudget extends FileBudgetLimits {
   startedAt: number;
 }
+
+interface ConfiguredRecordAdapters {
+  transcript?: RecordAdapter;
+  jsonl?: RecordAdapter;
+}
+
+interface ProcessFileContext {
+  configuredRecordAdapters?: ConfiguredRecordAdapters;
+  preloaded?: {
+    existing: DocumentRow | null;
+    priorRecordDocuments: DocumentRow[];
+  };
+  preloadedStat?: {
+    sourceSize: number;
+    sourceMtime: string;
+    sourceCtime: string;
+  };
+}
+
+type PreparedFileSync =
+  | { kind: "done"; result: FileSyncResult }
+  | { kind: "write"; persist: () => Promise<FileSyncResult> };
 
 /** A file still being indexed this long (or half its budget) is reported. */
 export const SLOW_CONVERSION_NOTICE_MS = 10_000;
@@ -456,21 +476,36 @@ export class SyncService {
       ((mode) => createDirectoryAvailability(mode));
   }
 
+  private async resolveConfiguredRecordAdapters(
+    collection: Collection
+  ): Promise<ConfiguredRecordAdapters> {
+    const transcriptConfig = collection.recordAdapters?.transcript;
+    const jsonlConfig = collection.recordAdapters?.jsonl;
+    if (!transcriptConfig && !jsonlConfig) return {};
+    const resolved: ConfiguredRecordAdapters = {};
+    if (transcriptConfig) {
+      const { createTranscriptAdapter } =
+        await import("../converters/adapters/transcript/adapter");
+      resolved.transcript = createTranscriptAdapter(transcriptConfig);
+    }
+    if (jsonlConfig) {
+      const { createJsonlAdapter } =
+        await import("../converters/adapters/jsonl/adapter");
+      resolved.jsonl = createJsonlAdapter(jsonlConfig.fieldMapping);
+    }
+    return resolved;
+  }
+
   private async selectRecordAdapter(
     collection: Collection,
     mime: string,
-    ext: string
+    ext: string,
+    configured?: ConfiguredRecordAdapters
   ): Promise<RecordAdapter | undefined> {
-    const transcriptConfig = collection.recordAdapters?.transcript;
-    if (transcriptConfig) {
-      const adapter = createTranscriptAdapter(transcriptConfig);
-      if (adapter.canHandle(mime, ext)) return adapter;
-    }
-    const jsonlConfig = collection.recordAdapters?.jsonl;
-    if (jsonlConfig) {
-      const adapter = createJsonlAdapter(jsonlConfig.fieldMapping);
-      if (adapter.canHandle(mime, ext)) return adapter;
-    }
+    const adapters =
+      configured ?? (await this.resolveConfiguredRecordAdapters(collection));
+    if (adapters.transcript?.canHandle(mime, ext)) return adapters.transcript;
+    if (adapters.jsonl?.canHandle(mime, ext)) return adapters.jsonl;
     const selectDefault = (
       this.pipeline as ConversionPipeline & {
         selectRecordAdapter?: ConversionPipeline["selectRecordAdapter"];
@@ -480,17 +515,68 @@ export class SyncService {
     return selectDefault.call(this.pipeline, mime, ext);
   }
 
-  /**
-   * Process a single file through the ingestion pipeline.
-   * All store operations are checked and errors are propagated.
-   */
-  // oxlint-disable-next-line max-lines-per-function -- file processing with multiple extraction paths
-  private async processFile(
+  private async recordUnexpectedFileError(
     collection: Collection,
     entry: WalkEntry,
     store: StorePort,
-    options: SyncOptions
+    error: unknown
   ): Promise<FileSyncResult> {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    // Distinguish store errors from other internal errors
+    const isStoreError =
+      message.startsWith("Store operation failed:") ||
+      (error instanceof Error &&
+        (error as Error & { context?: unknown }).context !== undefined);
+    const code = isStoreError ? "STORE_ERROR" : "INTERNAL";
+
+    // Record internal error to store (best-effort)
+    try {
+      await store.recordError({
+        collection: collection.name,
+        relPath: entry.relPath,
+        code,
+        message,
+        details: {
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+      });
+
+      // Also update document with error info if it exists
+      const existingResult = await store.getDocument(
+        collection.name,
+        entry.relPath
+      );
+      if (existingResult.ok && existingResult.value?.active) {
+        await store.upsertDocument(
+          preserveDocumentWithError(existingResult.value, code, message)
+        );
+      }
+    } catch {
+      // Best-effort error recording
+    }
+
+    return {
+      relPath: entry.relPath,
+      status: "error",
+      errorCode: code,
+      errorMessage: message,
+    };
+  }
+
+  /**
+   * Prepare a single file outside any SQLite write transaction, returning either
+   * a completed no-write result or a `persist` closure that writes to the store.
+   * Record containers manage their own streaming + single transaction and return
+   * `kind: "done"` once committed.
+   */
+  // oxlint-disable-next-line max-lines-per-function -- file processing with multiple extraction paths
+  private async prepareFileForSync(
+    collection: Collection,
+    entry: WalkEntry,
+    store: StorePort,
+    options: SyncOptions,
+    context?: ProcessFileContext
+  ): Promise<PreparedFileSync> {
     const generatedResult: FileSyncResult = {
       relPath: entry.relPath,
       status: "skipped",
@@ -498,7 +584,9 @@ export class SyncService {
       errorMessage:
         "Compiled context is derived material; index original sources instead",
     };
-    if (isCompiledContextPath(entry.relPath)) return generatedResult;
+    if (isCompiledContextPath(entry.relPath)) {
+      return { kind: "done", result: generatedResult };
+    }
     tracePhase(`sync: file ${entry.relPath}`);
     const limits = {
       maxBytes: options.limits?.maxBytes ?? DEFAULT_LIMITS.maxBytes,
@@ -510,50 +598,68 @@ export class SyncService {
 
     try {
       // 1. Re-stat before read to enforce maxBytes on current file size
+      //    unless syncPaths just statted the canonical path.
       let sourceSize = entry.size;
       let sourceMtime = entry.mtime;
       let sourceCtime = entry.ctime;
-      try {
-        const sourceStat = await stat(entry.absPath);
-        if (!sourceStat.isFile()) {
+      if (context?.preloadedStat) {
+        sourceSize = context.preloadedStat.sourceSize;
+        sourceMtime = context.preloadedStat.sourceMtime;
+        sourceCtime = context.preloadedStat.sourceCtime;
+      } else {
+        try {
+          const sourceStat = await stat(entry.absPath);
+          if (!sourceStat.isFile()) {
+            return {
+              kind: "done",
+              result: {
+                relPath: entry.relPath,
+                status: "error",
+                errorCode: "NOT_FILE",
+                errorMessage: "Path is not a file",
+              },
+            };
+          }
+          sourceSize = sourceStat.size;
+          sourceMtime = sourceStat.mtime.toISOString();
+          sourceCtime = (
+            sourceStat.birthtime ??
+            sourceStat.ctime ??
+            sourceStat.mtime
+          ).toISOString();
+        } catch {
           return {
-            relPath: entry.relPath,
-            status: "error",
-            errorCode: "NOT_FILE",
-            errorMessage: "Path is not a file",
+            kind: "done",
+            result: {
+              relPath: entry.relPath,
+              status: "error",
+              errorCode: "NOT_FOUND",
+              errorMessage: "File not found",
+            },
           };
         }
-        sourceSize = sourceStat.size;
-        sourceMtime = sourceStat.mtime.toISOString();
-        sourceCtime = (
-          sourceStat.birthtime ??
-          sourceStat.ctime ??
-          sourceStat.mtime
-        ).toISOString();
-      } catch {
-        return {
-          relPath: entry.relPath,
-          status: "error",
-          errorCode: "NOT_FOUND",
-          errorMessage: "File not found",
-        };
       }
 
       if (sourceSize > limits.maxBytes) {
         const message = `File size ${sourceSize} exceeds limit ${limits.maxBytes}`;
-        await store
-          .recordError({
-            collection: collection.name,
-            relPath: entry.relPath,
-            code: "TOO_LARGE",
-            message,
-          })
-          .catch(() => undefined);
         return {
-          relPath: entry.relPath,
-          status: "skipped",
-          errorCode: "TOO_LARGE",
-          errorMessage: message,
+          kind: "write",
+          persist: async () => {
+            await store
+              .recordError({
+                collection: collection.name,
+                relPath: entry.relPath,
+                code: "TOO_LARGE",
+                message,
+              })
+              .catch(() => undefined);
+            return {
+              relPath: entry.relPath,
+              status: "skipped",
+              errorCode: "TOO_LARGE",
+              errorMessage: message,
+            };
+          },
         };
       }
 
@@ -564,7 +670,8 @@ export class SyncService {
       const recordAdapter = await this.selectRecordAdapter(
         collection,
         extensionMime.mime,
-        extensionMime.ext
+        extensionMime.ext,
+        context?.configuredRecordAdapters
       );
       tracePhase("sync: record adapter selected");
       const contentTypeRules = options.contentTypeRules ?? [];
@@ -572,9 +679,9 @@ export class SyncService {
         options.contentTypeRulesFingerprint ??
         fingerprintContentTypeMetadataRules(contentTypeRules);
 
-      // 2. Local mode performs one guarded content-boundary read. `any` keeps
-      // the legacy record-stream and sniff/read paths byte-for-byte unchanged.
-      // No availability syscall is added during discovery.
+      // 2. Local mode performs one guarded content-boundary read. In `any` mode,
+      //    record containers keep streaming reads (4 KiB prefix slice + stream),
+      //    while regular files perform a single full read and slice views from it.
       const availabilityMode = resolveSourceAvailability(collection, options);
       let guardedBytes: Uint8Array | undefined;
       if (availabilityMode === "local") {
@@ -583,25 +690,30 @@ export class SyncService {
           sourceSize
         );
         if (!sourceRead.ok) {
-          return await this.finishSourceAvailabilityFailure(
-            collection,
-            entry,
-            store,
-            sourceRead
-          );
+          return {
+            kind: "write",
+            persist: () =>
+              this.finishSourceAvailabilityFailure(
+                collection,
+                entry,
+                store,
+                sourceRead
+              ),
+          };
         }
         guardedBytes = sourceRead.bytes;
       }
 
-      const generatedPrefix =
-        guardedBytes?.subarray(0, 4096) ??
-        new Uint8Array(
-          await Bun.file(entry.absPath).slice(0, 4096).arrayBuffer()
-        );
-      if (isCompiledContextContent(generatedPrefix)) return generatedResult;
-
       if (recordAdapter) {
-        return await processRecordContainer({
+        const generatedPrefix =
+          guardedBytes?.subarray(0, 4096) ??
+          new Uint8Array(
+            await Bun.file(entry.absPath).slice(0, 4096).arrayBuffer()
+          );
+        if (isCompiledContextContent(generatedPrefix)) {
+          return { kind: "done", result: generatedResult };
+        }
+        const recordResult = await processRecordContainer({
           adapter: recordAdapter,
           chunker: this.chunker,
           collection,
@@ -617,20 +729,29 @@ export class SyncService {
           sourceMtime,
           sourceSize,
           sourceBytes: guardedBytes,
+          preloadedPriorDocuments: context?.preloaded?.priorRecordDocuments,
+          preloadedSourceDocument: context?.preloaded?.existing,
           store,
         });
+        return { kind: "done", result: recordResult };
+      }
+
+      const bytes = guardedBytes ?? (await Bun.file(entry.absPath).bytes());
+      const generatedPrefix = bytes.subarray(0, 4096);
+      if (isCompiledContextContent(generatedPrefix)) {
+        return { kind: "done", result: generatedResult };
       }
 
       const sniffBytes = generatedPrefix.subarray(0, 512);
       const mime = this.mimeDetector.detect(entry.relPath, sniffBytes);
 
-      const priorRecordDocuments = mustOk(
-        await store.listRecordDocuments(collection.name, entry.relPath),
-        "listRecordDocuments",
-        { collection: collection.name, relPath: entry.relPath }
-      );
-
-      const bytes = guardedBytes ?? (await Bun.file(entry.absPath).bytes());
+      const priorRecordDocuments =
+        context?.preloaded?.priorRecordDocuments ??
+        mustOk(
+          await store.listRecordDocuments(collection.name, entry.relPath),
+          "listRecordDocuments",
+          { collection: collection.name, relPath: entry.relPath }
+        );
 
       // 3. Compute sourceHash from source bytes. Local mode cannot reopen.
       const hasher = new Bun.CryptoHasher("sha256");
@@ -638,13 +759,21 @@ export class SyncService {
       const sourceHash = hasher.digest("hex");
 
       // 4. Check existing doc for skip/repair decision
-      const existingResult = await store.getDocument(
-        collection.name,
-        entry.relPath
-      );
-      const existing = existingResult.ok ? existingResult.value : null;
+      const existing = context?.preloaded
+        ? context.preloaded.existing
+        : (() => undefined)();
+      const resolvedExisting =
+        context?.preloaded !== undefined
+          ? existing!
+          : await (async () => {
+              const existingResult = await store.getDocument(
+                collection.name,
+                entry.relPath
+              );
+              return existingResult.ok ? existingResult.value : null;
+            })();
       const decision = decideAction(
-        existing,
+        resolvedExisting,
         sourceHash,
         contentTypeRulesFingerprint
       );
@@ -654,14 +783,31 @@ export class SyncService {
           .filter((document) => document.active)
           .map((document) => document.relPath);
         if (activeRecordPaths.length > 0) {
-          mustOk(
-            await store.markInactive(collection.name, activeRecordPaths),
-            "markInactive",
-            { collection: collection.name, relPath: entry.relPath }
-          );
-          return { relPath: entry.relPath, status: "updated" };
+          return {
+            kind: "write",
+            persist: async () => {
+              try {
+                mustOk(
+                  await store.markInactive(collection.name, activeRecordPaths),
+                  "markInactive",
+                  { collection: collection.name, relPath: entry.relPath }
+                );
+                return { relPath: entry.relPath, status: "updated" };
+              } catch (error) {
+                return await this.recordUnexpectedFileError(
+                  collection,
+                  entry,
+                  store,
+                  error
+                );
+              }
+            },
+          };
         }
-        return { relPath: entry.relPath, status: "unchanged" };
+        return {
+          kind: "done",
+          result: { relPath: entry.relPath, status: "unchanged" },
+        };
       }
 
       // 6. Prepare the file (convert, then everything CPU-bound before the
@@ -673,74 +819,83 @@ export class SyncService {
         failure: PrepareFailure,
         previousStructure: DocumentStructureSnapshot | null | undefined
       ): Promise<FileSyncResult> => {
-        // Record error (checked)
-        const errorInput: IngestErrorInput = {
-          collection: collection.name,
-          relPath: entry.relPath,
-          code: failure.code,
-          message: failure.message,
-          details: failure.details,
-        };
-        const recordResult = await store.recordError(errorInput);
-        if (!recordResult.ok) {
-          // Log but continue - error recording is best-effort
-        }
+        try {
+          // Record error (checked)
+          const errorInput: IngestErrorInput = {
+            collection: collection.name,
+            relPath: entry.relPath,
+            code: failure.code,
+            message: failure.message,
+            details: failure.details,
+          };
+          const recordResult = await store.recordError(errorInput);
+          if (!recordResult.ok) {
+            // Log but continue - error recording is best-effort
+          }
 
-        const hadRetrievableEvidence = Boolean(existing?.mirrorHash);
-        const structureDelta = hadRetrievableEvidence
-          ? diffDocumentStructure(previousStructure, {
-              headings: [],
-              links: [],
-              typedEdges: [],
-              dates: {},
-            }).delta
-          : undefined;
+          const hadRetrievableEvidence = Boolean(resolvedExisting?.mirrorHash);
+          const structureDelta = hadRetrievableEvidence
+            ? diffDocumentStructure(previousStructure, {
+                headings: [],
+                links: [],
+                typedEdges: [],
+                dates: {},
+              }).delta
+            : undefined;
 
-        // Upsert document with error info, explicitly clear mirrorHash. This
-        // transition is journaled only when retrievable evidence previously
-        // existed; initial/repeated error placeholders are not evidence
-        // creates. Real evidence disappearance stays in the same transaction
-        // so saved Capsule freshness checks cannot miss it.
-        const upsertResult = await store.upsertDocument({
-          collection: collection.name,
-          relPath: entry.relPath,
-          sourceHash,
-          sourceMime: mime.mime,
-          sourceExt: mime.ext,
-          sourceSize,
-          sourceMtime,
-          sourceCtime,
-          lastErrorCode: failure.code,
-          lastErrorMessage: failure.message,
-          ingestVersion: INGEST_VERSION,
-          contentTypeRulesFingerprint,
-          changeJournal: structureDelta ? { structureDelta } : false,
-          // mirrorHash intentionally omitted (will be null)
-        });
+          // Upsert document with error info, explicitly clear mirrorHash. This
+          // transition is journaled only when retrievable evidence previously
+          // existed; initial/repeated error placeholders are not evidence
+          // creates. Real evidence disappearance stays in the same transaction
+          // so saved Capsule freshness checks cannot miss it.
+          const upsertResult = await store.upsertDocument({
+            collection: collection.name,
+            relPath: entry.relPath,
+            sourceHash,
+            sourceMime: mime.mime,
+            sourceExt: mime.ext,
+            sourceSize,
+            sourceMtime,
+            sourceCtime,
+            lastErrorCode: failure.code,
+            lastErrorMessage: failure.message,
+            ingestVersion: INGEST_VERSION,
+            contentTypeRulesFingerprint,
+            changeJournal: structureDelta ? { structureDelta } : false,
+            // mirrorHash intentionally omitted (will be null)
+          });
 
-        if (!upsertResult.ok) {
+          if (!upsertResult.ok) {
+            return {
+              relPath: entry.relPath,
+              status: "error",
+              errorCode: "STORE_ERROR",
+              errorMessage: upsertResult.error.message,
+            };
+          }
+
           return {
             relPath: entry.relPath,
             status: "error",
-            errorCode: "STORE_ERROR",
-            errorMessage: upsertResult.error.message,
+            errorCode: failure.code,
+            errorMessage: failure.message,
           };
+        } catch (error) {
+          return await this.recordUnexpectedFileError(
+            collection,
+            entry,
+            store,
+            error
+          );
         }
-
-        return {
-          relPath: entry.relPath,
-          status: "error",
-          errorCode: failure.code,
-          errorMessage: failure.message,
-        };
       };
 
       // No previous revision: null (a new document). A previous revision whose
       // structure was not computed before a stop: undefined (history
       // unavailable), as for a missing mirror.
       let previousStructure: DocumentStructureSnapshot | null | undefined =
-        existing ? undefined : null;
-      const previous = await this.readPreviousRevision(store, existing);
+        resolvedExisting ? undefined : null;
+      const previous = await this.readPreviousRevision(store, resolvedExisting);
       tracePhase("sync: preparing file");
       const prepared = await this.prepare(
         {
@@ -777,10 +932,15 @@ export class SyncService {
               budget
             );
           },
+          // Sync never reads `bytes` again after hashing above.
+          transferInputBytes: true,
         }
       );
       if (!prepared.ok) {
-        return await recordFailure(prepared.error, previousStructure);
+        return {
+          kind: "write",
+          persist: () => recordFailure(prepared.error, previousStructure),
+        };
       }
       const {
         artifact,
@@ -902,7 +1062,9 @@ export class SyncService {
         }
 
         const status =
-          existing || priorRecordDocuments.length > 0 ? "updated" : "added";
+          resolvedExisting || priorRecordDocuments.length > 0
+            ? "updated"
+            : "added";
         return {
           relPath: entry.relPath,
           status,
@@ -912,58 +1074,63 @@ export class SyncService {
           contentTypeSource: extractedMetadata.contentTypeSource,
         };
       };
-      if (!store.withTransaction) {
-        return await persistSuccessfulFile();
-      }
-      const persisted = await store.withTransaction(persistSuccessfulFile);
-      return mustOk(persisted, "persistSuccessfulFile", {
-        collection: collection.name,
-        relPath: entry.relPath,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      // Distinguish store errors from other internal errors
-      const isStoreError =
-        message.startsWith("Store operation failed:") ||
-        (error instanceof Error &&
-          (error as Error & { context?: unknown }).context !== undefined);
-      const code = isStoreError ? "STORE_ERROR" : "INTERNAL";
-
-      // Record internal error to store (best-effort)
-      try {
-        await store.recordError({
-          collection: collection.name,
-          relPath: entry.relPath,
-          code,
-          message,
-          details: {
-            stack: error instanceof Error ? error.stack : undefined,
-          },
-        });
-
-        // Also update document with error info if it exists
-        const existingResult = await store.getDocument(
-          collection.name,
-          entry.relPath
-        );
-        if (existingResult.ok && existingResult.value?.active) {
-          await store.upsertDocument(
-            preserveDocumentWithError(existingResult.value, code, message)
-          );
-        }
-      } catch {
-        // Best-effort error recording
-      }
 
       return {
-        relPath: entry.relPath,
-        status: "error",
-        errorCode: code,
-        errorMessage: message,
+        kind: "write",
+        persist: async () => {
+          try {
+            if (!store.withTransaction) {
+              return await persistSuccessfulFile();
+            }
+            // Per-file transaction/savepoint rolls back partial document/journal
+            // writes atomically if a downstream write (content/chunks/tags/links) fails.
+            const persisted = await store.withTransaction(
+              persistSuccessfulFile
+            );
+            return mustOk(persisted, "persistSuccessfulFile", {
+              collection: collection.name,
+              relPath: entry.relPath,
+            });
+          } catch (error) {
+            return await this.recordUnexpectedFileError(
+              collection,
+              entry,
+              store,
+              error
+            );
+          }
+        },
+      };
+    } catch (error) {
+      return {
+        kind: "write",
+        persist: () =>
+          this.recordUnexpectedFileError(collection, entry, store, error),
       };
     } finally {
       clearTimeout(slowNotice);
     }
+  }
+
+  /**
+   * Process a single file through the ingestion pipeline.
+   */
+  private async processFile(
+    collection: Collection,
+    entry: WalkEntry,
+    store: StorePort,
+    options: SyncOptions,
+    context?: ProcessFileContext
+  ): Promise<FileSyncResult> {
+    const prepared = await this.prepareFileForSync(
+      collection,
+      entry,
+      store,
+      options,
+      context
+    );
+    if (prepared.kind === "done") return prepared.result;
+    return await prepared.persist();
   }
 
   /**
@@ -1046,7 +1213,10 @@ export class SyncService {
   private prepare(
     request: PrepareFileRequest,
     budget: FileBudget,
-    hooks: Required<FileProcessorHooks>
+    hooks: FileProcessorHooks & {
+      onPrevious: NonNullable<FileProcessorHooks["onPrevious"]>;
+      onStarted: NonNullable<FileProcessorHooks["onStarted"]>;
+    }
   ): Promise<PrepareOutcome> {
     if (this.defaultPreparation) {
       return prepareInProcessor(request, budget, hooks);
@@ -1177,7 +1347,48 @@ export class SyncService {
     const directoryAvailability = memoizeDirectoryAvailability(
       this.directoryAvailabilityFactory(availabilityMode)
     );
+    const configuredRecordAdapters =
+      await this.resolveConfiguredRecordAdapters(collection);
+    let cachedCollectionRoot: string | undefined;
     let rootUnavailable: string | null = null;
+
+    const collectPreWriteSources = async (
+      relPath: string,
+      existingDoc: DocumentRow | null,
+      recordDocuments: DocumentRow[]
+    ): Promise<FileSyncResult | null> => {
+      if (existingDoc) {
+        const collectError = await this.collectProjectionSourceIds(
+          store,
+          existingDoc.id,
+          projectionSourceIds
+        );
+        if (collectError) {
+          return {
+            relPath,
+            status: "error",
+            errorCode: collectError.code,
+            errorMessage: collectError.message,
+          };
+        }
+      }
+      for (const recordDocument of recordDocuments) {
+        const collectError = await this.collectProjectionSourceIds(
+          store,
+          recordDocument.id,
+          projectionSourceIds
+        );
+        if (collectError) {
+          return {
+            relPath,
+            status: "error",
+            errorCode: collectError.code,
+            errorMessage: collectError.message,
+          };
+        }
+      }
+      return null;
+    };
 
     for (const relPath of relPaths) {
       const recordDocumentsResult = await store.listRecordDocuments(
@@ -1205,43 +1416,6 @@ export class SyncService {
         continue;
       }
       const existingDoc = existingResult.value;
-      if (existingDoc) {
-        const collectError = await this.collectProjectionSourceIds(
-          store,
-          existingDoc.id,
-          projectionSourceIds
-        );
-        if (collectError) {
-          results.push({
-            relPath,
-            status: "error",
-            errorCode: collectError.code,
-            errorMessage: collectError.message,
-          });
-          continue;
-        }
-      }
-      let recordCollectFailed: FileSyncResult | null = null;
-      for (const recordDocument of recordDocuments) {
-        const collectError = await this.collectProjectionSourceIds(
-          store,
-          recordDocument.id,
-          projectionSourceIds
-        );
-        if (collectError) {
-          recordCollectFailed = {
-            relPath,
-            status: "error",
-            errorCode: collectError.code,
-            errorMessage: collectError.message,
-          };
-          break;
-        }
-      }
-      if (recordCollectFailed) {
-        results.push(recordCollectFailed);
-        continue;
-      }
 
       // Direct syncPaths must not bypass directory-availability guards.
       const unprovenPrefix = await findUnprovenAvailabilityPrefix(
@@ -1302,6 +1476,15 @@ export class SyncService {
           });
           continue;
         }
+        const preCollectFailed = await collectPreWriteSources(
+          relPath,
+          existingDoc,
+          recordDocuments
+        );
+        if (preCollectFailed) {
+          results.push(preCollectFailed);
+          continue;
+        }
         const inactive = await this.inactivateOneAbsentSource(
           collection,
           store,
@@ -1326,11 +1509,11 @@ export class SyncService {
 
       let canonicalSourcePath: string;
       try {
-        const [collectionRoot, sourcePath] = await Promise.all([
-          realpath(collection.path),
-          realpath(absPath),
-        ]);
-        const sourceRelative = relative(collectionRoot, sourcePath);
+        if (cachedCollectionRoot === undefined) {
+          cachedCollectionRoot = await realpath(collection.path);
+        }
+        const sourcePath = await realpath(absPath);
+        const sourceRelative = relative(cachedCollectionRoot, sourcePath);
         if (
           sourceRelative === ".." ||
           sourceRelative.startsWith(`..${sep}`) ||
@@ -1355,21 +1538,48 @@ export class SyncService {
         continue;
       }
 
+      const sourceMtime = stats.mtime.toISOString();
+      const sourceCtime = (
+        stats.birthtime ??
+        stats.ctime ??
+        stats.mtime
+      ).toISOString();
       const entry: WalkEntry = {
         absPath: canonicalSourcePath,
         relPath,
         size: stats.size,
-        mtime: stats.mtime.toISOString(),
-        ctime: (stats.birthtime ?? stats.ctime ?? stats.mtime).toISOString(),
+        mtime: sourceMtime,
+        ctime: sourceCtime,
       };
 
       const result = await this.processFile(
         collection,
         entry,
         store,
-        syncOptions
+        syncOptions,
+        {
+          configuredRecordAdapters,
+          preloaded: {
+            existing: existingDoc,
+            priorRecordDocuments: recordDocuments,
+          },
+          preloadedStat: {
+            sourceSize: stats.size,
+            sourceMtime,
+            sourceCtime,
+          },
+        }
       );
       if (result.errorCode === "GENERATED_CONTEXT") {
+        const preCollectFailed = await collectPreWriteSources(
+          relPath,
+          existingDoc,
+          recordDocuments
+        );
+        if (preCollectFailed) {
+          results.push(preCollectFailed);
+          continue;
+        }
         const inactive = await this.inactivateOneAbsentSource(
           collection,
           store,
@@ -1381,6 +1591,19 @@ export class SyncService {
         results.push(
           inactive.result.status === "error" ? inactive.result : result
         );
+        continue;
+      }
+      if (result.status === "unchanged") {
+        results.push(result);
+        continue;
+      }
+      const preCollectFailed = await collectPreWriteSources(
+        relPath,
+        existingDoc,
+        recordDocuments
+      );
+      if (preCollectFailed) {
+        results.push(preCollectFailed);
         continue;
       }
       results.push(result);
@@ -1812,143 +2035,192 @@ export class SyncService {
       }
     }
 
-    // 4. Process files with bounded concurrency
+    // 4. Preload collection documents once (eliminates 2N per-file lookups) and
+    //    decouple CPU/IO preparation from batched SQLite commit transactions.
+    const configuredRecordAdapters =
+      await this.resolveConfiguredRecordAdapters(collection);
+    const existingDocsResult = await store.listDocuments(collection.name);
+    let docByRelPath: Map<string, DocumentRow> | undefined;
+    let recordsBySourcePath: Map<string, DocumentRow[]> | undefined;
+    if (existingDocsResult.ok) {
+      docByRelPath = new Map<string, DocumentRow>();
+      recordsBySourcePath = new Map<string, DocumentRow[]>();
+      for (const document of existingDocsResult.value) {
+        docByRelPath.set(document.relPath, document);
+        if (document.recordSourcePath) {
+          let list = recordsBySourcePath.get(document.recordSourcePath);
+          if (!list) {
+            list = [];
+            recordsBySourcePath.set(document.recordSourcePath, list);
+          }
+          list.push(document);
+        }
+      }
+    }
+
+    const recordFileResult = (
+      entry: WalkEntry,
+      result: FileSyncResult
+    ): void => {
+      if (result.errorCode === "GENERATED_CONTEXT") {
+        seenPaths.delete(entry.relPath);
+      }
+      fileResults.push(result);
+      switch (result.status) {
+        case "added":
+          added += 1;
+          break;
+        case "updated":
+          updated += 1;
+          break;
+        case "unchanged":
+          unchanged += 1;
+          break;
+        case "error":
+          errored += 1;
+          if (result.errorCode && result.errorMessage) {
+            errors.push({
+              relPath: result.relPath,
+              code: result.errorCode,
+              message: result.errorMessage,
+            });
+          }
+          break;
+        case "skipped":
+          dynamicSkipped += 1;
+          if (result.errorCode && result.errorMessage) {
+            errors.push({
+              relPath: result.relPath,
+              code: result.errorCode,
+              message: result.errorMessage,
+            });
+          }
+          break;
+      }
+    };
+
+    const buildContext = (entry: WalkEntry): ProcessFileContext => ({
+      configuredRecordAdapters,
+      ...(docByRelPath && recordsBySourcePath
+        ? {
+            preloaded: {
+              existing: docByRelPath.get(entry.relPath) ?? null,
+              priorRecordDocuments:
+                recordsBySourcePath.get(entry.relPath) ?? [],
+            },
+          }
+        : {}),
+    });
+
     const concurrency = Math.max(
       1,
       Math.min(MAX_CONCURRENCY, options.concurrency ?? DEFAULT_CONCURRENCY)
     );
-    if (concurrency === 1) {
-      // Sequential processing with batched transactions (Windows perf)
-      for (let i = 0; i < entries.length; i += TX_BATCH_SIZE) {
-        const batch = entries.slice(i, i + TX_BATCH_SIZE);
+    const semaphore = concurrency > 1 ? new Semaphore(concurrency) : undefined;
 
-        const runBatch = async (): Promise<void> => {
-          for (const entry of batch) {
-            seenPaths.add(entry.relPath);
-            const result = await this.processFile(
+    for (let i = 0; i < entries.length; i += TX_BATCH_SIZE) {
+      const batch = entries.slice(i, i + TX_BATCH_SIZE);
+      for (const entry of batch) {
+        seenPaths.add(entry.relPath);
+      }
+
+      // Prepare batch outside any SQLite write transaction (sequentially or
+      // with bounded concurrency), preserving deterministic `batch` order.
+      let preparedBatch: PreparedFileSync[];
+      if (!semaphore) {
+        preparedBatch = [];
+        for (const entry of batch) {
+          preparedBatch.push(
+            await this.prepareFileForSync(
               collection,
               entry,
               store,
-              syncOptions
-            );
-            if (result.errorCode === "GENERATED_CONTEXT")
-              seenPaths.delete(entry.relPath);
-            fileResults.push(result);
-            switch (result.status) {
-              case "added":
-                added += 1;
-                break;
-              case "updated":
-                updated += 1;
-                break;
-              case "unchanged":
-                unchanged += 1;
-                break;
-              case "error":
-                errored += 1;
-                if (result.errorCode && result.errorMessage) {
-                  errors.push({
-                    relPath: result.relPath,
-                    code: result.errorCode,
-                    message: result.errorMessage,
-                  });
-                }
-                break;
-              case "skipped":
-                dynamicSkipped += 1;
-                if (result.errorCode && result.errorMessage) {
-                  errors.push({
-                    relPath: result.relPath,
-                    code: result.errorCode,
-                    message: result.errorMessage,
-                  });
-                }
-                break;
+              syncOptions,
+              buildContext(entry)
+            )
+          );
+        }
+      } else {
+        preparedBatch = await Promise.all(
+          batch.map(async (entry) => {
+            await semaphore.acquire();
+            try {
+              return await this.prepareFileForSync(
+                collection,
+                entry,
+                store,
+                syncOptions,
+                buildContext(entry)
+              );
+            } finally {
+              semaphore.release();
             }
-          }
-        };
+          })
+        );
+      }
 
-        // Wrap batch in single transaction when supported (reduces commits)
-        if (store.withTransaction) {
-          const txResult = await store.withTransaction(runBatch);
-          if (!txResult.ok) {
-            errors.push({
-              relPath: "(transaction batch)",
-              code: txResult.error.code,
-              message: txResult.error.message,
-            });
-            break; // Abort on transaction failure
-          }
-        } else {
-          await runBatch();
+      let hasWrites = false;
+      for (const item of preparedBatch) {
+        if (item.kind === "write") {
+          hasWrites = true;
+          break;
         }
       }
-    } else {
-      // Concurrent processing with semaphore
-      const semaphore = new Semaphore(concurrency);
-      const results: FileSyncResult[] = [];
 
-      await Promise.all(
-        entries.map(async (entry) => {
-          seenPaths.add(entry.relPath);
-          await semaphore.acquire();
-          try {
-            const result = await this.processFile(
-              collection,
-              entry,
-              store,
-              syncOptions
-            );
-            if (result.errorCode === "GENERATED_CONTEXT")
-              seenPaths.delete(entry.relPath);
-            fileResults.push(result);
-            results.push(result);
-          } finally {
-            semaphore.release();
+      if (!hasWrites) {
+        for (let idx = 0; idx < batch.length; idx += 1) {
+          const item = preparedBatch[idx];
+          const entry = batch[idx];
+          if (item && item.kind === "done" && entry) {
+            recordFileResult(entry, item.result);
           }
-        })
-      );
+        }
+        continue;
+      }
 
-      // Aggregate results
-      for (const result of results) {
-        switch (result.status) {
-          case "added":
-            added += 1;
-            break;
-          case "updated":
-            updated += 1;
-            break;
-          case "unchanged":
-            unchanged += 1;
-            break;
-          case "error":
-            errored += 1;
-            if (result.errorCode && result.errorMessage) {
-              errors.push({
-                relPath: result.relPath,
-                code: result.errorCode,
-                message: result.errorMessage,
-              });
-            }
-            break;
-          case "skipped":
-            dynamicSkipped += 1;
-            if (result.errorCode && result.errorMessage) {
-              errors.push({
-                relPath: result.relPath,
-                code: result.errorCode,
-                message: result.errorMessage,
-              });
-            }
-            break;
+      const commitBatch = async (): Promise<FileSyncResult[]> => {
+        const batchResults: FileSyncResult[] = [];
+        for (let idx = 0; idx < batch.length; idx += 1) {
+          const item = preparedBatch[idx];
+          if (!item) continue;
+          const result =
+            item.kind === "done" ? item.result : await item.persist();
+          batchResults.push(result);
+        }
+        return batchResults;
+      };
+
+      if (store.withTransaction) {
+        const txResult = await store.withTransaction(commitBatch);
+        if (!txResult.ok) {
+          errors.push({
+            relPath: "(transaction batch)",
+            code: txResult.error.code,
+            message: txResult.error.message,
+          });
+          break; // Abort on transaction failure
+        }
+        for (let idx = 0; idx < batch.length; idx += 1) {
+          const entry = batch[idx];
+          const result = txResult.value[idx];
+          if (entry && result) recordFileResult(entry, result);
+        }
+      } else {
+        const batchResults = await commitBatch();
+        for (let idx = 0; idx < batch.length; idx += 1) {
+          const entry = batch[idx];
+          const result = batchResults[idx];
+          if (entry && result) recordFileResult(entry, result);
         }
       }
     }
 
     // 5. Mark missing files as inactive (inventory failures are hard errors).
+    //    Reuses the preloaded collection inventory from step 4 (every file
+    //    added/updated in step 4 has its sourcePath in seenPaths unless it was
+    //    a compiled-context path that must be inactivated).
     let markedInactive = 0;
     let inventoryErrored = 0;
-    const existingDocsResult = await store.listDocuments(collection.name);
     if (!existingDocsResult.ok) {
       inventoryErrored += 1;
       errors.push({

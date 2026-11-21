@@ -27,6 +27,14 @@ export interface FrontmatterResult {
   metadata: Record<string, unknown>;
 }
 
+/** Detailed frontmatter parse result shared across single-pass preparation. */
+export interface FrontmatterDetails extends FrontmatterResult {
+  /** Character offset where the body begins (0 if no YAML frontmatter). */
+  bodyStart: number;
+  /** Raw YAML block inside `---` delimiters, when present. */
+  rawYaml?: string;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
@@ -283,31 +291,41 @@ function parseMetadataValue(
   return unquoteScalar(trimmed);
 }
 
+function firstLines(source: string, maxLines: number): string {
+  let end = -1;
+  for (let i = 0; i < maxLines; i += 1) {
+    end = source.indexOf("\n", end + 1);
+    if (end === -1) return source;
+  }
+  return source.slice(0, end);
+}
+
 /**
- * Parse frontmatter from markdown source.
- * Returns extracted tags and metadata.
+ * Parse frontmatter from markdown source, returning tags, metadata, body offset,
+ * and raw YAML block in a single regex scan.
  * Never throws - returns empty result on parse errors.
  */
-export function parseFrontmatter(source: string): FrontmatterResult {
-  const result: FrontmatterResult = {
+export function parseFrontmatterDetails(source: string): FrontmatterDetails {
+  const result: FrontmatterDetails = {
     tags: [],
     metadata: {},
+    bodyStart: 0,
   };
 
   const match = FRONTMATTER_REGEX.exec(source);
   if (!match) {
     // Check for Logseq-style properties at start of file (no --- delimiters)
-    const logseqMatch = LOGSEQ_TAGS_REGEX.exec(
-      source.split("\n").slice(0, 10).join("\n")
-    );
+    const logseqMatch = LOGSEQ_TAGS_REGEX.exec(firstLines(source, 10));
     if (logseqMatch?.[1]) {
       result.tags = parseLogseqTags(logseqMatch[1]);
     }
     return result;
   }
 
+  result.bodyStart = match[0].length;
   const frontmatter = match[1];
   if (frontmatter === undefined) return result;
+  result.rawYaml = frontmatter;
 
   const lines = frontmatter.split("\n");
 
@@ -352,6 +370,16 @@ export function parseFrontmatter(source: string): FrontmatterResult {
   }
 
   return result;
+}
+
+/**
+ * Parse frontmatter from markdown source.
+ * Returns extracted tags and metadata.
+ * Never throws - returns empty result on parse errors.
+ */
+export function parseFrontmatter(source: string): FrontmatterResult {
+  const { tags, metadata } = parseFrontmatterDetails(source);
+  return { tags, metadata };
 }
 
 /**

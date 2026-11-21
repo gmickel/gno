@@ -35,15 +35,18 @@ const SHORT_OUTPUT_MIN_BYTES = 1000;
  * normalized as markitdown-ts normalizes every result (line endings, outer
  * whitespace, at most one blank line).
  */
-export function workbookToMarkdown(workbook: XLSX.WorkBook): string {
-  let markdown = "";
+export async function workbookToMarkdown(
+  workbook: XLSX.WorkBook
+): Promise<string> {
+  const sections: string[] = [];
   for (const name of workbook.SheetNames) {
     const sheet = workbook.Sheets[name];
     if (sheet?.["!ref"]) {
-      markdown += `## ${name}\n${sheetToMarkdown(sheet)}\n\n`;
+      sections.push(`## ${name}\n${await sheetToMarkdown(sheet)}\n\n`);
     }
   }
-  return markdown
+  return sections
+    .join("")
     .replace(/\r\n|\r|\n/g, "\n")
     .trim()
     .replace(/\n{3,}/g, "\n\n");
@@ -58,11 +61,11 @@ export const xlsxAdapter: Converter = {
   },
 
   convert(input: ConvertInput): Promise<ConvertResult> {
-    return Promise.resolve(convertWorkbook(input));
+    return convertWorkbook(input);
   },
 };
 
-function convertWorkbook(input: ConvertInput): ConvertResult {
+async function convertWorkbook(input: ConvertInput): Promise<ConvertResult> {
   if (input.bytes.length > input.limits.maxBytes) {
     return { ok: false, error: tooLargeError(input, CONVERTER_ID) };
   }
@@ -104,7 +107,7 @@ function convertWorkbook(input: ConvertInput): ConvertResult {
     };
   }
 
-  const markdown = workbookToMarkdown(workbook);
+  const markdown = await workbookToMarkdown(workbook);
   if (!markdown) {
     return {
       ok: false,

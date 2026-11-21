@@ -10,26 +10,15 @@ import type { LanguageDetectorPort } from "./types";
 /** Regex to split on whitespace and punctuation */
 const WORD_SPLIT_REGEX = /[\s\p{P}]+/u;
 
-/** Hiragana range */
-const HIRAGANA_MIN = 0x30_40;
+/** Hiragana upper bound (lower bound is 0x3040 fast-skip threshold) */
 const HIRAGANA_MAX = 0x30_9f;
 
-/** Katakana range */
-const KATAKANA_MIN = 0x30_a0;
+/** Katakana upper bound */
 const KATAKANA_MAX = 0x30_ff;
 
 /** Hangul range */
 const HANGUL_MIN = 0xac_00;
 const HANGUL_MAX = 0xd7_af;
-
-/** CJK ranges for quick codepoint checking */
-const CJK_RANGES = [
-  [0x4e_00, 0x9f_ff], // CJK Unified Ideographs
-  [0x34_00, 0x4d_bf], // CJK Unified Ideographs Extension A
-  [0x30_40, 0x30_9f], // Hiragana
-  [0x30_a0, 0x30_ff], // Katakana
-  [0xac_00, 0xd7_af], // Hangul
-] as const;
 
 /**
  * Character frequency thresholds for CJK detection.
@@ -108,16 +97,17 @@ const LANGUAGE_MARKER_SETS: Record<string, Set<string>> = {
   ]),
 };
 
-/**
- * Check if a codepoint is CJK.
- */
-function isCjkCodepoint(cp: number): boolean {
-  for (const [min, max] of CJK_RANGES) {
-    if (cp >= min && cp <= max) {
-      return true;
-    }
+/** Single-pass bitmask map for European language markers (preserves en, de, fr, it order). */
+const EUROPEAN_LANGS = ["en", "de", "fr", "it"] as const;
+const MARKER_BITMASK = new Map<string, number>();
+for (let langIndex = 0; langIndex < EUROPEAN_LANGS.length; langIndex += 1) {
+  const lang = EUROPEAN_LANGS[langIndex];
+  const markerSet = lang ? LANGUAGE_MARKER_SETS[lang] : undefined;
+  if (!markerSet) continue;
+  const bit = 1 << langIndex;
+  for (const word of markerSet) {
+    MARKER_BITMASK.set(word, (MARKER_BITMASK.get(word) ?? 0) | bit);
   }
-  return false;
 }
 
 /**
@@ -148,7 +138,7 @@ function extractWords(text: string): string[] {
 
 /**
  * Detect if text is primarily CJK (Chinese, Japanese, Korean).
- * Single-pass counting for efficiency.
+ * Single-pass counting using charCodeAt with fast ASCII/Latin skip.
  */
 // oxlint-disable-next-line max-lines-per-function -- Unicode range detection with multiple heuristics
 function detectCjk(text: string): "zh" | "ja" | "ko" | null {
@@ -158,30 +148,40 @@ function detectCjk(text: string): "zh" | "ja" | "ko" | null {
   let hasKatakana = false;
   let hasHangul = false;
 
-  // Single pass through the string
-  for (const char of text) {
-    const cp = char.codePointAt(0);
-    if (cp === undefined) {
+  const len = text.length;
+  for (let i = 0; i < len; i += 1) {
+    const cp = text.charCodeAt(i);
+    // Preserve codepoint counting for UTF-16 surrogate pairs
+    if (cp >= 0xd8_00 && cp <= 0xdb_ff && i + 1 < len) {
+      const low = text.charCodeAt(i + 1);
+      if (low >= 0xdc_00 && low <= 0xdf_ff) {
+        i += 1;
+        totalChars += 1;
+        continue;
+      }
+    }
+    if (cp < 0x30_40) {
+      if (!isWhitespace(cp)) {
+        totalChars += 1;
+      }
       continue;
     }
 
-    // Skip whitespace for total count
-    if (!isWhitespace(cp)) {
-      totalChars += 1;
-
-      // Check CJK ranges
-      if (isCjkCodepoint(cp)) {
-        cjkCount += 1;
-
-        // Also check for script-specific markers
-        if (cp >= HIRAGANA_MIN && cp <= HIRAGANA_MAX) {
-          hasHiragana = true;
-        } else if (cp >= KATAKANA_MIN && cp <= KATAKANA_MAX) {
-          hasKatakana = true;
-        } else if (cp >= HANGUL_MIN && cp <= HANGUL_MAX) {
-          hasHangul = true;
-        }
-      }
+    totalChars += 1;
+    if (cp <= HIRAGANA_MAX) {
+      cjkCount += 1;
+      hasHiragana = true;
+    } else if (cp <= KATAKANA_MAX) {
+      cjkCount += 1;
+      hasKatakana = true;
+    } else if (
+      (cp >= 0x4e_00 && cp <= 0x9f_ff) ||
+      (cp >= 0x34_00 && cp <= 0x4d_bf)
+    ) {
+      cjkCount += 1;
+    } else if (cp >= HANGUL_MIN && cp <= HANGUL_MAX) {
+      cjkCount += 1;
+      hasHangul = true;
     }
   }
 
@@ -209,36 +209,41 @@ function detectCjk(text: string): "zh" | "ja" | "ko" | null {
 
 /**
  * Detect European language by word frequency.
- * Uses pre-built Sets for O(1) marker lookup.
+ * Single pass over words using a pre-built bitmask map.
  */
 function detectEuropean(words: string[]): string | null {
-  if (words.length < 10) {
+  const count = words.length;
+  if (count < 10) {
     return null;
   }
 
-  const scores: Record<string, number> = {};
+  let en = 0;
+  let de = 0;
+  let fr = 0;
+  let it = 0;
 
-  for (const [lang, markerSet] of Object.entries(LANGUAGE_MARKER_SETS)) {
-    let matches = 0;
-
-    for (const word of words) {
-      if (markerSet.has(word)) {
-        matches += 1;
-      }
-    }
-
-    scores[lang] = matches / words.length;
+  for (let i = 0; i < count; i += 1) {
+    const word = words[i];
+    if (word === undefined) continue;
+    const mask = MARKER_BITMASK.get(word);
+    if (mask === undefined) continue;
+    if (mask & 1) en += 1;
+    if (mask & 2) de += 1;
+    if (mask & 4) fr += 1;
+    if (mask & 8) it += 1;
   }
 
-  // Find language with highest score (must exceed threshold)
+  // Find language with highest score (must exceed threshold; preserve en, de, fr, it tie order)
   const threshold = 0.02; // 2% of words must be markers
   let bestLang: string | null = null;
   let bestScore = threshold;
+  const counts = [en, de, fr, it] as const;
 
-  for (const [lang, score] of Object.entries(scores)) {
+  for (let i = 0; i < EUROPEAN_LANGS.length; i += 1) {
+    const score = (counts[i] ?? 0) / count;
     if (score > bestScore) {
       bestScore = score;
-      bestLang = lang;
+      bestLang = EUROPEAN_LANGS[i] ?? null;
     }
   }
 

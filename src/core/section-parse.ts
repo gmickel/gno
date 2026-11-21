@@ -66,8 +66,10 @@ export function slugifySectionTitle(title: string): string {
 
 export const lineStartOffsets = (content: string): number[] => {
   const offsets = [0];
-  for (let index = 0; index < content.length; index += 1) {
-    if (content[index] === "\n") offsets.push(index + 1);
+  let pos = content.indexOf("\n");
+  while (pos !== -1) {
+    offsets.push(pos + 1);
+    pos = content.indexOf("\n", pos + 1);
   }
   return offsets;
 };

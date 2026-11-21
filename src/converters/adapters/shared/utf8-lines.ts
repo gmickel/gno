@@ -15,6 +15,7 @@ export type Utf8LineResult =
 const BYTE_LF = 0x0a;
 const BYTE_CR = 0x0d;
 const UTF8_BOM = new Uint8Array([0xef, 0xbb, 0xbf]);
+const UTF8_DECODER = new TextDecoder("utf-8", { fatal: true });
 
 const concatenate = (
   parts: readonly Uint8Array[],
@@ -38,27 +39,30 @@ const stripLineEnvelope = (
   let end = bytes.byteLength;
   if (
     lineNumber === 1 &&
-    end >= UTF8_BOM.byteLength &&
-    UTF8_BOM.every((byte, index) => bytes[index] === byte)
+    end >= 3 &&
+    bytes[0] === UTF8_BOM[0] &&
+    bytes[1] === UTF8_BOM[1] &&
+    bytes[2] === UTF8_BOM[2]
   ) {
-    start = UTF8_BOM.byteLength;
+    start = 3;
   }
   if (end > start && bytes[end - 1] === BYTE_CR) end -= 1;
-  return bytes.subarray(start, end);
+  return start === 0 && end === bytes.byteLength
+    ? bytes
+    : bytes.subarray(start, end);
 };
 
-const decodeLine = (
-  parts: readonly Uint8Array[],
-  byteLength: number,
+const decodeSingleBytes = (
+  rawBytes: Uint8Array,
   lineNumber: number,
   terminated: boolean
 ): Utf8LineResult => {
-  const bytes = stripLineEnvelope(concatenate(parts, byteLength), lineNumber);
+  const bytes = stripLineEnvelope(rawBytes, lineNumber);
   try {
     return {
       ok: true,
       lineNumber,
-      text: new TextDecoder("utf-8", { fatal: true }).decode(bytes),
+      text: UTF8_DECODER.decode(bytes),
       terminated,
     };
   } catch {
@@ -70,6 +74,14 @@ const decodeLine = (
     };
   }
 };
+
+const decodeLine = (
+  parts: readonly Uint8Array[],
+  byteLength: number,
+  lineNumber: number,
+  terminated: boolean
+): Utf8LineResult =>
+  decodeSingleBytes(concatenate(parts, byteLength), lineNumber, terminated);
 
 /**
  * Split an async byte source without retaining an unbounded physical line.
@@ -94,37 +106,43 @@ export async function* readBoundedUtf8Lines(
 
   for await (const chunk of source) {
     let segmentStart = 0;
-    for (let index = 0; index < chunk.byteLength; index += 1) {
-      if (chunk[index] !== BYTE_LF) continue;
-      const segment = chunk.subarray(segmentStart, index);
-      if (!oversized && lineBytes + segment.byteLength <= safeMaxLineBytes) {
-        if (segment.byteLength > 0) parts.push(segment.slice());
-        lineBytes += segment.byteLength;
+    while (segmentStart < chunk.byteLength) {
+      const nl = chunk.indexOf(BYTE_LF, segmentStart);
+      if (nl === -1) break;
+      const segmentLen = nl - segmentStart;
+      if (!oversized && lineBytes + segmentLen <= safeMaxLineBytes) {
+        if (parts.length === 0) {
+          yield decodeSingleBytes(
+            chunk.subarray(segmentStart, nl),
+            lineNumber,
+            true
+          );
+        } else {
+          if (segmentLen > 0) parts.push(chunk.subarray(segmentStart, nl));
+          yield decodeLine(parts, lineBytes + segmentLen, lineNumber, true);
+        }
       } else {
-        oversized = true;
-      }
-      if (oversized) {
         yield {
           ok: false,
           lineNumber,
           reason: "line_too_large",
           terminated: true,
         };
-      } else {
-        yield decodeLine(parts, lineBytes, lineNumber, true);
       }
       reset();
-      segmentStart = index + 1;
+      segmentStart = nl + 1;
     }
 
-    const remainder = chunk.subarray(segmentStart);
-    if (!oversized && lineBytes + remainder.byteLength <= safeMaxLineBytes) {
-      if (remainder.byteLength > 0) parts.push(remainder.slice());
-      lineBytes += remainder.byteLength;
-    } else if (remainder.byteLength > 0) {
-      oversized = true;
-      parts = [];
-      lineBytes = 0;
+    const remainderLen = chunk.byteLength - segmentStart;
+    if (remainderLen > 0) {
+      if (!oversized && lineBytes + remainderLen <= safeMaxLineBytes) {
+        parts.push(chunk.subarray(segmentStart).slice());
+        lineBytes += remainderLen;
+      } else {
+        oversized = true;
+        parts = [];
+        lineBytes = 0;
+      }
     }
   }
 

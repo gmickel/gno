@@ -151,7 +151,7 @@ export async function convertFile(path: string): Promise<ConvertFileOutcome> {
       timeoutMs: DEFAULT_LIMITS.timeoutMs,
       maxMemoryBytes: defaultConversionMemoryMb() * BYTES_PER_MB,
     },
-    { onPrevious: () => undefined }
+    { onPrevious: () => undefined, transferInputBytes: true }
   );
   if (!prepared.ok) {
     const { code, message, details } = prepared.error;

@@ -38,11 +38,11 @@ export interface Position {
 export function buildLineOffsets(content: string): number[] {
   const offsets: number[] = [0]; // Line 1 starts at offset 0
 
-  for (let i = 0; i < content.length; i++) {
-    if (content[i] === "\n") {
-      // Next line starts after the newline
-      offsets.push(i + 1);
-    }
+  let pos = content.indexOf("\n");
+  while (pos !== -1) {
+    // Next line starts after the newline
+    offsets.push(pos + 1);
+    pos = content.indexOf("\n", pos + 1);
   }
 
   return offsets;

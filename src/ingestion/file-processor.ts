@@ -80,6 +80,12 @@ export interface FileProcessorHooks {
   onPrevious: (structure: DocumentStructureSnapshot) => void;
   /** Called when the processor starts on the file (its clock starts). */
   onStarted?: () => void;
+  /**
+   * When true and running on the worker backend with an unshared full-buffer
+   * `request.input.bytes`, transfer the underlying `ArrayBuffer` instead of
+   * copying it. Callers must not read `request.input.bytes` afterward.
+   */
+  transferInputBytes?: boolean;
 }
 
 /** Posted once by a processor when it has loaded. */
@@ -175,12 +181,19 @@ interface Processor {
   readonly kind: FileProcessorBackendKind;
   /** Settles once the processor has loaded and can take a file. */
   readonly ready: Promise<void>;
-  /** Settles, with a reason, if the processor dies or errors. */
+  /** Settles, with a reason, if the processor dies or errors (startup only). */
   readonly failed: Promise<ProcessorFailure>;
+  /** Current failure if the processor has already died; null while alive. */
+  failure(): ProcessorFailure | null;
+  /** Replaceable single-slot failure listener for the currently running file. */
+  setOnFailed(handler: ((failure: ProcessorFailure) => void) | null): void;
+  /** Release per-file message and failure callbacks once a file settles. */
+  clearHandlers(): void;
   /** Send one file; its messages go to `onMessage`. */
   run(
     request: PrepareFileRequest,
-    onMessage: (message: FileWorkerMessage) => void
+    onMessage: (message: FileWorkerMessage) => void,
+    transferInputBytes?: boolean
   ): void;
   /** Name of the running step, for overrun messages. */
   phase(): string;
@@ -204,6 +217,8 @@ function startWorker(): Processor {
   (worker as Worker & { unref(): void }).unref();
   const phaseSlot = new Int32Array(new SharedArrayBuffer(4));
   let onMessage: ((message: FileWorkerMessage) => void) | null = null;
+  let onFailed: ((failure: ProcessorFailure) => void) | null = null;
+  let failureState: ProcessorFailure | null = null;
   let markReady: () => void = () => undefined;
   let markFailed: (failure: ProcessorFailure) => void = () => undefined;
   let dead = false;
@@ -212,8 +227,14 @@ function startWorker(): Processor {
   });
   const failed = new Promise<ProcessorFailure>((resolve) => {
     markFailed = (failure) => {
+      if (dead) return;
       dead = true;
+      failureState = failure;
+      const failHandler = onFailed;
+      onFailed = null;
+      onMessage = null;
       resolve(failure);
+      failHandler?.(failure);
     };
   });
   worker.onmessage = (
@@ -242,11 +263,30 @@ function startWorker(): Processor {
     kind: "worker",
     ready,
     failed,
-    run(request, messageHandler) {
+    failure: () => failureState,
+    setOnFailed(handler) {
+      onFailed = handler;
+    },
+    clearHandlers() {
+      onMessage = null;
+      onFailed = null;
+    },
+    run(request, messageHandler, transferInputBytes) {
       Atomics.store(phaseSlot, 0, -1);
       onMessage = messageHandler;
       const job: FileWorkerRequest = { request, phaseSlot };
-      worker.postMessage(job);
+      const bytes = request.input.bytes;
+      if (
+        transferInputBytes &&
+        bytes.byteLength > 0 &&
+        bytes.buffer instanceof ArrayBuffer &&
+        bytes.byteOffset === 0 &&
+        bytes.byteLength === bytes.buffer.byteLength
+      ) {
+        worker.postMessage(job, [bytes.buffer]);
+      } else {
+        worker.postMessage(job);
+      }
     },
     phase: () => phaseName(Atomics.load(phaseSlot, 0)),
     externalRss: () => Promise.resolve(0),
@@ -288,6 +328,8 @@ function startChild(): Processor {
   const compiled = isBunfsPath(modulePath(import.meta));
   let phase = "startup";
   let onMessage: ((message: FileWorkerMessage) => void) | null = null;
+  let onFailed: ((failure: ProcessorFailure) => void) | null = null;
+  let failureState: ProcessorFailure | null = null;
   let markReady: () => void = () => undefined;
   let stopping = false;
   let exited = false;
@@ -317,23 +359,39 @@ function startChild(): Processor {
   const failed = child.exited.then((code): ProcessorFailure => {
     exited = true;
     liveChildren.delete(child);
-    if (stopping) return { reason: "file processor was stopped" };
+    let failure: ProcessorFailure;
+    if (stopping) failure = { reason: "file processor was stopped" };
     // Bun closes the channel on both ends when either side receives a
     // message it cannot deserialize. The child exits cleanly only once its
     // channel is gone (file-child.ts), and a crash never exits cleanly; the
     // exit can be reported before Bun's own disconnect callback.
-    if (code === 0) {
-      return {
+    else if (code === 0) {
+      failure = {
         reason: "the IPC channel to the file processor child closed",
         delivery: "unknown",
       };
+    } else {
+      failure = { reason: `file processor child exited (${code})` };
     }
-    return { reason: `file processor child exited (${code})` };
+    failureState = failure;
+    const failHandler = onFailed;
+    onFailed = null;
+    onMessage = null;
+    failHandler?.(failure);
+    return failure;
   });
   return {
     kind: "child",
     ready,
     failed,
+    failure: () => failureState,
+    setOnFailed(handler) {
+      onFailed = handler;
+    },
+    clearHandlers() {
+      onMessage = null;
+      onFailed = null;
+    },
     run(request, messageHandler) {
       phase = "startup";
       onMessage = messageHandler;
@@ -560,6 +618,7 @@ const runOne = async (
       settled = true;
       clearTimeout(deadline);
       clearInterval(sampler);
+      active.clearHandlers();
       if (keep && process.memoryUsage.rss() <= budget.maxMemoryBytes / 2) {
         idleTimer = setTimeout(stopProcessor, PROCESSOR_IDLE_MS);
         idleTimer.unref?.();
@@ -569,6 +628,23 @@ const runOne = async (
         active.stop();
       }
       resolve(outcome);
+    };
+    const handleFailure = (failure: ProcessorFailure): void => {
+      if (settled) return;
+      finish(
+        {
+          ok: false,
+          error: failure.delivery
+            ? undeliverableFailure(
+                request,
+                active.kind,
+                active.phase(),
+                failure
+              )
+            : { code: "INTERNAL", message: failure.reason },
+        },
+        false
+      );
     };
     const deadline = setTimeout(() => {
       finish(
@@ -601,23 +677,12 @@ const runOne = async (
     const sampler = setInterval(() => {
       void checkMemory();
     }, MEMORY_SAMPLE_INTERVAL_MS);
-    void active.failed.then((failure) => {
-      if (settled) return;
-      finish(
-        {
-          ok: false,
-          error: failure.delivery
-            ? undeliverableFailure(
-                request,
-                active.kind,
-                active.phase(),
-                failure
-              )
-            : { code: "INTERNAL", message: failure.reason },
-        },
-        false
-      );
-    });
+    const alreadyFailed = active.failure();
+    if (alreadyFailed) {
+      handleFailure(alreadyFailed);
+      return;
+    }
+    active.setOnFailed(handleFailure);
     // A process already over the budget does not start another file.
     const rss = process.memoryUsage.rss();
     if (rss > budget.maxMemoryBytes) {
@@ -630,10 +695,14 @@ const runOne = async (
       );
       return;
     }
-    active.run(request, (message) => {
-      if (message.type === "previous") hooks.onPrevious(message.structure);
-      else finish(message.outcome, true);
-    });
+    active.run(
+      request,
+      (message) => {
+        if (message.type === "previous") hooks.onPrevious(message.structure);
+        else finish(message.outcome, true);
+      },
+      hooks.transferInputBytes
+    );
   });
 };
 

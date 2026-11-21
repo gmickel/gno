@@ -51,29 +51,6 @@ class SourceLimitError extends Error {
 
 const TIMEOUT = Symbol("record-adapter-timeout");
 
-const nextBeforeDeadline = async <T>(
-  iterator: AsyncIterator<T>,
-  deadlineMs: number
-): Promise<IteratorResult<T> | typeof TIMEOUT> => {
-  const remainingMs = deadlineMs - Date.now();
-  if (remainingMs <= 0) return TIMEOUT;
-  return await new Promise<IteratorResult<T> | typeof TIMEOUT>(
-    (resolve, reject) => {
-      const timer = setTimeout(() => resolve(TIMEOUT), remainingMs);
-      void iterator.next().then(
-        (value) => {
-          clearTimeout(timer);
-          resolve(value);
-        },
-        (error: unknown) => {
-          clearTimeout(timer);
-          reject(error);
-        }
-      );
-    }
-  );
-};
-
 const closeIterator = async (
   iterator: AsyncIterator<unknown>
 ): Promise<boolean> => {
@@ -94,6 +71,7 @@ export async function runRecordAdapter(
 ): Promise<RecordAdapterRunResult> {
   const adapterIdentity = normalizeRecordAdapterIdentity(adapter);
   const adapterFingerprint = recordAdapterFingerprint(adapter);
+  const precomputedAdapter = { adapterIdentity, adapterFingerprint };
   const egressLineage = egressLineageSchema.parse(
     options.egressLineage ?? legacyLocalOnlyEgressLineage(input.collection)
   );
@@ -113,7 +91,39 @@ export async function runRecordAdapter(
   let stoppedByFailureLimit = false;
   let timedOut = false;
   const abortController = new AbortController();
-  const deadlineMs = Date.now() + (input.limits.timeoutMs ?? 60_000);
+  // Single shared deadline timer for the entire container with a replaceable
+  // waiter slot (avoids per-record setTimeout overhead and handler accumulation).
+  const timeoutMs = input.limits.timeoutMs ?? 60_000;
+  let deadlineExpired = timeoutMs <= 0;
+  let onDeadline: (() => void) | undefined;
+  const deadlineTimer = deadlineExpired
+    ? undefined
+    : setTimeout(() => {
+        deadlineExpired = true;
+        const cb = onDeadline;
+        onDeadline = undefined;
+        cb?.();
+      }, timeoutMs);
+  const nextBeforeDeadline = <T>(
+    iter: AsyncIterator<T>
+  ): Promise<IteratorResult<T> | typeof TIMEOUT> => {
+    if (deadlineExpired) return Promise.resolve(TIMEOUT);
+    return new Promise<IteratorResult<T> | typeof TIMEOUT>(
+      (resolve, reject) => {
+        onDeadline = () => resolve(TIMEOUT);
+        void iter.next().then(
+          (value) => {
+            onDeadline = undefined;
+            resolve(value);
+          },
+          (error: unknown) => {
+            onDeadline = undefined;
+            reject(error);
+          }
+        );
+      }
+    );
+  };
 
   const appendFailure = (failure: RecordAdapterFailure): boolean => {
     if (stoppedByFailureLimit) return true;
@@ -180,7 +190,7 @@ export async function runRecordAdapter(
       })
       [Symbol.asyncIterator]();
     while (true) {
-      const next = await nextBeforeDeadline(iterator, deadlineMs);
+      const next = await nextBeforeDeadline(iterator);
       if (next === TIMEOUT) {
         timedOut = true;
         stoppedByCap = true;
@@ -240,7 +250,7 @@ export async function runRecordAdapter(
       } else {
         let record: AccountedCanonicalRecord;
         try {
-          record = canonicalRecord(adapter, event.record);
+          record = canonicalRecord(adapter, event.record, precomputedAdapter);
         } catch (error) {
           const code: RecordAdapterFailureCode =
             error instanceof Error && error.message === "invalid source locator"
@@ -344,6 +354,10 @@ export async function runRecordAdapter(
     );
     stoppedByCap ||= error instanceof SourceLimitError;
   } finally {
+    if (deadlineTimer !== undefined) {
+      clearTimeout(deadlineTimer);
+    }
+    onDeadline = undefined;
     if (iterator) {
       if (timedOut) {
         void closeIterator(iterator);

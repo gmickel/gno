@@ -60,51 +60,66 @@ interface MimeState {
   limits: ParseEmailLimits;
 }
 
-const binaryToBytes = (value: string): Uint8Array => {
-  const bytes = new Uint8Array(value.length);
-  for (let index = 0; index < value.length; index += 1) {
-    bytes[index] = value.charCodeAt(index) & 0xff;
-  }
-  return bytes;
+const CHARSET_LABELS: Record<string, string> = {
+  ascii: "windows-1252",
+  "iso-8859-1": "windows-1252",
+  latin1: "windows-1252",
+  "us-ascii": "windows-1252",
+  utf8: "utf-8",
 };
+const UTF8_DECODER = new TextDecoder("utf-8", { fatal: false });
+const DECODER_CACHE = new Map<string, TextDecoder>([["utf-8", UTF8_DECODER]]);
+
+const binaryToBytes = (value: string): Uint8Array =>
+  Buffer.from(value, "latin1");
 
 const decodeBytes = (bytes: Uint8Array, charset = "utf-8"): string => {
   const normalized = charset.trim().toLowerCase().replaceAll("_", "-");
-  const labels: Record<string, string> = {
-    ascii: "windows-1252",
-    "iso-8859-1": "windows-1252",
-    latin1: "windows-1252",
-    "us-ascii": "windows-1252",
-    utf8: "utf-8",
-  };
-  try {
-    return new TextDecoder(labels[normalized] ?? normalized, {
-      fatal: false,
-    }).decode(bytes);
-  } catch {
-    return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+  const label = CHARSET_LABELS[normalized] ?? normalized;
+  let decoder = DECODER_CACHE.get(label);
+  if (!decoder) {
+    try {
+      decoder = new TextDecoder(label, { fatal: false });
+    } catch {
+      return UTF8_DECODER.decode(bytes);
+    }
+    if (DECODER_CACHE.size < 64) {
+      DECODER_CACHE.set(label, decoder);
+    }
   }
+  return decoder.decode(bytes);
+};
+
+const hexNibble = (code: number): number => {
+  if (code >= 48 && code <= 57) return code - 48;
+  if (code >= 65 && code <= 70) return code - 55;
+  if (code >= 97 && code <= 102) return code - 87;
+  return -1;
 };
 
 const decodeQuotedPrintable = (value: string): Uint8Array => {
-  const unfolded = value.replace(/=\r?\n/g, "");
-  const output: number[] = [];
+  const unfolded = value.includes("=") ? value.replace(/=\r?\n/g, "") : value;
+  const out = new Uint8Array(unfolded.length);
+  let outLen = 0;
   for (let index = 0; index < unfolded.length; index += 1) {
-    if (
-      unfolded[index] === "=" &&
-      /^[\da-f]{2}$/i.test(unfolded.slice(index + 1, index + 3))
-    ) {
-      output.push(Number.parseInt(unfolded.slice(index + 1, index + 3), 16));
-      index += 2;
-    } else {
-      output.push(unfolded.charCodeAt(index) & 0xff);
+    const code = unfolded.charCodeAt(index);
+    if (code === 61 && index + 2 < unfolded.length) {
+      const hi = hexNibble(unfolded.charCodeAt(index + 1));
+      const lo = hexNibble(unfolded.charCodeAt(index + 2));
+      if (hi >= 0 && lo >= 0) {
+        out[outLen] = (hi << 4) | lo;
+        outLen += 1;
+        index += 2;
+        continue;
+      }
     }
+    out[outLen] = code & 0xff;
+    outLen += 1;
   }
-  return Uint8Array.from(output);
+  return out.subarray(0, outLen);
 };
 
-const decodeBase64 = (value: string): Uint8Array => {
-  const compact = value.replace(/\s/g, "");
+const decodeCompactBase64 = (compact: string): Uint8Array => {
   if (
     compact.length === 0 ||
     compact.length % 4 === 1 ||
@@ -119,6 +134,9 @@ const decodeBase64 = (value: string): Uint8Array => {
   }
 };
 
+const decodeBase64 = (value: string): Uint8Array =>
+  decodeCompactBase64(value.replace(/\s/g, ""));
+
 const decodeTransfer = (
   value: string,
   encoding: string | undefined,
@@ -127,13 +145,14 @@ const decodeTransfer = (
   const normalized = encoding?.trim().toLowerCase();
   let bytes: Uint8Array;
   if (normalized === "base64") {
-    if (value.replace(/\s/g, "").length > maxBytes * 2) {
+    const compact = value.replace(/\s/g, "");
+    if (compact.length > maxBytes * 2) {
       throw new MailParseError(
         "MIME body exceeds its decoded byte limit.",
         "limit"
       );
     }
-    bytes = decodeBase64(value);
+    bytes = decodeCompactBase64(compact);
   } else if (normalized === "quoted-printable") {
     if (value.length > maxBytes * 3) {
       throw new MailParseError(
@@ -251,7 +270,12 @@ const safeFilename = (value: string | undefined, index: number): string => {
   return (normalized || `attachment-${index}`).slice(0, 240);
 };
 
-const walkMimePart = (raw: string, state: MimeState, depth: number): void => {
+const walkMimePart = (
+  raw: string,
+  state: MimeState,
+  depth: number,
+  preParsed?: { headers: Map<string, string>; body: string }
+): void => {
   if (depth > MAX_MIME_DEPTH) {
     throw new MailParseError("MIME nesting exceeds its depth limit.", "limit");
   }
@@ -259,8 +283,16 @@ const walkMimePart = (raw: string, state: MimeState, depth: number): void => {
   if (state.partCount > MAX_MIME_PARTS) {
     throw new MailParseError("MIME message exceeds its part limit.", "limit");
   }
-  const [rawHeaders, body] = splitHeaderBody(raw);
-  const headers = parseHeaders(rawHeaders);
+  let headers: Map<string, string>;
+  let body: string;
+  if (preParsed) {
+    headers = preParsed.headers;
+    body = preParsed.body;
+  } else {
+    const [rawHeaders, splitBody] = splitHeaderBody(raw);
+    headers = parseHeaders(rawHeaders);
+    body = splitBody;
+  }
   const contentType = parseParameterizedHeader(
     headers.get("content-type"),
     decodeHeaderWords
@@ -384,7 +416,7 @@ export const parseEmail = (
   raw: string,
   limits: ParseEmailLimits
 ): ParsedEmail => {
-  const [rawHeaders] = splitHeaderBody(raw);
+  const [rawHeaders, bodyRaw] = splitHeaderBody(raw);
   const headers = parseHeaders(rawHeaders);
   const state: MimeState = {
     plainBodies: [],
@@ -393,7 +425,7 @@ export const parseEmail = (
     partCount: 0,
     limits,
   };
-  walkMimePart(raw, state, 0);
+  walkMimePart(raw, state, 0, { headers, body: bodyRaw });
   const bodyParts = state.plainBodies.some(Boolean)
     ? state.plainBodies
     : state.htmlBodies;

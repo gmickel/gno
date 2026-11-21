@@ -173,6 +173,8 @@ export class LocalSourceContentReader implements SourceContentReaderPort {
   }
 }
 
+const MAX_PREALLOC_BYTES = 16 * 1024 * 1024;
+
 function readAllNative(
   absPath: string,
   file: DarwinFileIoPort,
@@ -183,6 +185,55 @@ function readAllNative(
     return mapErrno(file.readErrno(), 0);
   }
   try {
+    // Fast path: preallocate exact buffer when expectedSize is known and bounded
+    // to avoid per-chunk slice copies and concatChunks reallocation.
+    if (
+      expectedSize !== undefined &&
+      expectedSize > 0 &&
+      expectedSize <= MAX_PREALLOC_BYTES
+    ) {
+      const prealloc = new Uint8Array(expectedSize);
+      let total = 0;
+      while (total < expectedSize) {
+        const n = file.read(fd, prealloc.subarray(total));
+        if (n < 0) {
+          return mapErrno(file.readErrno(), total);
+        }
+        if (n === 0) {
+          return {
+            ok: false,
+            code: "IO_ERROR",
+            message: sourceAvailabilityMessage(
+              "IO_ERROR",
+              `short_read expected=${expectedSize} read=${total}`
+            ),
+          };
+        }
+        total += n;
+      }
+      // Probe once for EOF or trailing bytes if the file grew after stat().
+      const overflowBuf = new Uint8Array(READ_CHUNK_BYTES);
+      const extra = file.read(fd, overflowBuf);
+      if (extra < 0) {
+        return mapErrno(file.readErrno(), total);
+      }
+      if (extra === 0) {
+        return { ok: true, bytes: prealloc };
+      }
+      const chunks: Uint8Array[] = [prealloc, overflowBuf.slice(0, extra)];
+      total += extra;
+      for (;;) {
+        const n = file.read(fd, overflowBuf);
+        if (n < 0) {
+          return mapErrno(file.readErrno(), total);
+        }
+        if (n === 0) break;
+        chunks.push(overflowBuf.slice(0, n));
+        total += n;
+      }
+      return { ok: true, bytes: concatChunks(chunks, total) };
+    }
+
     const chunks: Uint8Array[] = [];
     let total = 0;
     const buf = new Uint8Array(READ_CHUNK_BYTES);

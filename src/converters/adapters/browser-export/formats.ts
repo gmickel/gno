@@ -42,8 +42,10 @@ const SUPPORTED_JSON_KEYS = new Set([
   "readingList",
   "reading_list",
 ]);
+const SUPPORTED_JSON_KEY_LIST = [...SUPPORTED_JSON_KEYS];
 const BOOKMARK_EXPORT_DOCUMENT_PATTERN =
   /<!DOCTYPE\s+(?:NETSCAPE-Bookmark-file-1\b[^>]*|html\s*)>/i;
+const NETSCAPE_STRUCTURE_TAG_PATTERN = /<(\/)?(DL|A|H3)(?:\b[^>]*>|\s*>)/gi;
 
 const plainText = (value: string): string =>
   htmlFragmentToText(value).replace(/\s+/g, " ").trim();
@@ -62,17 +64,34 @@ const attributes = (value: string): Map<string, string> => {
 const hasSensitiveJsonKey = (value: Record<string, unknown>): boolean =>
   Object.keys(value).some((key) => SENSITIVE_JSON_KEYS.has(key.toLowerCase()));
 
-const tagCount = (source: string, pattern: RegExp): number =>
-  source.match(pattern)?.length ?? 0;
-
 const hasCompleteNetscapeStructure = (source: string): boolean => {
   if (!BOOKMARK_EXPORT_DOCUMENT_PATTERN.test(source)) return false;
-  const openingDl = tagCount(source, /<DL\b[^>]*>/gi);
-  const closingDl = tagCount(source, /<\/DL\s*>/gi);
-  const openingAnchors = tagCount(source, /<A\b[^>]*>/gi);
-  const closingAnchors = tagCount(source, /<\/A\s*>/gi);
-  const openingHeadings = tagCount(source, /<H3\b[^>]*>/gi);
-  const closingHeadings = tagCount(source, /<\/H3\s*>/gi);
+  let openingDl = 0;
+  let closingDl = 0;
+  let openingAnchors = 0;
+  let closingAnchors = 0;
+  let openingHeadings = 0;
+  let closingHeadings = 0;
+  NETSCAPE_STRUCTURE_TAG_PATTERN.lastIndex = 0;
+  let match: RegExpExecArray | null = null;
+  while ((match = NETSCAPE_STRUCTURE_TAG_PATTERN.exec(source)) !== null) {
+    const raw = match[0];
+    const closing = match[1] === "/";
+    const tag = match[2]?.toLowerCase();
+    // Preserve exact original closing-tag whitespace-only rule (`</TAG\s*>`).
+    if (closing) {
+      if (!/^<\/(?:dl|a|h3)\s*>$/i.test(raw)) continue;
+      if (tag === "dl") closingDl += 1;
+      else if (tag === "a") closingAnchors += 1;
+      else if (tag === "h3") closingHeadings += 1;
+    } else if (tag === "dl") {
+      openingDl += 1;
+    } else if (tag === "a") {
+      openingAnchors += 1;
+    } else if (tag === "h3") {
+      openingHeadings += 1;
+    }
+  }
   return (
     openingDl > 0 &&
     openingDl === closingDl &&
@@ -321,7 +340,7 @@ export function parseBrowserJson(
     const folderName =
       !record && typeof object.name === "string" ? object.name : undefined;
     const nextFolders = folderName ? [...folders, folderName] : folders;
-    const supportedChildren = [...SUPPORTED_JSON_KEYS].filter((key) =>
+    const supportedChildren = SUPPORTED_JSON_KEY_LIST.filter((key) =>
       Object.hasOwn(object, key)
     );
     if (!record && supportedChildren.length === 0) {

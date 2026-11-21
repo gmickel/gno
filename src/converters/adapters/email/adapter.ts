@@ -16,7 +16,6 @@ import {
 const ADAPTER_ID = "native/email-export";
 const ADAPTER_VERSION = "1.0.0";
 const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
-const BINARY_STRING_CHUNK = 8_192;
 const CONTROL_CHAR_PATTERN = new RegExp(
   `[${String.fromCharCode(0)}-${String.fromCharCode(31)}${String.fromCharCode(127)}]`,
   "g"
@@ -37,20 +36,10 @@ interface BinaryLine {
 const hashText = (value: string): string =>
   new Bun.CryptoHasher("sha256").update(value).digest("hex");
 
-const bytesToBinary = (bytes: Uint8Array): string => {
-  const pieces: string[] = [];
-  for (let offset = 0; offset < bytes.length; offset += BINARY_STRING_CHUNK) {
-    pieces.push(
-      String.fromCharCode(
-        ...bytes.subarray(
-          offset,
-          Math.min(offset + BINARY_STRING_CHUNK, bytes.length)
-        )
-      )
-    );
-  }
-  return pieces.join("");
-};
+const bytesToBinary = (bytes: Uint8Array): string =>
+  Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString(
+    "latin1"
+  );
 
 const rawMessageLimit = (input: RecordAdapterInput): number => {
   const attachmentLimit = Math.max(
@@ -75,44 +64,53 @@ async function* binaryLines(
   let oversized = false;
   for await (const chunk of input.open()) {
     let start = 0;
-    for (let index = 0; index < chunk.length; index += 1) {
-      if (chunk[index] !== 0x0a) continue;
-      const segment = bytesToBinary(chunk.subarray(start, index));
-      rawLength += segment.length + 1;
+    while (start < chunk.length) {
+      const nl = chunk.indexOf(0x0a, start);
+      if (nl === -1) break;
+      const segmentLen = nl - start;
+      rawLength += segmentLen + 1;
       if (!oversized) {
-        if (pendingChars + segment.length > maxLineChars) {
+        if (pendingChars + segmentLen > maxLineChars) {
           oversized = true;
           pendingParts = [];
           pendingChars = 0;
-        } else {
-          pendingParts.push(segment);
-          pendingChars += segment.length;
+        } else if (segmentLen > 0) {
+          pendingParts.push(bytesToBinary(chunk.subarray(start, nl)));
+          pendingChars += segmentLen;
         }
       }
-      yield oversized
-        ? { rawLength, oversized: true }
-        : {
-            rawLength,
-            value: pendingParts.join("").replace(/\r$/, ""),
-            oversized: false,
-          };
+      if (oversized) {
+        yield { rawLength, oversized: true };
+      } else {
+        const joined =
+          pendingParts.length === 0
+            ? ""
+            : pendingParts.length === 1
+              ? pendingParts[0]!
+              : pendingParts.join("");
+        yield {
+          rawLength,
+          value: joined.endsWith("\r") ? joined.slice(0, -1) : joined,
+          oversized: false,
+        };
+      }
       pendingParts = [];
       pendingChars = 0;
       rawLength = 0;
       oversized = false;
-      start = index + 1;
+      start = nl + 1;
     }
     if (start < chunk.length) {
-      const segment = bytesToBinary(chunk.subarray(start));
-      rawLength += segment.length;
+      const segmentLen = chunk.length - start;
+      rawLength += segmentLen;
       if (!oversized) {
-        if (pendingChars + segment.length > maxLineChars) {
+        if (pendingChars + segmentLen > maxLineChars) {
           oversized = true;
           pendingParts = [];
           pendingChars = 0;
         } else {
-          pendingParts.push(segment);
-          pendingChars += segment.length;
+          pendingParts.push(bytesToBinary(chunk.subarray(start)));
+          pendingChars += segmentLen;
         }
       }
     }
@@ -254,25 +252,11 @@ const markdownInline = (value: string): string =>
     .replace(/\s+/g, " ")
     .trim();
 
-const BODY_MARKDOWN_ESCAPE_CHARS = new Set([
-  "\\",
-  "`",
-  "*",
-  "_",
-  "[",
-  "]",
-  "<",
-  ">",
-]);
+const BODY_MARKDOWN_ESCAPE_REGEX = /([\\`*_[\]<>])/g;
 
 const safeBodyMarkdown = (value: string): string => {
-  const output: string[] = [];
-  for (const character of value) {
-    if (character === "\r") continue;
-    if (BODY_MARKDOWN_ESCAPE_CHARS.has(character)) output.push("\\");
-    output.push(character);
-  }
-  return output.join("");
+  const withoutCr = value.includes("\r") ? value.replaceAll("\r", "") : value;
+  return withoutCr.replace(BODY_MARKDOWN_ESCAPE_REGEX, "\\$1");
 };
 
 const renderAttachments = (attachments: ParsedAttachment[]): string => {

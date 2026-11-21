@@ -13,6 +13,10 @@ const CONVERTER_VERSION = NATIVE_VERSIONS.plaintext;
 
 /** UTF-8 BOM character */
 const BOM = "\uFEFF";
+const UTF8_DECODER = new TextDecoder("utf-8", {
+  fatal: false, // Don't throw on invalid bytes
+  ignoreBOM: false, // We'll strip manually for determinism
+});
 
 export const plaintextConverter: Converter = {
   id: CONVERTER_ID,
@@ -24,12 +28,7 @@ export const plaintextConverter: Converter = {
 
   convert(input: ConvertInput): Promise<ConvertResult> {
     // Decode as UTF-8 with replacement for invalid bytes (deterministic)
-    const decoder = new TextDecoder("utf-8", {
-      fatal: false, // Don't throw on invalid bytes
-      ignoreBOM: false, // We'll strip manually for determinism
-    });
-
-    let text = decoder.decode(input.bytes);
+    let text = UTF8_DECODER.decode(input.bytes);
 
     // Strip BOM if present (ensures consistent hashes)
     if (text.startsWith(BOM)) {

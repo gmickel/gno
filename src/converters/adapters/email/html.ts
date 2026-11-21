@@ -28,15 +28,20 @@ const HTML_LINE_BREAK_ELEMENTS = new Set([
   "h6",
 ]);
 
+const NAMED_HTML_ENTITIES: Record<string, string> = {
+  amp: "&",
+  apos: "'",
+  gt: ">",
+  lt: "<",
+  nbsp: " ",
+  quot: '"',
+};
+
+const DANGEROUS_TAG_QUICK_TEST =
+  /<\/?(?:script|style|iframe|object|embed|form|svg|math|head)(?![a-z\d-])/i;
+
 const decodeHtmlEntities = (value: string): string => {
-  const named: Record<string, string> = {
-    amp: "&",
-    apos: "'",
-    gt: ">",
-    lt: "<",
-    nbsp: " ",
-    quot: '"',
-  };
+  if (!value.includes("&")) return value;
   return value.replace(
     /&(?:#(\d+)|#x([\da-f]+)|([a-z]+));/gi,
     (_match, decimal: string, hexadecimal: string, name: string) => {
@@ -50,7 +55,7 @@ const decodeHtmlEntities = (value: string): string => {
           ? String.fromCodePoint(code)
           : "";
       }
-      return named[name.toLowerCase()] ?? "";
+      return NAMED_HTML_ENTITIES[name.toLowerCase()] ?? "";
     }
   );
 };
@@ -95,6 +100,7 @@ const parseHtmlTag = (raw: string): ParsedHtmlTag | undefined => {
 const embeddedDangerousTag = (
   raw: string
 ): Pick<ParsedHtmlTag, "name" | "closing"> | undefined => {
+  if (!DANGEROUS_TAG_QUICK_TEST.test(raw)) return undefined;
   const lower = raw.toLowerCase();
   for (const name of DANGEROUS_HTML_ELEMENTS) {
     for (const closing of [true, false]) {
@@ -113,24 +119,31 @@ const embeddedDangerousTag = (
 };
 
 const htmlToPlainText = (value: string): string => {
+  let lt = value.indexOf("<");
+  if (lt === -1) return value;
   const output: string[] = [];
   const suppressedElements: string[] = [];
   let index = 0;
-  while (index < value.length) {
-    if (value.startsWith("<!--", index)) {
-      const commentEnd = value.indexOf("-->", index + 4);
-      if (commentEnd < 0) break;
+  while (lt !== -1) {
+    if (suppressedElements.length === 0 && lt > index) {
+      output.push(value.slice(index, lt));
+    }
+    if (value.startsWith("<!--", lt)) {
+      const commentEnd = value.indexOf("-->", lt + 4);
+      if (commentEnd < 0) {
+        index = value.length;
+        break;
+      }
       index = commentEnd + 3;
+      lt = value.indexOf("<", index);
       continue;
     }
-    if (value[index] !== "<") {
-      if (suppressedElements.length === 0) output.push(value[index] ?? "");
-      index += 1;
-      continue;
+    const tagEnd = findTagEnd(value, lt);
+    if (tagEnd < 0) {
+      index = value.length;
+      break;
     }
-    const tagEnd = findTagEnd(value, index);
-    if (tagEnd < 0) break;
-    const rawTag = value.slice(index, tagEnd + 1);
+    const rawTag = value.slice(lt, tagEnd + 1);
     const parsed = embeddedDangerousTag(rawTag) ?? parseHtmlTag(rawTag);
     if (parsed && DANGEROUS_HTML_ELEMENTS.has(parsed.name)) {
       if (parsed.closing) {
@@ -148,6 +161,10 @@ const htmlToPlainText = (value: string): string => {
       output.push("\n");
     }
     index = tagEnd + 1;
+    lt = value.indexOf("<", index);
+  }
+  if (suppressedElements.length === 0 && index < value.length) {
+    output.push(value.slice(index));
   }
   return output.join("");
 };

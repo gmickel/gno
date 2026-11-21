@@ -2,6 +2,7 @@
 import type {
   DocEdgeInput,
   DocumentRow,
+  GraphDocumentIdentity,
   GraphReferenceDocument,
   GraphReferenceInventory,
   StorePort,
@@ -35,7 +36,7 @@ const EDGE_TYPE = /^[a-z][a-z0-9_]*$/;
 const RELATIVE_REF = /^\.\.?\//;
 type ProjectionError = { relPath: string; code: string; message: string };
 
-function identity(doc: DocumentRow): GraphReferenceDocument {
+function identity(doc: DocumentRow): GraphDocumentIdentity {
   return {
     documentId: doc.id,
     collection: doc.collection,
@@ -46,7 +47,58 @@ function identity(doc: DocumentRow): GraphReferenceDocument {
     mirrorHash: doc.mirrorHash,
     sourceHash: doc.sourceHash,
     contentType: doc.contentType ?? null,
+    active: doc.active,
   };
+}
+
+function toReferenceDocument(
+  doc: GraphDocumentIdentity
+): GraphReferenceDocument {
+  return {
+    documentId: doc.documentId,
+    collection: doc.collection,
+    relPath: doc.relPath,
+    docid: doc.docid,
+    uri: doc.uri,
+    title: doc.title,
+    mirrorHash: doc.mirrorHash,
+    sourceHash: doc.sourceHash,
+    contentType: doc.contentType,
+  };
+}
+
+function sameIdentity(
+  a: GraphReferenceDocument,
+  b: GraphReferenceDocument
+): boolean {
+  return (
+    a.documentId === b.documentId &&
+    a.collection === b.collection &&
+    a.relPath === b.relPath &&
+    a.docid === b.docid &&
+    a.uri === b.uri &&
+    a.title === b.title &&
+    a.mirrorHash === b.mirrorHash &&
+    a.sourceHash === b.sourceHash &&
+    a.contentType === b.contentType
+  );
+}
+
+/**
+ * Whether fields that parsed wiki/markdown links can address are unchanged.
+ * `incomingLinkSources` only matches `(collection, relPath, title)`; body-only
+ * edits mutate `sourceHash`, `mirrorHash`, and content-derived `docid` without
+ * changing how parsed links resolve.
+ */
+function sameLinkAddressableIdentity(
+  a: GraphReferenceDocument,
+  b: GraphReferenceDocument
+): boolean {
+  return (
+    a.collection === b.collection &&
+    a.relPath === b.relPath &&
+    a.title === b.title
+  );
 }
 
 /**
@@ -179,11 +231,33 @@ export async function projectGraph(
     }
     const state = graph?.state(VERSION, fingerprint);
     if (!forceFull && state?.complete) return [];
-    const documents = await store.listDocuments();
-    if (!documents.ok) throw new Error(documents.error.message);
-    const activeDocs = documents.value.filter((doc) => doc.active);
-    const current = activeDocs.map(identity);
-    const currentById = new Map(current.map((doc) => [doc.documentId, doc]));
+    let allDocs: GraphDocumentIdentity[];
+    if (typeof store.listGraphDocumentIdentities === "function") {
+      const identitiesResult = await store.listGraphDocumentIdentities();
+      if (!identitiesResult.ok) throw new Error(identitiesResult.error.message);
+      allDocs = identitiesResult.value;
+    } else {
+      const documents = await store.listDocuments();
+      if (!documents.ok) throw new Error(documents.error.message);
+      allDocs = documents.value.map(identity);
+    }
+    const current: GraphReferenceDocument[] = [];
+    const currentById = new Map<number, GraphReferenceDocument>();
+    for (const doc of allDocs) {
+      if (!doc.active) continue;
+      const refDoc = toReferenceDocument(doc);
+      current.push(refDoc);
+      currentById.set(refDoc.documentId, refDoc);
+    }
+    // Pre-index valid content-type graph hints once (first rule wins, matching .find()).
+    const graphHintsByContentType = new Map<string, string>();
+    for (const rule of options.contentTypeRules ?? []) {
+      if (graphHintsByContentType.has(rule.id)) continue;
+      const hint = rule.graphHints?.[0];
+      if (hint && EDGE_TYPE.test(hint)) {
+        graphHintsByContentType.set(rule.id, hint);
+      }
+    }
     // Read before begin: a new version/config deliberately resets the old inventory.
     const previous = graph?.readInventory() ?? [];
     const previousById = new Map(
@@ -208,49 +282,95 @@ export async function projectGraph(
     let selected: Set<number> | undefined;
     if (!full && graph) {
       selected = new Set(requestedSources);
-      const changed = new Map<number, GraphReferenceDocument[]>();
+      let anyChanged = false;
+      const linkAddressableIdentities: GraphReferenceDocument[] = [];
+      let uriOrLinkTargetChanged = false;
+      const changedDocids = new Set<string>();
       for (const doc of current) {
         const old = previousById.get(doc.documentId)?.document;
-        if (!old || JSON.stringify(old) !== JSON.stringify(doc)) {
-          changed.set(doc.documentId, old ? [old, doc] : [doc]);
+        if (!old || !sameIdentity(old, doc)) {
+          anyChanged = true;
           selected.add(doc.documentId);
+          if (!old) {
+            linkAddressableIdentities.push(doc);
+            uriOrLinkTargetChanged = true;
+          } else {
+            if (!sameLinkAddressableIdentity(old, doc)) {
+              linkAddressableIdentities.push(old, doc);
+              uriOrLinkTargetChanged = true;
+            }
+            if (old.uri !== doc.uri) {
+              uriOrLinkTargetChanged = true;
+            }
+            if (old.docid !== doc.docid) {
+              changedDocids.add(old.docid);
+              changedDocids.add(doc.docid);
+            }
+          }
         }
       }
       for (const row of previous) {
         if (!currentById.has(row.document.documentId)) {
-          changed.set(row.document.documentId, [row.document]);
+          anyChanged = true;
+          linkAddressableIdentities.push(row.document);
+          uriOrLinkTargetChanged = true;
           selected.add(row.document.documentId);
         }
       }
       // Input mutation without a changed identity can be a direct parsed-link edit.
       // No durable per-source link journal exists; conservatively rebuild in that case.
-      if (changed.size === 0 && state.dirty) selected = undefined;
+      if (!anyChanged && state.dirty) selected = undefined;
       else {
-        // One statement over every changed identity scales with links x
-        // targets and cannot yield; chunk it so the event loop gets turns.
-        const identities = [...changed.values()].flat();
-        for (let i = 0; i < identities.length; i += INCOMING_LINK_CHUNK) {
-          await slicer.maybeYield();
-          for (const id of graph.incomingLinkSources(
-            identities.slice(i, i + INCOMING_LINK_CHUNK)
-          ))
-            selected.add(id);
+        if (linkAddressableIdentities.length > 0) {
+          // One statement over every changed link-addressable identity scales
+          // with links x targets and cannot yield; chunk it for event-loop turns.
+          for (
+            let i = 0;
+            i < linkAddressableIdentities.length;
+            i += INCOMING_LINK_CHUNK
+          ) {
+            await slicer.maybeYield();
+            for (const id of graph.incomingLinkSources(
+              linkAddressableIdentities.slice(i, i + INCOMING_LINK_CHUNK)
+            ))
+              selected.add(id);
+          }
         }
-        const resolveOld = relationResolver(
-          previous.map((row) => row.document),
-          memberships
-        );
-        for (const row of previous) {
-          const source = currentById.get(row.document.documentId);
-          if (!source || selected.has(source.documentId)) continue;
-          if (
-            row.references.some(
-              (ref) =>
-                resolveOld(row.document, ref.target)?.documentId !==
-                resolve(source, ref.target)?.documentId
+        if (uriOrLinkTargetChanged) {
+          const resolveOld = relationResolver(
+            previous.map((row) => row.document),
+            memberships
+          );
+          for (const row of previous) {
+            const source = currentById.get(row.document.documentId);
+            if (!source || selected.has(source.documentId)) continue;
+            if (
+              row.references.some(
+                (ref) =>
+                  resolveOld(row.document, ref.target)?.documentId !==
+                  resolve(source, ref.target)?.documentId
+              )
             )
-          )
-            selected.add(source.documentId);
+              selected.add(source.documentId);
+          }
+        } else if (changedDocids.size > 0) {
+          // Body-only edits change content-derived docid without altering
+          // collection/relPath/uri/title; only explicit `#docid` frontmatter
+          // relations can be affected, avoiding a full resolveOld rebuild.
+          for (const row of previous) {
+            if (row.references.length === 0) continue;
+            const source = currentById.get(row.document.documentId);
+            if (!source || selected.has(source.documentId)) continue;
+            if (
+              row.references.some(
+                (ref) =>
+                  ref.target.includes("#") &&
+                  changedDocids.has(normalizeRelationTarget(ref.target))
+              )
+            ) {
+              selected.add(source.documentId);
+            }
+          }
         }
       }
     }
@@ -260,18 +380,19 @@ export async function projectGraph(
       throw new Error("Graph inputs changed while computing affected sources");
     const work = async () => {
       const targets = selected
-        ? documents.value.filter((doc) => selected.has(doc.id))
-        : documents.value;
+        ? allDocs.filter((doc) => selected.has(doc.documentId))
+        : allDocs;
       // Configured sources get their final sets below. Applying defaults first
       // would delete/recreate an unchanged configured edge on every repair pass.
       const defaults = targets.filter((doc) => {
-        const hint = options.contentTypeRules?.find(
-          (rule) => rule.id === doc.contentType
-        )?.graphHints?.[0];
-        return !doc.active || !hint || !EDGE_TYPE.test(hint);
+        if (!doc.active) return true;
+        return !(
+          doc.contentType !== null &&
+          graphHintsByContentType.has(doc.contentType)
+        );
       });
       const backfill = await store.backfillDocEdges(
-        defaults.map((doc) => doc.id)
+        defaults.map((doc) => doc.documentId)
       );
       if (!backfill.ok) throw new Error(backfill.error.message);
       for (const [index, doc] of targets.entries()) {
@@ -281,7 +402,7 @@ export async function projectGraph(
         else await slicer.maybeYield();
         if (!doc.active) {
           const cleared = await store.setDocEdges(
-            doc.id,
+            doc.documentId,
             [],
             "frontmatter-relation"
           );
@@ -289,8 +410,8 @@ export async function projectGraph(
             errors.push({ relPath: doc.relPath, ...cleared.error });
           continue;
         }
-        const snapshot = currentById.get(doc.id)!;
-        const cached = selected ? previousById.get(doc.id) : undefined;
+        const snapshot = currentById.get(doc.documentId)!;
+        const cached = selected ? previousById.get(doc.documentId) : undefined;
         let references: GraphReferenceInventory["references"];
         if (
           cached &&
@@ -336,18 +457,19 @@ export async function projectGraph(
             });
         }
         const relationsResult = await store.setDocEdges(
-          doc.id,
+          doc.documentId,
           relationEdges,
           "frontmatter-relation"
         );
         if (!relationsResult.ok)
           errors.push({ relPath: doc.relPath, ...relationsResult.error });
         graph?.writeInventory({ document: snapshot, references });
-        const hint = options.contentTypeRules?.find(
-          (rule) => rule.id === doc.contentType
-        )?.graphHints?.[0];
-        if (!hint || !EDGE_TYPE.test(hint)) continue;
-        const links = await store.getLinksForDoc(doc.id);
+        const hint =
+          doc.contentType !== null
+            ? graphHintsByContentType.get(doc.contentType)
+            : undefined;
+        if (!hint) continue;
+        const links = await store.getLinksForDoc(doc.documentId);
         if (!links.ok) {
           errors.push({ relPath: doc.relPath, ...links.error });
           continue;
@@ -377,7 +499,7 @@ export async function projectGraph(
           ["wikilink", wikiEdges],
           ["markdown-link", markdownEdges],
         ] as const) {
-          const result = await store.setDocEdges(doc.id, edges, source);
+          const result = await store.setDocEdges(doc.documentId, edges, source);
           if (!result.ok)
             errors.push({ relPath: doc.relPath, ...result.error });
         }

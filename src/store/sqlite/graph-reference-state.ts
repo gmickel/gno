@@ -140,8 +140,7 @@ export function createGraphReferenceStore(db: Database): GraphReferenceStore {
         .map((row) => row.sourceId);
     },
     writeInventory({ document: d, references }) {
-      db.transaction(() => {
-        db.run("UPDATE graph_projection_state SET dirty = 1 WHERE id = 1");
+      const write = () => {
         db.run(
           `INSERT INTO graph_reference_documents
           (document_id, collection, rel_path, docid, uri, title, mirror_hash, source_hash, content_type)
@@ -171,7 +170,13 @@ export function createGraphReferenceStore(db: Database): GraphReferenceStore {
             [d.documentId, ordinal, ref.edgeType, ref.target]
           );
         }
-      })();
+      };
+      // Avoid nested savepoints when already inside projectGraph's outer transaction.
+      if (db.inTransaction) {
+        write();
+      } else {
+        db.transaction(write)();
+      }
     },
     complete(expectedEpoch) {
       db.transaction(() => {

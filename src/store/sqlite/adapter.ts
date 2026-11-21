@@ -64,6 +64,7 @@ import type {
   FileRefactorResolutionSnapshot,
   GetGraphNeighborsOptions,
   GetGraphOptions,
+  GraphDocumentIdentity,
   GraphEdgeConfidence,
   GraphEdgeAudit,
   GraphLinkType,
@@ -2170,6 +2171,59 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return err(
         "QUERY_FAILED",
         cause instanceof Error ? cause.message : "Failed to list documents",
+        cause
+      );
+    }
+  }
+
+  async listGraphDocumentIdentities(): Promise<
+    StoreResult<GraphDocumentIdentity[]>
+  > {
+    try {
+      const db = this.ensureOpen();
+      const rows = db
+        .query<
+          {
+            documentId: number;
+            collection: string;
+            relPath: string;
+            docid: string;
+            uri: string;
+            title: string | null;
+            mirrorHash: string | null;
+            sourceHash: string;
+            contentType: string | null;
+            active: number;
+          },
+          []
+        >(
+          `SELECT id AS documentId, collection, rel_path AS relPath, docid, uri,
+                  title, mirror_hash AS mirrorHash, source_hash AS sourceHash,
+                  content_type AS contentType, active
+           FROM documents`
+        )
+        .all();
+
+      return ok(
+        rows.map((row) => ({
+          documentId: row.documentId,
+          collection: row.collection,
+          relPath: row.relPath,
+          docid: row.docid,
+          uri: row.uri,
+          title: row.title,
+          mirrorHash: row.mirrorHash,
+          sourceHash: row.sourceHash,
+          contentType: row.contentType,
+          active: row.active === 1,
+        }))
+      );
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to list graph document identities",
         cause
       );
     }

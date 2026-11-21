@@ -44,27 +44,33 @@ const hasOnlyDigits = (value: string, hexadecimal: boolean): boolean => {
 
 /** Decode recognized entities from the original input exactly once. */
 export const decodeHtmlEntitiesOnce = (value: string): string => {
-  let output = "";
+  let amp = value.indexOf("&");
+  if (amp === -1) return value;
+  const parts: string[] = [];
   let cursor = 0;
-  while (cursor < value.length) {
-    if (value[cursor] !== "&") {
-      output += value[cursor];
-      cursor += 1;
-      continue;
+  while (amp !== -1) {
+    if (amp > cursor) {
+      parts.push(value.slice(cursor, amp));
     }
-    const entityEnd = Math.min(value.length, cursor + MAX_ENTITY_CHARS + 2);
-    const semicolon = value.slice(cursor + 1, entityEnd).indexOf(";");
-    const absoluteSemicolon = semicolon < 0 ? -1 : cursor + semicolon + 1;
+    const entityEnd = Math.min(value.length, amp + MAX_ENTITY_CHARS + 2);
+    let absoluteSemicolon = -1;
+    for (let i = amp + 1; i < entityEnd; i += 1) {
+      if (value.charCodeAt(i) === 59) {
+        absoluteSemicolon = i;
+        break;
+      }
+    }
     if (
       absoluteSemicolon < 0 ||
-      absoluteSemicolon - cursor - 1 <= 0 ||
-      absoluteSemicolon - cursor - 1 > MAX_ENTITY_CHARS
+      absoluteSemicolon - amp - 1 <= 0 ||
+      absoluteSemicolon - amp - 1 > MAX_ENTITY_CHARS
     ) {
-      output += "&";
-      cursor += 1;
+      parts.push("&");
+      cursor = amp + 1;
+      amp = value.indexOf("&", cursor);
       continue;
     }
-    const entity = value.slice(cursor + 1, absoluteSemicolon);
+    const entity = value.slice(amp + 1, absoluteSemicolon);
     const named = NAMED_ENTITIES.get(entity.toLowerCase());
     let decoded = named;
     if (!decoded && entity.startsWith("#")) {
@@ -84,14 +90,16 @@ export const decodeHtmlEntitiesOnce = (value: string): string => {
         decoded = String.fromCodePoint(codePoint);
       }
     }
-    if (decoded === undefined) {
-      output += value.slice(cursor, absoluteSemicolon + 1);
-    } else {
-      output += decoded;
-    }
+    parts.push(
+      decoded === undefined ? value.slice(amp, absoluteSemicolon + 1) : decoded
+    );
     cursor = absoluteSemicolon + 1;
+    amp = value.indexOf("&", cursor);
   }
-  return output;
+  if (cursor < value.length) {
+    parts.push(value.slice(cursor));
+  }
+  return parts.join("");
 };
 
 interface HtmlTag {
@@ -124,25 +132,30 @@ const readTag = (source: string, start: number): HtmlTag | undefined => {
  * Script/style contents and comments are discarded; entities decode once.
  */
 export const htmlFragmentToText = (source: string): string => {
-  let output = "";
+  let lt = source.indexOf("<");
+  if (lt === -1) return decodeHtmlEntitiesOnce(source);
+  const parts: string[] = [];
   let cursor = 0;
   let blockedName: "script" | "style" | undefined;
   let blockedDepth = 0;
-  while (cursor < source.length) {
-    if (source[cursor] !== "<") {
-      if (!blockedName) output += source[cursor];
-      cursor += 1;
-      continue;
+  while (lt !== -1) {
+    if (!blockedName && lt > cursor) {
+      parts.push(source.slice(cursor, lt));
     }
-    if (source.startsWith("<!--", cursor)) {
-      const commentEnd = source.indexOf("-->", cursor + 4);
-      if (commentEnd < 0) break;
+    if (source.startsWith("<!--", lt)) {
+      const commentEnd = source.indexOf("-->", lt + 4);
+      if (commentEnd < 0) {
+        cursor = source.length;
+        break;
+      }
       cursor = commentEnd + 3;
+      lt = source.indexOf("<", cursor);
       continue;
     }
-    const tag = readTag(source, cursor);
+    const tag = readTag(source, lt);
     if (!tag) {
-      if (!blockedName) output += source.slice(cursor);
+      if (!blockedName) parts.push(source.slice(lt));
+      cursor = source.length;
       break;
     }
     cursor = tag.end + 1;
@@ -152,14 +165,19 @@ export const htmlFragmentToText = (source: string): string => {
         else blockedDepth += 1;
         if (blockedDepth === 0) blockedName = undefined;
       }
-      continue;
-    }
-    if (!tag.closing && (tag.name === "script" || tag.name === "style")) {
+    } else if (
+      !tag.closing &&
+      (tag.name === "script" || tag.name === "style")
+    ) {
       blockedName = tag.name;
       blockedDepth = 1;
-      continue;
+    } else if (!tag.closing && tag.name === "br") {
+      parts.push("\n");
     }
-    if (!tag.closing && tag.name === "br") output += "\n";
+    lt = source.indexOf("<", cursor);
   }
-  return decodeHtmlEntitiesOnce(output);
+  if (!blockedName && cursor < source.length) {
+    parts.push(source.slice(cursor));
+  }
+  return decodeHtmlEntitiesOnce(parts.join(""));
 };

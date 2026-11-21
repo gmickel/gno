@@ -15,6 +15,16 @@ const CONTROL_CHAR_PATTERN = new RegExp(
   "g"
 );
 
+/** Returns true if value contains any non-ASCII code unit; pure ASCII is already NFC. */
+function hasNonAscii(value: string): boolean {
+  for (let i = 0; i < value.length; i += 1) {
+    if (value.charCodeAt(i) > 0x7f) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Canonicalize markdown to ensure deterministic output.
  *
@@ -37,10 +47,14 @@ export function canonicalize(markdown: string): string {
   let result = markdown.startsWith("\uFEFF") ? markdown.slice(1) : markdown;
 
   // 1. Normalize line endings: \r\n → \n, lone \r → \n
-  result = result.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  if (result.includes("\r")) {
+    result = result.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  }
 
-  // 2. Apply NFC Unicode normalization
-  result = result.normalize("NFC");
+  // 2. Apply NFC Unicode normalization (skip only for strictly pure ASCII)
+  if (hasNonAscii(result)) {
+    result = result.normalize("NFC");
+  }
 
   // 3. Strip control characters except \n (U+000A) and \t (U+0009)
   // Range: U+0000-U+0008, U+000B-U+000C, U+000E-U+001F, U+007F

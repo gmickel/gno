@@ -673,6 +673,11 @@ export interface GraphReferenceDocument {
   contentType: string | null;
 }
 
+/** Lean scalar document identity for graph reconciliation (avoids SELECT * JSON parsing). */
+export interface GraphDocumentIdentity extends GraphReferenceDocument {
+  active: boolean;
+}
+
 export interface GraphFrontmatterReference {
   edgeType: string;
   target: string;
@@ -2336,6 +2341,9 @@ export interface StorePort {
 
   /** Missing capability or stale state requires full graph reconciliation. */
   graphReferenceStore?(): GraphReferenceStore;
+
+  /** Lean scalar document identities for graph reconciliation (avoids SELECT * JSON parsing). */
+  listGraphDocumentIdentities?(): Promise<StoreResult<GraphDocumentIdentity[]>>;
 
   /**
    * Get backlinks pointing to a document.

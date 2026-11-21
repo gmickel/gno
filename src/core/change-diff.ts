@@ -10,10 +10,18 @@ import type {
   DocumentChangeSet,
 } from "../store/types";
 
-import { parseFrontmatter } from "../ingestion/frontmatter";
+import {
+  type FrontmatterResult,
+  parseFrontmatter,
+} from "../ingestion/frontmatter";
 import { buildLineOffsets } from "../ingestion/position";
 import { type ExcludedRange, getExcludedRanges } from "../ingestion/strip";
-import { normalizeMarkdownPath, normalizeWikiName, parseLinks } from "./links";
+import {
+  normalizeMarkdownPath,
+  normalizeWikiName,
+  type ParsedLink,
+  parseLinks,
+} from "./links";
 import { extractSections } from "./sections";
 
 export type RelationMap = Record<string, string[]>;
@@ -86,8 +94,12 @@ const linkSummary = (
   return target ? `markdown:${target}${anchor}` : null;
 };
 
-const extractTypedEdges = (markdown: string): string[] => {
-  const relations = parseFrontmatter(markdown).metadata.relations;
+const extractTypedEdges = (
+  markdown: string,
+  frontmatter?: FrontmatterResult
+): string[] => {
+  const relations = (frontmatter ?? parseFrontmatter(markdown)).metadata
+    .relations;
   if (!isRelationMap(relations)) return [];
 
   const values: string[] = [];
@@ -108,19 +120,34 @@ export interface DocumentStructureOptions {
   /** Only Markdown sources carry links (matches link extraction at sync). */
   markdownSource: boolean;
   excludedRanges?: ExcludedRange[];
+  /** Optional precomputed line offsets (avoids recomputing buildLineOffsets). */
+  lineOffsets?: number[];
+  /** Optional precomputed parsed links (avoids running parseLinks twice). */
+  parsedLinks?: readonly ParsedLink[];
+  /** Optional pre-parsed frontmatter (avoids re-running parseFrontmatter). */
+  frontmatter?: FrontmatterResult;
 }
 
 export const extractDocumentStructure = (
   markdown: string,
   relPath: string,
   dateFields: Readonly<Record<string, string>> | null | undefined,
-  { markdownSource, excludedRanges }: DocumentStructureOptions
+  {
+    markdownSource,
+    excludedRanges,
+    lineOffsets,
+    parsedLinks,
+    frontmatter,
+  }: DocumentStructureOptions
 ): DocumentStructureSnapshot => {
   const links = markdownSource
-    ? parseLinks(
-        markdown,
-        buildLineOffsets(markdown),
-        excludedRanges ?? getExcludedRanges(markdown)
+    ? (
+        parsedLinks ??
+        parseLinks(
+          markdown,
+          lineOffsets ?? buildLineOffsets(markdown),
+          excludedRanges ?? getExcludedRanges(markdown)
+        )
       )
         .map((link) => linkSummary(link, relPath))
         .filter((value): value is string => value !== null)
@@ -133,7 +160,7 @@ export const extractDocumentStructure = (
       )
     ),
     links: withOccurrences(links),
-    typedEdges: extractTypedEdges(markdown),
+    typedEdges: extractTypedEdges(markdown, frontmatter),
     dates: { ...dateFields },
   };
 };

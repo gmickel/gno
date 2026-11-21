@@ -176,6 +176,14 @@ export function loadDarwinIo(): DarwinIoBundle | null {
   }
   const { symbols } = loaded;
   const readErrno = (): number => readErrnoFrom(symbols);
+  // Reuse one 144-byte stat buffer + DataView across synchronous lstat calls.
+  const statBuf = new Uint8Array(DARWIN_STAT_BUF_SIZE);
+  const statPtr = ptr(statBuf);
+  const statView = new DataView(
+    statBuf.buffer,
+    statBuf.byteOffset,
+    statBuf.byteLength
+  );
   cachedBundle = {
     policy: {
       get: symbols.getiopolicy_np,
@@ -192,16 +200,11 @@ export function loadDarwinIo(): DarwinIoBundle | null {
     },
     stat: {
       lstatFlags: (absPath: string) => {
-        const buf = new Uint8Array(DARWIN_STAT_BUF_SIZE);
-        const rc = symbols.lstat(ptr(cstr(absPath)), ptr(buf));
+        const rc = symbols.lstat(ptr(cstr(absPath)), statPtr);
         if (rc !== 0) {
           return { ok: false as const, errno: readErrno() };
         }
-        const stFlags = new DataView(
-          buf.buffer,
-          buf.byteOffset,
-          buf.byteLength
-        ).getUint32(DARWIN_ST_FLAGS_OFFSET, true);
+        const stFlags = statView.getUint32(DARWIN_ST_FLAGS_OFFSET, true);
         return { ok: true as const, stFlags };
       },
     },

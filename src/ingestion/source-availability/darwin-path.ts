@@ -17,14 +17,32 @@ export type DarwinFileProviderPathSupport =
   | "unsupported"
   | "unknown";
 
+let cachedHomeRaw: string | undefined;
+let cachedHomeResolved: string | undefined;
+
+function resolveHomeDir(home?: string): string {
+  const raw = home ?? homedir();
+  if (raw === cachedHomeRaw && cachedHomeResolved !== undefined) {
+    return cachedHomeResolved;
+  }
+  const resolved = resolve(raw);
+  if (home === undefined) {
+    cachedHomeRaw = raw;
+    cachedHomeResolved = resolved;
+  }
+  return resolved;
+}
+
 export function classifyDarwinFileProviderPath(
   absPath: string,
-  home: string = homedir()
+  home?: string
 ): DarwinFileProviderPathSupport {
-  if (!isAbsolute(absPath) || !isAbsolute(home)) {
+  const homeRaw = home ?? homedir();
+  if (!isAbsolute(absPath) || !isAbsolute(homeRaw)) {
     return "unknown";
   }
-  const relativeHomePath = relative(resolve(home), resolve(absPath));
+  const resolvedHome = home === undefined ? resolveHomeDir() : resolve(homeRaw);
+  const relativeHomePath = relative(resolvedHome, resolve(absPath));
   if (
     relativeHomePath === ".." ||
     relativeHomePath.startsWith(`..${sep}`) ||

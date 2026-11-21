@@ -343,11 +343,20 @@ export const safeFailure = (
   };
 };
 
+export interface PrecomputedAdapterIdentity {
+  adapterIdentity: RecordAdapterIdentity;
+  adapterFingerprint: string;
+}
+
 export const canonicalRecord = (
   adapter: RecordAdapter,
-  record: RecordAdapterRecord
+  record: RecordAdapterRecord,
+  precomputed?: PrecomputedAdapterIdentity
 ): AccountedCanonicalRecord => {
-  const adapterIdentity = normalizeRecordAdapterIdentity(adapter);
+  const adapterIdentity =
+    precomputed?.adapterIdentity ?? normalizeRecordAdapterIdentity(adapter);
+  const adapterFingerprint =
+    precomputed?.adapterFingerprint ?? recordAdapterFingerprint(adapter);
   const stableId = normalizeStableId(record.stableId);
   const sourceLocator = normalizeLocator(record.sourceLocator);
   const markdown = canonicalize(record.markdown);
@@ -362,29 +371,31 @@ export const canonicalRecord = (
     record.languageHint,
     RECORD_METADATA_LIMITS.maxLanguageHintChars
   );
-  const derivedSource = JSON.stringify(
-    canonicalJsonValue({
-      anchors,
-      languageHint,
-      markdown,
-      metadata,
-      ...custom,
-      sourceLocator,
-      stableId,
-      title,
-    })
-  );
-  const metadataChars = JSON.stringify(
-    canonicalJsonValue({
-      anchors,
-      languageHint,
-      metadata,
-      ...custom,
-      sourceLocator,
-      stableId,
-      title,
-    })
-  ).length;
+  // Canonicalize the metadata envelope once and reuse its sorted entries for
+  // derivedSource so canonicalJsonValue never walks metadata/anchors twice.
+  const canonicalMeta = canonicalJsonValue({
+    anchors,
+    languageHint,
+    metadata,
+    ...custom,
+    sourceLocator,
+    stableId,
+    title,
+  }) as Record<string, unknown>;
+  const metadataChars = JSON.stringify(canonicalMeta).length;
+  const canonicalWithMarkdown: Record<string, unknown> = {};
+  let insertedMarkdown = false;
+  for (const key of Object.keys(canonicalMeta)) {
+    if (!insertedMarkdown && key > "markdown") {
+      canonicalWithMarkdown.markdown = markdown;
+      insertedMarkdown = true;
+    }
+    canonicalWithMarkdown[key] = canonicalMeta[key];
+  }
+  if (!insertedMarkdown) {
+    canonicalWithMarkdown.markdown = markdown;
+  }
+  const derivedSource = JSON.stringify(canonicalWithMarkdown);
   if (
     record.sourceHash !== undefined &&
     !HASH_PATTERN.test(record.sourceHash)
@@ -401,7 +412,7 @@ export const canonicalRecord = (
     markdown,
     adapterId: adapterIdentity.id,
     adapterVersion: adapterIdentity.version,
-    adapterFingerprint: recordAdapterFingerprint(adapter),
+    adapterFingerprint,
     title,
     languageHint,
     metadata,
