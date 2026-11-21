@@ -175,7 +175,12 @@ export class LlmAdapter {
     if (!approved.ok) return approved;
     return {
       ok: true,
-      value: new NativeGenerationPort(this.worker, approved.value, uri),
+      value: new NativeGenerationPort(
+        this.worker,
+        approved.value,
+        uri,
+        resolved.value
+      ),
     };
   }
 
@@ -216,7 +221,12 @@ export class LlmAdapter {
     if (!approved.ok) return approved;
     return {
       ok: true,
-      value: new NativeGenerationPort(this.worker, approved.value, uri),
+      value: new NativeGenerationPort(
+        this.worker,
+        approved.value,
+        uri,
+        resolved.value
+      ),
     };
   }
 

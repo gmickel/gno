@@ -70,21 +70,45 @@ const STOPWORDS = new Set([
 export interface ExpansionCacheKeyOptions {
   /** Effective context size used for expansion generation. */
   contextSize?: number;
-  /** Optional explicit model fingerprint; falls back to local file mtime/size when `file:` URI. */
+  /** Optional explicit model fingerprint; falls back to local file mtime/size. */
   modelFingerprint?: string;
+  /** Resolved local model file path (e.g. cached GGUF for `hf:` or `file:` URIs). */
+  modelPath?: string;
 }
 
-function resolveLocalModelFingerprint(modelUri: string): string {
-  if (!modelUri.startsWith("file:")) return "";
+function statFileFingerprint(filePath: string): string | null {
   try {
-    const filePath = modelUri.startsWith("file://")
-      ? fileURLToPath(modelUri)
-      : modelUri.slice("file:".length);
     const stat = statSync(filePath);
     return `file:${stat.size}:${Math.trunc(stat.mtimeMs)}`;
   } catch {
-    return "";
+    return null;
   }
+}
+
+function resolveModelIdentityFingerprint(
+  modelUri: string,
+  options?: ExpansionCacheKeyOptions
+): string | null {
+  if (options?.modelFingerprint) {
+    return options.modelFingerprint;
+  }
+  if (options?.modelPath) {
+    return statFileFingerprint(options.modelPath);
+  }
+  if (modelUri.startsWith("file:")) {
+    try {
+      const filePath = modelUri.startsWith("file://")
+        ? fileURLToPath(modelUri)
+        : modelUri.slice("file:".length);
+      return statFileFingerprint(filePath);
+    } catch {
+      return null;
+    }
+  }
+  if (modelUri.startsWith("http://") || modelUri.startsWith("https://")) {
+    return `uri:${modelUri}`;
+  }
+  return null;
 }
 
 /**
@@ -98,8 +122,7 @@ export function generateCacheKey(
   intent?: string,
   options?: ExpansionCacheKeyOptions
 ): string {
-  const fingerprint =
-    options?.modelFingerprint ?? resolveLocalModelFingerprint(modelUri);
+  const fingerprint = resolveModelIdentityFingerprint(modelUri, options) ?? "";
   const contextSize =
     options?.contextSize !== undefined ? String(options.contextSize) : "";
   const data = [
@@ -549,8 +572,53 @@ export interface CachedExpansionDeps {
   getCache: (key: string) => Promise<string | null>;
   setCache: (key: string, value: string) => Promise<void>;
   modelFingerprint?: string;
+  modelPath?: string;
   onCacheLookup?: () => void;
   onCacheHit?: () => void;
+}
+
+/**
+ * Strictly validate persisted expansion cache JSON written by expandQueryCached.
+ * Rejects structurally corrupt entries (e.g. non-string array items or missing fields)
+ * so they degrade cleanly to a cache miss and live generation.
+ */
+function parseCachedExpansionResult(raw: string): ExpansionResult | null {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return null;
+    }
+    const obj = parsed as Record<string, unknown>;
+    if (
+      !Array.isArray(obj.lexicalQueries) ||
+      !Array.isArray(obj.vectorQueries)
+    ) {
+      return null;
+    }
+    const lexicalQueries: string[] = [];
+    for (const item of obj.lexicalQueries) {
+      if (typeof item !== "string" || item.trim().length === 0) return null;
+      lexicalQueries.push(item.trim());
+    }
+    const vectorQueries: string[] = [];
+    for (const item of obj.vectorQueries) {
+      if (typeof item !== "string" || item.trim().length === 0) return null;
+      vectorQueries.push(item.trim());
+    }
+    let hyde: string | undefined;
+    if (obj.hyde !== undefined) {
+      if (typeof obj.hyde !== "string" || obj.hyde.trim().length === 0) {
+        return null;
+      }
+      hyde = obj.hyde.trim();
+    }
+    if (lexicalQueries.length === 0 && vectorQueries.length === 0 && !hyde) {
+      return null;
+    }
+    return { lexicalQueries, vectorQueries, hyde };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -561,6 +629,21 @@ export async function expandQueryCached(
   query: string,
   options: ExpansionOptions = {}
 ): Promise<StoreResult<ExpansionResult | null>> {
+  const keyOptions: ExpansionCacheKeyOptions = {
+    contextSize: options.contextSize,
+    modelFingerprint: deps.modelFingerprint ?? deps.genPort.modelFingerprint,
+    modelPath: deps.modelPath ?? deps.genPort.modelPath,
+  };
+  const resolvedIdentity = resolveModelIdentityFingerprint(
+    deps.genPort.modelUri,
+    keyOptions
+  );
+  // Skip persistent cache when the effective model artifact cannot be identified
+  // (e.g. an `hf:` URI with no resolved local file path or fingerprint).
+  if (resolvedIdentity === null) {
+    return expandQuery(deps.genPort, query, options);
+  }
+
   const lang = options.lang ?? "auto";
   const cacheKey = generateCacheKey(
     deps.genPort.modelUri,
@@ -568,8 +651,8 @@ export async function expandQueryCached(
     lang,
     options.intent,
     {
-      contextSize: options.contextSize,
-      modelFingerprint: deps.modelFingerprint,
+      contextSize: keyOptions.contextSize,
+      modelFingerprint: resolvedIdentity,
     }
   );
 
@@ -582,7 +665,7 @@ export async function expandQueryCached(
     cached = null;
   }
   if (cached) {
-    const parsed = parseExpansionResult(cached);
+    const parsed = parseCachedExpansionResult(cached);
     if (parsed) {
       deps.onCacheHit?.();
       return ok(applyExpansionGuardrails(query, parsed));

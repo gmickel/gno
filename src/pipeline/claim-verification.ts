@@ -402,6 +402,7 @@ export const prepareClaimVerification = (
   const perClaimAccepted: Map<string, Evidence>[] = claims.map(() => new Map());
   const perClaimRejected: RejectedCitation[][] = claims.map(() => []);
   const orphanRejected: RejectedCitation[] = [];
+  const boundaryAffectedClaims = new Set<number>();
 
   let claimIdx = 0;
   for (const citation of rawCitations) {
@@ -416,20 +417,32 @@ export const prepareClaimVerification = (
       start >= claims[claimIdx]!.start &&
       start < claims[claimIdx]!.end;
     if (inClaim) {
-      const reason =
-        evidenceId === null
-          ? "malformed_citation"
-          : rejectedReason(evidence, freshness);
-      if (reason) {
-        perClaimRejected[claimIdx]!.push({
-          marker,
-          start,
-          end,
-          evidenceId,
-          reason,
-        });
-      } else if (evidence) {
-        perClaimAccepted[claimIdx]!.set(evidence.evidenceId, evidence);
+      if (end > claims[claimIdx]!.end) {
+        // A malformed marker spanning past this claim's boundary could swallow
+        // markers in this or subsequent claims; re-scan affected claim slices locally.
+        for (
+          let k = claimIdx;
+          k < claims.length && claims[k]!.start < end;
+          k++
+        ) {
+          boundaryAffectedClaims.add(k);
+        }
+      } else {
+        const reason =
+          evidenceId === null
+            ? "malformed_citation"
+            : rejectedReason(evidence, freshness);
+        if (reason) {
+          perClaimRejected[claimIdx]!.push({
+            marker,
+            start,
+            end,
+            evidenceId,
+            reason,
+          });
+        } else if (evidence) {
+          perClaimAccepted[claimIdx]!.set(evidence.evidenceId, evidence);
+        }
       }
     } else {
       orphanRejected.push({
@@ -442,6 +455,48 @@ export const prepareClaimVerification = (
             ? "malformed_citation"
             : (rejectedReason(evidence, freshness) ?? "orphan_citation"),
       });
+      // If an orphan malformed span extends into subsequent claims, re-scan
+      // those claim slices locally so valid citations inside them are preserved.
+      if (claimIdx < claims.length && end > claims[claimIdx]!.start) {
+        for (
+          let k = claimIdx;
+          k < claims.length && claims[k]!.start < end;
+          k++
+        ) {
+          boundaryAffectedClaims.add(k);
+        }
+      }
+    }
+  }
+
+  for (const idx of boundaryAffectedClaims) {
+    const claim = claims[idx]!;
+    perClaimAccepted[idx]!.clear();
+    perClaimRejected[idx]!.length = 0;
+    CITATION_PATTERN.lastIndex = 0;
+    for (const match of claim.text.matchAll(CITATION_PATTERN)) {
+      const start = claim.start + match.index;
+      const end = start + match[0].length;
+      const rawId = match[1] ?? "";
+      const evidenceId =
+        match[2] === "]" && SHA256_PATTERN.test(rawId) ? rawId : null;
+      const evidence =
+        evidenceId === null ? undefined : evidenceById.get(evidenceId);
+      const reason =
+        evidenceId === null
+          ? "malformed_citation"
+          : rejectedReason(evidence, freshness);
+      if (reason) {
+        perClaimRejected[idx]!.push({
+          marker: match[0],
+          start,
+          end,
+          evidenceId,
+          reason,
+        });
+      } else if (evidence) {
+        perClaimAccepted[idx]!.set(evidence.evidenceId, evidence);
+      }
     }
   }
 

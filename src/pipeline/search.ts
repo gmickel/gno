@@ -644,6 +644,10 @@ export async function searchBm25(
         if (fullContent) {
           result.snippet = fullContent;
           result.snippetRange = undefined;
+          const originalChunk = deferredChunkByResult.get(result);
+          if (originalChunk) {
+            result.line = originalChunk.startLine;
+          }
         }
       }
     }

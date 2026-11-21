@@ -119,6 +119,10 @@ export interface EmbeddingPort {
 
 export interface GenerationPort {
   readonly modelUri: string;
+  /** Resolved local GGUF path when backed by a local or downloaded file. */
+  readonly modelPath?: string;
+  /** Optional stable model fingerprint for deterministic cache invalidation. */
+  readonly modelFingerprint?: string;
   /** Undefined is treated as unsupported for backwards-compatible ports. */
   readonly structuredOutput?: StructuredOutputCapability;
   generate(

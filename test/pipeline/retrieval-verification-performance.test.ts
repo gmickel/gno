@@ -12,11 +12,16 @@ import type {
   DocumentRow,
   FtsResult,
   StorePort,
+  StoreResult,
 } from "../../src/store/types";
-import type { VectorIndexPort } from "../../src/store/vector/types";
+import type {
+  VectorIndexPort,
+  VectorSearchResult,
+} from "../../src/store/vector/types";
 
 import { sha256Text } from "../../src/core/context-capsule-validation";
 import { verifyContextCapsule } from "../../src/core/context-verifier";
+import { generateGroundedAnswer } from "../../src/pipeline/answer";
 import {
   applySemanticJudgments,
   prepareClaimVerification,
@@ -732,6 +737,8 @@ describe("R3: Deterministic llm_cache wiring for expandQueryCached", () => {
       expect(expired).toEqual(ok(null));
 
       // Hybrid search wires expandQueryCached: first call misses & stores, second hits without LLM call.
+      const modelPath = join(dir, "expand-v1.gguf");
+      await writeFile(modelPath, "gguf-v1-bytes");
       const generate = mock(async () =>
         ok(
           JSON.stringify({
@@ -742,6 +749,7 @@ describe("R3: Deterministic llm_cache wiring for expandQueryCached", () => {
       );
       const expandPort = {
         modelUri: "hf:test/expand.gguf",
+        modelPath,
         generate,
         dispose: async () => undefined,
       } as unknown as GenerationPort;
@@ -788,15 +796,64 @@ describe("R3: Deterministic llm_cache wiring for expandQueryCached", () => {
         expect(counterLine?.message).toContain("expansionCache=1/1");
       }
 
-      // Corrupt cache entry falls back cleanly to live expansion.
+      // F4: Replacing the local GGUF behind an hf: URI invalidates cached entries.
+      await writeFile(modelPath, "gguf-v2-replaced-longer-weights");
+      const afterModelReplace = await searchHybrid(
+        {
+          store: adapter,
+          config: TEST_CONFIG,
+          vectorIndex: null,
+          embedPort: null,
+          expandPort,
+          rerankPort: null,
+        },
+        "expansion cache",
+        { explain: true, noExpand: false }
+      );
+      expect(afterModelReplace.ok).toBe(true);
+      expect(generate).toHaveBeenCalledTimes(2);
+      if (afterModelReplace.ok) {
+        const counterLine = afterModelReplace.value.meta.explain?.lines.find(
+          (line) => line.stage === "counters"
+        );
+        expect(counterLine?.message).toContain("expansionCache=0/1");
+      }
+
+      // F4: hf: port with no modelPath/modelFingerprint skips persistent caching.
+      const unidentifiablePort = {
+        modelUri: "hf:test/unidentified.gguf",
+        generate,
+        dispose: async () => undefined,
+      } as unknown as GenerationPort;
+      await expandQueryCached(
+        {
+          genPort: unidentifiablePort,
+          getCache: async (k) => {
+            const r = await adapter.getLlmCache(k);
+            return r.ok ? r.value : null;
+          },
+          setCache: async (k, v) => {
+            await adapter.setLlmCache(k, v);
+          },
+        },
+        "unidentified model query",
+        { lang: "en", contextSize: 2048 }
+      );
+      expect(generate).toHaveBeenCalledTimes(3);
+
+      // F5: Structurally corrupt JSON (valid JSON but non-string array items) counts as a miss.
       const cacheKey = generateCacheKey(
         "hf:test/expand.gguf",
         "corrupt cache query",
         "en",
         undefined,
-        { contextSize: 2048 }
+        { contextSize: 2048, modelPath }
       );
-      await adapter.setLlmCache(cacheKey, "{not-valid-json");
+      await adapter.setLlmCache(
+        cacheKey,
+        JSON.stringify({ lexicalQueries: [null], vectorQueries: [42] })
+      );
+      let corruptHits = 0;
       const corruptRes = await expandQueryCached(
         {
           genPort: expandPort,
@@ -807,12 +864,16 @@ describe("R3: Deterministic llm_cache wiring for expandQueryCached", () => {
           setCache: async (k, v) => {
             await adapter.setLlmCache(k, v);
           },
+          onCacheHit: () => {
+            corruptHits += 1;
+          },
         },
         "corrupt cache query",
         { lang: "en", contextSize: 2048 }
       );
       expect(corruptRes.ok).toBe(true);
-      expect(generate).toHaveBeenCalledTimes(2);
+      expect(corruptHits).toBe(0);
+      expect(generate).toHaveBeenCalledTimes(4);
     } finally {
       await adapter.close();
     }
@@ -1396,5 +1457,413 @@ describe("R7: Inner-loop filter, snippet, intent, temporal, exclude, and egress-
       }
     );
     expect(lineage.ok).toBe(true);
+  });
+});
+
+describe("Round 1 Codex regression guards (F1–F9)", () => {
+  test("F1: lexical-only hybrid graph expansion adds graph input once (no doubled RRF weight)", async () => {
+    const docs = [makeDoc(1), makeDoc(2)];
+    const chunks = new Map<string, ChunkRow[]>([
+      ["hash-1", [makeChunk(0, "seed document content", "hash-1")]],
+      ["hash-2", [makeChunk(0, "linked graph neighbor", "hash-2")]],
+    ]);
+    const store = {
+      searchFts: async () => ok([makeFts(1, -2.0)]),
+      getCollections: async () =>
+        ok([
+          {
+            name: "notes",
+            path: "/notes",
+            egressPolicy: "local_only",
+            egressPolicySource: "legacy_default",
+          },
+        ]),
+      getDocumentsByMirrorHashes: async (hashes: string[]) =>
+        ok(docs.filter((d) => hashes.includes(d.mirrorHash!))),
+      getDocumentsByDocids: async (docids: string[]) =>
+        ok(docs.filter((d) => docids.includes(d.docid))),
+      getChunksBatch: async () => ok(chunks),
+      getChunksBySequenceBatch: async (
+        keys: Array<{ mirrorHash: string; seq: number }>
+      ) =>
+        ok(
+          new Map(
+            keys.map((k) => [k.mirrorHash, chunks.get(k.mirrorHash) ?? []])
+          )
+        ),
+      getTagsBatch: async () => ok(new Map()),
+      getGraphNeighborsForSeeds: async () =>
+        ok({
+          links: [
+            {
+              source: "#doc1",
+              target: "#doc2",
+              type: "wiki" as const,
+              weight: 1,
+            },
+          ],
+          meta: { seedDocumentIds: [1], examinedLinkRows: 1, returnedEdges: 1 },
+        }),
+    } as unknown as StorePort;
+
+    const result = await searchHybrid(
+      {
+        store,
+        config: TEST_CONFIG,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort: null,
+        rerankPort: null,
+      },
+      "seed document",
+      { explain: true, noExpand: true, graph: true }
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const neighborExplain = result.value.meta.explain?.results.find(
+      (r) => r.docid === "#doc2"
+    );
+    expect(neighborExplain).toBeDefined();
+    // Single rank-1 graph contribution: weight 0.8 / (60 + 1) ≈ 0.01311475 (NOT doubled 0.0262295).
+    expect(neighborExplain!.fusionScore).toBeCloseTo(0.8 / 61, 6);
+  });
+
+  test("F2: missing vec_v1_<partition> mirror falls back seamlessly to authoritative vector_variants scan", async () => {
+    const dir = await makeTempDir("gno-missing-mirror-");
+    const dbPath = join(dir, "index.sqlite");
+    const adapter = new SqliteAdapter();
+    expect((await adapter.open(dbPath, "unicode61")).ok).toBe(true);
+    let db: Database | undefined;
+    try {
+      await adapter.syncCollections([
+        {
+          name: "alpha",
+          path: join(dir, "alpha"),
+          pattern: "**/*",
+          include: [],
+          exclude: [],
+        },
+      ]);
+      await adapter.upsertDocument({
+        collection: "alpha",
+        relPath: "only.md",
+        sourceHash: "src-only",
+        sourceMime: "text/markdown",
+        sourceExt: ".md",
+        sourceSize: 10,
+        sourceMtime: NOW,
+        title: "only.md",
+        mirrorHash: "mh-only",
+      });
+      await adapter.upsertContent("mh-only", "only body");
+      await adapter.upsertChunks("mh-only", [
+        { seq: 0, pos: 0, text: "only body", startLine: 1, endLine: 1 },
+      ]);
+      const identity = {
+        model: "missing-mirror-model",
+        modelFingerprint: "fp-mm",
+        contextSize: 512,
+        truncationPolicy: "tail-v1",
+        dimensions: 4,
+      };
+      db = new Database(dbPath);
+      expect(
+        (
+          await createVectorIndexPort(db, {
+            model: identity.model,
+            dimensions: 4,
+          })
+        ).ok
+      ).toBe(true);
+      const vstore = await createVectorVariantStore(db, identity);
+      const pending = vstore.pending({ limit: 10 });
+      vstore.write(
+        pending.map((owner) => ({
+          owner,
+          embedding: new Float32Array([1, 0, 0, 0]),
+        }))
+      );
+      vstore.activate(vstore.epoch());
+
+      const q = new Float32Array([1, 0, 0, 0]);
+      // Dropped mirror table fails closed on index loss (enforced by vector-input-identity.test.ts).
+      db.run(`DROP TABLE vec_v1_${vstore.partitionId}`);
+      expect(() =>
+        searchVectorVariants(db!, identity.model, 4, q, 5, {
+          partitionId: vstore.partitionId,
+        })
+      ).toThrow("Activated variant index unavailable");
+
+      // Reopening recreates an empty dirty mirror; both single and batch fall back to vector_variants.
+      await createVectorVariantStore(db, identity);
+      const single = searchVectorVariants(db, identity.model, 4, q, 5, {
+        partitionId: vstore.partitionId,
+      });
+      const batch = searchVectorVariantsBatch(db, identity.model, 4, [q], [5], {
+        partitionId: vstore.partitionId,
+      });
+      expect(single?.map((r) => r.mirrorHash)).toEqual(["mh-only"]);
+      expect(batch?.[0]?.map((r) => r.mirrorHash)).toEqual(["mh-only"]);
+    } finally {
+      db?.close();
+      await adapter.close();
+    }
+  });
+
+  test("F3: searchNearestBatch failure retries unique embeddings individually and retains healthy vector legs", async () => {
+    const searchNearestBatch = mock(
+      async (): Promise<StoreResult<VectorSearchResult[][]>> =>
+        err("VEC_SEARCH_FAILED", "bad variant dimension")
+    );
+    const searchNearest = mock(
+      async (emb: Float32Array): Promise<StoreResult<VectorSearchResult[]>> =>
+        emb[1]! > 0.5
+          ? err("VEC_SEARCH_FAILED", "bad variant")
+          : ok([{ mirrorHash: "hash-1", seq: 0, distance: 0.05 }])
+    );
+    const embedPort = {
+      modelUri:
+        "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
+      init: async () => ok(undefined),
+      dimensions: () => 3,
+      dispose: async () => undefined,
+      embed: async () => ok([1, 0, 0]),
+      embedBatch: async (texts: string[]) => ok(texts.map((_, i) => [1, i, 0])),
+    } as unknown as EmbeddingPort;
+    const vectorIndex: VectorIndexPort = {
+      searchAvailable: true,
+      model: embedPort.modelUri,
+      dimensions: 3,
+      vecDirty: false,
+      upsertVectors: async () => ok(undefined),
+      deleteVectorsForMirror: async () => ok(undefined),
+      rebuildVecIndex: async () => ok(undefined),
+      syncVecIndex: async () => ok({ added: 0, removed: 0 }),
+      searchNearest,
+      searchNearestBatch,
+    };
+    const store = {
+      searchFts: async () => ok([]),
+      getCollections: async () =>
+        ok([
+          {
+            name: "notes",
+            path: "/notes",
+            egressPolicy: "local_only",
+            egressPolicySource: "legacy_default",
+          },
+        ]),
+      getDocumentsByMirrorHashes: async () => ok([makeDoc(1)]),
+      getChunksBatch: async () =>
+        ok(new Map([["hash-1", [makeChunk(0, "healthy leg", "hash-1")]]])),
+      getChunksBySequenceBatch: async () =>
+        ok(new Map([["hash-1", [makeChunk(0, "healthy leg", "hash-1")]]])),
+      getTagsBatch: async () => ok(new Map()),
+    } as unknown as StorePort;
+
+    const result = await searchHybrid(
+      {
+        store,
+        config: TEST_CONFIG,
+        vectorIndex,
+        embedPort,
+        expandPort: null,
+        rerankPort: null,
+      },
+      "original query",
+      { queryModes: [{ mode: "intent", text: "failing variant" }] }
+    );
+    expect(result.ok).toBe(true);
+    expect(searchNearestBatch).toHaveBeenCalledTimes(1);
+    expect(searchNearest).toHaveBeenCalledTimes(2);
+    if (result.ok) {
+      expect(result.value.meta.vectorsUsed).toBe(true);
+      expect(result.value.results.map((r) => r.docid)).toEqual(["#doc1"]);
+    }
+  });
+
+  test("F6: partial content read failure preserves healthy sources in generateGroundedAnswer", async () => {
+    const goodBody = "Healthy canonical answer evidence line.";
+    const goodHash = new Bun.CryptoHasher("sha256")
+      .update(goodBody)
+      .digest("hex");
+    const store = {
+      getContent: async (hash: string) =>
+        hash === goodHash
+          ? ok(goodBody)
+          : err("QUERY_FAILED", "simulated single-doc failure"),
+    } as unknown as StorePort;
+    const generate = mock(async () => ok("Supported [1]."));
+    const genPort = {
+      modelUri: "hf:test/gen.gguf",
+      generate,
+      dispose: async () => undefined,
+    } as unknown as GenerationPort;
+
+    const answer = await generateGroundedAnswer(
+      { genPort, store },
+      "What is the evidence?",
+      [
+        {
+          docid: "#bad",
+          uri: "gno://notes/bad.md",
+          title: "Bad",
+          snippet: "...display snippet...",
+          score: 0.95,
+          source: {
+            relPath: "bad.md",
+            mime: "text/markdown",
+            ext: ".md",
+            sourceHash: "bad-source-hash",
+          },
+          conversion: { mirrorHash: "bad-hash" },
+        },
+        {
+          docid: "#good",
+          uri: "gno://notes/good.md",
+          title: "Good",
+          snippet: "...display snippet...",
+          score: 0.9,
+          source: {
+            relPath: "good.md",
+            mime: "text/markdown",
+            ext: ".md",
+            sourceHash: goodHash,
+          },
+          conversion: { mirrorHash: goodHash },
+        },
+      ],
+      256
+    );
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(answer).not.toBeNull();
+    expect(answer?.citations.map((c) => c.docid)).toEqual(["#good"]);
+  });
+
+  test("F7: malformed citation marker crossing a claim boundary does not swallow the next claim's valid citation", async () => {
+    const fixture = verifierFixture(false);
+    const harness = createVerifierStore(fixture.state);
+    const capsule = await capsuleFor(harness.store, fixture.state);
+    const receipt = await verifyContextCapsule(
+      capsule,
+      verifierDeps(harness.store, capsule)
+    );
+    const ev = capsule.evidence[0]!;
+
+    // Case A: orphan malformed marker crossing into the first substantive claim.
+    const orphanCrossing = verifyClaimsDeterministically({
+      capsule,
+      answer: `[evidence:bad. Mina owns this [evidence:${ev.evidenceId}].`,
+      freshness: receipt,
+    });
+    expect(orphanCrossing.claims).toHaveLength(1);
+    expect(orphanCrossing.claims[0]?.evidence.map((e) => e.evidenceId)).toEqual(
+      [ev.evidenceId]
+    );
+
+    // Case B: in-claim malformed marker crossing into the second substantive claim.
+    const claimCrossing = verifyClaimsDeterministically({
+      capsule,
+      answer: `Alpha claim [evidence:bad. Mina owns this [evidence:${ev.evidenceId}].`,
+      freshness: receipt,
+    });
+    expect(claimCrossing.claims).toHaveLength(2);
+    expect(claimCrossing.claims[0]?.rejectedCitations[0]?.reason).toBe(
+      "malformed_citation"
+    );
+    expect(claimCrossing.claims[1]?.evidence.map((e) => e.evidenceId)).toEqual([
+      ev.evidenceId,
+    ]);
+  });
+
+  test("F8: BM25 --full restores original chunk startLine when full content replaces frontmatter-stripped snippet", async () => {
+    const rawWithFrontmatter = "---\ntitle: Demo\ntags: [a]\n---\nBody line.";
+    const store = {
+      searchFts: async () => ok([makeFts(1, -2.0, 0)]),
+      getCollections: async () =>
+        ok([
+          {
+            name: "notes",
+            path: "/notes",
+            egressPolicy: "local_only",
+            egressPolicySource: "legacy_default",
+          },
+        ]),
+      getChunksBySequenceBatch: async () =>
+        ok(
+          new Map([
+            [
+              "hash-1",
+              [
+                makeChunk(0, rawWithFrontmatter, "hash-1", {
+                  startLine: 1,
+                  endLine: 5,
+                }),
+              ],
+            ],
+          ])
+        ),
+      getChunksBatch: async () => ok(new Map()),
+      getContentBatch: async () =>
+        ok(new Map([["hash-1", rawWithFrontmatter]])),
+    } as unknown as StorePort;
+
+    const result = await searchBm25(store, "Body", { full: true, limit: 5 });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.results[0]?.snippet).toBe(rawWithFrontmatter);
+      expect(result.value.results[0]?.snippetRange).toBeUndefined();
+      expect(result.value.results[0]?.line).toBe(1);
+    }
+  });
+
+  test("F9: failed original FTS query is not repeated when lexical expansion variant matches query.trim()", async () => {
+    const ftsQueries: string[] = [];
+    const searchFts = mock(async (q: string) => {
+      ftsQueries.push(q);
+      return err("QUERY_FAILED", "transient fts failure");
+    });
+    const expandPort = {
+      modelUri: "hf:test/expand.gguf",
+      generate: async () =>
+        ok(
+          JSON.stringify({
+            lexicalQueries: ["same query", "same query variant"],
+            vectorQueries: [],
+          })
+        ),
+      dispose: async () => undefined,
+    } as unknown as GenerationPort;
+    const store = {
+      searchFts,
+      getCollections: async () =>
+        ok([
+          {
+            name: "notes",
+            path: "/notes",
+            egressPolicy: "local_only",
+            egressPolicySource: "legacy_default",
+          },
+        ]),
+      getDocumentsByMirrorHashes: async () => ok([]),
+      getChunksBatch: async () => ok(new Map()),
+      getTagsBatch: async () => ok(new Map()),
+    } as unknown as StorePort;
+
+    const result = await searchHybrid(
+      {
+        store,
+        config: TEST_CONFIG,
+        vectorIndex: null,
+        embedPort: null,
+        expandPort,
+        rerankPort: null,
+      },
+      "  same query  ",
+      { limit: 5 }
+    );
+    expect(result.ok).toBe(true);
+    // Original query ran once and failed; identical trimmed variant reused that failure.
+    expect(ftsQueries).toEqual(["  same query  ", "same query variant"]);
   });
 });

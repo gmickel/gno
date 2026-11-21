@@ -605,11 +605,15 @@ async function searchHybridWithHydration(
     const variantLimit = limit * retrievalMultiplier;
     const settledResults = await Promise.allSettled(
       lexicalQueries.map((variant) => {
-        if (bm25Result.ok && variant.trim() === trimmedQuery) {
-          return Promise.resolve<FtsChunksResult>({
-            ok: true,
-            chunks: bm25AllChunks.slice(0, variantLimit),
-          });
+        if (variant.trim() === trimmedQuery) {
+          return Promise.resolve<FtsChunksResult>(
+            bm25Result.ok
+              ? {
+                  ok: true,
+                  chunks: bm25AllChunks.slice(0, variantLimit),
+                }
+              : bm25Result
+          );
         }
         return searchFtsChunks(store, variant, {
           ...bm25BaseOptions,
@@ -766,6 +770,31 @@ async function searchHybridWithHydration(
           validLimits.push(uniqueMaxLimits[uIdx]!);
         }
 
+        const runIndividualSearches = async (): Promise<void> => {
+          for (let i = 0; i < validUniqueIndices.length; i++) {
+            assertInferenceActive();
+            const uIdx = validUniqueIndices[i]!;
+            const searchResult = await vectorIndex.searchNearest(
+              validEmbeddings[i]!,
+              validLimits[i]!,
+              searchOpts
+            );
+            if (!searchResult.ok) {
+              uniqueFailed.add(uIdx);
+              continue;
+            }
+            localVectorsUsed = true;
+            uniqueResults.set(
+              uIdx,
+              searchResult.value.map((item) => ({
+                documentIds: item.documentIds,
+                mirrorHash: item.mirrorHash,
+                seq: item.seq,
+              }))
+            );
+          }
+        };
+
         if (
           typeof vectorIndex.searchNearestBatch === "function" &&
           validEmbeddings.length > 1
@@ -791,33 +820,12 @@ async function searchHybridWithHydration(
               );
             }
           } else {
-            for (const uIdx of validUniqueIndices) {
-              uniqueFailed.add(uIdx);
-            }
+            // Preserve per-query isolation: retry unique embeddings individually so
+            // one bad variant cannot discard healthy vector legs.
+            await runIndividualSearches();
           }
         } else {
-          for (let i = 0; i < validUniqueIndices.length; i++) {
-            assertInferenceActive();
-            const uIdx = validUniqueIndices[i]!;
-            const searchResult = await vectorIndex.searchNearest(
-              validEmbeddings[i]!,
-              validLimits[i]!,
-              searchOpts
-            );
-            if (!searchResult.ok) {
-              uniqueFailed.add(uIdx);
-              continue;
-            }
-            localVectorsUsed = true;
-            uniqueResults.set(
-              uIdx,
-              searchResult.value.map((item) => ({
-                documentIds: item.documentIds,
-                mirrorHash: item.mirrorHash,
-                seq: item.seq,
-              }))
-            );
-          }
+          await runIndividualSearches();
         }
 
         for (const [index, variant] of batchedQueries.entries()) {
@@ -943,7 +951,6 @@ async function searchHybridWithHydration(
   if (graphExpansion.candidates.length > 0) {
     const graphFusionStartedAt = performance.now();
     const graphInput = toRankedInput("graph", graphExpansion.candidates);
-    rankedInputs.push(graphInput);
     const resolvedGraph = hasVariantOwners
       ? await resolveFusionOwners(
           [graphInput],
@@ -954,8 +961,8 @@ async function searchHybridWithHydration(
           true
         )
       : [graphInput];
-    resolvedInputs.push(...resolvedGraph);
-    fusedCandidates = rrfFuse(resolvedInputs, pipelineConfig.rrf);
+    const finalResolvedInputs = [...resolvedInputs, ...resolvedGraph];
+    fusedCandidates = rrfFuse(finalResolvedInputs, pipelineConfig.rrf);
     timings.fusionMs += performance.now() - graphFusionStartedAt;
   }
   diagnoseTrace?.stages.push({
@@ -1572,15 +1579,32 @@ async function searchHybridWithHydration(
       ),
     ];
     if (fullHashes.length > 0) {
+      let fullContentByHash: Map<string, string> | undefined;
       const contentBatch = await hydration.getContentBatch(fullHashes);
       if (contentBatch.ok) {
-        for (const result of finalResults) {
-          const hash = result.conversion?.mirrorHash;
-          const fullContent = hash ? contentBatch.value.get(hash) : undefined;
-          if (fullContent) {
-            result.snippet = fullContent;
-            result.snippetRange = undefined;
+        fullContentByHash = contentBatch.value;
+      } else {
+        // Recover per hash on batch error so healthy results retain full content.
+        const recovered = new Map<string, string>();
+        const individual = await Promise.all(
+          fullHashes.map(async (hash) => ({
+            hash,
+            res: await hydration.getContent(hash),
+          }))
+        );
+        for (const { hash, res } of individual) {
+          if (res.ok && res.value) {
+            recovered.set(hash, res.value);
           }
+        }
+        fullContentByHash = recovered;
+      }
+      for (const result of finalResults) {
+        const hash = result.conversion?.mirrorHash;
+        const fullContent = hash ? fullContentByHash.get(hash) : undefined;
+        if (fullContent) {
+          result.snippet = fullContent;
+          result.snippetRange = undefined;
         }
       }
     }

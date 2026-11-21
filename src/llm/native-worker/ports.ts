@@ -45,7 +45,8 @@ class NativePort {
   constructor(
     protected readonly client: NativeWorkerClient,
     protected readonly modelId: string,
-    readonly modelUri: string
+    readonly modelUri: string,
+    readonly modelPath?: string
   ) {}
 
   async dispose(): Promise<void> {

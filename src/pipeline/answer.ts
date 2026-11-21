@@ -563,18 +563,13 @@ export async function generateGroundedAnswer(
   const contentByHash = new Map<string, string>();
   if (store && selectedHashes.length > 0) {
     const hydration = deps.hydration;
-    if (hydration?.getContentBatch) {
-      const batchResult = await hydration.getContentBatch(selectedHashes);
-      if (batchResult.ok) {
-        for (const [hash, value] of batchResult.value) {
-          contentByHash.set(hash, value);
-        }
-      }
-    } else if (hydration) {
+    const recoverPerHash = async (
+      readOne: (hash: string) => ReturnType<StorePort["getContent"]>
+    ): Promise<void> => {
       const fetched = await Promise.all(
         selectedHashes.map(async (hash) => ({
           hash,
-          result: await hydration.getContent(hash),
+          result: await readOne(hash),
         }))
       );
       for (const { hash, result } of fetched) {
@@ -582,13 +577,29 @@ export async function generateGroundedAnswer(
           contentByHash.set(hash, result.value);
         }
       }
-    } else {
+    };
+    if (hydration?.getContentBatch) {
+      const batchResult = await hydration.getContentBatch(selectedHashes);
+      if (batchResult.ok) {
+        for (const [hash, value] of batchResult.value) {
+          contentByHash.set(hash, value);
+        }
+      } else {
+        await recoverPerHash((hash) => hydration.getContent(hash));
+      }
+    } else if (hydration) {
+      await recoverPerHash((hash) => hydration.getContent(hash));
+    } else if (typeof store.getContentBatch === "function") {
       const batchResult = await getContentBatch(store, selectedHashes);
       if (batchResult.ok) {
         for (const [hash, value] of batchResult.value) {
           contentByHash.set(hash, value);
         }
+      } else {
+        await recoverPerHash((hash) => store.getContent(hash));
       }
+    } else {
+      await recoverPerHash((hash) => store.getContent(hash));
     }
   }
 

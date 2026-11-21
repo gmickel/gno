@@ -449,6 +449,9 @@ function resolveActivePartition(
     }
   }
   const tableName = `vec_v1_${partitionId}`;
+  // Fail closed on index loss (enforced by vector-input-identity.test.ts):
+  // an activated partition whose vec0 table was dropped must error until
+  // recreated (marked dirty) via createVectorVariantStore / gno embed.
   if (!db.query("SELECT 1 FROM sqlite_master WHERE name = ?").get(tableName))
     throw new Error("Activated variant index unavailable; run gno embed");
   return { partitionId, tableName };
