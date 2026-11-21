@@ -1,0 +1,60 @@
+{
+  "branch": "fn-229-lossless-sqlite-and-vector-store",
+  "findings": {
+    "backend": "receipt",
+    "headSha": "8c88bd289ba6932f0f3848e0f9b1a6291eddfc7d",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-1e9e7f026c21fcfcab176feb414243034492860ddd20fd14bcd083cc6c3acaef"
+  },
+  "head_sha": "8c88bd289ba6932f0f3848e0f9b1a6291eddfc7d",
+  "id": "fn-229-lossless-sqlite-and-vector-store",
+  "mode": "receipt",
+  "na_reason": "All acceptance criteria (R1-R8) are internal SQLite/vector storage, schema migration, proof-cache, and query-plan optimizations with no user-observable UI surface (explicitly bounded out of CLI/serve/Web UI routes); verified by 467 store/vector/pipeline unit tests, typecheck, oxlint, eval:memory (100%), eval:sessions (100%), and vector-search benchmark.",
+  "open_p0p1": [],
+  "qa_outcome": "NA",
+  "rid_coverage": {
+    "covered": 8,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R6"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R7"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R8"
+      }
+    ],
+    "total": 8
+  },
+  "scenarios": [],
+  "timestamp": "2026-11-21T15:04:51Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
