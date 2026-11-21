@@ -3355,15 +3355,16 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         .join(", ");
       const values = db
         .query<unknown, string[]>(
-          `SELECT mirror_hash, seq, ${columns}
-           FROM (
+          `WITH scoped AS MATERIALIZED (
              SELECT mirror_hash, seq, text, lower(text) AS ltext
              FROM content_chunks
              WHERE mirror_hash IN (SELECT value FROM json_each(?))
            )
+           SELECT mirror_hash, seq, ${columns}
+           FROM scoped
            ORDER BY mirror_hash, seq`
         )
-        .values(...spellings, JSON.stringify(uniqueHashes)) as unknown[][];
+        .values(JSON.stringify(uniqueHashes), ...spellings) as unknown[][];
       const rows: { mirrorHash: string; seq: number; present: boolean[] }[] =
         [];
       for (const [mirrorHash, seq, ...present] of values) {

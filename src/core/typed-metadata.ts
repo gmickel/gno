@@ -82,10 +82,13 @@ function isValidScalar(value: unknown): value is MetadataScalar {
 
 /**
  * Direct validator for stored `documents.typed_metadata` JSON strings.
- * Checks UTF-8 byte size on `raw` without re-stringifying via `JSON.stringify`
- * + `TextEncoder`, while enforcing the exact same key, type, member, and 64 KiB
- * limits as `typedMetadataSchema`.
+ * Avoids `JSON.stringify` + `TextEncoder` when raw UTF-8 length plus the
+ * worst-case numeric re-serialization bound (24 bytes per finite JS number)
+ * proves the canonical JSON fits within 64 KiB; otherwise checks exact
+ * canonical `JSON.stringify(parsed)` byte length.
  */
+const MAX_JSON_NUMBER_BYTES = 24;
+
 export function parseStoredTypedMetadata(raw: string): TypedMetadata {
   const parsed: unknown = JSON.parse(raw);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
@@ -95,6 +98,7 @@ export function parseStoredTypedMetadata(raw: string): TypedMetadata {
   if (entries.length > METADATA_LIMITS.keys) {
     throw new Error("Too many metadata keys");
   }
+  let numberCount = 0;
   for (const [key, value] of entries) {
     if (key.length < 1 || key.length > METADATA_LIMITS.keyLength) {
       throw new Error("Invalid metadata key length");
@@ -114,13 +118,19 @@ export function parseStoredTypedMetadata(raw: string): TypedMetadata {
         if (typeof member !== firstType) {
           throw new Error("Array members must have one scalar type");
         }
+        if (typeof member === "number") {
+          numberCount++;
+        }
       }
     } else if (!isValidScalar(value)) {
       throw new Error("Invalid metadata value");
+    } else if (typeof value === "number") {
+      numberCount++;
     }
   }
+  const rawBytes = Buffer.byteLength(raw, "utf8");
   if (
-    Buffer.byteLength(raw, "utf8") > METADATA_LIMITS.bytes &&
+    rawBytes + numberCount * MAX_JSON_NUMBER_BYTES > METADATA_LIMITS.bytes &&
     Buffer.byteLength(JSON.stringify(parsed), "utf8") > METADATA_LIMITS.bytes
   ) {
     throw new Error("Metadata exceeds 64 KiB");

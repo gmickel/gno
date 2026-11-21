@@ -19,6 +19,7 @@ import { migration as m037 } from "../../src/store/migrations/037-performance-in
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { storedSimilarityEdges } from "../../src/store/sqlite/graph-similarity";
 import { createVectorIndexPort } from "../../src/store/vector/sqlite-vec";
+import { getVariantStatus } from "../../src/store/vector/status";
 import { readSimilaritySourceVectors } from "../../src/store/vector/stored-vectors";
 import { searchVectorVariants } from "../../src/store/vector/variant-search";
 import { createVectorVariantStore } from "../../src/store/vector/variants";
@@ -661,6 +662,394 @@ describe("R8: >999-ID batches, term presence, and upper-triangle similarity pari
       for (let i = 1; i < list.length; i++) {
         expect(list[i - 1]!.score).toBeGreaterThanOrEqual(list[i]!.score);
       }
+    }
+  });
+});
+
+describe("Review regression checks (R3, R4, R6, R7, R8)", () => {
+  test("R4: fresh variant write replaces stale orphan row in dirty vec0 mirror on variant_id reuse", async () => {
+    const dir = await makeTempDir("gno-reg-id-reuse-");
+    const dbPath = join(dir, "index.sqlite");
+    const store = new SqliteAdapter();
+    cleanupStores.push(store);
+    expect((await store.open(dbPath, "unicode61")).ok).toBe(true);
+    await store.syncCollections([
+      {
+        name: "notes",
+        path: join(dir, "notes"),
+        pattern: "**/*",
+        include: [],
+        exclude: [],
+      },
+    ]);
+    const db = store.getRawDb();
+    const d1 = await store.upsertDocument({
+      collection: "notes",
+      relPath: "a.md",
+      sourceHash: "sa",
+      sourceMime: "text/markdown",
+      sourceExt: ".md",
+      sourceSize: 5,
+      sourceMtime: "2026-09-01T00:00:00Z",
+      title: "A",
+      mirrorHash: "ma",
+    });
+    const d2 = await store.upsertDocument({
+      collection: "notes",
+      relPath: "b.md",
+      sourceHash: "sb",
+      sourceMime: "text/markdown",
+      sourceExt: ".md",
+      sourceSize: 5,
+      sourceMtime: "2026-09-01T00:00:00Z",
+      title: "B",
+      mirrorHash: "mb",
+    });
+    if (!d1.ok || !d2.ok) throw new Error("upsert failed");
+    await store.upsertContent("ma", "alpha body");
+    await store.upsertChunks("ma", [
+      { seq: 0, pos: 0, text: "alpha body", startLine: 1, endLine: 1 },
+    ]);
+    await store.upsertContent("mb", "beta body");
+    await store.upsertChunks("mb", [
+      { seq: 0, pos: 0, text: "beta body", startLine: 1, endLine: 1 },
+    ]);
+
+    const vs = await createVectorVariantStore(db, {
+      model: "reuse-model",
+      modelFingerprint: "fp-reuse",
+      contextSize: 512,
+      truncationPolicy: "tail-v1",
+      dimensions: 3,
+    });
+    expect(vs.searchAvailable).toBe(true);
+    const pending1 = vs.pending({ limit: 10 });
+    const owner1 = pending1.find((p) => p.documentId === d1.value.id)!;
+    const owner2 = pending1.find((p) => p.documentId === d2.value.id)!;
+    const [id1] = vs.write([
+      { owner: owner1, embedding: new Float32Array([1, 0, 0]) },
+    ]);
+    expect(id1).toBe(1);
+
+    // Simulate dirty vec0 mirror: remove owner + authoritative variant row while leaving vec0 row 1 behind
+    db.run("DELETE FROM vector_owners WHERE variant_id = ?", [id1!]);
+    db.run("DELETE FROM vector_variants WHERE variant_id = ?", [id1!]);
+
+    const [id2] = vs.write([
+      { owner: owner2, embedding: new Float32Array([0, 1, 0]) },
+    ]);
+    expect(id2).toBe(1);
+    const stored = db
+      .query<{ c: number }, [number]>(
+        `SELECT COUNT(*) AS c FROM ${vs.tableName} WHERE variant_id = ?`
+      )
+      .get(id2!)!.c;
+    expect(stored).toBe(1);
+  });
+
+  test("R3: searchVectorVariants returns empty array for minScore: NaN", async () => {
+    const dir = await makeTempDir("gno-reg-nan-minscore-");
+    const dbPath = join(dir, "index.sqlite");
+    const store = new SqliteAdapter();
+    cleanupStores.push(store);
+    expect((await store.open(dbPath, "unicode61")).ok).toBe(true);
+    await store.syncCollections([
+      {
+        name: "notes",
+        path: join(dir, "notes"),
+        pattern: "**/*",
+        include: [],
+        exclude: [],
+      },
+    ]);
+    const db = store.getRawDb();
+    const doc = await store.upsertDocument({
+      collection: "notes",
+      relPath: "a.md",
+      sourceHash: "sa",
+      sourceMime: "text/markdown",
+      sourceExt: ".md",
+      sourceSize: 5,
+      sourceMtime: "2026-09-01T00:00:00Z",
+      title: "A",
+      mirrorHash: "ma",
+    });
+    if (!doc.ok) throw new Error("upsert failed");
+    await store.upsertContent("ma", "alpha body");
+    await store.upsertChunks("ma", [
+      { seq: 0, pos: 0, text: "alpha body", startLine: 1, endLine: 1 },
+    ]);
+    const vs = await createVectorVariantStore(db, {
+      model: "nan-model",
+      modelFingerprint: "fp-nan",
+      contextSize: 512,
+      truncationPolicy: "tail-v1",
+      dimensions: 3,
+    });
+    const [pendingDoc] = vs.pending({ limit: 10 });
+    vs.write([{ owner: pendingDoc!, embedding: new Float32Array([1, 0, 0]) }]);
+    vs.activate(vs.epoch());
+
+    const hits = searchVectorVariants(
+      db,
+      "nan-model",
+      3,
+      new Float32Array([1, 0, 0]),
+      5,
+      {
+        partitionId: vs.partitionId,
+        minScore: Number.NaN,
+      }
+    );
+    expect(hits).toEqual([]);
+  });
+
+  test("R8: allowedMirrorHashes with 801 hashes ranks exact match ahead of later zero vector (NULL cosine distance)", async () => {
+    const dir = await makeTempDir("gno-reg-null-dist-");
+    const dbPath = join(dir, "index.sqlite");
+    const store = new SqliteAdapter();
+    cleanupStores.push(store);
+    expect((await store.open(dbPath, "unicode61")).ok).toBe(true);
+    const db = store.getRawDb();
+    const portRes = await createVectorIndexPort(db, {
+      model: "null-dist-model",
+      dimensions: 3,
+      distanceMetric: "cosine",
+    });
+    expect(portRes.ok).toBe(true);
+    if (!portRes.ok) return;
+
+    const hashes: string[] = [];
+    const exactBlob = new Uint8Array(new Float32Array([1, 0, 0]).buffer);
+    const orthoBlob = new Uint8Array(new Float32Array([0, 1, 0]).buffer);
+    const zeroBlob = new Uint8Array(new Float32Array([0, 0, 0]).buffer);
+    db.transaction(() => {
+      const insContent = db.query<unknown, [string, string]>(
+        "INSERT INTO content(mirror_hash, markdown) VALUES (?, ?)"
+      );
+      const insChunk = db.query<unknown, [string, string]>(
+        "INSERT INTO content_chunks(mirror_hash, seq, pos, text, start_line, end_line) VALUES (?, 0, 0, ?, 1, 1)"
+      );
+      const insVec = db.query<unknown, [string, Uint8Array]>(
+        `INSERT INTO content_vectors(mirror_hash, seq, model, embed_fingerprint, embedding)
+         VALUES (?, 0, 'null-dist-model', 'fp', ?)`
+      );
+      for (let i = 0; i < 801; i++) {
+        const hash = `h${String(i).padStart(4, "0")}`;
+        hashes.push(hash);
+        insContent.run(hash, `body ${i}`);
+        insChunk.run(hash, `body ${i}`);
+        const blob = i === 0 ? exactBlob : i === 800 ? zeroBlob : orthoBlob;
+        insVec.run(hash, blob);
+      }
+    })();
+
+    const res = await portRes.value.searchNearest(
+      new Float32Array([1, 0, 0]),
+      1,
+      {
+        allowedMirrorHashes: hashes,
+      }
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.value).toHaveLength(1);
+      expect(res.value[0]!.mirrorHash).toBe("h0000");
+    }
+  });
+
+  test("R8: getGraphNeighborsForSeeds handles >50,000-char seed title without LIKE error and matches suffix wiki links", async () => {
+    const dir = await makeTempDir("gno-reg-long-title-");
+    const dbPath = join(dir, "index.sqlite");
+    const store = new SqliteAdapter();
+    cleanupStores.push(store);
+    expect((await store.open(dbPath, "unicode61")).ok).toBe(true);
+    await store.syncCollections([
+      {
+        name: "notes",
+        path: join(dir, "notes"),
+        pattern: "**/*",
+        include: [],
+        exclude: [],
+      },
+    ]);
+    const seed = await store.upsertDocument({
+      collection: "notes",
+      relPath: "sub/target.md",
+      sourceHash: "s1",
+      sourceMime: "text/markdown",
+      sourceExt: ".md",
+      sourceSize: 10,
+      sourceMtime: "2026-09-01T00:00:00Z",
+      title: "T".repeat(50_001),
+      mirrorHash: "m1",
+    });
+    const src = await store.upsertDocument({
+      collection: "notes",
+      relPath: "src.md",
+      sourceHash: "s2",
+      sourceMime: "text/markdown",
+      sourceExt: ".md",
+      sourceSize: 10,
+      sourceMtime: "2026-09-01T00:00:00Z",
+      title: "Source",
+      mirrorHash: "m2",
+    });
+    if (!seed.ok || !src.ok) throw new Error("upsert failed");
+    await store.setDocLinks(
+      src.value.id,
+      [
+        {
+          targetRef: "other",
+          targetRefNorm: "other",
+          linkType: "wiki",
+          startLine: 1,
+          startCol: 1,
+          endLine: 1,
+          endCol: 10,
+        },
+        {
+          targetRef: "dir/target",
+          targetRefNorm: "dir/target",
+          linkType: "wiki",
+          startLine: 2,
+          startCol: 1,
+          endLine: 2,
+          endCol: 15,
+        },
+      ],
+      "parsed"
+    );
+
+    const res = await store.getGraphNeighborsForSeeds({
+      seedDocumentIds: [seed.value.id],
+    });
+    expect(res.ok).toBe(true);
+  });
+
+  test("R7: parseStoredTypedMetadata rejects compact scientific-notation JSON expanding past 64 KiB", () => {
+    const chunk = `[${Array.from({ length: 128 }, () => "1e20").join(",")}]`;
+    const entries: string[] = [];
+    for (let i = 0; i < 27; i++) {
+      entries.push(`"k${i}":${chunk}`);
+    }
+    const raw = `{${entries.join(",")}}`;
+    expect(Buffer.byteLength(raw, "utf8")).toBeLessThan(65_536);
+    expect(
+      Buffer.byteLength(JSON.stringify(JSON.parse(raw)), "utf8")
+    ).toBeGreaterThan(65_536);
+    expect(() => typedMetadataSchema.parse(JSON.parse(raw))).toThrow();
+    expect(() => parseStoredTypedMetadata(raw)).toThrow(
+      "Metadata exceeds 64 KiB"
+    );
+  });
+
+  test("R8: getChunkTermPresence materializes scoped CTE so lower(text) executes once across multiple terms", async () => {
+    const dir = await makeTempDir("gno-reg-lower-explain-");
+    const dbPath = join(dir, "index.sqlite");
+    const store = new SqliteAdapter();
+    cleanupStores.push(store);
+    expect((await store.open(dbPath, "unicode61")).ok).toBe(true);
+    const db = store.getRawDb();
+
+    const ops = db
+      .query<{ p4: string | null }, [string, string, string, string]>(
+        `EXPLAIN
+         WITH scoped AS MATERIALIZED (
+           SELECT mirror_hash, seq, text, lower(text) AS ltext
+           FROM content_chunks
+           WHERE mirror_hash IN (SELECT value FROM json_each(?))
+         )
+         SELECT mirror_hash, seq,
+           instr(ltext, ?) > 0, instr(ltext, ?) > 0, instr(ltext, ?) > 0
+         FROM scoped
+         ORDER BY mirror_hash, seq`
+      )
+      .all('["h1"]', "alpha", "beta", "gamma");
+    const lowerOps = ops.filter((op) => String(op.p4 ?? "").includes("lower"));
+    expect(lowerOps).toHaveLength(1);
+  });
+
+  test("R6: variantStatus proves >512 cold uncached chunks in bounded batches inside one snapshot", async () => {
+    const dir = await makeTempDir("gno-reg-status-batch-");
+    const dbPath = join(dir, "index.sqlite");
+    const store = new SqliteAdapter();
+    cleanupStores.push(store);
+    expect((await store.open(dbPath, "unicode61")).ok).toBe(true);
+    await store.syncCollections([
+      {
+        name: "notes",
+        path: join(dir, "notes"),
+        pattern: "**/*",
+        include: [],
+        exclude: [],
+      },
+    ]);
+    const db = store.getRawDb();
+    const vs = await createVectorVariantStore(db, {
+      model: "batch-status-model",
+      modelFingerprint: "fp-batch-status",
+      contextSize: 512,
+      truncationPolicy: "tail-v1",
+      dimensions: 3,
+    });
+
+    db.transaction(() => {
+      const insDoc = db.query<
+        { id: number },
+        [string, string, string, string, string, string]
+      >(
+        `INSERT INTO documents (
+           collection, rel_path, source_hash, source_mime, source_ext,
+           source_size, source_mtime, docid, uri, title, mirror_hash,
+           active, ingest_version
+         ) VALUES ('notes', ?, ?, 'text/markdown', '.md', 10, '2026-09-01T00:00:00Z',
+           ?, ?, ?, ?, 1, ${TYPED_METADATA_INGEST_VERSION}) RETURNING id`
+      );
+      const insContent = db.query<unknown, [string, string]>(
+        "INSERT INTO content(mirror_hash, markdown) VALUES (?, ?)"
+      );
+      const insChunk = db.query<unknown, [string, string]>(
+        "INSERT INTO content_chunks(mirror_hash, seq, pos, text, start_line, end_line) VALUES (?, 0, 0, ?, 1, 1)"
+      );
+      for (let i = 0; i < 550; i++) {
+        const hash = `mb-${i}`;
+        const text = `chunk body ${i}`;
+        const title = `Doc ${i}`;
+        insDoc.get(
+          `doc-${i}.md`,
+          `s-${i}`,
+          `#mb${i}`,
+          `gno://notes/doc-${i}.md`,
+          title,
+          hash
+        );
+        insContent.run(hash, text);
+        insChunk.run(hash, text);
+      }
+    })();
+
+    const pending = vs.pending({ limit: 600 });
+    expect(pending).toHaveLength(550);
+    vs.write(
+      pending.map((owner) => ({
+        owner,
+        embedding: new Float32Array([1, 0, 0]),
+      }))
+    );
+    vs.activate(vs.epoch());
+
+    // Open a fresh connection so the in-memory proof cache is completely cold
+    const reader = new Database(dbPath, { readonly: true });
+    try {
+      const status = getVariantStatus(reader, {
+        embedModel: "batch-status-model",
+      });
+      expect(status).not.toBeNull();
+      expect(status?.backlog).toBe(0);
+      expect(status?.embeddedByCollection.get("notes")).toBe(550);
+    } finally {
+      reader.close();
     }
   });
 });

@@ -434,7 +434,22 @@ export class VectorVariantStore {
           blob
         )!.variant_id;
         if (insertVec) {
-          insertVec.run(variantId, blob);
+          try {
+            insertVec.run(variantId, blob);
+          } catch (cause) {
+            // A dirty vec0 mirror can retain an orphan row for a reused
+            // SQLite rowid after deletion; replace only on collision.
+            if (
+              deleteVec &&
+              cause instanceof Error &&
+              cause.message.includes("UNIQUE")
+            ) {
+              deleteVec.run(variantId);
+              insertVec.run(variantId, blob);
+            } else {
+              throw cause;
+            }
+          }
         }
       } else if (embedding) {
         variantId = existing.variant_id;

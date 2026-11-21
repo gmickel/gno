@@ -103,9 +103,6 @@ const matchesWikiKey = (targetRefNorm: string, keys: Set<string>): boolean => {
   return false;
 };
 
-const escapeLike = (value: string): string =>
-  value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
-
 /** Effective graph allowlist; undefined means unrestricted. */
 export const graphCollectionAllowlist = (options: {
   collection?: string;
@@ -172,10 +169,6 @@ const collectIncomingCandidateLinks = (
   if (targetCollections.length > 0 && allWikiKeys.size > 0) {
     const targetCollectionsJson = JSON.stringify(targetCollections);
     const exactKeysJson = JSON.stringify([...allWikiKeys]);
-    const suffixPatterns = [...allWikiKeys].map(
-      (key) => `%/${escapeLike(key)}`
-    );
-    const suffixPatternsJson = JSON.stringify(suffixPatterns);
     const wikiRows = db
       .query<RawLinkRow & { source_doc_id: number }, string[]>(
         `SELECT dl.source_doc_id, ${RAW_LINK_COLUMNS}
@@ -190,8 +183,9 @@ const collectIncomingCandidateLinks = (
            AND (
              dl.target_ref_norm IN (SELECT value FROM json_each(?))
              OR EXISTS (
-               SELECT 1 FROM json_each(?) sp
-               WHERE dl.target_ref_norm LIKE sp.value ESCAPE '\\'
+               SELECT 1 FROM json_each(?) sk
+               WHERE length(dl.target_ref_norm) > length(sk.value)
+                 AND substr(dl.target_ref_norm, -length(sk.value) - 1) = '/' || sk.value
              )
            )
            ${sourceScope.sql}`
@@ -200,7 +194,7 @@ const collectIncomingCandidateLinks = (
         targetCollectionsJson,
         targetCollectionsJson,
         exactKeysJson,
-        suffixPatternsJson,
+        exactKeysJson,
         ...sourceScope.params
       );
     examinedLinkRows += wikiRows.length;
@@ -241,14 +235,14 @@ const collectIncomingCandidateLinks = (
       new Set(workspaceSeeds.map(({ wsKey }) => wsKey))
     );
     const wsExactKeys = new Set<string>();
-    const wsSuffixPatterns = new Set<string>();
+    const wsSuffixKeys = new Set<string>();
     for (const { seed } of workspaceSeeds) {
       const base = stripWikiMdExt(
         normalizeWikiName(seed.rel_path.split("/").pop() ?? seed.rel_path)
       );
       for (const value of [base, `${base}.md`]) {
         wsExactKeys.add(value);
-        wsSuffixPatterns.add(`%/${escapeLike(value)}`);
+        wsSuffixKeys.add(value);
       }
       for (const key of wikiKeysForSeed(seed)) {
         wsExactKeys.add(key);
@@ -266,8 +260,9 @@ const collectIncomingCandidateLinks = (
              AND (
                dl.target_ref_norm IN (SELECT value FROM json_each(?))
                OR EXISTS (
-                 SELECT 1 FROM json_each(?) sp
-                 WHERE dl.target_ref_norm LIKE sp.value ESCAPE '\\'
+                 SELECT 1 FROM json_each(?) sk
+                 WHERE length(dl.target_ref_norm) > length(sk.value)
+                   AND substr(dl.target_ref_norm, -length(sk.value) - 1) = '/' || sk.value
                )
              )
              ${sourceScope.sql}`
@@ -275,7 +270,7 @@ const collectIncomingCandidateLinks = (
         .all(
           JSON.stringify(members),
           JSON.stringify([...wsExactKeys]),
-          JSON.stringify([...wsSuffixPatterns]),
+          JSON.stringify([...wsSuffixKeys]),
           ...sourceScope.params
         );
       examinedLinkRows += rows.length;

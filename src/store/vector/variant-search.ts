@@ -240,6 +240,10 @@ function searchVectorVariantsInSnapshot(
     { ...options.eligibility, semanticMetadata: true },
     db
   );
+  const minScore = options.minScore;
+  if (minScore !== undefined && Number.isNaN(minScore)) {
+    return [];
+  }
   const conditions = ["o.partition_id = ?"];
   const params: (string | number)[] = [partitionId];
   if (options.eligibility?.language) {
@@ -312,7 +316,6 @@ function searchVectorVariantsInSnapshot(
   // returns exactly what filtering every owner before ranking would.
   const proofs = provenOwners(db, inOuterTransaction);
   const queryVector = encodeEmbedding(embedding);
-  const minScore = options.minScore;
   let limit = k;
   let results: VectorSearchResult[] = [];
   for (;;) {

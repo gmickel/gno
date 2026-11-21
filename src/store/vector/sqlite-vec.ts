@@ -422,7 +422,7 @@ export async function createVectorIndexPort(
                FROM content_vectors
                WHERE model = ?
                  AND mirror_hash IN (SELECT value FROM json_each(?))
-               ORDER BY distance, mirror_hash, seq
+               ORDER BY COALESCE(distance, 0), mirror_hash, seq
                LIMIT ?`
             )
             .all(encodeEmbedding(embedding), model, JSON.stringify(hashes), k);

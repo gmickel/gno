@@ -367,6 +367,47 @@ export function getVariantStatus(
       inputHash: string;
     }> = [];
     const neededChunks = new Map<string, [string, number]>();
+    const PROOF_TEXT_BATCH_SIZE = 512;
+    const fetchChunkTexts = db.query<
+      { mirror_hash: string; seq: number; text: string },
+      [string]
+    >(`
+      WITH req AS (
+        SELECT
+          json_extract(value, '$[0]') AS mirror_hash,
+          json_extract(value, '$[1]') AS seq
+        FROM json_each(?)
+      )
+      SELECT c.mirror_hash, c.seq, c.text
+      FROM req r
+      JOIN content_chunks c ON c.mirror_hash = r.mirror_hash AND c.seq = r.seq
+    `);
+    const flushPendingProofs = (): void => {
+      if (pendingProofs.length === 0) return;
+      const textByChunk = new Map<string, string>();
+      const chunkEntries = [...neededChunks.values()];
+      for (const row of fetchChunkTexts.all(JSON.stringify(chunkEntries))) {
+        textByChunk.set(`${row.mirror_hash}\0${row.seq}`, row.text);
+      }
+      for (const item of pendingProofs) {
+        const owner = owners.get(item.ownerKey);
+        if (!owner) continue;
+        let valid = proofs.get(item.proofKey);
+        if (valid === undefined) {
+          const text = textByChunk.get(`${item.mirrorHash}\0${item.seq}`);
+          valid =
+            text !== undefined &&
+            item.inputHash ===
+              embeddingInputHash(
+                formatDocForEmbedding(text, item.title ?? undefined, item.model)
+              );
+          proofs.set(item.proofKey, valid);
+        }
+        if (valid) owner.embedded = true;
+      }
+      pendingProofs.length = 0;
+      neededChunks.clear();
+    };
     try {
       for (const row of statement.iterate(...statementParams)) {
         const ownerKey = `${row.document_id}:${row.seq}`;
@@ -420,47 +461,17 @@ export function getVariantStatus(
         if (!neededChunks.has(chunkKey)) {
           neededChunks.set(chunkKey, [row.mirror_hash, row.seq]);
         }
+        if (
+          neededChunks.size >= PROOF_TEXT_BATCH_SIZE ||
+          pendingProofs.length >= PROOF_TEXT_BATCH_SIZE
+        ) {
+          flushPendingProofs();
+        }
       }
     } finally {
       statement.finalize();
     }
-    if (pendingProofs.length > 0) {
-      const textByChunk = new Map<string, string>();
-      const chunkEntries = [...neededChunks.values()];
-      const fetchChunkTexts = db.query<
-        { mirror_hash: string; seq: number; text: string },
-        [string]
-      >(`
-        WITH req AS (
-          SELECT
-            json_extract(value, '$[0]') AS mirror_hash,
-            json_extract(value, '$[1]') AS seq
-          FROM json_each(?)
-        )
-        SELECT c.mirror_hash, c.seq, c.text
-        FROM req r
-        JOIN content_chunks c ON c.mirror_hash = r.mirror_hash AND c.seq = r.seq
-      `);
-      for (const row of fetchChunkTexts.all(JSON.stringify(chunkEntries))) {
-        textByChunk.set(`${row.mirror_hash}\0${row.seq}`, row.text);
-      }
-      for (const item of pendingProofs) {
-        const owner = owners.get(item.ownerKey);
-        if (!owner) continue;
-        let valid = proofs.get(item.proofKey);
-        if (valid === undefined) {
-          const text = textByChunk.get(`${item.mirrorHash}\0${item.seq}`);
-          valid =
-            text !== undefined &&
-            item.inputHash ===
-              embeddingInputHash(
-                formatDocForEmbedding(text, item.title ?? undefined, item.model)
-              );
-          proofs.set(item.proofKey, valid);
-        }
-        if (valid) owner.embedded = true;
-      }
-    }
+    flushPendingProofs();
     const collections = new Map<string, Map<string, boolean>>();
     let backlog = 0;
     for (const owner of owners.values()) {
