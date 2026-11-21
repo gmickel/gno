@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-230-lossless-retrieval-and-verification",
   "spec_path": ".flow/tasks/fn-230-lossless-retrieval-and-verification.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Lossless retrieval and verification pipeline performance",
   "updated_at": "2026-11-21T21:49:48.083115Z"
 }

@@ -452,7 +452,7 @@
     "impl:fn-230-lossless-retrieval-and-verification.1": 0
   },
   "spec_path": ".flow/specs/fn-230-lossless-retrieval-and-verification.md",
-  "status": "open",
+  "status": "done",
   "title": "Lossless retrieval and verification pipeline performance",
   "tracker": {
     "baseHashFlow": null,
@@ -465,5 +465,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-11-21T22:43:56.714226Z"
+  "updated_at": "2026-11-21T22:45:14.846487Z"
 }
