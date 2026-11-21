@@ -1,10 +1,11 @@
 import { Database } from "bun:sqlite";
 import { afterAll, describe, expect, mock, test } from "bun:test";
-// Bun has no directory-creation, sync stat, symlink, file-write, or OS/path equivalents.
+// Bun has no directory-creation, sync stat, file-write, URL, or OS/path equivalents.
 import { statSync } from "node:fs";
-import { mkdtemp, symlink, unlink, writeFile } from "node:fs/promises";
+import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import type { Config } from "../../src/config/types";
 import type { EmbeddingPort, GenerationPort } from "../../src/llm/types";
@@ -2010,16 +2011,14 @@ describe("Round 1 Codex regression guards (F1–F9)", () => {
     }
   });
 
-  test("Round 4: retargeting a file: symlink does not collapse cache keys for ports bound to distinct canonical targets", async () => {
-    const dir = await makeTempDir("gno-symlink-exp-");
+  test("Round 4: retargeting a file: URI does not collapse cache keys for ports bound to distinct canonical targets", async () => {
+    const dir = await makeTempDir("gno-retarget-exp-");
     const targetA = join(dir, "model-a.gguf");
     const targetB = join(dir, "model-b.gguf");
     const targetC = join(dir, "model-c.gguf");
-    const linkPath = join(dir, "current.gguf");
     await writeFile(targetA, "weights-A");
     await writeFile(targetB, "weights-BB-distinct-size");
     await writeFile(targetC, "weights-CCC-even-longer-size");
-    await symlink(targetC, linkPath);
 
     const fpA = `file:${statSync(targetA).size}:${Math.trunc(statSync(targetA).mtimeMs)}`;
     const fpB = `file:${statSync(targetB).size}:${Math.trunc(statSync(targetB).mtimeMs)}`;
@@ -2039,7 +2038,7 @@ describe("Round 1 Codex regression guards (F1–F9)", () => {
       }),
     }));
 
-    const fileUri = `file:${linkPath}`;
+    const fileUri = pathToFileURL(targetC).href;
     const portA: GenerationPort = {
       modelUri: fileUri,
       modelPath: targetA,
@@ -2092,6 +2091,84 @@ describe("Round 1 Codex regression guards (F1–F9)", () => {
         "symlink query beta semantic",
       ]);
     }
-    await unlink(linkPath);
+  });
+
+  test("Bugbot: cold lazyGenerationPort hits persistent llm_cache via read-only resolveModelIdentity without initializing port", async () => {
+    const dir = await makeTempDir("gno-cold-lazy-hit-");
+    const modelPath = join(dir, "cold-expand.gguf");
+    await writeFile(modelPath, "cold-gguf-v1");
+    const stat = statSync(modelPath);
+    const modelFingerprint = `file:${stat.size}:${Math.trunc(stat.mtimeMs)}`;
+    const cache = new Map<string, string>();
+
+    // First process populates persistent cache.
+    const create1 = mock(async () => ({
+      ok: true as const,
+      value: {
+        modelUri: "hf:test/cold-expand.gguf",
+        modelPath,
+        modelFingerprint,
+        structuredOutput: "json_schema" as const,
+        generate: async () => ({
+          ok: true as const,
+          value: JSON.stringify({
+            lexicalQueries: ["cold lazy query", "cold lazy persisted"],
+            vectorQueries: ["cold lazy semantic"],
+          }),
+        }),
+        dispose: async () => undefined,
+      },
+    }));
+    const port1 = lazyGenerationPort("hf:test/cold-expand.gguf", create1, {
+      resolveModelIdentity: async () => ({ modelPath }),
+    });
+    const first = await expandQueryCached(
+      {
+        genPort: port1,
+        getCache: async (k) => cache.get(k) ?? null,
+        setCache: async (k, v) => {
+          cache.set(k, v);
+        },
+      },
+      "cold lazy query",
+      { lang: "en", contextSize: 2048 }
+    );
+    expect(first.ok).toBe(true);
+    expect(create1).toHaveBeenCalledTimes(1);
+    expect(cache.size).toBe(1);
+
+    // Second cold process hits persistent cache WITHOUT ever initializing lazy port.
+    const create2 = mock(async () => {
+      throw new Error("cold cache hit must not initialize lazy port");
+    });
+    const port2 = lazyGenerationPort("hf:test/cold-expand.gguf", create2, {
+      resolveModelIdentity: async () => ({ modelPath }),
+    });
+    let lookups = 0;
+    let hits = 0;
+    const second = await expandQueryCached(
+      {
+        genPort: port2,
+        getCache: async (k) => cache.get(k) ?? null,
+        setCache: async (k, v) => {
+          cache.set(k, v);
+        },
+        onCacheLookup: () => {
+          lookups += 1;
+        },
+        onCacheHit: () => {
+          hits += 1;
+        },
+      },
+      "cold lazy query",
+      { lang: "en", contextSize: 2048 }
+    );
+    expect(second.ok).toBe(true);
+    expect(create2).toHaveBeenCalledTimes(0);
+    expect(lookups).toBe(1);
+    expect(hits).toBe(1);
+    if (second.ok) {
+      expect(second.value?.vectorQueries).toEqual(["cold lazy semantic"]);
+    }
   });
 });

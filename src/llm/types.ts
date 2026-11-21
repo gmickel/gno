@@ -117,12 +117,22 @@ export interface EmbeddingPort {
   dispose(): Promise<void>;
 }
 
+export interface GenerationModelIdentity {
+  modelPath?: string;
+  modelFingerprint?: string;
+}
+
 export interface GenerationPort {
   readonly modelUri: string;
   /** Resolved local GGUF path when backed by a local or downloaded file. */
   readonly modelPath?: string;
   /** Optional stable model fingerprint for deterministic cache invalidation. */
   readonly modelFingerprint?: string;
+  /**
+   * Optional read-only probe returning cached local model identity before
+   * initializing a lazy port (must not download models or spawn workers).
+   */
+  resolveModelIdentity?(): Promise<GenerationModelIdentity | null>;
   /** Undefined is treated as unsupported for backwards-compatible ports. */
   readonly structuredOutput?: StructuredOutputCapability;
   generate(

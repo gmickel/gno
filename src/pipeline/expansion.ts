@@ -668,11 +668,34 @@ export async function expandQueryCached(
 
   const lang = options.lang ?? "auto";
   const initialIdentity = resolveIdentity();
+  // On a cold lazy port, probe cached local model identity read-only so
+  // persistent cache hits skip worker initialization and generation.
+  let lookupIdentity = initialIdentity;
+  if (
+    lookupIdentity === null &&
+    typeof deps.genPort.resolveModelIdentity === "function"
+  ) {
+    try {
+      const probed = await deps.genPort.resolveModelIdentity();
+      if (probed) {
+        lookupIdentity = resolveModelIdentityFingerprint(
+          deps.genPort.modelUri,
+          {
+            contextSize: options.contextSize,
+            modelFingerprint: deps.modelFingerprint ?? probed.modelFingerprint,
+            modelPath: deps.modelPath ?? probed.modelPath,
+          }
+        );
+      }
+    } catch {
+      lookupIdentity = null;
+    }
+  }
   let cacheKey: string | null = null;
-  if (initialIdentity !== null) {
+  if (lookupIdentity !== null) {
     cacheKey = hashExpansionCacheKey(
       deps.genPort.modelUri,
-      initialIdentity,
+      lookupIdentity,
       options.contextSize,
       query,
       lang,
@@ -730,15 +753,16 @@ export async function expandQueryCached(
     }
     if (writeIdentity !== null) {
       const writeKey =
-        cacheKey ??
-        hashExpansionCacheKey(
-          deps.genPort.modelUri,
-          writeIdentity,
-          options.contextSize,
-          query,
-          lang,
-          options.intent
-        );
+        writeIdentity === lookupIdentity && cacheKey
+          ? cacheKey
+          : hashExpansionCacheKey(
+              deps.genPort.modelUri,
+              writeIdentity,
+              options.contextSize,
+              query,
+              lang,
+              options.intent
+            );
       try {
         await deps.setCache(writeKey, JSON.stringify(result.value));
       } catch {
