@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
 import { afterAll, describe, expect, mock, test } from "bun:test";
-// Bun has no directory-creation, file-write, or OS/path equivalents.
+// Bun has no directory-creation, sync stat, file-write, or OS/path equivalents.
+import { statSync } from "node:fs";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -1860,10 +1861,12 @@ describe("Round 1 Codex regression guards (F1–F9)", () => {
     expect(ftsQueries).toEqual(["  same query  ", "same query variant"]);
   });
 
-  test("Round 2: lazyGenerationPort propagates underlying modelPath so server expansion hits llm_cache on repeat queries", async () => {
+  test("Round 2: lazyGenerationPort propagates underlying modelPath/modelFingerprint so server expansion hits llm_cache on repeat queries", async () => {
     const dir = await makeTempDir("gno-lazy-exp-");
     const modelPath = join(dir, "lazy-expand.gguf");
     await writeFile(modelPath, "lazy-gguf-v1");
+    const stat = statSync(modelPath);
+    const modelFingerprint = `file:${stat.size}:${Math.trunc(stat.mtimeMs)}`;
     const cache = new Map<string, string>();
     const generate = mock(async () => ({
       ok: true as const,
@@ -1879,6 +1882,7 @@ describe("Round 1 Codex regression guards (F1–F9)", () => {
         value: {
           modelUri: "hf:test/lazy-expand.gguf",
           modelPath,
+          modelFingerprint,
           structuredOutput: "json_schema" as const,
           generate,
           dispose: async () => undefined,
@@ -1901,7 +1905,7 @@ describe("Round 1 Codex regression guards (F1–F9)", () => {
       },
     };
 
-    // Cold first call initializes lazyPort, generates once, and populates cache via post-init modelPath.
+    // Cold first call initializes lazyPort, generates once, and populates cache via captured modelFingerprint.
     const first = await expandQueryCached(deps, "lazy cache query", {
       lang: "en",
       contextSize: 2048,
@@ -1910,8 +1914,9 @@ describe("Round 1 Codex regression guards (F1–F9)", () => {
     expect(generate).toHaveBeenCalledTimes(1);
     expect(cache.size).toBe(1);
     expect(lazyPort.modelPath).toBe(modelPath);
+    expect(lazyPort.modelFingerprint).toBe(modelFingerprint);
 
-    // Repeat call reads modelPath from lazyPort and hits cache with zero extra generations.
+    // Repeat call reads modelFingerprint + verifies on-disk file and hits cache with zero extra generations.
     const second = await expandQueryCached(deps, "lazy cache query", {
       lang: "en",
       contextSize: 2048,
@@ -1920,5 +1925,88 @@ describe("Round 1 Codex regression guards (F1–F9)", () => {
     expect(generate).toHaveBeenCalledTimes(1);
     expect(lookups).toBe(1);
     expect(hits).toBe(1);
+
+    // Round 3: Replacing the GGUF mid-flight during a cold lazy generation must NOT
+    // cache model A's expansion under model B's fingerprint.
+    const racePath = join(dir, "race-expand.gguf");
+    await writeFile(racePath, "model-A-weights");
+    const statA = statSync(racePath);
+    const fpA = `file:${statA.size}:${Math.trunc(statA.mtimeMs)}`;
+    const raceCache = new Map<string, string>();
+    const genA = mock(async () => {
+      // Simulate replacing the GGUF on disk while model A is mid-generation.
+      await writeFile(racePath, "model-B-replaced-longer-weights");
+      return {
+        ok: true as const,
+        value: JSON.stringify({
+          lexicalQueries: ["race query", "race query model A"],
+          vectorQueries: ["race query model A semantic"],
+        }),
+      };
+    });
+    const lazyPortA = lazyGenerationPort(
+      "hf:test/race-expand.gguf",
+      async () => ({
+        ok: true as const,
+        value: {
+          modelUri: "hf:test/race-expand.gguf",
+          modelPath: racePath,
+          modelFingerprint: fpA,
+          structuredOutput: "json_schema" as const,
+          generate: genA,
+          dispose: async () => undefined,
+        },
+      })
+    );
+    await expandQueryCached(
+      {
+        genPort: lazyPortA,
+        getCache: async (k) => raceCache.get(k) ?? null,
+        setCache: async (k, v) => {
+          raceCache.set(k, v);
+        },
+      },
+      "race query",
+      { lang: "en", contextSize: 2048 }
+    );
+    // Mid-flight file replacement aborted the cache write.
+    expect(raceCache.size).toBe(0);
+
+    // A fresh port for model B must invoke model B (never receive model A's variants).
+    const statB = statSync(racePath);
+    const fpB = `file:${statB.size}:${Math.trunc(statB.mtimeMs)}`;
+    const genB = mock(async () => ({
+      ok: true as const,
+      value: JSON.stringify({
+        lexicalQueries: ["race query", "race query model B"],
+        vectorQueries: ["race query model B semantic"],
+      }),
+    }));
+    const portB = {
+      modelUri: "hf:test/race-expand.gguf",
+      modelPath: racePath,
+      modelFingerprint: fpB,
+      structuredOutput: "json_schema" as const,
+      generate: genB,
+      dispose: async () => undefined,
+    };
+    const resB = await expandQueryCached(
+      {
+        genPort: portB,
+        getCache: async (k) => raceCache.get(k) ?? null,
+        setCache: async (k, v) => {
+          raceCache.set(k, v);
+        },
+      },
+      "race query",
+      { lang: "en", contextSize: 2048 }
+    );
+    expect(resB.ok).toBe(true);
+    expect(genB).toHaveBeenCalledTimes(1);
+    if (resB.ok) {
+      expect(resB.value?.vectorQueries).toEqual([
+        "race query model B semantic",
+      ]);
+    }
   });
 });

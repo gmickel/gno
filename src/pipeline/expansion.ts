@@ -85,25 +85,39 @@ function statFileFingerprint(filePath: string): string | null {
   }
 }
 
+function resolveLocalModelPath(
+  modelUri: string,
+  options?: ExpansionCacheKeyOptions
+): string | null {
+  if (options?.modelPath) return options.modelPath;
+  if (modelUri.startsWith("file:")) {
+    try {
+      return modelUri.startsWith("file://")
+        ? fileURLToPath(modelUri)
+        : modelUri.slice("file:".length);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 function resolveModelIdentityFingerprint(
   modelUri: string,
   options?: ExpansionCacheKeyOptions
 ): string | null {
+  const localPath = resolveLocalModelPath(modelUri, options);
   if (options?.modelFingerprint) {
+    if (localPath) {
+      const diskFp = statFileFingerprint(localPath);
+      if (diskFp !== options.modelFingerprint) {
+        return null;
+      }
+    }
     return options.modelFingerprint;
   }
-  if (options?.modelPath) {
-    return statFileFingerprint(options.modelPath);
-  }
-  if (modelUri.startsWith("file:")) {
-    try {
-      const filePath = modelUri.startsWith("file://")
-        ? fileURLToPath(modelUri)
-        : modelUri.slice("file:".length);
-      return statFileFingerprint(filePath);
-    } catch {
-      return null;
-    }
+  if (localPath) {
+    return statFileFingerprint(localPath);
   }
   if (modelUri.startsWith("http://") || modelUri.startsWith("https://")) {
     return `uri:${modelUri}`;
@@ -674,20 +688,39 @@ export async function expandQueryCached(
     return result;
   }
 
-  // Cache result (write failures never fail retrieval). Re-check identity after
-  // generation so lazy ports that initialize on first call populate the cache
-  // for subsequent lookups.
+  // Cache result (write failures never fail retrieval).
+  // - Warm path (initialIdentity !== null): verify the on-disk file did not
+  //   change mid-flight before persisting under initialIdentity.
+  // - Cold lazy path (initialIdentity === null): only persist when the
+  //   initialized port supplies a pre-generation modelFingerprint AND any
+  //   associated local file still matches it, preventing a mid-flight model
+  //   replacement from caching model A's output under model B's fingerprint.
   if (result.value) {
-    const postIdentity = initialIdentity ?? resolveIdentity();
-    const writeKey =
-      cacheKey ??
-      (postIdentity !== null
-        ? generateCacheKey(deps.genPort.modelUri, query, lang, options.intent, {
-            contextSize: options.contextSize,
-            modelFingerprint: postIdentity,
-          })
-        : null);
-    if (writeKey) {
+    let writeIdentity: string | null = null;
+    if (initialIdentity !== null) {
+      const currentIdentity = resolveIdentity();
+      if (currentIdentity === initialIdentity) {
+        writeIdentity = initialIdentity;
+      }
+    } else {
+      const postFingerprint =
+        deps.modelFingerprint ?? deps.genPort.modelFingerprint;
+      if (postFingerprint) {
+        const postPath = resolveLocalModelPath(deps.genPort.modelUri, {
+          modelPath: deps.modelPath ?? deps.genPort.modelPath,
+        });
+        if (!postPath || statFileFingerprint(postPath) === postFingerprint) {
+          writeIdentity = postFingerprint;
+        }
+      }
+    }
+    if (writeIdentity !== null) {
+      const writeKey =
+        cacheKey ??
+        generateCacheKey(deps.genPort.modelUri, query, lang, options.intent, {
+          contextSize: options.contextSize,
+          modelFingerprint: writeIdentity,
+        });
       try {
         await deps.setCache(writeKey, JSON.stringify(result.value));
       } catch {

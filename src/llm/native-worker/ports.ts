@@ -46,7 +46,8 @@ class NativePort {
     protected readonly client: NativeWorkerClient,
     protected readonly modelId: string,
     readonly modelUri: string,
-    readonly modelPath?: string
+    readonly modelPath?: string,
+    readonly modelFingerprint?: string
   ) {}
 
   async dispose(): Promise<void> {
