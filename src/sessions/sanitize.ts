@@ -118,21 +118,6 @@ export interface RedactionPolicy {
   literals?: readonly string[];
 }
 
-export interface CompiledRedactionPolicy {
-  readonly literals: readonly string[];
-}
-
-/** Pre-normalize and sort configured redaction literals once across units/threads. */
-export function compileRedactionPolicy(
-  policy: RedactionPolicy = {}
-): CompiledRedactionPolicy {
-  return {
-    literals: [...new Set(policy.literals ?? [])]
-      .filter((value) => value.length >= 4)
-      .sort((left, right) => right.length - left.length),
-  };
-}
-
 /**
  * Per-thread sanitizer. Holds the values detected so far so later turns of
  * the same thread redact them even out of their original shape.
@@ -142,30 +127,10 @@ export class ThreadSanitizer {
   private readonly detected = new Set<string>();
   redactions = 0;
 
-  constructor(policy: RedactionPolicy | CompiledRedactionPolicy = {}) {
-    this.literals =
-      "literals" in policy && Array.isArray(policy.literals)
-        ? compileRedactionPolicy(policy).literals
-        : compileRedactionPolicy(policy).literals;
-  }
-
-  /** Construct a ThreadSanitizer directly from an already-compiled policy. */
-  static fromCompiled(compiled: CompiledRedactionPolicy): ThreadSanitizer {
-    const instance = Object.create(
-      ThreadSanitizer.prototype
-    ) as ThreadSanitizer;
-    Object.defineProperty(instance, "literals", {
-      value: compiled.literals,
-      enumerable: true,
-      writable: false,
-    });
-    Object.defineProperty(instance, "detected", {
-      value: new Set<string>(),
-      enumerable: true,
-      writable: false,
-    });
-    instance.redactions = 0;
-    return instance;
+  constructor(policy: RedactionPolicy = {}) {
+    this.literals = [...new Set(policy.literals ?? [])]
+      .filter((value) => value.length >= 4)
+      .sort((left, right) => right.length - left.length);
   }
 
   /** Reset per-thread state so one sanitizer instance can be reused across units. */

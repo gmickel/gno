@@ -4156,12 +4156,38 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       if (options.scopes.length === 0) {
         return ok([]);
       }
-      const rows = db
-        .query<
-          { id: number; docid: string; uri: string; mirror_hash: string },
-          [string, string]
-        >(
+      const limit =
+        options.limit !== undefined &&
+        Number.isSafeInteger(options.limit) &&
+        options.limit > 0
+          ? options.limit
+          : null;
+      const rows =
+        limit !== null
+          ? db
+              .query<
+                { id: number; docid: string; uri: string; mirror_hash: string },
+                [string, string, number]
+              >(
+                `
+          SELECT d.id, d.docid, d.uri, d.mirror_hash
+          FROM documents d
+          WHERE d.active = 1
+            AND d.collection = ?
+            AND d.mirror_hash IS NOT NULL
+            AND EXISTS (SELECT 1 FROM doc_memory_scopes ms WHERE ms.document_id = d.id AND ms.scope IN (SELECT value FROM json_each(?)))
+            ${options.excludeSuperseded ? SUPERSEDED_EXCLUSION_SQL("d.id") : ""}
+          ORDER BY d.id
+          LIMIT ?
           `
+              )
+              .all(options.collection, JSON.stringify(options.scopes), limit)
+          : db
+              .query<
+                { id: number; docid: string; uri: string; mirror_hash: string },
+                [string, string]
+              >(
+                `
           SELECT d.id, d.docid, d.uri, d.mirror_hash
           FROM documents d
           WHERE d.active = 1
@@ -4171,8 +4197,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             ${options.excludeSuperseded ? SUPERSEDED_EXCLUSION_SQL("d.id") : ""}
           ORDER BY d.id
           `
-        )
-        .all(options.collection, JSON.stringify(options.scopes));
+              )
+              .all(options.collection, JSON.stringify(options.scopes));
       return ok(
         rows.map((row) => ({
           id: row.id,

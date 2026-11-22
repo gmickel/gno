@@ -91,24 +91,35 @@ export function formatRerankPair(
   return input;
 }
 
-export function getRerankCapacity(
+export interface PreparedRerankBatch {
+  capacity: RerankCapacity;
+  /** Pre-tokenized query and documents when the model/template is supported. */
+  queryTokens?: Token[];
+  documentTokens?: Token[][];
+}
+
+export function prepareRerankBatch(
   model: CapacityModel,
   query: string,
   documents: readonly string[],
   version = getNativePackageVersion()
-): RerankCapacity {
+): PreparedRerankBatch {
   if (documents.length === 0) {
-    return { kind: "empty" };
+    return { capacity: { kind: "empty" } };
   }
   if (!supported(model, version)) {
     return {
-      kind: "auto",
-      reason: "Unsupported native version, model or template",
+      capacity: {
+        kind: "auto",
+        reason: "Unsupported native version, model or template",
+      },
     };
   }
   const maximum = model.trainContextSize;
   if (!Number.isSafeInteger(maximum) || maximum <= 0) {
-    return { kind: "auto", reason: "Unknown model context limit" };
+    return {
+      capacity: { kind: "auto", reason: "Unknown model context limit" },
+    };
   }
   const tpl = getStaticTemplateTokens(model);
   const queryTokens = model.tokenizer(query, false, "trimLeadingSpace");
@@ -125,9 +136,11 @@ export function getRerankCapacity(
   const { bos, eos, shouldPrependBosToken, shouldAppendEosToken } =
     model.tokens;
 
+  const documentTokens: Token[][] = [];
   let requiredTokens = 0;
   for (const document of documents) {
     const docTokens = model.tokenizer(document, false, "trimLeadingSpace");
+    documentTokens.push(docTokens);
     let length = baseLength + docTokens.length;
     let firstToken =
       fixedFirst !== undefined ? fixedFirst : (docTokens[0] ?? tpl.suffix[0]);
@@ -159,9 +172,26 @@ export function getRerankCapacity(
   const contextSize = Math.ceil((requiredTokens + 256) / 256) * 256;
   if (contextSize > maximum) {
     return {
-      kind: "auto",
-      reason: "Padded capacity exceeds model context limit",
+      capacity: {
+        kind: "auto",
+        reason: "Padded capacity exceeds model context limit",
+      },
+      queryTokens,
+      documentTokens,
     };
   }
-  return { kind: "sized", contextSize, requiredTokens };
+  return {
+    capacity: { kind: "sized", contextSize, requiredTokens },
+    queryTokens,
+    documentTokens,
+  };
+}
+
+export function getRerankCapacity(
+  model: CapacityModel,
+  query: string,
+  documents: readonly string[],
+  version = getNativePackageVersion()
+): RerankCapacity {
+  return prepareRerankBatch(model, query, documents, version).capacity;
 }

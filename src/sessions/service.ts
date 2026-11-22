@@ -40,13 +40,7 @@ import {
 } from "./archive";
 import { readAutomationStatus } from "./automation-status";
 import { canonicalConfigPath, writeIndexBinding } from "./binding";
-import {
-  type CompiledRedactionPolicy,
-  compileRedactionPolicy,
-  redactionStamp,
-  sanitizeValue,
-  ThreadSanitizer,
-} from "./sanitize";
+import { redactionStamp, sanitizeValue, ThreadSanitizer } from "./sanitize";
 import {
   archiveCollection,
   protectedRoots,
@@ -637,8 +631,7 @@ export class SessionsService {
     const changed = new Map<string, Set<string>>();
     const excluded = protectedRoots(sessions);
     const redaction = { literals: sessions.redaction?.literals ?? [] };
-    const compiledRedaction = compileRedactionPolicy(redaction);
-    const sharedSanitizer = ThreadSanitizer.fromCompiled(compiledRedaction);
+    const sharedSanitizer = new ThreadSanitizer(redaction);
     const sanitizeLocator = (value: string): string => {
       sharedSanitizer.reset();
       return sharedSanitizer.sanitize(value);
@@ -757,116 +750,147 @@ export class SessionsService {
       }
       const present = new Set<string>();
       const destinations = destinationsStamp(source);
-      // Batch unitFingerprint stat calls with bounded concurrency across the
-      // enumerated units, and check unchanged units before sanitizing locators.
-      const fingerprinted = await mapWithConcurrency(
-        enumerated.units,
-        FINGERPRINT_CONCURRENCY,
-        async (found) => {
-          try {
-            return {
-              ok: true as const,
-              fingerprint: await unitFingerprint(found),
-            };
-          } catch (error) {
-            return { ok: false as const, error };
+      // Fingerprint in bounded lookahead windows; if an earlier unit in a window
+      // is imported (advancing wall-clock time), re-stat a prefetched match before
+      // skipping it so live appends to archived sessions are never missed.
+      for (
+        let windowStart = 0;
+        windowStart < enumerated.units.length;
+        windowStart += FINGERPRINT_CONCURRENCY
+      ) {
+        const windowUnits = enumerated.units.slice(
+          windowStart,
+          windowStart + FINGERPRINT_CONCURRENCY
+        );
+        const fingerprinted = await mapWithConcurrency(
+          windowUnits,
+          FINGERPRINT_CONCURRENCY,
+          async (found) => {
+            try {
+              return {
+                ok: true as const,
+                fingerprint: await unitFingerprint(found),
+              };
+            } catch (error) {
+              return { ok: false as const, error };
+            }
           }
-        }
-      );
-      for (let i = 0; i < enumerated.units.length; i += 1) {
-        const found = enumerated.units[i]!;
-        const fp = fingerprinted[i]!;
-        const key = unitKey(source.id, found.locator);
-        if (present.has(key)) {
-          // Two units with the same locator would share archive files.
-          counts.failed += 1;
-          recordUnit({
-            sourceId: source.id,
-            harness: found.harness,
+        );
+        let importedInWindow = false;
+        for (let i = 0; i < windowUnits.length; i += 1) {
+          const found = windowUnits[i]!;
+          const fp = fingerprinted[i]!;
+          const key = unitKey(source.id, found.locator);
+          if (present.has(key)) {
+            // Two units with the same locator would share archive files.
+            counts.failed += 1;
+            recordUnit({
+              sourceId: source.id,
+              harness: found.harness,
+              locator: sanitizeLocator(found.locator),
+              outcome: "failed",
+              reason: "unit_conflict",
+              threads: 0,
+              turns: 0,
+              collections: [],
+            });
+            continue;
+          }
+          present.add(key);
+          if (!fp.ok) {
+            counts.failed += 1;
+            recordUnit({
+              sourceId: source.id,
+              harness: found.harness,
+              locator: sanitizeLocator(found.locator),
+              outcome: "failed",
+              reason: unitReason(fp.error),
+              threads: 0,
+              turns: 0,
+              collections: [],
+            });
+            continue;
+          }
+          let fingerprint = fp.fingerprint;
+          const previous = sourceState.units[key];
+          let current =
+            previous?.status === "complete" &&
+            previous.fingerprint === fingerprint &&
+            previous.parser ===
+              SESSION_PARSERS[previous.harness ?? found.harness] &&
+            previous.redaction === stamp &&
+            previous.destinations === destinations &&
+            previous.format === SESSION_ARCHIVE_FORMAT_VERSION;
+          if (current && previous && importedInWindow) {
+            try {
+              fingerprint = await unitFingerprint(found);
+              current = previous.fingerprint === fingerprint;
+            } catch (error) {
+              counts.failed += 1;
+              recordUnit({
+                sourceId: source.id,
+                harness: found.harness,
+                locator: sanitizeLocator(found.locator),
+                outcome: "failed",
+                reason: unitReason(error),
+                threads: 0,
+                turns: 0,
+                collections: [],
+              });
+              continue;
+            }
+          }
+          if (current && previous) {
+            // Already archived and up to date: reported, not re-read or sanitized.
+            counts.unchanged += previous.threads.length;
+            continue;
+          }
+          if (options.limit !== undefined && processed >= options.limit) {
+            deferred += 1;
+            continue;
+          }
+          processed += 1;
+          importedInWindow = true;
+          // Receipts, warnings and checkpoint state show the locator with the
+          // owner's redaction applied; identity stays in the opaque key.
+          const unit: SessionUnit = {
+            ...found,
             locator: sanitizeLocator(found.locator),
-            outcome: "failed",
-            reason: "unit_conflict",
-            threads: 0,
-            turns: 0,
-            collections: [],
+          };
+          if (unit.size > SESSION_LIMITS.maxSourceBytes) {
+            counts.skippedPolicy += 1;
+            recordUnit({
+              sourceId: source.id,
+              harness: unit.harness,
+              locator: unit.locator,
+              outcome: "skipped_policy",
+              reason: "over_limit",
+              threads: 0,
+              turns: 0,
+              collections: [],
+            });
+            continue;
+          }
+          touched.push({ units: sourceState.units, key });
+          const outcome = await this.importUnit({
+            source,
+            unit,
+            key,
+            destinations,
+            fingerprint,
+            previous,
+            sourceState,
+            dryRun: options.dryRun,
+            redaction,
+            redactionStampValue: stamp,
+            sharedSanitizer,
+            counts,
+            turns,
+            markChanged,
+            pendingWithdrawals,
           });
-          continue;
+          recordUnit(outcome);
         }
-        present.add(key);
-        if (!fp.ok) {
-          counts.failed += 1;
-          recordUnit({
-            sourceId: source.id,
-            harness: found.harness,
-            locator: sanitizeLocator(found.locator),
-            outcome: "failed",
-            reason: unitReason(fp.error),
-            threads: 0,
-            turns: 0,
-            collections: [],
-          });
-          continue;
-        }
-        const fingerprint = fp.fingerprint;
-        const previous = sourceState.units[key];
-        const current =
-          previous?.status === "complete" &&
-          previous.fingerprint === fingerprint &&
-          previous.parser ===
-            SESSION_PARSERS[previous.harness ?? found.harness] &&
-          previous.redaction === stamp &&
-          previous.destinations === destinations &&
-          previous.format === SESSION_ARCHIVE_FORMAT_VERSION;
-        if (current) {
-          // Already archived and up to date: reported, not re-read or sanitized.
-          counts.unchanged += previous.threads.length;
-          continue;
-        }
-        if (options.limit !== undefined && processed >= options.limit) {
-          deferred += 1;
-          continue;
-        }
-        processed += 1;
-        // Receipts, warnings and checkpoint state show the locator with the
-        // owner's redaction applied; identity stays in the opaque key.
-        const unit: SessionUnit = {
-          ...found,
-          locator: sanitizeLocator(found.locator),
-        };
-        if (unit.size > SESSION_LIMITS.maxSourceBytes) {
-          counts.skippedPolicy += 1;
-          recordUnit({
-            sourceId: source.id,
-            harness: unit.harness,
-            locator: unit.locator,
-            outcome: "skipped_policy",
-            reason: "over_limit",
-            threads: 0,
-            turns: 0,
-            collections: [],
-          });
-          continue;
-        }
-        touched.push({ units: sourceState.units, key });
-        const outcome = await this.importUnit({
-          source,
-          unit,
-          key,
-          destinations,
-          fingerprint,
-          previous,
-          sourceState,
-          dryRun: options.dryRun,
-          redaction,
-          compiledRedaction,
-          redactionStampValue: stamp,
-          sharedSanitizer,
-          counts,
-          turns,
-          markChanged,
-          pendingWithdrawals,
-        });
-        recordUnit(outcome);
       }
 
       // Units whose source vanished keep their archive. Stale redaction is
@@ -990,7 +1014,6 @@ export class SessionsService {
     sourceState: SourceState;
     dryRun: boolean;
     redaction: { literals: readonly string[] };
-    compiledRedaction: CompiledRedactionPolicy;
     redactionStampValue: string;
     sharedSanitizer: ThreadSanitizer;
     counts: SessionImportCounts;
@@ -1138,7 +1161,6 @@ export class SessionsService {
         unitLocator: unit.locator,
         parser: parsed.parser,
         redaction: options.redaction,
-        compiledRedaction: options.compiledRedaction,
         sanitizer: options.sharedSanitizer,
       });
       if (rendered.overLimit) {

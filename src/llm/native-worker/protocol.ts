@@ -162,6 +162,27 @@ const UTF8_DECODER = new TextDecoder("utf-8", { fatal: true });
  * JSON payloads always begin with `0x7b` ('{'), so `0x01` is unambiguous.
  */
 export const NATIVE_BINARY_EMBED_MAGIC = 0x01;
+const PREVALIDATED_EMBED_VALUE = Symbol("gno.nativeBinaryEmbedValidated");
+
+/** Mark an embed/embedBatch vector payload already validated by binary decode. */
+function markPrevalidatedEmbedValue<T extends object>(value: T): T {
+  Object.defineProperty(value, PREVALIDATED_EMBED_VALUE, {
+    value: true,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  });
+  return value;
+}
+
+/** True when `value` was decoded from a binary Float64Array frame and already verified finite/uniform. */
+export function isPrevalidatedEmbedValue(value: unknown): boolean {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as Record<symbol, unknown>)[PREVALIDATED_EMBED_VALUE] === true
+  );
+}
 
 const NativeResponseEnvelopeSchema = z.strictObject({
   ...envelope,
@@ -401,7 +422,7 @@ function decodeBinaryEmbedPayload(
       ...(header.lifecycle !== undefined
         ? { lifecycle: header.lifecycle }
         : {}),
-      result: { ok: true, value: vec },
+      result: { ok: true, value: markPrevalidatedEmbedValue(vec) },
     };
   }
 
@@ -422,7 +443,7 @@ function decodeBinaryEmbedPayload(
     requestId: header.requestId,
     op: "embedBatch",
     ...(header.lifecycle !== undefined ? { lifecycle: header.lifecycle } : {}),
-    result: { ok: true, value: vectors },
+    result: { ok: true, value: markPrevalidatedEmbedValue(vectors) },
   };
 }
 
@@ -483,10 +504,16 @@ export function parseNativeResponse(
       parse(z.string(), value);
       break;
     case "embed":
-      validateFiniteVector(value);
+      if (!isPrevalidatedEmbedValue(value)) {
+        validateFiniteVector(value);
+      }
       break;
     case "embedBatch": {
-      validateFiniteVectorBatch(value, request.texts.length);
+      if (!isPrevalidatedEmbedValue(value)) {
+        validateFiniteVectorBatch(value, request.texts.length);
+      } else if ((value as number[][]).length !== request.texts.length) {
+        throw new NativeWorkerError("protocol");
+      }
       break;
     }
     case "rerank": {

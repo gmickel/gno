@@ -14,7 +14,7 @@
 import { basename, join } from "node:path";
 
 import type { JsonlFieldMapping } from "../converters/adapters/jsonl/config";
-import type { CompiledRedactionPolicy, RedactionPolicy } from "./sanitize";
+import type { RedactionPolicy } from "./sanitize";
 
 import { hashRecordValue } from "../converters/adapters/shared/record-utils";
 import { SESSION_REDACTION_VERSION, ThreadSanitizer } from "./sanitize";
@@ -149,7 +149,6 @@ export function renderThread(options: {
   unitLocator: string;
   parser: string;
   redaction: RedactionPolicy;
-  compiledRedaction?: CompiledRedactionPolicy;
   sanitizer?: ThreadSanitizer;
 }): RenderedThread {
   const { thread, sourceId, parser } = options;
@@ -157,8 +156,6 @@ export function renderThread(options: {
   if (options.sanitizer) {
     sanitizer = options.sanitizer;
     sanitizer.reset();
-  } else if (options.compiledRedaction) {
-    sanitizer = ThreadSanitizer.fromCompiled(options.compiledRedaction);
   } else {
     sanitizer = new ThreadSanitizer(options.redaction);
   }

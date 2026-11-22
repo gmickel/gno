@@ -36,6 +36,7 @@ export interface HttpInferenceOptions {
 export interface CachedHttpInferenceContext {
   readonly rawUrl: string;
   readonly parsedUrl: URL | null;
+  readonly policyKey: string;
   readonly states: readonly CollectionEgressState[];
   readonly maximumZone: HttpDestinationMaximumZone | null;
 }
@@ -44,6 +45,42 @@ const CONTEXT_CACHE = new WeakMap<
   HttpInferenceOptions,
   CachedHttpInferenceContext
 >();
+const PARSED_URL_CACHE = new WeakMap<
+  HttpInferenceOptions,
+  { rawUrl: string; parsedUrl: URL | null }
+>();
+
+function computePolicyCacheKey(options: HttpInferenceOptions): string {
+  // Fast fingerprint of current collection scope + live egressPolicy values so
+  // any in-place policy mutation invalidates the cached states immediately.
+  const parts: string[] = [
+    String(options.collections.length),
+    options.collectionNames.join("\0"),
+  ];
+  for (let i = 0; i < options.collections.length; i += 1) {
+    const col = options.collections[i]!;
+    parts.push(`${col.name}:${col.egressPolicy ?? ""}`);
+  }
+  return parts.join("|");
+}
+
+function getCachedParsedUrl(
+  rawUrl: string,
+  options: HttpInferenceOptions
+): URL | null {
+  const existing = PARSED_URL_CACHE.get(options);
+  if (existing && existing.rawUrl === rawUrl) {
+    return existing.parsedUrl;
+  }
+  let parsedUrl: URL | null = null;
+  try {
+    parsedUrl = new URL(rawUrl);
+  } catch {
+    parsedUrl = null;
+  }
+  PARSED_URL_CACHE.set(options, { rawUrl, parsedUrl });
+  return parsedUrl;
+}
 
 const scopedStates = (
   options: HttpInferenceOptions
@@ -58,14 +95,10 @@ const scopedStates = (
 
 function buildHttpInferenceContext(
   rawUrl: string,
-  options: HttpInferenceOptions
+  options: HttpInferenceOptions,
+  policyKey: string
 ): CachedHttpInferenceContext {
-  let parsedUrl: URL | null = null;
-  try {
-    parsedUrl = new URL(rawUrl);
-  } catch {
-    parsedUrl = null;
-  }
+  const parsedUrl = getCachedParsedUrl(rawUrl, options);
   const states = scopedStates(options);
   const maximumZone =
     states.length === 0
@@ -74,7 +107,7 @@ function buildHttpInferenceContext(
           options.collections,
           options.collectionNames
         );
-  return { rawUrl, parsedUrl, states, maximumZone };
+  return { rawUrl, parsedUrl, policyKey, states, maximumZone };
 }
 
 /** Pre-parse URL and egress policy once per HTTP inference port instance. */
@@ -82,7 +115,11 @@ export function primeHttpInferenceContext(
   rawUrl: string,
   options: HttpInferenceOptions
 ): void {
-  CONTEXT_CACHE.set(options, buildHttpInferenceContext(rawUrl, options));
+  const policyKey = computePolicyCacheKey(options);
+  CONTEXT_CACHE.set(
+    options,
+    buildHttpInferenceContext(rawUrl, options, policyKey)
+  );
 }
 
 const enforce = (
@@ -109,11 +146,15 @@ export const requestHttpInference = async (
   options: HttpInferenceOptions
 ): Promise<Response> => {
   init.signal?.throwIfAborted();
+  const policyKey = computePolicyCacheKey(options);
   const cached = CONTEXT_CACHE.get(options);
-  const ctx =
-    cached && cached.rawUrl === rawUrl
-      ? cached
-      : buildHttpInferenceContext(rawUrl, options);
+  let ctx: CachedHttpInferenceContext;
+  if (cached && cached.rawUrl === rawUrl && cached.policyKey === policyKey) {
+    ctx = cached;
+  } else {
+    ctx = buildHttpInferenceContext(rawUrl, options, policyKey);
+    CONTEXT_CACHE.set(options, ctx);
+  }
   const { states } = ctx;
   if (states.length === 0) {
     enforce(states, "remote", options);

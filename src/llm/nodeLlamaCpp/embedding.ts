@@ -255,8 +255,10 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
       );
 
       if (this.workers.length === 1) {
-        // Single-context / GPU path: overlap JS tokenization of chunk i+1
-        // with native getEmbeddingFor() evaluation of chunk i.
+        // Single-context / GPU path: dispatch native getEmbeddingFor() of chunk i
+        // first, then schedule JS tokenization of chunk i+1 on the next macrotask
+        // tick so getEmbeddingFor's microtask sequence-erase continuation has
+        // already submitted native C++ evaluation before JS tokenizes chunk i+1.
         const worker = this.workers[0]!;
         let current = this.truncateForEmbedding(texts[0]!, "batch");
         if (!current.ok) {
@@ -269,16 +271,21 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
           const pending = this.runOnSpecificWorker(worker, (w) =>
             w.context.getEmbeddingFor(input)
           );
-          const next =
+          const nextPromise =
             i + 1 < texts.length
-              ? this.truncateForEmbedding(texts[i + 1]!, "batch")
+              ? new Promise<LlmResult<{ input: EmbeddingInput }>>((resolve) => {
+                  setImmediate(() => {
+                    resolve(this.truncateForEmbedding(texts[i + 1]!, "batch"));
+                  });
+                })
               : null;
           const embedding = await pending;
           allResults[i] = embeddingVectorToArray(embedding.vector);
-          if (next && !next.ok) {
-            return { ok: false, error: next.error };
-          }
-          if (next) {
+          if (nextPromise) {
+            const next = await nextPromise;
+            if (!next.ok) {
+              return { ok: false, error: next.error };
+            }
             current = next;
           }
         }

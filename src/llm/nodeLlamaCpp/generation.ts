@@ -245,6 +245,7 @@ export class NodeLlamaCppGeneration implements GenerationPort {
             params.jsonSchema as JsonGrammarSchema
           )
         : undefined;
+      const explicitContextSize = params?.contextSize !== undefined;
       const needed =
         params?.contextSize ??
         resolveGenContextSize({
@@ -253,14 +254,18 @@ export class NodeLlamaCppGeneration implements GenerationPort {
           trainContextSize: llamaModel.trainContextSize,
         });
 
+      const sizeCompatible = explicitContextSize
+        ? this.contextSize === needed
+        : this.contextSize >= needed &&
+          this.contextSize <=
+            Math.max(GEN_CONTEXT_REUSE_SHRINK_MIN_TOKENS, needed * 2);
+
       const canReuse =
         this.context !== null &&
         this.sequence !== null &&
         !this.context.disposed &&
         this.contextModel === llamaModel &&
-        this.contextSize >= needed &&
-        this.contextSize <=
-          Math.max(GEN_CONTEXT_REUSE_SHRINK_MIN_TOKENS, needed * 2);
+        sizeCompatible;
 
       if (canReuse && this.sequence) {
         // Clear KV state so each call starts identically from empty pos 0.
@@ -291,19 +296,28 @@ export class NodeLlamaCppGeneration implements GenerationPort {
       });
 
       // Note: stop sequences not yet supported - requires stopOnTrigger API
-      startEvaluation(options);
-      const response = await promptWithJsonSchemaGrammar(
-        session as StructuredPromptSession,
-        prompt,
-        {
-          signal: options?.signal,
-          stopOnAbortSignal: false,
-          temperature: params?.temperature ?? DEFAULT_TEMPERATURE,
-          seed: params?.seed ?? DEFAULT_SEED,
-          maxTokens: params?.maxTokens ?? DEFAULT_MAX_TOKENS,
-        },
-        grammar
-      );
+      let response: string;
+      try {
+        startEvaluation(options);
+        response = await promptWithJsonSchemaGrammar(
+          session as StructuredPromptSession,
+          prompt,
+          {
+            signal: options?.signal,
+            stopOnAbortSignal: false,
+            temperature: params?.temperature ?? DEFAULT_TEMPERATURE,
+            seed: params?.seed ?? DEFAULT_SEED,
+            maxTokens: params?.maxTokens ?? DEFAULT_MAX_TOKENS,
+          },
+          grammar
+        );
+      } finally {
+        // Detach the session's disposal listener from the retained sequence so
+        // repeated calls never accumulate old sessions or chat histories.
+        if (typeof session.dispose === "function") {
+          session.dispose({ disposeSequence: false });
+        }
+      }
 
       checkEvaluation(options);
       return { ok: true, value: response };

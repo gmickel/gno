@@ -211,10 +211,14 @@ export async function embedVariantBacklog(
         owners: VectorOwnerInput[];
         prepared: PreparedVariantBatch;
         keys: string[];
+        dependentHashes: string[];
         promise: ReturnType<typeof embedTextsWithRecovery>;
       };
       const inFlight: HttpInFlight[] = [];
       const inFlightHashes = new Set<string>();
+      // Retain completed vectors ONLY while at least one queued page depends on
+      // them; evict each hash as soon as its last dependent page commits.
+      const queuedDependentCount = new Map<string, number>();
       const completedVectors = new Map<string, Float32Array>();
       let exhausted = false;
 
@@ -239,11 +243,13 @@ export async function embedVariantBacklog(
             force: deps.force,
             inFlightHashes,
           });
-          // Resolve any hash already finished in an earlier concurrent batch.
+          const dependentHashes: string[] = [];
           for (const [hash] of prepared.sharedFromInFlight) {
-            if (completedVectors.has(hash)) {
-              prepared.sharedFromInFlight.delete(hash);
-            }
+            dependentHashes.push(hash);
+            queuedDependentCount.set(
+              hash,
+              (queuedDependentCount.get(hash) ?? 0) + 1
+            );
           }
           const keys = [...prepared.inputs.keys()];
           for (const key of keys) inFlightHashes.add(key);
@@ -252,7 +258,13 @@ export async function embedVariantBacklog(
             [...prepared.inputs.values()],
             { onSubmit }
           );
-          inFlight.push({ owners: pending, prepared, keys, promise });
+          inFlight.push({
+            owners: pending,
+            prepared,
+            keys,
+            dependentHashes,
+            promise,
+          });
         }
       };
 
@@ -265,6 +277,8 @@ export async function embedVariantBacklog(
         if (!identityHolds()) {
           await Promise.allSettled(inFlight.map((item) => item.promise));
           inFlight.length = 0;
+          completedVectors.clear();
+          queuedDependentCount.clear();
           total.errors += entry.owners.length;
           deps.onProgress?.(total.embedded, total.errors);
           identityLost = !(await identityCurrent());
@@ -278,18 +292,25 @@ export async function embedVariantBacklog(
             if (vec) {
               const typed = new Float32Array(vec);
               vectors.set(key, typed);
-              completedVectors.set(key, typed);
+              if ((queuedDependentCount.get(key) ?? 0) > 0) {
+                completedVectors.set(key, typed);
+              }
             }
           }
         }
-        // Attach vectors produced by earlier batches in the same window.
-        for (const owner of entry.prepared.owners) {
-          if (
-            !vectors.has(owner.inputHash) &&
-            !entry.prepared.reusable.has(owner.inputHash)
-          ) {
-            const shared = completedVectors.get(owner.inputHash);
-            if (shared) vectors.set(owner.inputHash, shared);
+        // Attach vectors produced by earlier batches in the same window and
+        // release ref-counts immediately so completedVectors stays bounded.
+        for (const hash of entry.dependentHashes) {
+          const shared = completedVectors.get(hash);
+          if (shared && !vectors.has(hash)) {
+            vectors.set(hash, shared);
+          }
+          const remaining = (queuedDependentCount.get(hash) ?? 1) - 1;
+          if (remaining <= 0) {
+            queuedDependentCount.delete(hash);
+            completedVectors.delete(hash);
+          } else {
+            queuedDependentCount.set(hash, remaining);
           }
         }
         const outcome = await commitVariantBatch({
@@ -300,7 +321,6 @@ export async function embedVariantBacklog(
           identityStillCurrent,
         });
         await handleForegroundOutcome(entry.owners.length, outcome);
-        if (inFlightHashes.size === 0) completedVectors.clear();
         await fillWindow();
       }
     } else if (canPipelineForeground) {
@@ -309,6 +329,7 @@ export async function embedVariantBacklog(
       interface PreparedPage {
         owners: VectorOwnerInput[];
         prepared: PreparedVariantBatch;
+        carriedVectors: Map<string, Float32Array>;
         endCursor: OwnerCursor;
       }
 
@@ -330,7 +351,42 @@ export async function embedVariantBacklog(
           force: deps.force,
           inFlightHashes,
         });
-        return { owners: pending, prepared, endCursor };
+        return {
+          owners: pending,
+          prepared,
+          carriedVectors: new Map<string, Float32Array>(),
+          endCursor,
+        };
+      };
+
+      const mergeCarriedVectors = (
+        page: PreparedPage,
+        inferred: Map<string, Float32Array>
+      ): Map<string, Float32Array> => {
+        if (page.carriedVectors.size === 0) return inferred;
+        for (const [hash, vec] of page.carriedVectors) {
+          if (!inferred.has(hash)) inferred.set(hash, vec);
+        }
+        return inferred;
+      };
+
+      const handoffSharedVectors = (
+        sourceVectors: ReadonlyMap<string, Float32Array>,
+        targetPage: PreparedPage | null
+      ): void => {
+        if (!targetPage) return;
+        for (const [hash, formatted] of targetPage.prepared
+          .sharedFromInFlight) {
+          const vec = sourceVectors.get(hash);
+          if (vec) {
+            // Carry the actual vector bytes instead of marking reusable before
+            // SQLite commits page k (page k's producer owners might go stale).
+            targetPage.carriedVectors.set(hash, vec);
+          } else {
+            targetPage.prepared.inputs.set(hash, formatted);
+          }
+        }
+        targetPage.prepared.sharedFromInFlight.clear();
       };
 
       if (!(await identityCurrent())) {
@@ -371,20 +427,8 @@ export async function embedVariantBacklog(
               if (vec) vectors.set(key, new Float32Array(vec));
             }
           }
-
-          // Reconcile any hashes shared between page k and prefetched page k+1
-          // BEFORE launching page k+1's inference so page k+1 never duplicates work.
-          if (nextPage) {
-            for (const [hash, formatted] of nextPage.prepared
-              .sharedFromInFlight) {
-              if (vectors.has(hash)) {
-                nextPage.prepared.reusable.add(hash);
-              } else {
-                nextPage.prepared.inputs.set(hash, formatted);
-              }
-            }
-            nextPage.prepared.sharedFromInFlight.clear();
-          }
+          mergeCarriedVectors(currentPage, vectors);
+          handoffSharedVectors(vectors, nextPage);
 
           // Launch page k+1's worker inference BEFORE committing page k to SQLite
           // so SQLite commit of page k overlaps with worker inference of page k+1!
@@ -422,6 +466,11 @@ export async function embedVariantBacklog(
               [...currentPage.prepared.inputs.values()],
               { onSubmit }
             );
+            // Yield one microtask so the IPC frame is flushed before the
+            // synchronous SQLite commit runs on the parent thread.
+            if (nextKeys.length > 0) {
+              await Promise.resolve();
+            }
 
             // Overlapped with worker inference of currentPage:
             // 1. Commit previous page to SQLite.
@@ -478,17 +527,10 @@ export async function embedVariantBacklog(
                 if (vec) nextVectors.set(key, new Float32Array(vec));
               }
             }
+            mergeCarriedVectors(currentPage, nextVectors);
+            handoffSharedVectors(nextVectors, followingPage);
 
             if (followingPage) {
-              for (const [hash, formatted] of followingPage.prepared
-                .sharedFromInFlight) {
-                if (nextVectors.has(hash)) {
-                  followingPage.prepared.reusable.add(hash);
-                } else {
-                  followingPage.prepared.inputs.set(hash, formatted);
-                }
-              }
-              followingPage.prepared.sharedFromInFlight.clear();
               pendingCommit = {
                 ownersCount: currentPage.owners.length,
                 prepared: currentPage.prepared,

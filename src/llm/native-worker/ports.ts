@@ -17,6 +17,7 @@ import { inferenceOptions, finishInferenceCleanup } from "../inference-scope";
 import { NativeWorkerError } from "./errors";
 import {
   EmbeddingIdentitySchema,
+  isPrevalidatedEmbedValue,
   validateFiniteVector,
   validateFiniteVectorBatch,
 } from "./protocol";
@@ -49,6 +50,13 @@ function decodeVector(
   expectedDims?: number
 ): LlmResult<number[]> {
   if (!result.ok) return result;
+  if (isPrevalidatedEmbedValue(result.value) && Array.isArray(result.value)) {
+    const vec = result.value as number[];
+    if (expectedDims !== undefined && vec.length !== expectedDims) {
+      return { ok: false, error: new NativeWorkerError("protocol").detail };
+    }
+    return { ok: true, value: vec };
+  }
   try {
     return {
       ok: true,
@@ -65,6 +73,20 @@ function decodeVectorBatch(
   expectedDims?: number
 ): LlmResult<number[][]> {
   if (!result.ok) return result;
+  if (isPrevalidatedEmbedValue(result.value) && Array.isArray(result.value)) {
+    const batch = result.value as number[][];
+    if (batch.length !== expectedCount) {
+      return { ok: false, error: new NativeWorkerError("protocol").detail };
+    }
+    if (
+      expectedDims !== undefined &&
+      batch.length > 0 &&
+      batch[0]!.length !== expectedDims
+    ) {
+      return { ok: false, error: new NativeWorkerError("protocol").detail };
+    }
+    return { ok: true, value: batch };
+  }
   try {
     return {
       ok: true,
@@ -177,8 +199,13 @@ export class NativeEmbeddingPort extends NativePort implements EmbeddingPort {
           error: new NativeWorkerError("stale_generation").detail,
         };
       options = inferenceOptions(options);
-      const initialized = await this.ensureIdentity(options);
-      if (!initialized.ok) return initialized;
+      // Warm fast path: when identity is already valid for the current worker
+      // generation, avoid awaiting a microtask before dispatching operation()
+      // so IPC writes immediately before the caller runs overlapped SQLite work.
+      if (!this.getIdentity()) {
+        const initialized = await this.ensureIdentity(options);
+        if (!initialized.ok) return initialized;
+      }
       if (version !== this.version || this.disposing)
         return {
           ok: false,

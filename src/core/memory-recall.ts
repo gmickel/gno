@@ -284,9 +284,32 @@ async function retrieveLegs(
     return { legs, retrieval };
   }
 
+  // Start lexical search immediately and probe whether any eligible fact exists
+  // (limit: 1, no full-table fetch) so empty scopes short-circuit to hybrid mode
+  // without invoking the embedding provider.
+  const lexicalPromise = searchLexical(deps, input);
+  const probe = await store.listMemoryEligibleDocuments({
+    collection,
+    scopes,
+    excludeSuperseded: true,
+    limit: 1,
+  });
+  if (!probe.ok) {
+    await lexicalPromise.catch(() => undefined);
+    throw new MemoryError("MEMORY_QUERY_FAILED", probe.error.message);
+  }
+  if (probe.value.length === 0) {
+    const lexical = await lexicalPromise;
+    if (lexical) {
+      legs.push({ source: "bm25", results: lexical });
+    }
+    retrieval.mode = "hybrid";
+    return { legs, retrieval };
+  }
+
   // Overlap query embedding with BM25 lexical retrieval.
   const [lexical, embedded] = await Promise.all([
-    searchLexical(deps, input),
+    lexicalPromise,
     embedPort.embed(query),
   ]);
   if (lexical) {
@@ -350,9 +373,26 @@ async function materializeFacts(
   const hashes = [
     ...new Set(eligible.map(({ result }) => result.conversion!.mirrorHash!)),
   ];
+  let contentByHash: Map<string, string>;
   const contentBatch = await getContentBatch(deps.store, hashes);
-  if (!contentBatch.ok) return [];
-  const contentByHash = contentBatch.value;
+  if (contentBatch.ok) {
+    contentByHash = contentBatch.value;
+  } else {
+    // Fall back to independent per-hash reads so a single unreadable mirror
+    // never drops other healthy facts.
+    contentByHash = new Map<string, string>();
+    const perHash = await Promise.all(
+      hashes.map(async (hash) => ({
+        hash,
+        res: await deps.store.getContent(hash),
+      }))
+    );
+    for (const { hash, res } of perHash) {
+      if (res.ok && res.value !== null) {
+        contentByHash.set(hash, res.value);
+      }
+    }
+  }
 
   const materialized: Array<{ fact: RecalledFact; rank: number }> = [];
   for (const { result, rank } of eligible) {
@@ -386,7 +426,8 @@ async function materializeFacts(
  * Facts carry no facets, so the selector fills the budget in retrieval-rank
  * order (per-fact facets would make it prefer the shortest facts).
  * Precomputes per-fact (bytes, tokens) once via Buffer.byteLength and tracks
- * prefix sums incrementally so projection stays O(K) instead of O(K^2).
+ * the accepted prefix separately from proposed tails so both accepted and
+ * rejected proposals run in O(1) (strictly O(K) total).
  */
 function selectWithinBudget(
   materialized: Array<{ fact: RecalledFact; rank: number }>,
@@ -399,10 +440,18 @@ function selectWithinBudget(
     return { fact, rank, bytes, tokens };
   });
 
-  let cachedLength = 0;
-  let cachedTailId: string | null = null;
-  let cachedBytes = 0;
-  let cachedTokens = 0;
+  // Accepted prefix (confirmed across subsequent proposals) kept separate from
+  // the last proposed tail so consecutive rejections never invalidate the prefix.
+  let prefixLength = 0;
+  let prefixTailId: string | null = null;
+  let prefixBytes = 0;
+  let prefixTokens = 0;
+  let lastProposal: {
+    length: number;
+    tailId: string;
+    bytes: number;
+    tokens: number;
+  } | null = null;
 
   const selection = selectContextEvidence({
     candidates: measured.map(({ fact, rank, bytes, tokens }) => ({
@@ -432,51 +481,60 @@ function selectWithinBudget(
       const selected = state.selected;
       const len = selected.length;
       if (len === 0) {
-        cachedLength = 0;
-        cachedTailId = null;
-        cachedBytes = 0;
-        cachedTokens = 0;
+        prefixLength = 0;
+        prefixTailId = null;
+        prefixBytes = 0;
+        prefixTokens = 0;
+        lastProposal = null;
         return { value: selected, usedBytes: 0, usedTokens: 0 };
       }
       const tail = selected[len - 1]!;
       let usedBytes: number;
       let usedTokens: number;
+
       if (
-        len === cachedLength + 1 &&
-        (cachedLength === 0 ||
-          selected[cachedLength - 1]?.candidateId === cachedTailId)
+        lastProposal !== null &&
+        len === lastProposal.length + 1 &&
+        selected[lastProposal.length - 1]?.candidateId === lastProposal.tailId
       ) {
-        usedBytes = cachedBytes + tail.value.bytes;
-        usedTokens = cachedTokens + tail.value.tokens;
+        // The previous proposal was accepted by the selector: promote it into
+        // the stable prefix in O(1), then add the new proposed tail.
+        prefixLength = lastProposal.length;
+        prefixTailId = lastProposal.tailId;
+        prefixBytes = lastProposal.bytes;
+        prefixTokens = lastProposal.tokens;
+        usedBytes = prefixBytes + tail.value.bytes;
+        usedTokens = prefixTokens + tail.value.tokens;
       } else if (
-        len === cachedLength &&
-        len > 1 &&
-        selected[len - 2]?.candidateId === cachedTailId
+        len === prefixLength + 1 &&
+        (prefixLength === 0 ||
+          selected[prefixLength - 1]?.candidateId === prefixTailId)
       ) {
-        // Common rollback-and-try-next pattern in selectContextEvidence:
-        // prefix up to len - 2 stayed unchanged.
-        let prefixBytes = 0;
-        let prefixTokens = 0;
+        // The previous proposal was rejected; the accepted prefix is unchanged
+        // and we only add the new proposed candidate's precomputed cost in O(1).
+        usedBytes = prefixBytes + tail.value.bytes;
+        usedTokens = prefixTokens + tail.value.tokens;
+      } else {
+        // Fallback for non-incremental jumps: recompute stable prefix 0..len-2.
+        prefixBytes = 0;
+        prefixTokens = 0;
         for (let i = 0; i < len - 1; i += 1) {
           prefixBytes += selected[i]!.value.bytes;
           prefixTokens += selected[i]!.value.tokens;
         }
+        prefixLength = len - 1;
+        prefixTailId =
+          prefixLength > 0 ? selected[prefixLength - 1]!.candidateId : null;
         usedBytes = prefixBytes + tail.value.bytes;
         usedTokens = prefixTokens + tail.value.tokens;
-      } else {
-        usedBytes = 0;
-        usedTokens = 0;
-        for (let i = 0; i < len; i += 1) {
-          usedBytes += selected[i]!.value.bytes;
-          usedTokens += selected[i]!.value.tokens;
-        }
       }
-      // Only cache the accepted prefix; if the next call keeps tail at len - 1,
-      // the fast path hits in O(1).
-      cachedLength = len;
-      cachedTailId = tail.candidateId;
-      cachedBytes = usedBytes;
-      cachedTokens = usedTokens;
+
+      lastProposal = {
+        length: len,
+        tailId: tail.candidateId,
+        bytes: usedBytes,
+        tokens: usedTokens,
+      };
       return { value: selected, usedBytes, usedTokens };
     },
   });

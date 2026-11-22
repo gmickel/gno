@@ -1,3 +1,5 @@
+import type { Token } from "node-llama-cpp";
+
 import type { NativeEvaluationOptions } from "../native-worker/evaluation";
 import type { LlmResult, RerankPort, RerankScore } from "../types";
 /**
@@ -9,7 +11,7 @@ import type { ModelManager } from "./lifecycle";
 
 import { inferenceFailedError } from "../errors";
 import { checkEvaluation, startEvaluation } from "../native-worker/evaluation";
-import { getRerankCapacity } from "./rerank-capacity";
+import { prepareRerankBatch } from "./rerank-capacity";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -28,13 +30,30 @@ const RERANK_HYSTERESIS_MIN_TOKENS = 2048;
 const DUAL_RERANK_MIN_CPU_CORES = 12;
 const DUAL_RERANK_THREADS_PER_CONTEXT = 6;
 
+function supportsTokenRankAll(context: LlamaRankingContext): boolean {
+  return (
+    typeof context.rankAll === "function" &&
+    typeof (context as { _evaluateRankingForInput?: unknown })
+      ._evaluateRankingForInput === "function"
+  );
+}
+
 async function scoreUniqueWithContext(
   context: LlamaRankingContext,
   query: string,
-  uniqueDocs: string[]
+  uniqueDocs: string[],
+  queryTokens?: Token[],
+  docTokens?: Token[][]
 ): Promise<number[]> {
   if (typeof context.rankAll === "function") {
-    const raw = await context.rankAll(query, uniqueDocs);
+    const usePreTokenized =
+      queryTokens !== undefined &&
+      docTokens !== undefined &&
+      docTokens.length === uniqueDocs.length &&
+      supportsTokenRankAll(context);
+    const raw = usePreTokenized
+      ? await context.rankAll(queryTokens, docTokens)
+      : await context.rankAll(query, uniqueDocs);
     if (raw.length !== uniqueDocs.length) {
       throw new Error("Rerank returned incomplete scores");
     }
@@ -180,7 +199,8 @@ export class NodeLlamaCppRerank implements RerankPort {
         docToUniqueIndex[i] = u;
       }
 
-      const capacity = getRerankCapacity(llamaModel, query, uniqueDocs);
+      const prepared = prepareRerankBatch(llamaModel, query, uniqueDocs);
+      const { capacity, queryTokens, documentTokens } = prepared;
       const contextSize =
         capacity.kind === "sized" ? capacity.contextSize : undefined;
       const configuration = JSON.stringify([
@@ -239,8 +259,14 @@ export class NodeLlamaCppRerank implements RerankPort {
         const buckets: Array<{
           indices: number[];
           docs: string[];
+          tokens: Token[][];
           load: number;
-        }> = this.contexts.map(() => ({ indices: [], docs: [], load: 0 }));
+        }> = this.contexts.map(() => ({
+          indices: [],
+          docs: [],
+          tokens: [],
+          load: 0,
+        }));
         for (const item of order) {
           let lightest = buckets[0]!;
           for (let b = 1; b < buckets.length; b += 1) {
@@ -250,12 +276,21 @@ export class NodeLlamaCppRerank implements RerankPort {
           }
           lightest.indices.push(item.idx);
           lightest.docs.push(uniqueDocs[item.idx]!);
+          if (documentTokens) {
+            lightest.tokens.push(documentTokens[item.idx]!);
+          }
           lightest.load += item.len;
         }
         const bucketResults = await Promise.all(
           buckets.map((bucket, idx) =>
             bucket.docs.length > 0
-              ? scoreUniqueWithContext(this.contexts[idx]!, query, bucket.docs)
+              ? scoreUniqueWithContext(
+                  this.contexts[idx]!,
+                  query,
+                  bucket.docs,
+                  queryTokens,
+                  documentTokens ? bucket.tokens : undefined
+                )
               : Promise.resolve([] as number[])
           )
         );
@@ -271,7 +306,9 @@ export class NodeLlamaCppRerank implements RerankPort {
         uniqueScores = await scoreUniqueWithContext(
           this.contexts[0]!,
           query,
-          uniqueDocs
+          uniqueDocs,
+          queryTokens,
+          documentTokens
         );
       }
       checkEvaluation(options);

@@ -521,6 +521,7 @@ export const materializeContextEvidenceCandidates = async (
 };
 
 interface SqliteMutationWatermark {
+  db: unknown;
   dataVersion: number;
   totalChanges: number;
   contextGeneration: number;
@@ -566,6 +567,7 @@ function captureSqliteMutationWatermark(
       .get();
     if (!dataVersionRow || !totalChangesRow) return null;
     return {
+      db,
       dataVersion: dataVersionRow.data_version,
       totalChanges: totalChangesRow.total_changes,
       contextGeneration: probe.getContextGeneration(),
@@ -582,6 +584,7 @@ function sameSqliteMutationWatermark(
   return (
     before !== null &&
     after !== null &&
+    before.db === after.db &&
     before.dataVersion === after.dataVersion &&
     before.totalChanges === after.totalChanges &&
     before.contextGeneration === after.contextGeneration
@@ -593,14 +596,14 @@ export const compileContextEvidence = async <P>(
   input: ContextEvidenceCompilerInput,
   deps: ContextEvidenceCompilerDeps<P>
 ): Promise<CompiledContextEvidence<P>> => {
+  // Capture the SQLite watermark BEFORE any initial snapshot read so a write
+  // landing mid-snapshot invalidates the zero-mutation fast path.
+  const watermarkBefore = captureSqliteMutationWatermark(deps.store);
   const before = await captureContextEvidenceSnapshot(
     deps.store,
     input.indexName,
     input.collections
   );
-  // Capture the SQLite watermark right after the `before` snapshot so any
-  // commit or context change during planning invalidates the fast path.
-  const watermarkBefore = captureSqliteMutationWatermark(deps.store);
   const fingerprints = {
     contextFingerprint: before.contextFingerprint,
     indexFingerprint: before.indexFingerprint,

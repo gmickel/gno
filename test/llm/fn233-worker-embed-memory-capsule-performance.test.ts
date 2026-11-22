@@ -12,6 +12,7 @@ import type { ModelManager } from "../../src/llm/nodeLlamaCpp/lifecycle";
 import { compileContextEvidence } from "../../src/core/context-evidence";
 import { analyzeGraphCommunities } from "../../src/core/graph-analysis";
 import { truncateText } from "../../src/core/links";
+import { embedBacklog } from "../../src/embed/backlog";
 import { ModelCache, validateGgufFile } from "../../src/llm/cache";
 import { prepareClassifiedHttpDestination } from "../../src/llm/http-policy";
 import { HttpEmbedding } from "../../src/llm/httpEmbedding";
@@ -39,13 +40,11 @@ import {
   RERANK_TEMPLATE,
 } from "../../src/llm/nodeLlamaCpp/rerank-capacity";
 import { renderThread } from "../../src/sessions/archive";
-import {
-  compileRedactionPolicy,
-  ThreadSanitizer,
-} from "../../src/sessions/sanitize";
+import { ThreadSanitizer } from "../../src/sessions/sanitize";
 import { migration } from "../../src/store/migrations/028-vector-variants";
 import { migration as runtimeMigration } from "../../src/store/migrations/031-runtime-independent-vectors";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
+import { createVectorStatsPort } from "../../src/store/vector/stats";
 import { createVectorVariantStore } from "../../src/store/vector/variants";
 
 const tempDirs: string[] = [];
@@ -574,8 +573,7 @@ describe("fn-233 R4: session sanitizer fast-reject prefilter & zero-secret path"
     }
 
     // Reusable sanitizer + zero-secret fast path matches fresh renderThread.
-    const compiled = compileRedactionPolicy({ literals: ["internal-host"] });
-    const reusable = ThreadSanitizer.fromCompiled(compiled);
+    const reusable = new ThreadSanitizer({ literals: ["internal-host"] });
     const thread = {
       harness: "codex" as const,
       sessionId: "s1",
@@ -612,7 +610,6 @@ describe("fn-233 R4: session sanitizer fast-reject prefilter & zero-secret path"
       unitLocator: "rollout.jsonl",
       parser: "codex-v1",
       redaction: { literals: ["internal-host"] },
-      compiledRedaction: compiled,
       sanitizer: reusable,
     });
     expect(reused).toEqual(fresh);
@@ -770,5 +767,152 @@ describe("fn-233 R6: Context Capsule zero-mutation fast path, graph & truncateTe
     expect(truncateText("hello", 10)).toBe("hello");
     expect(truncateText("hello world", 5)).toBe("hello");
     expect(truncateText("🚀🔥✨🎉", 2)).toBe("🚀🔥");
+  });
+
+  test("reused HttpEmbedding port enforces live collection policy tightening immediately", async () => {
+    const collections = [
+      {
+        name: "notes",
+        path: "/tmp/notes",
+        pattern: "**/*",
+        include: [],
+        exclude: [],
+        egressPolicy: "remote" as "remote" | "local_only",
+      },
+    ];
+    let fetches = 0;
+    const port = new HttpEmbedding("https://provider.example/v1/embeddings#m", {
+      collections,
+      collectionNames: ["notes"],
+      env: {},
+      resolver: { lookup: async () => ["93.184.216.34"] },
+      fetchFn: async () => {
+        fetches += 1;
+        return Response.json({
+          data: [{ index: 0, embedding: [0.1, 0.2], object: "embedding" }],
+          model: "m",
+          object: "list",
+          usage: { prompt_tokens: 1, total_tokens: 1 },
+        });
+      },
+    });
+    expect((await port.embed("allowed")).ok).toBe(true);
+    expect(fetches).toBe(1);
+
+    // Tighten policy in-place: the existing port must deny immediately.
+    collections[0]!.egressPolicy = "local_only";
+    const denied = await port.embed("must-deny");
+    expect(denied.ok).toBe(false);
+    if (!denied.ok) expect(denied.error.code).toBe("EGRESS_DENIED");
+    expect(fetches).toBe(1);
+  });
+
+  test("native double-buffer carries shared vectors across adjacent pages even when producer owner goes stale", async () => {
+    const db = new Database(":memory:");
+    dbs.push(db);
+    db.exec(`CREATE TABLE schema_meta(key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT);
+      CREATE TABLE documents(id INTEGER PRIMARY KEY, mirror_hash TEXT, title TEXT, active INTEGER, collection TEXT);
+      CREATE TABLE content_chunks(mirror_hash TEXT, seq INTEGER, text TEXT, PRIMARY KEY(mirror_hash, seq));
+      INSERT INTO content_chunks VALUES ('m1', 0, 'Shared body');
+      INSERT INTO documents VALUES (1, 'm1', 'SameTitle', 1, 'docs');
+      INSERT INTO documents VALUES (2, 'm1', 'SameTitle', 1, 'docs');`);
+    migration.up(db, "unicode61");
+    runtimeMigration.up(db, "unicode61");
+    const store = await createVectorVariantStore(db, {
+      model: "test-model",
+      modelFingerprint: "fp",
+      contextSize: 512,
+      truncationPolicy: "tail-v1",
+      dimensions: 3,
+    });
+    let embedCalls = 0;
+    const port = {
+      modelUri: "test-model",
+      init: async () => ({ ok: true as const, value: undefined }),
+      embed: async () => ({ ok: true as const, value: [1, 2, 3] }),
+      embedBatch: async (texts: string[]) => {
+        embedCalls += 1;
+        // Deactivate page 1's owner during inference so page 1 writes nothing.
+        db.run("UPDATE documents SET active = 0 WHERE id = 1");
+        return { ok: true as const, value: texts.map(() => [1, 2, 3]) };
+      },
+      dimensions: () => 3,
+      dispose: async () => {},
+    };
+    const res = await embedBacklog({
+      statsPort: createVectorStatsPort(db),
+      embedPort: port,
+      vectorIndex: {
+        model: "test-model",
+        dimensions: 3,
+        searchAvailable: false,
+        vecDirty: false,
+        upsertVectors: async () => ({ ok: true, value: undefined }),
+        deleteVectorsForMirror: async () => ({ ok: true, value: undefined }),
+        searchNearest: async () => ({ ok: true, value: [] }),
+        syncVecIndex: async () => ({
+          ok: true,
+          value: { added: 0, removed: 0 },
+        }),
+        rebuildVecIndex: async () => ({ ok: true, value: undefined }),
+      },
+      modelUri: "test-model",
+      variantStore: store,
+      batchSize: 1,
+      identityStillCurrent: () => true,
+    });
+    expect(res).toMatchObject({ ok: true, value: { embedded: 1, errors: 0 } });
+    expect(embedCalls).toBe(1);
+    expect(store.pending()).toEqual([]);
+  });
+
+  test("NodeLlamaCppRerank passes pre-tokenized query and documents to native rankAll without re-tokenizing", async () => {
+    let queryTokenizerCalls = 0;
+    let docTokenizerCalls = 0;
+    const receivedInputs: Array<{ query: unknown; docs: unknown[] }> = [];
+    const model = {
+      disposed: false,
+      fileInfo: {
+        metadata: {
+          general: { architecture: "qwen3" },
+          tokenizer: { "chat_template.rerank": RERANK_TEMPLATE },
+        },
+      },
+      vocabularyType: "bpe",
+      tokens: {},
+      tokenize: (text: string) => Array.from(text, () => 1),
+      tokenizer: (text: string) => {
+        if (text === "q") queryTokenizerCalls += 1;
+        else docTokenizerCalls += 1;
+        return Array.from(text, (_, idx) => idx + 10);
+      },
+      trainContextSize: 8192,
+      async createRankingContext() {
+        return {
+          disposed: false,
+          _evaluateRankingForInput: async () => 0.5,
+          async rankAll(q: unknown, docs: unknown[]) {
+            receivedInputs.push({ query: q, docs: [...docs] });
+            return docs.map(() => 0.8);
+          },
+          async dispose() {},
+        };
+      },
+    };
+    const manager = {
+      acquireLease: () => ({ release: () => {} }),
+      getLlama: async () => ({ gpu: "metal", cpuMathCores: 8 }),
+      loadModel: async () => ({ ok: true, value: { model } }),
+    } as unknown as ModelManager;
+    const port = new NodeLlamaCppRerank(manager, "rerank", "rerank.gguf");
+    const res = await port.rerank("q", ["alpha", "beta", "alpha"]);
+    expect(res.ok).toBe(true);
+    expect(queryTokenizerCalls).toBe(1);
+    expect(docTokenizerCalls).toBe(2);
+    expect(Array.isArray(receivedInputs[0]?.query)).toBe(true);
+    expect(
+      (receivedInputs[0]?.docs ?? []).every((entry) => Array.isArray(entry))
+    ).toBe(true);
+    await port.dispose();
   });
 });
