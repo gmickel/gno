@@ -911,6 +911,70 @@ describe("fn-232 R6: MCP RW lock, WeakMap strict schema cache, and warm port cac
       // Shutdown disposes the retired port cleanly
       await reloadCtx.disposeModels?.();
       expect(disposed).toBe(true);
+
+      // Concurrent cold misses must NOT dispose the slower port mid-flight
+      // (native ports share a ModelManager slot), deferring disposal to shutdown.
+      let raceDisposed = 0;
+      let releaseFirst: (() => void) | null = null;
+      let releaseSecond: (() => void) | null = null;
+      let createCount = 0;
+      const raceAdapter = {
+        createEmbeddingPort: async () => {
+          createCount += 1;
+          const idx = createCount;
+          await new Promise<void>((resolve) => {
+            if (idx === 1) releaseFirst = resolve;
+            else releaseSecond = resolve;
+          });
+          return {
+            ok: true as const,
+            value: {
+              modelUri: "embed-race-test",
+              init: async () => ({ ok: true as const, value: undefined }),
+              embed: async () => ({ ok: true as const, value: [1, 0] }),
+              embedBatch: async () => ({ ok: true as const, value: [[1, 0]] }),
+              dimensions: () => 2,
+              dispose: async () => {
+                raceDisposed += 1;
+              },
+            },
+          };
+        },
+        dispose: async () => undefined,
+      };
+      const raceCtx = createToolContext({
+        store,
+        getConfig: () => activeConfig,
+        setConfig: (next) => {
+          activeConfig = next;
+        },
+        actualConfigPath: join(dir, "index.yml"),
+        indexName: "default",
+        toolMutex: new Mutex(),
+        jobManager: {} as never,
+        serverInstanceId: "test-inst-race",
+        writeLockPath: join(dir, "write.lock"),
+        enableWrite: false,
+        isShuttingDown: () => false,
+        getModelAdapter: () => raceAdapter as never,
+      });
+      const opts = {
+        policy: { offline: true, allowDownload: false },
+        egressCollections: "all" as const,
+      };
+      const p1 = raceCtx.getCachedEmbeddingPort?.("embed-race-test", opts);
+      const p2 = raceCtx.getCachedEmbeddingPort?.("embed-race-test", opts);
+      releaseFirst!();
+      const r1 = await p1;
+      releaseSecond!();
+      const r2 = await p2;
+      expect(r1?.ok && r2?.ok).toBe(true);
+      if (r1?.ok && r2?.ok) {
+        expect(r2.value).toBe(r1.value);
+      }
+      expect(raceDisposed).toBe(0);
+      await raceCtx.disposeModels?.();
+      expect(raceDisposed).toBe(2);
     } finally {
       await store.close();
     }

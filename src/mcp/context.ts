@@ -403,7 +403,10 @@ export function createToolContext(
       }
       const existing = cachedEmbedPorts.get(key);
       if (existing) {
-        void res.value.dispose();
+        // Do NOT call res.value.dispose() while existing is active: native
+        // ports share the same ModelManager slot and dispose() unloads it.
+        // Defer disposal to shutdown (`disposeModels`) via retiredPorts.
+        retiredPorts.add(res.value);
         return { ok: true, value: existing };
       }
       cachedEmbedPorts.set(key, res.value);
@@ -440,7 +443,7 @@ export function createToolContext(
       }
       const existing = cachedExpandPorts.get(key);
       if (existing) {
-        void res.value.dispose();
+        retiredPorts.add(res.value);
         return { ok: true, value: existing };
       }
       cachedExpandPorts.set(key, res.value);
@@ -477,7 +480,7 @@ export function createToolContext(
       }
       const existing = cachedRerankPorts.get(key);
       if (existing) {
-        void res.value.dispose();
+        retiredPorts.add(res.value);
         return { ok: true, value: existing };
       }
       cachedRerankPorts.set(key, res.value);
