@@ -200,9 +200,12 @@ export function CaptureModal({
     ).then(({ data }) => {
       const rawList = Array.isArray(data) ? data : data?.collections;
       if (rawList) {
-        // Preserve alphabetical name ordering matching /api/status so first-use
-        // default collection selection stays deterministic across config order.
-        const list = [...rawList].sort((a, b) => a.name.localeCompare(b.name));
+        // Preserve SQLite ORDER BY name (code-point / BINARY order) matching
+        // /api/status so first-use default collection selection is identical
+        // even for names like `a-b` vs `a_b`.
+        const list = [...rawList].sort((a, b) =>
+          a.name < b.name ? -1 : a.name > b.name ? 1 : 0
+        );
         setCollections(list.map((c) => ({ name: c.name, path: c.path })));
 
         const requestedCollection = defaultCollection.trim();

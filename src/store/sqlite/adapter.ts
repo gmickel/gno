@@ -2959,12 +2959,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     try {
       const db = this.ensureOpen();
       const query = options.query.trim().toLowerCase();
-      // Preserve Array.prototype.slice(0, limit) semantics (including fractional
-      // numbers such as 1.5 -> 1, capped at 20, floored at 0).
-      const rawLimit = Number.isFinite(options.limit)
-        ? Math.trunc(options.limit)
-        : 8;
-      const limit = Math.max(0, Math.min(rawLimit, 20));
+      // Preserve Array.prototype.slice(0, limit) semantics identically
+      // (including fractional limits like 1.5 -> 1 and negative limits like -1).
+      const sliceLimit = Math.min(options.limit, 20);
+      if (sliceLimit === 0) {
+        return ok([]);
+      }
       const isAsciiSingleSegment =
         query.length > 0 && !/[^\x20-\x7f]/.test(query) && !query.includes(" ");
 
@@ -3020,7 +3020,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           return `${doc.title} ${doc.uri}`.toLowerCase().includes(query);
         })
         .sort((a, b) => a.title.localeCompare(b.title))
-        .slice(0, limit);
+        .slice(0, sliceLimit);
 
       return ok(candidates);
     } catch (cause) {

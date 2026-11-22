@@ -484,6 +484,16 @@ describe("fn-232 R3: REST SQL lookups, browse tree, date fields cache, and JSON 
         expect(collationRes.value[0]?.title).toBe("Äardvark");
       }
 
+      // Negative limit matches Array.prototype.slice(0, -1) (5 docs -> 4 docs)
+      const negativeLimitRes = await store.searchDocumentsForAutocomplete({
+        query: "",
+        limit: -1,
+      });
+      expect(negativeLimitRes.ok).toBe(true);
+      if (negativeLimitRes.ok) {
+        expect(negativeLimitRes.value).toHaveLength(4);
+      }
+
       // Rolled-back transaction must NOT poison getCollectionDateFields cache
       const rawDb = store.getRawDb();
       rawDb.run("BEGIN");
@@ -843,6 +853,64 @@ describe("fn-232 R6: MCP RW lock, WeakMap strict schema cache, and warm port cac
       await lazyB?.searchNearest(new Float32Array([1, 0, 0, 0]), 1);
       expect(initCallsA).toBe(1);
       expect(initCallsB).toBe(1);
+
+      // Config reload mid-open must NOT return an already-disposed port
+      let disposed = false;
+      let releaseOpen: (() => void) | null = null;
+      const openGate = new Promise<void>((resolve) => {
+        releaseOpen = resolve;
+      });
+      const fakeAdapter = {
+        createEmbeddingPort: async () => {
+          await openGate;
+          return {
+            ok: true as const,
+            value: {
+              modelUri: "embed-reload-test",
+              init: async () => ({ ok: true as const, value: undefined }),
+              embed: async () => ({ ok: true as const, value: [1, 0] }),
+              embedBatch: async () => ({ ok: true as const, value: [[1, 0]] }),
+              dimensions: () => 2,
+              dispose: async () => {
+                disposed = true;
+              },
+            },
+          };
+        },
+        dispose: async () => undefined,
+      };
+      const reloadCtx = createToolContext({
+        store,
+        getConfig: () => activeConfig,
+        setConfig: (next) => {
+          activeConfig = next;
+        },
+        actualConfigPath: join(dir, "index.yml"),
+        indexName: "default",
+        toolMutex: new Mutex(),
+        jobManager: {} as never,
+        serverInstanceId: "test-inst-reload",
+        writeLockPath: join(dir, "write.lock"),
+        enableWrite: false,
+        isShuttingDown: () => false,
+        getModelAdapter: () => fakeAdapter as never,
+      });
+      const pendingOpen = reloadCtx.getCachedEmbeddingPort?.(
+        "embed-reload-test",
+        {
+          policy: { offline: true, allowDownload: false },
+          egressCollections: "all",
+        }
+      );
+      // Config changes while port is opening
+      reloadCtx.config = { ...activeConfig, ftsTokenizer: "unicode61" };
+      releaseOpen!();
+      const opened = await pendingOpen;
+      expect(opened?.ok).toBe(true);
+      expect(disposed).toBe(false);
+      // Shutdown disposes the retired port cleanly
+      await reloadCtx.disposeModels?.();
+      expect(disposed).toBe(true);
     } finally {
       await store.close();
     }

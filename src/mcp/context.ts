@@ -260,6 +260,9 @@ export function createToolContext(
   const cachedEmbedPorts = new Map<string, EmbeddingPort>();
   const cachedExpandPorts = new Map<string, GenerationPort>();
   const cachedRerankPorts = new Map<string, RerankPort>();
+  // Ports superseded by a config reload remain live for any in-flight caller
+  // until shutdown (`disposeModels`) drains requests and disposes all ports.
+  const retiredPorts = new Set<{ dispose(): Promise<void> }>();
   const cachedVectorIndexes = new Map<
     string,
     Promise<StoreResult<VectorIndexPort>>
@@ -289,29 +292,37 @@ export function createToolContext(
     return `${uri}\u0001${egressKey}\u0001${policyKey}`;
   };
 
-  const disposeCachedPorts = async (): Promise<void> => {
+  const evictCachedPortsForConfigChange = (): void => {
     cachedPortGeneration += 1;
-    const disposals: Promise<unknown>[] = [];
     for (const port of cachedEmbedPorts.values()) {
-      disposals.push(Promise.resolve().then(() => port.dispose()));
+      retiredPorts.add(port);
     }
     for (const port of cachedExpandPorts.values()) {
-      disposals.push(Promise.resolve().then(() => port.dispose()));
+      retiredPorts.add(port);
     }
     for (const port of cachedRerankPorts.values()) {
-      disposals.push(Promise.resolve().then(() => port.dispose()));
+      retiredPorts.add(port);
     }
     cachedEmbedPorts.clear();
     cachedExpandPorts.clear();
     cachedRerankPorts.clear();
     cachedVectorIndexes.clear();
     cachedPortConfig = null;
+  };
+
+  const disposeAllCachedPorts = async (): Promise<void> => {
+    evictCachedPortsForConfigChange();
+    const disposals: Promise<unknown>[] = [];
+    for (const port of retiredPorts) {
+      disposals.push(Promise.resolve().then(() => port.dispose()));
+    }
+    retiredPorts.clear();
     await Promise.allSettled(disposals);
   };
 
   const ensurePortCacheForConfig = (config: Config): void => {
     if (cachedPortConfig !== null && cachedPortConfig !== config) {
-      void disposeCachedPorts();
+      evictCachedPortsForConfigChange();
     }
     cachedPortConfig = config;
   };
@@ -335,7 +346,7 @@ export function createToolContext(
     },
     set config(config: Config) {
       if (cachedPortConfig !== null && cachedPortConfig !== config) {
-        void disposeCachedPorts();
+        evictCachedPortsForConfigChange();
       }
       options.setConfig?.(config);
     },
@@ -373,8 +384,21 @@ export function createToolContext(
       if (!res.ok) {
         return res;
       }
-      if (modelsClosed || generation !== cachedPortGeneration) {
-        void res.value.dispose();
+      if (modelsClosed) {
+        await res.value.dispose();
+        return {
+          ok: false,
+          error: {
+            code: "MODEL_LOAD_FAILED",
+            message: "Resident runtime is shutting down",
+            retryable: false,
+          },
+        };
+      }
+      if (generation !== cachedPortGeneration) {
+        // Keep the opened port live for this in-flight snapshot caller;
+        // disposeModels() will clean it up after shutdown drains requests.
+        retiredPorts.add(res.value);
         return res;
       }
       const existing = cachedEmbedPorts.get(key);
@@ -399,8 +423,19 @@ export function createToolContext(
       if (!res.ok) {
         return res;
       }
-      if (modelsClosed || generation !== cachedPortGeneration) {
-        void res.value.dispose();
+      if (modelsClosed) {
+        await res.value.dispose();
+        return {
+          ok: false,
+          error: {
+            code: "MODEL_LOAD_FAILED",
+            message: "Resident runtime is shutting down",
+            retryable: false,
+          },
+        };
+      }
+      if (generation !== cachedPortGeneration) {
+        retiredPorts.add(res.value);
         return res;
       }
       const existing = cachedExpandPorts.get(key);
@@ -425,8 +460,19 @@ export function createToolContext(
       if (!res.ok) {
         return res;
       }
-      if (modelsClosed || generation !== cachedPortGeneration) {
-        void res.value.dispose();
+      if (modelsClosed) {
+        await res.value.dispose();
+        return {
+          ok: false,
+          error: {
+            code: "MODEL_LOAD_FAILED",
+            message: "Resident runtime is shutting down",
+            retryable: false,
+          },
+        };
+      }
+      if (generation !== cachedPortGeneration) {
+        retiredPorts.add(res.value);
         return res;
       }
       const existing = cachedRerankPorts.get(key);
@@ -481,7 +527,7 @@ export function createToolContext(
     },
     disposeModels: async (disposeOptions) => {
       modelsClosed = true;
-      await disposeCachedPorts();
+      await disposeAllCachedPorts();
       await Promise.all(
         [...adapters.values()].map((adapter) => adapter.dispose(disposeOptions))
       );

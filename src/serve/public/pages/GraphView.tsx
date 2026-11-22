@@ -366,7 +366,7 @@ export default function GraphView({ navigate }: PageProps) {
       const list = Array.isArray(data) ? data : data?.collections;
       if (list) {
         setCollections(
-          list.map((c) => c.name).sort((a, b) => a.localeCompare(b))
+          list.map((c) => c.name).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
         );
       }
     };
