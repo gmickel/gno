@@ -8,7 +8,7 @@
   "priority": null,
   "spec": "fn-233-lossless-llm-worker-memory-capsule-and",
   "spec_path": ".flow/tasks/fn-233-lossless-llm-worker-memory-capsule-and.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement lossless LLM worker, embedding, sessions, memory, capsule, and core/publish optimizations",
   "updated_at": "2026-11-22T13:24:12.594093Z"
 }

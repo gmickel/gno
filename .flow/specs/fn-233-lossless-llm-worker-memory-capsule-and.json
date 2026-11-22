@@ -576,7 +576,7 @@
     "impl:fn-233-lossless-llm-worker-memory-capsule-and.1": 0
   },
   "spec_path": ".flow/specs/fn-233-lossless-llm-worker-memory-capsule-and.md",
-  "status": "open",
+  "status": "done",
   "title": "Lossless LLM worker, memory, capsule, and session speed",
   "tracker": {
     "baseHashFlow": null,
@@ -589,5 +589,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-11-22T14:26:23.554855Z"
+  "updated_at": "2026-11-22T14:27:40.766181Z"
 }
