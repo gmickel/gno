@@ -584,7 +584,7 @@
     "impl:fn-232-lossless-cli-serve-watcher-web-ui-and.1": 0
   },
   "spec_path": ".flow/specs/fn-232-lossless-cli-serve-watcher-web-ui-and.md",
-  "status": "open",
+  "status": "done",
   "title": "Lossless CLI, serve, watcher, Web UI, and MCP performance",
   "tracker": {
     "baseHashFlow": null,
@@ -597,5 +597,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-11-22T08:43:46.993877Z"
+  "updated_at": "2026-11-22T12:40:12.924018Z"
 }

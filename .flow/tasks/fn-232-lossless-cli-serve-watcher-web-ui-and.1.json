@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-232-lossless-cli-serve-watcher-web-ui-and",
   "spec_path": ".flow/tasks/fn-232-lossless-cli-serve-watcher-web-ui-and.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Lossless CLI, serve, watcher, Web UI, and MCP performance",
   "updated_at": "2026-11-22T07:29:38.159270Z"
 }
