@@ -1,0 +1,56 @@
+{
+  "branch": "fn-231-lossless-ingestion-converter-and-graph",
+  "findings": {
+    "backend": "receipt",
+    "headSha": "55215e21f20e02ea3200459a33f5f97a92a0cd59",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-3d53176eb47a748006d2214ca3939625ad18f6fdbe632639e2ef564a8648ea50"
+  },
+  "head_sha": "55215e21f20e02ea3200459a33f5f97a92a0cd59",
+  "id": "fn-231-lossless-ingestion-converter-and-graph",
+  "mode": "receipt",
+  "na_reason": "All acceptance criteria (R1-R7) are internal ingestion, converter, walker, chunker, language-detector, canonicalization, and graph-reconciliation backend optimizations with no user-observable Web/desktop UI surface; verified by 2,683+ unit/integration tests across ingestion/converters/store/pipeline/audit/sdk/cli/mcp, 15 dedicated fn-231 performance & regression tests, cold createDefaultRegistry()+Markdown benchmark (2.63 ms vs 68.2 ms baseline), typecheck (0 errors), oxlint (0 warnings/errors), eval:memory (100%), eval:sessions (100%), and 3 rounds of Codex impl-review (SHIP).",
+  "open_p0p1": [],
+  "qa_outcome": "NA",
+  "rid_coverage": {
+    "covered": 7,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R6"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R7"
+      }
+    ],
+    "total": 7
+  },
+  "scenarios": [],
+  "timestamp": "2026-11-22T00:19:22Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
