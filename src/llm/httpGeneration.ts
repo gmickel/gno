@@ -14,7 +14,10 @@ import {
   inferenceFailedError,
   structuredOutputUnavailableError,
 } from "./errors";
-import { requestHttpInference } from "./http-inference";
+import {
+  primeHttpInferenceContext,
+  requestHttpInference,
+} from "./http-inference";
 import { runHttpInference } from "./inference-scope";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -68,6 +71,7 @@ export class HttpGeneration implements GenerationPort {
       const pathParts = url.pathname.split("/");
       this.modelName = pathParts[pathParts.length - 1] || "llama";
     }
+    primeHttpInferenceContext(this.apiUrl, this.requestOptions);
   }
 
   async generate(

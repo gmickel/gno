@@ -133,7 +133,8 @@ process.on("message", (message: unknown) => {
     const request = parseNativeRequest(
       decoded,
       config.generation,
-      config.models
+      config.models,
+      decoder.lastDecodedByteLength
     );
     const controller = new AbortController();
     activeRequest = { id: request.requestId, controller };

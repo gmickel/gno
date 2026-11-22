@@ -14,7 +14,7 @@
 import { basename, join } from "node:path";
 
 import type { JsonlFieldMapping } from "../converters/adapters/jsonl/config";
-import type { RedactionPolicy } from "./sanitize";
+import type { CompiledRedactionPolicy, RedactionPolicy } from "./sanitize";
 
 import { hashRecordValue } from "../converters/adapters/shared/record-utils";
 import { SESSION_REDACTION_VERSION, ThreadSanitizer } from "./sanitize";
@@ -149,9 +149,19 @@ export function renderThread(options: {
   unitLocator: string;
   parser: string;
   redaction: RedactionPolicy;
+  compiledRedaction?: CompiledRedactionPolicy;
+  sanitizer?: ThreadSanitizer;
 }): RenderedThread {
   const { thread, sourceId, parser } = options;
-  const sanitizer = new ThreadSanitizer(options.redaction);
+  let sanitizer: ThreadSanitizer;
+  if (options.sanitizer) {
+    sanitizer = options.sanitizer;
+    sanitizer.reset();
+  } else if (options.compiledRedaction) {
+    sanitizer = ThreadSanitizer.fromCompiled(options.compiledRedaction);
+  } else {
+    sanitizer = new ThreadSanitizer(options.redaction);
+  }
   const project = projectIdentity(thread.cwd);
   // Pass 1 detects secrets in every persisted field; pass 2 (`clean`)
   // propagates values found anywhere in the thread into every field, so a
@@ -171,7 +181,9 @@ export function renderThread(options: {
     turnId: sanitizer.sanitize(turn.turnId),
     locator: sanitizer.sanitize(turn.locator),
   }));
-  const clean = (value: string): string => sanitizer.propagate(value);
+  const needsPropagation = sanitizer.detectedCount > 0;
+  const clean = (value: string): string =>
+    needsPropagation ? sanitizer.propagate(value) : value;
   const projectLabel = raw.project === null ? null : clean(raw.project);
   const harnessLabel = SESSION_HARNESS_LABELS[thread.harness];
   const sessionId = `${thread.harness}/${sourceId}/${clean(raw.sessionId)}`;
@@ -192,12 +204,15 @@ export function renderThread(options: {
     categories.push(`project-id/${project.id}`);
   }
 
-  const drafts = rawDrafts.map((draft) => ({
-    turn: draft.turn,
-    text: clean(draft.text),
-    turnId: clean(draft.turnId),
-    locator: clean(draft.locator),
-  }));
+  // Skip pass-2 drafts allocation when no secrets were detected in pass 1.
+  const drafts = needsPropagation
+    ? rawDrafts.map((draft) => ({
+        turn: draft.turn,
+        text: clean(draft.text),
+        turnId: clean(draft.turnId),
+        locator: clean(draft.locator),
+      }))
+    : rawDrafts;
 
   const lines: string[] = [];
   let bytes = 0;

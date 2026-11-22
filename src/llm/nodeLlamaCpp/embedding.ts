@@ -249,54 +249,100 @@ export class NodeLlamaCppEmbedding implements EmbeddingPort {
     }
 
     try {
-      const preparedInputs: EmbeddingInput[] = [];
-      for (const text of texts) {
-        const prepared = this.truncateForEmbedding(text, "batch");
-        if (!prepared.ok) {
-          return { ok: false, error: prepared.error };
-        }
-        preparedInputs.push(prepared.value.input);
-      }
-
       const allResults = Array.from(
         { length: texts.length },
         () => [] as number[]
       );
-      let nextIndex = 0;
 
-      const settled = await Promise.allSettled(
-        this.workers.map(async (worker) => {
-          while (true) {
-            checkEvaluation(options);
-            const index = nextIndex;
-            nextIndex += 1;
-            if (index >= preparedInputs.length) {
-              return;
-            }
-
-            const input = preparedInputs[index];
-            if (input === undefined) {
-              return;
-            }
-            startEvaluation(options);
-            const embedding = await this.runOnSpecificWorker(
-              worker,
-              (current) => current.context.getEmbeddingFor(input)
-            );
-            allResults[index] = embeddingVectorToArray(embedding.vector);
+      if (this.workers.length === 1) {
+        // Single-context / GPU path: overlap JS tokenization of chunk i+1
+        // with native getEmbeddingFor() evaluation of chunk i.
+        const worker = this.workers[0]!;
+        let current = this.truncateForEmbedding(texts[0]!, "batch");
+        if (!current.ok) {
+          return { ok: false, error: current.error };
+        }
+        for (let i = 0; i < texts.length; i += 1) {
+          checkEvaluation(options);
+          startEvaluation(options);
+          const input = current.value.input;
+          const pending = this.runOnSpecificWorker(worker, (w) =>
+            w.context.getEmbeddingFor(input)
+          );
+          const next =
+            i + 1 < texts.length
+              ? this.truncateForEmbedding(texts[i + 1]!, "batch")
+              : null;
+          const embedding = await pending;
+          allResults[i] = embeddingVectorToArray(embedding.vector);
+          if (next && !next.ok) {
+            return { ok: false, error: next.error };
           }
-        })
-      );
+          if (next) {
+            current = next;
+          }
+        }
+      } else {
+        // Multi-context CPU path: schedule chunks in descending token-length
+        // order (LPT) so long chunks start first and eliminate tail-straggler
+        // idle time, writing each vector back to its original index.
+        const workItems: Array<{
+          originalIndex: number;
+          input: EmbeddingInput;
+          length: number;
+        }> = [];
+        for (let i = 0; i < texts.length; i += 1) {
+          const prepared = this.truncateForEmbedding(texts[i]!, "batch");
+          if (!prepared.ok) {
+            return { ok: false, error: prepared.error };
+          }
+          const input = prepared.value.input;
+          workItems.push({
+            originalIndex: i,
+            input,
+            length:
+              typeof input === "string" || Array.isArray(input)
+                ? input.length
+                : 0,
+          });
+        }
+        workItems.sort(
+          (a, b) => b.length - a.length || a.originalIndex - b.originalIndex
+        );
 
-      const firstRejection = settled.find(
-        (result): result is PromiseRejectedResult =>
-          result.status === "rejected"
-      );
-      if (firstRejection) {
-        return {
-          ok: false,
-          error: inferenceFailedError(this.modelUri, firstRejection.reason),
-        };
+        let nextIndex = 0;
+        const settled = await Promise.allSettled(
+          this.workers.map(async (worker) => {
+            while (true) {
+              checkEvaluation(options);
+              const workIdx = nextIndex;
+              nextIndex += 1;
+              const item = workItems[workIdx];
+              if (!item) {
+                return;
+              }
+              startEvaluation(options);
+              const embedding = await this.runOnSpecificWorker(
+                worker,
+                (current) => current.context.getEmbeddingFor(item.input)
+              );
+              allResults[item.originalIndex] = embeddingVectorToArray(
+                embedding.vector
+              );
+            }
+          })
+        );
+
+        const firstRejection = settled.find(
+          (result): result is PromiseRejectedResult =>
+            result.status === "rejected"
+        );
+        if (firstRejection) {
+          return {
+            ok: false,
+            error: inferenceFailedError(this.modelUri, firstRejection.reason),
+          };
+        }
       }
 
       checkEvaluation(options);

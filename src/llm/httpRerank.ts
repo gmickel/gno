@@ -10,7 +10,10 @@ import type { LlmResult, RerankPort, RerankScore } from "./types";
 
 import { EgressDeniedError } from "../core/egress-enforcement";
 import { egressDeniedInferenceError, inferenceFailedError } from "./errors";
-import { requestHttpInference } from "./http-inference";
+import {
+  primeHttpInferenceContext,
+  requestHttpInference,
+} from "./http-inference";
 import { runHttpInference } from "./inference-scope";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -57,6 +60,7 @@ export class HttpRerank implements RerankPort {
       const pathParts = url.pathname.split("/");
       this.modelName = pathParts[pathParts.length - 1] || "reranker-model";
     }
+    primeHttpInferenceContext(this.apiUrl, this.requestOptions);
     // Default instruction for retrieval tasks
     this.instruction =
       "Given a web search query, retrieve relevant passages that answer the query";

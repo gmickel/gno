@@ -9,7 +9,7 @@
 import { statSync } from "node:fs";
 import { realpath } from "node:fs/promises";
 
-import type { Config } from "../../config/types";
+import type { Config, ModelPreset } from "../../config/types";
 import type { NativeDisposeOptions } from "../native-worker/owned-exit";
 import type { DownloadPolicy } from "../policy";
 import type {
@@ -33,12 +33,7 @@ import {
   NativeGenerationPort,
   NativeRerankPort,
 } from "../native-worker/ports";
-import {
-  getActivePreset,
-  getAnswerModelUri,
-  getExpandModelUri,
-  getModelConfig,
-} from "../registry";
+import { getActivePreset, getModelConfig } from "../registry";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -73,15 +68,18 @@ export class LlmAdapter {
   private readonly worker: NativeWorkerClient;
   private readonly cache: ModelCache;
   private readonly config: Config;
+  private readonly modelConfig: ReturnType<typeof getModelConfig>;
+  private readonly activePreset: ModelPreset;
 
   constructor(config: Config, cacheDir?: string) {
     this.config = config;
-    const modelConfig = getModelConfig(config);
+    this.modelConfig = getModelConfig(config);
+    this.activePreset = getActivePreset(config);
     this.worker = new NativeWorkerClient({
       models: [],
-      loadTimeout: modelConfig.loadTimeout,
-      inferenceTimeout: modelConfig.inferenceTimeout,
-      warmModelTtl: modelConfig.warmModelTtl,
+      loadTimeout: this.modelConfig.loadTimeout,
+      inferenceTimeout: this.modelConfig.inferenceTimeout,
+      warmModelTtl: this.modelConfig.warmModelTtl,
     });
     this.cache = new ModelCache(cacheDir);
   }
@@ -95,14 +93,13 @@ export class LlmAdapter {
     modelUri: string | undefined,
     options: CreatePortOptions
   ): Promise<LlmResult<EmbeddingPort>> {
-    const preset = getActivePreset(this.config);
-    const uri = modelUri ?? preset.embed;
+    const uri = modelUri ?? this.activePreset.embed;
     const policy = options.policy ?? DEFAULT_POLICY;
 
     // Use HTTP embedding for remote endpoints
     if (isHttpModelUri(uri)) {
       const httpEmbed = new HttpEmbedding(uri, {
-        inferenceTimeout: getModelConfig(this.config).inferenceTimeout,
+        inferenceTimeout: this.modelConfig.inferenceTimeout,
         collections: this.config.collections,
         collectionNames: resolveEgressCollectionNames(
           this.config,
@@ -145,13 +142,13 @@ export class LlmAdapter {
     modelUri: string | undefined,
     options: CreatePortOptions
   ): Promise<LlmResult<GenerationPort>> {
-    const uri = getAnswerModelUri(this.config, modelUri);
+    const uri = modelUri ?? this.activePreset.gen;
     const policy = options.policy ?? DEFAULT_POLICY;
 
     // Use HTTP generation for remote endpoints
     if (isHttpGenUri(uri)) {
       const httpGen = new HttpGeneration(uri, {
-        inferenceTimeout: getModelConfig(this.config).inferenceTimeout,
+        inferenceTimeout: this.modelConfig.inferenceTimeout,
         collections: this.config.collections,
         collectionNames: resolveEgressCollectionNames(
           this.config,
@@ -194,12 +191,12 @@ export class LlmAdapter {
     modelUri: string | undefined,
     options: CreatePortOptions
   ): Promise<LlmResult<GenerationPort>> {
-    const uri = getExpandModelUri(this.config, modelUri);
+    const uri = modelUri ?? this.activePreset.expand ?? this.activePreset.gen;
     const policy = options.policy ?? DEFAULT_POLICY;
 
     if (isHttpGenUri(uri)) {
       const httpGen = new HttpGeneration(uri, {
-        inferenceTimeout: getModelConfig(this.config).inferenceTimeout,
+        inferenceTimeout: this.modelConfig.inferenceTimeout,
         collections: this.config.collections,
         collectionNames: resolveEgressCollectionNames(
           this.config,
@@ -242,14 +239,13 @@ export class LlmAdapter {
     modelUri: string | undefined,
     options: CreatePortOptions
   ): Promise<LlmResult<RerankPort>> {
-    const preset = getActivePreset(this.config);
-    const uri = modelUri ?? preset.rerank;
+    const uri = modelUri ?? this.activePreset.rerank;
     const policy = options.policy ?? DEFAULT_POLICY;
 
     // Use HTTP rerank for remote endpoints
     if (isHttpRerankUri(uri)) {
       const httpRerank = new HttpRerank(uri, {
-        inferenceTimeout: getModelConfig(this.config).inferenceTimeout,
+        inferenceTimeout: this.modelConfig.inferenceTimeout,
         collections: this.config.collections,
         collectionNames: resolveEgressCollectionNames(
           this.config,

@@ -112,9 +112,9 @@ export function analyzeGraphCommunities(
       const currentLabel = labels.get(node.id) ?? node.id;
       let bestLabel = currentLabel;
       let bestScore = scores.get(currentLabel) ?? 0;
-      for (const [candidate, score] of [...scores.entries()].sort((a, b) =>
-        a[0].localeCompare(b[0])
-      )) {
+      // Tie-break (score > bestScore || (score === bestScore && candidate < bestLabel))
+      // is a strict total order, so iteration order over `scores` does not matter.
+      for (const [candidate, score] of scores) {
         if (
           score > bestScore ||
           (score === bestScore && candidate < bestLabel)

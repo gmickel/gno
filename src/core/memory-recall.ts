@@ -15,6 +15,7 @@ import type {
 
 import { searchBm25 } from "../pipeline/search";
 import { searchVectorWithEmbedding } from "../pipeline/vsearch";
+import { getContentBatch } from "../store/content-batch";
 import { selectContextEvidence } from "./context-budget";
 import { mergeEgressLineages } from "./egress-provenance";
 import {
@@ -22,7 +23,7 @@ import {
   compareCodeUnits,
   estimateTokens,
   memoryNow,
-  readFact,
+  parseFactFromContent,
   requireIdentity,
   requireManagedCollection,
   requireScopes,
@@ -257,8 +258,9 @@ async function searchLexical(
 
 /**
  * Retrieval legs: BM25 always; vectors when an embedding port and a searchable
- * vector index are present. The eligible set is one unbounded in-query
- * scope+supersession filter; the vector leg only ever ranks inside it.
+ * vector index are present. The vector leg applies the native in-query
+ * memoryFilter (scopes + excludeSuperseded) directly and overlaps query
+ * embedding with lexical search.
  */
 async function retrieveLegs(
   deps: MemoryServiceDeps,
@@ -267,41 +269,34 @@ async function retrieveLegs(
   const { store, config } = deps;
   const { query, collection, scopes } = input;
   const legs: RetrievalLeg[] = [];
-  const lexical = await searchLexical(deps, input);
-  if (lexical) {
-    legs.push({ source: "bm25", results: lexical });
-  }
-
   const retrieval: RecallResult["retrieval"] = { mode: "lexical" };
   const embedPort = deps.embedPort ?? null;
   const vectorIndex = deps.vectorIndex ?? null;
+
   if (!embedPort || !vectorIndex?.searchAvailable) {
+    const lexical = await searchLexical(deps, input);
+    if (lexical) {
+      legs.push({ source: "bm25", results: lexical });
+    }
     retrieval.semanticUnavailable = embedPort
       ? "vector index unavailable"
       : "no embedding model available";
     return { legs, retrieval };
   }
 
-  const eligible = await store.listMemoryEligibleDocuments({
-    collection,
-    scopes,
-    excludeSuperseded: true,
-  });
-  if (!eligible.ok) {
-    throw new MemoryError("MEMORY_QUERY_FAILED", eligible.error.message);
+  // Overlap query embedding with BM25 lexical retrieval.
+  const [lexical, embedded] = await Promise.all([
+    searchLexical(deps, input),
+    embedPort.embed(query),
+  ]);
+  if (lexical) {
+    legs.push({ source: "bm25", results: lexical });
   }
-  const allowedMirrorHashes = [
-    ...new Set(eligible.value.map((row) => row.mirrorHash)),
-  ];
-  if (allowedMirrorHashes.length === 0) {
-    retrieval.mode = "hybrid";
-    return { legs, retrieval };
-  }
-  const embedded = await embedPort.embed(query);
   if (!embedded.ok) {
     retrieval.semanticUnavailable = embedded.error.message;
     return { legs, retrieval };
   }
+
   const vector = await searchVectorWithEmbedding(
     { store, vectorIndex, embedPort, config },
     query,
@@ -309,7 +304,7 @@ async function retrieveLegs(
     {
       collection,
       limit: MEMORY_RECALL_RETRIEVAL_LIMIT,
-      retrievalScope: { allowedMirrorHashes },
+      memoryFilter: { scopes, excludeSuperseded: true },
     }
   );
   if (vector.ok) {
@@ -344,22 +339,42 @@ async function materializeFacts(
   deps: MemoryServiceDeps,
   ranked: SearchResult[]
 ): Promise<Array<{ fact: RecalledFact; rank: number }>> {
+  const eligible = ranked
+    .map((result, index) => ({ result, rank: index + 1 }))
+    .filter(
+      ({ result }) =>
+        Boolean(result.conversion?.mirrorHash) && Boolean(result.egressLineage)
+    );
+  if (eligible.length === 0) return [];
+
+  const hashes = [
+    ...new Set(eligible.map(({ result }) => result.conversion!.mirrorHash!)),
+  ];
+  const contentBatch = await getContentBatch(deps.store, hashes);
+  if (!contentBatch.ok) return [];
+  const contentByHash = contentBatch.value;
+
   const materialized: Array<{ fact: RecalledFact; rank: number }> = [];
-  for (const [index, result] of ranked.entries()) {
-    if (!result.conversion?.mirrorHash || !result.egressLineage) continue;
-    const fact = await readFact(deps.store, {
-      uri: result.uri,
-      docid: result.docid,
-      mirrorHash: result.conversion.mirrorHash,
-    });
+  for (const { result, rank } of eligible) {
+    const mirrorHash = result.conversion!.mirrorHash!;
+    const raw = contentByHash.get(mirrorHash);
+    if (raw === undefined) continue;
+    const fact = parseFactFromContent(
+      {
+        uri: result.uri,
+        docid: result.docid,
+        mirrorHash,
+      },
+      raw
+    );
     if (!fact) continue;
     materialized.push({
-      rank: index + 1,
+      rank,
       fact: {
         ...fact,
         score: result.score,
         spanHash: fact.contentHash,
-        egressLineage: result.egressLineage,
+        egressLineage: result.egressLineage!,
       },
     });
   }
@@ -370,14 +385,27 @@ async function materializeFacts(
  * Token budget via the shared context-evidence selector, then the fact cap.
  * Facts carry no facets, so the selector fills the budget in retrieval-rank
  * order (per-fact facets would make it prefer the shortest facts).
+ * Precomputes per-fact (bytes, tokens) once via Buffer.byteLength and tracks
+ * prefix sums incrementally so projection stays O(K) instead of O(K^2).
  */
 function selectWithinBudget(
   materialized: Array<{ fact: RecalledFact; rank: number }>,
   maxFacts: number,
   maxTokens: number
 ): RecalledFact[] {
+  const measured = materialized.map(({ fact, rank }) => {
+    const bytes = utf8Bytes(fact.text);
+    const tokens = Math.ceil(bytes / MEMORY_TOKEN_BYTES_ESTIMATE);
+    return { fact, rank, bytes, tokens };
+  });
+
+  let cachedLength = 0;
+  let cachedTailId: string | null = null;
+  let cachedBytes = 0;
+  let cachedTokens = 0;
+
   const selection = selectContextEvidence({
-    candidates: materialized.map(({ fact, rank }) => ({
+    candidates: measured.map(({ fact, rank, bytes, tokens }) => ({
       candidateId: fact.uri,
       uri: fact.uri,
       docid: fact.docid,
@@ -389,7 +417,7 @@ function selectWithinBudget(
       text: fact.text,
       facets: [],
       retrievalRank: rank,
-      value: fact,
+      value: { fact, bytes, tokens },
     })),
     requestedFacets: [],
     limits: {
@@ -401,15 +429,58 @@ function selectWithinBudget(
       documentShareDenominator: 1,
     },
     projectCanonical: (state) => {
-      const texts = state.selected.map((item) => item.value.text);
-      return {
-        value: texts,
-        usedBytes: texts.reduce((sum, item) => sum + utf8Bytes(item), 0),
-        usedTokens: texts.reduce((sum, item) => sum + estimateTokens(item), 0),
-      };
+      const selected = state.selected;
+      const len = selected.length;
+      if (len === 0) {
+        cachedLength = 0;
+        cachedTailId = null;
+        cachedBytes = 0;
+        cachedTokens = 0;
+        return { value: selected, usedBytes: 0, usedTokens: 0 };
+      }
+      const tail = selected[len - 1]!;
+      let usedBytes: number;
+      let usedTokens: number;
+      if (
+        len === cachedLength + 1 &&
+        (cachedLength === 0 ||
+          selected[cachedLength - 1]?.candidateId === cachedTailId)
+      ) {
+        usedBytes = cachedBytes + tail.value.bytes;
+        usedTokens = cachedTokens + tail.value.tokens;
+      } else if (
+        len === cachedLength &&
+        len > 1 &&
+        selected[len - 2]?.candidateId === cachedTailId
+      ) {
+        // Common rollback-and-try-next pattern in selectContextEvidence:
+        // prefix up to len - 2 stayed unchanged.
+        let prefixBytes = 0;
+        let prefixTokens = 0;
+        for (let i = 0; i < len - 1; i += 1) {
+          prefixBytes += selected[i]!.value.bytes;
+          prefixTokens += selected[i]!.value.tokens;
+        }
+        usedBytes = prefixBytes + tail.value.bytes;
+        usedTokens = prefixTokens + tail.value.tokens;
+      } else {
+        usedBytes = 0;
+        usedTokens = 0;
+        for (let i = 0; i < len; i += 1) {
+          usedBytes += selected[i]!.value.bytes;
+          usedTokens += selected[i]!.value.tokens;
+        }
+      }
+      // Only cache the accepted prefix; if the next call keeps tail at len - 1,
+      // the fast path hits in O(1).
+      cachedLength = len;
+      cachedTailId = tail.candidateId;
+      cachedBytes = usedBytes;
+      cachedTokens = usedTokens;
+      return { value: selected, usedBytes, usedTokens };
     },
   });
-  return selection.selected.slice(0, maxFacts).map((item) => item.value);
+  return selection.selected.slice(0, maxFacts).map((item) => item.value.fact);
 }
 
 /**

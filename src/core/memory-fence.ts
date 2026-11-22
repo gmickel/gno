@@ -48,7 +48,7 @@ export function memoryLockWaitMs(deps: MemoryServiceDeps): number {
 }
 
 export function utf8Bytes(text: string): number {
-  return new TextEncoder().encode(text).byteLength;
+  return Buffer.byteLength(text, "utf8");
 }
 
 export function estimateTokens(text: string): number {
@@ -213,14 +213,11 @@ export function buildRecallReceipt(input: {
 // Record materialization
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function readFact(
-  store: StorePort,
-  doc: Pick<DocumentRow, "uri" | "docid" | "mirrorHash">
-): Promise<MemoryFact | null> {
-  if (!doc.mirrorHash) return null;
-  const content = await store.getContent(doc.mirrorHash);
-  if (!content.ok || content.value === null) return null;
-  const validation = validateMemoryRecord(content.value);
+export function parseFactFromContent(
+  doc: Pick<DocumentRow, "uri" | "docid" | "mirrorHash">,
+  content: string
+): MemoryFact | null {
+  const validation = validateMemoryRecord(content);
   if (!validation.ok) return null;
   const { frontmatter, supersedes, text } = validation.record;
   return {
@@ -236,4 +233,14 @@ export async function readFact(
     supersedes,
     ...(frontmatter.source ? { source: frontmatter.source } : {}),
   };
+}
+
+export async function readFact(
+  store: StorePort,
+  doc: Pick<DocumentRow, "uri" | "docid" | "mirrorHash">
+): Promise<MemoryFact | null> {
+  if (!doc.mirrorHash) return null;
+  const content = await store.getContent(doc.mirrorHash);
+  if (!content.ok || content.value === null) return null;
+  return parseFactFromContent(doc, content.value);
 }

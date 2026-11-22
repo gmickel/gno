@@ -22,7 +22,8 @@ import {
   recordCompletion,
 } from "./owner";
 import {
-  frameNativeMessage,
+  encodeNativeMessage,
+  frameNativeBytes,
   NativeFrameDecoder,
   NativeRequestLedger,
   parseNativeRequest,
@@ -270,21 +271,25 @@ export class NativeWorkerClient {
       )
         throw new NativeWorkerError("stale_generation");
       const owner = this.owner ?? this.start();
+      const rawRequest = {
+        ...input,
+        deadlineAt: input.deadlineAt,
+        version: 1,
+        generation: owner.generation,
+        requestId: ++this.requestId,
+      };
+      const encodedBytes = encodeNativeMessage(rawRequest);
       const request = parseNativeRequest(
-        {
-          ...input,
-          deadlineAt: input.deadlineAt,
-          version: 1,
-          generation: owner.generation,
-          requestId: ++this.requestId,
-        },
+        rawRequest,
         owner.generation,
-        this.options.models
+        this.options.models,
+        encodedBytes.length
       );
-      owner.ledger.admit(request);
+      owner.ledger.admit(request, encodedBytes.length);
       return new Promise((resolve) => {
         const pending: Pending = {
           request,
+          encodedBytes,
           resolve,
           settlement,
           background: isBackgroundInference(),
@@ -420,7 +425,10 @@ export class NativeWorkerClient {
         throw new NativeWorkerError("protocol");
       const decoded = owner.decoder.push(message);
       if (decoded === undefined) return;
-      const response = owner.ledger.settle(decoded);
+      const response = owner.ledger.settle(
+        decoded,
+        owner.decoder.lastDecodedByteLength
+      );
       const pending = owner.pending[0];
       if (pending?.request.requestId !== response.requestId)
         throw new NativeWorkerError("protocol");
@@ -479,7 +487,10 @@ export class NativeWorkerClient {
       this.options.loadTimeout
     );
     try {
-      for (const frame of frameNativeMessage(pending.request))
+      for (const frame of frameNativeBytes(
+        pending.request,
+        pending.encodedBytes
+      ))
         owner.child.send(frame);
     } catch {
       this.fail(owner, new NativeWorkerError("exited"));

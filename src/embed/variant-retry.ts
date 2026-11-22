@@ -24,66 +24,118 @@ function isCurrent(
   );
 }
 
-/** Exact inputs are inferred once; successful current owners checkpoint atomically. */
-export async function embedVariantBatch(params: {
-  store: VectorVariantStore;
-  embedPort: EmbeddingPort;
+function filterCurrentOwners(
+  store: VectorVariantStore,
+  owners: VectorOwnerInput[]
+): VectorOwnerInput[] {
+  if (owners.length === 0) return [];
+  if (typeof store.filterCurrent === "function") {
+    return store.filterCurrent(owners);
+  }
+  return owners.filter((owner) => isCurrent(store, owner));
+}
+
+export interface PreparedVariantBatch {
   owners: VectorOwnerInput[];
-  identityStillCurrent: () => boolean;
-  delays?: number[];
-  force?: boolean;
-  /** Gate held only around the checkpoint write, never around inference. */
-  acquireWriteTurn?: AcquireWriteTurn;
-  /** Called with the text count of each provider request (see `embedTextsWithRecovery`). */
-  onSubmit?: (texts: number) => void;
-}): Promise<{
+  inputs: Map<string, string>;
+  reusable: Set<string>;
+  sharedFromInFlight: Map<string, string>;
+}
+
+export interface VariantBatchOutcome {
   embedded: number;
   errors: number;
   contentionErrors: number;
   retryOwners: VectorOwnerInput[];
   deferred?: boolean;
-}> {
-  const { store, embedPort, identityStillCurrent } = params;
-  const empty = {
-    embedded: 0,
-    errors: 0,
-    contentionErrors: 0,
-    retryOwners: [] as VectorOwnerInput[],
-  };
-  if (!identityStillCurrent()) return empty;
-  const owners = [
+}
+
+export function prepareVariantBatch(params: {
+  store: VectorVariantStore;
+  owners: VectorOwnerInput[];
+  force?: boolean;
+  inFlightHashes?: ReadonlySet<string>;
+}): PreparedVariantBatch {
+  const { store } = params;
+  const deduped = [
     ...new Map(
       params.owners.map((owner) => [chunkRetryKey(owner), owner])
     ).values(),
-  ].filter((owner) => isCurrent(store, owner));
-  const inputs = new Map<string, string>();
+  ];
+
+  let owners: VectorOwnerInput[];
   const reusable = new Set<string>();
-  for (const owner of owners) {
-    if (!params.force && store.reusable(owner)) reusable.add(owner.inputHash);
-    else inputs.set(owner.inputHash, owner.formattedInput);
-  }
-  const keys = [...inputs.keys()];
-  const result = await embedTextsWithRecovery(embedPort, [...inputs.values()], {
-    onSubmit: params.onSubmit,
-  });
-  if (!identityStillCurrent()) return empty;
-  const current = owners.filter((owner) => isCurrent(store, owner));
-  const vectors = new Map<string, Float32Array>();
-  if (result.ok) {
-    for (const [index, key] of keys.entries()) {
-      const vector = result.value.vectors[index];
-      if (vector) vectors.set(key, new Float32Array(vector));
+  const inputs = new Map<string, string>();
+  const sharedFromInFlight = new Map<string, string>();
+
+  if (!params.force && typeof store.findReusableHashes === "function") {
+    const found = store.findReusableHashes(deduped);
+    owners = found.current;
+    for (const hash of found.reusableHashes) {
+      reusable.add(hash);
+    }
+    for (const owner of owners) {
+      if (reusable.has(owner.inputHash)) continue;
+      if (params.inFlightHashes?.has(owner.inputHash)) {
+        sharedFromInFlight.set(owner.inputHash, owner.formattedInput);
+      } else {
+        inputs.set(owner.inputHash, owner.formattedInput);
+      }
+    }
+  } else {
+    owners = filterCurrentOwners(store, deduped);
+    for (const owner of owners) {
+      const canReuse =
+        !params.force &&
+        (typeof store.hasReusable === "function"
+          ? store.hasReusable(owner)
+          : Boolean(store.reusable(owner)));
+      if (canReuse) {
+        reusable.add(owner.inputHash);
+      } else if (!params.force && params.inFlightHashes?.has(owner.inputHash)) {
+        sharedFromInFlight.set(owner.inputHash, owner.formattedInput);
+      } else {
+        inputs.set(owner.inputHash, owner.formattedInput);
+      }
     }
   }
-  const retryOwners = current.filter(
-    (owner) => !reusable.has(owner.inputHash) && !vectors.has(owner.inputHash)
-  );
-  const rows = current
-    .filter(
-      (owner) => reusable.has(owner.inputHash) || vectors.has(owner.inputHash)
-    )
-    .map((owner) => ({ owner, embedding: vectors.get(owner.inputHash) }));
+
+  return { owners, inputs, reusable, sharedFromInFlight };
+}
+
+export async function commitVariantBatch(params: {
+  store: VectorVariantStore;
+  owners: VectorOwnerInput[];
+  reusable: ReadonlySet<string>;
+  vectors: ReadonlyMap<string, Float32Array>;
+  identityStillCurrent: () => boolean;
+  delays?: number[];
+  acquireWriteTurn?: AcquireWriteTurn;
+}): Promise<VariantBatchOutcome> {
+  const { store, owners, reusable, vectors, identityStillCurrent } = params;
+  const empty: VariantBatchOutcome = {
+    embedded: 0,
+    errors: 0,
+    contentionErrors: 0,
+    retryOwners: [],
+  };
+  if (!identityStillCurrent()) return empty;
+
+  const failedOwners: VectorOwnerInput[] = [];
+  const rows: { owner: VectorOwnerInput; embedding?: Float32Array }[] = [];
+  for (const owner of owners) {
+    const vec = vectors.get(owner.inputHash);
+    if (vec !== undefined || reusable.has(owner.inputHash)) {
+      rows.push({ owner, embedding: vec });
+    } else {
+      failedOwners.push(owner);
+    }
+  }
+  // Recheck isCurrent post-inference only for failed retryOwners; writeCurrent
+  // validates and filters successful rows atomically inside the write txn.
+  const retryOwners = filterCurrentOwners(store, failedOwners);
   if (!rows.length) return { ...empty, retryOwners };
+
   let written = 0;
   const turn = await inWriteTurn(params.acquireWriteTurn, () =>
     upsertVectorsWithContentionRetry(
@@ -92,9 +144,13 @@ export async function embedVariantBatch(params: {
           try {
             // A contention wait may allow document or runtime mutations. Revalidate each attempt.
             if (!identityStillCurrent()) return Promise.resolve(ok(undefined));
-            const valid = rows.filter(({ owner }) => isCurrent(store, owner));
-            store.write(valid);
-            written = valid.length;
+            if (typeof store.writeCurrent === "function") {
+              written = store.writeCurrent(rows).length;
+            } else {
+              const valid = rows.filter(({ owner }) => isCurrent(store, owner));
+              store.write(valid);
+              written = valid.length;
+            }
             return Promise.resolve(ok(undefined));
           } catch (cause) {
             return Promise.resolve(
@@ -123,4 +179,57 @@ export async function embedVariantBatch(params: {
         : 0,
     };
   return { ...empty, embedded: written, retryOwners };
+}
+
+/** Exact inputs are inferred once; successful current owners checkpoint atomically. */
+export async function embedVariantBatch(params: {
+  store: VectorVariantStore;
+  embedPort: EmbeddingPort;
+  owners: VectorOwnerInput[];
+  identityStillCurrent: () => boolean;
+  delays?: number[];
+  force?: boolean;
+  /** Gate held only around the checkpoint write, never around inference. */
+  acquireWriteTurn?: AcquireWriteTurn;
+  /** Called with the text count of each provider request (see `embedTextsWithRecovery`). */
+  onSubmit?: (texts: number) => void;
+}): Promise<VariantBatchOutcome> {
+  const { store, embedPort, identityStillCurrent } = params;
+  const empty: VariantBatchOutcome = {
+    embedded: 0,
+    errors: 0,
+    contentionErrors: 0,
+    retryOwners: [],
+  };
+  if (!identityStillCurrent()) return empty;
+  const prepared = prepareVariantBatch({
+    store,
+    owners: params.owners,
+    force: params.force,
+  });
+  const keys = [...prepared.inputs.keys()];
+  const result = await embedTextsWithRecovery(
+    embedPort,
+    [...prepared.inputs.values()],
+    {
+      onSubmit: params.onSubmit,
+    }
+  );
+  if (!identityStillCurrent()) return empty;
+  const vectors = new Map<string, Float32Array>();
+  if (result.ok) {
+    for (const [index, key] of keys.entries()) {
+      const vector = result.value.vectors[index];
+      if (vector) vectors.set(key, new Float32Array(vector));
+    }
+  }
+  return commitVariantBatch({
+    store,
+    owners: prepared.owners,
+    reusable: prepared.reusable,
+    vectors,
+    identityStillCurrent,
+    delays: params.delays,
+    acquireWriteTurn: params.acquireWriteTurn,
+  });
 }

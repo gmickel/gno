@@ -300,16 +300,12 @@ export const captureContextEvidenceSnapshot = async (
 };
 
 const referenceDocument = (
-  documents: DocumentRow[],
-  candidate: ContextRetrievalCandidate,
-  indexName: string
+  documentsByKey: ReadonlyMap<string, DocumentRow[]>,
+  derivedDocidCache: Map<string, string>,
+  candidate: ContextRetrievalCandidate
 ): DocumentRow => {
   const result = candidate.result;
-  const matches = documents.filter(
-    (document) =>
-      document.docid === result.docid &&
-      decorateUriForIndex(document.uri, indexName) === result.uri
-  );
+  const matches = documentsByKey.get(`${result.docid}\0${result.uri}`) ?? [];
   if (matches.length !== 1) {
     throw new ContextEvidenceError(
       "stored_provenance_mismatch",
@@ -320,6 +316,13 @@ const referenceDocument = (
   const parsedUri = parseUri(result.uri);
   const sourceHash = result.source.sourceHash;
   const mirrorHash = result.conversion?.mirrorHash;
+  let derivedDocid = document
+    ? derivedDocidCache.get(document.sourceHash)
+    : undefined;
+  if (document && derivedDocid === undefined) {
+    derivedDocid = deriveDocid(document.sourceHash);
+    derivedDocidCache.set(document.sourceHash, derivedDocid);
+  }
   if (
     !document ||
     !document.active ||
@@ -328,7 +331,7 @@ const referenceDocument = (
     result.source.relPath !== (document.recordSourcePath ?? document.relPath) ||
     sourceHash !== document.sourceHash ||
     mirrorHash !== document.mirrorHash ||
-    deriveDocid(document.sourceHash) !== document.docid
+    derivedDocid !== document.docid
   ) {
     throw new ContextEvidenceError(
       "stored_provenance_mismatch",
@@ -368,8 +371,16 @@ export const materializeContextEvidenceCandidates = async (
       },
     ])
   );
+  const documentsByKey = new Map<string, DocumentRow[]>();
+  for (const document of documents) {
+    const key = `${document.docid}\0${decorateUriForIndex(document.uri, indexName)}`;
+    const list = documentsByKey.get(key);
+    if (list) list.push(document);
+    else documentsByKey.set(key, [document]);
+  }
+  const derivedDocidCache = new Map<string, string>();
   const alignedDocuments = candidates.map((candidate) =>
-    referenceDocument(documents, candidate, indexName)
+    referenceDocument(documentsByKey, derivedDocidCache, candidate)
   );
   const mirrorHashes = [
     ...new Set(
@@ -509,6 +520,74 @@ export const materializeContextEvidenceCandidates = async (
   });
 };
 
+interface SqliteMutationWatermark {
+  dataVersion: number;
+  totalChanges: number;
+  contextGeneration: number;
+}
+
+interface SqliteMutationProbeStore {
+  getRawDb?: () => {
+    inTransaction?: boolean;
+    query: <R>(sql: string) => { get: () => R | null };
+  };
+  getContextGeneration?: () => number;
+}
+
+/**
+ * Capture a SQLite zero-mutation watermark when `store` is an unpatched
+ * SqliteAdapter not currently inside a transaction. Returns null for custom
+ * or monkey-patched stores so callers always run the full post-compile snapshot.
+ */
+function captureSqliteMutationWatermark(
+  store: ContextEvidenceStore
+): SqliteMutationWatermark | null {
+  const probe = store as ContextEvidenceStore & SqliteMutationProbeStore;
+  if (
+    typeof probe.getRawDb !== "function" ||
+    typeof probe.getContextGeneration !== "function" ||
+    store.constructor?.name !== "SqliteAdapter" ||
+    Object.hasOwn(store, "getActivationIndexSnapshot") ||
+    Object.hasOwn(store, "getContexts") ||
+    Object.hasOwn(store, "getCollections")
+  ) {
+    return null;
+  }
+  try {
+    const db = probe.getRawDb();
+    if (!db || db.inTransaction) return null;
+    const dataVersionRow = db
+      .query<{ data_version: number }>("PRAGMA data_version")
+      .get();
+    const totalChangesRow = db
+      .query<{ total_changes: number }>(
+        "SELECT total_changes() AS total_changes"
+      )
+      .get();
+    if (!dataVersionRow || !totalChangesRow) return null;
+    return {
+      dataVersion: dataVersionRow.data_version,
+      totalChanges: totalChangesRow.total_changes,
+      contextGeneration: probe.getContextGeneration(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function sameSqliteMutationWatermark(
+  before: SqliteMutationWatermark | null,
+  after: SqliteMutationWatermark | null
+): boolean {
+  return (
+    before !== null &&
+    after !== null &&
+    before.dataVersion === after.dataVersion &&
+    before.totalChanges === after.totalChanges &&
+    before.contextGeneration === after.contextGeneration
+  );
+}
+
 /** Compile one evidence plan and discard it if either source snapshot drifted. */
 export const compileContextEvidence = async <P>(
   input: ContextEvidenceCompilerInput,
@@ -519,6 +598,9 @@ export const compileContextEvidence = async <P>(
     input.indexName,
     input.collections
   );
+  // Capture the SQLite watermark right after the `before` snapshot so any
+  // commit or context change during planning invalidates the fast path.
+  const watermarkBefore = captureSqliteMutationWatermark(deps.store);
   const fingerprints = {
     contextFingerprint: before.contextFingerprint,
     indexFingerprint: before.indexFingerprint,
@@ -538,22 +620,28 @@ export const compileContextEvidence = async <P>(
       projectCanonical: (draft) => deps.projectCanonical(draft, fingerprints),
     }
   );
-  const after = await captureContextEvidenceSnapshot(
-    deps.store,
-    input.indexName,
-    input.collections
-  );
-  if (before.indexFingerprint !== after.indexFingerprint) {
-    throw new ContextEvidenceError(
-      "index_changed_during_compile",
-      "Index changed while Context evidence was being compiled"
+  const watermarkAfter =
+    watermarkBefore !== null
+      ? captureSqliteMutationWatermark(deps.store)
+      : null;
+  if (!sameSqliteMutationWatermark(watermarkBefore, watermarkAfter)) {
+    const after = await captureContextEvidenceSnapshot(
+      deps.store,
+      input.indexName,
+      input.collections
     );
-  }
-  if (before.contextFingerprint !== after.contextFingerprint) {
-    throw new ContextEvidenceError(
-      "context_changed_during_compile",
-      "Configured contexts changed while Context evidence was being compiled"
-    );
+    if (before.indexFingerprint !== after.indexFingerprint) {
+      throw new ContextEvidenceError(
+        "index_changed_during_compile",
+        "Index changed while Context evidence was being compiled"
+      );
+    }
+    if (before.contextFingerprint !== after.contextFingerprint) {
+      throw new ContextEvidenceError(
+        "context_changed_during_compile",
+        "Configured contexts changed while Context evidence was being compiled"
+      );
+    }
   }
   return { ...plan, snapshot: fingerprints };
 };

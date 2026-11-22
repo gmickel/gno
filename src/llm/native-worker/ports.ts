@@ -15,9 +15,12 @@ import type { NativeResponse } from "./protocol";
 
 import { inferenceOptions, finishInferenceCleanup } from "../inference-scope";
 import { NativeWorkerError } from "./errors";
-import { EmbeddingIdentitySchema } from "./protocol";
+import {
+  EmbeddingIdentitySchema,
+  validateFiniteVector,
+  validateFiniteVectorBatch,
+} from "./protocol";
 
-const vector = z.array(z.number().finite()).min(1);
 const scores = z.array(
   z.strictObject({
     index: z.number().int().nonnegative(),
@@ -39,6 +42,41 @@ function decode<T>(
   return parsed.success
     ? { ok: true, value: parsed.data }
     : { ok: false, error: new NativeWorkerError("protocol").detail };
+}
+
+function decodeVector(
+  result: NativeResponse["result"],
+  expectedDims?: number
+): LlmResult<number[]> {
+  if (!result.ok) return result;
+  try {
+    return {
+      ok: true,
+      value: validateFiniteVector(result.value, expectedDims),
+    };
+  } catch {
+    return { ok: false, error: new NativeWorkerError("protocol").detail };
+  }
+}
+
+function decodeVectorBatch(
+  result: NativeResponse["result"],
+  expectedCount: number,
+  expectedDims?: number
+): LlmResult<number[][]> {
+  if (!result.ok) return result;
+  try {
+    return {
+      ok: true,
+      value: validateFiniteVectorBatch(
+        result.value,
+        expectedCount,
+        expectedDims
+      ),
+    };
+  } catch {
+    return { ok: false, error: new NativeWorkerError("protocol").detail };
+  }
 }
 
 class NativePort {
@@ -191,14 +229,12 @@ export class NativeEmbeddingPort extends NativePort implements EmbeddingPort {
     options?: InferenceOptions
   ): Promise<LlmResult<number[]>> {
     return this.withIdentity(async (generation) => {
-      const result = decode(
-        await this.client.request(
-          { op: "embed", modelId: this.modelId, text },
-          generation,
-          options
-        ),
-        vector
+      const raw = await this.client.request(
+        { op: "embed", modelId: this.modelId, text },
+        generation,
+        options
       );
+      const result = decodeVector(raw);
       if (result.ok && !this.acceptDimensions(result.value.length)) {
         await this.client.disposeModel(this.modelUri);
         return { ok: false, error: new NativeWorkerError("protocol").detail };
@@ -213,18 +249,16 @@ export class NativeEmbeddingPort extends NativePort implements EmbeddingPort {
   ): Promise<LlmResult<number[][]>> {
     if (!texts.length) return { ok: true, value: [] };
     return this.withIdentity(async (generation) => {
-      const result = decode(
-        await this.client.request(
-          {
-            op: "embedBatch",
-            modelId: this.modelId,
-            texts,
-          },
-          generation,
-          options
-        ),
-        z.array(vector).length(texts.length)
+      const raw = await this.client.request(
+        {
+          op: "embedBatch",
+          modelId: this.modelId,
+          texts,
+        },
+        generation,
+        options
       );
+      const result = decodeVectorBatch(raw, texts.length);
       if (
         result.ok &&
         result.value.some((item) => !this.acceptDimensions(item.length))

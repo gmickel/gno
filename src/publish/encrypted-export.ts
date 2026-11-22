@@ -96,12 +96,8 @@ export type EncryptedReaderSpaceData = {
 const toBase64 = (value: Uint8Array): string => encodeBytesToBase64(value);
 
 const fromBase64 = (value: string): Uint8Array => {
-  const binary = atob(value);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
+  const buf = Buffer.from(value, "base64");
+  return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 };
 
 const randomBytes = (size: number): Uint8Array => {

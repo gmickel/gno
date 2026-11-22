@@ -155,10 +155,88 @@ export const NativeResponseSchema = z.strictObject({
 });
 export type NativeResponse = z.infer<typeof NativeResponseSchema>;
 
+const UTF8_ENCODER = new TextEncoder();
+const UTF8_DECODER = new TextDecoder("utf-8", { fatal: true });
+/**
+ * Binary frame payload tag for `embed` / `embedBatch` `ok: true` responses.
+ * JSON payloads always begin with `0x7b` ('{'), so `0x01` is unambiguous.
+ */
+export const NATIVE_BINARY_EMBED_MAGIC = 0x01;
+
+const NativeResponseEnvelopeSchema = z.strictObject({
+  ...envelope,
+  op: z.enum(["init", "embed", "embedBatch", "rerank", "generate", "dispose"]),
+  lifecycle: NativeLifecycleStatsSchema.optional(),
+  result: z.discriminatedUnion("ok", [
+    z.strictObject({ ok: z.literal(false), error }),
+    z.strictObject({ ok: z.literal(true), value: z.unknown() }),
+  ]),
+});
+
+const BinaryEmbedHeaderSchema = z.strictObject({
+  ...envelope,
+  op: z.enum(["embed", "embedBatch"]),
+  lifecycle: NativeLifecycleStatsSchema.optional(),
+  vectorCount: id,
+  dims: id,
+});
+
 function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   const parsed = schema.safeParse(input);
   if (!parsed.success) throw new NativeWorkerError("protocol");
   return parsed.data;
+}
+
+/** Tight non-Zod validation for a non-empty finite float vector. */
+export function validateFiniteVector(
+  value: unknown,
+  expectedDims?: number
+): number[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new NativeWorkerError("protocol");
+  }
+  if (expectedDims !== undefined && value.length !== expectedDims) {
+    throw new NativeWorkerError("protocol");
+  }
+  for (let i = 0; i < value.length; i += 1) {
+    const v = value[i];
+    if (typeof v !== "number" || !Number.isFinite(v)) {
+      throw new NativeWorkerError("protocol");
+    }
+  }
+  return value as number[];
+}
+
+/** Tight non-Zod validation for a uniform batch of non-empty finite float vectors. */
+export function validateFiniteVectorBatch(
+  value: unknown,
+  expectedCount: number,
+  expectedDims?: number
+): number[][] {
+  if (!Array.isArray(value) || value.length !== expectedCount) {
+    throw new NativeWorkerError("protocol");
+  }
+  if (expectedCount === 0) {
+    return [];
+  }
+  let dims = expectedDims;
+  for (let i = 0; i < value.length; i += 1) {
+    const row = validateFiniteVector(value[i], dims);
+    if (dims === undefined) {
+      dims = row.length;
+    }
+  }
+  return value as number[][];
+}
+
+function assertLogicalByteLength(byteLength: number): void {
+  if (
+    !Number.isSafeInteger(byteLength) ||
+    byteLength <= 0 ||
+    byteLength > NATIVE_LOGICAL_BYTES
+  ) {
+    throw new NativeWorkerError("oversized");
+  }
 }
 
 /** JSON size is measured in UTF-8 bytes, including escaping and envelope. */
@@ -170,18 +248,195 @@ export function encodeNativeMessage(input: unknown): Uint8Array {
     throw new NativeWorkerError("protocol");
   }
   if (json === undefined) throw new NativeWorkerError("protocol");
-  const bytes = new TextEncoder().encode(json);
+  const bytes = UTF8_ENCODER.encode(json);
   if (bytes.length > NATIVE_LOGICAL_BYTES)
     throw new NativeWorkerError("oversized");
   return bytes;
 }
 
+/**
+ * Encode `embed` / `embedBatch` `ok: true` responses into a compact, bit-exact
+ * IEEE-754 Float64Array binary payload (2.5x smaller than JSON, zero float-to-
+ * ASCII formatting/parsing). Returns null for non-embed/error/malformed payloads
+ * so callers fall back to standard JSON encoding.
+ */
+function tryEncodeBinaryEmbedPayload(
+  message: NativeRequest | NativeResponse
+): Uint8Array | null {
+  if (!("result" in message) || !message.result.ok) {
+    return null;
+  }
+  if (message.op !== "embed" && message.op !== "embedBatch") {
+    return null;
+  }
+  const value = message.result.value;
+  let vectors: readonly (readonly number[])[];
+  if (message.op === "embed") {
+    if (!Array.isArray(value) || value.length === 0) return null;
+    for (let i = 0; i < value.length; i += 1) {
+      const v = value[i];
+      if (typeof v !== "number" || !Number.isFinite(v)) return null;
+    }
+    vectors = [value as number[]];
+  } else {
+    if (!Array.isArray(value) || value.length === 0) return null;
+    const first = value[0];
+    if (!Array.isArray(first) || first.length === 0) return null;
+    const dims = first.length;
+    for (let i = 0; i < value.length; i += 1) {
+      const row = value[i];
+      if (!Array.isArray(row) || row.length !== dims) return null;
+      for (let j = 0; j < dims; j += 1) {
+        const v = row[j];
+        if (typeof v !== "number" || !Number.isFinite(v)) return null;
+      }
+    }
+    vectors = value as number[][];
+  }
+
+  const vectorCount = vectors.length;
+  const dims = vectors[0]!.length;
+  const headerObj: Record<string, unknown> = {
+    version: message.version,
+    generation: message.generation,
+    requestId: message.requestId,
+    op: message.op,
+    vectorCount,
+    dims,
+  };
+  if (message.lifecycle !== undefined) {
+    headerObj.lifecycle = message.lifecycle;
+  }
+  const headerBytes = UTF8_ENCODER.encode(JSON.stringify(headerObj));
+  const unalignedPrefix = 1 + 4 + headerBytes.length;
+  const alignedOffset = (unalignedPrefix + 7) & ~7;
+  const floatBytes = vectorCount * dims * 8;
+  const totalBytes = alignedOffset + floatBytes;
+  if (totalBytes > NATIVE_LOGICAL_BYTES) {
+    throw new NativeWorkerError("oversized");
+  }
+
+  const payload = new Uint8Array(totalBytes);
+  payload[0] = NATIVE_BINARY_EMBED_MAGIC;
+  const view = new DataView(
+    payload.buffer,
+    payload.byteOffset,
+    payload.byteLength
+  );
+  view.setUint32(1, headerBytes.length, true);
+  payload.set(headerBytes, 5);
+  let byteOffset = alignedOffset;
+  for (let i = 0; i < vectorCount; i += 1) {
+    const row = vectors[i]!;
+    for (let j = 0; j < dims; j += 1) {
+      view.setFloat64(byteOffset, row[j]!, true);
+      byteOffset += 8;
+    }
+  }
+  return payload;
+}
+
+function decodeBinaryEmbedPayload(
+  payload: Uint8Array,
+  expectedGeneration: number,
+  expectedRequestId: number
+): NativeResponse {
+  if (payload.length < 5) {
+    throw new NativeWorkerError("protocol");
+  }
+  const view = new DataView(
+    payload.buffer,
+    payload.byteOffset,
+    payload.byteLength
+  );
+  const headerLen = view.getUint32(1, true);
+  const unalignedPrefix = 5 + headerLen;
+  const alignedOffset = (unalignedPrefix + 7) & ~7;
+  if (headerLen === 0 || alignedOffset > payload.length) {
+    throw new NativeWorkerError("protocol");
+  }
+  // Ensure padding bytes are zeroed so malformed frames fail closed.
+  for (let i = unalignedPrefix; i < alignedOffset; i += 1) {
+    if (payload[i] !== 0) {
+      throw new NativeWorkerError("protocol");
+    }
+  }
+  let rawHeader: unknown;
+  try {
+    rawHeader = JSON.parse(
+      UTF8_DECODER.decode(payload.subarray(5, unalignedPrefix))
+    );
+  } catch {
+    throw new NativeWorkerError("protocol");
+  }
+  const header = parse(BinaryEmbedHeaderSchema, rawHeader);
+  if (
+    header.generation !== expectedGeneration ||
+    header.requestId !== expectedRequestId
+  ) {
+    throw new NativeWorkerError("protocol");
+  }
+  if (header.op === "embed" && header.vectorCount !== 1) {
+    throw new NativeWorkerError("protocol");
+  }
+  const expectedFloatBytes = header.vectorCount * header.dims * 8;
+  if (payload.length - alignedOffset !== expectedFloatBytes) {
+    throw new NativeWorkerError("protocol");
+  }
+
+  let byteOffset = alignedOffset;
+  if (header.op === "embed") {
+    const vec = Array.from<number>({ length: header.dims });
+    for (let j = 0; j < header.dims; j += 1) {
+      const val = view.getFloat64(byteOffset, true);
+      if (!Number.isFinite(val)) throw new NativeWorkerError("protocol");
+      vec[j] = val;
+      byteOffset += 8;
+    }
+    return {
+      version: 1,
+      generation: header.generation,
+      requestId: header.requestId,
+      op: "embed",
+      ...(header.lifecycle !== undefined
+        ? { lifecycle: header.lifecycle }
+        : {}),
+      result: { ok: true, value: vec },
+    };
+  }
+
+  const vectors = Array.from<number[]>({ length: header.vectorCount });
+  for (let i = 0; i < header.vectorCount; i += 1) {
+    const vec = Array.from<number>({ length: header.dims });
+    for (let j = 0; j < header.dims; j += 1) {
+      const val = view.getFloat64(byteOffset, true);
+      if (!Number.isFinite(val)) throw new NativeWorkerError("protocol");
+      vec[j] = val;
+      byteOffset += 8;
+    }
+    vectors[i] = vec;
+  }
+  return {
+    version: 1,
+    generation: header.generation,
+    requestId: header.requestId,
+    op: "embedBatch",
+    ...(header.lifecycle !== undefined ? { lifecycle: header.lifecycle } : {}),
+    result: { ok: true, value: vectors },
+  };
+}
+
 export function parseNativeRequest(
   input: unknown,
   generation: number,
-  approved: readonly ApprovedModel[]
+  approved: readonly ApprovedModel[],
+  knownByteLength?: number
 ): NativeRequest {
-  encodeNativeMessage(input);
+  if (knownByteLength !== undefined) {
+    assertLogicalByteLength(knownByteLength);
+  } else {
+    encodeNativeMessage(input);
+  }
   const request = parse(NativeRequestSchema, input);
   if (request.generation !== generation)
     throw new NativeWorkerError("stale_generation");
@@ -202,15 +457,20 @@ export function parseNativeRequest(
 
 export function parseNativeResponse(
   input: unknown,
-  request: NativeRequest
+  request: NativeRequest,
+  knownByteLength?: number
 ): NativeResponse {
-  encodeNativeMessage(input);
-  const response = parse(NativeResponseSchema, input);
+  if (knownByteLength !== undefined) {
+    assertLogicalByteLength(knownByteLength);
+  } else {
+    encodeNativeMessage(input);
+  }
+  const response = parse(NativeResponseEnvelopeSchema, input);
   if (response.generation !== request.generation)
     throw new NativeWorkerError("stale_generation");
   if (response.requestId !== request.requestId || response.op !== request.op)
     throw new NativeWorkerError("protocol");
-  if (!response.result.ok) return response;
+  if (!response.result.ok) return response as NativeResponse;
   const value = response.result.value;
   switch (request.op) {
     case "init":
@@ -223,15 +483,10 @@ export function parseNativeResponse(
       parse(z.string(), value);
       break;
     case "embed":
-      parse(z.array(finite).min(1), value);
+      validateFiniteVector(value);
       break;
     case "embedBatch": {
-      const vectors = parse(
-        z.array(z.array(finite).min(1)).length(request.texts.length),
-        value
-      );
-      if (vectors.some((vector) => vector.length !== vectors[0]?.length))
-        throw new NativeWorkerError("protocol");
+      validateFiniteVectorBatch(value, request.texts.length);
       break;
     }
     case "rerank": {
@@ -252,7 +507,7 @@ export function parseNativeResponse(
     default:
       throw new NativeWorkerError("protocol");
   }
-  return response;
+  return response as NativeResponse;
 }
 
 /** Binary frame header: version, generation, requestId (float64 safe integers),
@@ -260,25 +515,23 @@ export function parseNativeResponse(
  * One ordered logical message at a time per direction; diagnostics are never frames.
  */
 const HEADER_BYTES = 32;
-export function frameNativeMessage(
-  message: NativeRequest | NativeResponse
+
+export function frameNativeBytes(
+  identity: { generation: number; requestId: number },
+  bytes: Uint8Array
 ): Uint8Array[] {
-  const bytes = encodeNativeMessage(message);
+  if (bytes.length === 0 || bytes.length > NATIVE_LOGICAL_BYTES) {
+    throw new NativeWorkerError("oversized");
+  }
   const frames: Uint8Array[] = [];
-  for (
-    let offset = 0;
-    offset < bytes.length;
-    offset += NATIVE_FRAME_BYTES - HEADER_BYTES
-  ) {
-    const part = bytes.subarray(
-      offset,
-      offset + NATIVE_FRAME_BYTES - HEADER_BYTES
-    );
+  const maxPart = NATIVE_FRAME_BYTES - HEADER_BYTES;
+  for (let offset = 0; offset < bytes.length; offset += maxPart) {
+    const part = bytes.subarray(offset, offset + maxPart);
     const frame = new Uint8Array(HEADER_BYTES + part.length);
     const view = new DataView(frame.buffer);
     view.setFloat64(0, NATIVE_PROTOCOL_VERSION);
-    view.setFloat64(8, message.generation);
-    view.setFloat64(16, message.requestId);
+    view.setFloat64(8, identity.generation);
+    view.setFloat64(16, identity.requestId);
     view.setUint32(24, bytes.length);
     view.setUint32(28, offset);
     frame.set(part, HEADER_BYTES);
@@ -287,13 +540,27 @@ export function frameNativeMessage(
   return frames;
 }
 
+export function frameNativeMessage(
+  message: NativeRequest | NativeResponse
+): Uint8Array[] {
+  const bytes =
+    tryEncodeBinaryEmbedPayload(message) ?? encodeNativeMessage(message);
+  return frameNativeBytes(message, bytes);
+}
+
 export class NativeFrameDecoder {
   private bytes?: Uint8Array;
   private received = 0;
   private requestId = 0;
+  private lastDecodedBytes = 0;
 
   constructor(private readonly generation: number) {
     parse(id, generation);
+  }
+
+  /** Logical payload byte length of the most recently decoded message. */
+  get lastDecodedByteLength(): number {
+    return this.lastDecodedBytes;
   }
 
   reset(): void {
@@ -327,29 +594,41 @@ export class NativeFrameDecoder {
       throw new NativeWorkerError("oversized");
     if (offset !== this.received || offset + part.length > total)
       throw new NativeWorkerError("protocol");
-    if (!this.bytes) {
-      this.bytes = new Uint8Array(total);
-      this.requestId = requestId;
+
+    // Zero-copy fast path for single-frame messages (the common case).
+    let payload: Uint8Array;
+    if (!this.bytes && offset === 0 && part.length === total) {
+      payload = part;
+    } else {
+      if (!this.bytes) {
+        this.bytes = new Uint8Array(total);
+        this.requestId = requestId;
+      }
+      if (this.bytes.length !== total || this.requestId !== requestId)
+        throw new NativeWorkerError("protocol");
+      this.bytes.set(part, offset);
+      this.received += part.length;
+      if (this.received !== total) return;
+      payload = this.bytes;
     }
-    if (this.bytes.length !== total || this.requestId !== requestId)
-      throw new NativeWorkerError("protocol");
-    this.bytes.set(part, offset);
-    this.received += part.length;
-    if (this.received !== total) return;
+
     let decoded: unknown;
-    try {
-      decoded = JSON.parse(
-        new TextDecoder("utf-8", { fatal: true }).decode(this.bytes)
-      );
-    } catch {
-      throw new NativeWorkerError("protocol");
+    if (payload[0] === NATIVE_BINARY_EMBED_MAGIC) {
+      decoded = decodeBinaryEmbedPayload(payload, this.generation, requestId);
+    } else {
+      try {
+        decoded = JSON.parse(UTF8_DECODER.decode(payload));
+      } catch {
+        throw new NativeWorkerError("protocol");
+      }
+      const identity = parse(z.object(envelope), decoded);
+      if (
+        identity.generation !== this.generation ||
+        identity.requestId !== requestId
+      )
+        throw new NativeWorkerError("protocol");
     }
-    const identity = parse(z.object(envelope), decoded);
-    if (
-      identity.generation !== this.generation ||
-      identity.requestId !== requestId
-    )
-      throw new NativeWorkerError("protocol");
+    this.lastDecodedBytes = total;
     this.reset();
     return decoded;
   }
@@ -362,14 +641,35 @@ export class NativeFrameDecoder {
 export function splitEmbeddingRequest(
   request: Extract<NativeRequest, { op: "embedBatch" }>
 ): string[][] {
-  encodeNativeMessage(request);
+  const maxFramePayload = NATIVE_FRAME_BYTES - HEADER_BYTES;
+  // O(N) char-length fast path: worst-case JSON UTF-8 expansion is 6 bytes per
+  // UTF-16 code unit (`\uXXXX`) plus 2 quote bytes + 1 comma per item + ~256 B
+  // envelope overhead. When even the worst case fits in one frame, return
+  // immediately without allocating JSON or UTF-8 buffers.
+  let upperBound = 512 + request.modelId.length * 6;
+  for (let i = 0; i < request.texts.length; i += 1) {
+    upperBound += request.texts[i]!.length * 6 + 3;
+    if (upperBound > maxFramePayload) {
+      break;
+    }
+  }
+  if (upperBound <= maxFramePayload) {
+    return [request.texts];
+  }
+
   const overhead = encodeNativeMessage({ ...request, texts: [] }).length;
   const batches: string[][] = [];
   let batch: string[] = [];
   let size = overhead;
-  for (const text of request.texts) {
+  let totalSize = overhead;
+  for (let i = 0; i < request.texts.length; i += 1) {
+    const text = request.texts[i]!;
     const length = encodeNativeMessage(text).length;
-    if (batch.length && size + length + 1 > NATIVE_FRAME_BYTES - HEADER_BYTES) {
+    totalSize += length + (i > 0 ? 1 : 0);
+    if (totalSize > NATIVE_LOGICAL_BYTES) {
+      throw new NativeWorkerError("oversized");
+    }
+    if (batch.length && size + length + 1 > maxFramePayload) {
       batches.push(batch);
       batch = [];
       size = overhead;
@@ -396,7 +696,7 @@ export class NativeRequestLedger {
     return this.pending.size;
   }
 
-  admit(request: NativeRequest): void {
+  admit(request: NativeRequest, knownByteLength?: number): void {
     const snapshot = parse(NativeRequestSchema, request);
     if (request.generation !== this.generation)
       throw new NativeWorkerError("stale_generation");
@@ -404,7 +704,11 @@ export class NativeRequestLedger {
       throw new NativeWorkerError("duplicate_completion");
     if (this.pending.size >= NATIVE_QUEUE_LIMIT + 1)
       throw new NativeWorkerError("overloaded");
-    encodeNativeMessage(request);
+    if (knownByteLength !== undefined) {
+      assertLogicalByteLength(knownByteLength);
+    } else {
+      encodeNativeMessage(request);
+    }
     this.highestId = request.requestId;
     this.pending.set(request.requestId, snapshot);
   }
@@ -415,13 +719,13 @@ export class NativeRequestLedger {
       throw new NativeWorkerError("protocol");
   }
 
-  settle(input: unknown): NativeResponse {
+  settle(input: unknown, knownByteLength?: number): NativeResponse {
     const identity = parse(z.object(envelope), input);
     if (identity.generation !== this.generation)
       throw new NativeWorkerError("stale_generation");
     const request = this.pending.get(identity.requestId);
     if (!request) throw new NativeWorkerError("duplicate_completion");
-    const response = parseNativeResponse(input, request);
+    const response = parseNativeResponse(input, request, knownByteLength);
     this.pending.delete(request.requestId);
     return response;
   }

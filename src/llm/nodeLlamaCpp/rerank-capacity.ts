@@ -1,9 +1,7 @@
 /** Pinned native formatting contract; no context allocation or input clipping. */
 import type { LlamaModel, Token } from "node-llama-cpp";
 
-import { getModuleVersion } from "node-llama-cpp";
-
-const installedVersion = await getModuleVersion();
+import { getNativePackageVersion } from "../native-worker/embedding-identity";
 
 export const RERANK_NATIVE_VERSION = "3.20.0";
 export const RERANK_TEMPLATE =
@@ -34,25 +32,52 @@ function supported(model: CapacityModel, version: string): boolean {
   );
 }
 
+const [RERANK_PREFIX = "", RERANK_REST = ""] = RERANK_TEMPLATE.split("{query}");
+const [RERANK_MIDDLE = "", RERANK_SUFFIX = ""] =
+  RERANK_REST.split("{document}");
+
+interface CachedTemplateTokens {
+  tokenizeFn: CapacityModel["tokenize"];
+  prefix: readonly Token[];
+  middle: readonly Token[];
+  suffix: readonly Token[];
+}
+
+const TEMPLATE_TOKEN_CACHE = new WeakMap<object, CachedTemplateTokens>();
+
+function getStaticTemplateTokens(model: CapacityModel): CachedTemplateTokens {
+  const cached = TEMPLATE_TOKEN_CACHE.get(model as object);
+  if (cached && cached.tokenizeFn === model.tokenize) {
+    return cached;
+  }
+  const entry: CachedTemplateTokens = {
+    tokenizeFn: model.tokenize,
+    prefix: model.tokenize(RERANK_PREFIX, true, "trimLeadingSpace"),
+    middle: model.tokenize(RERANK_MIDDLE, true, "trimLeadingSpace"),
+    suffix: model.tokenize(RERANK_SUFFIX, true, "trimLeadingSpace"),
+  };
+  TEMPLATE_TOKEN_CACHE.set(model as object, entry);
+  return entry;
+}
+
 /** 3.20.0 LlamaRankingContext.js is byte-identical to the audited 3.19.1 source.
  * Mirrors 3.20.0 _getEvaluationInput for the one audited template/vocabulary. */
 export function formatRerankPair(
   model: CapacityModel,
   query: string,
   document: string,
-  version = installedVersion
+  version = getNativePackageVersion()
 ): Token[] | null {
   if (!supported(model, version)) {
     return null;
   }
-  const [prefix, rest = ""] = RERANK_TEMPLATE.split("{query}");
-  const [middle, suffix = ""] = rest.split("{document}");
+  const tpl = getStaticTemplateTokens(model);
   const input = [
-    ...model.tokenize(prefix ?? "", true, "trimLeadingSpace"),
+    ...tpl.prefix,
     ...model.tokenizer(query, false, "trimLeadingSpace"),
-    ...model.tokenize(middle ?? "", true, "trimLeadingSpace"),
+    ...tpl.middle,
     ...model.tokenizer(document, false, "trimLeadingSpace"),
-    ...model.tokenize(suffix, true, "trimLeadingSpace"),
+    ...tpl.suffix,
   ];
   const { bos, eos, shouldPrependBosToken, shouldAppendEosToken } =
     model.tokens;
@@ -70,7 +95,7 @@ export function getRerankCapacity(
   model: CapacityModel,
   query: string,
   documents: readonly string[],
-  version = installedVersion
+  version = getNativePackageVersion()
 ): RerankCapacity {
   if (documents.length === 0) {
     return { kind: "empty" };
@@ -85,13 +110,44 @@ export function getRerankCapacity(
   if (!Number.isSafeInteger(maximum) || maximum <= 0) {
     return { kind: "auto", reason: "Unknown model context limit" };
   }
+  const tpl = getStaticTemplateTokens(model);
+  const queryTokens = model.tokenizer(query, false, "trimLeadingSpace");
+  const baseLength =
+    tpl.prefix.length +
+    queryTokens.length +
+    tpl.middle.length +
+    tpl.suffix.length;
+  const fixedFirst =
+    tpl.prefix[0] ?? queryTokens[0] ?? tpl.middle[0] ?? undefined;
+  const fixedLast = tpl.suffix.at(-1);
+  const fallbackLastBeforeDoc =
+    tpl.middle.at(-1) ?? queryTokens.at(-1) ?? tpl.prefix.at(-1);
+  const { bos, eos, shouldPrependBosToken, shouldAppendEosToken } =
+    model.tokens;
+
   let requiredTokens = 0;
   for (const document of documents) {
-    const tokens = formatRerankPair(model, query, document, version);
-    if (tokens === null) {
-      return { kind: "auto", reason: "Unsupported formatter" };
+    const docTokens = model.tokenizer(document, false, "trimLeadingSpace");
+    let length = baseLength + docTokens.length;
+    let firstToken =
+      fixedFirst !== undefined ? fixedFirst : (docTokens[0] ?? tpl.suffix[0]);
+    let lastToken =
+      fixedLast !== undefined
+        ? fixedLast
+        : (docTokens.at(-1) ?? fallbackLastBeforeDoc);
+    if (shouldPrependBosToken && bos != null && firstToken !== bos) {
+      length += 1;
+      if (length === 1) {
+        lastToken = bos;
+      }
+      firstToken = bos;
     }
-    requiredTokens = Math.max(requiredTokens, tokens.length);
+    if (shouldAppendEosToken && eos != null && lastToken !== eos) {
+      length += 1;
+    }
+    if (length > requiredTokens) {
+      requiredTokens = length;
+    }
   }
   if (requiredTokens > maximum) {
     throw new RangeError(

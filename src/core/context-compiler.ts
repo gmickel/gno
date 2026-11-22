@@ -338,21 +338,20 @@ export const planContextEvidence = async <T, P>(
   const indexName = canonicalizeIndexName(input.indexName);
   const collectionRequests = collections.length > 0 ? collections : [undefined];
   const requestCount = collectionRequests.length;
-  const responses: SearchResults[] = [];
-  for (const [requestIndex, collection] of collectionRequests.entries()) {
-    const resultLimit = distributedLimit(
-      input.limit,
-      requestIndex,
-      requestCount
-    );
-    const rerankLimit = distributedLimit(
-      input.candidateLimit,
-      requestIndex,
-      requestCount
-    );
-    const hasRerankBudget = rerankLimit === undefined || rerankLimit > 0;
-    responses.push(
-      await deps.retrieve({
+  const responses: SearchResults[] = await Promise.all(
+    collectionRequests.map((collection, requestIndex) => {
+      const resultLimit = distributedLimit(
+        input.limit,
+        requestIndex,
+        requestCount
+      );
+      const rerankLimit = distributedLimit(
+        input.candidateLimit,
+        requestIndex,
+        requestCount
+      );
+      const hasRerankBudget = rerankLimit === undefined || rerankLimit > 0;
+      return deps.retrieve({
         query,
         collection,
         // The primary search is partitioned per collection; graph expansion
@@ -377,9 +376,9 @@ export const planContextEvidence = async <T, P>(
         candidateLimit:
           rerankLimit === undefined ? undefined : Math.max(1, rerankLimit),
         explain: input.explain,
-      })
-    );
-  }
+      });
+    })
+  );
   const decoratedResults = responses
     .flatMap((response) => response.results)
     .map((result) => {

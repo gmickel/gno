@@ -503,6 +503,107 @@ export async function prepareHttpDestination(
 }
 
 /**
+ * Resolve, classify, and prepare an HTTP destination in one DNS lookup phase
+ * (eliminating the duplicate lookup between classifyHttpDestination and
+ * prepareHttpDestination). The caller's `assertZoneAllowed` runs against the
+ * proven network zone before transport/proxy/HTTPS policy checks, and
+ * `HttpDestinationPin.acquireConnection()` still performs its independent
+ * pre-connect DNS rebinding check.
+ */
+export async function prepareClassifiedHttpDestination(
+  rawUrl: string | URL,
+  options: Omit<HttpDestinationPolicyOptions, "remoteProvider"> & {
+    redirectCount?: number;
+    assertZoneAllowed?: (classification: DestinationClassification) => void;
+  }
+): Promise<HttpDestinationPolicyResult> {
+  const redirectCount =
+    options.redirectCount === undefined ? 0 : options.redirectCount;
+  if (!Number.isSafeInteger(redirectCount) || redirectCount < 0) {
+    return denial("INVALID_REDIRECT_COUNT", invalidClassification(), null, 0);
+  }
+  if (redirectCount > MAX_HTTP_DESTINATION_REDIRECTS) {
+    return denial(
+      "REDIRECT_LIMIT",
+      invalidClassification(),
+      null,
+      redirectCount
+    );
+  }
+  const url = typeof rawUrl === "string" ? parseHttpUrl(rawUrl) : rawUrl;
+  const invalid = invalidClassification();
+  if (!url) return denial("INVALID_DESTINATION", invalid, null, redirectCount);
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return denial("UNSUPPORTED_PROTOCOL", invalid, url, redirectCount);
+  }
+  if (url.username || url.password) {
+    return denial("CREDENTIALS_IN_URL", invalid, url, redirectCount);
+  }
+
+  const resolver = options.resolver ?? defaultResolver;
+  const env = options.env ?? process.env;
+  const resolved = await resolveAddresses(url, resolver);
+  if (!resolved.ok) {
+    return denial(resolved.reason, invalid, url, redirectCount);
+  }
+
+  const initialClassification = classifyDestination({
+    kind: "network",
+    hostname: resolved.hostname,
+    addresses: resolved.addresses,
+  });
+  options.assertZoneAllowed?.(initialClassification);
+
+  const remoteProvider = initialClassification.zone === "remote";
+  if (remoteProvider && url.protocol !== "https:") {
+    return denial("PROVIDER_HTTPS_REQUIRED", invalid, url, redirectCount);
+  }
+  if (options.maximumZone !== "remote" && hasActiveProxy(env)) {
+    return denial("PROXY_ENVIRONMENT_ACTIVE", invalid, url, redirectCount);
+  }
+
+  const classification = remoteProvider
+    ? classifyDestination({
+        kind: "network",
+        hostname: resolved.hostname,
+        addresses: resolved.addresses,
+        remoteProvider: true,
+      })
+    : initialClassification;
+  if (remoteProvider && !providerAddressesArePublic(classification)) {
+    return denial(
+      "PROVIDER_ADDRESS_NOT_PUBLIC",
+      classification,
+      url,
+      redirectCount
+    );
+  }
+  if (!zoneAllowed(classification.zone, options.maximumZone)) {
+    return denial("ZONE_NOT_ALLOWED", classification, url, redirectCount);
+  }
+
+  return {
+    ok: true,
+    reason: "DESTINATION_ALLOWED",
+    value: new HttpDestinationPin(
+      {
+        url,
+        hostname: resolved.hostname,
+        addresses: resolved.addresses,
+        classification,
+      },
+      {
+        maximumZone: options.maximumZone,
+        resolver,
+        remoteProvider,
+        env,
+      },
+      redirectCount
+    ),
+  };
+}
+
+/**
  * Resolve and classify an HTTP destination without opening a socket or
  * transferring request headers/body. This bounded DNS-only phase lets the
  * collection policy evaluate a hostname's proven zone before transport setup.
