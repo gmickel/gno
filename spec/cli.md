@@ -1454,7 +1454,7 @@ never confirms; without confirmation embed exits 2 and writes nothing.
 | ------------------------ | -------- | ------- | ---------------------------------------------------------------------------- |
 | `--force`                | boolean  | false   | Re-embed all chunks (ignore existing vectors)                                |
 | `--model`                | string   | config  | Override embedding model URI                                                 |
-| `--batch-size`           | integer  | 32      | Chunks per batch                                                             |
+| `--batch-size`           | integer  | 64      | Chunks per batch (foreground default; background capped at 32)               |
 | `--dry-run`              | boolean  | false   | Show what would be embedded without doing it                                 |
 | `--max-chunks <n>`       | integer  | -       | Stop after the batch that reaches this many chunks (see Bounded runs above)  |
 | `--max-seconds <n>`      | integer  | -       | Stop after the batch that reaches this many seconds (see Bounded runs above) |

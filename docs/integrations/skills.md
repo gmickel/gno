@@ -39,6 +39,7 @@ gno skill install --scope user                    # Claude Code, user-wide
 gno skill install --target codex --scope user     # OpenAI Codex CLI
 gno skill install --target opencode --scope user  # OpenCode
 gno skill install --target openclaw --scope user  # OpenClaw
+gno skill install --target hermes --scope user    # Hermes Agent
 gno skill install --target all --scope user       # All targets at once
 ```
 
@@ -50,6 +51,7 @@ gno skill install --target all --scope user       # All targets at once
 | `codex`    | `gno skill install --target codex --scope user`    | `~/.codex/skills/gno/`           |
 | `opencode` | `gno skill install --target opencode --scope user` | `~/.config/opencode/skills/gno/` |
 | `openclaw` | `gno skill install --target openclaw --scope user` | `~/.openclaw/skills/gno/`        |
+| `hermes`   | `gno skill install --target hermes --scope user`   | `~/.hermes/skills/gno/`          |
 | `all`      | `gno skill install --target all --scope user`      | All locations                    |
 
 ## Scope Options
