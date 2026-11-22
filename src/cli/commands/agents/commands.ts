@@ -5,7 +5,7 @@
  */
 
 import { CliError } from "../../errors.js";
-import { getGlobals } from "../../program.js";
+import { getGlobals } from "../../globals.js";
 import {
   BLOCK_VERSION,
   extractBlock,

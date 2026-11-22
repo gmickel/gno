@@ -17,15 +17,15 @@ import {
 import {
   getConfigPaths,
   isInitialized,
-  loadConfig,
   writeConfigWarningsToStderr,
 } from "../../config";
 import { tracePhase } from "../../core/phase-trace";
-import { BUDGET_ERROR_CODES } from "../../ingestion/file-processor";
+import { BUDGET_ERROR_CODES } from "../../ingestion/budget-error-codes";
 import {
   SqliteAdapter,
   staleCollectionsMessage,
 } from "../../store/sqlite/adapter";
+import { loadConfigCached } from "../config-cache";
 import { assertCliSessionBinding } from "../session-binding";
 
 /**
@@ -78,8 +78,8 @@ export async function initStore(
     return { ok: false, error: "GNO not initialized. Run: gno init" };
   }
 
-  // Load config
-  const configResult = await loadConfig(options.configPath);
+  // Load config (reused within the same CLI invocation when unchanged)
+  const configResult = await loadConfigCached(options.configPath);
   if (!configResult.ok) {
     return { ok: false, error: configResult.error.message };
   }

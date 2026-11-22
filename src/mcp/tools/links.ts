@@ -437,11 +437,13 @@ export function handleSimilar(
       }
       const dimensions = embedding.length;
 
-      // Create vector index for search
-      const vectorResult = await createVectorIndexPort(db, {
-        model: modelUri,
-        dimensions,
-      });
+      // Reuse warm vector index port on ToolContext when available.
+      const vectorResult = ctx.getCachedVectorIndex
+        ? await ctx.getCachedVectorIndex(modelUri, dimensions)
+        : await createVectorIndexPort(db, {
+            model: modelUri,
+            dimensions,
+          });
 
       if (!vectorResult.ok) {
         throw new Error(

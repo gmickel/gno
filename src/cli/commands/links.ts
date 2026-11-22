@@ -5,7 +5,7 @@
  * @module src/cli/commands/links
  */
 
-import type { DocEdgeRow, DocLinkRow, StorePort } from "../../store/types";
+import type { DocEdgeRow, DocLinkRow } from "../../store/types";
 
 import { resolveDocRef } from "../../core/ref-parser";
 import { initStore } from "./shared";

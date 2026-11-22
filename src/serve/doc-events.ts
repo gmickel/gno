@@ -118,6 +118,9 @@ export class DocumentEventBus {
   }
 
   emit(event: DocumentEvent): void {
+    if (this.#subscribers.size === 0) {
+      return;
+    }
     const payload = encoder.encode(
       `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`
     );

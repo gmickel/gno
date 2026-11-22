@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { highlightCode } from "../../../src/serve/public/components/ai-elements/code-block";
+import { highlightCodeDualTheme } from "../../../src/serve/public/components/ai-elements/code-block";
 import {
   extractMarkdownCodeLanguage,
   resolveCodeLanguage,
@@ -27,14 +27,14 @@ describe("code language normalization", () => {
   });
 
   test("highlighting unsupported fence ids does not throw", async () => {
-    const [light, dark] = await highlightCode("- [ ] Ship patch", "tasks");
+    const html = await highlightCodeDualTheme("- [ ] Ship patch", "tasks");
 
-    expect(light).toContain("shiki");
-    expect(dark).toContain("shiki");
+    expect(html).toContain("shiki");
+    expect(html).toContain("--shiki-dark:");
   });
 
   test("unknown fence language highlights as text without throw", async () => {
-    const [light] = await highlightCode("plain", "definitely-unknown");
-    expect(light).toContain("shiki");
+    const html = await highlightCodeDualTheme("plain", "definitely-unknown");
+    expect(html).toContain("shiki");
   });
 });

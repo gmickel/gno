@@ -634,6 +634,16 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   private shutdownDeadline?: number;
   private contextGeneration = 0;
   private chunkingGeneration = 0;
+  private staleIndexedCache: {
+    dv: number;
+    tc: number;
+    indexedNames: string[];
+  } | null = null;
+  private dateFieldsCache: {
+    dv: number;
+    tc: number;
+    byCollection: Map<string, string[]>;
+  } | null = null;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Lifecycle
@@ -768,6 +778,8 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
   async close(): Promise<void> {
     this.fenceForShutdown();
+    this.staleIndexedCache = null;
+    this.dateFieldsCache = null;
     this.readDb?.close(false);
     this.readDb = null;
     if (this.db) {
@@ -1134,20 +1146,47 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     }
   }
 
+  private readDbVersionTuple(db: Database): { dv: number; tc: number } {
+    const row = db
+      .query<{ dv: number; tc: number }, []>(
+        "SELECT (SELECT * FROM pragma_data_version) AS dv, total_changes() AS tc"
+      )
+      .get();
+    return row ?? { dv: 0, tc: 0 };
+  }
+
   /**
    * Indexed collections `configured` omits, checked cheaply on each read of a
    * long-lived client: another client may add a collection after it opened.
+   * Memoized by (PRAGMA data_version, total_changes()) so unchanged reads skip
+   * the collection/document EXISTS scan.
    */
   staleIndexedCollections(configured: readonly string[]): StaleCollection[] {
     const db = this.ensureOpen();
+    const canCache = !db.inTransaction;
+    const { dv, tc } = this.readDbVersionTuple(db);
+    let indexedNames: string[];
+    if (
+      canCache &&
+      this.staleIndexedCache &&
+      this.staleIndexedCache.dv === dv &&
+      this.staleIndexedCache.tc === tc
+    ) {
+      indexedNames = this.staleIndexedCache.indexedNames;
+    } else {
+      indexedNames = db
+        .query<{ name: string }, []>(
+          `SELECT c.name AS name FROM collections c
+           WHERE EXISTS (SELECT 1 FROM documents d WHERE d.collection = c.name)`
+        )
+        .all()
+        .map(({ name }) => name);
+      if (canCache) {
+        this.staleIndexedCache = { dv, tc, indexedNames };
+      }
+    }
     const listed = new Set(configured);
-    const indexed = db
-      .query<{ name: string }, []>(
-        `SELECT c.name AS name FROM collections c
-         WHERE EXISTS (SELECT 1 FROM documents d WHERE d.collection = c.name)`
-      )
-      .all();
-    return indexed.some(({ name }) => !listed.has(name))
+    return indexedNames.some((name) => !listed.has(name))
       ? this.queryStaleCollections(db, configured).filter(
           (c) => c.documents > 0
         )
@@ -2733,6 +2772,24 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   ): Promise<StoreResult<string[]>> {
     try {
       const db = this.ensureOpen();
+      const canCache = !db.inTransaction;
+      const { dv, tc } = this.readDbVersionTuple(db);
+      const cacheKey = collection ?? "";
+      if (canCache) {
+        if (
+          this.dateFieldsCache &&
+          this.dateFieldsCache.dv === dv &&
+          this.dateFieldsCache.tc === tc
+        ) {
+          const hit = this.dateFieldsCache.byCollection.get(cacheKey);
+          if (hit) {
+            return ok([...hit]);
+          }
+        } else {
+          this.dateFieldsCache = { dv, tc, byCollection: new Map() };
+        }
+      }
+
       const conditions: string[] = [
         "d.active = 1",
         "d.date_fields IS NOT NULL",
@@ -2752,14 +2809,226 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         ORDER BY jf.key ASC
       `;
 
-      const rows = db.query<{ field: string }, string[]>(sql).all(...params);
-      return ok(rows.map((r) => r.field));
+      const fields = db
+        .query<{ field: string }, string[]>(sql)
+        .all(...params)
+        .map((r) => r.field);
+      if (canCache && this.dateFieldsCache) {
+        this.dateFieldsCache.byCollection.set(cacheKey, fields);
+      }
+      return ok([...fields]);
     } catch (cause) {
       return err(
         "QUERY_FAILED",
         cause instanceof Error
           ? cause.message
           : "Failed to list collection date fields",
+        cause
+      );
+    }
+  }
+
+  /**
+   * Targeted lookup for similarity hit hydration: fetches only the active
+   * documents owning the returned vector hits instead of scanning the entire
+   * documents table.
+   */
+  async listDocumentsForSimilarity(options: {
+    documentIds: readonly number[];
+    mirrorHashes: readonly string[];
+    collection?: string;
+  }): Promise<
+    StoreResult<
+      Array<{
+        id: number;
+        docid: string;
+        uri: string;
+        title: string | null;
+        collection: string;
+        relPath: string;
+        mirrorHash: string;
+        active: boolean;
+      }>
+    >
+  > {
+    if (options.documentIds.length === 0 && options.mirrorHashes.length === 0) {
+      return ok([]);
+    }
+    try {
+      const db = this.ensureOpen();
+      const idsJson = JSON.stringify([...new Set(options.documentIds)]);
+      const hashesJson = JSON.stringify([...new Set(options.mirrorHashes)]);
+      const rows = options.collection
+        ? db
+            .query<
+              {
+                id: number;
+                docid: string;
+                uri: string;
+                title: string | null;
+                collection: string;
+                rel_path: string;
+                mirror_hash: string;
+              },
+              [string, string, string]
+            >(
+              `SELECT id, docid, uri, title, collection, rel_path, mirror_hash
+               FROM documents
+               WHERE active = 1
+                 AND mirror_hash IS NOT NULL
+                 AND collection = ?
+                 AND (
+                   id IN (SELECT value FROM json_each(?))
+                   OR mirror_hash IN (SELECT value FROM json_each(?))
+                 )
+               ORDER BY id`
+            )
+            .all(options.collection, idsJson, hashesJson)
+        : db
+            .query<
+              {
+                id: number;
+                docid: string;
+                uri: string;
+                title: string | null;
+                collection: string;
+                rel_path: string;
+                mirror_hash: string;
+              },
+              [string, string]
+            >(
+              `SELECT id, docid, uri, title, collection, rel_path, mirror_hash
+               FROM documents
+               WHERE active = 1
+                 AND mirror_hash IS NOT NULL
+                 AND (
+                   id IN (SELECT value FROM json_each(?))
+                   OR mirror_hash IN (SELECT value FROM json_each(?))
+                 )
+               ORDER BY id`
+            )
+            .all(idsJson, hashesJson);
+
+      return ok(
+        rows.map((row) => ({
+          id: row.id,
+          docid: row.docid,
+          uri: row.uri,
+          title: row.title,
+          collection: row.collection,
+          relPath: row.rel_path,
+          mirrorHash: row.mirror_hash,
+          active: true,
+        }))
+      );
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to load similarity documents",
+        cause
+      );
+    }
+  }
+
+  /**
+   * Minimal-column SQL autocomplete search.
+   * Selects only the 5 scalar columns needed for autocomplete (never hydrating
+   * full DocumentRow blobs or parsing typedMetadata JSON). For non-empty
+   * single-token ASCII queries, pushes an ASCII substring pre-filter into SQL
+   * while still passing rows containing any non-ASCII character (so Unicode
+   * case folding like `Kelvin` -> `kelvin` is never missed), then applies
+   * exact JS display-title resolution, `.toLowerCase().includes()`,
+   * `.localeCompare()` ordering, and `.slice(0, limit)`.
+   */
+  async searchDocumentsForAutocomplete(options: {
+    query: string;
+    collection?: string;
+    limit: number;
+  }): Promise<
+    StoreResult<
+      Array<{
+        docid: string;
+        uri: string;
+        title: string;
+        collection: string;
+      }>
+    >
+  > {
+    try {
+      const db = this.ensureOpen();
+      const query = options.query.trim().toLowerCase();
+      // Preserve Array.prototype.slice(0, limit) semantics identically
+      // (including fractional limits like 1.5 -> 1 and negative limits like -1).
+      const sliceLimit = Math.min(options.limit, 20);
+      if (sliceLimit === 0) {
+        return ok([]);
+      }
+      const isAsciiSingleSegment =
+        query.length > 0 && !/[^\x20-\x7f]/.test(query) && !query.includes(" ");
+
+      const resolveTitle = (title: string | null, relPath: string): string =>
+        title ??
+        relPath
+          .split("/")
+          .pop()
+          ?.replace(/\.[^.]+$/, "") ??
+        relPath;
+
+      type MinimalRow = {
+        docid: string;
+        uri: string;
+        title: string | null;
+        rel_path: string;
+        collection: string;
+      };
+
+      const conditions = ["active = 1"];
+      const params: string[] = [];
+      if (options.collection) {
+        conditions.push("collection = ?");
+        params.push(options.collection);
+      }
+      if (isAsciiSingleSegment) {
+        // Pure-ASCII rows can only match if SQLite's ASCII lower() matches
+        // title or uri (which includes rel_path); pass rows containing any
+        // non-ASCII byte through so Unicode case folding matches identically.
+        conditions.push(
+          "(instr(lower(COALESCE(title, '')), ?) > 0 OR instr(lower(uri), ?) > 0 OR COALESCE(title, '') GLOB '*[^' || char(1) || '-' || char(127) || ']*' OR uri GLOB '*[^' || char(1) || '-' || char(127) || ']*')"
+        );
+        params.push(query, query);
+      }
+
+      const rows = db
+        .query<MinimalRow, string[]>(
+          `SELECT docid, uri, title, rel_path, collection
+           FROM documents
+           WHERE ${conditions.join(" AND ")}`
+        )
+        .all(...params);
+
+      const candidates = rows
+        .map((row) => ({
+          docid: row.docid,
+          uri: row.uri,
+          title: resolveTitle(row.title, row.rel_path),
+          collection: row.collection,
+        }))
+        .filter((doc) => {
+          if (!query) return true;
+          return `${doc.title} ${doc.uri}`.toLowerCase().includes(query);
+        })
+        .sort((a, b) => a.title.localeCompare(b.title))
+        .slice(0, sliceLimit);
+
+      return ok(candidates);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to search autocomplete documents",
         cause
       );
     }
@@ -6723,6 +6992,86 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return err(
         "QUERY_FAILED",
         cause instanceof Error ? cause.message : "Failed to get recent errors",
+        cause
+      );
+    }
+  }
+
+  async getRecentBudgetStops(
+    codes: readonly string[],
+    scanLimit = 100,
+    maxStops = 10
+  ): Promise<
+    StoreResult<
+      Array<{
+        collection: string;
+        relPath: string;
+        code: string;
+        message: string;
+      }>
+    >
+  > {
+    if (codes.length === 0 || scanLimit <= 0 || maxStops <= 0) {
+      return ok([]);
+    }
+    try {
+      const db = this.ensureOpen();
+      const rows = db
+        .query<
+          {
+            collection: string;
+            rel_path: string;
+            code: string;
+            message: string;
+          },
+          [number, string, number]
+        >(
+          `WITH recent AS (
+             SELECT
+               collection,
+               rel_path,
+               occurred_at,
+               code,
+               message,
+               ROW_NUMBER() OVER (
+                 PARTITION BY collection, rel_path
+                 ORDER BY occurred_at DESC, id DESC
+               ) AS rn
+             FROM (
+               SELECT id, collection, rel_path, occurred_at, code, message
+               FROM ingest_errors
+               ORDER BY occurred_at DESC
+               LIMIT ?
+             )
+           )
+           SELECT r.collection, r.rel_path, r.code, r.message
+           FROM recent r
+           INNER JOIN documents d
+             ON d.collection = r.collection
+            AND d.rel_path = r.rel_path
+           WHERE r.rn = 1
+             AND r.code IN (SELECT value FROM json_each(?))
+             AND d.active = 1
+             AND d.last_error_code = r.code
+           ORDER BY r.occurred_at DESC
+           LIMIT ?`
+        )
+        .all(scanLimit, JSON.stringify(codes), maxStops);
+
+      return ok(
+        rows.map((row) => ({
+          collection: row.collection,
+          relPath: row.rel_path,
+          code: row.code,
+          message: row.message,
+        }))
+      );
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error
+          ? cause.message
+          : "Failed to get recent budget stops",
         cause
       );
     }

@@ -34,7 +34,7 @@ describe("CaptureModal DOM interactions", () => {
   test("submits a note from the dialog with keyboard interaction and tag input", async () => {
     apiFetch.mockImplementation(async (...args: unknown[]) => {
       const endpoint = typeof args[0] === "string" ? args[0] : "";
-      if (endpoint === "/api/status") {
+      if (endpoint === "/api/collections") {
         return apiOk({
           collections: [{ name: "notes", path: "/tmp/notes" }],
         });
@@ -136,7 +136,7 @@ describe("CaptureModal DOM interactions", () => {
   test("a retried capture keeps its request ID across a refresh; an edit starts a new one", async () => {
     apiFetch.mockImplementation(async (...args: unknown[]) => {
       const endpoint = typeof args[0] === "string" ? args[0] : "";
-      if (endpoint === "/api/status") {
+      if (endpoint === "/api/collections") {
         return apiOk({
           collections: [{ name: "notes", path: "/tmp/notes" }],
         });
@@ -198,7 +198,7 @@ describe("CaptureModal DOM interactions", () => {
   test("shows missing collection state", async () => {
     apiFetch.mockImplementation(async (...args: unknown[]) => {
       const endpoint = typeof args[0] === "string" ? args[0] : "";
-      if (endpoint === "/api/status") {
+      if (endpoint === "/api/collections") {
         return apiOk({ collections: [] });
       }
       return apiOk({});
@@ -223,7 +223,7 @@ describe("CaptureModal DOM interactions", () => {
   test("submits provenance fields and shows skipped sync without job progress", async () => {
     apiFetch.mockImplementation(async (...args: unknown[]) => {
       const endpoint = typeof args[0] === "string" ? args[0] : "";
-      if (endpoint === "/api/status") {
+      if (endpoint === "/api/collections") {
         return apiOk({
           collections: [{ name: "notes", path: "/tmp/notes" }],
         });
@@ -297,7 +297,7 @@ describe("CaptureModal DOM interactions", () => {
   test("submits untouched preset scaffold as preset only", async () => {
     apiFetch.mockImplementation(async (...args: unknown[]) => {
       const endpoint = typeof args[0] === "string" ? args[0] : "";
-      if (endpoint === "/api/status") {
+      if (endpoint === "/api/collections") {
         return apiOk({
           collections: [{ name: "notes", path: "/tmp/notes" }],
         });
@@ -362,7 +362,7 @@ describe("CaptureModal DOM interactions", () => {
   test("submits edited preset scaffold as content without preset id", async () => {
     apiFetch.mockImplementation(async (...args: unknown[]) => {
       const endpoint = typeof args[0] === "string" ? args[0] : "";
-      if (endpoint === "/api/status") {
+      if (endpoint === "/api/collections") {
         return apiOk({
           collections: [{ name: "notes", path: "/tmp/notes" }],
         });

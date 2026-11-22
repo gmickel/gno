@@ -13,42 +13,113 @@ import type { EgressLineage } from "../core/egress-provenance";
 import type { JobManager } from "../core/job-manager";
 import type { NativeDisposeOptions } from "../llm/native-worker/owned-exit";
 import type { ModelLease } from "../llm/nodeLlamaCpp/lifecycle";
+import type {
+  EmbeddingPort,
+  GenerationPort,
+  LlmResult,
+  RerankPort,
+} from "../llm/types";
 import type { ResidentStatus } from "../serve/status-model";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 import type { StoreResult } from "../store/types";
+import type { VectorIndexPort } from "../store/vector";
 import type { McpToolProfile } from "./tool-profile";
 
 import { MCP_SERVER_NAME, VERSION } from "../app/constants";
-import { LlmAdapter } from "../llm/nodeLlamaCpp/adapter";
+import {
+  type CreatePortOptions,
+  LlmAdapter,
+} from "../llm/nodeLlamaCpp/adapter";
 import { createStandaloneResidentStatus } from "../serve/resident-status";
+import { createVectorIndexPort } from "../store/vector";
+import { getStoredEmbeddingDimensions } from "../store/vector/freshness";
+import { createLazyVectorIndex } from "../store/vector/lazy";
 import { registerResources } from "./resources/index";
 import { registerTools } from "./tools/index";
 
 export interface AsyncMutex {
   acquire(): Promise<() => void>;
+  /** Shared read lock for concurrent read-only tools; falls back to exclusive acquire() on test doubles. */
+  acquireRead?(): Promise<() => void>;
 }
 
+/**
+ * Fair async reader-writer lock.
+ * - `acquireRead()` allows concurrent read-only tools when no writer is active or queued.
+ * - `acquire()` grants exclusive access for write tools, jobs, and shutdown, draining
+ *   all active readers and queuing subsequent readers behind it to prevent writer starvation.
+ */
 export class Mutex implements AsyncMutex {
-  #locked = false;
-  readonly #queue: Array<() => void> = [];
+  #activeReaders = 0;
+  #writerActive = false;
+  readonly #waiters: Array<{ kind: "read" | "write"; grant: () => void }> = [];
 
   acquire(): Promise<() => void> {
     return new Promise((resolve) => {
-      const tryAcquire = (): void => {
-        if (this.#locked) {
-          this.#queue.push(tryAcquire);
-          return;
-        }
-        this.#locked = true;
-        resolve(() => this.#release());
+      const grant = (): void => {
+        this.#writerActive = true;
+        let released = false;
+        resolve(() => {
+          if (released) return;
+          released = true;
+          this.#writerActive = false;
+          this.#drain();
+        });
       };
-      tryAcquire();
+      if (
+        !this.#writerActive &&
+        this.#activeReaders === 0 &&
+        this.#waiters.length === 0
+      ) {
+        grant();
+        return;
+      }
+      this.#waiters.push({ kind: "write", grant });
     });
   }
 
-  #release(): void {
-    this.#locked = false;
-    this.#queue.shift()?.();
+  acquireRead(): Promise<() => void> {
+    return new Promise((resolve) => {
+      const grant = (): void => {
+        this.#activeReaders += 1;
+        let released = false;
+        resolve(() => {
+          if (released) return;
+          released = true;
+          this.#activeReaders -= 1;
+          if (this.#activeReaders === 0) {
+            this.#drain();
+          }
+        });
+      };
+      if (!this.#writerActive && this.#waiters.length === 0) {
+        grant();
+        return;
+      }
+      this.#waiters.push({ kind: "read", grant });
+    });
+  }
+
+  #drain(): void {
+    if (this.#writerActive) {
+      return;
+    }
+    while (this.#waiters.length > 0) {
+      const next = this.#waiters[0];
+      if (!next) {
+        break;
+      }
+      if (next.kind === "read") {
+        this.#waiters.shift();
+        next.grant();
+        continue;
+      }
+      if (this.#activeReaders === 0) {
+        this.#waiters.shift();
+        next.grant();
+      }
+      break;
+    }
   }
 }
 
@@ -92,6 +163,26 @@ export interface ToolContext {
   isShuttingDown: () => boolean;
   getResidentStatus?: () => ResidentStatus;
   getModelAdapter?: () => LlmAdapter;
+  getCachedEmbeddingPort?: (
+    uri: string,
+    options: CreatePortOptions
+  ) => Promise<LlmResult<EmbeddingPort>>;
+  getCachedExpansionPort?: (
+    uri: string,
+    options: CreatePortOptions
+  ) => Promise<LlmResult<GenerationPort>>;
+  getCachedRerankPort?: (
+    uri: string,
+    options: CreatePortOptions
+  ) => Promise<LlmResult<RerankPort>>;
+  getCachedVectorIndex?: (
+    modelUri: string,
+    dimensions: number
+  ) => Promise<StoreResult<VectorIndexPort>>;
+  getCachedLazyVectorIndex?: (
+    modelUri: string,
+    embedPort: EmbeddingPort
+  ) => Promise<VectorIndexPort | null>;
   disposeModels?: (options?: NativeDisposeOptions) => Promise<void>;
   acquireModelLease?: () => ModelLease;
   markContentMutation?: () => void;
@@ -162,6 +253,20 @@ export function createToolContext(
   options: CreateToolContextOptions
 ): ToolContext {
   const adapters = new Map<Config, LlmAdapter>();
+  let cachedPortConfig: Config | null = null;
+  let cachedPortGeneration = 0;
+  // Cache ONLY successfully initialized ports so concurrent callers never
+  // inherit another caller's cancellation scope during cold initialization.
+  const cachedEmbedPorts = new Map<string, EmbeddingPort>();
+  const cachedExpandPorts = new Map<string, GenerationPort>();
+  const cachedRerankPorts = new Map<string, RerankPort>();
+  // Ports superseded by a config reload remain live for any in-flight caller
+  // until shutdown (`disposeModels`) drains requests and disposes all ports.
+  const retiredPorts = new Set<{ dispose(): Promise<void> }>();
+  const cachedVectorIndexes = new Map<
+    string,
+    Promise<StoreResult<VectorIndexPort>>
+  >();
   let modelsClosed = false;
   const requestSnapshot = new AsyncLocalStorage<ToolContextSnapshot>();
   const currentSnapshot = (): ToolContextSnapshot =>
@@ -171,12 +276,78 @@ export function createToolContext(
       return { config, collections: config.collections };
     })();
 
+  const portCacheKey = (
+    uri: string,
+    portOptions?: CreatePortOptions
+  ): string => {
+    const egress = portOptions?.egressCollections;
+    const egressKey =
+      egress === undefined || egress === "all"
+        ? "*"
+        : [...egress].sort().join("\u0000");
+    const policy = portOptions?.policy;
+    const policyKey = policy
+      ? `${policy.offline ? 1 : 0}:${policy.allowDownload ? 1 : 0}`
+      : "default";
+    return `${uri}\u0001${egressKey}\u0001${policyKey}`;
+  };
+
+  const evictCachedPortsForConfigChange = (): void => {
+    cachedPortGeneration += 1;
+    for (const port of cachedEmbedPorts.values()) {
+      retiredPorts.add(port);
+    }
+    for (const port of cachedExpandPorts.values()) {
+      retiredPorts.add(port);
+    }
+    for (const port of cachedRerankPorts.values()) {
+      retiredPorts.add(port);
+    }
+    cachedEmbedPorts.clear();
+    cachedExpandPorts.clear();
+    cachedRerankPorts.clear();
+    cachedVectorIndexes.clear();
+    cachedPortConfig = null;
+  };
+
+  const disposeAllCachedPorts = async (): Promise<void> => {
+    evictCachedPortsForConfigChange();
+    const disposals: Promise<unknown>[] = [];
+    for (const port of retiredPorts) {
+      disposals.push(Promise.resolve().then(() => port.dispose()));
+    }
+    retiredPorts.clear();
+    await Promise.allSettled(disposals);
+  };
+
+  const ensurePortCacheForConfig = (config: Config): void => {
+    if (cachedPortConfig !== null && cachedPortConfig !== config) {
+      evictCachedPortsForConfigChange();
+    }
+    cachedPortConfig = config;
+  };
+
+  const resolveModelAdapter = (config: Config): LlmAdapter => {
+    if (modelsClosed) throw new Error("Resident runtime is shutting down");
+    const shared = options.getModelAdapter?.(config);
+    if (shared) return shared;
+    let adapter = adapters.get(config);
+    if (!adapter) {
+      adapter = new LlmAdapter(config);
+      adapters.set(config, adapter);
+    }
+    return adapter;
+  };
+
   return {
     store: options.store,
     get config() {
       return currentSnapshot().config;
     },
     set config(config: Config) {
+      if (cachedPortConfig !== null && cachedPortConfig !== config) {
+        evictCachedPortsForConfigChange();
+      }
       options.setConfig?.(config);
     },
     get collections() {
@@ -198,20 +369,168 @@ export function createToolContext(
     getResidentStatus:
       options.getResidentStatus ??
       (() => createStandaloneResidentStatus("stdio")),
-    getModelAdapter: () => {
-      if (modelsClosed) throw new Error("Resident runtime is shutting down");
+    getModelAdapter: () => resolveModelAdapter(currentSnapshot().config),
+    getCachedEmbeddingPort: async (uri, portOptions) => {
       const config = currentSnapshot().config;
-      const shared = options.getModelAdapter?.(config);
-      if (shared) return shared;
-      let adapter = adapters.get(config);
-      if (!adapter) {
-        adapter = new LlmAdapter(config);
-        adapters.set(config, adapter);
+      const llm = resolveModelAdapter(config);
+      ensurePortCacheForConfig(config);
+      const key = portCacheKey(uri, portOptions);
+      const cached = cachedEmbedPorts.get(key);
+      if (cached) {
+        return { ok: true, value: cached };
       }
-      return adapter;
+      const generation = cachedPortGeneration;
+      const res = await llm.createEmbeddingPort(uri, portOptions);
+      if (!res.ok) {
+        return res;
+      }
+      if (modelsClosed) {
+        await res.value.dispose();
+        return {
+          ok: false,
+          error: {
+            code: "MODEL_LOAD_FAILED",
+            message: "Resident runtime is shutting down",
+            retryable: false,
+          },
+        };
+      }
+      if (generation !== cachedPortGeneration) {
+        // Keep the opened port live for this in-flight snapshot caller;
+        // disposeModels() will clean it up after shutdown drains requests.
+        retiredPorts.add(res.value);
+        return res;
+      }
+      const existing = cachedEmbedPorts.get(key);
+      if (existing) {
+        // Do NOT call res.value.dispose() while existing is active: native
+        // ports share the same ModelManager slot and dispose() unloads it.
+        // Defer disposal to shutdown (`disposeModels`) via retiredPorts.
+        retiredPorts.add(res.value);
+        return { ok: true, value: existing };
+      }
+      cachedEmbedPorts.set(key, res.value);
+      return res;
+    },
+    getCachedExpansionPort: async (uri, portOptions) => {
+      const config = currentSnapshot().config;
+      const llm = resolveModelAdapter(config);
+      ensurePortCacheForConfig(config);
+      const key = portCacheKey(uri, portOptions);
+      const cached = cachedExpandPorts.get(key);
+      if (cached) {
+        return { ok: true, value: cached };
+      }
+      const generation = cachedPortGeneration;
+      const res = await llm.createExpansionPort(uri, portOptions);
+      if (!res.ok) {
+        return res;
+      }
+      if (modelsClosed) {
+        await res.value.dispose();
+        return {
+          ok: false,
+          error: {
+            code: "MODEL_LOAD_FAILED",
+            message: "Resident runtime is shutting down",
+            retryable: false,
+          },
+        };
+      }
+      if (generation !== cachedPortGeneration) {
+        retiredPorts.add(res.value);
+        return res;
+      }
+      const existing = cachedExpandPorts.get(key);
+      if (existing) {
+        retiredPorts.add(res.value);
+        return { ok: true, value: existing };
+      }
+      cachedExpandPorts.set(key, res.value);
+      return res;
+    },
+    getCachedRerankPort: async (uri, portOptions) => {
+      const config = currentSnapshot().config;
+      const llm = resolveModelAdapter(config);
+      ensurePortCacheForConfig(config);
+      const key = portCacheKey(uri, portOptions);
+      const cached = cachedRerankPorts.get(key);
+      if (cached) {
+        return { ok: true, value: cached };
+      }
+      const generation = cachedPortGeneration;
+      const res = await llm.createRerankPort(uri, portOptions);
+      if (!res.ok) {
+        return res;
+      }
+      if (modelsClosed) {
+        await res.value.dispose();
+        return {
+          ok: false,
+          error: {
+            code: "MODEL_LOAD_FAILED",
+            message: "Resident runtime is shutting down",
+            retryable: false,
+          },
+        };
+      }
+      if (generation !== cachedPortGeneration) {
+        retiredPorts.add(res.value);
+        return res;
+      }
+      const existing = cachedRerankPorts.get(key);
+      if (existing) {
+        retiredPorts.add(res.value);
+        return { ok: true, value: existing };
+      }
+      cachedRerankPorts.set(key, res.value);
+      return res;
+    },
+    getCachedVectorIndex: (modelUri, dimensions) => {
+      const config = currentSnapshot().config;
+      ensurePortCacheForConfig(config);
+      const key = `${modelUri}\u0000${dimensions}`;
+      let pending = cachedVectorIndexes.get(key);
+      if (!pending) {
+        pending = createVectorIndexPort(options.store.getRawDb(), {
+          model: modelUri,
+          dimensions,
+        }).then((res) => {
+          if (!res.ok) cachedVectorIndexes.delete(key);
+          return res;
+        });
+        cachedVectorIndexes.set(key, pending);
+      }
+      return pending;
+    },
+    getCachedLazyVectorIndex: async (modelUri, embedPort) => {
+      const config = currentSnapshot().config;
+      ensurePortCacheForConfig(config);
+      const db = options.store.getRawDb();
+      const storedDimensions = getStoredEmbeddingDimensions(db, modelUri);
+      if (storedDimensions !== undefined) {
+        const key = `${modelUri}\u0000${storedDimensions}`;
+        let pending = cachedVectorIndexes.get(key);
+        if (!pending) {
+          pending = createVectorIndexPort(db, {
+            model: modelUri,
+            dimensions: storedDimensions,
+          }).then((res) => {
+            if (!res.ok) cachedVectorIndexes.delete(key);
+            return res;
+          });
+          cachedVectorIndexes.set(key, pending);
+        }
+        const res = await pending;
+        return res.ok ? res.value : null;
+      }
+      // Never cache an uninitialized lazy wrapper holding a caller-scoped
+      // embedPort (its egress policy is specific to this request).
+      return createLazyVectorIndex(db, modelUri, embedPort);
     },
     disposeModels: async (disposeOptions) => {
       modelsClosed = true;
+      await disposeAllCachedPorts();
       await Promise.all(
         [...adapters.values()].map((adapter) => adapter.dispose(disposeOptions))
       );

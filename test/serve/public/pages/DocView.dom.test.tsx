@@ -2,7 +2,6 @@ import { cleanup, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { useEffect, useRef } from "react";
 
-import { extractSections } from "../../../../src/core/sections";
 import {
   apiError,
   apiOk,
@@ -40,23 +39,6 @@ void mock.module(
     RelatedNotesSidebar: () => null,
   })
 );
-
-void mock.module("../../../../src/serve/public/components/editor", () => ({
-  // Module mocks are process-wide: keep every export later suites import.
-  CodeMirrorEditor: () => null,
-  MarkdownPreview: ({ content }: { content: string }) => (
-    <div>
-      {extractSections(content).map((section) => (
-        <div
-          data-section-anchor={section.anchor}
-          id={section.anchor}
-          key={section.anchor}
-        />
-      ))}
-      <div>{content}</div>
-    </div>
-  ),
-}));
 
 // Contained DocView-only FrontmatterDisplay mock so the real suite is not
 // sticky-mocked (fn-123.2 isolation).
@@ -331,7 +313,7 @@ describe("DocView DOM interactions", () => {
     const navigate = mock(() => undefined);
     const { user } = renderWithUser(<DocView navigate={navigate} />);
 
-    await screen.findByRole("heading", { name: "Alpha Note" });
+    await screen.findAllByRole("heading", { name: "Alpha Note" });
     expect(screen.getAllByText("Frontmatter card").length).toBeGreaterThan(0);
     // Markdown still uses Source/Rendered, not Pages/Text
     expect(screen.queryByTestId("pdf-pages-text-toggle")).toBeNull();

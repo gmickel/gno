@@ -21,7 +21,6 @@ import {
 } from "../cli/commands/mcp/status";
 import { installSkillToTarget } from "../cli/commands/skill/install";
 import { resolveSkillPaths } from "../cli/commands/skill/paths";
-import { verifyConnectorActivation } from "../core/connector-verifier";
 
 export interface ConnectorStatus {
   id: string;
@@ -423,5 +422,7 @@ export async function verifyInstalledConnector(
     target = toMcpConnectorVerificationTarget(definition.id, status);
   }
 
+  const { verifyConnectorActivation } =
+    await import("../core/connector-verifier");
   return verifyConnectorActivation(store, collection, target, options);
 }

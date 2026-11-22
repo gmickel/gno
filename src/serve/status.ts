@@ -166,20 +166,24 @@ async function inspectDisk(path: string): Promise<DiskSnapshot | null> {
 
 async function listSuggestedCollections(): Promise<SuggestedCollection[]> {
   const home = homedir();
-  const suggestions: SuggestedCollection[] = [];
+  const checked = await Promise.all(
+    SUGGESTED_FOLDERS.map(
+      async (candidate): Promise<SuggestedCollection | null> => {
+        const path = join(home, candidate.suffix);
+        return (await pathExists(path))
+          ? {
+              label: candidate.label,
+              path,
+              reason: candidate.reason,
+            }
+          : null;
+      }
+    )
+  );
 
-  for (const candidate of SUGGESTED_FOLDERS) {
-    const path = join(home, candidate.suffix);
-    if (await pathExists(path)) {
-      suggestions.push({
-        label: candidate.label,
-        path,
-        reason: candidate.reason,
-      });
-    }
-  }
-
-  return suggestions.slice(0, 4);
+  return checked
+    .filter((item): item is SuggestedCollection => item !== null)
+    .slice(0, 4);
 }
 
 function getCheckState(checks: HealthCheck[]): HealthCenterState["state"] {
@@ -343,20 +347,69 @@ function buildIndexingCheck(status: IndexStatus): HealthCheck {
   };
 }
 
-async function buildModelCheck(
+interface ModelInspectionSnapshot {
+  cacheDir: string;
+  entries: Awaited<ReturnType<ModelCache["list"]>>;
+  totalSizeBytes: number;
+  cachedPathByUri: ReadonlyMap<string, string | null>;
+  isCachedByUri: ReadonlyMap<string, boolean>;
+}
+
+/**
+ * Inspect model cache once per buildAppStatus call: read manifest.json once and
+ * validate each unique preset URI once in parallel instead of instantiating
+ * multiple ModelCaches and validating the same GGUFs repeatedly.
+ */
+async function inspectPresetModelsOnce(
   ctx: ServerContext,
   deps: StatusBuildDeps
-): Promise<HealthCheck> {
+): Promise<ModelInspectionSnapshot> {
   const preset = getActivePreset(ctx.config);
   const cache = new ModelCache(getModelsCachePath());
-  const isModelCached =
-    deps.isModelCached ?? ((uri: string) => cache.isCached(uri));
+  const uniqueUris = [
+    ...new Set([
+      preset.embed,
+      preset.rerank,
+      preset.expand ?? preset.gen,
+      preset.gen,
+    ]),
+  ];
 
-  const [embedCached, rerankCached, genCached] = await Promise.all([
-    isModelCached(preset.embed),
-    isModelCached(preset.rerank),
-    isModelCached(preset.gen),
-  ]);
+  // Read manifest.json once (populates cache's internal manifest).
+  const entries = await cache.list();
+  const totalSizeBytes = entries.reduce((sum, m) => sum + (m.size || 0), 0);
+
+  const cachedPathByUri = new Map<string, string | null>();
+  const isCachedByUri = new Map<string, boolean>();
+
+  await Promise.all(
+    uniqueUris.map(async (uri) => {
+      const path = await cache.getCachedPath(uri);
+      cachedPathByUri.set(uri, path);
+      const cached = deps.isModelCached
+        ? await deps.isModelCached(uri)
+        : path !== null;
+      isCachedByUri.set(uri, cached);
+    })
+  );
+
+  return {
+    cacheDir: cache.dir,
+    entries,
+    totalSizeBytes,
+    cachedPathByUri,
+    isCachedByUri,
+  };
+}
+
+function buildModelCheck(
+  ctx: ServerContext,
+  inspection: ModelInspectionSnapshot
+): HealthCheck {
+  const preset = getActivePreset(ctx.config);
+  const embedCached = inspection.isCachedByUri.get(preset.embed) ?? false;
+  const rerankCached = inspection.isCachedByUri.get(preset.rerank) ?? false;
+  const genCached = inspection.isCachedByUri.get(preset.gen) ?? false;
 
   if (downloadState.active) {
     return {
@@ -492,12 +545,14 @@ async function buildDiskCheck(
   };
 }
 
-async function buildBootstrapState(
-  ctx: ServerContext
-): Promise<AppStatusResponse["bootstrap"]> {
+function buildBootstrapState(
+  ctx: ServerContext,
+  inspection: ModelInspectionSnapshot
+): AppStatusResponse["bootstrap"] {
   const preset = getActivePreset(ctx.config);
-  const cache = new ModelCache(getModelsCachePath());
-  const entries = await cache.list();
+  const entryByUri = new Map(
+    inspection.entries.map((entry) => [entry.uri, entry] as const)
+  );
   const policy = resolveDownloadPolicy(process.env, {});
   const policySource = resolvePolicySource(process.env);
   const roleUris = [
@@ -507,24 +562,22 @@ async function buildBootstrapState(
     { role: "gen" as const, uri: preset.gen },
   ];
 
-  const modelEntries = await Promise.all(
-    roleUris.map(async ({ role, uri }) => {
-      const path = await cache.getCachedPath(uri);
-      const entry = entries.find((candidate) => candidate.uri === uri);
-      return {
-        role,
-        uri,
-        cached: path !== null,
-        path,
-        sizeBytes: entry?.size ?? null,
-        statusLabel: path !== null ? "Ready" : "Needs download",
-      };
-    })
-  );
+  const modelEntries = roleUris.map(({ role, uri }) => {
+    const path = inspection.cachedPathByUri.get(uri) ?? null;
+    const entry = entryByUri.get(uri);
+    return {
+      role,
+      uri,
+      cached: path !== null,
+      path,
+      sizeBytes: entry?.size ?? null,
+      statusLabel: path !== null ? "Ready" : "Needs download",
+    };
+  });
 
   const cachedCount = modelEntries.filter((entry) => entry.cached).length;
   const totalCount = modelEntries.length;
-  const totalSizeBytes = await cache.totalSize();
+  const totalSizeBytes = inspection.totalSizeBytes;
 
   const policySummary = policy.offline
     ? "Offline mode. Cached models only."
@@ -551,7 +604,7 @@ async function buildBootstrapState(
       summary: policySummary,
     },
     cache: {
-      path: cache.dir,
+      path: inspection.cacheDir,
       totalSizeBytes,
       totalSizeLabel: formatBytes(totalSizeBytes),
     },
@@ -701,26 +754,22 @@ export async function buildAppStatus(
 
   const status = result.value;
   const preset = getActivePreset(ctx.config);
-  const cache = new ModelCache(getModelsCachePath());
-  const isModelCached =
-    deps.isModelCached ?? ((uri: string) => cache.isCached(uri));
   const [
-    modelCheck,
+    modelInspection,
     diskCheck,
     suggestions,
-    bootstrap,
-    embedCached,
     connectorTargets,
     rootErrors,
   ] = await Promise.all([
-    buildModelCheck(ctx, deps),
+    inspectPresetModelsOnce(ctx, deps),
     buildDiskCheck(status, deps),
     deps.listSuggestedCollections?.() ?? listSuggestedCollections(),
-    buildBootstrapState(ctx),
-    isModelCached(preset.embed),
     (deps.listConnectorTargets ?? getConnectorVerificationTargets)(),
     checkCollectionRoots(ctx.config.collections),
   ]);
+  const modelCheck = buildModelCheck(ctx, modelInspection);
+  const bootstrap = buildBootstrapState(ctx, modelInspection);
+  const embedCached = modelInspection.isCachedByUri.get(preset.embed) ?? false;
   const activation = await (deps.buildActivation ?? buildActivationStatus)(
     ctx.store,
     ctx.config.collections.map(({ name }) => name),

@@ -7,7 +7,7 @@
 
 import { join } from "node:path";
 
-import { getGlobals } from "../../program.js";
+import { getGlobals } from "../../globals.js";
 import { resolveAllPaths, type SkillScope, type SkillTarget } from "./paths.js";
 
 // ─────────────────────────────────────────────────────────────────────────────

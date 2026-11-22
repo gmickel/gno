@@ -61,43 +61,68 @@ export async function createSpaBundleSource(
     });
   }
 
-  return createSplitProductionSource(entryPath, nonce);
+  return createSplitProductionSource(entryPath);
 }
 
 async function createSplitProductionSource(
-  entryPath: string,
-  nonce: string
+  entryPath: string
 ): Promise<SpaBundleSource> {
   const assets = await getProductionSpaAssets();
-  return hostProductionAssets(assets, entryPath, nonce);
+  return createInProcessProductionSource(assets, entryPath);
 }
 
-async function hostProductionAssets(
+/**
+ * Serve pre-built in-memory production SPA assets directly in-process without
+ * spawning a second Bun.serve() or Unix-domain socket proxy hop.
+ */
+function createInProcessProductionSource(
   assets: ProductionSpaAssets,
-  entryPath: string,
-  nonce: string
-): Promise<SpaBundleSource> {
-  const resolve = (pathname: string): Response => {
-    if (pathname === entryPath) {
-      return new Response(assets.html, {
-        headers: { "Content-Type": "text/html;charset=utf-8" },
-      });
-    }
-    const file = assets.files[pathname];
-    if (!file) {
-      return notFound();
-    }
-    return new Response(file.text, {
-      headers: { "Content-Type": file.type },
-    });
-  };
+  entryPath: string
+): SpaBundleSource {
+  const encoder = new TextEncoder();
+  const htmlBytes = encoder.encode(assets.html);
+  const htmlEtag = `W/"${Bun.hash(htmlBytes).toString(16)}"`;
+  const encodedFiles = new Map<
+    string,
+    { bytes: Uint8Array<ArrayBuffer>; type: string }
+  >();
 
-  return hostPrivateSource({
+  return {
     entryPath,
-    fetchAsset: resolve,
-    isDev: false,
-    nonce,
-  });
+    close: async (): Promise<void> => {},
+    fetch: async (request: Request): Promise<Response> => {
+      const pathname = new URL(request.url).pathname;
+      const isHead = request.method === "HEAD";
+      if (pathname === entryPath) {
+        return new Response(isHead ? null : htmlBytes, {
+          headers: {
+            "Content-Type": "text/html;charset=utf-8",
+            "Content-Length": String(htmlBytes.byteLength),
+            ETag: htmlEtag,
+          },
+        });
+      }
+      const file = assets.files[pathname];
+      if (!file) {
+        return notFound();
+      }
+      let cached = encodedFiles.get(pathname);
+      if (!cached) {
+        const raw = encoder.encode(file.text);
+        // Copy into a guaranteed ArrayBuffer-backed view for BodyInit.
+        const bytes = new Uint8Array(raw.byteLength);
+        bytes.set(raw);
+        cached = { bytes, type: file.type };
+        encodedFiles.set(pathname, cached);
+      }
+      return new Response(isHead ? null : cached.bytes, {
+        headers: {
+          "Content-Type": cached.type,
+          "Content-Length": String(cached.bytes.byteLength),
+        },
+      });
+    },
+  };
 }
 
 async function hostPrivateSource(options: {

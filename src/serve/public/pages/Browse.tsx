@@ -7,7 +7,7 @@ import {
   RefreshCw,
   StarIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   createBrowseNodeId,
@@ -93,7 +93,6 @@ export default function Browse({ navigate, location }: PageProps) {
   const [tree, setTree] = useState<BrowseTreeResponse | null>(null);
   const [docs, setDocs] = useState<BrowseDocument[]>([]);
   const [total, setTotal] = useState(0);
-  const [offset, setOffset] = useState(0);
   const [treeLoading, setTreeLoading] = useState(true);
   const [docsLoading, setDocsLoading] = useState(false);
   const [availableDateFields, setAvailableDateFields] = useState<string[]>([]);
@@ -116,6 +115,17 @@ export default function Browse({ navigate, location }: PageProps) {
 
   const selectedCollection = selection.collection;
   const selectedPath = selection.path;
+  // Scope pagination offset to (collection, path, sort) so switching folders
+  // immediately resolves to offset 0 on the first render without a stale-offset
+  // double fetch.
+  const docsScopeKey = `${selectedCollection ?? ""}\u0000${selectedPath ?? ""}\u0000${sortField}\u0000${sortOrder}`;
+  const [pagination, setPagination] = useState<{
+    scopeKey: string;
+    offset: number;
+  }>({ scopeKey: docsScopeKey, offset: 0 });
+  const offset = pagination.scopeKey === docsScopeKey ? pagination.offset : 0;
+  const treeReqSeqRef = useRef(0);
+  const docsReqSeqRef = useRef(0);
   const selectedNodeId = selectedCollection
     ? createBrowseNodeId(selectedCollection, selectedPath)
     : null;
@@ -177,9 +187,13 @@ export default function Browse({ navigate, location }: PageProps) {
   );
 
   useEffect(() => {
-    setOffset(0);
     setDocs([]);
-  }, [selectedCollection, selectedPath]);
+    setPagination((prev) =>
+      prev.scopeKey === docsScopeKey && prev.offset === 0
+        ? prev
+        : { scopeKey: docsScopeKey, offset: 0 }
+    );
+  }, [docsScopeKey]);
 
   useEffect(() => {
     setFavoriteDocHrefs(loadFavoriteDocuments().map((entry) => entry.href));
@@ -189,12 +203,22 @@ export default function Browse({ navigate, location }: PageProps) {
   }, []);
 
   useEffect(() => {
-    void apiFetch<BrowseTreeResponse>("/api/browse/tree").then(({ data }) => {
+    const controller = new AbortController();
+    const reqSeq = ++treeReqSeqRef.current;
+    void apiFetch<BrowseTreeResponse>("/api/browse/tree", {
+      signal: controller.signal,
+    }).then(({ data }) => {
+      if (controller.signal.aborted || reqSeq !== treeReqSeqRef.current) {
+        return;
+      }
       setTree(
         data ?? { collections: [], totalCollections: 0, totalDocuments: 0 }
       );
       setTreeLoading(false);
     });
+    return () => {
+      controller.abort();
+    };
   }, [refreshToken]);
 
   useEffect(() => {
@@ -229,10 +253,11 @@ export default function Browse({ navigate, location }: PageProps) {
     if (!selectedCollection) {
       setDocs([]);
       setTotal(0);
-      setOffset(0);
       return;
     }
 
+    const controller = new AbortController();
+    const reqSeq = ++docsReqSeqRef.current;
     setDocsLoading(true);
     const params = new URLSearchParams({
       collection: selectedCollection,
@@ -246,21 +271,27 @@ export default function Browse({ navigate, location }: PageProps) {
       params.set("pathPrefix", selectedPath);
     }
 
-    void apiFetch<DocsResponse>(`/api/docs?${params.toString()}`).then(
-      ({ data }) => {
-        setDocsLoading(false);
-        if (!data) {
-          return;
-        }
-        setAvailableDateFields(data.availableDateFields ?? []);
-        setSortField(data.sortField);
-        setSortOrder(data.sortOrder);
-        setDocs((prev) =>
-          offset === 0 ? data.documents : [...prev, ...data.documents]
-        );
-        setTotal(data.total);
+    void apiFetch<DocsResponse>(`/api/docs?${params.toString()}`, {
+      signal: controller.signal,
+    }).then(({ data }) => {
+      if (controller.signal.aborted || reqSeq !== docsReqSeqRef.current) {
+        return;
       }
-    );
+      setDocsLoading(false);
+      if (!data) {
+        return;
+      }
+      setAvailableDateFields(data.availableDateFields ?? []);
+      setSortField(data.sortField);
+      setSortOrder(data.sortOrder);
+      setDocs((prev) =>
+        offset === 0 ? data.documents : [...prev, ...data.documents]
+      );
+      setTotal(data.total);
+    });
+    return () => {
+      controller.abort();
+    };
   }, [
     limit,
     offset,
@@ -275,10 +306,15 @@ export default function Browse({ navigate, location }: PageProps) {
     if (!latestDocEvent?.changedAt) {
       return;
     }
-    setOffset(0);
-    setDocs([]);
-    setRefreshToken((current) => current + 1);
-  }, [latestDocEvent?.changedAt]);
+    // 250 ms trailing debounce coalesces bursty watcher SSE events into one refresh.
+    const timer = window.setTimeout(() => {
+      setPagination({ scopeKey: docsScopeKey, offset: 0 });
+      setRefreshToken((current) => current + 1);
+    }, 250);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [docsScopeKey, latestDocEvent?.changedAt]);
 
   useEffect(() => {
     return subscribeWorkspaceActionRequest("create-folder-here", () => {
@@ -310,12 +346,11 @@ export default function Browse({ navigate, location }: PageProps) {
   ]);
 
   const handleLoadMore = () => {
-    setOffset((current) => current + limit);
+    setPagination({ scopeKey: docsScopeKey, offset: offset + limit });
   };
 
   const handleSelectNode = (collection: string, path?: string) => {
     setDocs([]);
-    setOffset(0);
     setMobileTreeOpen(false);
     navigate(buildBrowseLocation(collection, path));
   };
@@ -350,7 +385,6 @@ export default function Browse({ navigate, location }: PageProps) {
     }
     setSortField(nextField);
     setSortOrder(nextOrder);
-    setOffset(0);
     setDocs([]);
   };
 

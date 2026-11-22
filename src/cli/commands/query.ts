@@ -39,7 +39,7 @@ import {
   type VectorIndexPort,
 } from "../../store/vector";
 import { VECTOR_RUNTIME_INCOMPATIBLE } from "../../store/vector/variant-search";
-import { getGlobals } from "../program";
+import { getGlobals } from "../globals";
 import {
   createProgressRenderer,
   createThrottledProgressRenderer,

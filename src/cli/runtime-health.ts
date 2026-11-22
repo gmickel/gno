@@ -146,80 +146,85 @@ const repairCommand = (target: McpTarget, scope: McpScope): string =>
 export async function checkRegistrationRuntimes(
   overrides: { cwd?: string; homeDir?: string } = {}
 ): Promise<RuntimeIssue[]> {
-  const issues: RuntimeIssue[] = [];
   const runningBun = realpathOrNull(process.execPath);
   const versions = new Map<string, Promise<string | null>>();
-  for (const { target, scope, paths } of resolveAllMcpPaths(
-    "all",
-    "all",
-    overrides
-  )) {
-    let entry: unknown;
-    let configPath = paths.configPath;
-    try {
-      configPath = await resolveMcpConfigLocation(paths);
-      entry = await readRegistrationEntry(configPath, paths.configFormat);
-    } catch {
-      continue;
-    }
-    const registration =
-      entry === undefined
-        ? null
-        : readExistingRegistration(entry, paths.configFormat);
-    if (
-      !registration ||
-      registration.extra.enabled === false ||
-      registration.extra.disabled === true
-    ) {
-      continue;
-    }
-    const { command, args } = registration;
-    const viaBun = args[0] === "run" && args.length >= 2;
-    if (!viaBun && !isGnoExecutable(command)) {
-      continue;
-    }
-    const subject = `${getTargetDisplayName(target)} (${scope}) ${configPath}`;
-    const repair = repairCommand(target, scope);
-    const launchFiles = viaBun ? [command, args[1] ?? ""] : [command];
-    const missing = launchFiles.filter((path) => !realpathOrNull(path));
-    if (missing.length > 0) {
-      issues.push({
-        kind: "registration",
-        severity: "error",
-        subject,
-        message: `launches ${missing.join(" and ")}, which no longer exists`,
-        repair,
-      });
-      continue;
-    }
-    if (!viaBun) {
-      // The gno launcher finds Bun on PATH when it starts.
-      continue;
-    }
-    const resolved = realpathOrNull(command) ?? command;
-    if (!versions.has(resolved)) {
-      versions.set(resolved, interpreterVersion(command));
-    }
-    const version = await versions.get(resolved);
-    if (version && !bunMeetsFloor(version)) {
-      issues.push({
-        kind: "registration",
-        severity: "error",
-        subject,
-        message: `runs Bun ${version} (${command}), older than the supported minimum ${BUN_FLOOR}`,
-        repair,
-      });
-    } else if (resolved !== runningBun) {
-      issues.push({
-        kind: "registration",
-        severity: "info",
-        subject,
-        message: `runs ${version ? `Bun ${version}` : "a Bun of unknown version"} (${command}), not this Bun ${Bun.version}`,
-        repair,
-      });
-    }
-  }
-  return issues;
+  const targets = resolveAllMcpPaths("all", "all", overrides);
+
+  const perTarget = await Promise.all(
+    targets.map(
+      async ({ target, scope, paths }): Promise<RuntimeIssue | null> => {
+        let entry: unknown;
+        let configPath = paths.configPath;
+        try {
+          configPath = await resolveMcpConfigLocation(paths);
+          entry = await readRegistrationEntry(configPath, paths.configFormat);
+        } catch {
+          return null;
+        }
+        const registration =
+          entry === undefined
+            ? null
+            : readExistingRegistration(entry, paths.configFormat);
+        if (
+          !registration ||
+          registration.extra.enabled === false ||
+          registration.extra.disabled === true
+        ) {
+          return null;
+        }
+        const { command, args } = registration;
+        const viaBun = args[0] === "run" && args.length >= 2;
+        if (!viaBun && !isGnoExecutable(command)) {
+          return null;
+        }
+        const subject = `${getTargetDisplayName(target)} (${scope}) ${configPath}`;
+        const repair = repairCommand(target, scope);
+        const launchFiles = viaBun ? [command, args[1] ?? ""] : [command];
+        const missing = launchFiles.filter((path) => !realpathOrNull(path));
+        if (missing.length > 0) {
+          return {
+            kind: "registration",
+            severity: "error",
+            subject,
+            message: `launches ${missing.join(" and ")}, which no longer exists`,
+            repair,
+          };
+        }
+        if (!viaBun) {
+          // The gno launcher finds Bun on PATH when it starts.
+          return null;
+        }
+        const resolved = realpathOrNull(command) ?? command;
+        let versionPromise = versions.get(resolved);
+        if (!versionPromise) {
+          versionPromise = interpreterVersion(command);
+          versions.set(resolved, versionPromise);
+        }
+        const version = await versionPromise;
+        if (version && !bunMeetsFloor(version)) {
+          return {
+            kind: "registration",
+            severity: "error",
+            subject,
+            message: `runs Bun ${version} (${command}), older than the supported minimum ${BUN_FLOOR}`,
+            repair,
+          };
+        }
+        if (resolved !== runningBun) {
+          return {
+            kind: "registration",
+            severity: "info",
+            subject,
+            message: `runs ${version ? `Bun ${version}` : "a Bun of unknown version"} (${command}), not this Bun ${Bun.version}`,
+            repair,
+          };
+        }
+        return null;
+      }
+    )
+  );
+
+  return perTarget.filter((issue): issue is RuntimeIssue => issue !== null);
 }
 
 /** The Bun a resident reports through `/api/status`, if it is GNO. */
@@ -269,57 +274,62 @@ function restartSteps(
  * another GNO version is read through its HTTP status; it is never signalled.
  */
 export async function checkResidentRuntimes(): Promise<RuntimeIssue[]> {
-  const issues: RuntimeIssue[] = [];
-  for (const kind of ["serve", "daemon"] as const) {
-    const { pidFile } = resolveProcessPaths(kind);
-    let payload: Awaited<ReturnType<typeof readPidFile>>;
-    try {
-      payload = await readPidFile(pidFile);
-    } catch {
-      continue;
-    }
-    if (!payload || payload.cmd !== kind || !isProcessAlive(payload.pid)) {
-      continue;
-    }
-    const sameVersion = payload.version === VERSION;
-    let version = payload.bun_version ?? null;
-    if (!version && typeof payload.port === "number") {
-      version = await residentBunVersion(payload.port);
-    }
-    const subject = `gno ${kind} (pid ${payload.pid}, GNO ${payload.version})`;
-    const repair = restartSteps(kind, payload.pid, sameVersion);
-    if (!version) {
-      if (!sameVersion) {
-        issues.push({
-          kind: "resident",
-          severity: "info",
-          subject,
-          message:
-            "is running from another GNO version; its Bun version is unknown",
-          repair,
-        });
+  const perKind = await Promise.all(
+    (["serve", "daemon"] as const).map(
+      async (kind): Promise<RuntimeIssue | null> => {
+        const { pidFile } = resolveProcessPaths(kind);
+        let payload: Awaited<ReturnType<typeof readPidFile>>;
+        try {
+          payload = await readPidFile(pidFile);
+        } catch {
+          return null;
+        }
+        if (!payload || payload.cmd !== kind || !isProcessAlive(payload.pid)) {
+          return null;
+        }
+        const sameVersion = payload.version === VERSION;
+        let version = payload.bun_version ?? null;
+        if (!version && typeof payload.port === "number") {
+          version = await residentBunVersion(payload.port);
+        }
+        const subject = `gno ${kind} (pid ${payload.pid}, GNO ${payload.version})`;
+        const repair = restartSteps(kind, payload.pid, sameVersion);
+        if (!version) {
+          if (!sameVersion) {
+            return {
+              kind: "resident",
+              severity: "info",
+              subject,
+              message:
+                "is running from another GNO version; its Bun version is unknown",
+              repair,
+            };
+          }
+          return null;
+        }
+        if (!bunMeetsFloor(version)) {
+          return {
+            kind: "resident",
+            severity: "error",
+            subject,
+            message: `runs Bun ${version}, older than the supported minimum ${BUN_FLOOR}`,
+            repair,
+          };
+        }
+        if (Bun.semver.order(version, Bun.version) < 0) {
+          return {
+            kind: "resident",
+            severity: "warn",
+            subject,
+            message: `runs Bun ${version}, older than this Bun ${Bun.version}`,
+            repair,
+          };
+        }
+        return null;
       }
-      continue;
-    }
-    if (!bunMeetsFloor(version)) {
-      issues.push({
-        kind: "resident",
-        severity: "error",
-        subject,
-        message: `runs Bun ${version}, older than the supported minimum ${BUN_FLOOR}`,
-        repair,
-      });
-    } else if (Bun.semver.order(version, Bun.version) < 0) {
-      issues.push({
-        kind: "resident",
-        severity: "warn",
-        subject,
-        message: `runs Bun ${version}, older than this Bun ${Bun.version}`,
-        repair,
-      });
-    }
-  }
-  return issues;
+    )
+  );
+  return perKind.filter((issue): issue is RuntimeIssue => issue !== null);
 }
 
 /** One line per issue for terminal output. */

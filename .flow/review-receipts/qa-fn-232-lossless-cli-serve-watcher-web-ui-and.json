@@ -1,0 +1,120 @@
+{
+  "branch": "fn-232-lossless-cli-serve-watcher-web-ui-and",
+  "findings": {
+    "backend": "receipt",
+    "headSha": "1a7d2ae8d9c1683537e01a624f2c2176d2914e12",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-11cc513e8807b3c42a0bb6bbe53431271722c972580e849d43b5882b9fc6266c"
+  },
+  "head_sha": "1a7d2ae8d9c1683537e01a624f2c2176d2914e12",
+  "id": "fn-232-lossless-cli-serve-watcher-web-ui-and",
+  "mode": "receipt",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 6,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R6"
+      }
+    ],
+    "total": 6
+  },
+  "scenarios": [
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-232-lossless-cli-serve-watcher-web-ui-and/s1.log"
+      ],
+      "head_sha": "1a7d2ae8d9c1683537e01a624f2c2176d2914e12",
+      "id": "S1",
+      "outcome": "PASS",
+      "rids": [
+        "R2"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-232-lossless-cli-serve-watcher-web-ui-and/s2.log"
+      ],
+      "head_sha": "1a7d2ae8d9c1683537e01a624f2c2176d2914e12",
+      "id": "S2",
+      "outcome": "PASS",
+      "rids": [
+        "R3"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-232-lossless-cli-serve-watcher-web-ui-and/s3-browse-desktop.png",
+        ".flow/tmp/qa-fn-232-lossless-cli-serve-watcher-web-ui-and/s3-docview-dark.png",
+        ".flow/tmp/qa-fn-232-lossless-cli-serve-watcher-web-ui-and/s3-docview-light.png",
+        ".flow/tmp/qa-fn-232-lossless-cli-serve-watcher-web-ui-and/s3.log"
+      ],
+      "head_sha": "1a7d2ae8d9c1683537e01a624f2c2176d2914e12",
+      "id": "S3",
+      "outcome": "PASS",
+      "rids": [
+        "R5"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-232-lossless-cli-serve-watcher-web-ui-and/s4-capture-modal.png",
+        ".flow/tmp/qa-fn-232-lossless-cli-serve-watcher-web-ui-and/s4-shortcuts-modal.png",
+        ".flow/tmp/qa-fn-232-lossless-cli-serve-watcher-web-ui-and/s4-graph-view.png",
+        ".flow/tmp/qa-fn-232-lossless-cli-serve-watcher-web-ui-and/s4.log"
+      ],
+      "head_sha": "1a7d2ae8d9c1683537e01a624f2c2176d2914e12",
+      "id": "S4",
+      "outcome": "PASS",
+      "rids": [
+        "R5"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-232-lossless-cli-serve-watcher-web-ui-and/s5-browse-mobile.png",
+        ".flow/tmp/qa-fn-232-lossless-cli-serve-watcher-web-ui-and/s5-docview-mobile.png",
+        ".flow/tmp/qa-fn-232-lossless-cli-serve-watcher-web-ui-and/s5.log"
+      ],
+      "head_sha": "1a7d2ae8d9c1683537e01a624f2c2176d2914e12",
+      "id": "S5",
+      "outcome": "PASS",
+      "rids": [
+        "R5"
+      ],
+      "run": "live"
+    }
+  ],
+  "timestamp": "2026-11-22T12:39:57Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

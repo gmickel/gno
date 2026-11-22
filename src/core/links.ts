@@ -10,16 +10,31 @@
 // node:path/posix for POSIX paths (relPaths are always POSIX in gno)
 import { posix as pathPosix } from "node:path";
 
-import type { ExcludedRange } from "../ingestion/strip";
+import type { ExcludedRange } from "../ingestion/excluded-ranges";
 
+import { rangeIntersectsExcluded } from "../ingestion/excluded-ranges";
 import { buildLineOffsets, offsetToPosition } from "../ingestion/position";
-import { rangeIntersectsExcluded } from "../ingestion/strip";
 import {
   isBackslashEscaped,
   parseParenthesizedDestination,
   stripAngleBracketDestination,
   unescapeCommonMarkDestination,
 } from "./link-destination-parse";
+import {
+  type TargetParts,
+  normalizeWikiName,
+  parseTargetParts,
+  splitWikiLinkContent,
+  stripWikiMdExt,
+} from "./wiki-link-syntax";
+
+export {
+  type TargetParts,
+  normalizeWikiName,
+  parseTargetParts,
+  splitWikiLinkContent,
+  stripWikiMdExt,
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -48,15 +63,6 @@ export interface ParsedLink {
   endLine: number;
   /** 1-based end column */
   endCol: number;
-}
-
-export interface TargetParts {
-  /** Reference (name or path) without anchor */
-  ref: string;
-  /** Anchor/fragment without # */
-  anchor?: string;
-  /** Collection prefix */
-  collection?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -158,9 +164,6 @@ const BRACKET_IN_DESTINATION_REGEX = /[[\]]/;
 /** External URL pattern (http:// https:// mailto: etc.) */
 const EXTERNAL_URL_REGEX = /^[a-z][a-z0-9+.-]*:/i;
 
-/** Collection prefix pattern: collection:rest */
-const COLLECTION_PREFIX_REGEX = /^([a-z0-9_-]+):(.+)$/i;
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Unicode Text Utilities
 // ─────────────────────────────────────────────────────────────────────────────
@@ -170,27 +173,14 @@ const COLLECTION_PREFIX_REGEX = /^([a-z0-9_-]+):(.+)$/i;
  * Uses Array.from for proper Unicode segmentation.
  */
 export function truncateText(text: string, maxGraphemes: number): string {
+  if (text.length <= maxGraphemes) {
+    return text;
+  }
   const graphemes = Array.from(text);
   if (graphemes.length <= maxGraphemes) {
     return text;
   }
   return graphemes.slice(0, maxGraphemes).join("");
-}
-
-/**
- * Normalize wiki name: NFC + lowercase + trim.
- * Used for matching wiki links to document titles.
- */
-export function normalizeWikiName(name: string): string {
-  return name.normalize("NFC").toLowerCase().trim();
-}
-
-/**
- * Strip a trailing .md extension (case-insensitive) without lowercasing.
- */
-export function stripWikiMdExt(ref: string): string {
-  const lower = ref.toLowerCase();
-  return lower.endsWith(".md") ? ref.slice(0, -3) : ref;
 }
 
 /**
@@ -200,26 +190,6 @@ export function stripWikiMdExt(ref: string): string {
 export function extractWikiBasename(ref: string): string {
   const base = pathPosix.basename(ref.trim());
   return stripWikiMdExt(base);
-}
-
-/**
- * Split the content of a wiki link into target and alias. Obsidian also reads
- * `\|` (the pipe escaped inside a Markdown table) as the alias separator,
- * so `[[Note\|Alias]]` targets `Note`, not `Note\`.
- */
-export function splitWikiLinkContent(content: string): {
-  target: string;
-  alias?: string;
-} {
-  const pipeIndex = content.indexOf("|");
-  if (pipeIndex < 0) {
-    return { target: content };
-  }
-  const escaped = pipeIndex > 0 && content[pipeIndex - 1] === "\\";
-  return {
-    target: content.slice(0, escaped ? pipeIndex - 1 : pipeIndex),
-    alias: content.slice(pipeIndex + 1),
-  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -297,43 +267,6 @@ export function normalizeMarkdownPath(
   }
 
   return resolved;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Target Parsing
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Parse target into ref, anchor, and optional collection prefix.
- * Handles: "Note", "Note#Section", "collection:Note#Section"
- */
-export function parseTargetParts(target: string): TargetParts {
-  let remaining = target.trim();
-  let collection: string | undefined;
-
-  // Check for collection prefix (before any #)
-  const hashIndex = remaining.indexOf("#");
-  const textBeforeHash =
-    hashIndex >= 0 ? remaining.slice(0, hashIndex) : remaining;
-
-  const prefixMatch = COLLECTION_PREFIX_REGEX.exec(textBeforeHash);
-  if (prefixMatch?.[1] && prefixMatch[2]) {
-    collection = prefixMatch[1].toLowerCase(); // Normalize to lowercase for consistency
-    // Reconstruct remaining without the collection prefix
-    remaining =
-      prefixMatch[2] + (hashIndex >= 0 ? remaining.slice(hashIndex) : "");
-  }
-
-  // Split on # for anchor
-  const parts = remaining.split("#");
-  const ref = (parts[0] ?? "").trim();
-  const anchor = parts[1]?.trim();
-
-  return {
-    ref,
-    anchor: anchor && anchor.length > 0 ? anchor : undefined,
-    collection,
-  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

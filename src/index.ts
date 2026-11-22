@@ -6,10 +6,9 @@
  * @module src/index
  */
 
-import { runCli } from "./cli/run";
 import { tracePhase } from "./core/phase-trace";
 import { FILE_PROCESSOR_CHILD_ENV } from "./ingestion/file-child-env";
-import { resetModelManager } from "./llm/nodeLlamaCpp/lifecycle";
+import { resetLoadedModelManager } from "./llm/model-cleanup";
 import { IMPORT_CHILD_ENV } from "./sessions/import-child-env";
 
 /**
@@ -48,7 +47,7 @@ function flushStream(stream: NodeJS.WriteStream): Promise<void> {
  * Without the explicit exit, llama.cpp native threads can keep the process alive.
  */
 async function cleanupAndExit(code: number): Promise<never> {
-  await resetModelManager().catch(() => {
+  await resetLoadedModelManager().catch(() => {
     // Ignore cleanup errors on exit
   });
   tracePhase("exit: models reset");
@@ -92,6 +91,7 @@ if (process.env[FILE_PROCESSOR_CHILD_ENV] === "1") {
 
 // Await module completion so pending piped stdin keeps Windows Bun alive.
 tracePhase("cli: start");
+const { runCli } = await import("./cli/run");
 await runCli(process.argv)
   .then((code) => {
     tracePhase(`cli: done (${code})`);

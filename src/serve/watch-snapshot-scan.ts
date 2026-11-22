@@ -33,7 +33,7 @@ export const defaultFs: WatcherSnapshotFs = createDefaultWatcherFs();
 
 /** Mutable hierarchical maps with incremental entry accounting. */
 export interface MutableSnapshotMaps {
-  directories: Map<string, Map<string, SnapshotEntryFingerprint>>;
+  directories: Map<string, ReadonlyMap<string, SnapshotEntryFingerprint>>;
   entryCount: number;
   unprovenSubtrees: Set<string>;
 }
@@ -41,27 +41,18 @@ export interface MutableSnapshotMaps {
 export function cloneDirectoryMaps(
   source: WatcherSnapshot
 ): MutableSnapshotMaps {
-  const directories = new Map<string, Map<string, SnapshotEntryFingerprint>>();
-  for (const [dir, entries] of source.directories) {
-    directories.set(dir, new Map(entries));
-  }
+  // Inner directory maps are immutable ReadonlyMaps replaced whole by
+  // setDirectoryEntries, so shallow-copying the outer map is O(total_dirs).
   return {
-    directories,
+    directories: new Map(source.directories),
     entryCount: source.entryCount,
     unprovenSubtrees: new Set(source.unprovenSubtrees ?? []),
   };
 }
 
 export function freezeSnapshot(state: MutableSnapshotMaps): WatcherSnapshot {
-  const frozen = new Map<
-    string,
-    ReadonlyMap<string, SnapshotEntryFingerprint>
-  >();
-  for (const [dir, entries] of state.directories) {
-    frozen.set(dir, entries);
-  }
   return {
-    directories: frozen,
+    directories: state.directories,
     entryCount: state.entryCount,
     unprovenSubtrees: new Set(state.unprovenSubtrees),
   };
@@ -71,7 +62,7 @@ export function freezeSnapshot(state: MutableSnapshotMaps): WatcherSnapshot {
 export function setDirectoryEntries(
   state: MutableSnapshotMaps,
   dirRel: string,
-  entries: Map<string, SnapshotEntryFingerprint>
+  entries: ReadonlyMap<string, SnapshotEntryFingerprint>
 ): void {
   const previous = state.directories.get(dirRel);
   const previousSize = previous?.size ?? 0;

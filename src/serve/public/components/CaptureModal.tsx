@@ -195,26 +195,30 @@ export function CaptureModal({
     }
     setSelectedPresetId(presetId || "blank");
 
-    void apiFetch<CollectionsResponse>("/api/status").then(({ data }) => {
-      if (data?.collections) {
-        setCollections(
-          data.collections.map((c) => ({ name: c.name, path: c.path }))
+    void apiFetch<Array<{ name: string; path: string }> | CollectionsResponse>(
+      "/api/collections"
+    ).then(({ data }) => {
+      const rawList = Array.isArray(data) ? data : data?.collections;
+      if (rawList) {
+        // Preserve SQLite ORDER BY name (code-point / BINARY order) matching
+        // /api/status so first-use default collection selection is identical
+        // even for names like `a-b` vs `a_b`.
+        const list = [...rawList].sort((a, b) =>
+          a.name < b.name ? -1 : a.name > b.name ? 1 : 0
         );
+        setCollections(list.map((c) => ({ name: c.name, path: c.path })));
 
         const requestedCollection = defaultCollection.trim();
         const lastUsed = localStorage.getItem(STORAGE_KEY);
         if (
           requestedCollection &&
-          data.collections.some((c) => c.name === requestedCollection)
+          list.some((c) => c.name === requestedCollection)
         ) {
           setCollection(requestedCollection);
-        } else if (
-          lastUsed &&
-          data.collections.some((c) => c.name === lastUsed)
-        ) {
+        } else if (lastUsed && list.some((c) => c.name === lastUsed)) {
           setCollection(lastUsed);
         } else {
-          const firstCollection = data.collections.at(0);
+          const firstCollection = list.at(0);
           if (firstCollection) {
             setCollection(firstCollection.name);
           }

@@ -1,4 +1,8 @@
-import type { McpServer } from "@modelcontextprotocol/server";
+import type {
+  McpServer,
+  StandardSchemaWithJSON,
+  ToolAnnotations,
+} from "@modelcontextprotocol/server";
 /**
  * MCP tool registration and shared utilities.
  *
@@ -37,6 +41,7 @@ import {
 import {
   assertInferenceActive,
   acquireInferencePermit,
+  withInferenceScope,
 } from "../../llm/inference-scope";
 import { envIsSet } from "../../llm/policy";
 import { staleCollectionsMessage } from "../../store/sqlite/adapter";
@@ -44,8 +49,10 @@ import { MCP_ACTIVATION_VERIFICATION_ENV } from "../activation-verification-mode
 import { exposesHostPaths } from "../context";
 import { profileToolDescription } from "../tool-descriptions-core";
 import {
-  createProfileToolRegistrar,
   DEFAULT_MCP_TOOL_PROFILE,
+  type McpToolProfile,
+  mcpToolProfileAllowlist,
+  rejectUnknownKeys,
 } from "../tool-profile";
 import { handleAddCollection } from "./add-collection";
 import { askInputSchema, handleAsk } from "./ask";
@@ -1049,8 +1056,15 @@ export async function runTool<T>(
     };
   }
 
-  // Sequential execution via mutex
-  const release = await acquireInferencePermit(() => ctx.toolMutex.acquire());
+  // Shared read lock for read-only HTTP tools; stdio keeps its strict serial
+  // dispatch and mutating tools always retain exclusive access.
+  const isHttpRequest = ctx.getEgressContext?.() !== undefined;
+  const isReadOnlyTool = isHttpRequest && READ_ONLY_LOCK_TOOLS.has(name);
+  const release = await acquireInferencePermit(() =>
+    isReadOnlyTool && ctx.toolMutex.acquireRead
+      ? ctx.toolMutex.acquireRead()
+      : ctx.toolMutex.acquire()
+  );
   try {
     assertConfiguredCollections(ctx, name);
     assertInferenceActive();
@@ -1099,6 +1113,41 @@ const READ_CONNECTION_TOOLS = new Set([
   "gno_links",
   "gno_backlinks",
   "gno_similar",
+]);
+
+/**
+ * Pure read-only tools that can share the reader side of `toolMutex`
+ * concurrently on the WAL read connection while write tools and `shutdown()`
+ * retain exclusive access.
+ */
+const READ_ONLY_LOCK_TOOLS = new Set([
+  ...READ_CONNECTION_TOOLS,
+  "gno_section",
+  "gno_peek",
+  "gno_list_metadata",
+  "gno_graph",
+  "gno_graph_query",
+  "gno_graph_neighbors",
+  "gno_graph_path",
+  "gno_changes",
+  "gno_diff",
+  "gno_impact",
+  "gno_trace_list",
+  "gno_trace_show",
+  "gno_egress_policy_get",
+  "gno_egress_check",
+  "gno_egress_audit_list",
+  "gno_egress_audit_show",
+  "gno_egress_audit_status",
+  "gno_sessions_status",
+  "gno_context",
+  "gno_context_compiled_preview",
+  "gno_context_compiled_check",
+  "gno_context_verify",
+  "gno_recall",
+  "gno_query_diagnose",
+  "gno_ask",
+  "gno_audit",
 ]);
 
 /** Store test doubles may lack the read connection; they read as before. */
@@ -1195,24 +1244,69 @@ function parseErrorMessage(message: string): { [x: string]: unknown } {
 // Tool Registration
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function registerTools(server: McpServer, ctx: ToolContext): void {
-  // Tool IDs use underscores (MCP pattern: ^[a-zA-Z0-9_-]{1,64}$)
-  const profile = ctx.toolProfile ?? DEFAULT_MCP_TOOL_PROFILE;
-  const registerTool = createProfileToolRegistrar(server, profile);
-  // The core profile serves micro-instruction variants; full keeps the
-  // original strings verbatim (legacy golden + tool-profile byte-compat).
+// Pre-built static ask surface schema (hoisted so WeakMap strict-schema cache hits on every request).
+const askSurfaceInputSchema = z.object(askInputSchema.shape);
+
+interface StaticToolDefinition {
+  name: string;
+  config: {
+    title?: string;
+    description?: string;
+    inputSchema?: StandardSchemaWithJSON;
+    outputSchema?: StandardSchemaWithJSON;
+    annotations?: ToolAnnotations;
+  };
+  invoke: (
+    args: unknown,
+    request: { sessionId?: string; mcpReq: { signal: AbortSignal } },
+    server: McpServer,
+    ctx: ToolContext
+  ) => Promise<ToolResult>;
+}
+
+const staticToolTables = new Map<string, readonly StaticToolDefinition[]>();
+
+function getStaticToolTable(
+  profile: McpToolProfile,
+  enableWrite: boolean
+): readonly StaticToolDefinition[] {
+  const key = `${profile}:${enableWrite ? "1" : "0"}`;
+  const cached = staticToolTables.get(key);
+  if (cached) {
+    return cached;
+  }
+
+  const allowlist = mcpToolProfileAllowlist(profile);
   const describe = (name: string, fullDescription: string) =>
     profileToolDescription(profile, name, fullDescription);
-  registerTool(
+  const entries: StaticToolDefinition[] = [];
+  const add = (
+    name: string,
+    config: StaticToolDefinition["config"],
+    invoke: StaticToolDefinition["invoke"]
+  ): void => {
+    if (allowlist !== null && !allowlist.has(name)) {
+      return;
+    }
+    entries.push({
+      name,
+      config: {
+        ...config,
+        inputSchema: rejectUnknownKeys(config.inputSchema),
+      },
+      invoke,
+    });
+  };
+
+  add(
     "gno_context",
     {
       description: describe("gno_context", MCP_TOOL_DESCRIPTIONS.context),
       inputSchema: contextBuildSurfaceSchema,
     },
-    (args) => handleContext(args, ctx)
+    (args, _req, _server, ctx) => handleContext(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_context_compiled_preview",
     {
       description:
@@ -1226,9 +1320,10 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
         openWorldHint: false,
       },
     },
-    (args) => handleCompiledContextPreview(args, ctx)
+    (args, _req, _server, ctx) =>
+      handleCompiledContextPreview(args as never, ctx)
   );
-  registerTool(
+  add(
     "gno_context_compiled_check",
     {
       description:
@@ -1242,45 +1337,41 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
         openWorldHint: false,
       },
     },
-    (args) => handleCompiledContextCheck(args, ctx)
+    (args, _req, _server, ctx) => handleCompiledContextCheck(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_context_verify",
     {
       description: MCP_TOOL_DESCRIPTIONS.contextVerify,
       inputSchema: contextVerifySurfaceSchema,
     },
-    (args) => handleContextVerify(args, ctx)
+    (args, _req, _server, ctx) => handleContextVerify(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_ask",
     {
       description: MCP_TOOL_DESCRIPTIONS.ask,
       // The advertised 2025-11-25 schema is the non-strict shape (SDK v1
       // registered `.shape`); the handler still parses with the strict schema.
-      inputSchema: z.object(askInputSchema.shape),
+      inputSchema: askSurfaceInputSchema,
     },
-    (args) => handleAsk(args, ctx)
+    (args, _req, _server, ctx) => handleAsk(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_recall",
     {
       description: describe("gno_recall", MCP_TOOL_DESCRIPTIONS.recall),
       inputSchema: recallInputSchema,
       annotations: RECALL_MCP_ANNOTATIONS,
     },
-    (args, request) =>
-      handleRecall(args, ctx, {
+    (args, request, server, ctx) =>
+      handleRecall(args as never, ctx, {
         clientName: server.server.getClientVersion()?.name,
         sessionId: request.sessionId,
         requestIdentity: ctx.getRequestIdentity?.(),
       })
   );
-
-  registerTool(
+  add(
     "gno_sessions_status",
     {
       description:
@@ -1288,55 +1379,49 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       inputSchema: sessionsStatusInputSchema,
       annotations: SESSIONS_STATUS_MCP_ANNOTATIONS,
     },
-    () => handleSessionsStatus(ctx)
+    (_args, _req, _server, ctx) => handleSessionsStatus(ctx)
   );
-
-  registerTool(
+  add(
     "gno_search",
     {
       description: describe("gno_search", MCP_TOOL_DESCRIPTIONS.search),
       inputSchema: searchInputSchema,
     },
-    (args) => handleSearch(args, ctx)
+    (args, _req, _server, ctx) => handleSearch(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_vsearch",
     {
       description: MCP_TOOL_DESCRIPTIONS.vsearch,
       inputSchema: vsearchInputSchema,
     },
-    (args) => handleVsearch(args, ctx)
+    (args, _req, _server, ctx) => handleVsearch(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_query",
     {
       description: describe("gno_query", MCP_TOOL_DESCRIPTIONS.query),
       inputSchema: queryInputSchema,
     },
-    (args) => handleQuery(args, ctx)
+    (args, _req, _server, ctx) => handleQuery(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_query_diagnose",
     {
       description: MCP_TOOL_DESCRIPTIONS.queryDiagnose,
       inputSchema: queryDiagnoseInputSchema,
     },
-    (args) => handleQueryDiagnose(args, ctx)
+    (args, _req, _server, ctx) => handleQueryDiagnose(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_get",
     {
       description: describe("gno_get", MCP_TOOL_DESCRIPTIONS.get),
       inputSchema: getInputSchema,
     },
-    (args) => handleGet(args, ctx)
+    (args, _req, _server, ctx) => handleGet(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_section",
     {
       description: MCP_TOOL_DESCRIPTIONS.section,
@@ -1344,96 +1429,87 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       outputSchema: sectionOutputSchema,
       annotations: SECTION_MCP_ANNOTATIONS,
     },
-    (args) => handleSection(args, ctx)
+    (args, _req, _server, ctx) => handleSection(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_multi_get",
     {
       description: describe("gno_multi_get", MCP_TOOL_DESCRIPTIONS.multiGet),
       inputSchema: multiGetInputSchema,
     },
-    (args) => handleMultiGet(args, ctx)
+    (args, _req, _server, ctx) => handleMultiGet(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_peek",
     {
       description: MCP_TOOL_DESCRIPTIONS.peek,
       inputSchema: peekInputSchema,
       annotations: PEEK_MCP_ANNOTATIONS,
     },
-    (args) => handlePeek(args, ctx)
+    (args, _req, _server, ctx) => handlePeek(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_status",
     {
       description: MCP_TOOL_DESCRIPTIONS.status,
       inputSchema: statusInputSchema,
     },
-    (args) => handleStatus(args, ctx)
+    (args, _req, _server, ctx) => handleStatus(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_audit",
     {
       description: MCP_TOOL_DESCRIPTIONS.audit,
       inputSchema: auditInputSchema,
       annotations: AUDIT_MCP_ANNOTATIONS,
     },
-    (args, request) => handleAudit(args, ctx, request.mcpReq.signal)
+    (args, request, _server, ctx) =>
+      handleAudit(args as never, ctx, request.mcpReq.signal)
   );
-
-  registerTool(
+  add(
     "gno_egress_policy_get",
     {
       description:
         "Show one collection's configured and effective egress policy, provenance source, and confirmation-bound version.",
       inputSchema: egressPolicyGetInputSchema,
     },
-    (args) => handleEgressPolicyGet(args, ctx)
+    (args, _req, _server, ctx) => handleEgressPolicyGet(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_egress_check",
     {
       description:
         "Check or explain an exact action, destination, caller, content class, and collection scope without performing the action.",
       inputSchema: egressCheckInputSchema,
     },
-    (args) => handleEgressCheck(args, ctx)
+    (args, _req, _server, ctx) => handleEgressCheck(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_egress_audit_list",
     {
       description:
         "List content-free local egress decisions newest-first through an opaque cursor.",
       inputSchema: egressAuditListInputSchema,
     },
-    (args) => handleEgressAuditList(args, ctx)
+    (args, _req, _server, ctx) => handleEgressAuditList(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_egress_audit_show",
     {
       description: "Inspect one content-free local egress decision receipt.",
       inputSchema: egressAuditIdInputSchema,
     },
-    (args) => handleEgressAuditShow(args, ctx)
+    (args, _req, _server, ctx) => handleEgressAuditShow(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_egress_audit_status",
     {
       description: "Show local egress audit retention and storage status.",
       inputSchema: egressAuditStatusInputSchema,
     },
-    (args) => handleEgressAuditStatus(args, ctx)
+    (args, _req, _server, ctx) => handleEgressAuditStatus(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_changes",
     {
       description: describe(
@@ -1442,232 +1518,211 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
       ),
       inputSchema: changesInputSchema,
     },
-    (args) => handleChanges(args, ctx)
+    (args, _req, _server, ctx) => handleChanges(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_diff",
     {
       description:
         "Inspect one retained metadata-only structural document change. Source bodies are never returned.",
       inputSchema: diffInputSchema,
     },
-    (args) => handleDiff(args, ctx)
+    (args, _req, _server, ctx) => handleDiff(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_impact",
     {
       description:
         "Find bounded inbound typed, wiki, and Markdown dependencies with deterministic evidence paths.",
       inputSchema: impactInputSchema,
     },
-    (args) => handleImpact(args, ctx)
+    (args, _req, _server, ctx) => handleImpact(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_trace_list",
     {
       description:
         "List bounded metadata-only summaries of private local retrieval traces. Raw replay queries are omitted from history.",
       inputSchema: traceListInputSchema,
     },
-    (args) => handleTraceList(args, ctx)
+    (args, _req, _server, ctx) => handleTraceList(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_trace_show",
     {
       description:
         "Inspect one bounded local retrieval trace. Replay-mode content is returned only for the explicitly requested trace.",
       inputSchema: traceShowInputSchema,
     },
-    (args) => handleTraceShow(args, ctx)
+    (args, _req, _server, ctx) => handleTraceShow(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_list_metadata",
     {
       description:
         "List the typed metadata keys indexed documents carry, with observed types, document counts and the most common values. Call before writing a filter predicate on custom metadata you have not seen.",
       inputSchema: listMetadataInputSchema,
     },
-    (args) =>
+    (args, _req, _server, ctx) =>
       runTool(
         ctx,
         "gno_list_metadata",
-        () => readMetadataSummary(ctx.store, args),
+        () => readMetadataSummary(ctx.store, args as never),
         formatMetadataSummary
       )
   );
-
-  registerTool(
+  add(
     "gno_list_tags",
     {
       description:
         "List all tags with document counts. Use prefix to filter hierarchical tags (e.g. 'project/').",
       inputSchema: listTagsInputSchema,
     },
-    (args) => handleListTags(args, ctx)
+    (args, _req, _server, ctx) => handleListTags(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_links",
     {
       description:
         "Get outgoing wiki ([[links]]) and markdown links from one document. Use after gno_query when you need immediate local expansion from a known source document; use gno_graph_neighbors for bidirectional graph navigation.",
       inputSchema: linksInputSchema,
     },
-    (args) => handleLinks(args, ctx)
+    (args, _req, _server, ctx) => handleLinks(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_backlinks",
     {
       description:
         "Find all documents that link TO a given document. Use after gno_query/gno_get to discover incoming references around a known target; use gno_graph_path for 'how are X and Y connected?' questions.",
       inputSchema: backlinksInputSchema,
     },
-    (args) => handleBacklinks(args, ctx)
+    (args, _req, _server, ctx) => handleBacklinks(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_similar",
     {
       description:
         "Find semantically similar documents using vector embeddings. Use for local expansion when wording differs; use gno_query as the default retrieval entry point and gno_graph_neighbors/path for explicit relationship questions.",
       inputSchema: similarInputSchema,
     },
-    (args) => handleSimilar(args, ctx)
+    (args, _req, _server, ctx) => handleSimilar(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_graph",
     {
       description:
         "Get graph report/stats plus nodes/edges for corpus navigation. Use for unfamiliar corpus structure, hubs/isolates/unresolved links, or custom graph analysis; do not replace normal retrieval with this. Start with gno_query for content questions, then graph tools for relationship context, then gno_get for targeted reads.",
       inputSchema: graphInputSchema,
     },
-    (args) => handleGraph(args, ctx)
+    (args, _req, _server, ctx) => handleGraph(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_graph_query",
     {
       description:
         "Run bounded traversal over typed doc_edges from one root document. Use for explicit relationship questions like 'what does Alice work_at within 2 hops?' or to inspect typed graph hints; returns schemaVersion, root, nodes, edges, caps, and truncation.",
       inputSchema: graphQueryInputSchema,
     },
-    (args) => handleGraphQuery(args, ctx)
+    (args, _req, _server, ctx) => handleGraphQuery(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_graph_neighbors",
     {
       description:
         "Find graph neighbors around a document/node. Use for relationship questions, missed obvious related docs, or unfamiliar corpus navigation after gno_query identifies a seed; returns incoming/outgoing wiki, markdown, and optional similarity edges. Follow with gno_get for targeted reads.",
       inputSchema: graphNeighborsInputSchema,
     },
-    (args) => handleGraphNeighbors(args, ctx)
+    (args, _req, _server, ctx) => handleGraphNeighbors(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_graph_path",
     {
       description:
         "Find the shortest relationship path between two documents/nodes. Use for prompts like 'how are X and Y connected?' or to explain corpus relationships. Use gno_query for finding candidate refs first, then gno_get on path nodes for evidence.",
       inputSchema: graphPathInputSchema,
     },
-    (args) => handleGraphPath(args, ctx)
+    (args, _req, _server, ctx) => handleGraphPath(args as never, ctx)
   );
 
-  if (ctx.enableWrite) {
-    registerTool(
+  if (enableWrite) {
+    add(
       "gno_egress_policy_set",
       {
         description:
           "Set one collection policy. Relaxation requires confirmation bound to the current policy and version.",
         inputSchema: egressPolicySetInputSchema,
       },
-      (args) => handleEgressPolicySet(args, ctx)
+      (args, _req, _server, ctx) => handleEgressPolicySet(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_egress_audit_delete",
       {
         description:
           "Delete exactly one local egress audit receipt with physical cleanup status.",
         inputSchema: egressAuditIdInputSchema,
       },
-      (args) => handleEgressAuditDelete(args, ctx)
+      (args, _req, _server, ctx) => handleEgressAuditDelete(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_egress_audit_purge",
       {
         description:
           "Purge local egress audit receipts only. Requires confirm=true.",
         inputSchema: egressAuditPurgeInputSchema,
       },
-      (args) => handleEgressAuditPurge(args, ctx)
+      (args, _req, _server, ctx) => handleEgressAuditPurge(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_trace_label",
       {
         description:
           "Append an explicit relevant, irrelevant, or missing_expected judgment to a local retrieval trace.",
         inputSchema: traceLabelInputSchema,
       },
-      (args) => handleTraceLabel(args, ctx)
+      (args, _req, _server, ctx) => handleTraceLabel(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_trace_export",
       {
         description:
           "Build a deterministic local agentic receipt from one or more immutable terminal retrieval traces.",
         inputSchema: traceExportInputSchema,
       },
-      (args) => handleTraceExport(args, ctx)
+      (args, _req, _server, ctx) => handleTraceExport(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_trace_delete",
       {
         description:
           "Delete one private local retrieval trace and all owned receipt records.",
         inputSchema: traceDeleteInputSchema,
       },
-      (args) => handleTraceDelete(args, ctx)
+      (args, _req, _server, ctx) => handleTraceDelete(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_trace_purge",
       {
         description:
           "Purge every private local retrieval trace receipt. Requires confirm=true.",
         inputSchema: tracePurgeInputSchema,
       },
-      (args) => handleTracePurge(args, ctx)
+      (args, _req, _server, ctx) => handleTracePurge(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_remember",
       {
         description: describe("gno_remember", MCP_TOOL_DESCRIPTIONS.remember),
         inputSchema: rememberInputSchema,
         annotations: REMEMBER_MCP_ANNOTATIONS,
       },
-      (args, request) =>
-        handleRemember(args, ctx, {
+      (args, request, server, ctx) =>
+        handleRemember(args as never, ctx, {
           clientName: server.server.getClientVersion()?.name,
           sessionId: request.sessionId,
           requestIdentity: ctx.getRequestIdentity?.(),
         })
     );
-
-    registerTool(
+    add(
       "gno_sessions_import",
       {
         description:
@@ -1675,10 +1730,9 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
         inputSchema: sessionsImportInputSchema,
         annotations: SESSIONS_IMPORT_MCP_ANNOTATIONS,
       },
-      (args) => handleSessionsImport(args, ctx)
+      (args, _req, _server, ctx) => handleSessionsImport(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_sessions_automation_run",
       {
         description:
@@ -1686,10 +1740,10 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
         inputSchema: sessionsAutomationRunInputSchema,
         annotations: SESSIONS_AUTOMATION_RUN_MCP_ANNOTATIONS,
       },
-      (args) => handleSessionsAutomationRun(args, ctx)
+      (args, _req, _server, ctx) =>
+        handleSessionsAutomationRun(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_capture",
       {
         description: describe(
@@ -1698,10 +1752,9 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
         ),
         inputSchema: captureInputSchema,
       },
-      (args) => handleCapture(args, ctx)
+      (args, _req, _server, ctx) => handleCapture(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_request_status",
       {
         description: describe(
@@ -1711,78 +1764,71 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
         inputSchema: requestStatusInputSchema,
         annotations: REQUEST_STATUS_MCP_ANNOTATIONS,
       },
-      (args) => handleRequestStatus(args, ctx)
+      (args, _req, _server, ctx) => handleRequestStatus(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_add_collection",
       {
         description:
           "Add a directory as a new collection and start indexing. Returns a job ID for tracking.",
         inputSchema: addCollectionInputSchema,
       },
-      (args) => handleAddCollection(args, ctx)
+      (args, _req, _server, ctx) => handleAddCollection(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_sync",
       {
         description:
           "Sync files from disk into the index (FTS only, no embeddings). Does NOT auto-embed; run gno_embed after if vector search needed.",
         inputSchema: syncInputSchema,
       },
-      (args) => handleSync(args, ctx)
+      (args, _req, _server, ctx) => handleSync(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_embed",
       {
         description:
           "Generate vector embeddings for all unembedded chunks, optionally scoped to one collection. Async: returns a job ID. Poll with gno_job_status.",
         inputSchema: embedInputSchema,
       },
-      (args) => handleEmbed(args, ctx)
+      (args, _req, _server, ctx) => handleEmbed(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_index",
       {
         description:
           "Full index: sync files from disk + generate embeddings. Async: returns a job ID. Poll with gno_job_status.",
         inputSchema: indexInputSchema,
       },
-      (args) => handleIndex(args, ctx)
+      (args, _req, _server, ctx) => handleIndex(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_remove_collection",
       {
         description:
           "Remove a collection from config and delete its indexed data.",
         inputSchema: removeCollectionInputSchema,
       },
-      (args) => handleRemoveCollection(args, ctx)
+      (args, _req, _server, ctx) => handleRemoveCollection(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_clear_collection_embeddings",
       {
         description: "Remove stale or all embeddings for one collection.",
         inputSchema: clearCollectionEmbeddingsInputSchema,
       },
-      (args) => handleClearCollectionEmbeddings(args, ctx)
+      (args, _req, _server, ctx) =>
+        handleClearCollectionEmbeddings(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_create_folder",
       {
         description: "Create a folder inside an existing collection.",
         inputSchema: createFolderInputSchema,
       },
-      (args) => handleCreateFolder(args, ctx)
+      (args, _req, _server, ctx) => handleCreateFolder(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_rename_note",
       {
         description:
@@ -1790,10 +1836,9 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
         inputSchema: renameNoteInputSchema,
         annotations: RENAME_NOTE_MCP_ANNOTATIONS,
       },
-      (args) => handleRenameNote(args, ctx)
+      (args, _req, _server, ctx) => handleRenameNote(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_move_note",
       {
         description:
@@ -1801,37 +1846,70 @@ export function registerTools(server: McpServer, ctx: ToolContext): void {
         inputSchema: moveNoteInputSchema,
         annotations: MOVE_NOTE_MCP_ANNOTATIONS,
       },
-      (args) => handleMoveNote(args, ctx)
+      (args, _req, _server, ctx) => handleMoveNote(args as never, ctx)
     );
-
-    registerTool(
+    add(
       "gno_duplicate_note",
       {
         description:
           "Duplicate an editable note into the current or another folder.",
         inputSchema: duplicateNoteInputSchema,
       },
-      (args) => handleDuplicateNote(args, ctx)
+      (args, _req, _server, ctx) => handleDuplicateNote(args as never, ctx)
     );
   }
 
-  registerTool(
+  add(
     "gno_job_status",
     {
       description:
         "Check status of an async job (embed, index). Returns progress percentage and completion state.",
       inputSchema: jobStatusInputSchema,
     },
-    (args) => handleJobStatus(args, ctx)
+    (args, _req, _server, ctx) => handleJobStatus(args as never, ctx)
   );
-
-  registerTool(
+  add(
     "gno_list_jobs",
     {
       description:
         "List active and recently completed async jobs with their status and progress.",
       inputSchema: listJobsInputSchema,
     },
-    (args) => handleListJobs(args, ctx)
+    (args, _req, _server, ctx) => handleListJobs(args as never, ctx)
   );
+
+  staticToolTables.set(key, entries);
+  return entries;
+}
+
+export function registerTools(server: McpServer, ctx: ToolContext): void {
+  // Tool IDs use underscores (MCP pattern: ^[a-zA-Z0-9_-]{1,64}$)
+  const profile = ctx.toolProfile ?? DEFAULT_MCP_TOOL_PROFILE;
+  const table = getStaticToolTable(profile, ctx.enableWrite);
+  const connection = new AbortController();
+  const previousClose = server.server.onclose;
+  server.server.onclose = () => {
+    connection.abort();
+    previousClose?.();
+  };
+
+  for (const entry of table) {
+    server.registerTool(
+      entry.name,
+      entry.config as never,
+      ((...args: unknown[]) => {
+        const request = args.at(-1) as {
+          sessionId?: string;
+          mcpReq: { signal: AbortSignal };
+        };
+        const input = args.length === 1 ? undefined : args[0];
+        return withInferenceScope(
+          {
+            signal: AbortSignal.any([connection.signal, request.mcpReq.signal]),
+          },
+          () => entry.invoke(input, request, server, ctx)
+        );
+      }) as never
+    );
+  }
 }

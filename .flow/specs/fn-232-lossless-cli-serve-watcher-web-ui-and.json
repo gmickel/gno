@@ -1,0 +1,601 @@
+{
+  "branch_name": "fn-232-lossless-cli-serve-watcher-web-ui-and",
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-11-22T08:43:46.993870Z",
+  "created_at": "2026-11-21T13:47:03.763715Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
+  "depends_on_epics": [],
+  "id": "fn-232-lossless-cli-serve-watcher-web-ui-and",
+  "impl_review_rounds": {
+    "fn-232-lossless-cli-serve-watcher-web-ui-and.1": 0
+  },
+  "next_task": 1,
+  "no_plan": true,
+  "plan_review_rounds": 0,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "ready": true,
+  "review_attempts": [
+    {
+      "artifact_sha256": "09109527a49405aecd51aea7576824b28cb584ba3c235bd1bd1a70828848a8bf",
+      "backend": "codex",
+      "base_sha": "e5ea75d39d51f0be4f25bb1ac84f1e54818b5739",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-e7535f727b68b1a7db682437ecb42903",
+            "classification": "introduced",
+            "findingId": "finding-e7535f727b68b1a7db682437ecb42903",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-0345afe25a3634832a55b21b177a56f2",
+            "classification": "introduced",
+            "findingId": "finding-0345afe25a3634832a55b21b177a56f2",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-84eb9e937f21e2169626de2836fcf7cf",
+            "classification": "introduced",
+            "findingId": "finding-84eb9e937f21e2169626de2836fcf7cf",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-b3b4a1cbc88f159dba564ecd00bb3023",
+            "classification": "introduced",
+            "findingId": "finding-b3b4a1cbc88f159dba564ecd00bb3023",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-274cbd5a0b8bb344a96804c23dfc0a96",
+            "classification": "introduced",
+            "findingId": "finding-274cbd5a0b8bb344a96804c23dfc0a96",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-6b701749696a14ddfc6bec2ae01df511",
+            "classification": "introduced",
+            "findingId": "finding-6b701749696a14ddfc6bec2ae01df511",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-b2f228dddb5e971e77b19a221748c2f2",
+            "classification": "introduced",
+            "findingId": "finding-b2f228dddb5e971e77b19a221748c2f2",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-dbeb7bdeffc54fc8299173245999dce3",
+            "classification": "introduced",
+            "findingId": "finding-dbeb7bdeffc54fc8299173245999dce3",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-603066ff1f3244f80f8fa919f695d6c7",
+            "classification": "introduced",
+            "findingId": "finding-603066ff1f3244f80f8fa919f695d6c7",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-fe39a62fb9a9cdf3a6ab03f247de17b6",
+            "classification": "introduced",
+            "findingId": "finding-fe39a62fb9a9cdf3a6ab03f247de17b6",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-856a3def698d03e24888004d8737373e",
+            "classification": "introduced",
+            "findingId": "finding-856a3def698d03e24888004d8737373e",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-d65801ca6ee0365f83c5340ca045877f",
+            "classification": "introduced",
+            "findingId": "finding-d65801ca6ee0365f83c5340ca045877f",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-7334ad43650a0eba9bf275b0592e790b",
+            "classification": "introduced",
+            "findingId": "finding-7334ad43650a0eba9bf275b0592e790b",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-68f4f2dd583f4dceef07a7d6d6c0dd2d",
+            "classification": "introduced",
+            "findingId": "finding-68f4f2dd583f4dceef07a7d6d6c0dd2d",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-e50577de42abed18082344cc19e087d0",
+            "classification": "introduced",
+            "findingId": "finding-e50577de42abed18082344cc19e087d0",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-b1aed9f5ce7be7f1c0fc40514e38bf27",
+            "classification": "introduced",
+            "findingId": "finding-b1aed9f5ce7be7f1c0fc40514e38bf27",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "de71436f848dd80e20a84ec76df07ff8d39a3c32",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6.2-sol",
+      "outcome": "verdict",
+      "output_bytes": 10324,
+      "output_sha256": "76de686c518bdad5863dfe839e1eeca3d43942beb069da7ebfbf04baf3acbce4",
+      "reservation_id": "6001456bebc94a3a89eda771011e0205",
+      "round_consumed": true,
+      "scope": "impl:fn-232-lossless-cli-serve-watcher-web-ui-and.1",
+      "superseded_by": null,
+      "task": "fn-232-lossless-cli-serve-watcher-web-ui-and.1",
+      "timestamp": "2026-11-22T08:25:43.300850Z",
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "382e76b21034bbdd661e8b5dc7a63cd9e3aef217e2462ff30341548942fc5a96",
+      "backend": "codex",
+      "base_sha": "e5ea75d39d51f0be4f25bb1ac84f1e54818b5739",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-e7535f727b68b1a7db682437ecb42903",
+            "classification": "introduced",
+            "findingId": "finding-e7535f727b68b1a7db682437ecb42903",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-0345afe25a3634832a55b21b177a56f2",
+            "classification": "introduced",
+            "findingId": "finding-0345afe25a3634832a55b21b177a56f2",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "not_fixed"
+          },
+          {
+            "chainRoot": "finding-84eb9e937f21e2169626de2836fcf7cf",
+            "classification": "introduced",
+            "findingId": "finding-84eb9e937f21e2169626de2836fcf7cf",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-b3b4a1cbc88f159dba564ecd00bb3023",
+            "classification": "introduced",
+            "findingId": "finding-b3b4a1cbc88f159dba564ecd00bb3023",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-274cbd5a0b8bb344a96804c23dfc0a96",
+            "classification": "introduced",
+            "findingId": "finding-274cbd5a0b8bb344a96804c23dfc0a96",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-8693416d8f54de9ade6d9b838294808d",
+            "classification": "introduced",
+            "findingId": "finding-8693416d8f54de9ade6d9b838294808d",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-8d0e3f66d47aa76c5786ebf76dd14549",
+            "classification": "introduced",
+            "findingId": "finding-8d0e3f66d47aa76c5786ebf76dd14549",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-6b701749696a14ddfc6bec2ae01df511",
+            "classification": "introduced",
+            "findingId": "finding-6b701749696a14ddfc6bec2ae01df511",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-b2f228dddb5e971e77b19a221748c2f2",
+            "classification": "introduced",
+            "findingId": "finding-b2f228dddb5e971e77b19a221748c2f2",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-dbeb7bdeffc54fc8299173245999dce3",
+            "classification": "introduced",
+            "findingId": "finding-dbeb7bdeffc54fc8299173245999dce3",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-603066ff1f3244f80f8fa919f695d6c7",
+            "classification": "introduced",
+            "findingId": "finding-603066ff1f3244f80f8fa919f695d6c7",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "not_fixed"
+          },
+          {
+            "chainRoot": "finding-3c15946fd6b6a7f66225a311918ce1ca",
+            "classification": "introduced",
+            "findingId": "finding-3c15946fd6b6a7f66225a311918ce1ca",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-fe39a62fb9a9cdf3a6ab03f247de17b6",
+            "classification": "introduced",
+            "findingId": "finding-fe39a62fb9a9cdf3a6ab03f247de17b6",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-856a3def698d03e24888004d8737373e",
+            "classification": "introduced",
+            "findingId": "finding-856a3def698d03e24888004d8737373e",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-d65801ca6ee0365f83c5340ca045877f",
+            "classification": "introduced",
+            "findingId": "finding-d65801ca6ee0365f83c5340ca045877f",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-7334ad43650a0eba9bf275b0592e790b",
+            "classification": "introduced",
+            "findingId": "finding-7334ad43650a0eba9bf275b0592e790b",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "not_fixed"
+          },
+          {
+            "chainRoot": "finding-68f4f2dd583f4dceef07a7d6d6c0dd2d",
+            "classification": "introduced",
+            "findingId": "finding-68f4f2dd583f4dceef07a7d6d6c0dd2d",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-e50577de42abed18082344cc19e087d0",
+            "classification": "introduced",
+            "findingId": "finding-e50577de42abed18082344cc19e087d0",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-b1aed9f5ce7be7f1c0fc40514e38bf27",
+            "classification": "introduced",
+            "findingId": "finding-b1aed9f5ce7be7f1c0fc40514e38bf27",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-b38f92e2df7c13fc2ac1d51f3a81ba18",
+            "classification": "introduced",
+            "findingId": "finding-b38f92e2df7c13fc2ac1d51f3a81ba18",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "bd63be3636b0d5f7d779ad401225f706c0c875fe",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6.2-sol",
+      "outcome": "verdict",
+      "output_bytes": 4393,
+      "output_sha256": "4f7c5dc14fc430882b82422ab91dc175fa79cd75220264b45bcc09b81e6e4b80",
+      "reservation_id": "8c494dbad60c4aa598327889136312a1",
+      "round_consumed": true,
+      "scope": "impl:fn-232-lossless-cli-serve-watcher-web-ui-and.1",
+      "superseded_by": null,
+      "task": "fn-232-lossless-cli-serve-watcher-web-ui-and.1",
+      "timestamp": "2026-11-22T08:37:36.273953Z",
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "227dc2856e2849a01670d160325e8c15251bac43d0d21fd74d81890fa10fb71e",
+      "backend": "codex",
+      "base_sha": "e5ea75d39d51f0be4f25bb1ac84f1e54818b5739",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-e7535f727b68b1a7db682437ecb42903",
+            "classification": "introduced",
+            "findingId": "finding-e7535f727b68b1a7db682437ecb42903",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-0345afe25a3634832a55b21b177a56f2",
+            "classification": "introduced",
+            "findingId": "finding-0345afe25a3634832a55b21b177a56f2",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-84eb9e937f21e2169626de2836fcf7cf",
+            "classification": "introduced",
+            "findingId": "finding-84eb9e937f21e2169626de2836fcf7cf",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-b3b4a1cbc88f159dba564ecd00bb3023",
+            "classification": "introduced",
+            "findingId": "finding-b3b4a1cbc88f159dba564ecd00bb3023",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-274cbd5a0b8bb344a96804c23dfc0a96",
+            "classification": "introduced",
+            "findingId": "finding-274cbd5a0b8bb344a96804c23dfc0a96",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-8693416d8f54de9ade6d9b838294808d",
+            "classification": "introduced",
+            "findingId": "finding-8693416d8f54de9ade6d9b838294808d",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-8d0e3f66d47aa76c5786ebf76dd14549",
+            "classification": "introduced",
+            "findingId": "finding-8d0e3f66d47aa76c5786ebf76dd14549",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-6b701749696a14ddfc6bec2ae01df511",
+            "classification": "introduced",
+            "findingId": "finding-6b701749696a14ddfc6bec2ae01df511",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "withdrawn"
+          },
+          {
+            "chainRoot": "finding-b2f228dddb5e971e77b19a221748c2f2",
+            "classification": "introduced",
+            "findingId": "finding-b2f228dddb5e971e77b19a221748c2f2",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-dbeb7bdeffc54fc8299173245999dce3",
+            "classification": "introduced",
+            "findingId": "finding-dbeb7bdeffc54fc8299173245999dce3",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-603066ff1f3244f80f8fa919f695d6c7",
+            "classification": "introduced",
+            "findingId": "finding-603066ff1f3244f80f8fa919f695d6c7",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-3c15946fd6b6a7f66225a311918ce1ca",
+            "classification": "introduced",
+            "findingId": "finding-3c15946fd6b6a7f66225a311918ce1ca",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-fe39a62fb9a9cdf3a6ab03f247de17b6",
+            "classification": "introduced",
+            "findingId": "finding-fe39a62fb9a9cdf3a6ab03f247de17b6",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-856a3def698d03e24888004d8737373e",
+            "classification": "introduced",
+            "findingId": "finding-856a3def698d03e24888004d8737373e",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-d65801ca6ee0365f83c5340ca045877f",
+            "classification": "introduced",
+            "findingId": "finding-d65801ca6ee0365f83c5340ca045877f",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-7334ad43650a0eba9bf275b0592e790b",
+            "classification": "introduced",
+            "findingId": "finding-7334ad43650a0eba9bf275b0592e790b",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-68f4f2dd583f4dceef07a7d6d6c0dd2d",
+            "classification": "introduced",
+            "findingId": "finding-68f4f2dd583f4dceef07a7d6d6c0dd2d",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-e50577de42abed18082344cc19e087d0",
+            "classification": "introduced",
+            "findingId": "finding-e50577de42abed18082344cc19e087d0",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-b1aed9f5ce7be7f1c0fc40514e38bf27",
+            "classification": "introduced",
+            "findingId": "finding-b1aed9f5ce7be7f1c0fc40514e38bf27",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-b38f92e2df7c13fc2ac1d51f3a81ba18",
+            "classification": "introduced",
+            "findingId": "finding-b38f92e2df7c13fc2ac1d51f3a81ba18",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "f5987ee2769c72410504056f74efe5a607f66902",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6.2-sol",
+      "outcome": "verdict",
+      "output_bytes": 1504,
+      "output_sha256": "0fe2f51369f6ae9fc1a7f41797c78f086cd7848faf1d2dcc3c4307d06916f2d0",
+      "reservation_id": "b0fa697dcbda4d3da2d3fa7de6f03c86",
+      "round_consumed": true,
+      "scope": "impl:fn-232-lossless-cli-serve-watcher-web-ui-and.1",
+      "superseded_by": null,
+      "task": "fn-232-lossless-cli-serve-watcher-web-ui-and.1",
+      "timestamp": "2026-11-22T08:43:01.772522Z",
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "impl:fn-232-lossless-cli-serve-watcher-web-ui-and.1": 1
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-232-lossless-cli-serve-watcher-web-ui-and.1": 0
+  },
+  "spec_path": ".flow/specs/fn-232-lossless-cli-serve-watcher-web-ui-and.md",
+  "status": "done",
+  "title": "Lossless CLI, serve, watcher, Web UI, and MCP performance",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-11-22T12:40:12.924018Z"
+}

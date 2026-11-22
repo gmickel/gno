@@ -11,7 +11,7 @@ import type { StandardMcpEntry } from "./config.js";
 
 import { normalizeConnectorWorkspaceEnvironment } from "../../../core/connector-environment";
 import { CliError } from "../../errors.js";
-import { getGlobals } from "../../program.js";
+import { getGlobals } from "../../globals.js";
 import {
   configPathEntryExists,
   resolveMcpConfigLocation,

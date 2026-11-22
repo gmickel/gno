@@ -44,14 +44,23 @@ import {
 } from "../components/ai-elements/code-block";
 import { Loader } from "../components/ai-elements/loader";
 import { BacklinksPanel } from "../components/BacklinksPanel";
-import { MarkdownPreview } from "../components/editor";
+import { MarkdownPreview } from "../components/editor/MarkdownPreview";
 import {
   OutgoingLinksPanel,
   type OutgoingLink,
 } from "../components/OutgoingLinksPanel";
-import { PublishExportDialog } from "../components/PublishExportDialog";
-import { RefactorImpactPreview } from "../components/RefactorImpactPreview";
 import { RelatedNotesSidebar } from "../components/RelatedNotesSidebar";
+
+const PublishExportDialog = lazy(() =>
+  import("../components/PublishExportDialog").then((module) => ({
+    default: module.PublishExportDialog,
+  }))
+);
+const RefactorImpactPreview = lazy(() =>
+  import("../components/RefactorImpactPreview").then((module) => ({
+    default: module.RefactorImpactPreview,
+  }))
+);
 import { TagInput } from "../components/TagInput";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -1957,12 +1966,14 @@ export default function DocView({ navigate }: PageProps) {
       </header>
 
       {publishExportOpen && doc && (
-        <PublishExportDialog
-          key={doc.uri}
-          onClose={() => setPublishExportOpen(false)}
-          target={doc.uri}
-          title={doc.title ?? doc.uri}
-        />
+        <Suspense fallback={null}>
+          <PublishExportDialog
+            key={doc.uri}
+            onClose={() => setPublishExportOpen(false)}
+            target={doc.uri}
+            title={doc.title ?? doc.uri}
+          />
+        </Suspense>
       )}
       <div className="mx-auto flex max-w-[1800px] gap-5 px-6 xl:px-8">
         {/* Left rail — metadata + outline */}
@@ -2383,14 +2394,18 @@ export default function DocView({ navigate }: PageProps) {
             onChange={(event) => setRenameValue(event.target.value)}
             value={renameValue}
           />
-          <RefactorImpactPreview
-            confirmed={renameConfirmed}
-            loading={renamePlanLoading}
-            onConfirmedChange={setRenameConfirmed}
-            outcomeMessage={renameOutcome}
-            outcomeTone="warning"
-            plan={renamePlan}
-          />
+          {renameDialogOpen && (
+            <Suspense fallback={null}>
+              <RefactorImpactPreview
+                confirmed={renameConfirmed}
+                loading={renamePlanLoading}
+                onConfirmedChange={setRenameConfirmed}
+                outcomeMessage={renameOutcome}
+                outcomeTone="warning"
+                plan={renamePlan}
+              />
+            </Suspense>
+          )}
           {renameError && (
             <div
               className="rounded-lg bg-destructive/10 p-3 text-destructive text-sm"
@@ -2455,14 +2470,18 @@ export default function DocView({ navigate }: PageProps) {
               placeholder="note.md"
               value={moveName}
             />
-            <RefactorImpactPreview
-              confirmed={moveConfirmed}
-              loading={movePlanLoading}
-              onConfirmedChange={setMoveConfirmed}
-              outcomeMessage={moveOutcome}
-              outcomeTone="warning"
-              plan={movePlan}
-            />
+            {moveDialogOpen && (
+              <Suspense fallback={null}>
+                <RefactorImpactPreview
+                  confirmed={moveConfirmed}
+                  loading={movePlanLoading}
+                  onConfirmedChange={setMoveConfirmed}
+                  outcomeMessage={moveOutcome}
+                  outcomeTone="warning"
+                  plan={movePlan}
+                />
+              </Suspense>
+            )}
             {moveError && (
               <div
                 className="rounded-lg bg-destructive/10 p-3 text-destructive text-sm"

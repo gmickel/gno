@@ -9,9 +9,9 @@ import { getConfigPaths, toAbsolutePath } from "../../../config/paths.js";
 import {
   type McpToolProfile,
   parseMcpToolProfile,
-} from "../../../mcp/tool-profile.js";
+} from "../../../mcp/tool-profile-types.js";
 import { CliError } from "../../errors.js";
-import { getGlobals } from "../../program.js";
+import { getGlobals } from "../../globals.js";
 import { resolveMcpConfigLocation } from "./config-discovery.js";
 import {
   getJsoncServerEntry,

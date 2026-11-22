@@ -10,7 +10,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { CliError } from "../../errors.js";
-import { getGlobals } from "../../program.js";
+import { getGlobals } from "../../globals.js";
 import {
   resolveSkillPaths,
   SKILL_TARGETS,

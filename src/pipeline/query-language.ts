@@ -4,7 +4,20 @@
  * IMPORTANT: This affects prompt selection and metadata ONLY.
  * It does NOT affect retrieval filtering - that's controlled by CLI --lang flag.
  */
-import { franc } from "franc";
+type FrancFn = typeof import("franc").franc;
+let cachedFranc: FrancFn | null = null;
+
+function getFranc(): FrancFn {
+  if (!cachedFranc) {
+    // Static require("franc") is bundled by `bun build --compile` into
+    // standalone executables while still remaining lazily evaluated at runtime
+    // until a >= 15-char query without `--lang` arrives.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require("franc") as { franc: FrancFn };
+    cachedFranc = mod.franc;
+  }
+  return cachedFranc;
+}
 
 const MIN_RELIABLE_LENGTH = 15;
 
@@ -101,7 +114,7 @@ export function detectQueryLanguage(text: string): LanguageDetection {
     return { bcp47: "und", iso639_3: "und", confident: false };
   }
 
-  const detected = franc(trimmed, {
+  const detected = getFranc()(trimmed, {
     minLength: MIN_RELIABLE_LENGTH,
     only: SUPPORTED_LANGUAGES,
   });

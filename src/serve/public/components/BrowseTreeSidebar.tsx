@@ -26,24 +26,32 @@ interface VisibleBrowseNode {
   parentId: string | null;
 }
 
-function flattenVisibleNodes(
+function flattenInto(
   nodes: BrowseTreeNode[],
   expandedNodeIds: Set<string>,
-  parentId: string | null = null
-): VisibleBrowseNode[] {
-  const flat: VisibleBrowseNode[] = [];
-
+  parentId: string | null,
+  out: VisibleBrowseNode[]
+): void {
   for (const node of nodes) {
-    flat.push({ node, parentId });
+    out.push({ node, parentId });
     if (node.children.length > 0 && expandedNodeIds.has(node.id)) {
-      flat.push(
-        ...flattenVisibleNodes(node.children, expandedNodeIds, node.id)
-      );
+      flattenInto(node.children, expandedNodeIds, node.id, out);
     }
   }
+}
 
+function flattenVisibleNodes(
+  nodes: BrowseTreeNode[],
+  expandedNodeIds: Set<string>
+): VisibleBrowseNode[] {
+  const flat: VisibleBrowseNode[] = [];
+  flattenInto(nodes, expandedNodeIds, null, flat);
   return flat;
 }
+
+const VIRTUALIZE_THRESHOLD = 100;
+const VIRTUAL_ROW_HEIGHT_PX = 36;
+const VIRTUAL_OVERSCAN_ROWS = 12;
 
 export function BrowseTreeSidebar({
   collections,
@@ -55,24 +63,90 @@ export function BrowseTreeSidebar({
   onToggleFavoriteCollection,
 }: BrowseTreeSidebarProps) {
   const nodeRefs = useRef(new Map<string, HTMLButtonElement>());
+  const treeScrollRef = useRef<HTMLDivElement | null>(null);
   const [focusedNodeId, setFocusedNodeId] = useState<string | null>(
     selectedNodeId
   );
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(640);
   const expandedNodeSet = useMemo(
     () => new Set(expandedNodeIds),
     [expandedNodeIds]
+  );
+  const favoriteCollectionSet = useMemo(
+    () => new Set(favoriteCollections),
+    [favoriteCollections]
   );
   const visibleNodes = useMemo(
     () => flattenVisibleNodes(collections, expandedNodeSet),
     [collections, expandedNodeSet]
   );
+  const visibleIndexById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (let i = 0; i < visibleNodes.length; i += 1) {
+      map.set(visibleNodes[i]!.node.id, i);
+    }
+    return map;
+  }, [visibleNodes]);
 
   useEffect(() => {
     setFocusedNodeId(selectedNodeId);
   }, [selectedNodeId]);
 
-  const favoriteRoots = collections.filter((node) =>
-    favoriteCollections.includes(node.collection)
+  const shouldVirtualize = visibleNodes.length > VIRTUALIZE_THRESHOLD;
+
+  // Keep a deep-linked or externally selected row mounted in the virtual window
+  // so keyboard users always have a reachable tab stop on the selected folder.
+  useEffect(() => {
+    if (!shouldVirtualize || !selectedNodeId) {
+      return;
+    }
+    const selectedIndex = visibleIndexById.get(selectedNodeId);
+    if (selectedIndex === undefined) {
+      return;
+    }
+    const targetTop = selectedIndex * VIRTUAL_ROW_HEIGHT_PX;
+    const targetBottom = targetTop + VIRTUAL_ROW_HEIGHT_PX;
+    const container = treeScrollRef.current;
+    const effectiveHeight = container?.clientHeight || viewportHeight;
+    const currentTop = container ? container.scrollTop : scrollTop;
+    if (targetTop < currentTop || targetBottom > currentTop + effectiveHeight) {
+      const nextTop = Math.max(0, targetTop - Math.floor(effectiveHeight / 2));
+      if (container) {
+        container.scrollTop = nextTop;
+      }
+      setScrollTop(nextTop);
+    }
+  }, [selectedNodeId, shouldVirtualize, visibleIndexById, viewportHeight]);
+
+  useEffect(() => {
+    if (!shouldVirtualize) {
+      return;
+    }
+    const container = treeScrollRef.current;
+    if (!container) {
+      return;
+    }
+    const updateViewport = () => {
+      const nextHeight = container.clientHeight || 640;
+      setViewportHeight(nextHeight);
+    };
+    updateViewport();
+    const onScroll = () => {
+      setScrollTop(container.scrollTop);
+    };
+    container.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", updateViewport);
+    return () => {
+      container.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", updateViewport);
+    };
+  }, [shouldVirtualize]);
+
+  const favoriteRoots = useMemo(
+    () =>
+      collections.filter((node) => favoriteCollectionSet.has(node.collection)),
+    [collections, favoriteCollectionSet]
   );
 
   const moveFocus = (nodeId: string | null) => {
@@ -80,11 +154,57 @@ export function BrowseTreeSidebar({
       return;
     }
     setFocusedNodeId(nodeId);
-    nodeRefs.current.get(nodeId)?.focus();
+    if (shouldVirtualize) {
+      const targetIndex = visibleIndexById.get(nodeId);
+      const container = treeScrollRef.current;
+      if (targetIndex !== undefined && container) {
+        const targetTop = targetIndex * VIRTUAL_ROW_HEIGHT_PX;
+        const targetBottom = targetTop + VIRTUAL_ROW_HEIGHT_PX;
+        if (targetTop < container.scrollTop) {
+          container.scrollTop = targetTop;
+          setScrollTop(targetTop);
+        } else if (
+          targetBottom >
+          container.scrollTop + container.clientHeight
+        ) {
+          const nextTop = Math.max(0, targetBottom - container.clientHeight);
+          container.scrollTop = nextTop;
+          setScrollTop(nextTop);
+        }
+      }
+    }
+    requestAnimationFrame(() => {
+      nodeRefs.current.get(nodeId)?.focus();
+    });
   };
 
   const getVisibleIndex = (nodeId: string | null) =>
-    visibleNodes.findIndex((entry) => entry.node.id === nodeId);
+    nodeId ? (visibleIndexById.get(nodeId) ?? -1) : -1;
+
+  const startIndex = shouldVirtualize
+    ? Math.max(
+        0,
+        Math.floor(scrollTop / VIRTUAL_ROW_HEIGHT_PX) - VIRTUAL_OVERSCAN_ROWS
+      )
+    : 0;
+  const endIndex = shouldVirtualize
+    ? Math.min(
+        visibleNodes.length,
+        Math.ceil((scrollTop + viewportHeight) / VIRTUAL_ROW_HEIGHT_PX) +
+          VIRTUAL_OVERSCAN_ROWS
+      )
+    : visibleNodes.length;
+  const renderedNodes = shouldVirtualize
+    ? visibleNodes.slice(startIndex, endIndex)
+    : visibleNodes;
+  const activeTabTarget = focusedNodeId ?? selectedNodeId;
+  const activeTabTargetMounted =
+    activeTabTarget !== null &&
+    renderedNodes.some(({ node }) => node.id === activeTabTarget);
+  const topSpacerPx = shouldVirtualize ? startIndex * VIRTUAL_ROW_HEIGHT_PX : 0;
+  const bottomSpacerPx = shouldVirtualize
+    ? (visibleNodes.length - endIndex) * VIRTUAL_ROW_HEIGHT_PX
+    : 0;
 
   return (
     <ScrollArea className="h-full">
@@ -114,12 +234,25 @@ export function BrowseTreeSidebar({
           <div className="px-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.2em]">
             Workspace Tree
           </div>
-          <div aria-label="Browse tree" role="tree">
-            {visibleNodes.map(({ node, parentId }, index) => {
+          <div
+            aria-label="Browse tree"
+            className={
+              shouldVirtualize
+                ? "max-h-[calc(100vh-14rem)] overflow-y-auto"
+                : undefined
+            }
+            ref={treeScrollRef}
+            role="tree"
+          >
+            {topSpacerPx > 0 && (
+              <div aria-hidden="true" style={{ height: `${topSpacerPx}px` }} />
+            )}
+            {renderedNodes.map(({ node, parentId }, localIndex) => {
               const isExpanded = expandedNodeSet.has(node.id);
               const isSelected = node.id === selectedNodeId;
               const isFocused = node.id === focusedNodeId;
               const hasChildren = node.children.length > 0;
+              const isFavorite = favoriteCollectionSet.has(node.collection);
 
               return (
                 <Fragment key={node.id}>
@@ -223,11 +356,13 @@ export function BrowseTreeSidebar({
                       role="treeitem"
                       style={{ paddingLeft: `${node.depth * 0.9 + 0.5}rem` }}
                       tabIndex={
-                        isFocused ||
-                        (!focusedNodeId && index === 0) ||
-                        (selectedNodeId === null && index === 0)
-                          ? 0
-                          : -1
+                        activeTabTargetMounted
+                          ? node.id === activeTabTarget
+                            ? 0
+                            : -1
+                          : localIndex === 0
+                            ? 0
+                            : -1
                       }
                       type="button"
                     >
@@ -250,7 +385,7 @@ export function BrowseTreeSidebar({
                     {node.kind === "collection" && (
                       <button
                         aria-label={
-                          favoriteCollections.includes(node.collection)
+                          isFavorite
                             ? `Unpin ${node.collection}`
                             : `Pin ${node.collection}`
                         }
@@ -263,8 +398,7 @@ export function BrowseTreeSidebar({
                         <StarIcon
                           className={cn(
                             "size-3.5",
-                            favoriteCollections.includes(node.collection) &&
-                              "fill-current text-secondary"
+                            isFavorite && "fill-current text-secondary"
                           )}
                         />
                       </button>
@@ -273,6 +407,12 @@ export function BrowseTreeSidebar({
                 </Fragment>
               );
             })}
+            {bottomSpacerPx > 0 && (
+              <div
+                aria-hidden="true"
+                style={{ height: `${bottomSpacerPx}px` }}
+              />
+            )}
           </div>
         </div>
       </div>

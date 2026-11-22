@@ -1,7 +1,9 @@
 /** Single-process ownership boundary shared by serve and daemon surfaces. */
 
-// node:path resolve/dirname/join have no Bun path utility equivalents.
-import { dirname, join, resolve } from "node:path";
+// node:fs watch: Bun has no recursive/directory watcher API with explicit close().
+import { type FSWatcher, watch as fsWatch } from "node:fs";
+// node:path basename/dirname/join/resolve have no Bun path utility equivalents.
+import { basename, dirname, join, resolve } from "node:path";
 
 import type { Config } from "../config/types";
 import type { WriteLockHandle } from "../core/file-lock";
@@ -12,6 +14,7 @@ import type { HttpMcpTransportStatus } from "../mcp/http-transport";
 import type { SessionAutomationRunResult } from "../sessions/types";
 import type { DocumentEventBus } from "./doc-events";
 import type { EmbedResult, EmbedScheduler } from "./embed-scheduler";
+import type { FindingsPassResult, FindingsScheduler } from "./findings-pass";
 import type { ContextHolder } from "./routes/api";
 import type { ResidentStatus } from "./status-model";
 import type {
@@ -36,11 +39,6 @@ import { SavedCapsuleReverificationScheduler } from "../core/capsule-reverificat
 import { collectionEgressPolicyEpoch } from "../core/collection-egress-policy-service";
 import { authorizeCurrentEgress } from "../core/egress-authorization";
 import { acquireWriteLock } from "../core/file-lock";
-import {
-  deleteFindingsRunState,
-  findingsRunStatePath,
-  resolveFindingsSchedule,
-} from "../core/findings-run-state";
 import { JobManager } from "../core/job-manager";
 import { recordContentMutation } from "../core/mutation-generations";
 import {
@@ -73,7 +71,6 @@ import {
   type ServerContext,
 } from "./context";
 import { createEmbedScheduler, embedSchedulerIssues } from "./embed-scheduler";
-import { FindingsScheduler, type FindingsPassResult } from "./findings-pass";
 import { AdmissionController, ReaderGate } from "./resident-admission";
 import { ResidentBackgroundWork } from "./resident-background-work";
 import { disposeResidentResources } from "./resident-shutdown";
@@ -88,8 +85,10 @@ import {
 import { CollectionWatchService as DefaultCollectionWatchService } from "./watch-service";
 
 const OWNER_LOCK_TIMEOUT_MS = 0;
-/** How often an idle resident re-reads its config file for collection edits. */
-const CONFIG_REFRESH_INTERVAL_MS = 2_000;
+/** Safety fallback interval if directory fs.watch fails on the config parent. */
+const CONFIG_REFRESH_FALLBACK_INTERVAL_MS = 60_000;
+/** Coalesce bursty editor/atomic-rename events from the config directory watcher. */
+const CONFIG_WATCH_DEBOUNCE_MS = 50;
 
 export type ResidentMode = "serve" | "daemon";
 
@@ -251,9 +250,23 @@ export async function startResidentRuntime(
   if (!initialized)
     return { success: false, error: "GNO not initialized. Run: gno init" };
 
+  const paths = (deps.getConfigPaths ?? getConfigPaths)();
+  const actualConfigPath = resolve(options.configPath ?? paths.configFile);
+  const readConfigStampAt = async (
+    filePath: string
+  ): Promise<string | undefined> => {
+    try {
+      const stat = await Bun.file(filePath).stat();
+      return `${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`;
+    } catch {
+      return undefined;
+    }
+  };
+  const startupStampBefore = await readConfigStampAt(actualConfigPath);
   const configResult = await (deps.loadConfig ?? loadConfig)(
     options.configPath
   );
+  const startupStampAfter = await readConfigStampAt(actualConfigPath);
   if (!configResult.ok)
     return { success: false, error: configResult.error.message };
   for (const warning of formatConfigWarnings(configResult.warnings))
@@ -267,10 +280,11 @@ export async function startResidentRuntime(
   }
 
   const mode: ResidentMode = options.mode ?? "serve";
-  const findingsResolution =
-    mode === "daemon"
-      ? resolveFindingsSchedule(initialConfig)
-      : ({ ok: true, enabled: false } as const);
+  const findingsRunStateMod =
+    mode === "daemon" ? await import("../core/findings-run-state") : null;
+  const findingsResolution = findingsRunStateMod
+    ? findingsRunStateMod.resolveFindingsSchedule(initialConfig)
+    : ({ ok: true, enabled: false } as const);
   if (!findingsResolution.ok) {
     return { success: false, error: findingsResolution.error };
   }
@@ -290,8 +304,6 @@ export async function startResidentRuntime(
   }
 
   const store = deps.storeFactory?.() ?? new SqliteAdapter();
-  const paths = (deps.getConfigPaths ?? getConfigPaths)();
-  const actualConfigPath = resolve(options.configPath ?? paths.configFile);
   store.setConfigPath(actualConfigPath);
   const openResult = await store.open(
     dbPath,
@@ -438,26 +450,30 @@ export async function startResidentRuntime(
   const backgroundWork = new ResidentBackgroundWork(
     () => !disposed && admission.accepting
   );
-  const findingsStatePath = findingsRunStatePath(dbPath);
   let findingsScheduler: FindingsScheduler | null = null;
-  if (findingsResolution.enabled) {
-    findingsScheduler = new FindingsScheduler({
-      deps: {
-        store,
-        getConfig: () => ctxHolder.config,
-        schedule: findingsResolution.schedule,
-        dbPath,
-        indexName: canonicalizeIndexName(options.index ?? DEFAULT_INDEX_NAME),
-        statePath: findingsStatePath,
-      },
-      startBackgroundWork: (operation) => backgroundWork.start(operation),
-      onResult: options.onFindingsResult,
-    });
-    await findingsScheduler.start();
-  } else if (mode === "daemon") {
-    // Findings are off: a state file from an earlier configuration would
-    // otherwise keep reporting a schedule that no longer exists.
-    await deleteFindingsRunState(findingsStatePath);
+  if (findingsRunStateMod) {
+    const findingsStatePath = findingsRunStateMod.findingsRunStatePath(dbPath);
+    if (findingsResolution.enabled) {
+      const { FindingsScheduler: FindingsSchedulerCtor } =
+        await import("./findings-pass");
+      findingsScheduler = new FindingsSchedulerCtor({
+        deps: {
+          store,
+          getConfig: () => ctxHolder.config,
+          schedule: findingsResolution.schedule,
+          dbPath,
+          indexName: canonicalizeIndexName(options.index ?? DEFAULT_INDEX_NAME),
+          statePath: findingsStatePath,
+        },
+        startBackgroundWork: (operation) => backgroundWork.start(operation),
+        onResult: options.onFindingsResult,
+      });
+      await findingsScheduler.start();
+    } else {
+      // Findings are off: a state file from an earlier configuration would
+      // otherwise keep reporting a schedule that no longer exists.
+      await findingsRunStateMod.deleteFindingsRunState(findingsStatePath);
+    }
   }
   // Session automation drains only in daemon mode on an archive config;
   // `serve` never runs admitted hook work or schedules.
@@ -514,23 +530,73 @@ export async function startResidentRuntime(
   // while the file's identity, size and times match the last good load. Any
   // write, rename, chmod or delete changes the stamp, so a broken file is
   // still reported, never served stale.
-  let loadedConfigStamp: string | undefined;
-  const configStamp = async (): Promise<string | undefined> => {
+  const configStamp = (): Promise<string | undefined> =>
+    readConfigStampAt(instance.configPath);
+  // Seed the stamp only when the file was verified unchanged across the
+  // initial config read (and default loader was used). If the file changed
+  // mid-load or between load and watcher install, leave undefined or reconcile
+  // once after installing the watcher so replacements are never masked.
+  let loadedConfigStamp: string | undefined =
+    !deps.loadConfig &&
+    startupStampBefore !== undefined &&
+    startupStampBefore === startupStampAfter
+      ? startupStampAfter
+      : undefined;
+  // Another client may index a collection the served config omits after this
+  // runtime started; requests fail instead of reading it. Memoize clean checks
+  // by (PRAGMA data_version, total_changes, configRef) on committed reads only.
+  let cachedCleanStaleCheck: {
+    dataVersion: number;
+    totalChanges: number;
+    configRef: Config;
+  } | null = null;
+  const readDbVersionTuple = (): {
+    dataVersion: number;
+    totalChanges: number;
+  } | null => {
     try {
-      const stat = await Bun.file(instance.configPath).stat();
-      return `${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`;
+      if (typeof Reflect.get(store, "getRawDb") !== "function") {
+        return null;
+      }
+      const db = store.getRawDb();
+      if (db.inTransaction) {
+        return null;
+      }
+      const row = db
+        .query<{ dv: number; tc: number }, []>(
+          "SELECT (SELECT * FROM pragma_data_version) AS dv, total_changes() AS tc"
+        )
+        .get();
+      return row ? { dataVersion: row.dv, totalChanges: row.tc } : null;
     } catch {
-      return undefined;
+      return null;
     }
   };
-  // Another client may index a collection the served config omits after this
-  // runtime started; requests fail instead of reading it.
   const assertServedCollections = (): void => {
+    const configRef = ctxHolder.config;
+    const dbVersion = readDbVersionTuple();
+    if (
+      dbVersion &&
+      cachedCleanStaleCheck &&
+      cachedCleanStaleCheck.configRef === configRef &&
+      cachedCleanStaleCheck.dataVersion === dbVersion.dataVersion &&
+      cachedCleanStaleCheck.totalChanges === dbVersion.totalChanges
+    ) {
+      return;
+    }
     const stale = store.staleIndexedCollections(
-      ctxHolder.config.collections.map(({ name }) => name)
+      configRef.collections.map(({ name }) => name)
     );
     if (stale.length > 0) {
+      cachedCleanStaleCheck = null;
       throw new StaleCollectionsError(staleCollectionsMessage(stale));
+    }
+    if (dbVersion) {
+      cachedCleanStaleCheck = {
+        dataVersion: dbVersion.dataVersion,
+        totalChanges: dbVersion.totalChanges,
+        configRef,
+      };
     }
   };
   const refreshConfig = (): Promise<void> => {
@@ -772,7 +838,7 @@ export async function startResidentRuntime(
     dispose(closeSurface) {
       if (disposal) return disposal;
       disposed = true;
-      clearInterval(configRefreshTimer);
+      stopConfigMonitoring();
       admission.stop();
       jobManager.stop();
       // A file mid-preparation fails now instead of holding shutdown.
@@ -826,9 +892,17 @@ export async function startResidentRuntime(
     };
   };
   mcpContext.getResidentStatus = () => runtime.getStatus();
-  // Without requests (a headless daemon) the watcher still follows the file.
+  // Without requests (a headless daemon) the watcher still follows config edits
+  // via fs.watch on the config parent directory (handling both in-place edits
+  // and atomic temp-file renames), falling back to a 60s timer only if fs.watch
+  // is unavailable or errors.
   let lastRefreshError: string | undefined;
-  const configRefreshTimer = setInterval(() => {
+  let configWatcher: FSWatcher | null = null;
+  let configWatchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let configRefreshFallbackTimer: ReturnType<typeof setInterval> | null = null;
+
+  const triggerBackgroundConfigRefresh = (): void => {
+    if (disposed) return;
     backgroundWork.start(async () => {
       try {
         await refreshConfig();
@@ -844,7 +918,84 @@ export async function startResidentRuntime(
         lastRefreshError = message;
       }
     });
-  }, CONFIG_REFRESH_INTERVAL_MS);
-  configRefreshTimer.unref?.();
+  };
+
+  const ensureFallbackRefreshTimer = (): void => {
+    if (disposed || configRefreshFallbackTimer) return;
+    configRefreshFallbackTimer = setInterval(
+      triggerBackgroundConfigRefresh,
+      CONFIG_REFRESH_FALLBACK_INTERVAL_MS
+    );
+    configRefreshFallbackTimer.unref?.();
+  };
+
+  const stopConfigMonitoring = (): void => {
+    if (configWatchDebounceTimer) {
+      clearTimeout(configWatchDebounceTimer);
+      configWatchDebounceTimer = null;
+    }
+    if (configRefreshFallbackTimer) {
+      clearInterval(configRefreshFallbackTimer);
+      configRefreshFallbackTimer = null;
+    }
+    if (configWatcher) {
+      try {
+        configWatcher.close();
+      } catch {
+        // Ignore watcher close errors during shutdown
+      }
+      configWatcher = null;
+    }
+  };
+
+  const configDir = dirname(actualConfigPath);
+  const configFileName = basename(actualConfigPath);
+  try {
+    configWatcher = fsWatch(
+      configDir,
+      { persistent: false },
+      (_eventType, filename) => {
+        if (disposed) return;
+        const changedName =
+          typeof filename === "string"
+            ? basename(filename)
+            : filename
+              ? basename(String(filename))
+              : null;
+        if (changedName !== null && changedName !== configFileName) {
+          return;
+        }
+        if (configWatchDebounceTimer) {
+          clearTimeout(configWatchDebounceTimer);
+        }
+        configWatchDebounceTimer = setTimeout(() => {
+          configWatchDebounceTimer = null;
+          triggerBackgroundConfigRefresh();
+        }, CONFIG_WATCH_DEBOUNCE_MS);
+        configWatchDebounceTimer.unref?.();
+      }
+    );
+    configWatcher.on("error", () => {
+      if (configWatcher) {
+        try {
+          configWatcher.close();
+        } catch {
+          // Ignore close errors after watcher failure
+        }
+        configWatcher = null;
+      }
+      ensureFallbackRefreshTimer();
+    });
+  } catch {
+    ensureFallbackRefreshTimer();
+  }
+  // Reconcile once after installing the watcher in case the config file was
+  // replaced between startup load and watcher registration.
+  if (
+    loadedConfigStamp === undefined ||
+    (await configStamp()) !== loadedConfigStamp
+  ) {
+    triggerBackgroundConfigRefresh();
+  }
   return { success: true, runtime };
 }
