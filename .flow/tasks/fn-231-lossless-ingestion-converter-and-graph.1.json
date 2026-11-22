@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-231-lossless-ingestion-converter-and-graph",
   "spec_path": ".flow/tasks/fn-231-lossless-ingestion-converter-and-graph.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement lossless ingestion, converter, and graph sync optimizations",
   "updated_at": "2026-11-21T23:21:42.613347Z"
 }

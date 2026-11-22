@@ -488,7 +488,7 @@
     "impl:fn-231-lossless-ingestion-converter-and-graph.1": 0
   },
   "spec_path": ".flow/specs/fn-231-lossless-ingestion-converter-and-graph.md",
-  "status": "open",
+  "status": "done",
   "title": "Lossless ingestion, converter, and graph sync performance",
   "tracker": {
     "baseHashFlow": null,
@@ -501,5 +501,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-11-22T00:18:40.325002Z"
+  "updated_at": "2026-11-22T00:19:25.588965Z"
 }
