@@ -22,10 +22,6 @@
 
 import type { CellObject, WorkSheet } from "xlsx";
 
-// @ts-expect-error -- @joplin/turndown-plugin-gfm ships no types
-import turndownPluginGfm from "@joplin/turndown-plugin-gfm";
-// @ts-expect-error -- turndown ships no types
-import TurndownService from "turndown";
 import * as XLSX from "xlsx";
 
 /** The part of turndown's API this module uses. */
@@ -43,7 +39,7 @@ interface Turndown {
     }
   ): Turndown;
 }
-const TurndownConstructor = TurndownService as new (options: {
+type TurndownConstructorType = new (options: {
   headingStyle: "atx";
 }) => Turndown;
 
@@ -101,40 +97,60 @@ const LINE_BREAK = "  \n";
  * and trailing space dropped (cells and line breaks are block boundaries),
  * escaped on its own; every line break renders, empty lines included.
  */
+const plainLineContent = (raw: string): string => {
+  // The HTML parser turns the escaped NUL (&#x0000;) into U+FFFD.
+  const line = raw
+    .replaceAll("\u0000", "\uFFFD")
+    .replace(/[ \r\n\t]+/g, " ")
+    .replace(/^ | $/g, "");
+  return line ? escapeMarkdown(line) : "";
+};
+
 const plainCellContent = (text: string): string => {
+  if (!text.includes("\n")) {
+    return plainLineContent(text);
+  }
   const lines: string[] = [];
   for (const raw of text.split("\n")) {
-    // The HTML parser turns the escaped NUL (&#x0000;) into U+FFFD.
-    const line = raw
-      .replaceAll("\u0000", "\uFFFD")
-      .replace(/[ \r\n\t]+/g, " ")
-      .replace(/^ | $/g, "");
-    lines.push(line ? escapeMarkdown(line) : "");
+    lines.push(plainLineContent(raw));
   }
   return lines.join(LINE_BREAK);
 };
 
 let markupTurndown: Turndown | null = null;
+let markupTurndownPromise: Promise<Turndown> | null = null;
 const markupCache = new Map<string, string>();
 
 /**
  * Cell HTML with markup (rich-text runs, a hyperlink), converted by turndown
- * with markitdown's rules. A paragraph gives the same block context as a
- * table cell.
+ * with markitdown's rules. Dynamically imports turndown + GFM plugin only when
+ * rich-text or hyperlink markup is actually encountered.
  */
-const markupCellContent = (html: string): string => {
+const markupCellContent = async (html: string): Promise<string> => {
   const cached = markupCache.get(html);
   if (cached !== undefined) return cached;
-  markupTurndown ??= createMarkitdownTurndown();
+  if (!markupTurndown) {
+    markupTurndownPromise ??= createMarkitdownTurndown();
+    markupTurndown = await markupTurndownPromise;
+  }
   const content = markupTurndown.turndown(`<p>${html}</p>`);
   markupCache.set(html, content);
   return content;
 };
 
 /** markitdown-ts `CustomTurnDown` configuration (vendored dist). */
-function createMarkitdownTurndown(): Turndown {
+async function createMarkitdownTurndown(): Promise<Turndown> {
+  const [turndownMod, gfmMod] = await Promise.all([
+    // @ts-expect-error -- turndown ships no types
+    import("turndown"),
+    // @ts-expect-error -- @joplin/turndown-plugin-gfm ships no types
+    import("@joplin/turndown-plugin-gfm"),
+  ]);
+  const TurndownConstructor = (turndownMod.default ??
+    turndownMod) as TurndownConstructorType;
+  const turndownPluginGfm = (gfmMod.default ?? gfmMod) as { gfm: unknown };
   const service = new TurndownConstructor({ headingStyle: "atx" });
-  service.use((turndownPluginGfm as { gfm: unknown }).gfm);
+  service.use(turndownPluginGfm.gfm);
   service.addRule("anchor tags", {
     filter: ["a"],
     replacement(content, node) {
@@ -190,33 +206,39 @@ const nonFiniteText = (value: number): string =>
  * the escaped text is rendered from the text; any other HTML goes through
  * turndown.
  */
-const cellContent = (cell: CellObject | undefined): string => {
+const cellContent = (
+  cell: CellObject | undefined
+): string | Promise<string> => {
   if (!cell || cell.v == null) return "";
-  let text: string;
-  let html: string;
   if (cell.t === "n" && !Number.isFinite(cell.v as number)) {
     // SheetJS swaps in an error cell, which has no `h` and no hyperlink.
-    text = nonFiniteText(cell.v as number);
+    const text = nonFiniteText(cell.v as number);
     return text ? plainCellContent(text) : "";
   }
-  if (cell.h) {
-    html = cell.h;
-    text = typeof cell.v === "string" ? cell.v : "";
-  } else {
-    text =
-      cell.w ||
-      (XLSX.utils.format_cell(cell), cell.w as string | undefined) ||
-      "";
-    html = escapeHtml(text);
-  }
-  if (!html) return "";
   const target = cell.l?.Target;
-  if (target && target.charAt(0) !== "#") {
-    return markupCellContent(`<a href="${escapeHtml(target)}">${html}</a>`);
+  const hasExternalLink = Boolean(target && target.charAt(0) !== "#");
+  if (cell.h) {
+    const html = cell.h;
+    if (hasExternalLink) {
+      return markupCellContent(`<a href="${escapeHtml(target!)}">${html}</a>`);
+    }
+    const text = typeof cell.v === "string" ? cell.v : "";
+    return escapeHtml(text) === html
+      ? plainCellContent(text)
+      : markupCellContent(html);
   }
-  return escapeHtml(text) === html
-    ? plainCellContent(text)
-    : markupCellContent(html);
+  const text =
+    cell.w ||
+    (XLSX.utils.format_cell(cell), cell.w as string | undefined) ||
+    "";
+  if (!text) return "";
+  if (hasExternalLink) {
+    return markupCellContent(
+      `<a href="${escapeHtml(target!)}">${escapeHtml(text)}</a>`
+    );
+  }
+  // Plain cell with no cell.h and no external link: skip escapeHtml completely.
+  return plainCellContent(text);
 };
 
 interface MergeSpan {
@@ -224,23 +246,37 @@ interface MergeSpan {
   colspan: number;
 }
 
+interface MergeLookupIndex {
+  minRow: number;
+  maxRow: number;
+  byRow: Map<number, Map<number, MergeSpan | "covered">>;
+}
+
 /**
  * Merge lookup as `make_html_row` resolves it: the first merge (in sheet
  * order) containing a cell decides; its top-left cell carries the span and
- * the other covered cells are skipped.
+ * the other covered cells are skipped. Keyed numerically by row -> col with
+ * a row-range bailout to avoid per-cell `${row}:${col}` string allocations.
  */
-const mergeLookup = (
-  merges: XLSX.Range[]
-): ((row: number, col: number) => MergeSpan | "covered" | undefined) => {
-  if (merges.length === 0) return () => undefined;
-  const byCell = new Map<string, MergeSpan | "covered">();
+const buildMergeLookup = (merges: XLSX.Range[]): MergeLookupIndex | null => {
+  if (merges.length === 0) return null;
+  const byRow = new Map<number, Map<number, MergeSpan | "covered">>();
+  let minRow = Number.POSITIVE_INFINITY;
+  let maxRow = Number.NEGATIVE_INFINITY;
   for (let index = merges.length - 1; index >= 0; index -= 1) {
     const merge = merges[index];
     if (!merge) continue;
+    if (merge.s.r < minRow) minRow = merge.s.r;
+    if (merge.e.r > maxRow) maxRow = merge.e.r;
     for (let row = merge.s.r; row <= merge.e.r; row += 1) {
+      let rowMap = byRow.get(row);
+      if (!rowMap) {
+        rowMap = new Map();
+        byRow.set(row, rowMap);
+      }
       for (let col = merge.s.c; col <= merge.e.c; col += 1) {
-        byCell.set(
-          `${row}:${col}`,
+        rowMap.set(
+          col,
           row === merge.s.r && col === merge.s.c
             ? {
                 rowspan: merge.e.r - merge.s.r + 1,
@@ -251,15 +287,15 @@ const mergeLookup = (
       }
     }
   }
-  return (row, col) => byCell.get(`${row}:${col}`);
+  return byRow.size > 0 ? { minRow, maxRow, byRow } : null;
 };
 
 const readCell = (
   sheet: WorkSheet,
+  dense: CellObject[][] | undefined,
   row: number,
   col: number
 ): CellObject | undefined => {
-  const dense = (sheet as { "!data"?: CellObject[][] })["!data"];
   if (dense) return dense[row]?.[col];
   return sheet[XLSX.utils.encode_cell({ r: row, c: col })] as
     | CellObject
@@ -270,23 +306,30 @@ const readCell = (
  * Markdown for one worksheet with a `!ref`, trimmed as markitdown trims it.
  * Output matches `turndown(sheet_to_html(sheet))` for the same sheet.
  */
-export function sheetToMarkdown(sheet: WorkSheet): string {
+export async function sheetToMarkdown(sheet: WorkSheet): Promise<string> {
   // Memoized markup is per sheet: the file processor reuses one worker across
   // files, so a process-wide cache would retain every earlier workbook.
   markupCache.clear();
   const range = XLSX.utils.decode_range(sheet["!ref"] ?? "A1");
-  const mergeAt = mergeLookup(sheet["!merges"] ?? []);
+  const merges = buildMergeLookup(sheet["!merges"] ?? []);
+  const dense = (sheet as { "!data"?: CellObject[][] })["!data"];
   const rows: string[] = [];
   let columnCount = 0;
   let onlyCell: string | null = null;
   let firstRowCells = 0;
   for (let row = range.s.r; row <= range.e.r; row += 1) {
+    const rowMerges =
+      merges && row >= merges.minRow && row <= merges.maxRow
+        ? merges.byRow.get(row)
+        : undefined;
     const cells: string[] = [];
     let cellCount = 0;
     for (let col = range.s.c; col <= range.e.c; col += 1) {
-      const merge = mergeAt(row, col);
+      const merge = rowMerges?.get(col);
       if (merge === "covered") continue;
-      const content = cellContent(readCell(sheet, row, col));
+      const rawContent = cellContent(readCell(sheet, dense, row, col));
+      const content =
+        typeof rawContent === "string" ? rawContent : await rawContent;
       cells.push(formatCell(content, cellCount === 0, merge?.colspan ?? 1));
       cellCount += 1;
       onlyCell = content;

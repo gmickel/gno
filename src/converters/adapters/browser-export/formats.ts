@@ -42,8 +42,15 @@ const SUPPORTED_JSON_KEYS = new Set([
   "readingList",
   "reading_list",
 ]);
+const SUPPORTED_JSON_KEY_LIST = [...SUPPORTED_JSON_KEYS];
 const BOOKMARK_EXPORT_DOCUMENT_PATTERN =
   /<!DOCTYPE\s+(?:NETSCAPE-Bookmark-file-1\b[^>]*|html\s*)>/i;
+const OPENING_DL_PATTERN = /<DL\b[^>]*>/gi;
+const CLOSING_DL_PATTERN = /<\/DL\s*>/gi;
+const OPENING_ANCHOR_PATTERN = /<A\b[^>]*>/gi;
+const CLOSING_ANCHOR_PATTERN = /<\/A\s*>/gi;
+const OPENING_HEADING_PATTERN = /<H3\b[^>]*>/gi;
+const CLOSING_HEADING_PATTERN = /<\/H3\s*>/gi;
 
 const plainText = (value: string): string =>
   htmlFragmentToText(value).replace(/\s+/g, " ").trim();
@@ -62,23 +69,26 @@ const attributes = (value: string): Map<string, string> => {
 const hasSensitiveJsonKey = (value: Record<string, unknown>): boolean =>
   Object.keys(value).some((key) => SENSITIVE_JSON_KEYS.has(key.toLowerCase()));
 
-const tagCount = (source: string, pattern: RegExp): number =>
-  source.match(pattern)?.length ?? 0;
+const countTagMatches = (source: string, pattern: RegExp): number => {
+  pattern.lastIndex = 0;
+  let count = 0;
+  while (pattern.exec(source) !== null) {
+    count += 1;
+  }
+  return count;
+};
 
 const hasCompleteNetscapeStructure = (source: string): boolean => {
   if (!BOOKMARK_EXPORT_DOCUMENT_PATTERN.test(source)) return false;
-  const openingDl = tagCount(source, /<DL\b[^>]*>/gi);
-  const closingDl = tagCount(source, /<\/DL\s*>/gi);
-  const openingAnchors = tagCount(source, /<A\b[^>]*>/gi);
-  const closingAnchors = tagCount(source, /<\/A\s*>/gi);
-  const openingHeadings = tagCount(source, /<H3\b[^>]*>/gi);
-  const closingHeadings = tagCount(source, /<\/H3\s*>/gi);
-  return (
-    openingDl > 0 &&
-    openingDl === closingDl &&
-    openingAnchors === closingAnchors &&
-    openingHeadings === closingHeadings
-  );
+  const openingDl = countTagMatches(source, OPENING_DL_PATTERN);
+  const closingDl = countTagMatches(source, CLOSING_DL_PATTERN);
+  if (openingDl <= 0 || openingDl !== closingDl) return false;
+  const openingAnchors = countTagMatches(source, OPENING_ANCHOR_PATTERN);
+  const closingAnchors = countTagMatches(source, CLOSING_ANCHOR_PATTERN);
+  if (openingAnchors !== closingAnchors) return false;
+  const openingHeadings = countTagMatches(source, OPENING_HEADING_PATTERN);
+  const closingHeadings = countTagMatches(source, CLOSING_HEADING_PATTERN);
+  return openingHeadings === closingHeadings;
 };
 
 const exportDate = (value: string | undefined): string | undefined => {
@@ -321,7 +331,7 @@ export function parseBrowserJson(
     const folderName =
       !record && typeof object.name === "string" ? object.name : undefined;
     const nextFolders = folderName ? [...folders, folderName] : folders;
-    const supportedChildren = [...SUPPORTED_JSON_KEYS].filter((key) =>
+    const supportedChildren = SUPPORTED_JSON_KEY_LIST.filter((key) =>
       Object.hasOwn(object, key)
     );
     if (!record && supportedChildren.length === 0) {

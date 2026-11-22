@@ -4,17 +4,17 @@ import { METADATA_LIMITS, typedMetadataSchema } from "../core/typed-metadata";
 
 const FRONTMATTER = /^---\r?\n([\s\S]*?)(?:\r?\n)?---(?:\r?\n|$)/;
 const GNO_KEY = /(?:^|[{,]\s*)(?:gno|"gno"|'gno')\s*:/m;
+const UTF8_ENCODER = new TextEncoder();
 export interface TypedMetadataExtraction {
   typedMetadata?: TypedMetadata;
   metadataError?: string;
 }
 
-export function extractTypedMetadata(
-  markdown: string
+export function extractTypedMetadataFromYaml(
+  yaml: string | undefined
 ): TypedMetadataExtraction {
-  const yaml = FRONTMATTER.exec(markdown)?.[1];
   if (yaml === undefined || !GNO_KEY.test(yaml)) return { typedMetadata: {} };
-  if (new TextEncoder().encode(yaml).length > METADATA_LIMITS.bytes) {
+  if (UTF8_ENCODER.encode(yaml).length > METADATA_LIMITS.bytes) {
     return {
       metadataError: "frontmatter: exceeds 64 KiB typed metadata parsing limit",
     };
@@ -35,6 +35,12 @@ export function extractTypedMetadata(
   }
   if (!Object.hasOwn(gno, "metadata")) return { typedMetadata: {} };
   return validateRecordMetadata((gno as Record<string, unknown>).metadata);
+}
+
+export function extractTypedMetadata(
+  markdown: string
+): TypedMetadataExtraction {
+  return extractTypedMetadataFromYaml(FRONTMATTER.exec(markdown)?.[1]);
 }
 
 export function validateRecordMetadata(

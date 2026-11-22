@@ -66,19 +66,24 @@ export function slugifySectionTitle(title: string): string {
 
 export const lineStartOffsets = (content: string): number[] => {
   const offsets = [0];
-  for (let index = 0; index < content.length; index += 1) {
-    if (content[index] === "\n") offsets.push(index + 1);
+  let pos = content.indexOf("\n");
+  while (pos !== -1) {
+    offsets.push(pos + 1);
+    pos = content.indexOf("\n", pos + 1);
   }
   return offsets;
 };
 
 /** Extract structural section records (no quote evidence). */
-export function extractSectionRecords(content: string): SectionRecord[] {
+export function extractSectionRecords(
+  content: string,
+  precomputedStarts?: readonly number[]
+): SectionRecord[] {
   const records: SectionRecord[] = [];
   const counts = new Map<string, number>();
   const pathCounts = new Map<string, number>();
   const lines = content.split("\n");
-  const starts = lineStartOffsets(content);
+  const starts = precomputedStarts ?? lineStartOffsets(content);
   let openFence: OpenFence | null = null;
   const stack: { level: number; title: string }[] = [];
 
@@ -149,8 +154,13 @@ export function extractSectionRecords(content: string): SectionRecord[] {
   return records;
 }
 
-export function extractSections(content: string): DocumentSection[] {
-  return extractSectionRecords(content).map((record) => record.section);
+export function extractSections(
+  content: string,
+  precomputedStarts?: readonly number[]
+): DocumentSection[] {
+  return extractSectionRecords(content, precomputedStarts).map(
+    (record) => record.section
+  );
 }
 
 /** Extract one inclusive, 1-based line range without normalizing source bytes. */

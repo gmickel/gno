@@ -26,7 +26,7 @@ import { createEgressLineage } from "../core/egress-provenance";
 import { normalizeTag, validateTag } from "../core/tags";
 import { persistChunkLayout } from "./chunking";
 import { runRecordAdapter } from "./record-adapter";
-import { recordVirtualPath } from "./record-path";
+import { recordVirtualPathPrefix } from "./record-path";
 import { reconcileRecordSnapshot, type RecordSyncPlan } from "./record-sync";
 import { DEFAULT_CHUNK_PARAMS, MAX_RECORD_IMPORT_RECEIPT_ITEMS } from "./types";
 
@@ -67,6 +67,10 @@ interface RecordContainerInput {
    * When set, record import streams from this buffer and never reopens the path.
    */
   sourceBytes?: Uint8Array;
+  /** Optional preloaded record rows for `entry.relPath` (avoids per-file query). */
+  preloadedPriorDocuments?: DocumentRow[];
+  /** Optional preloaded primary document row for `entry.relPath`. */
+  preloadedSourceDocument?: DocumentRow | null;
 }
 
 interface AppliedRecordReconciliation {
@@ -103,12 +107,16 @@ const OFFSET_DATE_TIME_PATTERN =
 const TZID_DATE_TIME_PATTERN =
   /^TZID=([^:]{1,128}):(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})$/;
 
-const timeZoneParts = (
-  epochMs: number,
+const MAX_TZ_FORMATTERS = 64;
+const TZ_FORMATTERS = new Map<string, Intl.DateTimeFormat>();
+
+const getTimeZoneFormatter = (
   timeZone: string
-): [number, number, number, number, number, number] | undefined => {
+): Intl.DateTimeFormat | undefined => {
+  const cached = TZ_FORMATTERS.get(timeZone);
+  if (cached) return cached;
   try {
-    const parts = new Intl.DateTimeFormat("en-CA", {
+    const formatter = new Intl.DateTimeFormat("en-CA", {
       timeZone,
       calendar: "iso8601",
       numberingSystem: "latn",
@@ -119,20 +127,53 @@ const timeZoneParts = (
       minute: "2-digit",
       second: "2-digit",
       hourCycle: "h23",
-    }).formatToParts(new Date(epochMs));
-    const values = new Map(
-      parts.map((part) => [part.type, Number(part.value)])
-    );
-    const tuple = [
-      values.get("year"),
-      values.get("month"),
-      values.get("day"),
-      values.get("hour"),
-      values.get("minute"),
-      values.get("second"),
-    ];
-    if (tuple.some((value) => !Number.isInteger(value))) return undefined;
-    return tuple as [number, number, number, number, number, number];
+    });
+    if (TZ_FORMATTERS.size >= MAX_TZ_FORMATTERS) {
+      const oldest = TZ_FORMATTERS.keys().next().value;
+      if (oldest !== undefined) TZ_FORMATTERS.delete(oldest);
+    }
+    TZ_FORMATTERS.set(timeZone, formatter);
+    return formatter;
+  } catch {
+    return undefined;
+  }
+};
+
+const timeZoneParts = (
+  epochMs: number,
+  timeZone: string
+): [number, number, number, number, number, number] | undefined => {
+  const formatter = getTimeZoneFormatter(timeZone);
+  if (!formatter) return undefined;
+  try {
+    const parts = formatter.formatToParts(new Date(epochMs));
+    let year = Number.NaN;
+    let month = Number.NaN;
+    let day = Number.NaN;
+    let hour = Number.NaN;
+    let minute = Number.NaN;
+    let second = Number.NaN;
+    for (const part of parts) {
+      if (part.type === "year") year = Number(part.value);
+      else if (part.type === "month") month = Number(part.value);
+      else if (part.type === "day") day = Number(part.value);
+      else if (part.type === "hour") hour = Number(part.value);
+      else if (part.type === "minute") minute = Number(part.value);
+      else if (part.type === "second") second = Number(part.value);
+    }
+    if (
+      !(
+        Number.isInteger(year) &&
+        Number.isInteger(month) &&
+        Number.isInteger(day) &&
+        Number.isInteger(hour) &&
+        Number.isInteger(minute) &&
+        Number.isInteger(second)
+      )
+    ) {
+      return undefined;
+    }
+    return [year, month, day, hour, minute, second];
   } catch {
     return undefined;
   }
@@ -330,11 +371,12 @@ const loadPreviousStructure = async (
 const persistRecord = async (
   input: RecordContainerInput,
   record: Awaited<ReturnType<typeof runRecordAdapter>>["records"][number],
+  virtualPathPrefix: string,
   existing: DocumentRow | undefined,
   wrapInTransaction = true,
   rebuildEvidence = true
 ): Promise<void> => {
-  const virtualPath = recordVirtualPath(input.entry.relPath, record.recordKey);
+  const virtualPath = `${virtualPathPrefix}${record.recordKey}.md`;
   const inferred = input.extractMetadata(
     record.markdown,
     virtualPath,
@@ -508,18 +550,27 @@ export async function processRecordContainer(
     }
   );
 
+  const virtualPathPrefix = recordVirtualPathPrefix(input.entry.relPath);
   const reconcileAndApply = async (): Promise<AppliedRecordReconciliation> => {
-    const priorDocuments = mustOk(
-      await input.store.listRecordDocuments(
-        input.collection.name,
-        input.entry.relPath
-      ),
-      "listRecordDocuments"
-    );
-    const sourceDocument = mustOk(
-      await input.store.getDocument(input.collection.name, input.entry.relPath),
-      "getDocument"
-    );
+    const priorDocuments =
+      input.preloadedPriorDocuments ??
+      mustOk(
+        await input.store.listRecordDocuments(
+          input.collection.name,
+          input.entry.relPath
+        ),
+        "listRecordDocuments"
+      );
+    const sourceDocument =
+      input.preloadedSourceDocument !== undefined
+        ? input.preloadedSourceDocument
+        : mustOk(
+            await input.store.getDocument(
+              input.collection.name,
+              input.entry.relPath
+            ),
+            "getDocument"
+          );
     const priorByKey = new Map(
       priorDocuments
         .filter((document) => document.recordKey)
@@ -540,6 +591,7 @@ export async function processRecordContainer(
     );
 
     let changed = false;
+    const deactivatePaths: string[] = [];
     for (const action of plan.actions) {
       if (
         action.type === "add" ||
@@ -549,6 +601,7 @@ export async function processRecordContainer(
         await persistRecord(
           input,
           action.record,
+          virtualPathPrefix,
           priorByKey.get(action.record.recordKey),
           false
         );
@@ -562,33 +615,41 @@ export async function processRecordContainer(
           existing.contentTypeRulesFingerprint !==
             input.contentTypeRulesFingerprint;
         if (projectionChanged) {
-          await persistRecord(input, action.record, existing, false);
+          await persistRecord(
+            input,
+            action.record,
+            virtualPathPrefix,
+            existing,
+            false
+          );
           changed = true;
         } else if (
           existing &&
           recordProvenanceChanged(input, action.record, existing)
         ) {
-          await persistRecord(input, action.record, existing, false, false);
+          await persistRecord(
+            input,
+            action.record,
+            virtualPathPrefix,
+            existing,
+            false,
+            false
+          );
           changed = true;
         }
         continue;
       }
       if (action.type === "deactivate") {
-        const result = mustOk(
-          await input.store.markInactive(input.collection.name, [
-            action.previous.relativePath,
-          ]),
-          "markInactive"
-        );
-        changed ||= result > 0;
+        deactivatePaths.push(action.previous.relativePath);
       }
     }
 
     if (sourceDocument?.active && snapshot.authoritative) {
+      deactivatePaths.push(input.entry.relPath);
+    }
+    if (deactivatePaths.length > 0) {
       const result = mustOk(
-        await input.store.markInactive(input.collection.name, [
-          input.entry.relPath,
-        ]),
+        await input.store.markInactive(input.collection.name, deactivatePaths),
         "markInactive"
       );
       changed ||= result > 0;
@@ -607,10 +668,17 @@ export async function processRecordContainer(
         "reconcileRecordSnapshot"
       )
     : await reconcileAndApply();
-  const actionCount = (
-    type: (typeof applied.plan.actions)[number]["type"]
-  ): number =>
-    applied.plan.actions.filter((action) => action.type === type).length;
+  const actionCounts = {
+    add: 0,
+    update: 0,
+    reactivate: 0,
+    unchanged: 0,
+    deactivate: 0,
+    preserve: 0,
+  };
+  for (const action of applied.plan.actions) {
+    actionCounts[action.type] += 1;
+  }
   const receiptItems = applied.plan.actions
     .map((action): RecordImportItemReceipt => {
       const record = "record" in action ? action.record : undefined;
@@ -674,12 +742,12 @@ export async function processRecordContainer(
     sourceBytesRead: snapshot.sourceBytesRead,
     records: {
       accepted: snapshot.records.length,
-      added: actionCount("add"),
-      updated: actionCount("update"),
-      reactivated: actionCount("reactivate"),
-      unchanged: actionCount("unchanged"),
-      deactivated: actionCount("deactivate"),
-      preserved: actionCount("preserve"),
+      added: actionCounts.add,
+      updated: actionCounts.update,
+      reactivated: actionCounts.reactivate,
+      unchanged: actionCounts.unchanged,
+      deactivated: actionCounts.deactivate,
+      preserved: actionCounts.preserve,
       failed: snapshot.failures.length,
     },
     items: boundedReceiptItems,

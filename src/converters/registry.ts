@@ -133,6 +133,61 @@ function unavailableAdapter(spec: LazyAdapterSpec, reason: string): Converter {
   };
 }
 
+/** Identity and routing of a record adapter whose module loads on first use. */
+export interface LazyRecordAdapterSpec {
+  id: string;
+  version: string;
+  configurationFingerprint?: string;
+  canHandle: RecordAdapter["canHandle"];
+}
+
+/**
+ * A streaming record adapter that defers loading its parser module until first
+ * invocation. Routing, identity, and configuration fingerprint match the eager
+ * adapter identically while keeping startup free of unused adapter modules.
+ */
+export function lazyRecordAdapter(
+  spec: LazyRecordAdapterSpec,
+  load: () => Promise<RecordAdapter>
+): RecordAdapter {
+  let loaded: Promise<RecordAdapter> | undefined;
+  return {
+    id: spec.id,
+    version: spec.version,
+    ...(spec.configurationFingerprint !== undefined
+      ? { configurationFingerprint: spec.configurationFingerprint }
+      : {}),
+    canHandle: spec.canHandle,
+    async *records(input) {
+      loaded ??= load();
+      let adapter: RecordAdapter;
+      try {
+        adapter = await loaded;
+      } catch (cause) {
+        loaded = undefined;
+        yield {
+          type: "failure",
+          failure: {
+            code: "ADAPTER_FAILURE",
+            message: `${spec.id} is unavailable: ${cause instanceof Error ? cause.message : String(cause)}`,
+            retryable: true,
+          },
+        };
+        yield { type: "snapshot", state: "partial" };
+        return;
+      }
+      yield* adapter.records(input);
+    },
+  };
+}
+
+const XLSX_MIME =
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const DEFAULT_JSONL_CONFIG_FINGERPRINT =
+  "35e7c3045f7eef59f74a6b6bfe450e5e50f37ef5e023edd0bc1c4327035cc5a2";
+const DEFAULT_TRANSCRIPT_CONFIG_FINGERPRINT =
+  "f1de45113a28155cdbe998e44af239561c91e4357cfd9a7b05f7765f5ba20cf4";
+
 /**
  * Create the default registry with all MVP converters.
  * Priority order per PRD §8.6:
@@ -145,10 +200,18 @@ function unavailableAdapter(spec: LazyAdapterSpec, reason: string): Converter {
 export async function createDefaultRegistry(): Promise<ConverterRegistry> {
   const registry = new ConverterRegistry();
 
-  // Import converters dynamically to avoid circular deps
+  // Only lightweight native converters load eagerly; heavy office parsers and
+  // streaming record adapters defer module evaluation until first matched.
   const { markdownConverter } = await import("./native/markdown");
   const { plaintextConverter } = await import("./native/plaintext");
-  const { xlsxAdapter } = await import("./adapters/xlsx/adapter");
+  const xlsxAdapter = lazyAdapter(
+    {
+      id: "adapter/xlsx",
+      version: ADAPTER_VERSIONS.xlsx,
+      canHandle: (mime, ext) => ext === ".xlsx" || mime === XLSX_MIME,
+    },
+    async () => (await import("./adapters/xlsx/adapter")).xlsxAdapter
+  );
   const markitdownAdapter = lazyAdapter(
     {
       id: MARKITDOWN_CONVERTER_ID,
@@ -167,12 +230,71 @@ export async function createDefaultRegistry(): Promise<ConverterRegistry> {
     async () =>
       (await import("./adapters/officeparser/adapter")).officeparserAdapter
   );
-  const { jsonlAdapter } = await import("./adapters/jsonl/adapter");
-  const { transcriptAdapter } = await import("./adapters/transcript/adapter");
-  const { emailRecordAdapter } = await import("./adapters/email/adapter");
-  const { icalAdapter } = await import("./adapters/ical/adapter");
-  const { browserExportAdapter } =
-    await import("./adapters/browser-export/adapter");
+  const jsonlAdapter = lazyRecordAdapter(
+    {
+      id: "adapter/jsonl",
+      version: "1.0.0",
+      configurationFingerprint: DEFAULT_JSONL_CONFIG_FINGERPRINT,
+      canHandle: (mime, ext) =>
+        mime === "application/x-ndjson" ||
+        mime === "application/jsonl" ||
+        ext === ".jsonl" ||
+        ext === ".ndjson",
+    },
+    async () => (await import("./adapters/jsonl/adapter")).jsonlAdapter
+  );
+  const transcriptAdapter = lazyRecordAdapter(
+    {
+      id: "adapter/transcript",
+      version: "1.0.0",
+      configurationFingerprint: DEFAULT_TRANSCRIPT_CONFIG_FINGERPRINT,
+      canHandle: (mime, ext) =>
+        mime === "text/vtt" ||
+        ext === ".vtt" ||
+        mime === "application/x-subrip" ||
+        mime === "text/srt" ||
+        ext === ".srt",
+    },
+    async () =>
+      (await import("./adapters/transcript/adapter")).transcriptAdapter
+  );
+  const emailRecordAdapter = lazyRecordAdapter(
+    {
+      id: "native/email-export",
+      version: "1.0.0",
+      canHandle: (mime, ext) => {
+        const normalizedMime = mime.toLowerCase();
+        const normalizedExt = ext.toLowerCase();
+        return (
+          normalizedExt === ".eml" ||
+          normalizedExt === ".mbox" ||
+          normalizedMime === "message/rfc822" ||
+          normalizedMime === "application/mbox"
+        );
+      },
+    },
+    async () => (await import("./adapters/email/adapter")).emailRecordAdapter
+  );
+  const icalAdapter = lazyRecordAdapter(
+    {
+      id: "adapter/ical-export",
+      version: "1.0.0",
+      canHandle: (mime, ext) => mime === "text/calendar" || ext === ".ics",
+    },
+    async () => (await import("./adapters/ical/adapter")).icalAdapter
+  );
+  const browserExportAdapter = lazyRecordAdapter(
+    {
+      id: "adapter/browser-export",
+      version: "1.0.0",
+      canHandle: (mime, ext) =>
+        mime === "application/x-gno-browser-export+json" ||
+        mime === "text/x-gno-browser-bookmarks+html" ||
+        ext === ".browser-export",
+    },
+    async () =>
+      (await import("./adapters/browser-export/adapter")).browserExportAdapter
+  );
 
   // Register in priority order
   registry.register(markdownConverter);

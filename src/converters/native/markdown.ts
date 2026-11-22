@@ -15,6 +15,7 @@ const CONVERTER_VERSION = NATIVE_VERSIONS.markdown;
 
 /** UTF-8 BOM character */
 const BOM = "\uFEFF";
+const UTF8_DECODER = new TextDecoder("utf-8", { fatal: false });
 
 /** Regex to match # heading at line start */
 const HEADING_PATTERN = /^\s*#\s+(.+)/;
@@ -50,33 +51,39 @@ function isClosingFence(
  * Returns undefined if no heading found.
  */
 function extractFirstHeading(markdown: string): string | undefined {
-  const lines = markdown.split("\n");
   let fenceChar = "";
   let fenceLen = 0;
+  let lineStart = 0;
+  const len = markdown.length;
 
-  for (const line of lines) {
+  while (lineStart <= len) {
+    const nl = markdown.indexOf("\n", lineStart);
+    const line =
+      nl === -1 ? markdown.slice(lineStart) : markdown.slice(lineStart, nl);
+
     // If inside a fence, check for closing
     if (fenceLen > 0) {
       if (isClosingFence(line, fenceChar, fenceLen)) {
         fenceChar = "";
         fenceLen = 0;
       }
-      continue;
+    } else {
+      // Check for fence opening
+      const fenceMatch = line.match(CODE_FENCE_START);
+      if (fenceMatch?.[1]) {
+        fenceChar = fenceMatch[1].charAt(0);
+        fenceLen = fenceMatch[1].length;
+      } else {
+        // Check for heading (not inside fence)
+        const headingMatch = line.match(HEADING_PATTERN);
+        if (headingMatch?.[1]) {
+          return headingMatch[1].trim();
+        }
+      }
     }
 
-    // Check for fence opening
-    const fenceMatch = line.match(CODE_FENCE_START);
-    if (fenceMatch?.[1]) {
-      fenceChar = fenceMatch[1].charAt(0);
-      fenceLen = fenceMatch[1].length;
-      continue;
-    }
-
-    // Check for heading (not inside fence)
-    const headingMatch = line.match(HEADING_PATTERN);
-    if (headingMatch?.[1]) {
-      return headingMatch[1].trim();
-    }
+    if (nl === -1) break;
+    lineStart = nl + 1;
   }
 
   return;
@@ -92,7 +99,7 @@ export const markdownConverter: Converter = {
 
   convert(input: ConvertInput): Promise<ConvertResult> {
     // Decode bytes to string (assumes UTF-8)
-    let text = new TextDecoder("utf-8", { fatal: false }).decode(input.bytes);
+    let text = UTF8_DECODER.decode(input.bytes);
 
     // Strip BOM if present (ensures consistent hashes)
     if (text.startsWith(BOM)) {

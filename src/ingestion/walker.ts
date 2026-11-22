@@ -2,30 +2,25 @@
 import { readdirSync } from "node:fs";
 /**
  * File walker implementation.
- * Walks collection directories using Bun.Glob (`any`) or hierarchical
- * availability-aware descent (`local`).
+ * Walks collection directories using bounded async readdir with subtree pruning
+ * (`any`) or hierarchical availability-aware descent (`local`).
  *
  * @module src/ingestion/walker
  */
-// node:fs/promises - Bun has no realpath equivalent for symlink-safe containment.
-import { lstat, realpath } from "node:fs/promises";
+// node:fs/promises - Bun has no realpath/lstat/readdir(withFileTypes) equivalents.
+import { lstat, readdir, realpath } from "node:fs/promises";
 // node:path - Bun has no path manipulation module
-import {
-  extname,
-  isAbsolute,
-  join,
-  normalize as normalizePath,
-  relative,
-  resolve,
-  sep,
-} from "node:path";
+import { extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 import type { SkippedEntry, WalkConfig, WalkEntry, WalkerPort } from "./types";
 
 import { SUPPORTED_EXTENSIONS } from "../converters/mime";
 import {
-  matchesCollectionExclusion,
-  matchesCollectionSubtreeExclusion,
+  type CompiledCollectionExclusions,
+  compileCollectionExclusions,
+  matchesCompiledExclusion,
+  matchesCompiledStrictSubtreeExclusion,
+  matchesCompiledSubtreeExclusion,
 } from "../core/path-rules";
 import { isCompiledContextPath } from "./compiled-context";
 import { isRecordVirtualPath } from "./record-path";
@@ -34,6 +29,164 @@ import {
   type DirectoryAvailabilityPort,
   isUnprovenDirectoryResult,
 } from "./source-availability";
+
+/** Bounded concurrency for lstat() batches and async directory reads. */
+const STAT_CONCURRENCY = 32;
+const READDIR_CONCURRENCY = 16;
+
+interface CompiledPatternSegment {
+  isGlobstar: boolean;
+  /** Compiled matcher for non-dot path segments. */
+  glob: Bun.Glob;
+  /** Compiled matchers for sub-patterns that explicitly begin with `.`. */
+  dotGlobs: Bun.Glob[];
+}
+
+interface CompiledPatternBranch {
+  glob: Bun.Glob;
+  hasExplicitDot: boolean;
+  segments: CompiledPatternSegment[] | null;
+}
+
+function compilePatternBranch(pattern: string): CompiledPatternBranch {
+  const normalized = pattern.replaceAll("\\", "/");
+  const glob = new Bun.Glob(pattern);
+  const rawSegments = normalized.split("/");
+  // If braces span across `/`, fall back to Bun.Glob for dot-aware matching.
+  let hasUnbalancedBrace = false;
+  let hasExplicitDot = false;
+  const segments: CompiledPatternSegment[] = [];
+  for (const rawSeg of rawSegments) {
+    let depth = 0;
+    for (let i = 0; i < rawSeg.length; i += 1) {
+      if (rawSeg[i] === "{") depth += 1;
+      else if (rawSeg[i] === "}") depth -= 1;
+      if (depth < 0) {
+        hasUnbalancedBrace = true;
+        break;
+      }
+    }
+    if (depth !== 0 || hasUnbalancedBrace) {
+      hasUnbalancedBrace = true;
+      break;
+    }
+    const isGlobstar = rawSeg === "**";
+    const alternatives =
+      rawSeg.startsWith("{") && rawSeg.endsWith("}")
+        ? scanPatterns(rawSeg)
+        : [rawSeg];
+    const dotGlobs: Bun.Glob[] = [];
+    for (const alt of alternatives) {
+      if (alt.startsWith(".")) {
+        hasExplicitDot = true;
+        dotGlobs.push(new Bun.Glob(alt));
+      }
+    }
+    segments.push({
+      isGlobstar,
+      glob: new Bun.Glob(rawSeg),
+      dotGlobs,
+    });
+  }
+  if (hasUnbalancedBrace) {
+    return {
+      glob,
+      hasExplicitDot: /(?:^|[/,{])\./.test(normalized),
+      segments: null,
+    };
+  }
+  return { glob, hasExplicitDot, segments };
+}
+
+function segmentMatches(seg: CompiledPatternSegment, name: string): boolean {
+  if (name.startsWith(".")) {
+    for (const dotGlob of seg.dotGlobs) {
+      if (dotGlob.match(name)) return true;
+    }
+    return false;
+  }
+  return seg.glob.match(name);
+}
+
+function matchBranchSegments(
+  segments: readonly CompiledPatternSegment[],
+  pathSegments: readonly string[],
+  prefixOnly: boolean
+): boolean {
+  const pLen = segments.length;
+  const sLen = pathSegments.length;
+  // Memoized DP over (pIdx, sIdx) prevents exponential blowup on multiple `**`.
+  const memo = new Int8Array((pLen + 1) * (sLen + 1));
+  const visit = (pIdx: number, sIdx: number): boolean => {
+    const key = pIdx * (sLen + 1) + sIdx;
+    const cached = memo[key];
+    if (cached !== 0) return cached === 1;
+    let ok = false;
+    if (sIdx === sLen) {
+      if (prefixOnly) {
+        ok = pIdx < pLen || (pIdx > 0 && segments[pIdx - 1]!.isGlobstar);
+      } else {
+        ok = true;
+        for (let i = pIdx; i < pLen; i += 1) {
+          if (!segments[i]!.isGlobstar) {
+            ok = false;
+            break;
+          }
+        }
+      }
+    } else if (pIdx < pLen) {
+      const seg = segments[pIdx]!;
+      const name = pathSegments[sIdx]!;
+      if (seg.isGlobstar) {
+        // Under `{ dot: false }`, `**` matches zero or more non-dot segments.
+        ok =
+          visit(pIdx + 1, sIdx) ||
+          (!name.startsWith(".") && visit(pIdx, sIdx + 1));
+      } else if (segmentMatches(seg, name)) {
+        ok = visit(pIdx + 1, sIdx + 1);
+      }
+    }
+    memo[key] = ok ? 1 : -1;
+    return ok;
+  };
+  return visit(0, 0);
+}
+
+function hasDotSegment(relPath: string): boolean {
+  return relPath.startsWith(".") || relPath.includes("/.");
+}
+
+function branchMatchesPath(
+  branch: CompiledPatternBranch,
+  relPath: string
+): boolean {
+  if (!hasDotSegment(relPath)) {
+    return branch.glob.match(relPath);
+  }
+  if (!branch.hasExplicitDot) {
+    return false;
+  }
+  if (!branch.segments) {
+    return branch.glob.match(relPath);
+  }
+  return matchBranchSegments(branch.segments, relPath.split("/"), false);
+}
+
+function branchCanDescendDir(
+  branch: CompiledPatternBranch,
+  dirRelPath: string
+): boolean {
+  if (!hasDotSegment(dirRelPath)) {
+    return true;
+  }
+  if (!branch.hasExplicitDot) {
+    return false;
+  }
+  if (!branch.segments) {
+    return true;
+  }
+  return matchBranchSegments(branch.segments, dirRelPath.split("/"), true);
+}
 
 /**
  * Regex to detect dangerous patterns with parent directory traversal.
@@ -155,41 +308,84 @@ async function safeRelPath(
   }
 }
 
-/**
- * Check if a file extension matches the include list.
- * Include list contains extensions like ".md" or "md" (normalized).
- * When include is empty, falls back to SUPPORTED_EXTENSIONS plus extensions
- * made convertible by explicit adapter configuration.
- */
-function matchesInclude(
-  relPath: string,
-  include: string[],
-  additionalDefaultExtensions: string[]
-): boolean {
-  const ext = extname(relPath).toLowerCase();
-  if (!ext) {
-    return false;
-  }
-
-  if (include.length === 0 && SUPPORTED_EXTENSIONS.includes(ext)) {
-    return true;
-  }
-
-  const effectiveInclude =
-    include.length === 0 ? additionalDefaultExtensions : include;
-
-  return effectiveInclude.some((inc) => {
-    const normalizedInc = inc.startsWith(".")
-      ? inc.toLowerCase()
-      : `.${inc.toLowerCase()}`;
-    return ext === normalizedInc;
-  });
-}
-
 type PathEligibilityConfig = Pick<
   WalkConfig,
   "additionalDefaultExtensions" | "exclude" | "include" | "pattern"
 >;
+
+interface CompiledWalkMatcher {
+  matchPattern: ((normalizedPath: string) => boolean) | null;
+  exclusions: CompiledCollectionExclusions;
+  includeExtensions: ReadonlySet<string>;
+}
+
+const DEFAULT_SUPPORTED_EXTENSION_SET = new Set(
+  SUPPORTED_EXTENSIONS.map((ext) => ext.toLowerCase())
+);
+
+/** Pre-compile glob, exclusion rules, and extension set once per walk. */
+function compileWalkMatcher(
+  config: PathEligibilityConfig
+): CompiledWalkMatcher {
+  let matchPattern: ((normalizedPath: string) => boolean) | null = null;
+  try {
+    const glob = new Bun.Glob(config.pattern);
+    matchPattern = glob.match.bind(glob);
+  } catch {
+    matchPattern = null;
+  }
+  const exclusions = compileCollectionExclusions(config.exclude);
+  let includeExtensions: ReadonlySet<string>;
+  if (config.include.length === 0) {
+    const extra = config.additionalDefaultExtensions ?? [];
+    if (extra.length === 0) {
+      includeExtensions = DEFAULT_SUPPORTED_EXTENSION_SET;
+    } else {
+      const merged = new Set(DEFAULT_SUPPORTED_EXTENSION_SET);
+      for (const inc of extra) {
+        const lower = inc.toLowerCase();
+        merged.add(lower.startsWith(".") ? lower : `.${lower}`);
+      }
+      includeExtensions = merged;
+    }
+  } else {
+    const explicit = new Set<string>();
+    for (const inc of config.include) {
+      const lower = inc.toLowerCase();
+      explicit.add(lower.startsWith(".") ? lower : `.${lower}`);
+    }
+    includeExtensions = explicit;
+  }
+  return { matchPattern, exclusions, includeExtensions };
+}
+
+function matchesCompiledWalkPath(
+  relPath: string,
+  matcher: CompiledWalkMatcher
+): boolean {
+  const normalizedPath = relPath.includes("\\")
+    ? relPath.replaceAll("\\", "/")
+    : relPath;
+  if (
+    isAbsolute(normalizedPath) ||
+    DANGEROUS_PATTERN_REGEX.test(normalizedPath) ||
+    isRecordVirtualPath(normalizedPath) ||
+    isCompiledContextPath(normalizedPath)
+  ) {
+    return false;
+  }
+  if (!matcher.matchPattern?.(normalizedPath)) {
+    return false;
+  }
+  if (matchesCompiledExclusion(normalizedPath, matcher.exclusions)) {
+    return false;
+  }
+  const ext = extname(normalizedPath).toLowerCase();
+  if (!ext) {
+    return false;
+  }
+  return matcher.includeExtensions.has(ext);
+}
 
 /**
  * Check collection-relative path eligibility without touching the filesystem.
@@ -200,35 +396,25 @@ export function matchesWalkPath(
   relPath: string,
   config: PathEligibilityConfig
 ): boolean {
-  const normalizedPath = relPath.replaceAll("\\", "/");
-  if (
-    isAbsolute(normalizedPath) ||
-    DANGEROUS_PATTERN_REGEX.test(normalizedPath) ||
-    isRecordVirtualPath(normalizedPath) ||
-    isCompiledContextPath(normalizedPath)
-  ) {
-    return false;
-  }
+  return matchesCompiledWalkPath(relPath, compileWalkMatcher(config));
+}
 
-  let matchesPattern = false;
-  try {
-    matchesPattern = new Bun.Glob(config.pattern).match(normalizedPath);
-  } catch {
-    return false;
-  }
-  if (!matchesPattern) {
-    return false;
-  }
-
-  if (matchesCollectionExclusion(normalizedPath, config.exclude)) {
-    return false;
-  }
-
-  return matchesInclude(
-    normalizedPath,
-    config.include,
-    config.additionalDefaultExtensions ?? []
-  );
+async function runBounded<T>(
+  items: readonly T[],
+  limit: number,
+  worker: (item: T) => Promise<void>
+): Promise<void> {
+  if (items.length === 0) return;
+  let nextIndex = 0;
+  const workerCount = Math.min(limit, items.length);
+  const runners = Array.from({ length: workerCount }, async () => {
+    while (nextIndex < items.length) {
+      const current = nextIndex;
+      nextIndex += 1;
+      await worker(items[current]!);
+    }
+  });
+  await Promise.all(runners);
 }
 
 function pushUnprovenDirectorySkip(
@@ -268,7 +454,12 @@ export class FileWalker implements WalkerPort {
     return this.walkAny(config);
   }
 
-  /** Legacy Bun.Glob traversal — behaviorally unchanged for `any`. */
+  /**
+   * Bounded async readdir traversal for `any` mode: prunes excluded subtrees
+   * before descending, avoids redundant per-file `realpath()` for regular
+   * files inside canonical `rootReal`, and runs `stat()` with bounded
+   * concurrency. Symlinks continue through `safeRelPath` containment checks.
+   */
   private async walkAny(config: WalkConfig): Promise<{
     entries: WalkEntry[];
     skipped: SkippedEntry[];
@@ -302,69 +493,207 @@ export class FileWalker implements WalkerPort {
       return { entries, skipped };
     }
 
-    const matches = new Set<string>();
-    for (const pattern of patterns) {
-      const glob = new Bun.Glob(pattern);
-      for await (const match of glob.scan({
-        cwd: rootReal,
-        absolute: true,
-        onlyFiles: true,
-        followSymlinks: false,
-      })) {
-        matches.add(normalizePath(match));
+    const matcher = compileWalkMatcher(config);
+    const patternBranches = patterns.map((pattern) =>
+      compilePatternBranch(pattern)
+    );
+    const anyBranchHasSlashBrace = patternBranches.some(
+      (branch) => branch.segments === null
+    );
+    const anyBranchHasExplicitDot = patternBranches.some(
+      (branch) => branch.hasExplicitDot
+    );
+
+    const candidates: Array<{ absPath: string; relPath: string }> = [];
+    const seenAbsPaths = new Set<string>();
+    const symlinksToCheck: Array<{ absPath: string }> = [];
+
+    if (anyBranchHasSlashBrace) {
+      // Brace alternatives that span path segments (e.g., `**/{a/b,c}`) have
+      // Bun.Glob.scan()-specific semantics that differ from Bun.Glob.match().
+      // Delegate discovery to Bun.Glob.scan() for exact base parity.
+      for (const pattern of patterns) {
+        const glob = new Bun.Glob(pattern);
+        for await (const match of glob.scan({
+          cwd: rootReal,
+          onlyFiles: true,
+          followSymlinks: false,
+          dot: false,
+        })) {
+          const absPath = join(rootReal, match);
+          const safePath = await safeRelPath(rootReal, absPath);
+          if (safePath === null) continue;
+          if (seenAbsPaths.has(safePath.absPath)) continue;
+          seenAbsPaths.add(safePath.absPath);
+          if (!matchesCompiledWalkPath(safePath.relPath, matcher)) {
+            skipped.push({
+              absPath: safePath.absPath,
+              relPath: safePath.relPath,
+              reason: "EXCLUDED",
+            });
+            continue;
+          }
+          candidates.push(safePath);
+        }
+      }
+    } else {
+      let currentLevel: Array<{ absPath: string; relPath: string }> = [
+        { absPath: rootReal, relPath: "" },
+      ];
+
+      while (currentLevel.length > 0) {
+        const nextLevel: Array<{ absPath: string; relPath: string }> = [];
+        await runBounded(currentLevel, READDIR_CONCURRENCY, async (dir) => {
+          let dirents;
+          try {
+            dirents = await readdir(dir.absPath, { withFileTypes: true });
+          } catch (error) {
+            if (dir.relPath === "") {
+              throw error;
+            }
+            return;
+          }
+          for (const dirent of dirents) {
+            const name = dirent.name;
+            if (name === "" || name === "." || name === "..") continue;
+            if (name.includes("\0")) continue;
+            // Fast skip dot entries when no pattern branch explicitly targets dots.
+            if (!anyBranchHasExplicitDot && name.startsWith(".")) continue;
+
+            const childAbs = join(dir.absPath, name);
+            const childRel =
+              dir.relPath === "" ? name : `${dir.relPath}/${toPosixPath(name)}`;
+
+            if (dirent.isSymbolicLink()) {
+              // Never descend through directory symlinks; validate leaf symlinks
+              // via safeRelPath below.
+              symlinksToCheck.push({ absPath: childAbs });
+              continue;
+            }
+
+            if (dirent.isDirectory()) {
+              if (isRecordVirtualPath(childRel)) continue;
+              // Prune only strictly fully excluded subtrees without emitting
+              // synthetic directory EXCLUDED receipts that the include glob never selected.
+              if (
+                matchesCompiledStrictSubtreeExclusion(
+                  childRel,
+                  matcher.exclusions
+                )
+              ) {
+                continue;
+              }
+              if (
+                name.startsWith(".") &&
+                !patternBranches.some((branch) =>
+                  branchCanDescendDir(branch, childRel)
+                )
+              ) {
+                continue;
+              }
+              nextLevel.push({ absPath: childAbs, relPath: childRel });
+              continue;
+            }
+
+            if (!dirent.isFile()) continue;
+
+            // Pattern gate preserves per-branch, per-segment Bun.Glob.scan({ dot: false }) semantics.
+            if (
+              !patternBranches.some((branch) =>
+                branchMatchesPath(branch, childRel)
+              )
+            ) {
+              continue;
+            }
+
+            // Regular file under canonical rootReal with no symlink ancestors:
+            // childAbs is already canonical and contained within rootReal.
+            if (seenAbsPaths.has(childAbs)) continue;
+            seenAbsPaths.add(childAbs);
+
+            if (!matchesCompiledWalkPath(childRel, matcher)) {
+              skipped.push({
+                absPath: childAbs,
+                relPath: childRel,
+                reason: "EXCLUDED",
+              });
+              continue;
+            }
+            candidates.push({ absPath: childAbs, relPath: childRel });
+          }
+        });
+        currentLevel = nextLevel;
       }
     }
 
-    for (const matchedPath of [...matches].sort()) {
-      // Security: Compute safe relative path (validates file is within root)
-      const safePath = await safeRelPath(rootReal, matchedPath);
-      if (safePath === null) {
-        // File outside root or unresolvable - silently skip (security)
-        continue;
-      }
-      const { absPath, relPath } = safePath;
+    // Resolve and containment-check symlinks (matching Bun.Glob followSymlinks:false
+    // + safeRelPath semantics: escaping/broken/directory symlinks are skipped).
+    if (symlinksToCheck.length > 0) {
+      await runBounded(
+        symlinksToCheck,
+        STAT_CONCURRENCY,
+        async ({ absPath }) => {
+          const safePath = await safeRelPath(rootReal, absPath);
+          if (safePath === null) return;
+          if (
+            !patternBranches.some((branch) =>
+              branchMatchesPath(branch, safePath.relPath)
+            )
+          ) {
+            return;
+          }
+          if (seenAbsPaths.has(safePath.absPath)) return;
+          seenAbsPaths.add(safePath.absPath);
+          if (!matchesCompiledWalkPath(safePath.relPath, matcher)) {
+            skipped.push({
+              absPath: safePath.absPath,
+              relPath: safePath.relPath,
+              reason: "EXCLUDED",
+            });
+            return;
+          }
+          candidates.push(safePath);
+        }
+      );
+    }
 
-      if (!matchesWalkPath(relPath, config)) {
-        skipped.push({
-          absPath,
-          relPath,
-          reason: "EXCLUDED",
-        });
-        continue;
-      }
-
-      // Stat file
-      const file = Bun.file(absPath);
-      let stat: { size: number; mtime: Date; ctime?: Date; birthtime?: Date };
+    // Bounded concurrent lstat() across matched candidates: rejects entries
+    // swapped to a symlink after readdir without adding an extra syscall.
+    await runBounded(candidates, STAT_CONCURRENCY, async (candidate) => {
+      let fileStat: Awaited<ReturnType<typeof lstat>>;
       try {
-        stat = await file.stat();
+        fileStat = await lstat(candidate.absPath);
       } catch {
-        // Can't stat file, skip silently
-        continue;
+        return;
       }
-
-      // Check maxBytes BEFORE reading
-      if (stat.size > config.maxBytes) {
+      if (!fileStat.isFile()) {
+        return;
+      }
+      if (fileStat.size > config.maxBytes) {
         skipped.push({
-          absPath,
-          relPath,
+          absPath: candidate.absPath,
+          relPath: candidate.relPath,
           reason: "TOO_LARGE",
-          size: stat.size,
+          size: fileStat.size,
         });
-        continue;
+        return;
       }
-
       entries.push({
-        absPath,
-        relPath,
-        size: stat.size,
-        mtime: stat.mtime.toISOString(),
-        ctime: (stat.birthtime ?? stat.ctime ?? stat.mtime).toISOString(),
+        absPath: candidate.absPath,
+        relPath: candidate.relPath,
+        size: fileStat.size,
+        mtime: fileStat.mtime.toISOString(),
+        ctime: (
+          fileStat.birthtime ??
+          fileStat.ctime ??
+          fileStat.mtime
+        ).toISOString(),
       });
-    }
+    });
 
     // Sort entries by relPath for deterministic output
     entries.sort((a, b) => a.relPath.localeCompare(b.relPath));
+    skipped.sort((a, b) => a.relPath.localeCompare(b.relPath));
 
     return { entries, skipped };
   }
@@ -426,6 +755,8 @@ export class FileWalker implements WalkerPort {
       }
     }
 
+    const matcher = compileWalkMatcher(config);
+    const regularCandidates: Array<{ absPath: string; relPath: string }> = [];
     const queue: Array<{ absPath: string; relPath: string }> = [
       { absPath: rootReal, relPath: "" },
     ];
@@ -473,7 +804,7 @@ export class FileWalker implements WalkerPort {
         // No-follow: symlinks are leaf candidates so the guarded content open
         // can refuse them with a receipt; never descend through them.
         if (dirent.isSymbolicLink()) {
-          if (!matchesWalkPath(childRel, config)) {
+          if (!matchesCompiledWalkPath(childRel, matcher)) {
             skipped.push({
               absPath: childAbs,
               relPath: childRel,
@@ -507,7 +838,7 @@ export class FileWalker implements WalkerPort {
         }
 
         if (dirent.isDirectory()) {
-          if (matchesCollectionSubtreeExclusion(childRel, config.exclude)) {
+          if (matchesCompiledSubtreeExclusion(childRel, matcher.exclusions)) {
             skipped.push({
               absPath: childAbs,
               relPath: childRel,
@@ -528,57 +859,53 @@ export class FileWalker implements WalkerPort {
           continue;
         }
 
-        const safePath = await safeRelPath(rootReal, childAbs);
-        if (safePath === null) {
-          continue;
-        }
-        const { absPath, relPath } = safePath;
-
-        if (!matchesWalkPath(relPath, config)) {
+        // Regular file inside canonical rootReal with no symlink ancestors:
+        // childAbs is already canonical and contained, skipping per-file realpath().
+        if (!matchesCompiledWalkPath(childRel, matcher)) {
           skipped.push({
-            absPath,
-            relPath,
+            absPath: childAbs,
+            relPath: childRel,
             reason: "EXCLUDED",
           });
           continue;
         }
-
-        const file = Bun.file(absPath);
-        let fileStat: {
-          size: number;
-          mtime: Date;
-          ctime?: Date;
-          birthtime?: Date;
-        };
-        try {
-          fileStat = await file.stat();
-        } catch {
-          continue;
-        }
-
-        if (fileStat.size > config.maxBytes) {
-          skipped.push({
-            absPath,
-            relPath,
-            reason: "TOO_LARGE",
-            size: fileStat.size,
-          });
-          continue;
-        }
-
-        entries.push({
-          absPath,
-          relPath,
-          size: fileStat.size,
-          mtime: fileStat.mtime.toISOString(),
-          ctime: (
-            fileStat.birthtime ??
-            fileStat.ctime ??
-            fileStat.mtime
-          ).toISOString(),
-        });
+        regularCandidates.push({ absPath: childAbs, relPath: childRel });
       }
     }
+
+    await runBounded(regularCandidates, STAT_CONCURRENCY, async (candidate) => {
+      let fileStat: Awaited<ReturnType<typeof lstat>>;
+      try {
+        fileStat = await lstat(candidate.absPath);
+      } catch {
+        return;
+      }
+      if (!fileStat.isFile()) {
+        return;
+      }
+
+      if (fileStat.size > config.maxBytes) {
+        skipped.push({
+          absPath: candidate.absPath,
+          relPath: candidate.relPath,
+          reason: "TOO_LARGE",
+          size: fileStat.size,
+        });
+        return;
+      }
+
+      entries.push({
+        absPath: candidate.absPath,
+        relPath: candidate.relPath,
+        size: fileStat.size,
+        mtime: fileStat.mtime.toISOString(),
+        ctime: (
+          fileStat.birthtime ??
+          fileStat.ctime ??
+          fileStat.mtime
+        ).toISOString(),
+      });
+    });
 
     entries.sort((a, b) => a.relPath.localeCompare(b.relPath));
     return { entries, skipped };

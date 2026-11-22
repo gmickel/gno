@@ -42,33 +42,41 @@ async function* physicalLines(
   const decoder = new TextDecoder("utf-8", { fatal: true });
   let pending = "";
   let line = 0;
+  const maxRecordChars = input.limits.maxRecordChars;
   for await (const chunk of input.open()) {
-    pending += decoder.decode(chunk, { stream: true });
+    const decoded = decoder.decode(chunk, { stream: true });
+    pending = pending.length > 0 ? pending + decoded : decoded;
+    let cursor = 0;
     while (true) {
-      const newline = pending.indexOf("\n");
+      const newline = pending.indexOf("\n", cursor);
       if (newline < 0) break;
       line += 1;
-      const raw = pending.slice(0, newline);
-      pending = pending.slice(newline + 1);
-      if (raw.length > input.limits.maxRecordChars) {
+      const rawLength = newline - cursor;
+      if (rawLength > maxRecordChars) {
         throw new Error("iCalendar physical line exceeded its limit.");
       }
-      const withoutCarriageReturn = raw.endsWith("\r") ? raw.slice(0, -1) : raw;
+      const lineEnd =
+        rawLength > 0 && pending.charCodeAt(newline - 1) === 13
+          ? newline - 1
+          : newline;
+      const lineStart =
+        line === 1 && lineEnd > cursor && pending.charCodeAt(cursor) === 0xfeff
+          ? cursor + 1
+          : cursor;
+      cursor = newline + 1;
       yield {
-        text:
-          line === 1 && withoutCarriageReturn.startsWith("\uFEFF")
-            ? withoutCarriageReturn.slice(1)
-            : withoutCarriageReturn,
+        text: pending.slice(lineStart, lineEnd),
         line,
       };
     }
-    if (pending.length > input.limits.maxRecordChars) {
+    pending = cursor > 0 ? pending.slice(cursor) : pending;
+    if (pending.length > maxRecordChars) {
       throw new Error("iCalendar physical line exceeded its limit.");
     }
   }
   pending += decoder.decode();
   if (pending.length > 0) {
-    if (pending.length > input.limits.maxRecordChars) {
+    if (pending.length > maxRecordChars) {
       throw new Error("iCalendar physical line exceeded its limit.");
     }
     line += 1;

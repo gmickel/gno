@@ -15,20 +15,23 @@ import { resolveContentTypeRule } from "../config";
 import { normalizeTag, validateTag } from "../core/tags";
 import {
   extractHashtags,
-  parseFrontmatter,
-  stripFrontmatter,
+  type FrontmatterDetails,
+  parseFrontmatterDetails,
 } from "./frontmatter";
-import { extractTypedMetadata } from "./typed-metadata";
+import { extractTypedMetadataFromYaml } from "./typed-metadata";
 
 /**
  * Extract tags from markdown content.
  * Combines frontmatter tags and inline hashtags, normalized and validated.
  */
-export function extractTags(markdown: string): string[] {
+export function extractTags(
+  markdown: string,
+  preParsed?: FrontmatterDetails
+): string[] {
   const tags = new Set<string>();
 
   // 1. Extract from frontmatter
-  const frontmatter = parseFrontmatter(markdown);
+  const frontmatter = preParsed ?? parseFrontmatterDetails(markdown);
   for (const tag of frontmatter.tags) {
     const normalized = normalizeTag(tag);
     if (validateTag(normalized)) {
@@ -37,7 +40,10 @@ export function extractTags(markdown: string): string[] {
   }
 
   // 2. Extract hashtags from body (after stripping frontmatter)
-  const body = stripFrontmatter(markdown);
+  const body =
+    frontmatter.bodyStart > 0
+      ? markdown.slice(frontmatter.bodyStart)
+      : markdown;
   const hashtags = extractHashtags(body);
   for (const tag of hashtags) {
     const normalized = normalizeTag(tag);
@@ -177,9 +183,10 @@ export function extractDocumentMetadata(
   markdown: string,
   relPath: string,
   ext: string,
-  contentTypeRules: NormalizedContentTypeRule[] = []
+  contentTypeRules: NormalizedContentTypeRule[] = [],
+  preParsed?: FrontmatterDetails
 ): DocumentMetadata {
-  const parsed = parseFrontmatter(markdown);
+  const parsed = preParsed ?? parseFrontmatterDetails(markdown);
   const metadata = parsed.metadata;
   const rawFrontmatterType =
     typeof metadata.type === "string"
@@ -245,7 +252,7 @@ export function extractDocumentMetadata(
   }
 
   return {
-    ...extractTypedMetadata(markdown),
+    ...extractTypedMetadataFromYaml(parsed.rawYaml),
     contentType,
     contentTypeSource,
     categories: [...categories],

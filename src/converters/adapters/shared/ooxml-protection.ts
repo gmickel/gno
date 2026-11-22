@@ -33,19 +33,11 @@ export function includesBytes(bytes: Uint8Array, needle: Uint8Array): boolean {
   if (needle.length === 0 || bytes.length < needle.length) {
     return false;
   }
-  outer: for (
-    let index = 0;
-    index <= bytes.length - needle.length;
-    index += 1
-  ) {
-    for (let offset = 0; offset < needle.length; offset += 1) {
-      if (bytes[index + offset] !== needle[offset]) {
-        continue outer;
-      }
-    }
-    return true;
-  }
-  return false;
+  return (
+    Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).indexOf(
+      needle
+    ) !== -1
+  );
 }
 
 /** An encrypted (password-protected) OOXML workbook: a CFB container. */

@@ -673,6 +673,11 @@ export interface GraphReferenceDocument {
   contentType: string | null;
 }
 
+/** Lean scalar document identity for graph reconciliation (avoids SELECT * JSON parsing). */
+export interface GraphDocumentIdentity extends GraphReferenceDocument {
+  active: boolean;
+}
+
 export interface GraphFrontmatterReference {
   edgeType: string;
   target: string;
@@ -700,6 +705,8 @@ export interface GraphReferenceStore {
   readInventory(): GraphReferenceInventory[];
   /** Active parsed-link sources matching any old/new target candidate. */
   incomingLinkSources(identities: GraphReferenceDocument[]): number[];
+  /** Frontmatter-relation sources targeting any of the given `#docid` strings. */
+  docidReferenceSources?(docids: readonly string[]): number[];
   writeInventory(inventory: GraphReferenceInventory): void;
   complete(expectedEpoch: number): void;
 }
@@ -2336,6 +2343,9 @@ export interface StorePort {
 
   /** Missing capability or stale state requires full graph reconciliation. */
   graphReferenceStore?(): GraphReferenceStore;
+
+  /** Lean scalar document identities for graph reconciliation (avoids SELECT * JSON parsing). */
+  listGraphDocumentIdentities?(): Promise<StoreResult<GraphDocumentIdentity[]>>;
 
   /**
    * Get backlinks pointing to a document.

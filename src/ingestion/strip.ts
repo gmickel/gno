@@ -69,8 +69,6 @@ const FRONTMATTER_REGEX = /^---\r?\n[\s\S]*?(?:\r?\n)?---(?:\r?\n|$)/;
  */
 export const MAX_PARSED_TABLE_CELLS = 5000;
 
-/** Backtick (code span or fence) or tilde fence anywhere in the text. */
-const INLINE_OR_FENCE_TRIGGER_REGEX = /`|~~~/;
 /** Blockquote markers and indentation before a line's content. */
 const CONTAINER_PREFIX_REGEX = /^[\t >]*/;
 /** Four columns of indentation after any blockquote markers. */
@@ -88,11 +86,24 @@ const BLOCK_END_LINE_REGEX =
  * line that can open an indented code block (not a list continuation). When
  * it fails the note has no code and the parser is skipped.
  */
-const mayContainCode = (markdown: string): boolean => {
-  if (INLINE_OR_FENCE_TRIGGER_REGEX.test(markdown)) return true;
+const mayContainCode = (markdown: string, startOffset = 0): boolean => {
+  if (
+    markdown.indexOf("`", startOffset) !== -1 ||
+    markdown.indexOf("~~~", startOffset) !== -1
+  ) {
+    return true;
+  }
   let previous: string | null = null;
-  for (const rawLine of markdown.split("\n")) {
-    const line = rawLine.endsWith("\r") ? rawLine.slice(0, -1) : rawLine;
+  let lineStart = startOffset;
+  const len = markdown.length;
+  while (lineStart <= len) {
+    const nl = markdown.indexOf("\n", lineStart);
+    const rawEnd = nl === -1 ? len : nl;
+    const lineEnd =
+      rawEnd > lineStart && markdown.charCodeAt(rawEnd - 1) === 13
+        ? rawEnd - 1
+        : rawEnd;
+    const line = markdown.slice(lineStart, lineEnd);
     const content = line.replace(CONTAINER_PREFIX_REGEX, "");
     if (
       content !== "" &&
@@ -104,6 +115,8 @@ const mayContainCode = (markdown: string): boolean => {
       return true;
     }
     previous = content;
+    if (nl === -1) break;
+    lineStart = nl + 1;
   }
   return false;
 };
@@ -167,6 +180,12 @@ const GFM_WITHOUT_TABLES = {
   ],
 };
 
+/** GFM with tables, hoisted once at module load. */
+const GFM_WITH_TABLES = {
+  extensions: [gfm()],
+  mdastExtensions: [gfmFromMarkdown()],
+};
+
 /** Opening fence at the start of a code node: backtick or tilde fence. */
 const FENCE_START_REGEX = /^[\t ]*(?:`{3,}|~{3,})/;
 
@@ -193,9 +212,7 @@ const collectCodeRanges = (
       : markdown;
   const root = fromMarkdown(
     source,
-    hasOversizedTable(source)
-      ? GFM_WITHOUT_TABLES
-      : { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] }
+    hasOversizedTable(source) ? GFM_WITHOUT_TABLES : GFM_WITH_TABLES
   ) as CodeNode;
   const ranges: ExcludedRange[] = [];
   const visit = (node: CodeNode): void => {
@@ -258,7 +275,7 @@ export function getExcludedRanges(markdown: string): ExcludedRange[] {
 
   // 3. Code spans and fenced or indented code blocks, from the parser.
   const frontmatterEnd = frontmatterMatch?.[0].length ?? 0;
-  if (mayContainCode(markdown.slice(frontmatterEnd))) {
+  if (mayContainCode(markdown, frontmatterEnd)) {
     ranges.push(...collectCodeRanges(markdown, frontmatterEnd));
   }
 

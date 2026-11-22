@@ -8,6 +8,7 @@
 import type { ChunkerPort, ChunkOutput, ChunkParams } from "./types";
 
 import { defaultLanguageDetector } from "./language";
+import { buildLineOffsets } from "./position";
 import { DEFAULT_CHUNK_PARAMS } from "./types";
 
 /** Approximate chars per token (conservative estimate) */
@@ -21,6 +22,7 @@ const MAX_OVERLAP_PERCENT = 0.5;
 
 /** Regex for sentence ending followed by whitespace and capital letter (global) */
 const SENTENCE_END_REGEX = /[.!?](\s+)[A-Z]/g;
+const NON_WHITESPACE_REGEX = /\S/;
 const MIN_CODE_CHUNK_PERCENT = 0.35;
 
 type CodeChunkLanguage =
@@ -138,6 +140,10 @@ function collectStructuralBreakPoints(
     return [];
   }
 
+  // Keep independent per-pattern scans so overlapping multiline matches (e.g.,
+  // `export default\nclass Foo`, U+2028 line separators, and `export\nclass`)
+  // produce bit-for-bit identical breakpoint offsets; findStructuralBreakPoint
+  // uses binary search over the sorted result.
   const points = new Set<number>();
   for (const pattern of patterns) {
     pattern.lastIndex = 0;
@@ -163,72 +169,76 @@ function findStructuralBreakPoint(
   windowSize: number,
   minChunkChars: number
 ): number | null {
-  if (breakPoints.length === 0) {
+  const len = breakPoints.length;
+  if (len === 0) {
     return null;
   }
 
   const minStart = currentPos + minChunkChars;
   const start = Math.max(minStart, target - windowSize);
   const end = target + windowSize;
-  const candidates = breakPoints.filter(
-    (point) => point >= start && point <= end
-  );
-  if (candidates.length === 0) {
+  if (start > end) {
     return null;
   }
 
-  const beforeTarget = candidates.filter((point) => point <= target);
-  if (beforeTarget.length > 0) {
-    return beforeTarget.at(-1) ?? null;
-  }
-
-  return candidates[0] ?? null;
-}
-
-/**
- * Line index for O(1) line number lookups.
- * Stores positions of all newline characters.
- */
-interface LineIndex {
-  /** Positions of '\n' characters in the text */
-  newlines: number[];
-}
-
-/**
- * Build a line index from text (O(n) once).
- */
-function buildLineIndex(text: string): LineIndex {
-  const newlines: number[] = [];
-  for (let i = 0; i < text.length; i += 1) {
-    if (text[i] === "\n") {
-      newlines.push(i);
-    }
-  }
-  return { newlines };
-}
-
-/**
- * Find line number at character position using binary search (O(log n)).
- * Returns 1-based line number.
- */
-function lineAtPosition(index: LineIndex, pos: number): number {
-  const { newlines } = index;
-
-  // Binary search for the number of newlines before pos
+  // Lower bound: first index with breakPoints[idx] >= start
   let low = 0;
-  let high = newlines.length;
-
+  let high = len;
   while (low < high) {
-    const mid = Math.floor((low + high) / 2);
-    const newlinePos = newlines[mid];
-    if (newlinePos !== undefined && newlinePos < pos) {
+    const mid = (low + high) >>> 1;
+    if ((breakPoints[mid] ?? 0) < start) {
       low = mid + 1;
     } else {
       high = mid;
     }
   }
 
-  return low + 1; // 1-based line number
+  const first = breakPoints[low];
+  if (first === undefined || first > end) {
+    return null;
+  }
+  if (first > target) {
+    return first;
+  }
+
+  // Upper bound: first index with breakPoints[idx] > target
+  let uLow = low;
+  let uHigh = len;
+  const limit = Math.min(target, end);
+  while (uLow < uHigh) {
+    const mid = (uLow + uHigh) >>> 1;
+    if ((breakPoints[mid] ?? 0) <= limit) {
+      uLow = mid + 1;
+    } else {
+      uHigh = mid;
+    }
+  }
+
+  return breakPoints[uLow - 1] ?? null;
+}
+
+/**
+ * Find 1-based line number at character position using binary search (O(log n))
+ * over line start offsets (`[0, nl0 + 1, nl1 + 1, ...]`).
+ */
+function lineAtPosition(lineStarts: readonly number[], pos: number): number {
+  let low = 0;
+  let high = lineStarts.length - 1;
+  let lineIndex = 0;
+
+  while (low <= high) {
+    const mid = (low + high) >>> 1;
+    const lineStart = lineStarts[mid];
+    if (lineStart === undefined) break;
+    if (lineStart <= pos) {
+      lineIndex = mid;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  return lineIndex + 1; // 1-based line number
 }
 
 /**
@@ -324,9 +334,10 @@ export class MarkdownChunker implements ChunkerPort {
     markdown: string,
     params?: ChunkParams,
     documentLanguageHint?: string,
-    sourcePath?: string
+    sourcePath?: string,
+    precomputedLineOffsets?: readonly number[]
   ): ChunkOutput[] {
-    if (!markdown || markdown.trim().length === 0) {
+    if (!markdown || !NON_WHITESPACE_REGEX.test(markdown)) {
       return [];
     }
 
@@ -338,8 +349,8 @@ export class MarkdownChunker implements ChunkerPort {
     const windowSize = Math.floor(maxChars * 0.1); // 10% window for break search
     const minCodeChunkChars = Math.floor(maxChars * MIN_CODE_CHUNK_PERCENT);
 
-    // Build line index once for O(log n) lookups
-    const lineIndex = buildLineIndex(markdown);
+    // Reuse precomputed line start offsets when available; otherwise scan once.
+    const lineStarts = precomputedLineOffsets ?? buildLineOffsets(markdown);
     const structuralBreakPoints = collectStructuralBreakPoints(
       markdown,
       sourcePath
@@ -384,9 +395,9 @@ export class MarkdownChunker implements ChunkerPort {
       const text = markdown.slice(pos, endPos);
 
       // Only skip truly empty chunks (all whitespace after full content consumed)
-      if (text.trim().length > 0) {
-        const startLine = lineAtPosition(lineIndex, pos);
-        const endLine = lineAtPosition(lineIndex, endPos - 1);
+      if (NON_WHITESPACE_REGEX.test(text)) {
+        const startLine = lineAtPosition(lineStarts, pos);
+        const endLine = lineAtPosition(lineStarts, endPos - 1);
 
         // Detect language for this chunk
         const language =

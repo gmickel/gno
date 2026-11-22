@@ -28,10 +28,13 @@ import { extractDocumentStructure } from "../core/change-diff";
 import {
   normalizeMarkdownPath,
   normalizeWikiName,
+  type ParsedLink,
   parseLinks,
 } from "../core/links";
 import { validateMemoryRecord } from "../core/memory-record";
+import { MarkdownChunker } from "./chunker";
 import { extractDocumentMetadata, extractTags } from "./document-metadata";
+import { parseFrontmatterDetails } from "./frontmatter";
 import { buildLineOffsets } from "./position";
 import { type ExcludedRange, getExcludedRanges } from "./strip";
 
@@ -107,19 +110,14 @@ export interface PrepareHooks {
 }
 
 const toLinkInputs = (
-  markdown: string,
-  relPath: string,
-  excludedRanges: ExcludedRange[] | null
+  parsedLinks: readonly ParsedLink[] | null,
+  relPath: string
 ): DocLinkInput[] => {
   // Only Markdown sources carry links, as in Obsidian: link-shaped text in
   // code, plain text or converted documents stays searchable prose.
-  if (!excludedRanges) return [];
+  if (!parsedLinks) return [];
   const linkInputs: DocLinkInput[] = [];
-  for (const link of parseLinks(
-    markdown,
-    buildLineOffsets(markdown),
-    excludedRanges
-  )) {
+  for (const link of parsedLinks) {
     let targetRefNorm: string;
     if (link.kind === "wiki") {
       targetRefNorm = normalizeWikiName(link.targetRef);
@@ -198,13 +196,15 @@ export async function prepareFile(
   if (stopAfterConversion) return { ok: false, error: stopAfterConversion };
 
   hooks.onPhase("metadata extraction");
+  const frontmatter = parseFrontmatterDetails(markdown);
   const metadata = extractDocumentMetadata(
     markdown,
     relPath,
     request.metadataExt,
-    request.contentTypeRules
+    request.contentTypeRules,
+    frontmatter
   );
-  const tags = extractTags(markdown);
+  const tags = extractTags(markdown, frontmatter);
   let memoryScopes: string[] | null = null;
   if (request.memoryManaged) {
     const memoryRecord = validateMemoryRecord(markdown);
@@ -233,37 +233,58 @@ export async function prepareFile(
   if (stopAfterRanges) return { ok: false, error: stopAfterRanges };
 
   hooks.onPhase("change-journal structure");
+  const lineOffsets = buildLineOffsets(markdown);
+  const parsedLinks =
+    markdownSource && excludedRanges
+      ? parseLinks(markdown, lineOffsets, excludedRanges)
+      : null;
   const nextStructure = extractDocumentStructure(
     markdown,
     relPath,
     metadata.dateFields,
-    { markdownSource, excludedRanges: excludedRanges ?? undefined }
+    {
+      markdownSource,
+      excludedRanges: excludedRanges ?? undefined,
+      lineOffsets,
+      parsedLinks: parsedLinks ?? undefined,
+      frontmatter,
+    }
   );
   const stopAfterStructure = step("change-journal structure");
   if (stopAfterStructure) return { ok: false, error: stopAfterStructure };
 
   hooks.onPhase("chunking");
-  const chunkInputs: ChunkInput[] = hooks.chunker
-    .chunk(
-      markdown,
-      request.chunkParams,
-      artifact.languageHint ?? request.collectionLanguageHint,
-      relPath
-    )
-    .map((c) => ({
-      seq: c.seq,
-      pos: c.pos,
-      text: c.text,
-      startLine: c.startLine,
-      endLine: c.endLine,
-      language: c.language ?? undefined,
-      tokenCount: c.tokenCount ?? undefined,
-    }));
+  const chunkLanguageHint =
+    artifact.languageHint ?? request.collectionLanguageHint;
+  const rawChunks =
+    hooks.chunker instanceof MarkdownChunker
+      ? hooks.chunker.chunk(
+          markdown,
+          request.chunkParams,
+          chunkLanguageHint,
+          relPath,
+          lineOffsets
+        )
+      : hooks.chunker.chunk(
+          markdown,
+          request.chunkParams,
+          chunkLanguageHint,
+          relPath
+        );
+  const chunkInputs: ChunkInput[] = rawChunks.map((c) => ({
+    seq: c.seq,
+    pos: c.pos,
+    text: c.text,
+    startLine: c.startLine,
+    endLine: c.endLine,
+    language: c.language ?? undefined,
+    tokenCount: c.tokenCount ?? undefined,
+  }));
   const stopAfterChunking = step("chunking");
   if (stopAfterChunking) return { ok: false, error: stopAfterChunking };
 
   hooks.onPhase("link extraction");
-  const linkInputs = toLinkInputs(markdown, relPath, excludedRanges);
+  const linkInputs = toLinkInputs(parsedLinks, relPath);
   const stopAfterLinks = step("link extraction");
   if (stopAfterLinks) return { ok: false, error: stopAfterLinks };
 

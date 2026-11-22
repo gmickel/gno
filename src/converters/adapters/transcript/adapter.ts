@@ -101,10 +101,11 @@ const localIdentity = (
 
 const segmentRecord = (
   segment: TranscriptSegment,
-  input: RecordAdapterInput,
+  namespace: string,
+  defaultSessionTitle: string,
   occurrences: Map<string, number>
 ): RecordAdapterRecord => {
-  const sessionTitle = segment.sessionTitle ?? fileTitle(input.relativePath);
+  const sessionTitle = segment.sessionTitle ?? defaultSessionTitle;
   const label = segment.speaker
     ? `${sessionTitle} — ${segment.speaker}`
     : sessionTitle;
@@ -143,10 +144,7 @@ const segmentRecord = (
     });
   }
   return {
-    stableId: `transcript:${sourceNamespace(input)}:${localIdentity(
-      segment,
-      occurrences
-    )}`,
+    stableId: `transcript:${namespace}:${localIdentity(segment, occurrences)}`,
     sourceLocator: segment.sourceLocator,
     sourceHash: hashRecordValue(
       "gno-transcript-segment-source-v1",
@@ -259,6 +257,8 @@ export const createTranscriptAdapter = (
         yield { type: "snapshot", state: "partial" };
         return;
       }
+      const namespace = sourceNamespace(input);
+      const defaultSessionTitle = fileTitle(input.relativePath);
       const occurrences = new Map<string, number>();
       let hadFailure = false;
       try {
@@ -270,7 +270,12 @@ export const createTranscriptAdapter = (
           }
           yield {
             type: "record",
-            record: segmentRecord(event.segment, input, occurrences),
+            record: segmentRecord(
+              event.segment,
+              namespace,
+              defaultSessionTitle,
+              occurrences
+            ),
           };
         }
       } catch {

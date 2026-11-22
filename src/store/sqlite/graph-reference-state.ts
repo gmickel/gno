@@ -7,6 +7,7 @@ import type {
   GraphReferenceStore,
 } from "../types";
 
+import { normalizeRelationTarget } from "../../core/change-diff";
 import { buildWikiMatchExpression } from "../../core/graph-resolver";
 import { normalizeWikiName, stripWikiMdExt } from "../../core/links";
 
@@ -139,9 +140,26 @@ export function createGraphReferenceStore(db: Database): GraphReferenceStore {
         .all(JSON.stringify(targets))
         .map((row) => row.sourceId);
     },
+    docidReferenceSources(docids) {
+      if (docids.length === 0) return [];
+      const docidSet = new Set(docids);
+      const rows = db
+        .query<{ sourceId: number; target: string }, []>(
+          `SELECT source_doc_id AS sourceId, target
+           FROM graph_frontmatter_references
+           WHERE instr(target, '#') > 0`
+        )
+        .all();
+      const sources = new Set<number>();
+      for (const row of rows) {
+        if (docidSet.has(normalizeRelationTarget(row.target))) {
+          sources.add(row.sourceId);
+        }
+      }
+      return [...sources];
+    },
     writeInventory({ document: d, references }) {
-      db.transaction(() => {
-        db.run("UPDATE graph_projection_state SET dirty = 1 WHERE id = 1");
+      const write = () => {
         db.run(
           `INSERT INTO graph_reference_documents
           (document_id, collection, rel_path, docid, uri, title, mirror_hash, source_hash, content_type)
@@ -171,7 +189,13 @@ export function createGraphReferenceStore(db: Database): GraphReferenceStore {
             [d.documentId, ordinal, ref.edgeType, ref.target]
           );
         }
-      })();
+      };
+      // Avoid nested savepoints when already inside projectGraph's outer transaction.
+      if (db.inTransaction) {
+        write();
+      } else {
+        db.transaction(write)();
+      }
     },
     complete(expectedEpoch) {
       db.transaction(() => {

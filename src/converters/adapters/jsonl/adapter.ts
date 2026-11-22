@@ -102,12 +102,12 @@ const buildMetadata = (
 const recordFromLine = (
   source: Record<string, unknown>,
   lineNumber: number,
-  input: RecordAdapterInput,
+  container: string,
   mapping: JsonlFieldMapping,
+  authorMapping: JsonlFieldMapping,
   allowConventionalId: boolean
 ): RecordAdapterEvent => {
   const canonicalSource = canonicalJson(source);
-  const container = sourceNamespace(input);
   const configuredId = resolveJsonlField(
     source,
     mapping.id ?? (allowConventionalId ? DEFAULT_ID_SELECTORS : undefined)
@@ -128,9 +128,6 @@ const recordFromLine = (
     resolveJsonlField(source, mapping.title ?? DEFAULT_TITLE_SELECTORS)
   );
   if (!titleValue.ok) return failure("MALFORMED_RECORD", lineNumber);
-  const authorMapping = mapping.author
-    ? mapping
-    : { ...mapping, author: DEFAULT_AUTHOR_SELECTORS };
   const metadata = buildMetadata(source, authorMapping);
   if (!metadata.ok) return failure("MALFORMED_RECORD", lineNumber);
 
@@ -154,6 +151,9 @@ export const createJsonlAdapter = (
   fieldMapping?: JsonlFieldMapping
 ): RecordAdapter => {
   const mapping = parseJsonlFieldMapping(fieldMapping);
+  const authorMapping = mapping.author
+    ? mapping
+    : { ...mapping, author: DEFAULT_AUTHOR_SELECTORS };
   const allowConventionalId = fieldMapping === undefined;
   return {
     id: ADAPTER_ID,
@@ -170,6 +170,7 @@ export const createJsonlAdapter = (
     records: async function* (
       input: RecordAdapterInput
     ): AsyncGenerator<RecordAdapterEvent> {
+      const container = sourceNamespace(input);
       let hadFailure = false;
       try {
         const lines = readBoundedUtf8Lines(
@@ -209,8 +210,9 @@ export const createJsonlAdapter = (
           const event = recordFromLine(
             parsed as Record<string, unknown>,
             line.lineNumber,
-            input,
+            container,
             mapping,
+            authorMapping,
             allowConventionalId
           );
           hadFailure ||= event.type === "failure";
