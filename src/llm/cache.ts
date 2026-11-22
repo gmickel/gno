@@ -100,14 +100,19 @@ export async function validateGgufFile(
         error: modelNotFoundError(uri, `File not found: ${path}`),
       };
     }
-    return {
-      ok: false,
-      error: invalidModelFileError(
-        uri,
-        path,
-        error instanceof Error ? error.message : String(error)
-      ),
-    };
+    if (code === "EISDIR") {
+      return {
+        ok: false,
+        error: invalidModelFileError(
+          uri,
+          path,
+          error instanceof Error ? error.message : String(error)
+        ),
+      };
+    }
+    // Propagate transient/permission I/O errors (EACCES, EMFILE, EBUSY, EIO)
+    // so callers never mistake a healthy cached model for a corrupt file.
+    throw error;
   }
 
   if (hasGgufMagic(bytes)) {
@@ -656,24 +661,33 @@ export class ModelCache {
   }
 
   /**
-   * Read manifest from disk, reusing the parsed manifest when (mtimeMs, size)
-   * is unchanged.
+   * Read manifest from disk via a single open file descriptor, reusing the
+   * parsed manifest when (mtimeMs, size) on that descriptor is unchanged.
    */
   private async readManifestStatCached(): Promise<Manifest> {
     try {
-      const st = await stat(this.manifestPath);
-      const cached = this.readOnlyManifestCache;
-      if (cached && cached.mtimeMs === st.mtimeMs && cached.size === st.size) {
-        return cached.manifest;
+      const fh = await open(this.manifestPath, "r");
+      try {
+        const st = await fh.stat();
+        const cached = this.readOnlyManifestCache;
+        if (
+          cached &&
+          cached.mtimeMs === st.mtimeMs &&
+          cached.size === st.size
+        ) {
+          return cached.manifest;
+        }
+        const content = await fh.readFile("utf-8");
+        const manifest = JSON.parse(content) as Manifest;
+        this.readOnlyManifestCache = {
+          mtimeMs: st.mtimeMs,
+          size: st.size,
+          manifest,
+        };
+        return manifest;
+      } finally {
+        await fh.close();
       }
-      const content = await readFile(this.manifestPath, "utf-8");
-      const manifest = JSON.parse(content) as Manifest;
-      this.readOnlyManifestCache = {
-        mtimeMs: st.mtimeMs,
-        size: st.size,
-        manifest,
-      };
-      return manifest;
     } catch {
       this.readOnlyManifestCache = null;
       return { version: MANIFEST_VERSION, models: [] };

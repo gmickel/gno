@@ -1,7 +1,7 @@
 import { Database } from "bun:sqlite";
 import { afterEach, describe, expect, test } from "bun:test";
-// node:fs/promises: mkdtemp/rm/writeFile for isolated temp directories
-import { mkdtemp, rm } from "node:fs/promises";
+// node:fs/promises: chmod/mkdtemp/rm for isolated temp directories and permission tests
+import { chmod, mkdtemp, rm } from "node:fs/promises";
 // node:os: tmpdir for temp directories
 import { tmpdir } from "node:os";
 // node:path: join for temp paths
@@ -13,6 +13,7 @@ import { compileContextEvidence } from "../../src/core/context-evidence";
 import { analyzeGraphCommunities } from "../../src/core/graph-analysis";
 import { truncateText } from "../../src/core/links";
 import { embedBacklog } from "../../src/embed/backlog";
+import { embedVariantBacklog } from "../../src/embed/variant-backlog";
 import { ModelCache, validateGgufFile } from "../../src/llm/cache";
 import { prepareClassifiedHttpDestination } from "../../src/llm/http-policy";
 import { HttpEmbedding } from "../../src/llm/httpEmbedding";
@@ -928,5 +929,150 @@ describe("fn-233 R6: Context Capsule zero-mutation fast path, graph & truncateTe
     expect(queryTokenizerCalls).toBe(2);
     expect(docTokenizerCalls).toBe(4);
     await port.dispose();
+  });
+
+  test("validateGgufFile propagates permission errors instead of letting ModelCache delete a healthy cached model", async () => {
+    if (process.platform === "win32" || process.getuid?.() === 0) return;
+    const dir = await mkdtemp(join(tmpdir(), "gno-fn233-cache-perm-"));
+    tempDirs.push(dir);
+    const uri = "hf:org/repo/model.gguf";
+    const modelPath = join(dir, "model.gguf");
+    await Bun.write(modelPath, new Uint8Array([0x47, 0x47, 0x55, 0x46, 0, 0]));
+    await Bun.write(
+      join(dir, "manifest.json"),
+      JSON.stringify({
+        version: 1,
+        models: [
+          {
+            uri,
+            type: "embed",
+            path: modelPath,
+            size: 6,
+            sha256: "abc",
+            downloadedAt: "2026-01-01T00:00:00Z",
+          },
+        ],
+      })
+    );
+    await chmod(modelPath, 0o000);
+    try {
+      const cache = new ModelCache(dir);
+      await expect(cache.getCachedPath(uri)).rejects.toThrow();
+      expect(await Bun.file(modelPath).exists()).toBe(true);
+    } finally {
+      await chmod(modelPath, 0o600);
+    }
+    const cacheAfter = new ModelCache(dir);
+    expect(await cacheAfter.getCachedPath(uri)).toBe(modelPath);
+  });
+
+  test("HTTP pipelined embedVariantBacklog continues walking remaining batches after a transient identity drop reloads", async () => {
+    const db = new Database(":memory:");
+    dbs.push(db);
+    db.exec(`
+      CREATE TABLE schema_meta(key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT);
+      CREATE TABLE documents (
+        id INTEGER PRIMARY KEY,
+        collection TEXT NOT NULL,
+        rel_path TEXT NOT NULL,
+        active INTEGER NOT NULL,
+        mirror_hash TEXT,
+        title TEXT
+      );
+      CREATE TABLE content_chunks (
+        mirror_hash TEXT NOT NULL,
+        seq INTEGER NOT NULL,
+        pos INTEGER NOT NULL,
+        text TEXT NOT NULL,
+        PRIMARY KEY (mirror_hash, seq)
+      );
+      CREATE TABLE content_vectors (
+        mirror_hash TEXT NOT NULL,
+        seq INTEGER NOT NULL,
+        model TEXT NOT NULL,
+        embedding BLOB NOT NULL,
+        PRIMARY KEY (mirror_hash, seq, model)
+      );
+    `);
+    migration.up(db, "unicode61");
+    runtimeMigration.up(db, "unicode61");
+
+    for (let i = 1; i <= 4; i++) {
+      const hash = `mh-http-${i}`;
+      db.prepare(
+        "INSERT INTO documents (id, collection, rel_path, active, mirror_hash, title) VALUES (?, 'notes', ?, 1, ?, ?)"
+      ).run(i, `doc-${i}.md`, hash, `Doc ${i}`);
+      db.prepare(
+        "INSERT INTO content_chunks (mirror_hash, seq, pos, text) VALUES (?, 0, 0, ?)"
+      ).run(hash, `HTTP payload chunk ${i}`);
+    }
+
+    const store = await createVectorVariantStore(db, {
+      model: "http://127.0.0.1:8080/v1/embeddings#m",
+      modelFingerprint: "fp-http",
+      contextSize: 512,
+      truncationPolicy: "tail-v1",
+      dimensions: 3,
+    });
+
+    let identityOk = true;
+    let initCalls = 0;
+    let callCount = 0;
+    const port = {
+      modelUri: "http://127.0.0.1:8080/v1/embeddings#m",
+      dimensions: () => 3,
+      embed: async () => ({ ok: true as const, value: [1, 0, 0] }),
+      embedBatch: async (texts: string[]) => {
+        const myCall = ++callCount;
+        await Bun.sleep(0);
+        if (myCall === 1) {
+          // Transient identity drop while batches 1..3 are all in flight.
+          identityOk = false;
+        }
+        return {
+          ok: true as const,
+          value: texts.map(() => [0.5, 0.5, 0.5]),
+        };
+      },
+      init: async () => {
+        initCalls += 1;
+        identityOk = true;
+        return { ok: true as const, value: undefined };
+      },
+      dispose: async () => {},
+    };
+
+    const res = await embedVariantBacklog(
+      {
+        statsPort: createVectorStatsPort(db),
+        embedPort: port,
+        vectorIndex: {
+          model: "http://127.0.0.1:8080/v1/embeddings#m",
+          dimensions: 3,
+          searchAvailable: false,
+          vecDirty: false,
+          upsertVectors: async () => ({ ok: true, value: undefined }),
+          deleteVectorsForMirror: async () => ({ ok: true, value: undefined }),
+          searchNearest: async () => ({ ok: true, value: [] }),
+          syncVecIndex: async () => ({
+            ok: true,
+            value: { added: 0, removed: 0 },
+          }),
+          rebuildVecIndex: async () => ({ ok: true, value: undefined }),
+        },
+        modelUri: "http://127.0.0.1:8080/v1/embeddings#m",
+        batchSize: 1,
+        identityStillCurrent: () => identityOk,
+      },
+      store
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      // Batch 1 failed due to transient drop; batches 2..4 continued and embedded.
+      expect(res.value.errors).toBe(1);
+      expect(res.value.embedded).toBe(3);
+    }
+    expect(initCalls).toBe(1);
+    expect(store.pending().map((o) => o.documentId)).toEqual([1]);
   });
 });

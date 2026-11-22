@@ -212,6 +212,7 @@ export async function embedVariantBacklog(
         prepared: PreparedVariantBatch;
         keys: string[];
         dependentHashes: string[];
+        endCursor: OwnerCursor;
         promise: ReturnType<typeof embedTextsWithRecovery>;
       };
       const inFlight: HttpInFlight[] = [];
@@ -236,7 +237,11 @@ export async function embedVariantBacklog(
             return;
           }
           const last = pending.at(-1)!;
-          after = { documentId: last.documentId, seq: last.seq };
+          const endCursor: OwnerCursor = {
+            documentId: last.documentId,
+            seq: last.seq,
+          };
+          after = endCursor;
           const prepared = prepareVariantBatch({
             store,
             owners: pending,
@@ -263,6 +268,7 @@ export async function embedVariantBacklog(
             prepared,
             keys,
             dependentHashes,
+            endCursor,
             promise,
           });
         }
@@ -277,12 +283,22 @@ export async function embedVariantBacklog(
         if (!identityHolds()) {
           await Promise.allSettled(inFlight.map((item) => item.promise));
           inFlight.length = 0;
+          inFlightHashes.clear();
           completedVectors.clear();
           queuedDependentCount.clear();
           total.errors += entry.owners.length;
           deps.onProgress?.(total.embedded, total.errors);
-          identityLost = !(await identityCurrent());
-          break;
+          if (!(await identityCurrent())) {
+            identityLost = true;
+            break;
+          }
+          // Reloaded identity: rewind cursor to end of the failed batch so
+          // discarded in-flight pages are re-fetched cleanly and traversal
+          // continues across the rest of the backlog.
+          after = entry.endCursor;
+          exhausted = false;
+          await fillWindow();
+          continue;
         }
 
         const vectors = new Map<string, Float32Array>();
