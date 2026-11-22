@@ -22,6 +22,7 @@ type Child = ReturnType<typeof Bun.spawn>;
 export interface Pending {
   background: boolean;
   request: NativeRequest;
+  encodedBytes: Uint8Array;
   settlement: InferenceSettlement<
     Extract<NativeResponse["result"], { ok: true }>["value"]
   >;

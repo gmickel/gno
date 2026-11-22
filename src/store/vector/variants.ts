@@ -283,6 +283,61 @@ export class VectorVariantStore {
       .get(this.partitionId, input.inputHash);
   }
 
+  /** BLOB-free existence check for a proven reusable vector. */
+  hasReusable(input: VectorOwnerInput): boolean {
+    this.validate(input);
+    return (
+      this.db
+        .query<{ ok: number }, [string, string]>(
+          "SELECT 1 AS ok FROM vector_variants WHERE partition_id = ? AND input_hash = ? LIMIT 1"
+        )
+        .get(this.partitionId, input.inputHash) !== null
+    );
+  }
+
+  /** Batch-filter current active owners in one SQL query. */
+  filterCurrent(owners: readonly VectorOwnerInput[]): VectorOwnerInput[] {
+    if (owners.length === 0) return [];
+    const currentByKey = this.fetchCurrentByKey(owners);
+    const valid: VectorOwnerInput[] = [];
+    for (const owner of owners) {
+      const current = currentByKey.get(`${owner.documentId}:${owner.seq}`);
+      if (
+        current &&
+        current.mirrorHash === owner.mirrorHash &&
+        current.formattedInput === owner.formattedInput &&
+        current.inputHash === owner.inputHash
+      ) {
+        valid.push(owner);
+      }
+    }
+    return valid;
+  }
+
+  /**
+   * Batch-validate active owners and check BLOB-free variant reusability in two
+   * SQL queries instead of 2N per-owner queries + N BLOB decodes.
+   */
+  findReusableHashes(owners: readonly VectorOwnerInput[]): {
+    current: VectorOwnerInput[];
+    reusableHashes: Set<string>;
+  } {
+    const current = this.filterCurrent(owners);
+    const reusableHashes = new Set<string>();
+    if (current.length === 0) return { current, reusableHashes };
+    const uniqueHashes = [...new Set(current.map((owner) => owner.inputHash))];
+    const rows = this.db
+      .query<{ input_hash: string }, [string, string]>(
+        `SELECT DISTINCT input_hash FROM vector_variants
+         WHERE partition_id = ? AND input_hash IN (SELECT value FROM json_each(?))`
+      )
+      .all(this.partitionId, JSON.stringify(uniqueHashes));
+    for (const row of rows) {
+      reusableHashes.add(row.input_hash);
+    }
+    return { current, reusableHashes };
+  }
+
   /** Returns a proven reusable vector, even before this owner has a binding. */
   reusable(
     input: VectorOwnerInput
@@ -292,6 +347,37 @@ export class VectorVariantStore {
     return row
       ? { variantId: row.variant_id, embedding: decodeEmbedding(row.embedding) }
       : null;
+  }
+
+  private fetchCurrentByKey(
+    owners: readonly VectorOwnerInput[]
+  ): Map<string, VectorOwnerInput> {
+    const uniquePairs = new Map<string, [number, number]>();
+    for (const owner of owners) {
+      const key = `${owner.documentId}:${owner.seq}`;
+      if (!uniquePairs.has(key)) {
+        uniquePairs.set(key, [owner.documentId, owner.seq]);
+      }
+    }
+    const fetchedOwners = this.db
+      .query<OwnerRow, [string]>(`
+        WITH req AS (
+          SELECT
+            json_extract(value, '$[0]') AS document_id,
+            json_extract(value, '$[1]') AS seq
+          FROM json_each(?)
+        )
+        SELECT d.id AS documentId, d.mirror_hash AS mirrorHash, c.seq, c.text, d.title
+        FROM req r
+        JOIN documents d ON d.id = r.document_id AND d.active = 1
+        JOIN content_chunks c ON c.mirror_hash = d.mirror_hash AND c.seq = r.seq
+      `)
+      .all(JSON.stringify([...uniquePairs.values()]));
+    const currentByKey = new Map<string, VectorOwnerInput>();
+    for (const row of fetchedOwners) {
+      currentByKey.set(`${row.documentId}:${row.seq}`, this.input(row));
+    }
+    return currentByKey;
   }
 
   private validate(input: VectorOwnerInput): void {
@@ -327,12 +413,30 @@ export class VectorVariantStore {
   ): number[] {
     this.assertWritable();
     return this.db
-      .transaction(() => this.keepingMirrorMark(() => this.writeRows(rows)))
+      .transaction(() =>
+        this.keepingMirrorMark(() => this.writeRows(rows, false))
+      )
+      .immediate();
+  }
+
+  /**
+   * Atomic batch that filters to still-current owners inside the same write
+   * transaction, avoiding a separate pre-write isCurrent() pass.
+   */
+  writeCurrent(
+    rows: { owner: VectorOwnerInput; embedding?: Float32Array }[]
+  ): number[] {
+    this.assertWritable();
+    return this.db
+      .transaction(() =>
+        this.keepingMirrorMark(() => this.writeRows(rows, true))
+      )
       .immediate();
   }
 
   private writeRows(
-    rows: { owner: VectorOwnerInput; embedding?: Float32Array }[]
+    rows: { owner: VectorOwnerInput; embedding?: Float32Array }[],
+    skipStale: boolean
   ): number[] {
     if (rows.length === 0) return [];
     for (const { embedding } of rows) {
@@ -346,42 +450,28 @@ export class VectorVariantStore {
     }
 
     // Batch-validate all owners in one SQL query instead of N per-row lookups.
-    const uniquePairs = new Map<string, [number, number]>();
-    for (const { owner } of rows) {
-      const key = `${owner.documentId}:${owner.seq}`;
-      if (!uniquePairs.has(key)) {
-        uniquePairs.set(key, [owner.documentId, owner.seq]);
-      }
-    }
-    const fetchedOwners = this.db
-      .query<OwnerRow, [string]>(`
-        WITH req AS (
-          SELECT
-            json_extract(value, '$[0]') AS document_id,
-            json_extract(value, '$[1]') AS seq
-          FROM json_each(?)
-        )
-        SELECT d.id AS documentId, d.mirror_hash AS mirrorHash, c.seq, c.text, d.title
-        FROM req r
-        JOIN documents d ON d.id = r.document_id AND d.active = 1
-        JOIN content_chunks c ON c.mirror_hash = d.mirror_hash AND c.seq = r.seq
-      `)
-      .all(JSON.stringify([...uniquePairs.values()]));
-    const currentByKey = new Map<string, VectorOwnerInput>();
-    for (const row of fetchedOwners) {
-      currentByKey.set(`${row.documentId}:${row.seq}`, this.input(row));
-    }
-    for (const { owner } of rows) {
+    const currentByKey = this.fetchCurrentByKey(rows.map(({ owner }) => owner));
+    const validRows: { owner: VectorOwnerInput; embedding?: Float32Array }[] =
+      skipStale ? [] : rows;
+    for (const row of rows) {
+      const { owner } = row;
       const current = currentByKey.get(`${owner.documentId}:${owner.seq}`);
-      if (
-        !current ||
-        current.mirrorHash !== owner.mirrorHash ||
-        current.formattedInput !== owner.formattedInput ||
-        current.inputHash !== owner.inputHash
-      ) {
-        throw new Error("Stale or invalid vector owner input");
+      const matches =
+        !!current &&
+        current.mirrorHash === owner.mirrorHash &&
+        current.formattedInput === owner.formattedInput &&
+        current.inputHash === owner.inputHash;
+      if (!matches) {
+        if (!skipStale) {
+          throw new Error("Stale or invalid vector owner input");
+        }
+        continue;
+      }
+      if (skipStale) {
+        validRows.push(row);
       }
     }
+    if (validRows.length === 0) return [];
 
     const selectVariant = this.db.query<
       { variant_id: number; embedding: Uint8Array },
@@ -418,7 +508,7 @@ export class VectorVariantStore {
     );
 
     const variantIds: number[] = [];
-    for (const { owner, embedding } of rows) {
+    for (const { owner, embedding } of validRows) {
       const existing = selectVariant.get(this.partitionId, owner.inputHash);
       let variantId: number;
       if (!existing) {

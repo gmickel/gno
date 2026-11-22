@@ -126,10 +126,10 @@ test("short-long-short replaces idle contexts, reuses buckets and preserves ties
   expect(f.contexts[1]?.size).toBeGreaterThan(f.contexts[0]?.size ?? 0);
   expect(f.contexts[2]?.size).toBe(f.contexts[0]?.size);
   expect(f.inputs.map((i) => i.documents)).toEqual([
-    docs,
-    docs,
-    longDocs,
-    docs,
+    ["same", "best", "tie"],
+    ["same", "best", "tie"],
+    [...new Set(longDocs)],
+    ["same", "best", "tie"],
   ]);
   await f.port.dispose();
   expect(f.contexts.every((c) => c.disposed)).toBe(true);

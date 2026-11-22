@@ -21,6 +21,7 @@ import {
 import {
   captureContextEvidenceSnapshot,
   type ContextEvidenceSnapshot,
+  type ContextEvidenceSnapshotDocument,
 } from "./context-evidence";
 import { canonicalVerifierJson } from "./context-verifier-canonical";
 import {
@@ -94,21 +95,31 @@ const unwrapStore = <T>(
 };
 
 const matchingDocument = (
-  documents: readonly DocumentRow[],
+  documentsByKey: ReadonlyMap<string, DocumentRow[]>,
+  derivedDocidCache: Map<string, string>,
   uri: string,
   sourceHash: string,
-  mirrorHash: string,
-  indexName: string
+  mirrorHash: string
 ): DocumentRow | null => {
-  const matches = documents.filter(
-    (document) =>
+  let docid = derivedDocidCache.get(sourceHash);
+  if (docid === undefined) {
+    docid = deriveDocid(sourceHash);
+    derivedDocidCache.set(sourceHash, docid);
+  }
+  const candidates = documentsByKey.get(`${docid}\0${uri}`);
+  if (!candidates) return null;
+  let matched: DocumentRow | null = null;
+  for (const document of candidates) {
+    if (
       document.active &&
-      document.docid === deriveDocid(sourceHash) &&
       document.sourceHash === sourceHash &&
-      document.mirrorHash === mirrorHash &&
-      decorateUriForIndex(document.uri, indexName) === uri
-  );
-  return matches.length === 1 ? (matches[0] ?? null) : null;
+      document.mirrorHash === mirrorHash
+    ) {
+      if (matched !== null) return null;
+      matched = document;
+    }
+  }
+  return matched;
 };
 
 const rawInclusiveLines = (
@@ -127,7 +138,10 @@ type EvidenceReceipt = ContextCapsuleVerification["evidence"][number];
 interface LoadedEvidence {
   contentByHash: Map<string, string>;
   chunksByHash: Map<string, ChunkRow[]>;
-  documents: DocumentRow[];
+  documentsByKey: Map<string, DocumentRow[]>;
+  snapshotDocsByUri: Map<string, ContextEvidenceSnapshotDocument[]>;
+  derivedDocidCache: Map<string, string>;
+  mirrorSha256ByHash: Map<string, string>;
   snapshot: ContextEvidenceSnapshot;
   /** Current successor URI of evidence whose memory fact was superseded. */
   successors: ReadonlyMap<string, string>;
@@ -165,23 +179,20 @@ const missingMirrorReceipt = (
 
 const verifyContent = (
   evidence: Evidence,
-  loaded: LoadedEvidence,
-  indexName: string
+  loaded: LoadedEvidence
 ): EvidenceReceipt => {
-  const identities = loaded.snapshot.documents.filter(
-    (document) => document.uri === evidence.uri
-  );
+  const identities = loaded.snapshotDocsByUri.get(evidence.uri) ?? [];
   const identity = identities.length === 1 ? identities[0] : undefined;
   if (!identity) return missingReceipt(evidence);
   if (!identity.mirrorHash) {
     return missingMirrorReceipt(evidence, identity.sourceHash, null);
   }
   const document = matchingDocument(
-    loaded.documents,
+    loaded.documentsByKey,
+    loaded.derivedDocidCache,
     evidence.uri,
     identity.sourceHash,
-    identity.mirrorHash,
-    indexName
+    identity.mirrorHash
   );
   const currentSourceHash = document?.sourceHash ?? identity.sourceHash;
   const registeredMirrorHash = document?.mirrorHash ?? identity.mirrorHash;
@@ -194,7 +205,11 @@ const verifyContent = (
     );
   }
 
-  const currentMirrorHash = sha256Text(content);
+  let currentMirrorHash = loaded.mirrorSha256ByHash.get(registeredMirrorHash);
+  if (currentMirrorHash === undefined) {
+    currentMirrorHash = sha256Text(content);
+    loaded.mirrorSha256ByHash.set(registeredMirrorHash, currentMirrorHash);
+  }
   const exactPassage = extractInclusiveLines(
     content,
     evidence.startLine,
@@ -368,9 +383,26 @@ export const verifyContextCapsule = async (
   const referencedDocuments = before.documents.filter((document) =>
     evidenceUris.has(document.uri)
   );
+  const snapshotDocsByUri = new Map<
+    string,
+    ContextEvidenceSnapshotDocument[]
+  >();
+  for (const doc of before.documents) {
+    const list = snapshotDocsByUri.get(doc.uri);
+    if (list) list.push(doc);
+    else snapshotDocsByUri.set(doc.uri, [doc]);
+  }
+  const derivedDocidCache = new Map<string, string>();
   const docids = [
     ...new Set(
-      referencedDocuments.map((document) => deriveDocid(document.sourceHash))
+      referencedDocuments.map((document) => {
+        let docid = derivedDocidCache.get(document.sourceHash);
+        if (docid === undefined) {
+          docid = deriveDocid(document.sourceHash);
+          derivedDocidCache.set(document.sourceHash, docid);
+        }
+        return docid;
+      })
     ),
   ];
   const mirrorHashes = [
@@ -390,17 +422,28 @@ export const verifyContextCapsule = async (
       deps.store.getSupersedingUris?.([...evidenceUris]) ??
         Promise.resolve(ok(new Map<string, string>())),
     ]);
+  const loadedDocuments = unwrapStore(
+    documentResult,
+    "document_load_failed",
+    "Failed to batch-load verification documents"
+  );
+  const documentsByKey = new Map<string, DocumentRow[]>();
+  for (const doc of loadedDocuments) {
+    const key = `${doc.docid}\0${decorateUriForIndex(doc.uri, capsule.scope.indexName)}`;
+    const list = documentsByKey.get(key);
+    if (list) list.push(doc);
+    else documentsByKey.set(key, [doc]);
+  }
   const loaded: LoadedEvidence = {
     snapshot: before,
+    snapshotDocsByUri,
+    documentsByKey,
+    derivedDocidCache,
+    mirrorSha256ByHash: new Map<string, string>(),
     successors: unwrapStore(
       successors,
       "document_load_failed",
       "Failed to load supersession of verification evidence"
-    ),
-    documents: unwrapStore(
-      documentResult,
-      "document_load_failed",
-      "Failed to batch-load verification documents"
     ),
     contentByHash: unwrapStore(
       contentResult,
@@ -439,11 +482,7 @@ export const verifyContextCapsule = async (
   }
 
   const evidence = capsule.evidence.map((item) =>
-    applyRanking(
-      verifyContent(item, loaded, capsule.scope.indexName),
-      item,
-      rankResult
-    )
+    applyRanking(verifyContent(item, loaded), item, rankResult)
   );
   return aggregateReceipt(
     capsule,

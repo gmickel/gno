@@ -1,31 +1,57 @@
-// Bun has no inode/ctime identity API. Check replacement during hashing/loading.
-import { stat } from "node:fs/promises";
+// Bun has no sync readFileSync/fd-read or inode/ctime identity API.
+import { readFileSync } from "node:fs";
+import { open, stat } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+
+const FINGERPRINT_BUFFER_BYTES = 4 * 1024 * 1024;
+let cachedNativePackageVersion: string | null = null;
 
 /**
- * node-llama-cpp's version, part of the embedding runtime identity. A
- * standalone compiled executable ships no node-llama-cpp package (it cannot
- * run local inference), so the lookup must not stop it from loading.
+ * Lazily read node-llama-cpp's version from package.json on first use without
+ * top-level await or eager node-llama-cpp module evaluation. A standalone
+ * compiled executable ships no node-llama-cpp package, returning "unavailable".
  */
-const readNativePackage = async (): Promise<{ version: string }> => {
-  try {
-    return (await Bun.file(
-      new URL("../package.json", import.meta.resolve("node-llama-cpp"))
-    ).json()) as { version: string };
-  } catch {
-    return { version: "unavailable" };
+export function getNativePackageVersion(): string {
+  if (cachedNativePackageVersion !== null) {
+    return cachedNativePackageVersion;
   }
-};
-const nativePackage = await readNativePackage();
+  try {
+    const pkgUrl = new URL(
+      "../package.json",
+      import.meta.resolve("node-llama-cpp")
+    );
+    const parsed = JSON.parse(readFileSync(fileURLToPath(pkgUrl), "utf8")) as {
+      version?: unknown;
+    };
+    cachedNativePackageVersion =
+      typeof parsed.version === "string" && parsed.version.length > 0
+        ? parsed.version
+        : "unavailable";
+  } catch {
+    cachedNativePackageVersion = "unavailable";
+  }
+  return cachedNativePackageVersion;
+}
 
 export async function fileIdentity(path: string): Promise<string> {
   const info = await stat(path, { bigint: true });
   return [info.dev, info.ino, info.size, info.mtimeNs, info.ctimeNs].join(":");
 }
 
-/** Stream the actual child-approved artifact; never buffer a GGUF in parent RAM. */
+/** Stream the actual child-approved artifact with a reusable 4 MB buffer; never buffer a GGUF in RAM. */
 export async function fingerprintModel(path: string): Promise<string> {
   const hash = new Bun.CryptoHasher("sha256");
-  for await (const bytes of Bun.file(path).stream()) hash.update(bytes);
+  const fh = await open(path, "r");
+  const buf = new Uint8Array(FINGERPRINT_BUFFER_BYTES);
+  try {
+    for (;;) {
+      const { bytesRead } = await fh.read(buf, 0, buf.length, null);
+      if (bytesRead === 0) break;
+      hash.update(bytesRead === buf.length ? buf : buf.subarray(0, bytesRead));
+    }
+  } finally {
+    await fh.close();
+  }
   return hash.digest("hex");
 }
 
@@ -35,7 +61,7 @@ export function fingerprintRuntime(settings: Record<string, unknown>): string {
       JSON.stringify({
         policy: "native-embedding-v1",
         bun: Bun.version,
-        nativeVersion: nativePackage.version,
+        nativeVersion: getNativePackageVersion(),
         platform: process.platform,
         arch: process.arch,
         ...settings,
@@ -66,7 +92,7 @@ export function runtimeCallerKey(
       JSON.stringify([
         model,
         Bun.version,
-        nativePackage.version,
+        getNativePackageVersion(),
         process.platform,
         process.arch,
         RUNTIME_ENV.map((name) => env[name] ?? null),

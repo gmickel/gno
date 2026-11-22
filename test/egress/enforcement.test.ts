@@ -361,7 +361,8 @@ describe("network boundary policy enforcement", () => {
       }
     );
     expect(response.ok).toBe(true);
-    expect(resolverCalls).toBe(3);
+    // 1 lookup for merged classify+prepare + 1 independent pre-connect DNS rebinding recheck.
+    expect(resolverCalls).toBe(2);
     expect(requestUrl).toStartWith("http://192.168.1.20:8080/");
   });
 
@@ -545,7 +546,8 @@ describe("network boundary policy enforcement", () => {
           resolver: {
             lookup: async () => {
               resolverCalls += 1;
-              return resolverCalls < 3 ? ["93.184.216.34"] : ["93.184.216.35"];
+              // Rebind on the 2nd lookup (acquireConnection pre-connect check).
+              return resolverCalls < 2 ? ["93.184.216.34"] : ["93.184.216.35"];
             },
           },
           fetchFn: async () => {
@@ -558,7 +560,7 @@ describe("network boundary policy enforcement", () => {
       denied = error;
     }
     expect(denied).toBeInstanceOf(EgressDeniedError);
-    expect(resolverCalls).toBe(3);
+    expect(resolverCalls).toBe(2);
     expect(fetchCalls).toBe(0);
   });
 

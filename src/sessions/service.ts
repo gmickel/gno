@@ -40,7 +40,7 @@ import {
 } from "./archive";
 import { readAutomationStatus } from "./automation-status";
 import { canonicalConfigPath, writeIndexBinding } from "./binding";
-import { redactionStamp, sanitizeValue } from "./sanitize";
+import { redactionStamp, sanitizeValue, ThreadSanitizer } from "./sanitize";
 import {
   archiveCollection,
   protectedRoots,
@@ -92,6 +92,29 @@ import {
 const IMPORT_LOCK_WAIT_MS = 2_000;
 const DISCOVERY_UNIT_LIMIT = 20_000;
 const PATH_SOURCE_PREFIX = "path-";
+const FINGERPRINT_CONCURRENCY = 16;
+
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  worker: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  if (items.length === 0) return [];
+  const results = Array.from<R>({ length: items.length });
+  let nextIndex = 0;
+  const workerCount = Math.min(concurrency, items.length);
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (true) {
+        const index = nextIndex;
+        nextIndex += 1;
+        if (index >= items.length) return;
+        results[index] = await worker(items[index]!, index);
+      }
+    })
+  );
+  return results;
+}
 
 export interface SessionsServiceDeps {
   config: Config;
@@ -349,10 +372,11 @@ export class SessionsService {
         collection: source.collection,
         projects: source.projects ?? [],
       });
-      // One batch of stats: status stays responsive while an import runs
-      // in the same process.
-      const fingerprints = await Promise.all(
-        units.map((unit) => unitFingerprint(unit).catch(() => ""))
+      // Bounded batch of stats: status stays responsive without FD spikes.
+      const fingerprints = await mapWithConcurrency(
+        units,
+        FINGERPRINT_CONCURRENCY,
+        (unit) => unitFingerprint(unit).catch(() => "")
       );
       for (const [index, unit] of units.entries()) {
         const key = unitKey(source.id, unit.locator);
@@ -607,6 +631,11 @@ export class SessionsService {
     const changed = new Map<string, Set<string>>();
     const excluded = protectedRoots(sessions);
     const redaction = { literals: sessions.redaction?.literals ?? [] };
+    const sharedSanitizer = new ThreadSanitizer(redaction);
+    const sanitizeLocator = (value: string): string => {
+      sharedSanitizer.reset();
+      return sharedSanitizer.sanitize(value);
+    };
     const stamp = redactionStamp(redaction);
     // Units whose state changed this run; reverted if the index sync fails so
     // completion is only recorded once the archive is searchable.
@@ -667,9 +696,7 @@ export class SessionsService {
             recordUnit({
               sourceId: source.id,
               harness: null,
-              locator: selectedFile
-                ? sanitizeValue(basename(root), redaction)
-                : ".",
+              locator: selectedFile ? sanitizeLocator(basename(root)) : ".",
               outcome: "unsupported",
               reason: "format_not_recognised",
               threads: 0,
@@ -713,9 +740,7 @@ export class SessionsService {
           sourceId: source.id,
           harness: source.harness,
           locator:
-            entry.locator === null
-              ? "."
-              : sanitizeValue(entry.locator, redaction),
+            entry.locator === null ? "." : sanitizeLocator(entry.locator),
           outcome: "failed",
           reason: entry.reason,
           threads: 0,
@@ -725,97 +750,147 @@ export class SessionsService {
       }
       const present = new Set<string>();
       const destinations = destinationsStamp(source);
-      for (const found of enumerated.units) {
-        const key = unitKey(source.id, found.locator);
-        // Receipts, warnings and checkpoint state show the locator with the
-        // owner's redaction applied; identity stays in the opaque key.
-        const unit: SessionUnit = {
-          ...found,
-          locator: sanitizeValue(found.locator, redaction),
-        };
-        if (present.has(key)) {
-          // Two units with the same locator would share archive files.
-          counts.failed += 1;
-          recordUnit({
-            sourceId: source.id,
-            harness: unit.harness,
-            locator: unit.locator,
-            outcome: "failed",
-            reason: "unit_conflict",
-            threads: 0,
-            turns: 0,
-            collections: [],
+      // Fingerprint in bounded lookahead windows; if an earlier unit in a window
+      // is imported (advancing wall-clock time), re-stat a prefetched match before
+      // skipping it so live appends to archived sessions are never missed.
+      for (
+        let windowStart = 0;
+        windowStart < enumerated.units.length;
+        windowStart += FINGERPRINT_CONCURRENCY
+      ) {
+        const windowUnits = enumerated.units.slice(
+          windowStart,
+          windowStart + FINGERPRINT_CONCURRENCY
+        );
+        const fingerprinted = await mapWithConcurrency(
+          windowUnits,
+          FINGERPRINT_CONCURRENCY,
+          async (found) => {
+            try {
+              return {
+                ok: true as const,
+                fingerprint: await unitFingerprint(found),
+              };
+            } catch (error) {
+              return { ok: false as const, error };
+            }
+          }
+        );
+        let importedInWindow = false;
+        for (let i = 0; i < windowUnits.length; i += 1) {
+          const found = windowUnits[i]!;
+          const fp = fingerprinted[i]!;
+          const key = unitKey(source.id, found.locator);
+          if (present.has(key)) {
+            // Two units with the same locator would share archive files.
+            counts.failed += 1;
+            recordUnit({
+              sourceId: source.id,
+              harness: found.harness,
+              locator: sanitizeLocator(found.locator),
+              outcome: "failed",
+              reason: "unit_conflict",
+              threads: 0,
+              turns: 0,
+              collections: [],
+            });
+            continue;
+          }
+          present.add(key);
+          if (!fp.ok) {
+            counts.failed += 1;
+            recordUnit({
+              sourceId: source.id,
+              harness: found.harness,
+              locator: sanitizeLocator(found.locator),
+              outcome: "failed",
+              reason: unitReason(fp.error),
+              threads: 0,
+              turns: 0,
+              collections: [],
+            });
+            continue;
+          }
+          let fingerprint = fp.fingerprint;
+          const previous = sourceState.units[key];
+          let current =
+            previous?.status === "complete" &&
+            previous.fingerprint === fingerprint &&
+            previous.parser ===
+              SESSION_PARSERS[previous.harness ?? found.harness] &&
+            previous.redaction === stamp &&
+            previous.destinations === destinations &&
+            previous.format === SESSION_ARCHIVE_FORMAT_VERSION;
+          if (current && previous && importedInWindow) {
+            try {
+              fingerprint = await unitFingerprint(found);
+              current = previous.fingerprint === fingerprint;
+            } catch (error) {
+              counts.failed += 1;
+              recordUnit({
+                sourceId: source.id,
+                harness: found.harness,
+                locator: sanitizeLocator(found.locator),
+                outcome: "failed",
+                reason: unitReason(error),
+                threads: 0,
+                turns: 0,
+                collections: [],
+              });
+              continue;
+            }
+          }
+          if (current && previous) {
+            // Already archived and up to date: reported, not re-read or sanitized.
+            counts.unchanged += previous.threads.length;
+            continue;
+          }
+          if (options.limit !== undefined && processed >= options.limit) {
+            deferred += 1;
+            continue;
+          }
+          processed += 1;
+          importedInWindow = true;
+          // Receipts, warnings and checkpoint state show the locator with the
+          // owner's redaction applied; identity stays in the opaque key.
+          const unit: SessionUnit = {
+            ...found,
+            locator: sanitizeLocator(found.locator),
+          };
+          if (unit.size > SESSION_LIMITS.maxSourceBytes) {
+            counts.skippedPolicy += 1;
+            recordUnit({
+              sourceId: source.id,
+              harness: unit.harness,
+              locator: unit.locator,
+              outcome: "skipped_policy",
+              reason: "over_limit",
+              threads: 0,
+              turns: 0,
+              collections: [],
+            });
+            continue;
+          }
+          touched.push({ units: sourceState.units, key });
+          const outcome = await this.importUnit({
+            source,
+            unit,
+            key,
+            destinations,
+            fingerprint,
+            previous,
+            sourceState,
+            dryRun: options.dryRun,
+            redaction,
+            redactionStampValue: stamp,
+            sharedSanitizer,
+            counts,
+            turns,
+            markChanged,
+            pendingWithdrawals,
           });
-          continue;
+          recordUnit(outcome);
         }
-        present.add(key);
-        let fingerprint: string;
-        try {
-          fingerprint = await unitFingerprint(unit);
-        } catch (error) {
-          counts.failed += 1;
-          recordUnit({
-            sourceId: source.id,
-            harness: unit.harness,
-            locator: unit.locator,
-            outcome: "failed",
-            reason: unitReason(error),
-            threads: 0,
-            turns: 0,
-            collections: [],
-          });
-          continue;
-        }
-        const previous = sourceState.units[key];
-        const current =
-          previous?.status === "complete" &&
-          previous.fingerprint === fingerprint &&
-          previous.parser ===
-            SESSION_PARSERS[previous.harness ?? unit.harness] &&
-          previous.redaction === stamp &&
-          previous.destinations === destinations &&
-          previous.format === SESSION_ARCHIVE_FORMAT_VERSION;
-        if (current) {
-          // Already archived and up to date: reported, not re-read.
-          counts.unchanged += previous.threads.length;
-          continue;
-        }
-        if (options.limit !== undefined && processed >= options.limit) {
-          deferred += 1;
-          continue;
-        }
-        processed += 1;
-        if (unit.size > SESSION_LIMITS.maxSourceBytes) {
-          counts.skippedPolicy += 1;
-          recordUnit({
-            sourceId: source.id,
-            harness: unit.harness,
-            locator: unit.locator,
-            outcome: "skipped_policy",
-            reason: "over_limit",
-            threads: 0,
-            turns: 0,
-            collections: [],
-          });
-          continue;
-        }
-        touched.push({ units: sourceState.units, key });
-        const outcome = await this.importUnit({
-          source,
-          unit,
-          key,
-          destinations,
-          fingerprint,
-          previous,
-          sourceState,
-          dryRun: options.dryRun,
-          redaction,
-          counts,
-          turns,
-          markChanged,
-          pendingWithdrawals,
-        });
-        recordUnit(outcome);
       }
 
       // Units whose source vanished keep their archive. Stale redaction is
@@ -823,7 +898,7 @@ export class SessionsService {
       for (const [key, unitState] of Object.entries(sourceState.units)) {
         if (present.has(key)) continue;
         // Retained locators follow the current redaction policy too.
-        const locator = sanitizeValue(unitState.locator, redaction);
+        const locator = sanitizeLocator(unitState.locator);
         if (!options.dryRun) unitState.locator = locator;
         if (unitState.redaction !== stamp && !options.dryRun) {
           const previousStamp = unitState.redaction;
@@ -939,6 +1014,8 @@ export class SessionsService {
     sourceState: SourceState;
     dryRun: boolean;
     redaction: { literals: readonly string[] };
+    redactionStampValue: string;
+    sharedSanitizer: ThreadSanitizer;
     counts: SessionImportCounts;
     turns: SessionTurnCounts;
     markChanged: (collection: string, relPath: string) => void;
@@ -963,7 +1040,7 @@ export class SessionsService {
         fingerprint: options.fingerprint,
         status: "failed",
         parser: null,
-        redaction: redactionStamp(options.redaction),
+        redaction: options.redactionStampValue,
         destinations: options.destinations,
         format: SESSION_ARCHIVE_FORMAT_VERSION,
         threads: options.previous?.threads ?? [],
@@ -1084,6 +1161,7 @@ export class SessionsService {
         unitLocator: unit.locator,
         parser: parsed.parser,
         redaction: options.redaction,
+        sanitizer: options.sharedSanitizer,
       });
       if (rendered.overLimit) {
         withhold(

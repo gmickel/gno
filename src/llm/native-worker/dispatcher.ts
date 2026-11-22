@@ -48,24 +48,34 @@ export class NativeDispatcher {
   }
 
   private async port(model: ApprovedModel): Promise<Port> {
-    if (
-      (await realpath(model.path)) !== model.path ||
-      !(await Bun.file(model.path).exists())
-    ) {
+    let resolvedPath: string;
+    let identity: string;
+    try {
+      [resolvedPath, identity] = await Promise.all([
+        realpath(model.path),
+        fileIdentity(model.path),
+      ]);
+    } catch {
+      throw new NativeWorkerError("protocol");
+    }
+    if (resolvedPath !== model.path) {
       throw new NativeWorkerError("protocol");
     }
     const existing = this.ports.get(model.id);
     // ModelManager retains weights by URI after a port disposes its contexts.
     // Keep provenance at that same lifetime, not at the shorter port lifetime.
     const file = this.files.get(model.modelUri);
-    const identity = await fileIdentity(model.path);
     if (file && (file.path !== model.path || file.identity !== identity))
       throw new NativeWorkerError("stale_generation");
     if (existing) return existing;
-    const fingerprint =
-      model.type === "embed"
-        ? (file?.fingerprint ?? (await fingerprintModel(model.path)))
-        : file?.fingerprint;
+    let fingerprint = file?.fingerprint;
+    if (model.type === "embed" && !fingerprint) {
+      // Overlap backend llama.cpp initialization with GGUF SHA-256 hashing;
+      // loadModel/port.init never starts until the post-hash identity check passes.
+      const llamaWarmup = this.manager.getLlama().catch(() => undefined);
+      fingerprint = await fingerprintModel(model.path);
+      await llamaWarmup;
+    }
     if (identity !== (await fileIdentity(model.path)))
       throw new NativeWorkerError("stale_generation");
     const Constructor =

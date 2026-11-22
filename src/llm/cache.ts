@@ -53,10 +53,11 @@ type ValidatedCachedPath =
   | { ok: false; kind: "missing" }
   | { ok: false; kind: "invalid"; error: LlmError };
 
+const HASH_CHUNK_BYTES = 4 * 1024 * 1024;
+const UTF8_LENIENT_DECODER = new TextDecoder("utf-8", { fatal: false });
+
 function looksLikeHtml(bytes: Uint8Array): boolean {
-  const text = new TextDecoder("utf-8", { fatal: false })
-    .decode(bytes)
-    .toLowerCase();
+  const text = UTF8_LENIENT_DECODER.decode(bytes).toLowerCase();
   return (
     text.includes("<!doctype") ||
     text.includes("<html") ||
@@ -67,7 +68,10 @@ function looksLikeHtml(bytes: Uint8Array): boolean {
 }
 
 function hasGgufMagic(bytes: Uint8Array): boolean {
-  return GGUF_MAGIC.every((value, index) => bytes[index] === value);
+  return (
+    bytes.length >= GGUF_MAGIC.length &&
+    GGUF_MAGIC.every((value, index) => bytes[index] === value)
+  );
 }
 
 export async function validateGgufFile(
@@ -75,16 +79,42 @@ export async function validateGgufFile(
   uri: string,
   owner: ModelFileOwner
 ): Promise<LlmResult<void>> {
-  const file = Bun.file(path);
-  const exists = await file.exists();
-  if (!exists) {
-    return {
-      ok: false,
-      error: modelNotFoundError(uri, `File not found: ${path}`),
-    };
+  let bytes: Uint8Array;
+  try {
+    const fh = await open(path, "r");
+    try {
+      const buf = new Uint8Array(512);
+      const { bytesRead } = await fh.read(buf, 0, 512, 0);
+      bytes = bytesRead === 512 ? buf : buf.subarray(0, bytesRead);
+    } finally {
+      await fh.close();
+    }
+  } catch (error) {
+    const code =
+      error && typeof error === "object" && "code" in error
+        ? String(error.code)
+        : "";
+    if (code === "ENOENT" || code === "ENOTDIR") {
+      return {
+        ok: false,
+        error: modelNotFoundError(uri, `File not found: ${path}`),
+      };
+    }
+    if (code === "EISDIR") {
+      return {
+        ok: false,
+        error: invalidModelFileError(
+          uri,
+          path,
+          error instanceof Error ? error.message : String(error)
+        ),
+      };
+    }
+    // Propagate transient/permission I/O errors (EACCES, EMFILE, EBUSY, EIO)
+    // so callers never mistake a healthy cached model for a corrupt file.
+    throw error;
   }
 
-  const bytes = new Uint8Array(await file.slice(0, 512).arrayBuffer());
   if (hasGgufMagic(bytes)) {
     return { ok: true, value: undefined };
   }
@@ -108,20 +138,25 @@ export async function validateGgufFile(
 
 async function computeSha256(path: string): Promise<string> {
   const hasher = new Bun.CryptoHasher("sha256");
-  const reader = Bun.file(path).stream().getReader();
-
+  const buffer = new Uint8Array(HASH_CHUNK_BYTES);
+  const fh = await open(path, "r");
   try {
+    let position = 0;
     while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-      if (value) {
-        hasher.update(value);
-      }
+      const { bytesRead } = await fh.read(
+        buffer,
+        0,
+        buffer.byteLength,
+        position
+      );
+      if (bytesRead === 0) break;
+      hasher.update(
+        bytesRead === buffer.byteLength ? buffer : buffer.subarray(0, bytesRead)
+      );
+      position += bytesRead;
     }
   } finally {
-    reader.releaseLock();
+    await fh.close();
   }
 
   return hasher.digest("hex");
@@ -271,6 +306,11 @@ export class ModelCache {
   private readonly manifestPath: string;
   private readonly resolveModelFileFn?: ResolveModelFile;
   private manifest: Manifest | null = null;
+  private readOnlyManifestCache: {
+    mtimeMs: number;
+    size: number;
+    manifest: Manifest;
+  } | null = null;
 
   constructor(
     cacheDir?: string,
@@ -291,18 +331,8 @@ export class ModelCache {
       return { ok: false, error: invalidUriError(uri, parsed.error) };
     }
 
-    // Local files: verify existence
+    // Local files: open and validate directly (no redundant stat)
     if (parsed.value.scheme === "file") {
-      const exists = await this.fileExists(parsed.value.file);
-      if (!exists) {
-        return {
-          ok: false,
-          error: modelNotFoundError(
-            uri,
-            `File not found: ${parsed.value.file}`
-          ),
-        };
-      }
       const validation = await validateGgufFile(parsed.value.file, uri, "user");
       if (!validation.ok) {
         return validation;
@@ -338,18 +368,8 @@ export class ModelCache {
       return { ok: false, error: invalidUriError(uri, parsed.error) };
     }
 
-    // Local files: just verify
+    // Local files: open and validate directly (no redundant stat)
     if (parsed.value.scheme === "file") {
-      const exists = await this.fileExists(parsed.value.file);
-      if (!exists) {
-        return {
-          ok: false,
-          error: modelNotFoundError(
-            uri,
-            `File not found: ${parsed.value.file}`
-          ),
-        };
-      }
       const validation = await validateGgufFile(parsed.value.file, uri, "user");
       if (!validation.ok) {
         return validation;
@@ -443,38 +463,28 @@ export class ModelCache {
     policy: DownloadPolicy,
     onProgress?: ProgressCallback
   ): Promise<LlmResult<string>> {
-    // Fast path: check if already cached
+    // Parse URI first so file: URIs never touch manifest.json.
+    const parsed = parseModelUri(uri);
+    if (!parsed.ok) {
+      return { ok: false, error: invalidUriError(uri, parsed.error) };
+    }
+
+    // Local files: validate directly (no manifest read, no double stat)
+    if (parsed.value.scheme === "file") {
+      const validation = await validateGgufFile(parsed.value.file, uri, "user");
+      if (!validation.ok) {
+        return validation;
+      }
+      return { ok: true, value: parsed.value.file };
+    }
+
+    // Fast path: check if HF model is already cached
     const cached = await this.getValidatedCachedPath(uri);
     if (cached.ok) {
       return { ok: true, value: cached.path };
     }
     if (cached.kind === "invalid") {
       return { ok: false, error: cached.error };
-    }
-
-    // Parse and validate URI
-    const parsed = parseModelUri(uri);
-    if (!parsed.ok) {
-      return { ok: false, error: invalidUriError(uri, parsed.error) };
-    }
-
-    // Local files: just verify existence (no download needed)
-    if (parsed.value.scheme === "file") {
-      const exists = await this.fileExists(parsed.value.file);
-      if (!exists) {
-        return {
-          ok: false,
-          error: modelNotFoundError(
-            uri,
-            `File not found: ${parsed.value.file}`
-          ),
-        };
-      }
-      const validation = await validateGgufFile(parsed.value.file, uri, "user");
-      if (!validation.ok) {
-        return validation;
-      }
-      return { ok: true, value: parsed.value.file };
     }
 
     // HF models: check policy
@@ -541,9 +551,9 @@ export class ModelCache {
       return validation.ok;
     }
 
-    const manifest = await this.readManifestFromDisk();
+    const manifest = await this.readManifestStatCached();
     const entry = manifest.models.find((model) => model.uri === uri);
-    if (!entry || !(await this.fileExists(entry.path))) return false;
+    if (!entry) return false;
     const validation = await validateGgufFile(entry.path, uri, "cache");
     return validation.ok;
   }
@@ -615,15 +625,6 @@ export class ModelCache {
   // Private
   // ───────────────────────────────────────────────────────────────────────────
 
-  private async fileExists(path: string): Promise<boolean> {
-    try {
-      await stat(path);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   private async getValidatedCachedPath(
     uri: string
   ): Promise<ValidatedCachedPath> {
@@ -633,15 +634,14 @@ export class ModelCache {
       return { ok: false, kind: "missing" };
     }
 
-    const exists = await this.fileExists(entry.path);
-    if (!exists) {
-      await this.removeFromManifest(uri);
-      return { ok: false, kind: "missing" };
-    }
-
     const validation = await validateGgufFile(entry.path, uri, "cache");
     if (validation.ok) {
       return { ok: true, path: entry.path };
+    }
+
+    if (validation.error.code === "MODEL_NOT_FOUND") {
+      await this.removeFromManifest(uri);
+      return { ok: false, kind: "missing" };
     }
 
     await rm(entry.path, { force: true }).catch(() => {
@@ -656,8 +656,42 @@ export class ModelCache {
       return this.manifest;
     }
 
-    this.manifest = await this.readManifestFromDisk();
+    this.manifest = await this.readManifestStatCached();
     return this.manifest;
+  }
+
+  /**
+   * Read manifest from disk via a single open file descriptor, reusing the
+   * parsed manifest when (mtimeMs, size) on that descriptor is unchanged.
+   */
+  private async readManifestStatCached(): Promise<Manifest> {
+    try {
+      const fh = await open(this.manifestPath, "r");
+      try {
+        const st = await fh.stat();
+        const cached = this.readOnlyManifestCache;
+        if (
+          cached &&
+          cached.mtimeMs === st.mtimeMs &&
+          cached.size === st.size
+        ) {
+          return cached.manifest;
+        }
+        const content = await fh.readFile("utf-8");
+        const manifest = JSON.parse(content) as Manifest;
+        this.readOnlyManifestCache = {
+          mtimeMs: st.mtimeMs,
+          size: st.size,
+          manifest,
+        };
+        return manifest;
+      } finally {
+        await fh.close();
+      }
+    } catch {
+      this.readOnlyManifestCache = null;
+      return { version: MANIFEST_VERSION, models: [] };
+    }
   }
 
   /**
@@ -693,8 +727,18 @@ export class ModelCache {
       // Write atomically
       await this.writeManifestAtomically(manifest);
 
-      // Update cache
+      // Update caches
       this.manifest = manifest;
+      try {
+        const st = await stat(this.manifestPath);
+        this.readOnlyManifestCache = {
+          mtimeMs: st.mtimeMs,
+          size: st.size,
+          manifest,
+        };
+      } catch {
+        this.readOnlyManifestCache = null;
+      }
       return true;
     });
 

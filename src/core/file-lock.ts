@@ -29,10 +29,15 @@ interface LockCommand {
   ) => string[];
 }
 
+let resolvedLockCommand: LockCommand | null | undefined;
+
 function resolveLockCommand(): LockCommand | null {
+  if (resolvedLockCommand !== undefined) {
+    return resolvedLockCommand;
+  }
   const lockfPath = Bun.which("lockf");
   if (lockfPath) {
-    return {
+    resolvedLockCommand = {
       path: lockfPath,
       args: (lockPath, timeoutSeconds, holdCommand) => [
         "-k",
@@ -44,11 +49,12 @@ function resolveLockCommand(): LockCommand | null {
         holdCommand,
       ],
     };
+    return resolvedLockCommand;
   }
 
   const flockPath = Bun.which("flock");
   if (flockPath) {
-    return {
+    resolvedLockCommand = {
       path: flockPath,
       args: (lockPath, timeoutSeconds, holdCommand) => [
         "--no-fork",
@@ -60,8 +66,10 @@ function resolveLockCommand(): LockCommand | null {
         holdCommand,
       ],
     };
+    return resolvedLockCommand;
   }
 
+  resolvedLockCommand = null;
   return null;
 }
 

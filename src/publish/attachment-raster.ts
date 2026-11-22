@@ -71,22 +71,8 @@ const readU32LE = (bytes: Uint8Array, offset: number): number =>
     (bytes[offset] ?? 0)) >>>
   0;
 
-const CRC32_TABLE = Uint32Array.from({ length: 256 }, (_, value) => {
-  let crc = value;
-  for (let bit = 0; bit < 8; bit += 1) {
-    crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
-  }
-  return crc >>> 0;
-});
-
-const crc32 = (bytes: Uint8Array, start: number, end: number): number => {
-  let crc = 0xffffffff;
-  for (let index = start; index < end; index += 1) {
-    const tableIndex = (crc ^ (bytes[index] ?? 0)) & 0xff;
-    crc = (crc >>> 8) ^ (CRC32_TABLE[tableIndex] ?? 0);
-  }
-  return (crc ^ 0xffffffff) >>> 0;
-};
+const crc32 = (bytes: Uint8Array, start: number, end: number): number =>
+  Bun.hash.crc32(bytes.subarray(start, end)) >>> 0;
 
 const validateDimensions = (
   width: number,

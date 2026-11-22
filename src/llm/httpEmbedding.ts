@@ -10,7 +10,10 @@ import type { EmbeddingPort, LlmResult } from "./types";
 
 import { EgressDeniedError } from "../core/egress-enforcement";
 import { egressDeniedInferenceError, inferenceFailedError } from "./errors";
-import { requestHttpInference } from "./http-inference";
+import {
+  primeHttpInferenceContext,
+  requestHttpInference,
+} from "./http-inference";
 import { runHttpInference } from "./inference-scope";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -57,9 +60,13 @@ export class HttpEmbedding implements EmbeddingPort {
       const pathParts = url.pathname.split("/");
       this.modelName = pathParts[pathParts.length - 1] || "embedding-model";
     }
+    primeHttpInferenceContext(this.apiUrl, this.requestOptions);
   }
 
   async init(options?: InferenceOptions): Promise<LlmResult<void>> {
+    if (this.dims !== null) {
+      return { ok: true, value: undefined };
+    }
     // Test connection with a simple embedding
     const result = await this.embed("test", options);
     if (!result.ok) {

@@ -652,7 +652,7 @@ async function confirmSeparatePartition(message: string): Promise<boolean> {
  * Execute gno embed command.
  */
 export async function embed(options: EmbedOptions = {}): Promise<EmbedResult> {
-  const batchSize = options.batchSize ?? 32;
+  const batchSize = options.batchSize ?? 64;
   const force = options.force ?? false;
   const dryRun = options.dryRun ?? false;
   const limits: EmbedRunLimits | undefined =

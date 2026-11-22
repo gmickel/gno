@@ -286,11 +286,13 @@ describe("NodeLlamaCppEmbedding", () => {
       throw new Error("expected ok result");
     }
 
+    // LPT schedules longest-first ("dddd" -> ctx 1, "ccc" -> ctx 2, "bb" -> ctx 1, "a" -> ctx 2)
+    // and writes each vector back to its original input index.
     expect(result.value).toEqual([
-      [1, 1],
-      [2, 2],
-      [1, 3],
-      [2, 4],
+      [2, 1],
+      [1, 2],
+      [2, 3],
+      [1, 4],
     ]);
     expect(calls).toHaveLength(4);
     expect(calls.filter((call) => call.contextId === 1)).toHaveLength(2);

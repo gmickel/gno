@@ -59,8 +59,21 @@ export function inferenceOptions(
   };
 }
 
-export function assertInferenceActive(options: InferenceOptions = {}): void {
-  if (scope.getStore()?.failure) throw scope.getStore()!.failure;
+export function assertInferenceActive(options?: InferenceOptions): void {
+  const currentScope = scope.getStore();
+  if (options === undefined) {
+    if (currentScope === undefined) return;
+    if (currentScope.failure) throw currentScope.failure;
+    if (currentScope.signal?.aborted)
+      throw new DOMException("Inference cancelled", "AbortError");
+    if (
+      currentScope.deadlineAt !== undefined &&
+      Date.now() >= currentScope.deadlineAt
+    )
+      throw new DOMException("Inference deadline exceeded", "TimeoutError");
+    return;
+  }
+  if (currentScope?.failure) throw currentScope.failure;
   const current = inferenceOptions(options);
   if (current.signal?.aborted)
     throw new DOMException("Inference cancelled", "AbortError");

@@ -1,9 +1,7 @@
 /** Pinned native formatting contract; no context allocation or input clipping. */
 import type { LlamaModel, Token } from "node-llama-cpp";
 
-import { getModuleVersion } from "node-llama-cpp";
-
-const installedVersion = await getModuleVersion();
+import { getNativePackageVersion } from "../native-worker/embedding-identity";
 
 export const RERANK_NATIVE_VERSION = "3.20.0";
 export const RERANK_TEMPLATE =
@@ -34,25 +32,52 @@ function supported(model: CapacityModel, version: string): boolean {
   );
 }
 
+const [RERANK_PREFIX = "", RERANK_REST = ""] = RERANK_TEMPLATE.split("{query}");
+const [RERANK_MIDDLE = "", RERANK_SUFFIX = ""] =
+  RERANK_REST.split("{document}");
+
+interface CachedTemplateTokens {
+  tokenizeFn: CapacityModel["tokenize"];
+  prefix: readonly Token[];
+  middle: readonly Token[];
+  suffix: readonly Token[];
+}
+
+const TEMPLATE_TOKEN_CACHE = new WeakMap<object, CachedTemplateTokens>();
+
+function getStaticTemplateTokens(model: CapacityModel): CachedTemplateTokens {
+  const cached = TEMPLATE_TOKEN_CACHE.get(model as object);
+  if (cached && cached.tokenizeFn === model.tokenize) {
+    return cached;
+  }
+  const entry: CachedTemplateTokens = {
+    tokenizeFn: model.tokenize,
+    prefix: model.tokenize(RERANK_PREFIX, true, "trimLeadingSpace"),
+    middle: model.tokenize(RERANK_MIDDLE, true, "trimLeadingSpace"),
+    suffix: model.tokenize(RERANK_SUFFIX, true, "trimLeadingSpace"),
+  };
+  TEMPLATE_TOKEN_CACHE.set(model as object, entry);
+  return entry;
+}
+
 /** 3.20.0 LlamaRankingContext.js is byte-identical to the audited 3.19.1 source.
  * Mirrors 3.20.0 _getEvaluationInput for the one audited template/vocabulary. */
 export function formatRerankPair(
   model: CapacityModel,
   query: string,
   document: string,
-  version = installedVersion
+  version = getNativePackageVersion()
 ): Token[] | null {
   if (!supported(model, version)) {
     return null;
   }
-  const [prefix, rest = ""] = RERANK_TEMPLATE.split("{query}");
-  const [middle, suffix = ""] = rest.split("{document}");
+  const tpl = getStaticTemplateTokens(model);
   const input = [
-    ...model.tokenize(prefix ?? "", true, "trimLeadingSpace"),
+    ...tpl.prefix,
     ...model.tokenizer(query, false, "trimLeadingSpace"),
-    ...model.tokenize(middle ?? "", true, "trimLeadingSpace"),
+    ...tpl.middle,
     ...model.tokenizer(document, false, "trimLeadingSpace"),
-    ...model.tokenize(suffix, true, "trimLeadingSpace"),
+    ...tpl.suffix,
   ];
   const { bos, eos, shouldPrependBosToken, shouldAppendEosToken } =
     model.tokens;
@@ -66,32 +91,66 @@ export function formatRerankPair(
   return input;
 }
 
-export function getRerankCapacity(
+export interface PreparedRerankBatch {
+  capacity: RerankCapacity;
+  /** Pre-tokenized query, documents, and complete audited pair token streams. */
+  queryTokens?: Token[];
+  documentTokens?: Token[][];
+  pairTokens?: Token[][];
+}
+
+export function prepareRerankBatch(
   model: CapacityModel,
   query: string,
   documents: readonly string[],
-  version = installedVersion
-): RerankCapacity {
+  version = getNativePackageVersion()
+): PreparedRerankBatch {
   if (documents.length === 0) {
-    return { kind: "empty" };
+    return { capacity: { kind: "empty" } };
   }
   if (!supported(model, version)) {
     return {
-      kind: "auto",
-      reason: "Unsupported native version, model or template",
+      capacity: {
+        kind: "auto",
+        reason: "Unsupported native version, model or template",
+      },
     };
   }
   const maximum = model.trainContextSize;
   if (!Number.isSafeInteger(maximum) || maximum <= 0) {
-    return { kind: "auto", reason: "Unknown model context limit" };
+    return {
+      capacity: { kind: "auto", reason: "Unknown model context limit" },
+    };
   }
+  const tpl = getStaticTemplateTokens(model);
+  const queryTokens = model.tokenizer(query, false, "trimLeadingSpace");
+  const { bos, eos, shouldPrependBosToken, shouldAppendEosToken } =
+    model.tokens;
+
+  const documentTokens: Token[][] = [];
+  const pairTokens: Token[][] = [];
   let requiredTokens = 0;
   for (const document of documents) {
-    const tokens = formatRerankPair(model, query, document, version);
-    if (tokens === null) {
-      return { kind: "auto", reason: "Unsupported formatter" };
+    const docTokens = model.tokenizer(document, false, "trimLeadingSpace");
+    documentTokens.push(docTokens);
+    const pair: Token[] = [
+      ...tpl.prefix,
+      ...queryTokens,
+      ...tpl.middle,
+      ...docTokens,
+      ...tpl.suffix,
+    ];
+    if (shouldPrependBosToken && bos != null && pair.at(0) !== bos) {
+      pair.unshift(bos);
     }
-    requiredTokens = Math.max(requiredTokens, tokens.length);
+    if (shouldAppendEosToken && eos != null && pair.at(-1) !== eos) {
+      // Native 3.20.0 prepends here despite calling this an end token. Preserve parity.
+      pair.unshift(eos);
+    }
+    pairTokens.push(pair);
+    if (pair.length > requiredTokens) {
+      requiredTokens = pair.length;
+    }
   }
   if (requiredTokens > maximum) {
     throw new RangeError(
@@ -103,9 +162,28 @@ export function getRerankCapacity(
   const contextSize = Math.ceil((requiredTokens + 256) / 256) * 256;
   if (contextSize > maximum) {
     return {
-      kind: "auto",
-      reason: "Padded capacity exceeds model context limit",
+      capacity: {
+        kind: "auto",
+        reason: "Padded capacity exceeds model context limit",
+      },
+      queryTokens,
+      documentTokens,
+      pairTokens,
     };
   }
-  return { kind: "sized", contextSize, requiredTokens };
+  return {
+    capacity: { kind: "sized", contextSize, requiredTokens },
+    queryTokens,
+    documentTokens,
+    pairTokens,
+  };
+}
+
+export function getRerankCapacity(
+  model: CapacityModel,
+  query: string,
+  documents: readonly string[],
+  version = getNativePackageVersion()
+): RerankCapacity {
+  return prepareRerankBatch(model, query, documents, version).capacity;
 }

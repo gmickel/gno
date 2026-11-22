@@ -18,11 +18,31 @@ import { join } from "node:path";
 /** Default lock TTL in milliseconds (24 hours - long to avoid stealing during slow downloads) */
 const DEFAULT_LOCK_TTL_MS = 24 * 60 * 60 * 1000;
 
-/** Retry delay for lock acquisition (ms) */
+/** Initial exponential backoff delay for lock acquisition (ms) */
+const LOCK_INITIAL_RETRY_DELAY_MS = 15;
+
+/** Max/capped retry delay for lock acquisition (ms) */
 const LOCK_RETRY_DELAY_MS = 500;
 
 /** Max retries before giving up (~10 minutes for multi-GB downloads) */
 const LOCK_MAX_RETRIES = 1200;
+
+let cachedHostname: string | null = null;
+let cachedUsername: string | null = null;
+
+function getCachedHostname(): string {
+  if (cachedHostname === null) {
+    cachedHostname = hostname();
+  }
+  return cachedHostname;
+}
+
+function getCachedUsername(): string {
+  if (cachedUsername === null) {
+    cachedUsername = userInfo().username;
+  }
+  return cachedUsername;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -58,8 +78,8 @@ export interface LockOptions {
 function getLockMeta(): LockMeta {
   return {
     pid: process.pid,
-    hostname: hostname(),
-    user: userInfo().username,
+    hostname: getCachedHostname(),
+    user: getCachedUsername(),
     createdAt: new Date().toISOString(),
   };
 }
@@ -124,7 +144,7 @@ async function isLockStale(lockPath: string, ttlMs: number): Promise<boolean> {
     }
 
     const meta = await readLockMeta(lockPath);
-    if (!meta || meta.hostname !== hostname()) {
+    if (!meta || meta.hostname !== getCachedHostname()) {
       return false;
     }
 
@@ -173,7 +193,7 @@ export async function acquireLock(
 ): Promise<LockHandle | null> {
   const ttlMs = options?.ttlMs ?? DEFAULT_LOCK_TTL_MS;
   const maxRetries = options?.maxRetries ?? LOCK_MAX_RETRIES;
-  const retryDelayMs = options?.retryDelayMs ?? LOCK_RETRY_DELAY_MS;
+  const fixedRetryDelayMs = options?.retryDelayMs;
 
   let retries = 0;
 
@@ -210,9 +230,16 @@ export async function acquireLock(
           }
         }
 
-        // Lock is held - wait and retry
+        // Lock is held - wait and retry with capped exponential backoff
+        // (15 ms -> 500 ms) unless caller specified an explicit fixed delay.
+        const delayMs =
+          fixedRetryDelayMs ??
+          Math.min(
+            LOCK_RETRY_DELAY_MS,
+            LOCK_INITIAL_RETRY_DELAY_MS * 2 ** Math.min(retries, 6)
+          );
         retries++;
-        await sleep(retryDelayMs);
+        await sleep(delayMs);
         continue;
       }
 

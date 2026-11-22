@@ -3653,7 +3653,7 @@ function wireManagementCommands(program: Command): void {
       .description("Generate embeddings for indexed documents")
       .option("--collection <name>", "restrict to one collection")
       .option("--model <uri>", "embedding model URI")
-      .option("--batch-size <num>", "batch size", "32")
+      .option("--batch-size <num>", "batch size")
       .option("--force", "regenerate all embeddings")
       .option(
         "--new-partition",
@@ -3696,7 +3696,10 @@ function wireManagementCommands(program: Command): void {
         indexName: globals.index,
         collection,
         model: cmdOpts.model as string | undefined,
-        batchSize: parsePositiveInt("batch-size", cmdOpts.batchSize),
+        batchSize:
+          cmdOpts.batchSize !== undefined
+            ? parsePositiveInt("batch-size", cmdOpts.batchSize)
+            : undefined,
         force: Boolean(cmdOpts.force),
         dryRun: Boolean(cmdOpts.dryRun),
         maxChunks: parseRunLimit("max-chunks", cmdOpts.maxChunks),

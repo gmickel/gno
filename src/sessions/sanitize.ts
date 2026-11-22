@@ -90,6 +90,12 @@ const RULES: readonly Rule[] = [
   },
 ];
 
+// Single fast-reject prefilter covering the exact prefix/trigger of every rule
+// in RULES. Clean turns (no trigger substring) skip all 10 per-rule regex scans
+// with zero false negatives.
+const RULES_PREFILTER =
+  /\b(?:AKIA|ASIA|gh[pousr]_|github_pat_|sk-|sk_live_|sk_test_|rk_live_|rk_test_|pk_live_|pk_test_|xox[abposr]-|AIza|eyJ|Bearer[ \t]|Token[ \t])|:\/\/[^\s@]{1,513}@|\b(?:password|passwd|pwd|secret|api[_-]?key|apikey|access[_-]?token|auth[_-]?token|refresh[_-]?token|client[_-]?secret|private[_-]?key|token)["']?[ \t]{0,4}[:=]/i;
+
 const CONTROL_CHARS = new RegExp(
   `[${String.fromCharCode(0)}-${String.fromCharCode(8)}${String.fromCharCode(11)}${String.fromCharCode(12)}${String.fromCharCode(14)}-${String.fromCharCode(31)}${String.fromCharCode(127)}]`,
   "g"
@@ -117,7 +123,7 @@ export interface RedactionPolicy {
  * the same thread redact them even out of their original shape.
  */
 export class ThreadSanitizer {
-  private readonly literals: string[];
+  private readonly literals: readonly string[];
   private readonly detected = new Set<string>();
   redactions = 0;
 
@@ -125,6 +131,17 @@ export class ThreadSanitizer {
     this.literals = [...new Set(policy.literals ?? [])]
       .filter((value) => value.length >= 4)
       .sort((left, right) => right.length - left.length);
+  }
+
+  /** Reset per-thread state so one sanitizer instance can be reused across units. */
+  reset(): void {
+    this.detected.clear();
+    this.redactions = 0;
+  }
+
+  /** Number of detected secret values to propagate (O(1), zero allocation). */
+  get detectedCount(): number {
+    return this.detected.size;
   }
 
   /** Values detected so far (bounded); used for the propagation pass. */
@@ -175,24 +192,26 @@ export class ThreadSanitizer {
   sanitize(input: string): string {
     let text = input.replace(CONTROL_CHARS, "");
     text = this.redactPrivateKeys(text);
-    for (const rule of RULES) {
-      rule.pattern.lastIndex = 0;
-      text = text.replace(
-        rule.pattern,
-        (match: string, ...groups: unknown[]) => {
-          const secret =
-            rule.group === 0 ? match : (groups[rule.group - 1] as string);
-          if (!secret || PLACEHOLDER_VALUES.has(secret.toLowerCase())) {
-            return match;
+    if (RULES_PREFILTER.test(text)) {
+      for (const rule of RULES) {
+        rule.pattern.lastIndex = 0;
+        text = text.replace(
+          rule.pattern,
+          (match: string, ...groups: unknown[]) => {
+            const secret =
+              rule.group === 0 ? match : (groups[rule.group - 1] as string);
+            if (!secret || PLACEHOLDER_VALUES.has(secret.toLowerCase())) {
+              return match;
+            }
+            if (secret.startsWith("[REDACTED:")) return match;
+            this.remember(secret);
+            this.redactions += 1;
+            return rule.group === 0
+              ? marker(rule.kind)
+              : match.replace(secret, marker(rule.kind));
           }
-          if (secret.startsWith("[REDACTED:")) return match;
-          this.remember(secret);
-          this.redactions += 1;
-          return rule.group === 0
-            ? marker(rule.kind)
-            : match.replace(secret, marker(rule.kind));
-        }
-      );
+        );
+      }
     }
     for (const literal of this.literals) {
       text = this.replaceLiteral(text, literal, "configured");
@@ -205,6 +224,7 @@ export class ThreadSanitizer {
    * whole thread after the first pass so earlier turns are covered too.
    */
   propagate(text: string): string {
+    if (this.detected.size === 0) return text;
     let output = text;
     for (const value of this.detected) {
       output = this.replaceLiteral(output, value, "propagated");

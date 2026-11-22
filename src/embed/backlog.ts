@@ -16,6 +16,7 @@ import type {
 import type { VectorVariantStore } from "../store/vector/variants";
 import type { AcquireWriteTurn } from "./retry";
 
+import { isHttpModelUri } from "../llm/httpEmbedding";
 import {
   assertInferenceActive,
   isBackgroundInference,
@@ -146,7 +147,7 @@ export async function embedBacklog(
   const background = isBackgroundInference();
   const batchSize = background
     ? Math.min(deps.batchSize ?? 32, 32)
-    : (deps.batchSize ?? 32);
+    : (deps.batchSize ?? 64);
   const embedFingerprint = getEmbeddingFingerprint({
     modelUri,
     dimensions: vectorIndex.dimensions,
@@ -224,73 +225,154 @@ export async function embedBacklog(
   };
 
   try {
-    while (true) {
-      assertInferenceActive();
-      // Get next batch using seek pagination
-      const batchResult = await statsPort.getBacklog(
-        modelUri,
-        embedFingerprint,
-        {
-          limit: batchSize,
-          after: cursor,
-          collection,
+    const httpConcurrency =
+      !background && !deps.acquireWriteTurn && isHttpModelUri(modelUri) ? 3 : 1;
+
+    if (httpConcurrency > 1) {
+      type InFlightBatch = Promise<
+        Awaited<ReturnType<typeof embedAndStoreBatch>>
+      >;
+      const inFlight: InFlightBatch[] = [];
+      let exhausted = false;
+
+      const fillHttpWindow = async (): Promise<
+        StoreResult<EmbedBacklogResult> | undefined
+      > => {
+        while (!exhausted && inFlight.length < httpConcurrency) {
+          assertInferenceActive();
+          const batchResult = await statsPort.getBacklog(
+            modelUri,
+            embedFingerprint,
+            {
+              limit: batchSize,
+              after: cursor,
+              collection,
+            }
+          );
+          if (!batchResult.ok) {
+            return err("QUERY_FAILED", batchResult.error.message);
+          }
+          const batch = batchResult.value;
+          if (batch.length === 0) {
+            exhausted = true;
+            return undefined;
+          }
+          const lastItem = batch.at(-1);
+          if (lastItem) {
+            cursor = { mirrorHash: lastItem.mirrorHash, seq: lastItem.seq };
+          }
+          inFlight.push(
+            embedAndStoreBatch({
+              embedPort,
+              vectorIndex,
+              items: batch,
+              modelUri,
+              embedFingerprint,
+              identityStillCurrent: deps.identityStillCurrent,
+              statsPort,
+            })
+          );
         }
-      );
+        return undefined;
+      };
 
-      if (!batchResult.ok) {
-        return err("QUERY_FAILED", batchResult.error.message);
+      const fillErr = await fillHttpWindow();
+      if (fillErr) {
+        await Promise.allSettled(inFlight);
+        return fillErr;
       }
 
-      const batch = batchResult.value;
-      if (batch.length === 0) {
-        break;
+      while (inFlight.length > 0) {
+        const nextPromise = inFlight.shift()!;
+        const batchStoreResult = await nextPromise;
+        if (batchStoreResult.deferred) {
+          await Promise.allSettled(inFlight);
+          return ok({ embedded, errors, contentionErrors, deferred: true });
+        }
+        const beforeEmbedded = embedded;
+        embedded += batchStoreResult.embedded;
+        errors += batchStoreResult.errors;
+        contentionErrors += batchStoreResult.contentionErrors;
+        enqueueRetryItems(batchStoreResult.retryItems, 1);
+        deps.onProgress?.(embedded, errors);
+        if (embedded > beforeEmbedded && retryQueue.size > 0) {
+          await drainRetryQueue();
+        }
+        const nextErr = await fillHttpWindow();
+        if (nextErr) {
+          await Promise.allSettled(inFlight);
+          return nextErr;
+        }
       }
-
-      // Advance cursor (even on failure, to avoid infinite loops)
-      const lastItem = batch.at(-1);
-      if (lastItem) {
-        cursor = { mirrorHash: lastItem.mirrorHash, seq: lastItem.seq };
-      }
-
-      const beforeEmbedded = embedded;
-      const storePage = () =>
-        embedAndStoreBatch({
-          embedPort,
-          vectorIndex,
-          items: batch,
+    } else {
+      while (true) {
+        assertInferenceActive();
+        // Get next batch using seek pagination
+        const batchResult = await statsPort.getBacklog(
           modelUri,
           embedFingerprint,
-          identityStillCurrent: deps.identityStillCurrent,
-          statsPort,
-          acquireWriteTurn: deps.acquireWriteTurn,
-        });
-      const batchStoreResult = background
-        ? await withInferencePage(storePage)
-        : await storePage();
-      if (!batchStoreResult) {
-        // Past its deadline: this page stays pending for the next pass.
-        errors += batch.length;
-        deps.onProgress?.(embedded, errors);
-        await Bun.sleep(0);
-        continue;
-      }
-      if (batchStoreResult.deferred)
-        return ok({ embedded, errors, contentionErrors, deferred: true });
-      embedded += batchStoreResult.embedded;
-      errors += batchStoreResult.errors;
-      contentionErrors += batchStoreResult.contentionErrors;
-      if (background) {
-        errors += batchStoreResult.retryItems.length;
-        deps.onProgress?.(embedded, errors);
-        // Each cursor page is a turn. Failed early pages cannot starve later work.
-        await Bun.sleep(0);
-        if (deps.identityStillCurrent && !deps.identityStillCurrent()) break;
-        continue;
-      }
-      enqueueRetryItems(batchStoreResult.retryItems, 1);
+          {
+            limit: batchSize,
+            after: cursor,
+            collection,
+          }
+        );
 
-      if (embedded > beforeEmbedded) {
-        await drainRetryQueue();
+        if (!batchResult.ok) {
+          return err("QUERY_FAILED", batchResult.error.message);
+        }
+
+        const batch = batchResult.value;
+        if (batch.length === 0) {
+          break;
+        }
+
+        // Advance cursor (even on failure, to avoid infinite loops)
+        const lastItem = batch.at(-1);
+        if (lastItem) {
+          cursor = { mirrorHash: lastItem.mirrorHash, seq: lastItem.seq };
+        }
+
+        const beforeEmbedded = embedded;
+        const storePage = () =>
+          embedAndStoreBatch({
+            embedPort,
+            vectorIndex,
+            items: batch,
+            modelUri,
+            embedFingerprint,
+            identityStillCurrent: deps.identityStillCurrent,
+            statsPort,
+            acquireWriteTurn: deps.acquireWriteTurn,
+          });
+        const batchStoreResult = background
+          ? await withInferencePage(storePage)
+          : await storePage();
+        if (!batchStoreResult) {
+          // Past its deadline: this page stays pending for the next pass.
+          errors += batch.length;
+          deps.onProgress?.(embedded, errors);
+          await Bun.sleep(0);
+          continue;
+        }
+        if (batchStoreResult.deferred)
+          return ok({ embedded, errors, contentionErrors, deferred: true });
+        embedded += batchStoreResult.embedded;
+        errors += batchStoreResult.errors;
+        contentionErrors += batchStoreResult.contentionErrors;
+        if (background) {
+          errors += batchStoreResult.retryItems.length;
+          deps.onProgress?.(embedded, errors);
+          // Each cursor page is a turn. Failed early pages cannot starve later work.
+          await Bun.sleep(0);
+          if (deps.identityStillCurrent && !deps.identityStillCurrent()) break;
+          continue;
+        }
+        enqueueRetryItems(batchStoreResult.retryItems, 1);
+
+        if (embedded > beforeEmbedded) {
+          await drainRetryQueue();
+        }
       }
     }
 

@@ -4,6 +4,7 @@ import type { Collection } from "../config/types";
 import type { CollectionEgressState } from "../core/egress-policy";
 import type { EgressDestinationZone } from "../core/egress-policy";
 import type {
+  HttpDestinationMaximumZone,
   HttpDestinationPolicyOptions,
   HttpDestinationResolver,
   PinnedHttpFetch,
@@ -16,7 +17,7 @@ import {
 } from "../core/egress-enforcement";
 import { evaluateEgressPolicy } from "../core/egress-policy";
 import { EgressProvenanceError } from "../core/egress-provenance";
-import { classifyHttpDestination, prepareHttpDestination } from "./http-policy";
+import { prepareClassifiedHttpDestination } from "./http-policy";
 
 const REDIRECT_STATUSES = new Set([301, 302, 307, 308]);
 
@@ -32,6 +33,55 @@ export interface HttpInferenceOptions {
   env?: HttpDestinationPolicyOptions["env"];
 }
 
+export interface CachedHttpInferenceContext {
+  readonly rawUrl: string;
+  readonly parsedUrl: URL | null;
+  readonly policyKey: string;
+  readonly states: readonly CollectionEgressState[];
+  readonly maximumZone: HttpDestinationMaximumZone | null;
+}
+
+const CONTEXT_CACHE = new WeakMap<
+  HttpInferenceOptions,
+  CachedHttpInferenceContext
+>();
+const PARSED_URL_CACHE = new WeakMap<
+  HttpInferenceOptions,
+  { rawUrl: string; parsedUrl: URL | null }
+>();
+
+function computePolicyCacheKey(options: HttpInferenceOptions): string {
+  // Fast fingerprint of current collection scope + live egressPolicy values so
+  // any in-place policy mutation invalidates the cached states immediately.
+  const parts: string[] = [
+    String(options.collections.length),
+    options.collectionNames.join("\0"),
+  ];
+  for (let i = 0; i < options.collections.length; i += 1) {
+    const col = options.collections[i]!;
+    parts.push(`${col.name}:${col.egressPolicy ?? ""}`);
+  }
+  return parts.join("|");
+}
+
+function getCachedParsedUrl(
+  rawUrl: string,
+  options: HttpInferenceOptions
+): URL | null {
+  const existing = PARSED_URL_CACHE.get(options);
+  if (existing && existing.rawUrl === rawUrl) {
+    return existing.parsedUrl;
+  }
+  let parsedUrl: URL | null = null;
+  try {
+    parsedUrl = new URL(rawUrl);
+  } catch {
+    parsedUrl = null;
+  }
+  PARSED_URL_CACHE.set(options, { rawUrl, parsedUrl });
+  return parsedUrl;
+}
+
 const scopedStates = (
   options: HttpInferenceOptions
 ): readonly CollectionEgressState[] => {
@@ -42,6 +92,35 @@ const scopedStates = (
     throw error;
   }
 };
+
+function buildHttpInferenceContext(
+  rawUrl: string,
+  options: HttpInferenceOptions,
+  policyKey: string
+): CachedHttpInferenceContext {
+  const parsedUrl = getCachedParsedUrl(rawUrl, options);
+  const states = scopedStates(options);
+  const maximumZone =
+    states.length === 0
+      ? null
+      : maximumDestinationZoneForCollections(
+          options.collections,
+          options.collectionNames
+        );
+  return { rawUrl, parsedUrl, policyKey, states, maximumZone };
+}
+
+/** Pre-parse URL and egress policy once per HTTP inference port instance. */
+export function primeHttpInferenceContext(
+  rawUrl: string,
+  options: HttpInferenceOptions
+): void {
+  const policyKey = computePolicyCacheKey(options);
+  CONTEXT_CACHE.set(
+    options,
+    buildHttpInferenceContext(rawUrl, options, policyKey)
+  );
+}
 
 const enforce = (
   states: readonly CollectionEgressState[],
@@ -67,43 +146,41 @@ export const requestHttpInference = async (
   options: HttpInferenceOptions
 ): Promise<Response> => {
   init.signal?.throwIfAborted();
-  const states = scopedStates(options);
+  const policyKey = computePolicyCacheKey(options);
+  const cached = CONTEXT_CACHE.get(options);
+  let ctx: CachedHttpInferenceContext;
+  if (cached && cached.rawUrl === rawUrl && cached.policyKey === policyKey) {
+    ctx = cached;
+  } else {
+    ctx = buildHttpInferenceContext(rawUrl, options, policyKey);
+    CONTEXT_CACHE.set(options, ctx);
+  }
+  const { states } = ctx;
   if (states.length === 0) {
     enforce(states, "remote", options);
   }
-  const maximumZone = maximumDestinationZoneForCollections(
-    options.collections,
-    options.collectionNames
-  );
-
-  // DNS-only classification carries no headers, body, credentials, or model
-  // metadata. Policy evaluates the proven zone before transport preparation.
-  const classification = await classifyHttpDestination(rawUrl, {
-    resolver: options.resolver,
-  });
-  if (!classification.ok) {
-    throw new EgressDeniedError(
-      evaluateEgressPolicy({
-        collections: states,
-        action: "remote_inference",
-        destination: { zone: classification.classification.zone },
-        caller: {
-          authenticated: options.authenticated ?? true,
-          operationAuthorized: false,
-        },
-        contentClass: "source",
-      })
+  const maximumZone =
+    ctx.maximumZone ??
+    maximumDestinationZoneForCollections(
+      options.collections,
+      options.collectionNames
     );
-  }
-  enforce(states, classification.classification.zone, options);
-  const url = new URL(rawUrl);
 
-  let prepared = await prepareHttpDestination(url.href, {
-    maximumZone,
-    resolver: options.resolver,
-    remoteProvider: classification.classification.zone === "remote",
-    env: options.env,
-  });
+  // Merged classify + prepare performs 1 DNS lookup (evaluating collection
+  // policy on the proven zone before transport/proxy/HTTPS checks), followed
+  // by acquireConnection()'s independent pre-connect DNS rebinding check (2
+  // DNS lookups total).
+  let prepared = await prepareClassifiedHttpDestination(
+    ctx.parsedUrl ?? rawUrl,
+    {
+      maximumZone,
+      resolver: options.resolver,
+      env: options.env,
+      assertZoneAllowed: (classification) => {
+        enforce(states, classification.zone, options);
+      },
+    }
+  );
   if (!prepared.ok) {
     throw new EgressDeniedError(
       evaluateEgressPolicy({
@@ -119,7 +196,7 @@ export const requestHttpInference = async (
     );
   }
 
-  let currentUrl = url;
+  let currentUrl = ctx.parsedUrl ?? new URL(rawUrl);
   for (;;) {
     init.signal?.throwIfAborted();
     enforce(states, prepared.value.classification.zone, options);

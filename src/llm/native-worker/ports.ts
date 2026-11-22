@@ -15,9 +15,13 @@ import type { NativeResponse } from "./protocol";
 
 import { inferenceOptions, finishInferenceCleanup } from "../inference-scope";
 import { NativeWorkerError } from "./errors";
-import { EmbeddingIdentitySchema } from "./protocol";
+import {
+  EmbeddingIdentitySchema,
+  isPrevalidatedEmbedValue,
+  validateFiniteVector,
+  validateFiniteVectorBatch,
+} from "./protocol";
 
-const vector = z.array(z.number().finite()).min(1);
 const scores = z.array(
   z.strictObject({
     index: z.number().int().nonnegative(),
@@ -39,6 +43,62 @@ function decode<T>(
   return parsed.success
     ? { ok: true, value: parsed.data }
     : { ok: false, error: new NativeWorkerError("protocol").detail };
+}
+
+function decodeVector(
+  result: NativeResponse["result"],
+  expectedDims?: number
+): LlmResult<number[]> {
+  if (!result.ok) return result;
+  if (isPrevalidatedEmbedValue(result.value) && Array.isArray(result.value)) {
+    const vec = result.value as number[];
+    if (expectedDims !== undefined && vec.length !== expectedDims) {
+      return { ok: false, error: new NativeWorkerError("protocol").detail };
+    }
+    return { ok: true, value: vec };
+  }
+  try {
+    return {
+      ok: true,
+      value: validateFiniteVector(result.value, expectedDims),
+    };
+  } catch {
+    return { ok: false, error: new NativeWorkerError("protocol").detail };
+  }
+}
+
+function decodeVectorBatch(
+  result: NativeResponse["result"],
+  expectedCount: number,
+  expectedDims?: number
+): LlmResult<number[][]> {
+  if (!result.ok) return result;
+  if (isPrevalidatedEmbedValue(result.value) && Array.isArray(result.value)) {
+    const batch = result.value as number[][];
+    if (batch.length !== expectedCount) {
+      return { ok: false, error: new NativeWorkerError("protocol").detail };
+    }
+    if (
+      expectedDims !== undefined &&
+      batch.length > 0 &&
+      batch[0]!.length !== expectedDims
+    ) {
+      return { ok: false, error: new NativeWorkerError("protocol").detail };
+    }
+    return { ok: true, value: batch };
+  }
+  try {
+    return {
+      ok: true,
+      value: validateFiniteVectorBatch(
+        result.value,
+        expectedCount,
+        expectedDims
+      ),
+    };
+  } catch {
+    return { ok: false, error: new NativeWorkerError("protocol").detail };
+  }
 }
 
 class NativePort {
@@ -139,8 +199,13 @@ export class NativeEmbeddingPort extends NativePort implements EmbeddingPort {
           error: new NativeWorkerError("stale_generation").detail,
         };
       options = inferenceOptions(options);
-      const initialized = await this.ensureIdentity(options);
-      if (!initialized.ok) return initialized;
+      // Warm fast path: when identity is already valid for the current worker
+      // generation, avoid awaiting a microtask before dispatching operation()
+      // so IPC writes immediately before the caller runs overlapped SQLite work.
+      if (!this.getIdentity()) {
+        const initialized = await this.ensureIdentity(options);
+        if (!initialized.ok) return initialized;
+      }
       if (version !== this.version || this.disposing)
         return {
           ok: false,
@@ -191,14 +256,12 @@ export class NativeEmbeddingPort extends NativePort implements EmbeddingPort {
     options?: InferenceOptions
   ): Promise<LlmResult<number[]>> {
     return this.withIdentity(async (generation) => {
-      const result = decode(
-        await this.client.request(
-          { op: "embed", modelId: this.modelId, text },
-          generation,
-          options
-        ),
-        vector
+      const raw = await this.client.request(
+        { op: "embed", modelId: this.modelId, text },
+        generation,
+        options
       );
+      const result = decodeVector(raw);
       if (result.ok && !this.acceptDimensions(result.value.length)) {
         await this.client.disposeModel(this.modelUri);
         return { ok: false, error: new NativeWorkerError("protocol").detail };
@@ -213,18 +276,16 @@ export class NativeEmbeddingPort extends NativePort implements EmbeddingPort {
   ): Promise<LlmResult<number[][]>> {
     if (!texts.length) return { ok: true, value: [] };
     return this.withIdentity(async (generation) => {
-      const result = decode(
-        await this.client.request(
-          {
-            op: "embedBatch",
-            modelId: this.modelId,
-            texts,
-          },
-          generation,
-          options
-        ),
-        z.array(vector).length(texts.length)
+      const raw = await this.client.request(
+        {
+          op: "embedBatch",
+          modelId: this.modelId,
+          texts,
+        },
+        generation,
+        options
       );
+      const result = decodeVectorBatch(raw, texts.length);
       if (
         result.ok &&
         result.value.some((item) => !this.acceptDimensions(item.length))

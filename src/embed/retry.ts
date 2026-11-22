@@ -213,13 +213,19 @@ export async function embedAndStoreBatch(params: {
       errorSamples: ["Atomic vector checkpoint unavailable"],
       batchFailed: false,
     };
-  const embedResult = await embedTextsWithRecovery(
-    embedPort,
-    items.map((item) =>
-      formatDocForEmbedding(item.text, item.title ?? undefined, modelUri)
-    ),
-    { onSubmit: params.onSubmit }
-  );
+  const formattedByKey = new Map<string, string>();
+  const formattedInputs = items.map((item) => {
+    const formatted = formatDocForEmbedding(
+      item.text,
+      item.title ?? undefined,
+      modelUri
+    );
+    formattedByKey.set(chunkRetryKey(item), formatted);
+    return formatted;
+  });
+  const embedResult = await embedTextsWithRecovery(embedPort, formattedInputs, {
+    onSubmit: params.onSubmit,
+  });
 
   if (!embedResult.ok) {
     const formattedError = formatLlmFailure(embedResult.error);
@@ -270,44 +276,44 @@ export async function embedAndStoreBatch(params: {
 
   let written = 0;
   let committedRows: VectorRow[] = [];
-  const itemsByKey = new Map(items.map((item) => [chunkRetryKey(item), item]));
-  const checkpoint = (rows: VectorRow[]): VectorRow[] => {
-    assertInferenceActive();
-    if (params.identityStillCurrent && !params.identityStillCurrent())
-      return [];
-    if (!db) return rows;
-    // A concurrently activated verified partition forbids a late legacy write.
-    if (
-      db
-        .query(
-          "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'vector_partitions'"
-        )
-        .get() &&
-      db
-        .query(
-          "SELECT 1 FROM vector_partitions WHERE model = ? AND state = 'active' AND activated_epoch IS NOT NULL LIMIT 1"
-        )
-        .get(modelUri)
-    )
-      return [];
-    return rows.filter((row) => {
-      const item = itemsByKey.get(chunkRetryKey(row));
-      const current = db
-        .query<{ text: string; title: string | null }, [string, number]>(`
+  const hasPartitionsTableStmt = db
+    ? db.query(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'vector_partitions'"
+      )
+    : null;
+  let hasActivePartitionStmt: ReturnType<
+    NonNullable<typeof db>["query"]
+  > | null = null;
+  const selectCurrentChunkStmt = db
+    ? db.query<{ text: string; title: string | null }, [string, number]>(`
         SELECT c.text, d.title FROM content_chunks c
         JOIN documents d ON d.mirror_hash = c.mirror_hash AND d.active = 1
         WHERE c.mirror_hash = ? AND c.seq = ? ORDER BY d.id LIMIT 1
       `)
-        .get(row.mirrorHash, row.seq);
+    : null;
+  const checkpoint = (rows: VectorRow[]): VectorRow[] => {
+    assertInferenceActive();
+    if (params.identityStillCurrent && !params.identityStillCurrent())
+      return [];
+    if (!db || !selectCurrentChunkStmt) return rows;
+    // A concurrently activated verified partition forbids a late legacy write.
+    if (hasPartitionsTableStmt?.get()) {
+      hasActivePartitionStmt ??= db.query<unknown, [string]>(
+        "SELECT 1 FROM vector_partitions WHERE model = ? AND state = 'active' AND activated_epoch IS NOT NULL LIMIT 1"
+      );
+      if (hasActivePartitionStmt.get(modelUri)) return [];
+    }
+    return rows.filter((row) => {
+      const expectedFormatted = formattedByKey.get(chunkRetryKey(row));
+      if (expectedFormatted === undefined) return false;
+      const current = selectCurrentChunkStmt.get(row.mirrorHash, row.seq);
       return (
-        !!item &&
         !!current &&
         formatDocForEmbedding(
           current.text,
           current.title ?? undefined,
           modelUri
-        ) ===
-          formatDocForEmbedding(item.text, item.title ?? undefined, modelUri)
+        ) === expectedFormatted
       );
     });
   };

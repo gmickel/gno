@@ -781,6 +781,8 @@ export interface MemoryEligibleDocumentsOptions {
   /** Normalized scopes; any-intersection semantics. */
   scopes: string[];
   excludeSuperseded?: boolean;
+  /** Optional positive row cap (e.g. `1` for existence probes). */
+  limit?: number;
 }
 
 /** Minimal identity of a memory record eligible for managed recall. */

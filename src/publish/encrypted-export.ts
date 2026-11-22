@@ -95,13 +95,23 @@ export type EncryptedReaderSpaceData = {
 
 const toBase64 = (value: Uint8Array): string => encodeBytesToBase64(value);
 
+const BASE64_WHITESPACE = /[\t\n\f\r ]+/g;
+const BASE64_STRICT = /^[A-Za-z0-9+/]*={0,2}$/;
+
 const fromBase64 = (value: string): Uint8Array => {
-  const binary = atob(value);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) {
-    bytes[i] = binary.charCodeAt(i);
+  const cleaned = value.replace(BASE64_WHITESPACE, "");
+  if (
+    cleaned.length % 4 === 1 ||
+    !BASE64_STRICT.test(cleaned) ||
+    (cleaned.includes("=") && cleaned.length % 4 !== 0)
+  ) {
+    throw new DOMException(
+      "The string to be decoded is not correctly encoded.",
+      "InvalidCharacterError"
+    );
   }
-  return bytes;
+  const buf = Buffer.from(cleaned, "base64");
+  return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 };
 
 const randomBytes = (size: number): Uint8Array => {
