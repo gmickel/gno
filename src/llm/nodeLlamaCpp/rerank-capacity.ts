@@ -93,9 +93,10 @@ export function formatRerankPair(
 
 export interface PreparedRerankBatch {
   capacity: RerankCapacity;
-  /** Pre-tokenized query and documents when the model/template is supported. */
+  /** Pre-tokenized query, documents, and complete audited pair token streams. */
   queryTokens?: Token[];
   documentTokens?: Token[][];
+  pairTokens?: Token[][];
 }
 
 export function prepareRerankBatch(
@@ -123,43 +124,32 @@ export function prepareRerankBatch(
   }
   const tpl = getStaticTemplateTokens(model);
   const queryTokens = model.tokenizer(query, false, "trimLeadingSpace");
-  const baseLength =
-    tpl.prefix.length +
-    queryTokens.length +
-    tpl.middle.length +
-    tpl.suffix.length;
-  const fixedFirst =
-    tpl.prefix[0] ?? queryTokens[0] ?? tpl.middle[0] ?? undefined;
-  const fixedLast = tpl.suffix.at(-1);
-  const fallbackLastBeforeDoc =
-    tpl.middle.at(-1) ?? queryTokens.at(-1) ?? tpl.prefix.at(-1);
   const { bos, eos, shouldPrependBosToken, shouldAppendEosToken } =
     model.tokens;
 
   const documentTokens: Token[][] = [];
+  const pairTokens: Token[][] = [];
   let requiredTokens = 0;
   for (const document of documents) {
     const docTokens = model.tokenizer(document, false, "trimLeadingSpace");
     documentTokens.push(docTokens);
-    let length = baseLength + docTokens.length;
-    let firstToken =
-      fixedFirst !== undefined ? fixedFirst : (docTokens[0] ?? tpl.suffix[0]);
-    let lastToken =
-      fixedLast !== undefined
-        ? fixedLast
-        : (docTokens.at(-1) ?? fallbackLastBeforeDoc);
-    if (shouldPrependBosToken && bos != null && firstToken !== bos) {
-      length += 1;
-      if (length === 1) {
-        lastToken = bos;
-      }
-      firstToken = bos;
+    const pair: Token[] = [
+      ...tpl.prefix,
+      ...queryTokens,
+      ...tpl.middle,
+      ...docTokens,
+      ...tpl.suffix,
+    ];
+    if (shouldPrependBosToken && bos != null && pair.at(0) !== bos) {
+      pair.unshift(bos);
     }
-    if (shouldAppendEosToken && eos != null && lastToken !== eos) {
-      length += 1;
+    if (shouldAppendEosToken && eos != null && pair.at(-1) !== eos) {
+      // Native 3.20.0 prepends here despite calling this an end token. Preserve parity.
+      pair.unshift(eos);
     }
-    if (length > requiredTokens) {
-      requiredTokens = length;
+    pairTokens.push(pair);
+    if (pair.length > requiredTokens) {
+      requiredTokens = pair.length;
     }
   }
   if (requiredTokens > maximum) {
@@ -178,12 +168,14 @@ export function prepareRerankBatch(
       },
       queryTokens,
       documentTokens,
+      pairTokens,
     };
   }
   return {
     capacity: { kind: "sized", contextSize, requiredTokens },
     queryTokens,
     documentTokens,
+    pairTokens,
   };
 }
 

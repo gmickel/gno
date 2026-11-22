@@ -284,10 +284,13 @@ async function retrieveLegs(
     return { legs, retrieval };
   }
 
-  // Start lexical search immediately and probe whether any eligible fact exists
-  // (limit: 1, no full-table fetch) so empty scopes short-circuit to hybrid mode
-  // without invoking the embedding provider.
-  const lexicalPromise = searchLexical(deps, input);
+  // Start lexical search immediately and observe its outcome right away so a
+  // lexical rejection can never become an unhandled rejection while the probe
+  // is still pending.
+  const lexicalOutcome = searchLexical(deps, input).then(
+    (value) => ({ ok: true as const, value }),
+    (error: unknown) => ({ ok: false as const, error })
+  );
   const probe = await store.listMemoryEligibleDocuments({
     collection,
     scopes,
@@ -295,25 +298,27 @@ async function retrieveLegs(
     limit: 1,
   });
   if (!probe.ok) {
-    await lexicalPromise.catch(() => undefined);
+    await lexicalOutcome;
     throw new MemoryError("MEMORY_QUERY_FAILED", probe.error.message);
   }
   if (probe.value.length === 0) {
-    const lexical = await lexicalPromise;
-    if (lexical) {
-      legs.push({ source: "bm25", results: lexical });
+    const lexicalResult = await lexicalOutcome;
+    if (!lexicalResult.ok) throw lexicalResult.error;
+    if (lexicalResult.value) {
+      legs.push({ source: "bm25", results: lexicalResult.value });
     }
     retrieval.mode = "hybrid";
     return { legs, retrieval };
   }
 
   // Overlap query embedding with BM25 lexical retrieval.
-  const [lexical, embedded] = await Promise.all([
-    lexicalPromise,
+  const [lexicalResult, embedded] = await Promise.all([
+    lexicalOutcome,
     embedPort.embed(query),
   ]);
-  if (lexical) {
-    legs.push({ source: "bm25", results: lexical });
+  if (!lexicalResult.ok) throw lexicalResult.error;
+  if (lexicalResult.value) {
+    legs.push({ source: "bm25", results: lexicalResult.value });
   }
   if (!embedded.ok) {
     retrieval.semanticUnavailable = embedded.error.message;

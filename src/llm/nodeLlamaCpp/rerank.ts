@@ -30,30 +30,63 @@ const RERANK_HYSTERESIS_MIN_TOKENS = 2048;
 const DUAL_RERANK_MIN_CPU_CORES = 12;
 const DUAL_RERANK_THREADS_PER_CONTEXT = 6;
 
-function supportsTokenRankAll(context: LlamaRankingContext): boolean {
-  return (
-    typeof context.rankAll === "function" &&
-    typeof (context as { _evaluateRankingForInput?: unknown })
-      ._evaluateRankingForInput === "function"
-  );
+interface NativeDirectRankingContext {
+  _evaluateRankingForInput(input: Token[]): Promise<number>;
+  _llamaContext?: { contextSize?: number };
+}
+
+function asDirectRankingContext(
+  context: LlamaRankingContext
+): NativeDirectRankingContext | null {
+  const candidate = context as unknown as Partial<NativeDirectRankingContext>;
+  return typeof candidate._evaluateRankingForInput === "function"
+    ? (candidate as NativeDirectRankingContext)
+    : null;
 }
 
 async function scoreUniqueWithContext(
   context: LlamaRankingContext,
   query: string,
   uniqueDocs: string[],
-  queryTokens?: Token[],
-  docTokens?: Token[][]
+  pairTokens?: Token[][]
 ): Promise<number[]> {
+  // Fast path for pinned node-llama-cpp@3.20.0 audited pairs: evaluate the
+  // pre-built complete token sequences directly so neither static template
+  // fragments, query, nor documents are re-tokenized during scoring.
+  const direct = asDirectRankingContext(context);
+  if (
+    direct !== null &&
+    pairTokens !== undefined &&
+    pairTokens.length === uniqueDocs.length
+  ) {
+    const limit = direct._llamaContext?.contextSize;
+    if (typeof limit === "number" && limit > 0) {
+      let maxLen = 0;
+      for (const tokens of pairTokens) {
+        if (tokens.length > maxLen) maxLen = tokens.length;
+      }
+      if (maxLen > limit) {
+        throw new Error(
+          `The input lengths of some of the given documents exceed the context size. Try to increase the context size to at least ${maxLen + 1} or use another model that supports longer contexts.`
+        );
+      }
+    }
+    const raw = await Promise.all(
+      pairTokens.map((tokens) => direct._evaluateRankingForInput(tokens))
+    );
+    if (raw.length !== uniqueDocs.length) {
+      throw new Error("Rerank returned incomplete scores");
+    }
+    for (const score of raw) {
+      if (!Number.isFinite(score)) {
+        throw new Error("Rerank returned invalid candidate scores");
+      }
+    }
+    return raw;
+  }
+
   if (typeof context.rankAll === "function") {
-    const usePreTokenized =
-      queryTokens !== undefined &&
-      docTokens !== undefined &&
-      docTokens.length === uniqueDocs.length &&
-      supportsTokenRankAll(context);
-    const raw = usePreTokenized
-      ? await context.rankAll(queryTokens, docTokens)
-      : await context.rankAll(query, uniqueDocs);
+    const raw = await context.rankAll(query, uniqueDocs);
     if (raw.length !== uniqueDocs.length) {
       throw new Error("Rerank returned incomplete scores");
     }
@@ -200,7 +233,7 @@ export class NodeLlamaCppRerank implements RerankPort {
       }
 
       const prepared = prepareRerankBatch(llamaModel, query, uniqueDocs);
-      const { capacity, queryTokens, documentTokens } = prepared;
+      const { capacity, pairTokens } = prepared;
       const contextSize =
         capacity.kind === "sized" ? capacity.contextSize : undefined;
       const configuration = JSON.stringify([
@@ -259,12 +292,12 @@ export class NodeLlamaCppRerank implements RerankPort {
         const buckets: Array<{
           indices: number[];
           docs: string[];
-          tokens: Token[][];
+          pairs: Token[][];
           load: number;
         }> = this.contexts.map(() => ({
           indices: [],
           docs: [],
-          tokens: [],
+          pairs: [],
           load: 0,
         }));
         for (const item of order) {
@@ -276,8 +309,8 @@ export class NodeLlamaCppRerank implements RerankPort {
           }
           lightest.indices.push(item.idx);
           lightest.docs.push(uniqueDocs[item.idx]!);
-          if (documentTokens) {
-            lightest.tokens.push(documentTokens[item.idx]!);
+          if (pairTokens) {
+            lightest.pairs.push(pairTokens[item.idx]!);
           }
           lightest.load += item.len;
         }
@@ -288,8 +321,7 @@ export class NodeLlamaCppRerank implements RerankPort {
                   this.contexts[idx]!,
                   query,
                   bucket.docs,
-                  queryTokens,
-                  documentTokens ? bucket.tokens : undefined
+                  pairTokens ? bucket.pairs : undefined
                 )
               : Promise.resolve([] as number[])
           )
@@ -307,8 +339,7 @@ export class NodeLlamaCppRerank implements RerankPort {
           this.contexts[0]!,
           query,
           uniqueDocs,
-          queryTokens,
-          documentTokens
+          pairTokens
         );
       }
       checkEvaluation(options);

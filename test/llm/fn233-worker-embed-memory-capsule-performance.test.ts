@@ -866,10 +866,11 @@ describe("fn-233 R6: Context Capsule zero-mutation fast path, graph & truncateTe
     expect(store.pending()).toEqual([]);
   });
 
-  test("NodeLlamaCppRerank passes pre-tokenized query and documents to native rankAll without re-tokenizing", async () => {
+  test("NodeLlamaCppRerank evaluates audited pre-built pair token streams without re-tokenizing template, query, or docs", async () => {
+    let templateTokenizeCalls = 0;
     let queryTokenizerCalls = 0;
     let docTokenizerCalls = 0;
-    const receivedInputs: Array<{ query: unknown; docs: unknown[] }> = [];
+    const evaluatedPairs: number[][] = [];
     const model = {
       disposed: false,
       fileInfo: {
@@ -880,20 +881,28 @@ describe("fn-233 R6: Context Capsule zero-mutation fast path, graph & truncateTe
       },
       vocabularyType: "bpe",
       tokens: {},
-      tokenize: (text: string) => Array.from(text, () => 1),
+      tokenize: (text: string) => {
+        templateTokenizeCalls += 1;
+        return Array.from(text, () => 1);
+      },
       tokenizer: (text: string) => {
         if (text === "q") queryTokenizerCalls += 1;
         else docTokenizerCalls += 1;
         return Array.from(text, (_, idx) => idx + 10);
       },
       trainContextSize: 8192,
-      async createRankingContext() {
+      async createRankingContext(opts: { contextSize?: number }) {
         return {
           disposed: false,
-          _evaluateRankingForInput: async () => 0.5,
-          async rankAll(q: unknown, docs: unknown[]) {
-            receivedInputs.push({ query: q, docs: [...docs] });
-            return docs.map(() => 0.8);
+          _llamaContext: { contextSize: opts.contextSize },
+          async _evaluateRankingForInput(tokens: number[]) {
+            evaluatedPairs.push([...tokens]);
+            return tokens.length / 1000;
+          },
+          async rankAll() {
+            throw new Error(
+              "should not call string rankAll when direct pair tokens exist"
+            );
           },
           async dispose() {},
         };
@@ -907,12 +916,17 @@ describe("fn-233 R6: Context Capsule zero-mutation fast path, graph & truncateTe
     const port = new NodeLlamaCppRerank(manager, "rerank", "rerank.gguf");
     const res = await port.rerank("q", ["alpha", "beta", "alpha"]);
     expect(res.ok).toBe(true);
+    // Static template tokenized 3 times total (prefix/middle/suffix), never per-doc.
+    expect(templateTokenizeCalls).toBe(3);
     expect(queryTokenizerCalls).toBe(1);
     expect(docTokenizerCalls).toBe(2);
-    expect(Array.isArray(receivedInputs[0]?.query)).toBe(true);
-    expect(
-      (receivedInputs[0]?.docs ?? []).every((entry) => Array.isArray(entry))
-    ).toBe(true);
+    expect(evaluatedPairs).toHaveLength(2);
+    // Second call with different docs reuses cached static template tokens (still 3!).
+    const res2 = await port.rerank("q", ["gamma", "delta"]);
+    expect(res2.ok).toBe(true);
+    expect(templateTokenizeCalls).toBe(3);
+    expect(queryTokenizerCalls).toBe(2);
+    expect(docTokenizerCalls).toBe(4);
     await port.dispose();
   });
 });
