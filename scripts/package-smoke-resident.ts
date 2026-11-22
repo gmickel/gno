@@ -153,9 +153,11 @@ async function proveLoopbackGateway(input: ResidentSmokeInput): Promise<void> {
         "serve",
         [input.cwd, input.env.GNO_DATA_DIR ?? "", "package-smoke-secret"]
       );
-      // Each vsearch sends init, embed and dispose. Every operation holds one
-      // dispatcher lease and one native embedding-port lease in the child.
-      const leasesPerVectorSearch = 3 * 2;
+      // Each warm vsearch reuses the cached embedding port on ToolContext and
+      // sends only embed (no redundant per-call init or dispose). Every
+      // operation holds one dispatcher lease and one native embedding-port
+      // lease in the child.
+      const leasesPerVectorSearch = 2;
       if (
         !isValidPackedWarmModelReuse(
           semanticBefore.models,
