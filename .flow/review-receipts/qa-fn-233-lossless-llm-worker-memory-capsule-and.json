@@ -1,0 +1,52 @@
+{
+  "branch": "fn-233-lossless-llm-worker-memory-capsule-and",
+  "findings": {
+    "backend": "receipt",
+    "headSha": "0f37ba6850a39728f173d36dfa1648324965131a",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-73b99072175aa131e0d12d445307c70feeb43524ff4351aa61d6e396fefc33ef"
+  },
+  "head_sha": "0f37ba6850a39728f173d36dfa1648324965131a",
+  "id": "fn-233-lossless-llm-worker-memory-capsule-and",
+  "mode": "receipt",
+  "na_reason": "All acceptance criteria (R1-R6) are internal backend performance optimizations across LLM worker IPC, node-llama-cpp embedding/rerank/generation, variant backlog, HTTP egress caching, session sanitizer/import, memory recall, context capsule/evidence, graph analysis, file locking, and encrypted publish export, with zero Web or desktop UI surfaces touched. Verified by typecheck (0 errors), lint:check (0 errors), full test suite + 19 dedicated fn-233 regression tests, eval:memory (100%), eval:sessions (100%), and 3 rounds of Codex impl-review (SHIP).",
+  "open_p0p1": [],
+  "qa_outcome": "NA",
+  "rid_coverage": {
+    "covered": 6,
+    "rids": [
+      {
+        "coverage": "backend_cli",
+        "id": "R1"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R2"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R3"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R6"
+      }
+    ],
+    "total": 6
+  },
+  "scenarios": [],
+  "timestamp": "2026-11-22T14:27:27Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
