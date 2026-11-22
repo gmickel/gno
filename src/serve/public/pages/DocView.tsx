@@ -44,12 +44,12 @@ import {
 } from "../components/ai-elements/code-block";
 import { Loader } from "../components/ai-elements/loader";
 import { BacklinksPanel } from "../components/BacklinksPanel";
+import { MarkdownPreview } from "../components/editor/MarkdownPreview";
 import {
   OutgoingLinksPanel,
   type OutgoingLink,
 } from "../components/OutgoingLinksPanel";
 import { RelatedNotesSidebar } from "../components/RelatedNotesSidebar";
-import { MarkdownPreview } from "./doc-markdown-preview";
 
 const PublishExportDialog = lazy(() =>
   import("../components/PublishExportDialog").then((module) => ({

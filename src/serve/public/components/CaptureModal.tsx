@@ -198,8 +198,11 @@ export function CaptureModal({
     void apiFetch<Array<{ name: string; path: string }> | CollectionsResponse>(
       "/api/collections"
     ).then(({ data }) => {
-      const list = Array.isArray(data) ? data : data?.collections;
-      if (list) {
+      const rawList = Array.isArray(data) ? data : data?.collections;
+      if (rawList) {
+        // Preserve alphabetical name ordering matching /api/status so first-use
+        // default collection selection stays deterministic across config order.
+        const list = [...rawList].sort((a, b) => a.name.localeCompare(b.name));
         setCollections(list.map((c) => ({ name: c.name, path: c.path })));
 
         const requestedCollection = defaultCollection.trim();

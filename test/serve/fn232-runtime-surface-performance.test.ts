@@ -413,6 +413,97 @@ describe("fn-232 R3: REST SQL lookups, browse tree, date fields cache, and JSON 
         ]);
       }
 
+      // Unicode collation + Kelvin sign U+212A + fractional limit parity
+      expect(
+        (
+          await store.upsertDocument({
+            collection: "notes",
+            relPath: "kelvin.md",
+            sourceHash: "hk",
+            sourceMime: "text/markdown",
+            sourceExt: ".md",
+            sourceSize: 50,
+            sourceMtime: "2026-01-01T00:00:00.000Z",
+            title: "\u212aelvin Scale",
+            mirrorHash: "mk",
+            ingestVersion: 1,
+          })
+        ).ok
+      ).toBe(true);
+      expect(
+        (
+          await store.upsertDocument({
+            collection: "notes",
+            relPath: "aardvark.md",
+            sourceHash: "ha",
+            sourceMime: "text/markdown",
+            sourceExt: ".md",
+            sourceSize: 50,
+            sourceMtime: "2026-01-01T00:00:00.000Z",
+            title: "Äardvark",
+            mirrorHash: "ma",
+            ingestVersion: 1,
+          })
+        ).ok
+      ).toBe(true);
+      expect(
+        (
+          await store.upsertDocument({
+            collection: "notes",
+            relPath: "zoo.md",
+            sourceHash: "hz",
+            sourceMime: "text/markdown",
+            sourceExt: ".md",
+            sourceSize: 50,
+            sourceMtime: "2026-01-01T00:00:00.000Z",
+            title: "Zoo",
+            mirrorHash: "mz",
+            ingestVersion: 1,
+          })
+        ).ok
+      ).toBe(true);
+
+      const kelvinRes = await store.searchDocumentsForAutocomplete({
+        query: "kelvin",
+        limit: 5,
+      });
+      expect(kelvinRes.ok).toBe(true);
+      if (kelvinRes.ok) {
+        expect(kelvinRes.value.map((d) => d.uri)).toEqual([
+          "gno://notes/kelvin.md",
+        ]);
+      }
+
+      const collationRes = await store.searchDocumentsForAutocomplete({
+        query: "",
+        limit: 1.5,
+      });
+      expect(collationRes.ok).toBe(true);
+      if (collationRes.ok) {
+        expect(collationRes.value).toHaveLength(1);
+        expect(collationRes.value[0]?.title).toBe("Äardvark");
+      }
+
+      // Rolled-back transaction must NOT poison getCollectionDateFields cache
+      const rawDb = store.getRawDb();
+      rawDb.run("BEGIN");
+      rawDb
+        .prepare(
+          `UPDATE documents SET date_fields = '{"ephemeral":"2026-05-01"}' WHERE rel_path = 'zoo.md'`
+        )
+        .run();
+      const insideTx = await store.getCollectionDateFields("notes");
+      expect(insideTx.ok).toBe(true);
+      if (insideTx.ok) {
+        expect(insideTx.value).toContain("ephemeral");
+      }
+      rawDb.run("ROLLBACK");
+      const afterRollback = await store.getCollectionDateFields("notes");
+      expect(afterRollback.ok).toBe(true);
+      if (afterRollback.ok) {
+        expect(afterRollback.value).not.toContain("ephemeral");
+      }
+
       // Date fields cache invalidates after new document write
       const dates1 = await store.getCollectionDateFields("notes");
       const dates2 = await store.getCollectionDateFields("notes");
@@ -468,6 +559,7 @@ describe("fn-232 R3: REST SQL lookups, browse tree, date fields cache, and JSON 
     expect(foundEmpty?.documentCount).toBe(0);
 
     expect(findBrowseNode(collections, "notes", "a/missing")).toBeNull();
+    expect(findBrowseNode(collections, "notes", "a//b")).toBeNull();
   });
 
   test("maybeCompressApiJsonResponse compresses JSON > 2 KiB and preserves small/non-gzip responses", async () => {
@@ -715,6 +807,42 @@ describe("fn-232 R6: MCP RW lock, WeakMap strict schema cache, and warm port cac
       if (v3?.ok && v4?.ok) {
         expect(v4.value).not.toBe(v3.value);
       }
+
+      // getCachedLazyVectorIndex must NOT share request-scoped embedPort when no stored dimensions exist
+      let initCallsA = 0;
+      let initCallsB = 0;
+      const makeFakeEmbedPort = (onInit: () => void) =>
+        ({
+          modelUri: "lazy-unbacked-model",
+          init: async () => {
+            onInit();
+            return { ok: true as const, value: undefined };
+          },
+          embed: async () => ({ ok: true as const, value: [1, 0, 0, 0] }),
+          embedBatch: async () => ({
+            ok: true as const,
+            value: [[1, 0, 0, 0]],
+          }),
+          dimensions: () => 4,
+          dispose: async () => undefined,
+        }) as never;
+      const lazyA = await ctx.getCachedLazyVectorIndex?.(
+        "lazy-unbacked-model",
+        makeFakeEmbedPort(() => {
+          initCallsA += 1;
+        })
+      );
+      const lazyB = await ctx.getCachedLazyVectorIndex?.(
+        "lazy-unbacked-model",
+        makeFakeEmbedPort(() => {
+          initCallsB += 1;
+        })
+      );
+      expect(lazyA).not.toBe(lazyB);
+      await lazyA?.searchNearest(new Float32Array([1, 0, 0, 0]), 1);
+      await lazyB?.searchNearest(new Float32Array([1, 0, 0, 0]), 1);
+      expect(initCallsA).toBe(1);
+      expect(initCallsB).toBe(1);
     } finally {
       await store.close();
     }

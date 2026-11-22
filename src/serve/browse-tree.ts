@@ -183,7 +183,30 @@ export function buildBrowseTree(
   for (const root of sortedRoots) {
     sortNodes(root.children);
   }
+  indexBrowseTree(sortedRoots);
   return sortedRoots;
+}
+
+const browseTreeIndex = new WeakMap<
+  BrowseTreeNode[],
+  Map<string, BrowseTreeNode>
+>();
+
+function indexBrowseTree(roots: BrowseTreeNode[]): Map<string, BrowseTreeNode> {
+  const index = new Map<string, BrowseTreeNode>();
+  const stack: BrowseTreeNode[] = [...roots];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (!node) {
+      continue;
+    }
+    index.set(`${node.collection}\u0000${node.path}`, node);
+    for (const child of node.children) {
+      stack.push(child);
+    }
+  }
+  browseTreeIndex.set(roots, index);
+  return index;
 }
 
 export function findBrowseNode(
@@ -195,31 +218,12 @@ export function findBrowseNode(
     return null;
   }
 
-  const root = roots.find((node) => node.collection === collection);
-  if (!root) {
-    return null;
-  }
-
   const normalizedPath = normalizeBrowsePath(path);
-  if (!normalizedPath) {
-    return root;
+  let index = browseTreeIndex.get(roots);
+  if (!index) {
+    index = indexBrowseTree(roots);
   }
-
-  const parts = normalizedPath.split("/").filter(Boolean);
-  let current = root;
-  let currentPath = "";
-  for (const part of parts) {
-    currentPath = currentPath ? `${currentPath}/${part}` : part;
-    const next = current.children.find(
-      (child) => child.name === part || child.path === currentPath
-    );
-    if (!next) {
-      return null;
-    }
-    current = next;
-  }
-
-  return current;
+  return index.get(`${collection}\u0000${normalizedPath}`) ?? null;
 }
 
 export function getBrowseAncestorIds(

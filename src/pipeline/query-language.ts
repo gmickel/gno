@@ -4,17 +4,16 @@
  * IMPORTANT: This affects prompt selection and metadata ONLY.
  * It does NOT affect retrieval filtering - that's controlled by CLI --lang flag.
  */
-// node:module createRequire has no Bun equivalent for synchronous lazy ESM/CJS loading.
-import { createRequire } from "node:module";
-
 type FrancFn = typeof import("franc").franc;
 let cachedFranc: FrancFn | null = null;
-let lazyRequire: NodeRequire | null = null;
 
 function getFranc(): FrancFn {
   if (!cachedFranc) {
-    lazyRequire ??= createRequire(import.meta.url);
-    const mod = lazyRequire("franc") as { franc: FrancFn };
+    // Static require("franc") is bundled by `bun build --compile` into
+    // standalone executables while still remaining lazily evaluated at runtime
+    // until a >= 15-char query without `--lang` arrives.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require("franc") as { franc: FrancFn };
     cachedFranc = mod.franc;
   }
   return cachedFranc;

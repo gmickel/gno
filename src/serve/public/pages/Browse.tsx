@@ -188,7 +188,12 @@ export default function Browse({ navigate, location }: PageProps) {
 
   useEffect(() => {
     setDocs([]);
-  }, [selectedCollection, selectedPath]);
+    setPagination((prev) =>
+      prev.scopeKey === docsScopeKey && prev.offset === 0
+        ? prev
+        : { scopeKey: docsScopeKey, offset: 0 }
+    );
+  }, [docsScopeKey]);
 
   useEffect(() => {
     setFavoriteDocHrefs(loadFavoriteDocuments().map((entry) => entry.href));

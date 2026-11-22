@@ -39,8 +39,10 @@ const KNOWN_BOOL_FLAGS = new Set([
   "--quiet",
   "--json",
   "--offline",
-  "--no-pager",
 ]);
+
+// Version fast-path additionally accepts --no-pager without altering bare-CLI help parity.
+const VERSION_BOOL_FLAGS = new Set([...KNOWN_BOOL_FLAGS, "--no-pager"]);
 
 // Known global flags that take values (--flag value or --flag=value)
 const KNOWN_VALUE_FLAGS = ["--index", "--config"] as const;
@@ -61,7 +63,7 @@ function hasRootVersionFlag(argv: string[]): boolean {
       sawVersion = true;
       continue;
     }
-    if (KNOWN_BOOL_FLAGS.has(arg)) {
+    if (VERSION_BOOL_FLAGS.has(arg)) {
       continue;
     }
     if (isKnownValueFlag(arg) && arg.includes("=")) {

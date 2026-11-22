@@ -1056,8 +1056,10 @@ export async function runTool<T>(
     };
   }
 
-  // Shared read lock for read-only tools; exclusive write lock for mutating tools.
-  const isReadOnlyTool = READ_ONLY_LOCK_TOOLS.has(name);
+  // Shared read lock for read-only HTTP tools; stdio keeps its strict serial
+  // dispatch and mutating tools always retain exclusive access.
+  const isHttpRequest = ctx.getEgressContext?.() !== undefined;
+  const isReadOnlyTool = isHttpRequest && READ_ONLY_LOCK_TOOLS.has(name);
   const release = await acquireInferencePermit(() =>
     isReadOnlyTool && ctx.toolMutex.acquireRead
       ? ctx.toolMutex.acquireRead()

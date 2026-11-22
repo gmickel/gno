@@ -95,6 +95,30 @@ export function BrowseTreeSidebar({
 
   const shouldVirtualize = visibleNodes.length > VIRTUALIZE_THRESHOLD;
 
+  // Keep a deep-linked or externally selected row mounted in the virtual window
+  // so keyboard users always have a reachable tab stop on the selected folder.
+  useEffect(() => {
+    if (!shouldVirtualize || !selectedNodeId) {
+      return;
+    }
+    const selectedIndex = visibleIndexById.get(selectedNodeId);
+    if (selectedIndex === undefined) {
+      return;
+    }
+    const targetTop = selectedIndex * VIRTUAL_ROW_HEIGHT_PX;
+    const targetBottom = targetTop + VIRTUAL_ROW_HEIGHT_PX;
+    const container = treeScrollRef.current;
+    const effectiveHeight = container?.clientHeight || viewportHeight;
+    const currentTop = container ? container.scrollTop : scrollTop;
+    if (targetTop < currentTop || targetBottom > currentTop + effectiveHeight) {
+      const nextTop = Math.max(0, targetTop - Math.floor(effectiveHeight / 2));
+      if (container) {
+        container.scrollTop = nextTop;
+      }
+      setScrollTop(nextTop);
+    }
+  }, [selectedNodeId, shouldVirtualize, visibleIndexById, viewportHeight]);
+
   useEffect(() => {
     if (!shouldVirtualize) {
       return;
@@ -173,6 +197,10 @@ export function BrowseTreeSidebar({
   const renderedNodes = shouldVirtualize
     ? visibleNodes.slice(startIndex, endIndex)
     : visibleNodes;
+  const activeTabTarget = focusedNodeId ?? selectedNodeId;
+  const activeTabTargetMounted =
+    activeTabTarget !== null &&
+    renderedNodes.some(({ node }) => node.id === activeTabTarget);
   const topSpacerPx = shouldVirtualize ? startIndex * VIRTUAL_ROW_HEIGHT_PX : 0;
   const bottomSpacerPx = shouldVirtualize
     ? (visibleNodes.length - endIndex) * VIRTUAL_ROW_HEIGHT_PX
@@ -220,7 +248,6 @@ export function BrowseTreeSidebar({
               <div aria-hidden="true" style={{ height: `${topSpacerPx}px` }} />
             )}
             {renderedNodes.map(({ node, parentId }, localIndex) => {
-              const index = startIndex + localIndex;
               const isExpanded = expandedNodeSet.has(node.id);
               const isSelected = node.id === selectedNodeId;
               const isFocused = node.id === focusedNodeId;
@@ -329,11 +356,13 @@ export function BrowseTreeSidebar({
                       role="treeitem"
                       style={{ paddingLeft: `${node.depth * 0.9 + 0.5}rem` }}
                       tabIndex={
-                        isFocused ||
-                        (!focusedNodeId && index === 0) ||
-                        (selectedNodeId === null && index === 0)
-                          ? 0
-                          : -1
+                        activeTabTargetMounted
+                          ? node.id === activeTabTarget
+                            ? 0
+                            : -1
+                          : localIndex === 0
+                            ? 0
+                            : -1
                       }
                       type="button"
                     >

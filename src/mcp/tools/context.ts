@@ -84,7 +84,11 @@ const runContextTool = async (
       })
     );
   }
-  const release = await context.toolMutex.acquire();
+  const isHttpRequest = context.getEgressContext?.() !== undefined;
+  const release =
+    isHttpRequest && context.toolMutex.acquireRead
+      ? await context.toolMutex.acquireRead()
+      : await context.toolMutex.acquire();
   try {
     const data = await (context.runWithSnapshot?.(operation) ?? operation());
     return asToolResult(data);

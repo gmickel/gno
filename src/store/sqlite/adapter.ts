@@ -1163,9 +1163,11 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
    */
   staleIndexedCollections(configured: readonly string[]): StaleCollection[] {
     const db = this.ensureOpen();
+    const canCache = !db.inTransaction;
     const { dv, tc } = this.readDbVersionTuple(db);
     let indexedNames: string[];
     if (
+      canCache &&
       this.staleIndexedCache &&
       this.staleIndexedCache.dv === dv &&
       this.staleIndexedCache.tc === tc
@@ -1179,7 +1181,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         )
         .all()
         .map(({ name }) => name);
-      this.staleIndexedCache = { dv, tc, indexedNames };
+      if (canCache) {
+        this.staleIndexedCache = { dv, tc, indexedNames };
+      }
     }
     const listed = new Set(configured);
     return indexedNames.some((name) => !listed.has(name))
@@ -2768,19 +2772,22 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   ): Promise<StoreResult<string[]>> {
     try {
       const db = this.ensureOpen();
+      const canCache = !db.inTransaction;
       const { dv, tc } = this.readDbVersionTuple(db);
       const cacheKey = collection ?? "";
-      if (
-        this.dateFieldsCache &&
-        this.dateFieldsCache.dv === dv &&
-        this.dateFieldsCache.tc === tc
-      ) {
-        const hit = this.dateFieldsCache.byCollection.get(cacheKey);
-        if (hit) {
-          return ok([...hit]);
+      if (canCache) {
+        if (
+          this.dateFieldsCache &&
+          this.dateFieldsCache.dv === dv &&
+          this.dateFieldsCache.tc === tc
+        ) {
+          const hit = this.dateFieldsCache.byCollection.get(cacheKey);
+          if (hit) {
+            return ok([...hit]);
+          }
+        } else {
+          this.dateFieldsCache = { dv, tc, byCollection: new Map() };
         }
-      } else {
-        this.dateFieldsCache = { dv, tc, byCollection: new Map() };
       }
 
       const conditions: string[] = [
@@ -2806,7 +2813,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         .query<{ field: string }, string[]>(sql)
         .all(...params)
         .map((r) => r.field);
-      this.dateFieldsCache.byCollection.set(cacheKey, fields);
+      if (canCache && this.dateFieldsCache) {
+        this.dateFieldsCache.byCollection.set(cacheKey, fields);
+      }
       return ok([...fields]);
     } catch (cause) {
       return err(
@@ -2925,11 +2934,13 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
 
   /**
    * Minimal-column SQL autocomplete search.
-   * For pure-ASCII queries without spaces, pushes substring filtering and
-   * LIMIT into SQL (over-fetching slightly when sorting by localeCompare would
-   * reorder ties); for non-ASCII or multi-token queries spanning `title + uri`,
-   * selects only the 5 lightweight scalar columns so SQLite never hydrates
-   * full DocumentRow blobs or parses typedMetadata JSON.
+   * Selects only the 5 scalar columns needed for autocomplete (never hydrating
+   * full DocumentRow blobs or parsing typedMetadata JSON). For non-empty
+   * single-token ASCII queries, pushes an ASCII substring pre-filter into SQL
+   * while still passing rows containing any non-ASCII character (so Unicode
+   * case folding like `Kelvin` -> `kelvin` is never missed), then applies
+   * exact JS display-title resolution, `.toLowerCase().includes()`,
+   * `.localeCompare()` ordering, and `.slice(0, limit)`.
    */
   async searchDocumentsForAutocomplete(options: {
     query: string;
@@ -2948,7 +2959,12 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     try {
       const db = this.ensureOpen();
       const query = options.query.trim().toLowerCase();
-      const limit = Math.max(1, Math.min(options.limit, 20));
+      // Preserve Array.prototype.slice(0, limit) semantics (including fractional
+      // numbers such as 1.5 -> 1, capped at 20, floored at 0).
+      const rawLimit = Number.isFinite(options.limit)
+        ? Math.trunc(options.limit)
+        : 8;
+      const limit = Math.max(0, Math.min(rawLimit, 20));
       const isAsciiSingleSegment =
         query.length > 0 && !/[^\x20-\x7f]/.test(query) && !query.includes(" ");
 
@@ -2968,123 +2984,45 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         collection: string;
       };
 
-      let rows: MinimalRow[];
+      const conditions = ["active = 1"];
+      const params: string[] = [];
+      if (options.collection) {
+        conditions.push("collection = ?");
+        params.push(options.collection);
+      }
       if (isAsciiSingleSegment) {
-        // Pure-ASCII substring match pushed directly into SQL with SQL LIMIT.
-        // Title-less documents still match via uri (which embeds rel_path).
-        rows = options.collection
-          ? db
-              .query<MinimalRow, [string, string, string, number]>(
-                `SELECT docid, uri, title, rel_path, collection
-                 FROM documents
-                 WHERE active = 1
-                   AND collection = ?
-                   AND (
-                     instr(lower(COALESCE(title, '')), ?) > 0
-                     OR instr(lower(uri), ?) > 0
-                   )
-                 ORDER BY lower(COALESCE(title, rel_path)) ASC
-                 LIMIT ?`
-              )
-              .all(options.collection, query, query, limit)
-          : db
-              .query<MinimalRow, [string, string, number]>(
-                `SELECT docid, uri, title, rel_path, collection
-                 FROM documents
-                 WHERE active = 1
-                   AND (
-                     instr(lower(COALESCE(title, '')), ?) > 0
-                     OR instr(lower(uri), ?) > 0
-                   )
-                 ORDER BY lower(COALESCE(title, rel_path)) ASC
-                 LIMIT ?`
-              )
-              .all(query, query, limit);
-
-        return ok(
-          rows
-            .map((row) => ({
-              docid: row.docid,
-              uri: row.uri,
-              title: resolveTitle(row.title, row.rel_path),
-              collection: row.collection,
-            }))
-            .sort((a, b) => a.title.localeCompare(b.title))
-            .slice(0, limit)
+        // Pure-ASCII rows can only match if SQLite's ASCII lower() matches
+        // title or uri (which includes rel_path); pass rows containing any
+        // non-ASCII byte through so Unicode case folding matches identically.
+        conditions.push(
+          "(instr(lower(COALESCE(title, '')), ?) > 0 OR instr(lower(uri), ?) > 0 OR COALESCE(title, '') GLOB '*[^' || char(1) || '-' || char(127) || ']*' OR uri GLOB '*[^' || char(1) || '-' || char(127) || ']*')"
         );
+        params.push(query, query);
       }
 
-      if (query.length === 0) {
-        // Empty query: minimal-column ordered scan with SQL LIMIT when all
-        // titles are populated, else lightweight scan over 5 scalar columns.
-        rows = options.collection
-          ? db
-              .query<MinimalRow, [string, number]>(
-                `SELECT docid, uri, title, rel_path, collection
-                 FROM documents
-                 WHERE active = 1
-                   AND collection = ?
-                 ORDER BY lower(COALESCE(title, rel_path)) ASC
-                 LIMIT ?`
-              )
-              .all(options.collection, limit)
-          : db
-              .query<MinimalRow, [number]>(
-                `SELECT docid, uri, title, rel_path, collection
-                 FROM documents
-                 WHERE active = 1
-                 ORDER BY lower(COALESCE(title, rel_path)) ASC
-                 LIMIT ?`
-              )
-              .all(limit);
+      const rows = db
+        .query<MinimalRow, string[]>(
+          `SELECT docid, uri, title, rel_path, collection
+           FROM documents
+           WHERE ${conditions.join(" AND ")}`
+        )
+        .all(...params);
 
-        return ok(
-          rows
-            .map((row) => ({
-              docid: row.docid,
-              uri: row.uri,
-              title: resolveTitle(row.title, row.rel_path),
-              collection: row.collection,
-            }))
-            .sort((a, b) => a.title.localeCompare(b.title))
-            .slice(0, limit)
-        );
-      }
+      const candidates = rows
+        .map((row) => ({
+          docid: row.docid,
+          uri: row.uri,
+          title: resolveTitle(row.title, row.rel_path),
+          collection: row.collection,
+        }))
+        .filter((doc) => {
+          if (!query) return true;
+          return `${doc.title} ${doc.uri}`.toLowerCase().includes(query);
+        })
+        .sort((a, b) => a.title.localeCompare(b.title))
+        .slice(0, limit);
 
-      // Non-ASCII or space-containing query: select only the 5 lightweight
-      // scalar columns (avoiding full DocumentRow + JSON metadata hydration)
-      // so Unicode case-folding matches JS `.toLowerCase()` identically.
-      rows = options.collection
-        ? db
-            .query<MinimalRow, [string]>(
-              `SELECT docid, uri, title, rel_path, collection
-               FROM documents
-               WHERE active = 1
-                 AND collection = ?`
-            )
-            .all(options.collection)
-        : db
-            .query<MinimalRow, []>(
-              `SELECT docid, uri, title, rel_path, collection
-               FROM documents
-               WHERE active = 1`
-            )
-            .all();
-
-      return ok(
-        rows
-          .map((row) => ({
-            docid: row.docid,
-            uri: row.uri,
-            title: resolveTitle(row.title, row.rel_path),
-            collection: row.collection,
-          }))
-          .filter((doc) =>
-            `${doc.title} ${doc.uri}`.toLowerCase().includes(query)
-          )
-          .sort((a, b) => a.title.localeCompare(b.title))
-          .slice(0, limit)
-      );
+      return ok(candidates);
     } catch (cause) {
       return err(
         "QUERY_FAILED",

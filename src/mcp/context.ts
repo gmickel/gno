@@ -32,6 +32,7 @@ import {
 } from "../llm/nodeLlamaCpp/adapter";
 import { createStandaloneResidentStatus } from "../serve/resident-status";
 import { createVectorIndexPort } from "../store/vector";
+import { getStoredEmbeddingDimensions } from "../store/vector/freshness";
 import { createLazyVectorIndex } from "../store/vector/lazy";
 import { registerResources } from "./resources/index";
 import { registerTools } from "./tools/index";
@@ -253,19 +254,15 @@ export function createToolContext(
 ): ToolContext {
   const adapters = new Map<Config, LlmAdapter>();
   let cachedPortConfig: Config | null = null;
-  const cachedEmbedPorts = new Map<string, Promise<LlmResult<EmbeddingPort>>>();
-  const cachedExpandPorts = new Map<
-    string,
-    Promise<LlmResult<GenerationPort>>
-  >();
-  const cachedRerankPorts = new Map<string, Promise<LlmResult<RerankPort>>>();
+  let cachedPortGeneration = 0;
+  // Cache ONLY successfully initialized ports so concurrent callers never
+  // inherit another caller's cancellation scope during cold initialization.
+  const cachedEmbedPorts = new Map<string, EmbeddingPort>();
+  const cachedExpandPorts = new Map<string, GenerationPort>();
+  const cachedRerankPorts = new Map<string, RerankPort>();
   const cachedVectorIndexes = new Map<
     string,
     Promise<StoreResult<VectorIndexPort>>
-  >();
-  const cachedLazyVectorIndexes = new Map<
-    string,
-    Promise<VectorIndexPort | null>
   >();
   let modelsClosed = false;
   const requestSnapshot = new AsyncLocalStorage<ToolContextSnapshot>();
@@ -293,27 +290,21 @@ export function createToolContext(
   };
 
   const disposeCachedPorts = async (): Promise<void> => {
+    cachedPortGeneration += 1;
     const disposals: Promise<unknown>[] = [];
-    for (const pending of cachedEmbedPorts.values()) {
-      disposals.push(
-        pending.then((res) => (res.ok ? res.value.dispose() : undefined))
-      );
+    for (const port of cachedEmbedPorts.values()) {
+      disposals.push(Promise.resolve().then(() => port.dispose()));
     }
-    for (const pending of cachedExpandPorts.values()) {
-      disposals.push(
-        pending.then((res) => (res.ok ? res.value.dispose() : undefined))
-      );
+    for (const port of cachedExpandPorts.values()) {
+      disposals.push(Promise.resolve().then(() => port.dispose()));
     }
-    for (const pending of cachedRerankPorts.values()) {
-      disposals.push(
-        pending.then((res) => (res.ok ? res.value.dispose() : undefined))
-      );
+    for (const port of cachedRerankPorts.values()) {
+      disposals.push(Promise.resolve().then(() => port.dispose()));
     }
     cachedEmbedPorts.clear();
     cachedExpandPorts.clear();
     cachedRerankPorts.clear();
     cachedVectorIndexes.clear();
-    cachedLazyVectorIndexes.clear();
     cachedPortConfig = null;
     await Promise.allSettled(disposals);
   };
@@ -368,50 +359,83 @@ export function createToolContext(
       options.getResidentStatus ??
       (() => createStandaloneResidentStatus("stdio")),
     getModelAdapter: () => resolveModelAdapter(currentSnapshot().config),
-    getCachedEmbeddingPort: (uri, portOptions) => {
+    getCachedEmbeddingPort: async (uri, portOptions) => {
       const config = currentSnapshot().config;
       const llm = resolveModelAdapter(config);
       ensurePortCacheForConfig(config);
       const key = portCacheKey(uri, portOptions);
-      let pending = cachedEmbedPorts.get(key);
-      if (!pending) {
-        pending = llm.createEmbeddingPort(uri, portOptions).then((res) => {
-          if (!res.ok) cachedEmbedPorts.delete(key);
-          return res;
-        });
-        cachedEmbedPorts.set(key, pending);
+      const cached = cachedEmbedPorts.get(key);
+      if (cached) {
+        return { ok: true, value: cached };
       }
-      return pending;
+      const generation = cachedPortGeneration;
+      const res = await llm.createEmbeddingPort(uri, portOptions);
+      if (!res.ok) {
+        return res;
+      }
+      if (modelsClosed || generation !== cachedPortGeneration) {
+        void res.value.dispose();
+        return res;
+      }
+      const existing = cachedEmbedPorts.get(key);
+      if (existing) {
+        void res.value.dispose();
+        return { ok: true, value: existing };
+      }
+      cachedEmbedPorts.set(key, res.value);
+      return res;
     },
-    getCachedExpansionPort: (uri, portOptions) => {
+    getCachedExpansionPort: async (uri, portOptions) => {
       const config = currentSnapshot().config;
       const llm = resolveModelAdapter(config);
       ensurePortCacheForConfig(config);
       const key = portCacheKey(uri, portOptions);
-      let pending = cachedExpandPorts.get(key);
-      if (!pending) {
-        pending = llm.createExpansionPort(uri, portOptions).then((res) => {
-          if (!res.ok) cachedExpandPorts.delete(key);
-          return res;
-        });
-        cachedExpandPorts.set(key, pending);
+      const cached = cachedExpandPorts.get(key);
+      if (cached) {
+        return { ok: true, value: cached };
       }
-      return pending;
+      const generation = cachedPortGeneration;
+      const res = await llm.createExpansionPort(uri, portOptions);
+      if (!res.ok) {
+        return res;
+      }
+      if (modelsClosed || generation !== cachedPortGeneration) {
+        void res.value.dispose();
+        return res;
+      }
+      const existing = cachedExpandPorts.get(key);
+      if (existing) {
+        void res.value.dispose();
+        return { ok: true, value: existing };
+      }
+      cachedExpandPorts.set(key, res.value);
+      return res;
     },
-    getCachedRerankPort: (uri, portOptions) => {
+    getCachedRerankPort: async (uri, portOptions) => {
       const config = currentSnapshot().config;
       const llm = resolveModelAdapter(config);
       ensurePortCacheForConfig(config);
       const key = portCacheKey(uri, portOptions);
-      let pending = cachedRerankPorts.get(key);
-      if (!pending) {
-        pending = llm.createRerankPort(uri, portOptions).then((res) => {
-          if (!res.ok) cachedRerankPorts.delete(key);
-          return res;
-        });
-        cachedRerankPorts.set(key, pending);
+      const cached = cachedRerankPorts.get(key);
+      if (cached) {
+        return { ok: true, value: cached };
       }
-      return pending;
+      const generation = cachedPortGeneration;
+      const res = await llm.createRerankPort(uri, portOptions);
+      if (!res.ok) {
+        return res;
+      }
+      if (modelsClosed || generation !== cachedPortGeneration) {
+        void res.value.dispose();
+        return res;
+      }
+      const existing = cachedRerankPorts.get(key);
+      if (existing) {
+        void res.value.dispose();
+        return { ok: true, value: existing };
+      }
+      cachedRerankPorts.set(key, res.value);
+      return res;
     },
     getCachedVectorIndex: (modelUri, dimensions) => {
       const config = currentSnapshot().config;
@@ -430,22 +454,30 @@ export function createToolContext(
       }
       return pending;
     },
-    getCachedLazyVectorIndex: (modelUri, embedPort) => {
+    getCachedLazyVectorIndex: async (modelUri, embedPort) => {
       const config = currentSnapshot().config;
       ensurePortCacheForConfig(config);
-      let pending = cachedLazyVectorIndexes.get(modelUri);
-      if (!pending) {
-        pending = createLazyVectorIndex(
-          options.store.getRawDb(),
-          modelUri,
-          embedPort
-        ).then((index) => {
-          if (!index) cachedLazyVectorIndexes.delete(modelUri);
-          return index;
-        });
-        cachedLazyVectorIndexes.set(modelUri, pending);
+      const db = options.store.getRawDb();
+      const storedDimensions = getStoredEmbeddingDimensions(db, modelUri);
+      if (storedDimensions !== undefined) {
+        const key = `${modelUri}\u0000${storedDimensions}`;
+        let pending = cachedVectorIndexes.get(key);
+        if (!pending) {
+          pending = createVectorIndexPort(db, {
+            model: modelUri,
+            dimensions: storedDimensions,
+          }).then((res) => {
+            if (!res.ok) cachedVectorIndexes.delete(key);
+            return res;
+          });
+          cachedVectorIndexes.set(key, pending);
+        }
+        const res = await pending;
+        return res.ok ? res.value : null;
       }
-      return pending;
+      // Never cache an uninitialized lazy wrapper holding a caller-scoped
+      // embedPort (its egress policy is specific to this request).
+      return createLazyVectorIndex(db, modelUri, embedPort);
     },
     disposeModels: async (disposeOptions) => {
       modelsClosed = true;

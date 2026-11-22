@@ -150,6 +150,11 @@ const DUAL_THEMES = {
  * Highlight code in a single Shiki pass using dual-theme CSS variables so
  * light and dark themes share one tokenized HTML tree.
  */
+/**
+ * Highlight code with dual-theme CSS variables (`one-light` + `one-dark-pro`),
+ * allowing CodeBlock to mount a single highlighted DOM tree instead of
+ * rendering separate light and dark subtrees.
+ */
 export async function highlightCodeDualTheme(
   code: string,
   language: string,
@@ -178,21 +183,6 @@ export async function highlightCodeDualTheme(
       transformers,
     });
   }
-}
-
-export async function highlightCode(
-  code: string,
-  language: string,
-  showLineNumbers = false,
-  highlightedLines: number[] = []
-): Promise<[string, string]> {
-  const dual = await highlightCodeDualTheme(
-    code,
-    language,
-    showLineNumbers,
-    highlightedLines
-  );
-  return [dual, dual];
 }
 
 export const CodeBlock = ({

@@ -69,8 +69,8 @@ describe("fn-232 R5: zero-zod metadata-filter parity", () => {
   });
 });
 
-describe("fn-232 R5: CodeBlock single-pass dual-theme Shiki", () => {
-  test("highlightCodeDualTheme outputs dual-theme shiki CSS variables in one pass", async () => {
+describe("fn-232 R5: CodeBlock dual-theme single-tree Shiki", () => {
+  test("highlightCodeDualTheme outputs dual-theme shiki CSS variables for a single DOM tree", async () => {
     const html = await highlightCodeDualTheme(
       "const answer = 42;",
       "typescript",
@@ -138,5 +138,53 @@ describe("fn-232 R5: BrowseTreeSidebar virtualization past 100 rows", () => {
     const renderedRows = container.querySelectorAll('[role="treeitem"]');
     expect(renderedRows.length).toBeGreaterThan(0);
     expect(renderedRows.length).toBeLessThan(80);
+  });
+
+  test("deep-linked offscreen selection in virtualized tree mounts selected row with reachable tabIndex=0", async () => {
+    const children: BrowseTreeNode[] = Array.from({ length: 160 }, (_, i) => ({
+      id: `folder:notes:dir-${String(i).padStart(3, "0")}`,
+      kind: "folder",
+      name: `dir-${String(i).padStart(3, "0")}`,
+      collection: "notes",
+      path: `dir-${String(i).padStart(3, "0")}`,
+      depth: 1,
+      documentCount: 1,
+      directDocumentCount: 1,
+      children: [],
+    }));
+    const collections: BrowseTreeNode[] = [
+      {
+        id: "collection:notes",
+        kind: "collection",
+        name: "notes",
+        collection: "notes",
+        path: "",
+        depth: 0,
+        documentCount: 160,
+        directDocumentCount: 0,
+        children,
+      },
+    ];
+
+    const targetId = "folder:notes:dir-150";
+    const { container } = render(
+      <BrowseTreeSidebar
+        collections={collections}
+        expandedNodeIds={["collection:notes"]}
+        favoriteCollections={[]}
+        onSelect={() => undefined}
+        onToggle={() => undefined}
+        onToggleFavoriteCollection={() => undefined}
+        selectedNodeId={targetId}
+      />
+    );
+
+    await waitFor(() => {
+      const tabStops = container.querySelectorAll(
+        '[role="treeitem"][tabindex="0"]'
+      );
+      expect(tabStops.length).toBe(1);
+      expect(tabStops[0]?.textContent).toContain("dir-150");
+    });
   });
 });
