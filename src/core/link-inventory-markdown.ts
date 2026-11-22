@@ -4,11 +4,11 @@
  * @module src/core/link-inventory-markdown
  */
 
-import type { ExcludedRange } from "../ingestion/strip";
+import type { ExcludedRange } from "../ingestion/excluded-ranges";
 import type { LinkInventoryToken } from "./link-inventory-types";
 
+import { rangeIntersectsExcluded } from "../ingestion/excluded-ranges";
 import { offsetToPosition } from "../ingestion/position";
-import { rangeIntersectsExcluded } from "../ingestion/strip";
 import {
   detectEncodingStyle,
   isBackslashEscaped,

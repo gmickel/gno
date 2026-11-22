@@ -8,18 +8,18 @@
 import type { ComponentProps, FC, ReactNode } from "react";
 
 import { ExternalLinkIcon } from "lucide-react";
-import { memo } from "react";
+import { createContext, memo, useContext, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 
+import { slugifySectionTitle } from "../../../../core/sections";
 import {
   normalizeWikiName,
   parseTargetParts,
   splitWikiLinkContent,
   stripWikiMdExt,
-} from "../../../../core/links";
-import { slugifySectionTitle } from "../../../../core/sections";
+} from "../../../../core/wiki-link-syntax";
 import {
   extractMarkdownCodeLanguage,
   resolveCodeLanguage,
@@ -188,35 +188,55 @@ function flattenNodeText(node: ReactNode): string {
   return "";
 }
 
-// Heading styles with proper hierarchy
-const createHeading =
-  (
-    level: 1 | 2 | 3 | 4 | 5 | 6,
-    anchorCounts: Map<string, number>
-  ): FC<{ children?: ReactNode }> =>
-  ({ children }) => {
-    const Tag = `h${level}` as const;
-    const sizes = {
-      1: "text-3xl mt-8 mb-4 pb-2 border-b border-border/50",
-      2: "text-2xl mt-6 mb-3 pb-1.5 border-b border-border/30",
-      3: "text-xl mt-5 mb-2",
-      4: "text-lg mt-4 mb-2",
-      5: "text-base mt-3 mb-1 font-semibold",
-      6: "text-sm mt-3 mb-1 font-semibold text-muted-foreground",
-    };
+interface MarkdownRenderContextValue {
+  docUri?: string;
+  anchorCounts: Map<string, number>;
+}
+
+const MarkdownRenderContext = createContext<MarkdownRenderContextValue>({
+  anchorCounts: new Map(),
+});
+
+const HEADING_SIZES: Record<1 | 2 | 3 | 4 | 5 | 6, string> = {
+  1: "text-3xl mt-8 mb-4 pb-2 border-b border-border/50",
+  2: "text-2xl mt-6 mb-3 pb-1.5 border-b border-border/30",
+  3: "text-xl mt-5 mb-2",
+  4: "text-lg mt-4 mb-2",
+  5: "text-base mt-3 mb-1 font-semibold",
+  6: "text-sm mt-3 mb-1 font-semibold text-muted-foreground",
+};
+
+// Stable heading components prevent React from unmounting/remounting headings on every render.
+const createStableHeading = (
+  level: 1 | 2 | 3 | 4 | 5 | 6
+): FC<{ children?: ReactNode }> => {
+  const Tag = `h${level}` as const;
+  const className = cn(
+    "scroll-mt-24 font-serif tracking-tight",
+    HEADING_SIZES[level]
+  );
+  const HeadingComponent: FC<{ children?: ReactNode }> = ({ children }) => {
+    const { anchorCounts } = useContext(MarkdownRenderContext);
     const baseAnchor = slugifySectionTitle(flattenNodeText(children));
     const seen = (anchorCounts.get(baseAnchor) ?? 0) + 1;
     anchorCounts.set(baseAnchor, seen);
     const anchor = seen === 1 ? baseAnchor : `${baseAnchor}-${seen}`;
     return (
-      <Tag
-        className={cn("scroll-mt-24 font-serif tracking-tight", sizes[level])}
-        id={anchor}
-      >
+      <Tag className={className} id={anchor}>
         {children}
       </Tag>
     );
   };
+  HeadingComponent.displayName = `MarkdownH${level}`;
+  return HeadingComponent;
+};
+
+const H1 = createStableHeading(1);
+const H2 = createStableHeading(2);
+const H3 = createStableHeading(3);
+const H4 = createStableHeading(4);
+const H5 = createStableHeading(5);
+const H6 = createStableHeading(6);
 
 // Code block with syntax highlighting
 const Pre: FC<ComponentProps<"pre">> = ({ children, ...props }) => {
@@ -417,6 +437,42 @@ const Image: FC<ComponentProps<"img"> & { node?: unknown }> = ({
   />
 );
 
+const MarkdownImage: FC<ComponentProps<"img"> & { node?: unknown }> = ({
+  node,
+  src,
+  ...props
+}) => {
+  const { docUri } = useContext(MarkdownRenderContext);
+  return (
+    <Image {...props} node={node} src={resolveMarkdownAssetSrc(src, docUri)} />
+  );
+};
+
+const REMARK_PLUGINS = [remarkGfm];
+const REHYPE_PLUGINS = [rehypeSanitize];
+const MARKDOWN_COMPONENTS = {
+  h1: H1,
+  h2: H2,
+  h3: H3,
+  h4: H4,
+  h5: H5,
+  h6: H6,
+  p: Paragraph,
+  a: Link,
+  code: InlineCode,
+  pre: Pre,
+  blockquote: Blockquote,
+  ul: UnorderedList,
+  ol: OrderedList,
+  table: Table,
+  thead: TableHead,
+  tr: TableRow,
+  td: TableCell,
+  th: TableHeaderCell,
+  hr: Hr,
+  img: MarkdownImage,
+};
+
 /**
  * Renders markdown content with syntax highlighting and proper styling.
  * Sanitizes HTML to prevent XSS attacks.
@@ -429,6 +485,14 @@ export const MarkdownPreview = memo(
     wikiLinks,
     docUri,
   }: MarkdownPreviewProps) => {
+    const renderedContent = useMemo(
+      () =>
+        content
+          ? renderMarkdownWithWikiLinks(content, collection, wikiLinks)
+          : "",
+      [content, collection, wikiLinks]
+    );
+
     if (!content) {
       return (
         <div className={cn("text-muted-foreground italic", className)}>
@@ -437,43 +501,9 @@ export const MarkdownPreview = memo(
       );
     }
 
-    const renderedContent = renderMarkdownWithWikiLinks(
-      content,
-      collection,
-      wikiLinks
-    );
-    const anchorCounts = new Map<string, number>();
-    const components = {
-      h1: createHeading(1, anchorCounts),
-      h2: createHeading(2, anchorCounts),
-      h3: createHeading(3, anchorCounts),
-      h4: createHeading(4, anchorCounts),
-      h5: createHeading(5, anchorCounts),
-      h6: createHeading(6, anchorCounts),
-      p: Paragraph,
-      a: Link,
-      code: InlineCode,
-      pre: Pre,
-      blockquote: Blockquote,
-      ul: UnorderedList,
-      ol: OrderedList,
-      table: Table,
-      thead: TableHead,
-      tr: TableRow,
-      td: TableCell,
-      th: TableHeaderCell,
-      hr: Hr,
-      img: ({
-        node,
-        src,
-        ...props
-      }: ComponentProps<"img"> & { node?: unknown }) => (
-        <Image
-          {...props}
-          node={node}
-          src={resolveMarkdownAssetSrc(src, docUri)}
-        />
-      ),
+    const renderContextValue: MarkdownRenderContextValue = {
+      docUri,
+      anchorCounts: new Map<string, number>(),
     };
 
     return (
@@ -485,13 +515,15 @@ export const MarkdownPreview = memo(
           className
         )}
       >
-        <ReactMarkdown
-          components={components}
-          rehypePlugins={[rehypeSanitize]}
-          remarkPlugins={[remarkGfm]}
-        >
-          {renderedContent}
-        </ReactMarkdown>
+        <MarkdownRenderContext.Provider value={renderContextValue}>
+          <ReactMarkdown
+            components={MARKDOWN_COMPONENTS}
+            rehypePlugins={REHYPE_PLUGINS}
+            remarkPlugins={REMARK_PLUGINS}
+          >
+            {renderedContent}
+          </ReactMarkdown>
+        </MarkdownRenderContext.Provider>
       </div>
     );
   }

@@ -11,11 +11,20 @@ import { watch, type FSWatcher } from "node:fs";
 import { normalize, sep } from "node:path";
 
 import type { Collection } from "../config/types";
-import type { CollectionSyncResult, SyncOptions } from "../ingestion";
+import type {
+  CollectionSyncResult,
+  SyncOptions,
+  WalkConfig,
+} from "../ingestion";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 import type { DocumentEvent, DocumentEventBus } from "./doc-events";
 import type { EmbedScheduler } from "./embed-scheduler";
-import type { WatcherRetryKind } from "./watch-service-events";
+import type {
+  WatchEventHost,
+  WatchQueueHost,
+  WatcherRetryKind,
+} from "./watch-service-events";
+import type { WatchLifecycleHost } from "./watch-service-lifecycle";
 import type {
   WatcherSnapshot,
   WatcherSnapshotBuildResult,
@@ -23,6 +32,7 @@ import type {
   WatcherSnapshotOptions,
 } from "./watch-snapshot";
 
+import { collectionToWalkConfig } from "../ingestion";
 import {
   WATCHER_MAX_DIRTY_HINTS,
   WATCHER_MAX_EXACT_PATHS,
@@ -163,6 +173,11 @@ export class CollectionWatchService {
   readonly #snapshotEntryCeiling: number | undefined;
   readonly #acquireWriteLease: CollectionWatchServiceOptions["acquireWriteLease"];
   readonly #reconcileOnStart: boolean;
+  readonly #walkConfigs = new Map<string, WalkConfig>();
+  readonly #hostStateObj: WatchServiceHostState;
+  readonly #eventHost: WatchEventHost;
+  readonly #queueHost: WatchQueueHost;
+  readonly #lifecycleHost: WatchLifecycleHost;
   #nextCollectionGeneration = 0;
   #disposed = false;
   #lastEventAt: string | null = null;
@@ -188,6 +203,21 @@ export class CollectionWatchService {
     this.#snapshotEntryCeiling = options.snapshotEntryCeiling;
     this.#acquireWriteLease = options.acquireWriteLease;
     this.#reconcileOnStart = options.reconcileOnStart ?? false;
+    this.#rebuildWalkConfigs(options.collections);
+    this.#hostStateObj = this.#createHostState();
+    this.#eventHost = buildEventHost(this.#hostStateObj);
+    this.#queueHost = buildQueueHost(this.#hostStateObj);
+    this.#lifecycleHost = buildLifecycleHost(this.#hostStateObj);
+  }
+
+  #rebuildWalkConfigs(collections: readonly Collection[]): void {
+    this.#walkConfigs.clear();
+    for (const collection of collections) {
+      this.#walkConfigs.set(
+        collection.name,
+        collectionToWalkConfig(collection, 0)
+      );
+    }
   }
 
   start(): void {
@@ -212,11 +242,7 @@ export class CollectionWatchService {
     collections: Collection[],
     syncOptions?: SyncOptions
   ): void {
-    applyCollectionUpdate(
-      buildLifecycleHost(this.#hostState()),
-      collections,
-      syncOptions
-    );
+    applyCollectionUpdate(this.#lifecycleHost, collections, syncOptions);
   }
 
   suppress(absPath: string, ms = 5_000): void {
@@ -250,6 +276,7 @@ export class CollectionWatchService {
     this.#collectionGenerations.clear();
     this.#collectionFingerprints.clear();
     this.#collections = [];
+    this.#walkConfigs.clear();
     this.#pendingByCollection.clear();
     this.#snapshots.clear();
     this.#snapshotReady.clear();
@@ -275,12 +302,13 @@ export class CollectionWatchService {
     };
   }
 
-  #hostState(): WatchServiceHostState {
+  #createHostState(): WatchServiceHostState {
     return {
       disposed: () => this.#disposed,
       getCollections: () => this.#collections,
       setCollections: (collections) => {
         this.#collections = collections;
+        this.#rebuildWalkConfigs(collections);
       },
       getSyncOptions: () => this.#syncOptions,
       setSyncOptions: (syncOptions) => {
@@ -305,25 +333,21 @@ export class CollectionWatchService {
       },
       watchFactory: this.#watchFactory,
       onWatchEvent: (name, root, filename) => {
-        handleWatchEvent(
-          buildEventHost(this.#hostState()),
-          name,
-          root,
-          filename
-        );
+        handleWatchEvent(this.#eventHost, name, root, filename);
       },
       findCollection: (name) =>
         this.#collections.find((entry) => entry.name === name),
+      getWalkConfig: (name) => this.#walkConfigs.get(name),
       clock: this.#clock,
       suppressedPaths: this.#suppressedPaths,
       setLastEventAt: (iso) => {
         this.#lastEventAt = iso;
       },
       enqueueExact: (name, relPath) => {
-        enqueueExactPath(buildQueueHost(this.#hostState()), name, relPath);
+        enqueueExactPath(this.#queueHost, name, relPath);
       },
       enqueueDirty: (name, hint) => {
-        enqueueDirtyHint(buildQueueHost(this.#hostState()), name, hint);
+        enqueueDirtyHint(this.#queueHost, name, hint);
       },
       flushDebounceMs: this.#flushDebounceMs,
       maxFlushDelayMs: this.#maxFlushDelayMs,
@@ -381,7 +405,7 @@ export class CollectionWatchService {
         },
         onReadyWithPending: (name) => {
           if (pendingHasWork(this.#pendingByCollection.get(name))) {
-            scheduleFlush(buildQueueHost(this.#hostState()), name);
+            scheduleFlush(this.#queueHost, name);
           }
         },
         getSyncOptions: () => this.#syncOptions,
@@ -408,7 +432,7 @@ export class CollectionWatchService {
       snapshotInit: this.#snapshotInit,
       suppressedPaths: this.#suppressedPaths,
       clock: this.#clock,
-      queueHost: buildQueueHost(this.#hostState()),
+      queueHost: this.#queueHost,
       callbacks: this.#callbacks,
       onAfterSync: (current, relPaths) => {
         this.#afterSync(current, relPaths);
@@ -417,7 +441,7 @@ export class CollectionWatchService {
         this.#beginSnapshotInit(current);
       },
       clearLifecycleTombstones: (name) => {
-        clearLifecycleTombstones(buildLifecycleHost(this.#hostState()), name);
+        clearLifecycleTombstones(this.#lifecycleHost, name);
       },
       pruneSuppression: () => {
         pruneSuppressionMap(
@@ -450,7 +474,8 @@ export class CollectionWatchService {
     if (this.#disposed || relPaths.length === 0) {
       return;
     }
-    this.#lastSyncAt = new Date(this.#clock()).toISOString();
+    const changedAt = new Date(this.#clock()).toISOString();
+    this.#lastSyncAt = changedAt;
     this.#scheduler?.notifySyncComplete(relPaths);
     if (!this.#eventBus) {
       return;
@@ -462,7 +487,7 @@ export class CollectionWatchService {
         collection: collection.name,
         relPath,
         origin: "watcher",
-        changedAt: new Date(this.#clock()).toISOString(),
+        changedAt,
       };
       this.#eventBus.emit(event);
     }

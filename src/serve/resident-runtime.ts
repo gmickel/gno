@@ -1,7 +1,9 @@
 /** Single-process ownership boundary shared by serve and daemon surfaces. */
 
-// node:path resolve/dirname/join have no Bun path utility equivalents.
-import { dirname, join, resolve } from "node:path";
+// node:fs watch: Bun has no recursive/directory watcher API with explicit close().
+import { type FSWatcher, watch as fsWatch } from "node:fs";
+// node:path basename/dirname/join/resolve have no Bun path utility equivalents.
+import { basename, dirname, join, resolve } from "node:path";
 
 import type { Config } from "../config/types";
 import type { WriteLockHandle } from "../core/file-lock";
@@ -88,8 +90,10 @@ import {
 import { CollectionWatchService as DefaultCollectionWatchService } from "./watch-service";
 
 const OWNER_LOCK_TIMEOUT_MS = 0;
-/** How often an idle resident re-reads its config file for collection edits. */
-const CONFIG_REFRESH_INTERVAL_MS = 2_000;
+/** Safety fallback interval if directory fs.watch fails on the config parent. */
+const CONFIG_REFRESH_FALLBACK_INTERVAL_MS = 60_000;
+/** Coalesce bursty editor/atomic-rename events from the config directory watcher. */
+const CONFIG_WATCH_DEBOUNCE_MS = 50;
 
 export type ResidentMode = "serve" | "daemon";
 
@@ -514,7 +518,6 @@ export async function startResidentRuntime(
   // while the file's identity, size and times match the last good load. Any
   // write, rename, chmod or delete changes the stamp, so a broken file is
   // still reported, never served stale.
-  let loadedConfigStamp: string | undefined;
   const configStamp = async (): Promise<string | undefined> => {
     try {
       const stat = await Bun.file(instance.configPath).stat();
@@ -523,14 +526,62 @@ export async function startResidentRuntime(
       return undefined;
     }
   };
+  // Initialize from the config file already loaded at startup so the first
+  // request or watcher event does not immediately re-parse an unchanged file.
+  let loadedConfigStamp: string | undefined = await configStamp();
   // Another client may index a collection the served config omits after this
-  // runtime started; requests fail instead of reading it.
+  // runtime started; requests fail instead of reading it. Memoize clean checks
+  // by (PRAGMA data_version, total_changes, configRef) so repeated reads on an
+  // unchanged DB and config do not re-run collection scans.
+  let cachedCleanStaleCheck: {
+    dataVersion: number;
+    totalChanges: number;
+    configRef: Config;
+  } | null = null;
+  const readDbVersionTuple = (): {
+    dataVersion: number;
+    totalChanges: number;
+  } | null => {
+    try {
+      if (typeof Reflect.get(store, "getRawDb") !== "function") {
+        return null;
+      }
+      const db = store.getRawDb();
+      const row = db
+        .query<{ dv: number; tc: number }, []>(
+          "SELECT (SELECT * FROM pragma_data_version) AS dv, total_changes() AS tc"
+        )
+        .get();
+      return row ? { dataVersion: row.dv, totalChanges: row.tc } : null;
+    } catch {
+      return null;
+    }
+  };
   const assertServedCollections = (): void => {
+    const configRef = ctxHolder.config;
+    const dbVersion = readDbVersionTuple();
+    if (
+      dbVersion &&
+      cachedCleanStaleCheck &&
+      cachedCleanStaleCheck.configRef === configRef &&
+      cachedCleanStaleCheck.dataVersion === dbVersion.dataVersion &&
+      cachedCleanStaleCheck.totalChanges === dbVersion.totalChanges
+    ) {
+      return;
+    }
     const stale = store.staleIndexedCollections(
-      ctxHolder.config.collections.map(({ name }) => name)
+      configRef.collections.map(({ name }) => name)
     );
     if (stale.length > 0) {
+      cachedCleanStaleCheck = null;
       throw new StaleCollectionsError(staleCollectionsMessage(stale));
+    }
+    if (dbVersion) {
+      cachedCleanStaleCheck = {
+        dataVersion: dbVersion.dataVersion,
+        totalChanges: dbVersion.totalChanges,
+        configRef,
+      };
     }
   };
   const refreshConfig = (): Promise<void> => {
@@ -772,7 +823,7 @@ export async function startResidentRuntime(
     dispose(closeSurface) {
       if (disposal) return disposal;
       disposed = true;
-      clearInterval(configRefreshTimer);
+      stopConfigMonitoring();
       admission.stop();
       jobManager.stop();
       // A file mid-preparation fails now instead of holding shutdown.
@@ -826,9 +877,17 @@ export async function startResidentRuntime(
     };
   };
   mcpContext.getResidentStatus = () => runtime.getStatus();
-  // Without requests (a headless daemon) the watcher still follows the file.
+  // Without requests (a headless daemon) the watcher still follows config edits
+  // via fs.watch on the config parent directory (handling both in-place edits
+  // and atomic temp-file renames), falling back to a 60s timer only if fs.watch
+  // is unavailable or errors.
   let lastRefreshError: string | undefined;
-  const configRefreshTimer = setInterval(() => {
+  let configWatcher: FSWatcher | null = null;
+  let configWatchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let configRefreshFallbackTimer: ReturnType<typeof setInterval> | null = null;
+
+  const triggerBackgroundConfigRefresh = (): void => {
+    if (disposed) return;
     backgroundWork.start(async () => {
       try {
         await refreshConfig();
@@ -844,7 +903,76 @@ export async function startResidentRuntime(
         lastRefreshError = message;
       }
     });
-  }, CONFIG_REFRESH_INTERVAL_MS);
-  configRefreshTimer.unref?.();
+  };
+
+  const ensureFallbackRefreshTimer = (): void => {
+    if (disposed || configRefreshFallbackTimer) return;
+    configRefreshFallbackTimer = setInterval(
+      triggerBackgroundConfigRefresh,
+      CONFIG_REFRESH_FALLBACK_INTERVAL_MS
+    );
+    configRefreshFallbackTimer.unref?.();
+  };
+
+  const stopConfigMonitoring = (): void => {
+    if (configWatchDebounceTimer) {
+      clearTimeout(configWatchDebounceTimer);
+      configWatchDebounceTimer = null;
+    }
+    if (configRefreshFallbackTimer) {
+      clearInterval(configRefreshFallbackTimer);
+      configRefreshFallbackTimer = null;
+    }
+    if (configWatcher) {
+      try {
+        configWatcher.close();
+      } catch {
+        // Ignore watcher close errors during shutdown
+      }
+      configWatcher = null;
+    }
+  };
+
+  const configDir = dirname(actualConfigPath);
+  const configFileName = basename(actualConfigPath);
+  try {
+    configWatcher = fsWatch(
+      configDir,
+      { persistent: false },
+      (_eventType, filename) => {
+        if (disposed) return;
+        const changedName =
+          typeof filename === "string"
+            ? basename(filename)
+            : filename
+              ? basename(String(filename))
+              : null;
+        if (changedName !== null && changedName !== configFileName) {
+          return;
+        }
+        if (configWatchDebounceTimer) {
+          clearTimeout(configWatchDebounceTimer);
+        }
+        configWatchDebounceTimer = setTimeout(() => {
+          configWatchDebounceTimer = null;
+          triggerBackgroundConfigRefresh();
+        }, CONFIG_WATCH_DEBOUNCE_MS);
+        configWatchDebounceTimer.unref?.();
+      }
+    );
+    configWatcher.on("error", () => {
+      if (configWatcher) {
+        try {
+          configWatcher.close();
+        } catch {
+          // Ignore close errors after watcher failure
+        }
+        configWatcher = null;
+      }
+      ensureFallbackRefreshTimer();
+    });
+  } catch {
+    ensureFallbackRefreshTimer();
+  }
   return { success: true, runtime };
 }

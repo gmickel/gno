@@ -22,7 +22,7 @@ import { resolveDownloadPolicy } from "../../llm/policy";
 import { resolveModelUri } from "../../llm/registry";
 import { createVectorIndexPort } from "../../store/vector";
 import { CliError } from "../errors";
-import { getGlobals } from "../program";
+import { getGlobals } from "../globals";
 import {
   createProgressRenderer,
   createThrottledProgressRenderer,

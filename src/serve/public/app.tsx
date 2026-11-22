@@ -26,8 +26,9 @@ import {
   updateActiveTabBrowseState,
   type WorkspaceState,
 } from "./lib/workspace-tabs";
-import ClipperPairing from "./pages/ClipperPairing";
 import Dashboard from "./pages/Dashboard";
+
+const ClipperPairing = lazy(() => import("./pages/ClipperPairing"));
 
 const QuickSwitcher = lazy(() =>
   import("./components/QuickSwitcher").then((module) => ({
@@ -109,6 +110,20 @@ function AppContent({
 }: AppContentProps) {
   const { openCapture } = useCaptureModal();
   const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false);
+  const [hasMountedQuickSwitcher, setHasMountedQuickSwitcher] = useState(false);
+  const [hasMountedShortcutHelp, setHasMountedShortcutHelp] = useState(false);
+
+  useEffect(() => {
+    if (quickSwitcherOpen && !hasMountedQuickSwitcher) {
+      setHasMountedQuickSwitcher(true);
+    }
+  }, [quickSwitcherOpen, hasMountedQuickSwitcher]);
+
+  useEffect(() => {
+    if (shortcutHelpOpen && !hasMountedShortcutHelp) {
+      setHasMountedShortcutHelp(true);
+    }
+  }, [shortcutHelpOpen, hasMountedShortcutHelp]);
 
   useEffect(() => {
     const basePath = location.split("?")[0];
@@ -249,19 +264,25 @@ function AppContent({
         </footer>
       </div>
       <HelpButton onClick={() => setShortcutHelpOpen(true)} />
-      <Suspense fallback={null}>
-        <QuickSwitcher
-          location={location}
-          navigate={(to) => navigate(to)}
-          onCreateNote={openCapture}
-          onOpenChange={setQuickSwitcherOpen}
-          open={quickSwitcherOpen}
-        />
-        <ShortcutHelpModal
-          onOpenChange={setShortcutHelpOpen}
-          open={shortcutHelpOpen}
-        />
-      </Suspense>
+      {(quickSwitcherOpen || hasMountedQuickSwitcher) && (
+        <Suspense fallback={null}>
+          <QuickSwitcher
+            location={location}
+            navigate={(to) => navigate(to)}
+            onCreateNote={openCapture}
+            onOpenChange={setQuickSwitcherOpen}
+            open={quickSwitcherOpen}
+          />
+        </Suspense>
+      )}
+      {(shortcutHelpOpen || hasMountedShortcutHelp) && (
+        <Suspense fallback={null}>
+          <ShortcutHelpModal
+            onOpenChange={setShortcutHelpOpen}
+            open={shortcutHelpOpen}
+          />
+        </Suspense>
+      )}
     </>
   );
 }
@@ -362,13 +383,16 @@ function App() {
     []
   );
 
+  const workspaceContextValue = useMemo(
+    () => ({
+      activeTab: activeTab ?? null,
+      updateActiveTabBrowseState: updateActiveBrowseState,
+    }),
+    [activeTab, updateActiveBrowseState]
+  );
+
   return (
-    <WorkspaceProvider
-      value={{
-        activeTab: activeTab ?? null,
-        updateActiveTabBrowseState: updateActiveBrowseState,
-      }}
-    >
+    <WorkspaceProvider value={workspaceContextValue}>
       <CaptureModalProvider>
         <AppContent
           location={location}
@@ -392,7 +416,11 @@ if (!rootElement) {
 const root = createRoot(rootElement);
 if (window.location.pathname === "/clipper/pair") {
   const launch = consumeClipperPairLaunch(window.location, window.history);
-  root.render(<ClipperPairing pairId={launch.pairId} />);
+  root.render(
+    <Suspense fallback={null}>
+      <ClipperPairing pairId={launch.pairId} />
+    </Suspense>
+  );
 } else {
   root.render(<App />);
 }

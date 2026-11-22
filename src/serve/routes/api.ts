@@ -7,6 +7,7 @@
 
 import { readdir, realpath } from "node:fs/promises";
 // node:path has no Bun equivalent
+import * as nodePath from "node:path";
 import { posix as pathPosix } from "node:path";
 
 import type {
@@ -60,7 +61,7 @@ import { resolveCollectionScope } from "../../core/collection-scope";
 import {
   type ConnectorVerificationCode,
   getConnectorVerificationRemediation,
-} from "../../core/connector-verifier";
+} from "../../core/connector-policy";
 import {
   buildEditableCopyContent,
   deriveEditableCopyRelPath,
@@ -821,7 +822,6 @@ async function resolveAbsoluteDocPath(
     return null;
   }
 
-  const nodePath = await import("node:path"); // no bun equivalent
   let safeRelPath: string;
   try {
     safeRelPath = validateRelPath(doc.recordSourcePath ?? doc.relPath);
@@ -853,7 +853,6 @@ export async function isPathWithinRoot(
   candidate: string,
   realpathFn: RealpathFn = realpath
 ): Promise<boolean> {
-  const nodePath = await import("node:path"); // no bun equivalent
   const relative = nodePath.relative(root, candidate);
   const lexicallyWithin =
     relative === "" ||
@@ -906,48 +905,81 @@ async function listCollectionRelPaths(
 }
 
 const BROWSE_HIDDEN_DIRS = new Set([".git", ".obsidian", "node_modules"]);
+const BROWSE_FOLDER_SCAN_CONCURRENCY = 16;
 
 async function listCollectionFolders(
   collections: Array<{ name: string; path: string }>
 ): Promise<Array<{ collection: string; path: string }>> {
   const folders: Array<{ collection: string; path: string }> = [];
+  const queue: Array<{
+    collection: string;
+    rootPath: string;
+    relativePath: string;
+  }> = collections.map((collection) => ({
+    collection: collection.name,
+    rootPath: collection.path,
+    relativePath: "",
+  }));
 
-  async function walk(
-    collection: string,
-    rootPath: string,
-    relativePath = ""
-  ): Promise<void> {
-    const currentPath = relativePath ? `${rootPath}/${relativePath}` : rootPath;
-    let entries;
-    try {
-      entries = await readdir(currentPath, {
-        withFileTypes: true,
-      });
-    } catch {
-      return;
-    }
-
-    for (const entry of entries) {
-      if (!entry.isDirectory()) {
-        continue;
-      }
-      if (entry.name.startsWith(".") || BROWSE_HIDDEN_DIRS.has(entry.name)) {
-        continue;
-      }
-      const nextRelativePath = relativePath
-        ? `${relativePath}/${entry.name}`
-        : entry.name;
-      folders.push({
-        collection,
-        path: normalizeBrowsePath(nextRelativePath),
-      });
-      await walk(collection, rootPath, nextRelativePath);
-    }
+  if (queue.length === 0) {
+    return folders;
   }
 
-  for (const collection of collections) {
-    await walk(collection.name, collection.path);
-  }
+  let cursor = 0;
+  let active = 0;
+
+  await new Promise<void>((resolve) => {
+    const drain = (): void => {
+      while (active < BROWSE_FOLDER_SCAN_CONCURRENCY && cursor < queue.length) {
+        const task = queue[cursor++]!;
+        active += 1;
+        const currentPath = task.relativePath
+          ? `${task.rootPath}/${task.relativePath}`
+          : task.rootPath;
+        readdir(currentPath, { withFileTypes: true })
+          .then((entries) => {
+            for (const entry of entries) {
+              if (!entry.isDirectory()) {
+                continue;
+              }
+              if (
+                entry.name.startsWith(".") ||
+                BROWSE_HIDDEN_DIRS.has(entry.name)
+              ) {
+                continue;
+              }
+              const nextRelativePath = task.relativePath
+                ? `${task.relativePath}/${entry.name}`
+                : entry.name;
+              folders.push({
+                collection: task.collection,
+                path: normalizeBrowsePath(nextRelativePath),
+              });
+              queue.push({
+                collection: task.collection,
+                rootPath: task.rootPath,
+                relativePath: nextRelativePath,
+              });
+            }
+          })
+          .catch(() => {
+            // Unreadable directories are ignored, matching previous behavior.
+          })
+          .finally(() => {
+            active -= 1;
+            if (cursor < queue.length) {
+              drain();
+            } else if (active === 0) {
+              resolve();
+            }
+          });
+      }
+      if (active === 0 && cursor >= queue.length) {
+        resolve();
+      }
+    };
+    drain();
+  });
 
   return folders;
 }
@@ -1489,8 +1521,7 @@ export async function handleCreateCollection(
   }
 
   // Derive name from path if not provided
-  const path = await import("node:path"); // no bun equivalent
-  const name = body.name || path.basename(body.path);
+  const name = body.name || nodePath.basename(body.path);
 
   // Persist config and sync to DB (mutation happens inside with fresh config)
   const syncResult = await applyConfigChangeTyped<Collection>(
@@ -2109,19 +2140,19 @@ export async function handleDocs(
 export async function handleBrowseTree(
   store: SqliteAdapter
 ): Promise<Response> {
-  const [collectionsResult, documentsResult] = await Promise.all([
-    store.getCollections(),
-    store.listActiveDocumentsForBrowse(),
-  ]);
-
+  const collectionsResult = await store.getCollections();
   if (!collectionsResult.ok) {
     return errorResponse("RUNTIME", collectionsResult.error.message, 500);
   }
+
+  const [documentsResult, folders] = await Promise.all([
+    store.listActiveDocumentsForBrowse(),
+    listCollectionFolders(collectionsResult.value),
+  ]);
   if (!documentsResult.ok) {
     return errorResponse("RUNTIME", documentsResult.error.message, 500);
   }
 
-  const folders = await listCollectionFolders(collectionsResult.value);
   const collections = buildBrowseTree(
     collectionsResult.value,
     documentsResult.value,
@@ -2195,6 +2226,18 @@ export async function handleDocsAutocomplete(
   const collection = url.searchParams.get("collection") || undefined;
   const limit = Math.min(Number(url.searchParams.get("limit") ?? "8") || 8, 20);
 
+  if (typeof store.searchDocumentsForAutocomplete === "function") {
+    const result = await store.searchDocumentsForAutocomplete({
+      query,
+      collection,
+      limit,
+    });
+    if (!result.ok) {
+      return errorResponse("RUNTIME", result.error.message, 500);
+    }
+    return jsonResponse({ docs: result.value });
+  }
+
   const result = await store.listDocuments(collection);
   if (!result.ok) {
     return errorResponse("RUNTIME", result.error.message, 500);
@@ -2250,29 +2293,23 @@ export async function handleDoc(
   }
 
   const doc = docResult.value;
+  const [contentResult, tagsResult, source, successor] = await Promise.all([
+    doc.mirrorHash ? store.getContent(doc.mirrorHash) : Promise.resolve(null),
+    store.getTagsForDoc(doc.id),
+    buildSourceMeta(config.collections, doc),
+    supersedingUri(store, doc.uri),
+  ]);
+
   let content: string | null = null;
-
-  if (doc.mirrorHash) {
-    const contentResult = await store.getContent(doc.mirrorHash);
-    if (contentResult.ok && contentResult.value) {
-      content = contentResult.value;
-    }
+  if (contentResult && contentResult.ok && contentResult.value) {
+    content = contentResult.value;
   }
 
-  // Get tags for this document
-  let tags: string[] = [];
-  const tagsResult = await store.getTagsForDoc(doc.id);
-  if (tagsResult.ok) {
-    tags = tagsResult.value.map((t) => t.tag);
-  }
-
+  const tags = tagsResult.ok ? tagsResult.value.map((t) => t.tag) : [];
   const contentAvailable = content !== null;
   const capabilities = capabilitiesForDocument(doc, contentAvailable);
-  const source = await buildSourceMeta(config.collections, doc);
   const record = projectRecordEvidenceMetadata(doc);
   const relPath = doc.recordSourcePath ?? doc.relPath;
-
-  const successor = await supersedingUri(store, doc.uri);
   const responseData = {
     ...(successor ? { supersededBy: successor } : {}),
     docid: doc.docid,
@@ -2509,7 +2546,6 @@ export async function handleDocAsset(
       );
     }
 
-    const nodePath = await import("node:path"); // no bun equivalent
     const candidate = nodePath.resolve(
       nodePath.dirname(resolvedDoc.fullPath),
       assetPath
@@ -2789,7 +2825,6 @@ export async function handleRenameDoc(
     return errorResponse("VALIDATION", "New name matches current file");
   }
 
-  const nodePath = await import("node:path"); // no bun equivalent
   const nextFullPath = nodePath.join(collection.path, target.nextRelPath);
 
   try {
@@ -3171,7 +3206,6 @@ export async function handleMoveDoc(
     );
   }
 
-  const nodePath = await import("node:path"); // no bun equivalent
   const nextFullPath = nodePath.join(collection.path, target.nextRelPath);
 
   try {
@@ -3311,7 +3345,6 @@ export async function handleDuplicateDoc(
     );
   }
 
-  const nodePath = await import("node:path"); // no bun equivalent
   const nextFullPath = nodePath.join(collection.path, plan.nextRelPath);
 
   try {
@@ -3395,7 +3428,6 @@ export async function handleCreateFolder(
       parentPath: body.parentPath,
       name: body.name,
     });
-    const nodePath = await import("node:path"); // no bun equivalent
     const fullPath = nodePath.join(collection.path, folderPath);
     await createFolderPath(fullPath);
     return jsonResponse({
@@ -4463,7 +4495,6 @@ export async function handleCreateDoc(
 
   const normalizedRelPath = createPlan.relPath;
 
-  const nodePath = await import("node:path"); // no bun equivalent
   const fullPath = nodePath.join(collection.path, normalizedRelPath);
 
   if (createPlan.openedExisting) {

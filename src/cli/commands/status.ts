@@ -16,7 +16,6 @@ import {
   buildContentTypeBoostStatus,
   getConfigPaths,
   isInitialized,
-  loadConfig,
 } from "../../config";
 import {
   describeConnectorSummary,
@@ -32,7 +31,7 @@ import {
   formatMemoryStatusLines,
 } from "../../core/memory-diagnostics";
 import { formatVectorPartitionLines } from "../../core/vector-partition-status";
-import { BUDGET_ERROR_CODES } from "../../ingestion/file-processor";
+import { BUDGET_ERROR_CODES } from "../../ingestion/budget-error-codes";
 import {
   checkCollectionRoots,
   type CollectionRootError,
@@ -42,6 +41,7 @@ import { getActivePreset, resolveModelUri } from "../../llm/registry";
 import { getConnectorVerificationTargets } from "../../serve/connectors";
 import { createStandaloneResidentStatus } from "../../serve/resident-status";
 import { SqliteAdapter } from "../../store/sqlite/adapter";
+import { loadConfigCached } from "../config-cache";
 import {
   formatBackgroundIssue,
   residentIssues,
@@ -115,37 +115,19 @@ const STALE_COLLECTIONS_HINT =
 const BUDGET_STOP_SCAN_LIMIT = 100;
 /** Most budget stops listed in status output. */
 const MAX_BUDGET_STOPS = 10;
+const BUDGET_ERROR_CODE_LIST = Array.from(BUDGET_ERROR_CODES);
 
 /**
  * Files whose latest indexing attempt stopped at the conversion budget, from
  * the recent error log, kept only while the document still carries that code.
  */
 async function collectBudgetStops(store: SqliteAdapter): Promise<BudgetStop[]> {
-  const recent = await store.getRecentErrors(BUDGET_STOP_SCAN_LIMIT);
-  if (!recent.ok) return [];
-  const stops: BudgetStop[] = [];
-  const seen = new Set<string>();
-  for (const row of recent.value) {
-    const key = `${row.collection}\u0000${row.relPath}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    if (!BUDGET_ERROR_CODES.has(row.code)) continue;
-    const document = await store.getDocument(row.collection, row.relPath);
-    if (
-      document.ok &&
-      document.value?.active &&
-      document.value.lastErrorCode === row.code
-    ) {
-      stops.push({
-        collection: row.collection,
-        relPath: row.relPath,
-        code: row.code,
-        message: row.message,
-      });
-      if (stops.length >= MAX_BUDGET_STOPS) break;
-    }
-  }
-  return stops;
+  const stops = await store.getRecentBudgetStops(
+    BUDGET_ERROR_CODE_LIST,
+    BUDGET_STOP_SCAN_LIMIT,
+    MAX_BUDGET_STOPS
+  );
+  return stops.ok ? stops.value : [];
 }
 
 /** A background issue reported by (or about) a running detached resident. */
@@ -423,13 +405,22 @@ export async function status(
   }
 
   // Load config
-  const configResult = await loadConfig(options.configPath);
+  const configResult = await loadConfigCached(options.configPath);
   if (!configResult.ok) {
     return { success: false, error: configResult.error.message };
   }
   const config = configResult.value;
-  // Read-time root check, overlapping the index reads below; it never rejects.
-  const rootErrors = checkCollectionRoots(config.collections);
+  const collectionNames = config.collections.map(({ name }) => name);
+  const preset = getActivePreset(config);
+  // Launch filesystem/process probes in parallel with index open + SQLite reads.
+  const rootErrorsPromise = checkCollectionRoots(config.collections);
+  const embedModelCachedPromise = new ModelCache(getModelsCachePath()).isCached(
+    preset.embed
+  );
+  const connectorTargetsPromise = getConnectorVerificationTargets();
+  const backgroundIssuesPromise = collectResidentIssues();
+  const registrationRuntimeIssuesPromise = checkRegistrationRuntimes();
+  const residentRuntimeIssuesPromise = checkResidentRuntimes();
 
   // Open database
   const store = new SqliteAdapter();
@@ -445,52 +436,78 @@ export async function status(
     config.busyTimeoutMs
   );
   if (!openResult.ok) {
+    await Promise.allSettled([
+      rootErrorsPromise,
+      embedModelCachedPromise,
+      connectorTargetsPromise,
+      backgroundIssuesPromise,
+      registrationRuntimeIssuesPromise,
+      residentRuntimeIssuesPromise,
+    ]);
     return { success: false, error: openResult.error.message };
   }
 
   try {
-    const statusResult = await store.getStatus({
-      embedModel: resolveModelUri(config, "embed"),
-      chunking: config.chunking ?? {},
-      configuredCollections: config.collections.map(({ name }) => name),
-    });
+    const [
+      statusResult,
+      embedModelCached,
+      connectorTargets,
+      memory,
+      budgetStops,
+      staleCollections,
+    ] = await Promise.all([
+      store.getStatus({
+        embedModel: resolveModelUri(config, "embed"),
+        chunking: config.chunking ?? {},
+        configuredCollections: collectionNames,
+      }),
+      embedModelCachedPromise,
+      connectorTargetsPromise,
+      buildMemoryStatus(store, config.collections),
+      collectBudgetStops(store),
+      collectStaleCollections(store, collectionNames),
+    ]);
     if (!statusResult.ok) {
+      await Promise.allSettled([
+        rootErrorsPromise,
+        backgroundIssuesPromise,
+        registrationRuntimeIssuesPromise,
+        residentRuntimeIssuesPromise,
+      ]);
       return { success: false, error: statusResult.error.message };
     }
 
-    const preset = getActivePreset(config);
-    const embedModelCached = await new ModelCache(
-      getModelsCachePath()
-    ).isCached(preset.embed);
-    const activation = await buildActivationStatus(
-      store,
-      config.collections.map(({ name }) => name),
-      {
+    const [
+      activation,
+      backgroundIssues,
+      registrationIssues,
+      residentIssuesList,
+      rootErrors,
+    ] = await Promise.all([
+      buildActivationStatus(store, collectionNames, {
         semantic: {
           modelsCached: embedModelCached,
           embeddingBacklog: statusResult.value.embeddingBacklog,
         },
-        connectorTargets: await getConnectorVerificationTargets(),
-      }
-    );
+        connectorTargets,
+      }),
+      backgroundIssuesPromise,
+      registrationRuntimeIssuesPromise,
+      residentRuntimeIssuesPromise,
+      rootErrorsPromise,
+    ]);
 
     return {
       success: true,
       status: statusResult.value,
       activation,
       contentTypeBoost: buildContentTypeBoostStatus(config.contentTypes ?? []),
-      memory: await buildMemoryStatus(store, config.collections),
-      backgroundIssues: await collectResidentIssues(),
-      runtimeIssues: [
-        ...(await checkRegistrationRuntimes()),
-        ...(await checkResidentRuntimes()),
-      ],
-      budgetStops: await collectBudgetStops(store),
-      staleCollections: await collectStaleCollections(
-        store,
-        config.collections.map(({ name }) => name)
-      ),
-      rootErrors: await rootErrors,
+      memory,
+      backgroundIssues,
+      runtimeIssues: [...registrationIssues, ...residentIssuesList],
+      budgetStops,
+      staleCollections,
+      rootErrors,
     };
   } finally {
     await store.close();

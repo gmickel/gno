@@ -13,42 +13,112 @@ import type { EgressLineage } from "../core/egress-provenance";
 import type { JobManager } from "../core/job-manager";
 import type { NativeDisposeOptions } from "../llm/native-worker/owned-exit";
 import type { ModelLease } from "../llm/nodeLlamaCpp/lifecycle";
+import type {
+  EmbeddingPort,
+  GenerationPort,
+  LlmResult,
+  RerankPort,
+} from "../llm/types";
 import type { ResidentStatus } from "../serve/status-model";
 import type { SqliteAdapter } from "../store/sqlite/adapter";
 import type { StoreResult } from "../store/types";
+import type { VectorIndexPort } from "../store/vector";
 import type { McpToolProfile } from "./tool-profile";
 
 import { MCP_SERVER_NAME, VERSION } from "../app/constants";
-import { LlmAdapter } from "../llm/nodeLlamaCpp/adapter";
+import {
+  type CreatePortOptions,
+  LlmAdapter,
+} from "../llm/nodeLlamaCpp/adapter";
 import { createStandaloneResidentStatus } from "../serve/resident-status";
+import { createVectorIndexPort } from "../store/vector";
+import { createLazyVectorIndex } from "../store/vector/lazy";
 import { registerResources } from "./resources/index";
 import { registerTools } from "./tools/index";
 
 export interface AsyncMutex {
   acquire(): Promise<() => void>;
+  /** Shared read lock for concurrent read-only tools; falls back to exclusive acquire() on test doubles. */
+  acquireRead?(): Promise<() => void>;
 }
 
+/**
+ * Fair async reader-writer lock.
+ * - `acquireRead()` allows concurrent read-only tools when no writer is active or queued.
+ * - `acquire()` grants exclusive access for write tools, jobs, and shutdown, draining
+ *   all active readers and queuing subsequent readers behind it to prevent writer starvation.
+ */
 export class Mutex implements AsyncMutex {
-  #locked = false;
-  readonly #queue: Array<() => void> = [];
+  #activeReaders = 0;
+  #writerActive = false;
+  readonly #waiters: Array<{ kind: "read" | "write"; grant: () => void }> = [];
 
   acquire(): Promise<() => void> {
     return new Promise((resolve) => {
-      const tryAcquire = (): void => {
-        if (this.#locked) {
-          this.#queue.push(tryAcquire);
-          return;
-        }
-        this.#locked = true;
-        resolve(() => this.#release());
+      const grant = (): void => {
+        this.#writerActive = true;
+        let released = false;
+        resolve(() => {
+          if (released) return;
+          released = true;
+          this.#writerActive = false;
+          this.#drain();
+        });
       };
-      tryAcquire();
+      if (
+        !this.#writerActive &&
+        this.#activeReaders === 0 &&
+        this.#waiters.length === 0
+      ) {
+        grant();
+        return;
+      }
+      this.#waiters.push({ kind: "write", grant });
     });
   }
 
-  #release(): void {
-    this.#locked = false;
-    this.#queue.shift()?.();
+  acquireRead(): Promise<() => void> {
+    return new Promise((resolve) => {
+      const grant = (): void => {
+        this.#activeReaders += 1;
+        let released = false;
+        resolve(() => {
+          if (released) return;
+          released = true;
+          this.#activeReaders -= 1;
+          if (this.#activeReaders === 0) {
+            this.#drain();
+          }
+        });
+      };
+      if (!this.#writerActive && this.#waiters.length === 0) {
+        grant();
+        return;
+      }
+      this.#waiters.push({ kind: "read", grant });
+    });
+  }
+
+  #drain(): void {
+    if (this.#writerActive) {
+      return;
+    }
+    while (this.#waiters.length > 0) {
+      const next = this.#waiters[0];
+      if (!next) {
+        break;
+      }
+      if (next.kind === "read") {
+        this.#waiters.shift();
+        next.grant();
+        continue;
+      }
+      if (this.#activeReaders === 0) {
+        this.#waiters.shift();
+        next.grant();
+      }
+      break;
+    }
   }
 }
 
@@ -92,6 +162,26 @@ export interface ToolContext {
   isShuttingDown: () => boolean;
   getResidentStatus?: () => ResidentStatus;
   getModelAdapter?: () => LlmAdapter;
+  getCachedEmbeddingPort?: (
+    uri: string,
+    options: CreatePortOptions
+  ) => Promise<LlmResult<EmbeddingPort>>;
+  getCachedExpansionPort?: (
+    uri: string,
+    options: CreatePortOptions
+  ) => Promise<LlmResult<GenerationPort>>;
+  getCachedRerankPort?: (
+    uri: string,
+    options: CreatePortOptions
+  ) => Promise<LlmResult<RerankPort>>;
+  getCachedVectorIndex?: (
+    modelUri: string,
+    dimensions: number
+  ) => Promise<StoreResult<VectorIndexPort>>;
+  getCachedLazyVectorIndex?: (
+    modelUri: string,
+    embedPort: EmbeddingPort
+  ) => Promise<VectorIndexPort | null>;
   disposeModels?: (options?: NativeDisposeOptions) => Promise<void>;
   acquireModelLease?: () => ModelLease;
   markContentMutation?: () => void;
@@ -162,6 +252,21 @@ export function createToolContext(
   options: CreateToolContextOptions
 ): ToolContext {
   const adapters = new Map<Config, LlmAdapter>();
+  let cachedPortConfig: Config | null = null;
+  const cachedEmbedPorts = new Map<string, Promise<LlmResult<EmbeddingPort>>>();
+  const cachedExpandPorts = new Map<
+    string,
+    Promise<LlmResult<GenerationPort>>
+  >();
+  const cachedRerankPorts = new Map<string, Promise<LlmResult<RerankPort>>>();
+  const cachedVectorIndexes = new Map<
+    string,
+    Promise<StoreResult<VectorIndexPort>>
+  >();
+  const cachedLazyVectorIndexes = new Map<
+    string,
+    Promise<VectorIndexPort | null>
+  >();
   let modelsClosed = false;
   const requestSnapshot = new AsyncLocalStorage<ToolContextSnapshot>();
   const currentSnapshot = (): ToolContextSnapshot =>
@@ -171,12 +276,76 @@ export function createToolContext(
       return { config, collections: config.collections };
     })();
 
+  const portCacheKey = (
+    uri: string,
+    portOptions?: CreatePortOptions
+  ): string => {
+    const egress = portOptions?.egressCollections;
+    const egressKey =
+      egress === undefined || egress === "all"
+        ? "*"
+        : [...egress].sort().join("\u0000");
+    const policy = portOptions?.policy;
+    const policyKey = policy
+      ? `${policy.offline ? 1 : 0}:${policy.allowDownload ? 1 : 0}`
+      : "default";
+    return `${uri}\u0001${egressKey}\u0001${policyKey}`;
+  };
+
+  const disposeCachedPorts = async (): Promise<void> => {
+    const disposals: Promise<unknown>[] = [];
+    for (const pending of cachedEmbedPorts.values()) {
+      disposals.push(
+        pending.then((res) => (res.ok ? res.value.dispose() : undefined))
+      );
+    }
+    for (const pending of cachedExpandPorts.values()) {
+      disposals.push(
+        pending.then((res) => (res.ok ? res.value.dispose() : undefined))
+      );
+    }
+    for (const pending of cachedRerankPorts.values()) {
+      disposals.push(
+        pending.then((res) => (res.ok ? res.value.dispose() : undefined))
+      );
+    }
+    cachedEmbedPorts.clear();
+    cachedExpandPorts.clear();
+    cachedRerankPorts.clear();
+    cachedVectorIndexes.clear();
+    cachedLazyVectorIndexes.clear();
+    cachedPortConfig = null;
+    await Promise.allSettled(disposals);
+  };
+
+  const ensurePortCacheForConfig = (config: Config): void => {
+    if (cachedPortConfig !== null && cachedPortConfig !== config) {
+      void disposeCachedPorts();
+    }
+    cachedPortConfig = config;
+  };
+
+  const resolveModelAdapter = (config: Config): LlmAdapter => {
+    if (modelsClosed) throw new Error("Resident runtime is shutting down");
+    const shared = options.getModelAdapter?.(config);
+    if (shared) return shared;
+    let adapter = adapters.get(config);
+    if (!adapter) {
+      adapter = new LlmAdapter(config);
+      adapters.set(config, adapter);
+    }
+    return adapter;
+  };
+
   return {
     store: options.store,
     get config() {
       return currentSnapshot().config;
     },
     set config(config: Config) {
+      if (cachedPortConfig !== null && cachedPortConfig !== config) {
+        void disposeCachedPorts();
+      }
       options.setConfig?.(config);
     },
     get collections() {
@@ -198,20 +367,89 @@ export function createToolContext(
     getResidentStatus:
       options.getResidentStatus ??
       (() => createStandaloneResidentStatus("stdio")),
-    getModelAdapter: () => {
-      if (modelsClosed) throw new Error("Resident runtime is shutting down");
+    getModelAdapter: () => resolveModelAdapter(currentSnapshot().config),
+    getCachedEmbeddingPort: (uri, portOptions) => {
       const config = currentSnapshot().config;
-      const shared = options.getModelAdapter?.(config);
-      if (shared) return shared;
-      let adapter = adapters.get(config);
-      if (!adapter) {
-        adapter = new LlmAdapter(config);
-        adapters.set(config, adapter);
+      const llm = resolveModelAdapter(config);
+      ensurePortCacheForConfig(config);
+      const key = portCacheKey(uri, portOptions);
+      let pending = cachedEmbedPorts.get(key);
+      if (!pending) {
+        pending = llm.createEmbeddingPort(uri, portOptions).then((res) => {
+          if (!res.ok) cachedEmbedPorts.delete(key);
+          return res;
+        });
+        cachedEmbedPorts.set(key, pending);
       }
-      return adapter;
+      return pending;
+    },
+    getCachedExpansionPort: (uri, portOptions) => {
+      const config = currentSnapshot().config;
+      const llm = resolveModelAdapter(config);
+      ensurePortCacheForConfig(config);
+      const key = portCacheKey(uri, portOptions);
+      let pending = cachedExpandPorts.get(key);
+      if (!pending) {
+        pending = llm.createExpansionPort(uri, portOptions).then((res) => {
+          if (!res.ok) cachedExpandPorts.delete(key);
+          return res;
+        });
+        cachedExpandPorts.set(key, pending);
+      }
+      return pending;
+    },
+    getCachedRerankPort: (uri, portOptions) => {
+      const config = currentSnapshot().config;
+      const llm = resolveModelAdapter(config);
+      ensurePortCacheForConfig(config);
+      const key = portCacheKey(uri, portOptions);
+      let pending = cachedRerankPorts.get(key);
+      if (!pending) {
+        pending = llm.createRerankPort(uri, portOptions).then((res) => {
+          if (!res.ok) cachedRerankPorts.delete(key);
+          return res;
+        });
+        cachedRerankPorts.set(key, pending);
+      }
+      return pending;
+    },
+    getCachedVectorIndex: (modelUri, dimensions) => {
+      const config = currentSnapshot().config;
+      ensurePortCacheForConfig(config);
+      const key = `${modelUri}\u0000${dimensions}`;
+      let pending = cachedVectorIndexes.get(key);
+      if (!pending) {
+        pending = createVectorIndexPort(options.store.getRawDb(), {
+          model: modelUri,
+          dimensions,
+        }).then((res) => {
+          if (!res.ok) cachedVectorIndexes.delete(key);
+          return res;
+        });
+        cachedVectorIndexes.set(key, pending);
+      }
+      return pending;
+    },
+    getCachedLazyVectorIndex: (modelUri, embedPort) => {
+      const config = currentSnapshot().config;
+      ensurePortCacheForConfig(config);
+      let pending = cachedLazyVectorIndexes.get(modelUri);
+      if (!pending) {
+        pending = createLazyVectorIndex(
+          options.store.getRawDb(),
+          modelUri,
+          embedPort
+        ).then((index) => {
+          if (!index) cachedLazyVectorIndexes.delete(modelUri);
+          return index;
+        });
+        cachedLazyVectorIndexes.set(modelUri, pending);
+      }
+      return pending;
     },
     disposeModels: async (disposeOptions) => {
       modelsClosed = true;
+      await disposeCachedPorts();
       await Promise.all(
         [...adapters.values()].map((adapter) => adapter.dispose(disposeOptions))
       );

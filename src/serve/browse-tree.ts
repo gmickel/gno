@@ -62,17 +62,22 @@ function sortNodes(nodes: BrowseTreeNode[]): void {
 
 function ensureFolderNode(
   root: BrowseTreeNode,
+  childrenByNode: Map<BrowseTreeNode, Map<string, BrowseTreeNode>>,
   collection: string,
-  folderPath: string
+  parts: readonly string[],
+  incrementDocumentCount: boolean
 ): BrowseTreeNode {
-  const normalizedFolderPath = normalizeBrowsePath(folderPath);
-  const parts = normalizedFolderPath.split("/").filter(Boolean);
   let current = root;
   let currentPath = "";
 
   for (const part of parts) {
     currentPath = currentPath ? `${currentPath}/${part}` : part;
-    let next = current.children.find((child) => child.path === currentPath);
+    let childMap = childrenByNode.get(current);
+    if (!childMap) {
+      childMap = new Map<string, BrowseTreeNode>();
+      childrenByNode.set(current, childMap);
+    }
+    let next = childMap.get(part);
     if (!next) {
       next = createNode({
         kind: "folder",
@@ -81,7 +86,11 @@ function ensureFolderNode(
         name: part,
         depth: current.depth + 1,
       });
+      childMap.set(part, next);
       current.children.push(next);
+    }
+    if (incrementDocumentCount) {
+      next.documentCount += 1;
     }
     current = next;
   }
@@ -95,6 +104,7 @@ export function buildBrowseTree(
   folders: BrowseFolderLike[] = []
 ): BrowseTreeNode[] {
   const roots = new Map<string, BrowseTreeNode>();
+  const childrenByNode = new Map<BrowseTreeNode, Map<string, BrowseTreeNode>>();
 
   for (const collection of collections) {
     roots.set(
@@ -139,25 +149,14 @@ export function buildBrowseTree(
       continue;
     }
 
-    const current = ensureFolderNode(
+    const leaf = ensureFolderNode(
       root,
+      childrenByNode,
       doc.collection,
-      folderParts.join("/")
+      folderParts,
+      true
     );
-
-    let pointer = root;
-    let currentPath = "";
-    for (const part of folderParts) {
-      currentPath = currentPath ? `${currentPath}/${part}` : part;
-      const next = pointer.children.find((child) => child.path === currentPath);
-      if (!next) {
-        continue;
-      }
-      next.documentCount += 1;
-      pointer = next;
-    }
-
-    current.directDocumentCount += 1;
+    leaf.directDocumentCount += 1;
   }
 
   for (const folder of folders) {
@@ -172,7 +171,10 @@ export function buildBrowseTree(
       });
       roots.set(folder.collection, root);
     }
-    ensureFolderNode(root, folder.collection, folder.path);
+    const parts = normalizeBrowsePath(folder.path).split("/").filter(Boolean);
+    if (parts.length > 0) {
+      ensureFolderNode(root, childrenByNode, folder.collection, parts, false);
+    }
   }
 
   const sortedRoots = [...roots.values()].sort((a, b) =>
@@ -203,19 +205,21 @@ export function findBrowseNode(
     return root;
   }
 
-  const queue = [...root.children];
-  while (queue.length > 0) {
-    const node = queue.shift();
-    if (!node) {
-      continue;
+  const parts = normalizedPath.split("/").filter(Boolean);
+  let current = root;
+  let currentPath = "";
+  for (const part of parts) {
+    currentPath = currentPath ? `${currentPath}/${part}` : part;
+    const next = current.children.find(
+      (child) => child.name === part || child.path === currentPath
+    );
+    if (!next) {
+      return null;
     }
-    if (node.path === normalizedPath) {
-      return node;
-    }
-    queue.push(...node.children);
+    current = next;
   }
 
-  return null;
+  return current;
 }
 
 export function getBrowseAncestorIds(

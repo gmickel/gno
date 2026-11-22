@@ -182,6 +182,9 @@ function wrapStreamingResponse(
   return new Response(body, response);
 }
 
+const REQUEST_IDENTITY_CACHE_MAX = 256;
+const requestIdentityCache = new Map<string, string>();
+
 /**
  * Opaque per-caller label for memory provenance and other per-session state.
  *
@@ -194,11 +197,24 @@ function deriveRequestIdentity(
   serverInstanceId: string,
   securityIdentity: string
 ): string {
+  const key = `${serverInstanceId}\u0000${securityIdentity}`;
+  const cached = requestIdentityCache.get(key);
+  if (cached !== undefined) {
+    return cached;
+  }
   const digest = new Bun.CryptoHasher("sha256")
-    .update(`${serverInstanceId}\u0000${securityIdentity}`)
+    .update(key)
     .digest("hex")
     .slice(0, REQUEST_IDENTITY_DIGEST_LENGTH);
-  return `http:${digest}`;
+  const label = `http:${digest}`;
+  if (requestIdentityCache.size >= REQUEST_IDENTITY_CACHE_MAX) {
+    const oldestKey = requestIdentityCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      requestIdentityCache.delete(oldestKey);
+    }
+  }
+  requestIdentityCache.set(key, label);
+  return label;
 }
 
 const policyChangedResponse = (): Response =>
@@ -334,7 +350,9 @@ export class HttpMcpTransport {
       let parsedBody = context.parsedBody;
       if (request.method === "POST" && parsedBody === undefined) {
         try {
-          parsedBody = await request.clone().json();
+          // Both legacy and modern handlers receive `parsedBody` explicitly,
+          // so reading request.json() directly avoids cloning the request stream.
+          parsedBody = await request.json();
         } catch {
           finish();
           return jsonRpcError(400, -32_700, "Parse error: Invalid JSON");

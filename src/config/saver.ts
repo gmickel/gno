@@ -23,6 +23,13 @@ export type SaveError =
   | { code: "VALIDATION_ERROR"; message: string }
   | { code: "IO_ERROR"; message: string; cause: Error };
 
+let configWriteGeneration = 0;
+
+/** Monotonic counter incremented whenever config/text is atomically saved. */
+export function getConfigWriteGeneration(): number {
+  return configWriteGeneration;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Saving Functions
 // ─────────────────────────────────────────────────────────────────────────────
@@ -134,6 +141,7 @@ export async function saveTextToPath(
     };
   }
 
+  configWriteGeneration += 1;
   return { ok: true, path: filePath };
 }
 

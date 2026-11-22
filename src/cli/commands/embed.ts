@@ -64,7 +64,7 @@ import {
   type VectorIndexPort,
   type VectorStatsPort,
 } from "../../store/vector";
-import { getGlobals } from "../program";
+import { getGlobals } from "../globals";
 import {
   createProgressRenderer,
   createThrottledProgressRenderer,

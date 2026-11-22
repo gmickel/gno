@@ -186,22 +186,28 @@ export function handleVsearch(
       traceSession = traceStart.value ?? undefined;
 
       let embedPort: EmbeddingPort | null = null;
-
+      let ownsEmbedPort = false;
       try {
         // Resolve download policy from env (MCP has no CLI flags)
         const policy = resolveDownloadPolicy(process.env, {});
 
         // Non-TTY progress for MCP (periodic lines to stderr, not \r)
         const downloadProgress = createNonTtyProgressRenderer();
-
-        // Create LLM adapter for embeddings
-        const llm = ctx.getModelAdapter?.() ?? new LlmAdapter(ctx.config);
-        const embedResult = await llm.createEmbeddingPort(modelUri, {
+        const portOpts = {
           egressCollections:
-            collections ?? (args.collection ? [args.collection] : "all"),
+            collections ??
+            (args.collection ? [args.collection] : ("all" as const)),
           policy,
-          onProgress: (progress) => downloadProgress("embed", progress),
-        });
+          onProgress: (progress: Parameters<typeof downloadProgress>[1]) =>
+            downloadProgress("embed", progress),
+        };
+
+        // Reuse warm embedding port on ToolContext when available.
+        const embedResult = ctx.getCachedEmbeddingPort
+          ? await ctx.getCachedEmbeddingPort(modelUri, portOpts)
+          : await (
+              ctx.getModelAdapter?.() ?? new LlmAdapter(ctx.config)
+            ).createEmbeddingPort(modelUri, portOpts);
         if (!embedResult.ok) {
           throw new Error(
             `Failed to load embedding model: ${embedResult.error.message}. ` +
@@ -209,6 +215,7 @@ export function handleVsearch(
           );
         }
         embedPort = embedResult.value;
+        ownsEmbedPort = !ctx.getCachedEmbeddingPort;
 
         // Embed query with contextual formatting
         const queryEmbedResult = await embedPort.embed(
@@ -220,12 +227,14 @@ export function handleVsearch(
         const queryEmbedding = new Float32Array(queryEmbedResult.value);
         const dimensions = queryEmbedding.length;
 
-        // Create vector index port
+        // Reuse warm vector index port on ToolContext when available.
         const db = ctx.store.getRawDb();
-        const vectorResult = await createVectorIndexPort(db, {
-          model: modelUri,
-          dimensions,
-        });
+        const vectorResult = ctx.getCachedVectorIndex
+          ? await ctx.getCachedVectorIndex(modelUri, dimensions)
+          : await createVectorIndexPort(db, {
+              model: modelUri,
+              dimensions,
+            });
 
         if (!vectorResult.ok) {
           throw new Error(
@@ -286,7 +295,9 @@ export function handleVsearch(
         await finishRetrievalTraceAfterError(traceSession, cause);
         throw cause;
       } finally {
-        await embedPort?.dispose();
+        if (ownsEmbedPort) {
+          await embedPort?.dispose();
+        }
       }
     },
     (data) =>

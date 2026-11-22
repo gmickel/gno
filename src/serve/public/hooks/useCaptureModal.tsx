@@ -9,15 +9,22 @@
 
 import {
   createContext,
+  lazy,
   type ReactNode,
+  Suspense,
   useCallback,
   useContext,
   useMemo,
   useState,
 } from "react";
 
-import { CaptureModal } from "../components/CaptureModal";
 import { useKeyboardShortcuts } from "./useKeyboardShortcuts";
+
+const CaptureModal = lazy(() =>
+  import("../components/CaptureModal").then((module) => ({
+    default: module.CaptureModal,
+  }))
+);
 
 export interface CaptureModalOpenOptions {
   draftTitle?: string;
@@ -48,6 +55,7 @@ export function CaptureModalProvider({
   onSuccess,
 }: CaptureModalProviderProps) {
   const [open, setOpen] = useState(false);
+  const [hasOpened, setHasOpened] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
   const [defaultCollection, setDefaultCollection] = useState("");
   const [defaultFolderPath, setDefaultFolderPath] = useState("");
@@ -66,6 +74,7 @@ export function CaptureModalProvider({
         setDefaultFolderPath(options?.defaultFolderPath ?? "");
         setPresetId(options?.presetId ?? "");
       }
+      setHasOpened(true);
       setOpen(true);
     },
     []
@@ -95,15 +104,19 @@ export function CaptureModalProvider({
   return (
     <CaptureModalContext.Provider value={value}>
       {children}
-      <CaptureModal
-        defaultCollection={defaultCollection}
-        defaultFolderPath={defaultFolderPath}
-        draftTitle={draftTitle}
-        onOpenChange={setOpen}
-        onSuccess={onSuccess}
-        open={open}
-        presetId={presetId}
-      />
+      {(open || hasOpened) && (
+        <Suspense fallback={null}>
+          <CaptureModal
+            defaultCollection={defaultCollection}
+            defaultFolderPath={defaultFolderPath}
+            draftTitle={draftTitle}
+            onOpenChange={setOpen}
+            onSuccess={onSuccess}
+            open={open}
+            presetId={presetId}
+          />
+        </Suspense>
+      )}
     </CaptureModalContext.Provider>
   );
 }

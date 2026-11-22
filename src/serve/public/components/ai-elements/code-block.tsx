@@ -1,4 +1,5 @@
-import type { ShikiTransformer } from "shiki/types";
+import type { BundledLanguage } from "shiki";
+import type { HighlighterCore, ShikiTransformer } from "shiki/types";
 
 import { CheckIcon, CopyIcon } from "lucide-react";
 import {
@@ -10,8 +11,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { type BundledLanguage, createHighlighter } from "shiki";
-import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 
 import { resolveCodeLanguage } from "../../lib/code-language";
 import { cn } from "../../lib/utils";
@@ -33,22 +32,65 @@ const CodeBlockContext = createContext<CodeBlockContextType>({
   code: "",
 });
 
-let highlighterPromise: ReturnType<typeof createHighlighter> | null = null;
+let highlighterPromise: Promise<HighlighterCore> | null = null;
+let bundledLanguagesPromise: Promise<
+  typeof import("shiki/langs").bundledLanguages
+> | null = null;
+const loadingLanguages = new Map<string, Promise<void>>();
 
-function getHighlighterRuntime(): ReturnType<typeof createHighlighter> {
-  highlighterPromise ??= createHighlighter({
-    engine: createJavaScriptRegexEngine(),
-    langs: ["text"],
-    themes: ["one-light", "one-dark-pro"],
-  });
+/**
+ * Lazily load shiki/core with only the two themes GNO uses (`one-light` and
+ * `one-dark-pro`), keeping Shiki completely off pages without code blocks and
+ * dropping ~58 unused bundled themes from the SPA bundle.
+ */
+function getHighlighterRuntime(): Promise<HighlighterCore> {
+  highlighterPromise ??= Promise.all([
+    import("shiki/core"),
+    import("shiki/engine/javascript"),
+    import("shiki/themes/one-light.mjs"),
+    import("shiki/themes/one-dark-pro.mjs"),
+  ]).then(([shikiCore, jsEngine, oneLight, oneDarkPro]) =>
+    shikiCore.createHighlighterCore({
+      engine: jsEngine.createJavaScriptRegexEngine(),
+      langs: [],
+      themes: [oneLight.default, oneDarkPro.default],
+    })
+  );
   return highlighterPromise;
 }
 
-async function getHighlighter(language: BundledLanguage | "text") {
+function getBundledLanguages() {
+  bundledLanguagesPromise ??= import("shiki/langs").then(
+    (mod) => mod.bundledLanguages
+  );
+  return bundledLanguagesPromise;
+}
+
+async function getHighlighter(
+  language: BundledLanguage | "text"
+): Promise<HighlighterCore> {
   const highlighter = await getHighlighterRuntime();
-  if (!highlighter.getLoadedLanguages().includes(language)) {
-    await highlighter.loadLanguage(language);
+  if (
+    language === "text" ||
+    highlighter.getLoadedLanguages().includes(language)
+  ) {
+    return highlighter;
   }
+  let inflight = loadingLanguages.get(language);
+  if (!inflight) {
+    inflight = (async () => {
+      const langs = await getBundledLanguages();
+      const loader = langs[language];
+      if (loader) {
+        const grammar = await loader();
+        await highlighter.loadLanguage(grammar);
+      }
+    })().finally(() => {
+      loadingLanguages.delete(language);
+    });
+    loadingLanguages.set(language, inflight);
+  }
+  await inflight;
   return highlighter;
 }
 
@@ -99,12 +141,21 @@ function createLineTransformer(
   };
 }
 
-export async function highlightCode(
+const DUAL_THEMES = {
+  light: "one-light",
+  dark: "one-dark-pro",
+} as const;
+
+/**
+ * Highlight code in a single Shiki pass using dual-theme CSS variables so
+ * light and dark themes share one tokenized HTML tree.
+ */
+export async function highlightCodeDualTheme(
   code: string,
   language: string,
   showLineNumbers = false,
   highlightedLines: number[] = []
-): Promise<[string, string]> {
+): Promise<string> {
   const resolvedLanguage = resolveCodeLanguage(language);
   const transformers: ShikiTransformer[] =
     showLineNumbers || highlightedLines.length > 0
@@ -113,32 +164,35 @@ export async function highlightCode(
   const highlighter = await getHighlighter(resolvedLanguage);
 
   try {
-    return [
-      highlighter.codeToHtml(code, {
-        lang: resolvedLanguage,
-        theme: "one-light",
-        transformers,
-      }),
-      highlighter.codeToHtml(code, {
-        lang: resolvedLanguage,
-        theme: "one-dark-pro",
-        transformers,
-      }),
-    ];
+    return highlighter.codeToHtml(code, {
+      lang: resolvedLanguage,
+      themes: DUAL_THEMES,
+      defaultColor: "light",
+      transformers,
+    });
   } catch {
-    return [
-      highlighter.codeToHtml(code, {
-        lang: "text",
-        theme: "one-light",
-        transformers,
-      }),
-      highlighter.codeToHtml(code, {
-        lang: "text",
-        theme: "one-dark-pro",
-        transformers,
-      }),
-    ];
+    return highlighter.codeToHtml(code, {
+      lang: "text",
+      themes: DUAL_THEMES,
+      defaultColor: "light",
+      transformers,
+    });
   }
+}
+
+export async function highlightCode(
+  code: string,
+  language: string,
+  showLineNumbers = false,
+  highlightedLines: number[] = []
+): Promise<[string, string]> {
+  const dual = await highlightCodeDualTheme(
+    code,
+    language,
+    showLineNumbers,
+    highlightedLines
+  );
+  return [dual, dual];
 }
 
 export const CodeBlock = ({
@@ -152,7 +206,6 @@ export const CodeBlock = ({
   ...props
 }: CodeBlockProps) => {
   const [html, setHtml] = useState<string>("");
-  const [darkHtml, setDarkHtml] = useState<string>("");
   const requestIdRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -161,7 +214,7 @@ export const CodeBlock = ({
     const requestId = ++requestIdRef.current;
 
     async function highlight() {
-      const [light, dark] = await highlightCode(
+      const rendered = await highlightCodeDualTheme(
         code,
         language,
         showLineNumbers,
@@ -169,8 +222,7 @@ export const CodeBlock = ({
       );
       // Only apply if this is still the latest request AND not cancelled
       if (!cancelled && requestId === requestIdRef.current) {
-        setHtml(light);
-        setDarkHtml(dark);
+        setHtml(rendered);
       }
     }
 
@@ -191,7 +243,7 @@ export const CodeBlock = ({
     });
 
     return () => cancelAnimationFrame(frame);
-  }, [darkHtml, html, scrollToLine]);
+  }, [html, scrollToLine]);
 
   return (
     <CodeBlockContext.Provider value={{ code }}>
@@ -205,14 +257,9 @@ export const CodeBlock = ({
       >
         <div className="relative">
           <div
-            className="overflow-auto dark:hidden [&>pre]:m-0 [&>pre]:bg-background! [&>pre]:p-4 [&>pre]:text-foreground! [&>pre]:text-sm [&_code]:font-mono [&_code]:text-sm"
+            className="overflow-auto [&>pre]:m-0 [&>pre]:bg-background! [&>pre]:p-4 [&>pre]:text-foreground! [&>pre]:text-sm [&_code]:font-mono [&_code]:text-sm"
             // oxlint-disable-next-line react/no-danger -- syntax highlighting requires innerHTML
             dangerouslySetInnerHTML={{ __html: html }}
-          />
-          <div
-            className="hidden overflow-auto dark:block [&>pre]:m-0 [&>pre]:bg-background! [&>pre]:p-4 [&>pre]:text-foreground! [&>pre]:text-sm [&_code]:font-mono [&_code]:text-sm"
-            // oxlint-disable-next-line react/no-danger -- syntax highlighting requires innerHTML
-            dangerouslySetInnerHTML={{ __html: darkHtml }}
           />
           {children && (
             <div className="absolute top-2 right-2 flex items-center gap-2">

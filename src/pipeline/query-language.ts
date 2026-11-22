@@ -4,7 +4,21 @@
  * IMPORTANT: This affects prompt selection and metadata ONLY.
  * It does NOT affect retrieval filtering - that's controlled by CLI --lang flag.
  */
-import { franc } from "franc";
+// node:module createRequire has no Bun equivalent for synchronous lazy ESM/CJS loading.
+import { createRequire } from "node:module";
+
+type FrancFn = typeof import("franc").franc;
+let cachedFranc: FrancFn | null = null;
+let lazyRequire: NodeRequire | null = null;
+
+function getFranc(): FrancFn {
+  if (!cachedFranc) {
+    lazyRequire ??= createRequire(import.meta.url);
+    const mod = lazyRequire("franc") as { franc: FrancFn };
+    cachedFranc = mod.franc;
+  }
+  return cachedFranc;
+}
 
 const MIN_RELIABLE_LENGTH = 15;
 
@@ -101,7 +115,7 @@ export function detectQueryLanguage(text: string): LanguageDetection {
     return { bcp47: "und", iso639_3: "und", confident: false };
   }
 
-  const detected = franc(trimmed, {
+  const detected = getFranc()(trimmed, {
     minLength: MIN_RELIABLE_LENGTH,
     only: SUPPORTED_LANGUAGES,
   });

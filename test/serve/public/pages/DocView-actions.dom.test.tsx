@@ -44,11 +44,12 @@ void mock.module(
   })
 );
 
-void mock.module("../../../../src/serve/public/components/editor", () => ({
-  // Module mocks are process-wide: keep every export later suites import.
-  CodeMirrorEditor: () => null,
-  MarkdownPreview: ({ content }: { content: string }) => <div>{content}</div>,
-}));
+void mock.module(
+  "../../../../src/serve/public/pages/doc-markdown-preview",
+  () => ({
+    MarkdownPreview: ({ content }: { content: string }) => <div>{content}</div>,
+  })
+);
 
 // Contained DocView-only mocks so the real suites are not sticky-mocked
 // (fn-123.2 / fn-112.5 isolation).

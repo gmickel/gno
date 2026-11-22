@@ -5,13 +5,13 @@
  * @module src/cli/run
  */
 
-import { CommanderError } from "commander";
+// node:path / node:url: no Bun equivalents for dirname/join/fileURLToPath.
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { CLI_NAME, PRODUCT_NAME } from "../app/constants";
+import { CLI_NAME, PRODUCT_NAME, VERSION } from "../app/constants";
 import { CliError, exitCodeFor, formatErrorForOutput } from "./errors";
-import { createProgram, resetGlobals } from "./program";
+import { resetGlobals, setCliInvocationActive } from "./globals";
 
 /**
  * Check if argv contains --json flag (before end-of-options marker).
@@ -39,10 +39,47 @@ const KNOWN_BOOL_FLAGS = new Set([
   "--quiet",
   "--json",
   "--offline",
+  "--no-pager",
 ]);
 
 // Known global flags that take values (--flag value or --flag=value)
 const KNOWN_VALUE_FLAGS = ["--index", "--config"] as const;
+
+/**
+ * Check if argv requests root version (`--version` or `-V`) with no subcommand
+ * and only valid global flags before `--`, so we can answer without loading
+ * Commander or the 5,800-line command graph.
+ */
+function hasRootVersionFlag(argv: string[]): boolean {
+  let sawVersion = false;
+  for (let i = 2; i < argv.length; i++) {
+    const arg = argv[i] as string;
+    if (arg === "--") {
+      return sawVersion && i === argv.length - 1;
+    }
+    if (arg === "--version" || arg === "-V") {
+      sawVersion = true;
+      continue;
+    }
+    if (KNOWN_BOOL_FLAGS.has(arg)) {
+      continue;
+    }
+    if (isKnownValueFlag(arg) && arg.includes("=")) {
+      continue;
+    }
+    if (isKnownValueFlag(arg)) {
+      const nextArg = argv[i + 1];
+      if (nextArg === undefined || nextArg.startsWith("-")) {
+        return false;
+      }
+      i += 1;
+      continue;
+    }
+    // Any subcommand, --help/-h, or unknown flag falls through to Commander.
+    return false;
+  }
+  return sawVersion;
+}
 
 /**
  * Check if arg is a known value flag (--index, --config, or --index=val form).
@@ -174,84 +211,99 @@ export async function runCli(argv: string[]): Promise<number> {
   // Commander's per-invocation `Command.rawArgs` via `resolveCliArgv()`,
   // so no separate process-global capture is needed here.
   resetGlobals();
-
-  const isJson = argvWantsJson(argv);
-
-  // Handle --skill flag: output SKILL.md for agent discovery
-  if (argvWantsSkill(argv)) {
-    await printSkillFile();
-    return 0;
-  }
-
-  // Handle "no subcommand" case before Commander (avoids full help display)
-  if (hasNoSubcommand(argv)) {
-    printConciseHelp({ json: isJson });
-    return 0;
-  }
-
-  const program = createProgram();
-
-  // Suppress Commander's stderr output in JSON mode
-  // so agents get only our structured JSON envelope
-  if (isJson) {
-    program.configureOutput({
-      writeErr: () => {
-        // Intentionally empty: suppress Commander's stderr
-      },
-    });
-  }
+  setCliInvocationActive(true);
 
   try {
-    await program.parseAsync(argv);
-    return 0;
-  } catch (err) {
-    // Handle CliError with proper JSON formatting
-    if (err instanceof CliError) {
-      // `silent` is reserved for codes whose exit value carries the meaning
-      // (e.g. NOT_RUNNING from `--stop` per spec/cli.md). Skip stderr but
-      // still propagate the code.
-      if (!err.silent) {
-        const output = formatErrorForOutput(err, { json: isJson });
-        process.stderr.write(`${output}\n`);
-      }
-      return exitCodeFor(err);
+    const isJson = argvWantsJson(argv);
+
+    // Handle --skill flag: output SKILL.md for agent discovery
+    if (argvWantsSkill(argv)) {
+      await printSkillFile();
+      return 0;
     }
 
-    // Handle Commander errors (exitOverride throws these)
-    if (err instanceof CommanderError) {
-      // Help/version are "successful" exits
-      // commander.helpDisplayed: --help or -h flag
-      // commander.help: help subcommand (e.g., help collection)
-      // commander.version: --version or -V flag
-      if (
-        err.code === "commander.helpDisplayed" ||
-        err.code === "commander.help" ||
-        err.code === "commander.version"
-      ) {
-        return 0;
+    // Handle root --version / -V before importing Commander and program.ts
+    if (hasRootVersionFlag(argv)) {
+      process.stdout.write(`${VERSION}\n`);
+      return 0;
+    }
+
+    // Handle "no subcommand" case before Commander (avoids full help display)
+    if (hasNoSubcommand(argv)) {
+      printConciseHelp({ json: isJson });
+      return 0;
+    }
+
+    const [{ CommanderError }, { createProgram }] = await Promise.all([
+      import("commander"),
+      import("./program"),
+    ]);
+    const program = createProgram();
+
+    // Suppress Commander's stderr output in JSON mode
+    // so agents get only our structured JSON envelope
+    if (isJson) {
+      program.configureOutput({
+        writeErr: () => {
+          // Intentionally empty: suppress Commander's stderr
+        },
+      });
+    }
+
+    try {
+      await program.parseAsync(argv);
+      return 0;
+    } catch (err) {
+      // Handle CliError with proper JSON formatting
+      if (err instanceof CliError) {
+        // `silent` is reserved for codes whose exit value carries the meaning
+        // (e.g. NOT_RUNNING from `--stop` per spec/cli.md). Skip stderr but
+        // still propagate the code.
+        if (!err.silent) {
+          const output = formatErrorForOutput(err, { json: isJson });
+          process.stderr.write(`${output}\n`);
+        }
+        return exitCodeFor(err);
       }
 
-      // Validation errors (missing args, unknown options)
-      // Always emit JSON envelope in JSON mode (Commander stderr suppressed above)
+      // Handle Commander errors (exitOverride throws these)
+      if (err instanceof CommanderError) {
+        // Help/version are "successful" exits
+        // commander.helpDisplayed: --help or -h flag
+        // commander.help: help subcommand (e.g., help collection)
+        // commander.version: --version or -V flag
+        if (
+          err.code === "commander.helpDisplayed" ||
+          err.code === "commander.help" ||
+          err.code === "commander.version"
+        ) {
+          return 0;
+        }
+
+        // Validation errors (missing args, unknown options)
+        // Always emit JSON envelope in JSON mode (Commander stderr suppressed above)
+        if (isJson) {
+          const cliErr = new CliError("VALIDATION", err.message, {
+            commanderCode: err.code,
+          });
+          const output = formatErrorForOutput(cliErr, { json: true });
+          process.stderr.write(`${output}\n`);
+        }
+        return 1;
+      }
+
+      // Unexpected errors
+      const message = err instanceof Error ? err.message : String(err);
       if (isJson) {
-        const cliErr = new CliError("VALIDATION", err.message, {
-          commanderCode: err.code,
-        });
+        const cliErr = new CliError("RUNTIME", message);
         const output = formatErrorForOutput(cliErr, { json: true });
         process.stderr.write(`${output}\n`);
+      } else {
+        process.stderr.write(`Error: ${message}\n`);
       }
-      return 1;
+      return 2;
     }
-
-    // Unexpected errors
-    const message = err instanceof Error ? err.message : String(err);
-    if (isJson) {
-      const cliErr = new CliError("RUNTIME", message);
-      const output = formatErrorForOutput(cliErr, { json: true });
-      process.stderr.write(`${output}\n`);
-    } else {
-      process.stderr.write(`Error: ${message}\n`);
-    }
-    return 2;
+  } finally {
+    setCliInvocationActive(false);
   }
 }

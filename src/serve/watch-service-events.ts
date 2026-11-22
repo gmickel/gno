@@ -8,6 +8,7 @@
 import { join, normalize } from "node:path";
 
 import type { Collection } from "../config/types";
+import type { WalkConfig } from "../ingestion";
 
 import {
   WATCHER_FLUSH_DEBOUNCE_MS,
@@ -34,6 +35,7 @@ export type WatcherRetryKind = "backoff" | "fixed";
 export interface WatchEventHost {
   disposed: () => boolean;
   findCollection: (collectionName: string) => Collection | undefined;
+  getWalkConfig?: (collectionName: string) => WalkConfig | undefined;
   clock: () => number;
   suppressedPaths: Map<string, number>;
   setLastEventAt: (iso: string) => void;
@@ -77,7 +79,11 @@ export function handleWatchEvent(
     return;
   }
 
-  const classified = classifyWatcherFilename(filename, currentCollection);
+  const classified = classifyWatcherFilename(
+    filename,
+    currentCollection,
+    host.getWalkConfig?.(collectionName)
+  );
   if (classified.kind === "reject" || classified.kind === "ignore") {
     return;
   }

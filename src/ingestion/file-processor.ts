@@ -113,11 +113,7 @@ export type FileProcessorBackendKind = "worker" | "child";
 /** Error code of a file whose message to or from the processor was lost. */
 export const PROCESSOR_MESSAGE_FAILED = "PROCESSOR_MESSAGE_FAILED";
 
-/** Error codes of a file stopped at its budget. */
-export const BUDGET_ERROR_CODES: ReadonlySet<string> = new Set([
-  "TIMEOUT",
-  "MEMORY_LIMIT",
-]);
+export { BUDGET_ERROR_CODES } from "./budget-error-codes";
 
 /** How often resident memory is sampled while a file is processed. */
 const MEMORY_SAMPLE_INTERVAL_MS = 200;

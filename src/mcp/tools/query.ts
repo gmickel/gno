@@ -320,47 +320,70 @@ export function handleQuery(
         // Non-TTY progress for MCP (periodic lines to stderr, not \r)
         const downloadProgress = createNonTtyProgressRenderer();
 
-        // Create embedding port (for vector search) - optional
-        const embedResult = await llm.createEmbeddingPort(embedUri, {
-          egressCollections,
-          policy,
-          onProgress: (progress) => downloadProgress("embed", progress),
-        });
+        // Reuse warm LLM ports on ToolContext when available (invalidated on config change / disposeModels).
+        const [embedResult, genResult, rerankResult] = await Promise.all([
+          ctx.getCachedEmbeddingPort
+            ? ctx.getCachedEmbeddingPort(embedUri, {
+                egressCollections,
+                policy,
+                onProgress: (progress) => downloadProgress("embed", progress),
+              })
+            : llm.createEmbeddingPort(embedUri, {
+                egressCollections,
+                policy,
+                onProgress: (progress) => downloadProgress("embed", progress),
+              }),
+          expandUri
+            ? ctx.getCachedExpansionPort
+              ? ctx.getCachedExpansionPort(expandUri, {
+                  egressCollections,
+                  policy,
+                  onProgress: (progress) =>
+                    downloadProgress("expand", progress),
+                })
+              : llm.createExpansionPort(expandUri, {
+                  egressCollections,
+                  policy,
+                  onProgress: (progress) =>
+                    downloadProgress("expand", progress),
+                })
+            : Promise.resolve(null),
+          rerankUri
+            ? ctx.getCachedRerankPort
+              ? ctx.getCachedRerankPort(rerankUri, {
+                  egressCollections,
+                  policy,
+                  onProgress: (progress) =>
+                    downloadProgress("rerank", progress),
+                })
+              : llm.createRerankPort(rerankUri, {
+                  egressCollections,
+                  policy,
+                  onProgress: (progress) =>
+                    downloadProgress("rerank", progress),
+                })
+            : Promise.resolve(null),
+        ]);
+
         if (embedResult.ok) {
           embedPort = embedResult.value;
         }
-
-        // Create expansion port - optional
-        if (expandUri) {
-          const genResult = await llm.createExpansionPort(expandUri, {
-            egressCollections,
-            policy,
-            onProgress: (progress) => downloadProgress("expand", progress),
-          });
-          if (genResult.ok) {
-            expandPort = genResult.value;
-          }
+        if (genResult?.ok) {
+          expandPort = genResult.value;
+        }
+        if (rerankResult?.ok) {
+          rerankPort = rerankResult.value;
         }
 
-        // Create rerank port - optional
-        if (rerankUri) {
-          const rerankResult = await llm.createRerankPort(rerankUri, {
-            egressCollections,
-            policy,
-            onProgress: (progress) => downloadProgress("rerank", progress),
-          });
-          if (rerankResult.ok) {
-            rerankPort = rerankResult.value;
-          }
-        }
-
-        // Create vector index (optional)
+        // Reuse warm vector index on ToolContext when available.
         if (embedPort) {
-          vectorIndex = await createLazyVectorIndex(
-            ctx.store.getRawDb(),
-            embedUri,
-            embedPort
-          );
+          vectorIndex = ctx.getCachedLazyVectorIndex
+            ? await ctx.getCachedLazyVectorIndex(embedUri, embedPort)
+            : await createLazyVectorIndex(
+                ctx.store.getRawDb(),
+                embedUri,
+                embedPort
+              );
         }
 
         const deps: HybridSearchDeps = {
@@ -400,13 +423,13 @@ export function handleQuery(
         await finishRetrievalTraceAfterError(traceSession, cause);
         throw cause;
       } finally {
-        if (embedPort) {
+        if (!ctx.getCachedEmbeddingPort && embedPort) {
           await embedPort.dispose();
         }
-        if (expandPort) {
+        if (!ctx.getCachedExpansionPort && expandPort) {
           await expandPort.dispose();
         }
-        if (rerankPort) {
+        if (!ctx.getCachedRerankPort && rerankPort) {
           await rerankPort.dispose();
         }
       }

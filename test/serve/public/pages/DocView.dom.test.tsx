@@ -41,22 +41,23 @@ void mock.module(
   })
 );
 
-void mock.module("../../../../src/serve/public/components/editor", () => ({
-  // Module mocks are process-wide: keep every export later suites import.
-  CodeMirrorEditor: () => null,
-  MarkdownPreview: ({ content }: { content: string }) => (
-    <div>
-      {extractSections(content).map((section) => (
-        <div
-          data-section-anchor={section.anchor}
-          id={section.anchor}
-          key={section.anchor}
-        />
-      ))}
-      <div>{content}</div>
-    </div>
-  ),
-}));
+void mock.module(
+  "../../../../src/serve/public/pages/doc-markdown-preview",
+  () => ({
+    MarkdownPreview: ({ content }: { content: string }) => (
+      <div>
+        {extractSections(content).map((section) => (
+          <div
+            data-section-anchor={section.anchor}
+            id={section.anchor}
+            key={section.anchor}
+          />
+        ))}
+        <div>{content}</div>
+      </div>
+    ),
+  })
+);
 
 // Contained DocView-only FrontmatterDisplay mock so the real suite is not
 // sticky-mocked (fn-123.2 isolation).

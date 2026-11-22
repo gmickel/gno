@@ -12,9 +12,14 @@
 import type { Config } from "../config/types";
 
 import { getIndexDbPath } from "../app/constants";
-import { getConfigPaths, loadConfig } from "../config";
+import { getConfigPaths } from "../config";
 import { assertSessionBinding } from "../sessions/binding";
 import { SessionsError } from "../sessions/types";
+import {
+  isSessionBindingVerifiedInInvocation,
+  loadConfigCached,
+  markSessionBindingVerifiedInInvocation,
+} from "./config-cache";
 import { CliError } from "./errors";
 
 export async function assertCliSessionBinding(
@@ -23,10 +28,13 @@ export async function assertCliSessionBinding(
   loadedConfig?: Config
 ): Promise<void> {
   const path = configPath ?? getConfigPaths().configFile;
+  if (isSessionBindingVerifiedInInvocation(path, indexName)) {
+    return;
+  }
   let config = loadedConfig;
   if (!config) {
     if (!(await Bun.file(path).exists())) return;
-    const loaded = await loadConfig(path);
+    const loaded = await loadConfigCached(path);
     // Unreadable configs are reported by the command itself.
     if (!loaded.ok) return;
     config = loaded.value;
@@ -38,6 +46,7 @@ export async function assertCliSessionBinding(
       indexName,
       dbPath: getIndexDbPath(indexName),
     });
+    markSessionBindingVerifiedInInvocation(path, indexName);
   } catch (error) {
     if (error instanceof SessionsError) {
       throw new CliError("VALIDATION", error.message, {

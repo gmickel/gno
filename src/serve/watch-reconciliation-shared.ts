@@ -149,7 +149,8 @@ export function failedSyncPaths(
  */
 export function classifyWatcherFilename(
   filename: string | Buffer | null | undefined,
-  collection: Collection
+  collection: Collection,
+  cachedWalkConfig?: ReturnType<typeof collectionToWalkConfig>
 ): WatcherEventClassification {
   if (filename === null || filename === undefined) {
     return { kind: "dirty", hint: "" };
@@ -164,7 +165,7 @@ export function classifyWatcherFilename(
     return { kind: "reject" };
   }
 
-  const walkConfig = collectionToWalkConfig(collection, 0);
+  const walkConfig = cachedWalkConfig ?? collectionToWalkConfig(collection, 0);
   if (
     relPath !== "" &&
     matchesCollectionExclusion(relPath, walkConfig.exclude)
@@ -289,6 +290,37 @@ export async function inspectPathPresence(
  * - Uncertain lstat failures never stay exact-only (avoids NOT_FILE loops);
  *   they dirty + force fallback for durable reclassification.
  */
+/** Bounded concurrency for watcher presence/lstat loops. */
+export const WATCHER_PRESENCE_CONCURRENCY = 32;
+
+/**
+ * Run an async mapper over `items` with bounded concurrency while preserving
+ * deterministic input order.
+ */
+export async function mapWithBoundedConcurrency<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  worker: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  if (items.length === 0) {
+    return [];
+  }
+  const results = Array.from<R>({ length: items.length });
+  const limit = Math.max(1, Math.min(concurrency, items.length));
+  let cursor = 0;
+
+  await Promise.all(
+    Array.from({ length: limit }, async () => {
+      while (cursor < items.length) {
+        const index = cursor++;
+        results[index] = await worker(items[index]!, index);
+      }
+    })
+  );
+
+  return results;
+}
+
 export async function widenVanishedExactPaths(
   rootAbs: string,
   exactPaths: readonly string[]
@@ -298,11 +330,17 @@ export async function widenVanishedExactPaths(
   /** Non-source present paths (dir/other) or uncertain — force store/disk. */
   directoryDirty: string[];
 }> {
+  const presences = await mapWithBoundedConcurrency(
+    exactPaths,
+    WATCHER_PRESENCE_CONCURRENCY,
+    (relPath) => inspectPathPresence(rootAbs, relPath)
+  );
   const keepExact: string[] = [];
   const extraDirty: string[] = [];
   const directoryDirty: string[] = [];
-  for (const relPath of exactPaths) {
-    const presence = await inspectPathPresence(rootAbs, relPath);
+  for (let i = 0; i < exactPaths.length; i += 1) {
+    const relPath = exactPaths[i]!;
+    const presence = presences[i]!;
     if (presence.status === "error") {
       // Uncertainty: durable dirty/full path — never exact NOT_FILE churn.
       extraDirty.push(relPath);

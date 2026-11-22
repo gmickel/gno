@@ -20,11 +20,6 @@ import {
 } from "../app/constants";
 import { INDEX_NAME_REQUIREMENTS, isValidIndexName } from "../app/index-name";
 import { resolveDepthPolicy } from "../core/depth-policy";
-import {
-  findingsRunStatePathForIndex,
-  formatFindingsRunStatusLine,
-  readFindingsRunStatus,
-} from "../core/findings-run-state";
 import { residentShutdownHandlerInstalled } from "../core/resident-shutdown-handler";
 import { parseAndValidateTagFilter } from "../core/tags";
 import {
@@ -35,8 +30,11 @@ import {
   withCliWriteLease,
   type WriteLeaseBusyFailure,
 } from "../core/write-lease";
-import { type McpToolProfile, parseMcpToolProfile } from "../mcp/tool-profile";
-import { setColorsEnabled } from "./colors";
+import {
+  type McpToolProfile,
+  parseMcpToolProfile,
+} from "../mcp/tool-profile-types";
+import { loadConfigCached } from "./config-cache";
 import {
   applyGlobalOptions,
   type GlobalOptions,
@@ -48,6 +46,7 @@ import {
   residentIssues,
 } from "./detach";
 import { CliError } from "./errors";
+import { getGlobals, resetGlobals, setGlobals } from "./globals";
 import {
   assertFormatSupported,
   CMD,
@@ -63,32 +62,10 @@ import {
 import { resolveCliQueryText } from "./query-text";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Global State (set by preAction hook)
+// Global State (re-exported from ./globals for backwards compatibility)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Using object wrapper to allow mutation while satisfying linter
-const globalState: { current: GlobalOptions | null } = { current: null };
-
-/**
- * Get resolved global options. Must be called after command parsing.
- * Throws if called before preAction hook runs.
- */
-export function getGlobals(): GlobalOptions {
-  if (!globalState.current) {
-    throw new Error("Global options not resolved - called before preAction?");
-  }
-  return globalState.current;
-}
-
-/**
- * Reset global state (for testing).
- * Resets both option state and color state to avoid test pollution.
- */
-export function resetGlobals(): void {
-  globalState.current = null;
-  // Reset colors to default (true) - will be set by applyGlobalOptions on next run
-  setColorsEnabled(true);
-}
+export { getGlobals, resetGlobals };
 
 /**
  * Resolve the user-facing argv slice (everything after `[execPath, scriptPath]`)
@@ -220,8 +197,7 @@ async function resolveTerminalLinkPolicy(
     };
   }
 
-  const { loadConfig } = await import("../config");
-  const configResult = await loadConfig(globals.config);
+  const configResult = await loadConfigCached(globals.config);
   const configTemplate = configResult.ok
     ? configResult.value.editorUriTemplate?.trim()
     : undefined;
@@ -373,7 +349,7 @@ export function createProgram(): Command {
       );
     }
     applyGlobalOptions(globals);
-    globalState.current = globals;
+    setGlobals(globals);
     // convert reads no config or index, so there is no binding to check.
     if (actionCommand === convertCommand) return;
     const { assertCliSessionBinding } = await import("./session-binding");
@@ -5251,6 +5227,11 @@ async function runDaemonStatus(deps: DaemonStatusDeps): Promise<void> {
   });
   // Persisted by the daemon after every scheduled findings attempt; absent
   // (null) when the pass is not configured. Read from disk, never live.
+  const {
+    findingsRunStatePathForIndex,
+    formatFindingsRunStatusLine,
+    readFindingsRunStatus,
+  } = await import("../core/findings-run-state");
   const findings = await readFindingsRunStatus(
     findingsRunStatePathForIndex(deps.indexName)
   );

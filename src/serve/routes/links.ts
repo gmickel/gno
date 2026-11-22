@@ -419,10 +419,24 @@ export async function handleDocSimilar(
     return errorResponse("RUNTIME", searchResult.error.message, 500);
   }
 
-  // Get all docs for lookup (single query)
-  const docsResult = await store.listDocuments(
-    crossCollection ? undefined : doc.collection
-  );
+  // Hydrate only the documents owning returned hits (targeted json_each SQL)
+  // rather than loading the entire documents table.
+  const hitDocumentIds = [
+    ...new Set(searchResult.value.flatMap((r) => r.documentIds ?? [])),
+  ];
+  const hitMirrorHashes = [
+    ...new Set(
+      searchResult.value.filter((r) => !r.documentIds).map((r) => r.mirrorHash)
+    ),
+  ];
+  const docsResult =
+    typeof store.listDocumentsForSimilarity === "function"
+      ? await store.listDocumentsForSimilarity({
+          documentIds: hitDocumentIds,
+          mirrorHashes: hitMirrorHashes,
+          collection: crossCollection ? undefined : doc.collection,
+        })
+      : await store.listDocuments(crossCollection ? undefined : doc.collection);
   if (!docsResult.ok) {
     return errorResponse("RUNTIME", docsResult.error.message, 500);
   }

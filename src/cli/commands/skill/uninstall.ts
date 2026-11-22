@@ -9,7 +9,7 @@ import { rm } from "node:fs/promises";
 import { join } from "node:path";
 
 import { CliError } from "../../errors.js";
-import { getGlobals } from "../../program.js";
+import { getGlobals } from "../../globals.js";
 import {
   resolveSkillPaths,
   SKILL_TARGETS,

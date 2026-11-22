@@ -18,6 +18,7 @@ import type { ModelConfig } from "../../config/types";
 import type { LlmResult, LoadedModel, ModelType } from "../types";
 
 import { loadFailedError, outOfMemoryError, timeoutError } from "../errors";
+import { registerModelManagerReset } from "../model-cleanup";
 import { installSimulatorLifetimeGuard } from "./simulator-install";
 
 // Types
@@ -543,6 +544,7 @@ let defaultManager: ModelManager | null = null;
 export function getModelManager(config: ModelConfig): ModelManager {
   if (!defaultManager) {
     defaultManager = new ModelManager(config);
+    registerModelManagerReset(resetModelManager);
   }
   return defaultManager;
 }

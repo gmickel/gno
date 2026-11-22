@@ -9,19 +9,15 @@ import type {
   StoreResult,
 } from "../store/types";
 import type { EphemeralActivationProbePlan } from "./activation-probe-plan";
-import type {
-  ConnectorVerificationCode,
-  ConnectorVerificationTarget,
-} from "./connector-verifier";
+import type { ConnectorVerificationCode } from "./connector-policy";
+import type { ConnectorVerificationTarget } from "./connector-verification-target";
 
 import { summarizeConnectorProofs } from "./activation-connector-health";
 import { isEmptyActivationCollection } from "./activation-empty";
 import { createEphemeralActivationProbePlan } from "./activation-probe-plan";
 import { verifyLexicalActivation } from "./activation-verifier";
-import {
-  getConnectorActivationReceiptLookup,
-  getConnectorVerificationRemediation,
-} from "./connector-verifier";
+import { getConnectorVerificationRemediation } from "./connector-policy";
+import { getConnectorActivationReceiptLookup } from "./connector-verification-target";
 
 const DEFAULT_CONCURRENCY = 4;
 /** Bounds the listed pairs only; completeness is decided from every pair. */

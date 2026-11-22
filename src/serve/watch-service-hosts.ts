@@ -7,7 +7,7 @@
 import type { FSWatcher } from "node:fs";
 
 import type { Collection } from "../config/types";
-import type { SyncOptions } from "../ingestion";
+import type { SyncOptions, WalkConfig } from "../ingestion";
 import type {
   WatchEventHost,
   WatchQueueHost,
@@ -39,6 +39,7 @@ export interface WatchServiceHostState {
   watchFactory: WatchLifecycleHost["watchFactory"];
   onWatchEvent: WatchLifecycleHost["onWatchEvent"];
   findCollection: (collectionName: string) => Collection | undefined;
+  getWalkConfig?: (collectionName: string) => WalkConfig | undefined;
   clock: () => number;
   suppressedPaths: Map<string, number>;
   setLastEventAt: (iso: string) => void;
@@ -90,6 +91,7 @@ export function buildEventHost(state: WatchServiceHostState): WatchEventHost {
   return {
     disposed: state.disposed,
     findCollection: state.findCollection,
+    getWalkConfig: state.getWalkConfig,
     clock: state.clock,
     suppressedPaths: state.suppressedPaths,
     setLastEventAt: state.setLastEventAt,

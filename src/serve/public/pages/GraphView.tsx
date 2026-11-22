@@ -360,9 +360,12 @@ export default function GraphView({ navigate }: PageProps) {
   // Fetch collections on mount
   useEffect(() => {
     const fetchCollections = async () => {
-      const { data } = await apiFetch<StatusResponse>("/api/status");
-      if (data?.collections) {
-        setCollections(data.collections.map((c) => c.name));
+      const { data } = await apiFetch<Array<{ name: string }> | StatusResponse>(
+        "/api/collections"
+      );
+      const list = Array.isArray(data) ? data : data?.collections;
+      if (list) {
+        setCollections(list.map((c) => c.name));
       }
     };
     void fetchCollections();

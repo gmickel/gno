@@ -19,6 +19,8 @@ import {
 } from "./watch-reconciliation-fallback-disk";
 import {
   filterEligiblePaths,
+  mapWithBoundedConcurrency,
+  WATCHER_PRESENCE_CONCURRENCY,
   type ClassificationResult,
 } from "./watch-reconciliation-shared";
 import {
@@ -134,7 +136,7 @@ async function storeOnlyRemovals(options: {
 
   const unproven = [...(next?.unprovenSubtrees ?? [])];
   const fs = options.snapshotOptions?.fs ?? fallbackFs();
-  const removals: string[] = [];
+  const candidatesToProbe: string[] = [];
   for (const path of storePaths) {
     if (relPathUnderAnyPrefix(path, unproven)) continue;
     const slash = path.lastIndexOf("/");
@@ -143,17 +145,28 @@ async function storeOnlyRemovals(options: {
       .get(parent)
       ?.get(path.slice(slash + 1))?.kind;
     if (kind === "file" || kind === "symlink") continue;
-    const presence = await inspectNoFollowPresence(
-      rootAbs,
-      path,
-      fs,
-      options.snapshotOptions?.directoryAvailability
-    );
+    candidatesToProbe.push(path);
+  }
+
+  const presences = await mapWithBoundedConcurrency(
+    candidatesToProbe,
+    WATCHER_PRESENCE_CONCURRENCY,
+    (path) =>
+      inspectNoFollowPresence(
+        rootAbs,
+        path,
+        fs,
+        options.snapshotOptions?.directoryAvailability
+      )
+  );
+  const removals: string[] = [];
+  for (let i = 0; i < candidatesToProbe.length; i += 1) {
+    const presence = presences[i]!;
     if (presence.status === "error") {
       return { status: "error", cause: presence.cause, stage: "scan" };
     }
     if (presence.status === "missing" || !presence.indexable) {
-      removals.push(path);
+      removals.push(candidatesToProbe[i]!);
     }
   }
   return { status: "ok", paths: removals };

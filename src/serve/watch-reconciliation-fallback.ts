@@ -31,7 +31,9 @@ import {
   type FallbackBudget,
 } from "./watch-reconciliation-fallback-disk";
 import {
+  mapWithBoundedConcurrency,
   WATCHER_FALLBACK_BUDGET,
+  WATCHER_PRESENCE_CONCURRENCY,
   type ClassificationResult,
 } from "./watch-reconciliation-shared";
 import { openDirByRel } from "./watch-snapshot-scan";
@@ -207,14 +209,16 @@ export async function fallbackClassifyDirtyHints(options: {
     }
   }
 
+  const removalPaths = [...removals];
+  const removalPresences = await mapWithBoundedConcurrency(
+    removalPaths,
+    WATCHER_PRESENCE_CONCURRENCY,
+    (path) => inspectNoFollowPresence(root, path, fs, directoryAvailability)
+  );
   const provenRemovals: string[] = [];
-  for (const path of removals) {
-    const presence = await inspectNoFollowPresence(
-      root,
-      path,
-      fs,
-      directoryAvailability
-    );
+  for (let i = 0; i < removalPaths.length; i += 1) {
+    const path = removalPaths[i]!;
+    const presence = removalPresences[i]!;
     if (presence.status === "missing") {
       provenRemovals.push(path);
     } else if (presence.status === "present") {

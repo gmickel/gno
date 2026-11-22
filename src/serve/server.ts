@@ -293,6 +293,111 @@ export function acceptsGzip(acceptEncoding: string | null): boolean {
   return (wildcardQ ?? 0) > 0;
 }
 
+const API_GZIP_MIN_BYTES = 2048;
+const API_GZIP_EXEMPT_ROUTES = new Set(["/api/doc-asset", "/api/events"]);
+
+function appendVaryAcceptEncoding(headers: Headers): void {
+  const existing = headers.get("vary");
+  if (!existing) {
+    headers.set("Vary", "Accept-Encoding");
+    return;
+  }
+  const tokens = existing
+    .split(",")
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean);
+  if (!tokens.includes("accept-encoding")) {
+    headers.set("Vary", `${existing}, Accept-Encoding`);
+  }
+}
+
+/**
+ * Compress REST `/api/*` JSON responses larger than 2 KiB when the client
+ * advertises gzip support, preserving all existing headers and adding
+ * `Vary: Accept-Encoding`.
+ */
+export async function maybeCompressApiJsonResponse(
+  req: Request,
+  response: Response
+): Promise<Response> {
+  if (
+    req.method === "HEAD" ||
+    response.body === null ||
+    response.headers.get("content-encoding") !== null
+  ) {
+    return response;
+  }
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    return response;
+  }
+  if (!acceptsGzip(req.headers.get("accept-encoding"))) {
+    return response;
+  }
+  const raw = new Uint8Array(await response.arrayBuffer());
+  const headers = new Headers(response.headers);
+  if (raw.byteLength <= API_GZIP_MIN_BYTES) {
+    headers.set("Content-Length", String(raw.byteLength));
+    return new Response(raw, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+  }
+  const compressed = new Uint8Array(Bun.gzipSync(raw));
+  headers.set("Content-Encoding", "gzip");
+  headers.set("Content-Length", String(compressed.byteLength));
+  appendVaryAcceptEncoding(headers);
+  return new Response(compressed, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function withApiJsonCompression<T extends Record<string, unknown>>(
+  routes: T
+): T {
+  const isMethodTable = (route: unknown): route is Record<string, unknown> =>
+    route !== null &&
+    typeof route === "object" &&
+    Object.getPrototypeOf(route) === Object.prototype;
+
+  const wrap =
+    (
+      handler: (req: Request, server: unknown) => Response | Promise<Response>
+    ) =>
+    async (req: Request, server: unknown): Promise<Response> =>
+      maybeCompressApiJsonResponse(req, await handler(req, server));
+
+  const wrapped: Record<string, unknown> = { ...routes };
+  for (const [path, route] of Object.entries(routes)) {
+    if (!path.startsWith("/api/") || API_GZIP_EXEMPT_ROUTES.has(path)) {
+      continue;
+    }
+    if (typeof route === "function") {
+      wrapped[path] = wrap(
+        route as (req: Request, server: unknown) => Response | Promise<Response>
+      );
+    } else if (isMethodTable(route)) {
+      wrapped[path] = Object.fromEntries(
+        Object.entries(route).map(([method, handler]) => [
+          method,
+          typeof handler === "function"
+            ? wrap(
+                handler as (
+                  req: Request,
+                  server: unknown
+                ) => Response | Promise<Response>
+              )
+            : handler,
+        ])
+      );
+    }
+  }
+  return wrapped as T;
+}
+
 export type PublicFetchFallbackOptions = {
   isDev: boolean;
   spaBundleSource: SpaBundleSource | null;
@@ -311,7 +416,28 @@ export function createPublicFetchFallback(
   options: PublicFetchFallbackOptions
 ): (req: Request) => Promise<Response> {
   const { isDev, spaBundleSource } = options;
-  const gzipBodies = new Map<string, Uint8Array<ArrayBuffer>>();
+  const gzipBodies = new Map<
+    string,
+    { body: Uint8Array<ArrayBuffer>; contentType: string | null }
+  >();
+
+  const buildCachedGzipResponse = (
+    req: Request,
+    cached: { body: Uint8Array<ArrayBuffer>; contentType: string | null }
+  ): Response => {
+    const headers = new Headers();
+    if (cached.contentType) {
+      headers.set("Content-Type", cached.contentType);
+    }
+    headers.set("Cache-Control", SPA_CHUNK_CACHE_CONTROL);
+    headers.set("Vary", "Accept-Encoding");
+    headers.set("Content-Encoding", "gzip");
+    headers.set("Content-Length", String(cached.body.byteLength));
+    return new Response(req.method === "HEAD" ? null : cached.body, {
+      status: 200,
+      headers,
+    });
+  };
 
   const gzipBodyFor = async (
     req: Request,
@@ -321,7 +447,7 @@ export function createPublicFetchFallback(
     const cached = gzipBodies.get(pathname);
     if (cached) {
       await asset.body?.cancel();
-      return cached;
+      return cached.body;
     }
     // HEAD reaches the source as HEAD, so its body is empty; fetch the bytes.
     const identity =
@@ -332,7 +458,12 @@ export function createPublicFetchFallback(
     const encoded = new Uint8Array(
       Bun.gzipSync(new Uint8Array(await identity.arrayBuffer()))
     );
-    gzipBodies.set(pathname, encoded);
+    gzipBodies.set(pathname, {
+      body: encoded,
+      contentType:
+        asset.headers.get("content-type") ??
+        identity.headers.get("content-type"),
+    });
     return encoded;
   };
 
@@ -375,6 +506,19 @@ export function createPublicFetchFallback(
       });
     }
     if (spaBundleSource && (req.method === "GET" || req.method === "HEAD")) {
+      if (
+        !isDev &&
+        isHashedSpaChunkPath(pathname) &&
+        acceptsGzip(req.headers.get("accept-encoding"))
+      ) {
+        const cached = gzipBodies.get(pathname);
+        if (cached) {
+          return withSecurityHeaders(
+            buildCachedGzipResponse(req, cached),
+            isDev
+          );
+        }
+      }
       const asset = await spaBundleSource.fetch(req);
       if (asset.status === 200 && !isDev && isHashedSpaChunkPath(pathname)) {
         return withSecurityHeaders(
@@ -526,23 +670,55 @@ export async function startServer(
     spaBundleSource?.entryPath ??
     `/__gno_spa_${crypto.randomUUID().replaceAll("-", "")}`;
   let spaHtmlCache: {
-    body: ArrayBuffer;
+    body: Uint8Array<ArrayBuffer>;
     contentType: string;
-    etag: string | null;
+    etag: string;
   } | null = null;
 
-  const serveSpaHtml = async (): Promise<Response> => {
-    if (!isDev && spaHtmlCache) {
-      const headers = new Headers({
-        "Content-Type": spaHtmlCache.contentType,
-      });
-      if (spaHtmlCache.etag) {
-        headers.set("ETag", spaHtmlCache.etag);
+  const matchesIfNoneMatch = (
+    headerValue: string | null,
+    etag: string
+  ): boolean => {
+    if (!headerValue) return false;
+    const normalizeTag = (tag: string): string =>
+      tag.trim().replace(/^W\//, "");
+    const target = normalizeTag(etag);
+    for (const part of headerValue.split(",")) {
+      const trimmed = part.trim();
+      if (trimmed === "*" || normalizeTag(trimmed) === target) {
+        return true;
       }
+    }
+    return false;
+  };
+
+  const buildSpaHtmlResponse = (
+    req: Request | undefined,
+    cached: {
+      body: Uint8Array<ArrayBuffer>;
+      contentType: string;
+      etag: string;
+    }
+  ): Response => {
+    const headers = new Headers({
+      "Content-Type": cached.contentType,
+      ETag: cached.etag,
+    });
+    if (
+      matchesIfNoneMatch(req?.headers.get("if-none-match") ?? null, cached.etag)
+    ) {
       return withSecurityHeaders(
-        new Response(spaHtmlCache.body.slice(0), { headers }),
+        new Response(null, { status: 304, headers }),
         isDev
       );
+    }
+    headers.set("Content-Length", String(cached.body.byteLength));
+    return withSecurityHeaders(new Response(cached.body, { headers }), isDev);
+  };
+
+  const serveSpaHtml = async (req?: Request): Promise<Response> => {
+    if (!isDev && spaHtmlCache) {
+      return buildSpaHtmlResponse(req, spaHtmlCache);
     }
     const boundPort = server.port ?? port;
     const internalRequest = new Request(
@@ -558,22 +734,16 @@ export async function startServer(
       );
     }
     if (!isDev) {
+      const body = new Uint8Array(await raw.arrayBuffer());
+      const etag =
+        raw.headers.get("etag") ?? `W/"${Bun.hash(body).toString(16)}"`;
       spaHtmlCache = {
-        body: await raw.arrayBuffer(),
+        body,
         contentType:
           raw.headers.get("content-type") ?? "text/html;charset=utf-8",
-        etag: raw.headers.get("etag"),
+        etag,
       };
-      const headers = new Headers({
-        "Content-Type": spaHtmlCache.contentType,
-      });
-      if (spaHtmlCache.etag) {
-        headers.set("ETag", spaHtmlCache.etag);
-      }
-      return withSecurityHeaders(
-        new Response(spaHtmlCache.body.slice(0), { headers }),
-        isDev
-      );
+      return buildSpaHtmlResponse(req, spaHtmlCache);
     }
     return withSecurityHeaders(raw, isDev);
   };
@@ -591,1192 +761,1212 @@ export async function startServer(
       development: isDev,
 
       // Static routes - Bun handles HTML bundling and /_bun/* assets automatically
-      routes: withRemoteHostPathRedaction({
-        "/mcp": gateway.route,
-        ...clipperRoutesForBind(
-          isHttpGatewayLoopbackBind(gatewayConfig.host),
-          clipperGateway
-        ),
-        // Injected-server tests only. Real runs keep the raw HTMLBundle off the
-        // public listener in createSpaBundleSource above.
-        ...(spaBundleSource ? {} : { [spaInternalPath]: homepage }),
-        // SPA routes - same React app, security envelope on every document
-        "/": spaPageRoute,
-        "/search": spaPageRoute,
-        "/browse": spaPageRoute,
-        "/doc": spaPageRoute,
-        "/edit": spaPageRoute,
-        "/collections": spaPageRoute,
-        "/connectors": spaPageRoute,
-        "/traces": spaPageRoute,
-        "/sessions": spaPageRoute,
-        "/context/compiled": spaPageRoute,
-        "/ask": spaPageRoute,
-        "/graph": spaPageRoute,
-        "/clipper/pair": spaPageRoute,
+      routes: withApiJsonCompression(
+        withRemoteHostPathRedaction({
+          "/mcp": gateway.route,
+          ...clipperRoutesForBind(
+            isHttpGatewayLoopbackBind(gatewayConfig.host),
+            clipperGateway
+          ),
+          // Injected-server tests only. Real runs keep the raw HTMLBundle off the
+          // public listener in createSpaBundleSource above.
+          ...(spaBundleSource ? {} : { [spaInternalPath]: homepage }),
+          // SPA routes - same React app, security envelope on every document
+          "/": spaPageRoute,
+          "/search": spaPageRoute,
+          "/browse": spaPageRoute,
+          "/doc": spaPageRoute,
+          "/edit": spaPageRoute,
+          "/collections": spaPageRoute,
+          "/connectors": spaPageRoute,
+          "/traces": spaPageRoute,
+          "/sessions": spaPageRoute,
+          "/context/compiled": spaPageRoute,
+          "/ask": spaPageRoute,
+          "/graph": spaPageRoute,
+          "/clipper/pair": spaPageRoute,
 
-        // API routes with CSRF protection wrapper
-        "/api/health": {
-          GET: () => withSecurityHeaders(handleHealth(), isDev),
-        },
-        "/api/status": {
-          GET: async (req: Request) =>
-            withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleStatus(ctxHolder.current, {
-                  getResidentStatus: () =>
-                    (runtime as ResidentRuntime).getStatus(),
-                })
-              ),
-              isDev
-            ),
-        },
-        "/api/traces/export": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleTraceExport(store, req, ctxHolder.config.collections)
-              ),
-              isDev
-            );
+          // API routes with CSRF protection wrapper
+          "/api/health": {
+            GET: () => withSecurityHeaders(handleHealth(), isDev),
           },
-        },
-        "/api/traces/:traceId/judgments": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            const traceId = decodeURIComponent(
-              new URL(req.url).pathname.split("/")[3] ?? ""
-            );
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleTraceLabel(store, traceId, req)
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/traces/:traceId": {
-          GET: async (req: Request) => {
-            const traceId = decodeURIComponent(
-              new URL(req.url).pathname.split("/")[3] ?? ""
-            );
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleTraceShow(store, traceId, req)
-              ),
-              isDev
-            );
-          },
-          DELETE: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            const traceId = decodeURIComponent(
-              new URL(req.url).pathname.split("/")[3] ?? ""
-            );
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleTraceDelete(store, traceId)
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/traces": {
-          GET: async (req: Request) =>
-            withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleTraceList(store, req)
-              ),
-              isDev
-            ),
-          DELETE: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleTracePurge(store)
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/resident/status": {
-          GET: () =>
-            withSecurityHeaders(
-              handleResidentStatus(() =>
-                (runtime as ResidentRuntime).getStatus()
-              ),
-              isDev
-            ),
-        },
-        "/api/collections": {
-          GET: async () =>
-            withSecurityHeaders(
-              (await refreshResidentConfig(runtime as ResidentRuntime)) ??
-                (await handleCollections(ctxHolder.config)),
-              isDev
-            ),
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleCreateCollection(ctxHolder, store, req),
-              isDev
-            );
-          },
-        },
-        "/api/egress/check": {
-          POST: async (req: Request) =>
-            withSecurityHeaders(
-              await handleCollectionEgressCheck(ctxHolder, req),
-              isDev
-            ),
-        },
-        "/api/egress/audits/status": {
-          GET: async () =>
-            withSecurityHeaders(await handleEgressAuditStatus(store), isDev),
-        },
-        "/api/egress/audits": {
-          GET: async (req: Request) =>
-            withSecurityHeaders(await handleEgressAuditList(store, req), isDev),
-          DELETE: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleEgressAuditPurge(store),
-              isDev
-            );
-          },
-        },
-        "/api/egress/audits/:auditId": {
-          GET: async (req: Request) => {
-            const auditId = decodeURIComponent(
-              new URL(req.url).pathname.split("/").at(-1) ?? ""
-            );
-            return withSecurityHeaders(
-              await handleEgressAuditShow(store, auditId),
-              isDev
-            );
-          },
-          DELETE: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            const auditId = decodeURIComponent(
-              new URL(req.url).pathname.split("/").at(-1) ?? ""
-            );
-            return withSecurityHeaders(
-              await handleEgressAuditDelete(store, auditId),
-              isDev
-            );
-          },
-        },
-        "/api/connectors": {
-          GET: async (req: Request) =>
-            withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleConnectors(ctxHolder.config)
-              ),
-              isDev
-            ),
-        },
-        "/api/connectors/install": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await (
-                dependencies.handleInstallConnector ?? handleInstallConnector
-              )(req, {
-                indexName: options.index,
-                configPath: runtime.actualConfigPath,
-              }),
-              isDev
-            );
-          },
-        },
-        "/api/connectors/verify": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                (dependencies.handleVerifyConnector ?? handleVerifyConnector)(
-                  ctxHolder.config,
-                  store,
-                  req
-                )
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/import/preview": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                (dependencies.handleImportPreview ?? handleImportPreview)(
-                  ctxHolder,
-                  req
-                )
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/publish/export": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                (dependencies.handlePublishExport ?? handlePublishExport)(
-                  ctxHolder.config,
-                  store,
-                  req,
-                  runtime.actualConfigPath
-                )
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/sync": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleSync(ctxHolder, store, req),
-              isDev
-            );
-          },
-        },
-        "/api/capture": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleCreateCapture(ctxHolder, store, req),
-              isDev
-            );
-          },
-        },
-        "/api/sessions/status": {
-          GET: async (req: Request) =>
-            withSecurityHeaders(
-              (await refreshSessionsConfig(ctxHolder, store)) ??
-                (await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                  handleSessionsStatus(ctxHolder)
-                )),
-              isDev
-            ),
-        },
-        "/api/sessions/discover": {
-          GET: async (req: Request, server: RequestPeerServer) => {
-            // Returns host paths: a cross-origin page is refused like a write.
-            if (!isOriginOrTokenAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleSessionsDiscover(ctxHolder, req, { server })
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/sessions/import": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleSessionsImport(ctxHolder, req),
-              isDev
-            );
-          },
-        },
-        "/api/sessions/sources": {
-          POST: async (req: Request, server: RequestPeerServer) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleSessionsAddSource(ctxHolder, store, req, { server }),
-              isDev
-            );
-          },
-        },
-        "/api/sessions/sources/:id": {
-          DELETE: async (req: Request, server: RequestPeerServer) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            const id = decodeURIComponent(
-              new URL(req.url).pathname.split("/")[4] ?? ""
-            );
-            return withSecurityHeaders(
-              await handleSessionsRemoveSource(ctxHolder, store, id, req, {
-                server,
-              }),
-              isDev
-            );
-          },
-        },
-        "/api/sessions/automation/run": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleSessionsAutomationRun(ctxHolder, store, req),
-              isDev
-            );
-          },
-        },
-        "/api/sessions/automation/:id": {
-          PUT: async (req: Request, server: RequestPeerServer) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleSessionsAutomationSet(
-                ctxHolder,
-                store,
-                automationProfileId(req),
-                req,
-                { server }
-              ),
-              isDev
-            );
-          },
-          DELETE: async (req: Request, server: RequestPeerServer) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleSessionsAutomationRemove(
-                ctxHolder,
-                store,
-                automationProfileId(req),
-                req,
-                { server }
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/sessions/automation/:id/preview": {
-          GET: async (req: Request, server: RequestPeerServer) =>
-            !isOriginOrTokenAllowed(req, port)
-              ? withSecurityHeaders(forbiddenResponse(), isDev)
-              : withSecurityHeaders(
-                  await handleResidentRead(
-                    runtime as ResidentRuntime,
-                    req,
-                    () =>
-                      handleSessionsAutomationPreview(
-                        ctxHolder,
-                        automationProfileId(req),
-                        req,
-                        { server }
-                      )
-                  ),
-                  isDev
+          "/api/status": {
+            GET: async (req: Request) =>
+              withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleStatus(ctxHolder.current, {
+                    getResidentStatus: () =>
+                      (runtime as ResidentRuntime).getStatus(),
+                  })
                 ),
-        },
-        "/api/sessions/automation/:id/enable": {
-          POST: async (req: Request, server: RequestPeerServer) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleSessionsAutomationEnable(
-                ctxHolder,
-                store,
-                automationProfileId(req),
-                req,
-                { server }
+                isDev
               ),
-              isDev
-            );
           },
-        },
-        "/api/sessions/automation/:id/disable": {
-          POST: async (req: Request, server: RequestPeerServer) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleSessionsAutomationDisable(
-                ctxHolder,
-                store,
-                automationProfileId(req),
-                req,
-                { server }
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/sessions/init": {
-          POST: async (req: Request, server: RequestPeerServer) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleSessionsInit(ctxHolder, store, req, { server }),
-              isDev
-            );
-          },
-        },
-        "/api/memory/remember": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleMemoryRemember(ctxHolder, store, req),
-              isDev
-            );
-          },
-        },
-        "/api/memory/recall": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleMemoryRecall(ctxHolder, store, req)
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/docs": {
-          GET: async (req: Request) => {
-            const url = new URL(req.url);
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                (dependencies.handleDocs ?? handleDocs)(store, url)
-              ),
-              isDev
-            );
-          },
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleCreateDoc(ctxHolder, store, req),
-              isDev
-            );
-          },
-        },
-        "/api/docs/autocomplete": {
-          GET: async (req: Request) => {
-            const url = new URL(req.url);
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleDocsAutocomplete(store, url)
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/note-presets": {
-          GET: async () =>
-            withSecurityHeaders(await handleNotePresets(), isDev),
-        },
-        "/api/folders": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleCreateFolder(ctxHolder, req),
-              isDev
-            );
-          },
-        },
-        "/api/browse/tree": {
-          GET: async (req: Request) =>
-            withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleBrowseTree(store)
-              ),
-              isDev
-            ),
-        },
-        "/api/docs/:id/deactivate": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            const url = new URL(req.url);
-            // Extract id from /api/docs/:id/deactivate
-            const parts = url.pathname.split("/");
-            const id = decodeURIComponent(parts[3] || "");
-            return withSecurityHeaders(
-              await handleDeactivateDoc(ctxHolder, store, id, req),
-              isDev
-            );
-          },
-        },
-        "/api/docs/:id/rename": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            const url = new URL(req.url);
-            const parts = url.pathname.split("/");
-            const id = decodeURIComponent(parts[3] || "");
-            return withSecurityHeaders(
-              await handleRenameDoc(ctxHolder, store, id, req),
-              isDev
-            );
-          },
-        },
-        "/api/docs/:id/move": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            const url = new URL(req.url);
-            const parts = url.pathname.split("/");
-            const id = decodeURIComponent(parts[3] || "");
-            return withSecurityHeaders(
-              await handleMoveDoc(ctxHolder, store, id, req),
-              isDev
-            );
-          },
-        },
-        "/api/docs/:id/duplicate": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            const url = new URL(req.url);
-            const parts = url.pathname.split("/");
-            const id = decodeURIComponent(parts[3] || "");
-            return withSecurityHeaders(
-              await handleDuplicateDoc(ctxHolder, store, id, req),
-              isDev
-            );
-          },
-        },
-        "/api/docs/:id/refactor-plan": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            const url = new URL(req.url);
-            const parts = url.pathname.split("/");
-            const id = decodeURIComponent(parts[3] || "");
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                (dependencies.handleRefactorPlan ?? handleRefactorPlan)(
-                  ctxHolder,
-                  store,
-                  id,
-                  req
-                )
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/docs/:id/trash": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            const url = new URL(req.url);
-            const parts = url.pathname.split("/");
-            const id = decodeURIComponent(parts[3] || "");
-            return withSecurityHeaders(
-              await handleTrashDoc(ctxHolder, store, id, req),
-              isDev
-            );
-          },
-        },
-        "/api/docs/:id/reveal": {
-          POST: async (req: Request, server: RequestPeerServer) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            const url = new URL(req.url);
-            const parts = url.pathname.split("/");
-            const id = decodeURIComponent(parts[3] || "");
-            return withSecurityHeaders(
-              await handleRevealDoc(ctxHolder, store, id, req, { server }),
-              isDev
-            );
-          },
-        },
-        "/api/docs/:id/editable-copy": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            const url = new URL(req.url);
-            const parts = url.pathname.split("/");
-            const id = decodeURIComponent(parts[3] || "");
-            return withSecurityHeaders(
-              await handleCreateEditableCopy(ctxHolder, store, id, req),
-              isDev
-            );
-          },
-        },
-        "/api/docs/:id": {
-          PUT: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            const url = new URL(req.url);
-            // Extract id from /api/docs/:id
-            const id = decodeURIComponent(url.pathname.split("/").pop() || "");
-            return withSecurityHeaders(
-              await handleUpdateDoc(ctxHolder, store, id, req),
-              isDev
-            );
-          },
-        },
-        "/api/requests/:requestId": {
-          GET: async (req: Request) => {
-            const url = new URL(req.url);
-            const requestId = decodeURIComponent(
-              url.pathname.split("/").pop() || ""
-            );
-            return withSecurityHeaders(
-              await handleRequestStatus(store, requestId),
-              isDev
-            );
-          },
-        },
-        "/api/doc": {
-          GET: async (req: Request) => {
-            const url = new URL(req.url);
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleDoc(store, ctxHolder.config, url, req)
-              ),
-              isDev
-            );
-          },
-        },
-        // fn-112: production factories shared with route-level tests (I1-04)
-        "/api/doc-asset": createDocAssetRouteHandlers({
-          store,
-          getConfig: () => ctxHolder.config,
-          runtime: runtime as ResidentRuntime,
-          isDev,
-          withSecurityHeaders,
-        }),
-        // Vendor assets are NOT mounted as valid-only patterns here.
-        // ALL /vendor/pdfjs/* traffic is handled by handlePdfjsVendorRequest
-        // in the fetch fallback below (same production dispatcher tests use).
-        "/api/events": {
-          GET: (req: Request) => {
-            const residentRuntime = runtime as ResidentRuntime;
-            const admitted = residentRuntime.admitRequest(req.signal);
-            if (!admitted || !residentRuntime.eventBus) {
-              admitted?.finish();
+          "/api/traces/export": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
               return withSecurityHeaders(
-                Response.json(
-                  {
-                    error: {
-                      code: "UNAVAILABLE",
-                      message: "Document event stream unavailable",
-                    },
-                  },
-                  { status: 503 }
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleTraceExport(store, req, ctxHolder.config.collections)
                 ),
                 isDev
               );
-            }
-            try {
+            },
+          },
+          "/api/traces/:traceId/judgments": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              const traceId = decodeURIComponent(
+                new URL(req.url).pathname.split("/")[3] ?? ""
+              );
               return withSecurityHeaders(
-                residentRuntime.eventBus.createResponse({
-                  authorizationEpoch:
-                    admitted.authorizationEpoch ??
-                    residentRuntime.authorizationEpoch,
-                  isAuthorizationEpochCurrent: () =>
-                    admitted.isAuthorizationEpochCurrent?.() ?? true,
-                  onClose: () => admitted.finish(),
-                  signal: admitted.signal,
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleTraceLabel(store, traceId, req)
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/traces/:traceId": {
+            GET: async (req: Request) => {
+              const traceId = decodeURIComponent(
+                new URL(req.url).pathname.split("/")[3] ?? ""
+              );
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleTraceShow(store, traceId, req)
+                ),
+                isDev
+              );
+            },
+            DELETE: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              const traceId = decodeURIComponent(
+                new URL(req.url).pathname.split("/")[3] ?? ""
+              );
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleTraceDelete(store, traceId)
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/traces": {
+            GET: async (req: Request) =>
+              withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleTraceList(store, req)
+                ),
+                isDev
+              ),
+            DELETE: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleTracePurge(store)
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/resident/status": {
+            GET: () =>
+              withSecurityHeaders(
+                handleResidentStatus(() =>
+                  (runtime as ResidentRuntime).getStatus()
+                ),
+                isDev
+              ),
+          },
+          "/api/collections": {
+            GET: async () =>
+              withSecurityHeaders(
+                (await refreshResidentConfig(runtime as ResidentRuntime)) ??
+                  (await handleCollections(ctxHolder.config)),
+                isDev
+              ),
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleCreateCollection(ctxHolder, store, req),
+                isDev
+              );
+            },
+          },
+          "/api/egress/check": {
+            POST: async (req: Request) =>
+              withSecurityHeaders(
+                await handleCollectionEgressCheck(ctxHolder, req),
+                isDev
+              ),
+          },
+          "/api/egress/audits/status": {
+            GET: async () =>
+              withSecurityHeaders(await handleEgressAuditStatus(store), isDev),
+          },
+          "/api/egress/audits": {
+            GET: async (req: Request) =>
+              withSecurityHeaders(
+                await handleEgressAuditList(store, req),
+                isDev
+              ),
+            DELETE: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleEgressAuditPurge(store),
+                isDev
+              );
+            },
+          },
+          "/api/egress/audits/:auditId": {
+            GET: async (req: Request) => {
+              const auditId = decodeURIComponent(
+                new URL(req.url).pathname.split("/").at(-1) ?? ""
+              );
+              return withSecurityHeaders(
+                await handleEgressAuditShow(store, auditId),
+                isDev
+              );
+            },
+            DELETE: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              const auditId = decodeURIComponent(
+                new URL(req.url).pathname.split("/").at(-1) ?? ""
+              );
+              return withSecurityHeaders(
+                await handleEgressAuditDelete(store, auditId),
+                isDev
+              );
+            },
+          },
+          "/api/connectors": {
+            GET: async (req: Request) =>
+              withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleConnectors(ctxHolder.config)
+                ),
+                isDev
+              ),
+          },
+          "/api/connectors/install": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await (
+                  dependencies.handleInstallConnector ?? handleInstallConnector
+                )(req, {
+                  indexName: options.index,
+                  configPath: runtime.actualConfigPath,
                 }),
                 isDev
               );
-            } catch (error) {
-              admitted.finish();
-              throw error;
-            }
+            },
           },
-        },
-        "/api/metadata": {
-          GET: async (req: Request) => {
-            const url = new URL(req.url);
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleMetadata(store, url)
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/tags": {
-          GET: async (req: Request) => {
-            const url = new URL(req.url);
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleTags(store, url)
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/search": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleSearch(ctxHolder.current, req)
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/query": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleResidentRead(
-                runtime as ResidentRuntime,
-                req,
-                (signal) =>
-                  handleQuery(ctxHolder.current, new Request(req, { signal }))
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/context": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleResidentRead(
-                runtime as ResidentRuntime,
-                req,
-                (signal) =>
-                  handleContextBuild(
-                    ctxHolder.current,
-                    new Request(req, { signal })
+          "/api/connectors/verify": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  (dependencies.handleVerifyConnector ?? handleVerifyConnector)(
+                    ctxHolder.config,
+                    store,
+                    req
                   )
-              ),
-              isDev
-            );
+                ),
+                isDev
+              );
+            },
           },
-        },
-        "/api/context/compiled/preview": {
-          POST: async (req: Request, server: RequestPeerServer) => {
-            if (!isRequestAllowed(req, port))
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            return withSecurityHeaders(
-              await handleResidentRead(
-                runtime as ResidentRuntime,
-                req,
-                (signal) =>
-                  handleCompiledContext(
-                    ctxHolder.current,
-                    new Request(req, { signal }),
-                    { requestIP: () => server.requestIP(req) },
-                    "preview"
+          "/api/import/preview": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  (dependencies.handleImportPreview ?? handleImportPreview)(
+                    ctxHolder,
+                    req
                   )
-              ),
-              isDev
-            );
+                ),
+                isDev
+              );
+            },
           },
-        },
-        "/api/context/compiled/check": {
-          POST: async (req: Request, server: RequestPeerServer) => {
-            if (!isRequestAllowed(req, port))
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            return withSecurityHeaders(
-              await handleResidentRead(
-                runtime as ResidentRuntime,
-                req,
-                (signal) =>
-                  handleCompiledContext(
-                    ctxHolder.current,
-                    new Request(req, { signal }),
-                    { requestIP: () => server.requestIP(req) },
-                    "check"
+          "/api/publish/export": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  (dependencies.handlePublishExport ?? handlePublishExport)(
+                    ctxHolder.config,
+                    store,
+                    req,
+                    runtime.actualConfigPath
                   )
-              ),
-              isDev
-            );
+                ),
+                isDev
+              );
+            },
           },
-        },
-        "/api/context/verify": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleResidentRead(
-                runtime as ResidentRuntime,
-                req,
-                (signal) =>
-                  handleContextVerify(
-                    ctxHolder.current,
-                    new Request(req, { signal })
+          "/api/sync": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleSync(ctxHolder, store, req),
+                isDev
+              );
+            },
+          },
+          "/api/capture": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleCreateCapture(ctxHolder, store, req),
+                isDev
+              );
+            },
+          },
+          "/api/sessions/status": {
+            GET: async (req: Request) =>
+              withSecurityHeaders(
+                (await refreshSessionsConfig(ctxHolder, store)) ??
+                  (await handleResidentRead(
+                    runtime as ResidentRuntime,
+                    req,
+                    () => handleSessionsStatus(ctxHolder)
+                  )),
+                isDev
+              ),
+          },
+          "/api/sessions/discover": {
+            GET: async (req: Request, server: RequestPeerServer) => {
+              // Returns host paths: a cross-origin page is refused like a write.
+              if (!isOriginOrTokenAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleSessionsDiscover(ctxHolder, req, { server })
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/sessions/import": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleSessionsImport(ctxHolder, req),
+                isDev
+              );
+            },
+          },
+          "/api/sessions/sources": {
+            POST: async (req: Request, server: RequestPeerServer) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleSessionsAddSource(ctxHolder, store, req, {
+                  server,
+                }),
+                isDev
+              );
+            },
+          },
+          "/api/sessions/sources/:id": {
+            DELETE: async (req: Request, server: RequestPeerServer) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              const id = decodeURIComponent(
+                new URL(req.url).pathname.split("/")[4] ?? ""
+              );
+              return withSecurityHeaders(
+                await handleSessionsRemoveSource(ctxHolder, store, id, req, {
+                  server,
+                }),
+                isDev
+              );
+            },
+          },
+          "/api/sessions/automation/run": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleSessionsAutomationRun(ctxHolder, store, req),
+                isDev
+              );
+            },
+          },
+          "/api/sessions/automation/:id": {
+            PUT: async (req: Request, server: RequestPeerServer) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleSessionsAutomationSet(
+                  ctxHolder,
+                  store,
+                  automationProfileId(req),
+                  req,
+                  { server }
+                ),
+                isDev
+              );
+            },
+            DELETE: async (req: Request, server: RequestPeerServer) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleSessionsAutomationRemove(
+                  ctxHolder,
+                  store,
+                  automationProfileId(req),
+                  req,
+                  { server }
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/sessions/automation/:id/preview": {
+            GET: async (req: Request, server: RequestPeerServer) =>
+              !isOriginOrTokenAllowed(req, port)
+                ? withSecurityHeaders(forbiddenResponse(), isDev)
+                : withSecurityHeaders(
+                    await handleResidentRead(
+                      runtime as ResidentRuntime,
+                      req,
+                      () =>
+                        handleSessionsAutomationPreview(
+                          ctxHolder,
+                          automationProfileId(req),
+                          req,
+                          { server }
+                        )
+                    ),
+                    isDev
+                  ),
+          },
+          "/api/sessions/automation/:id/enable": {
+            POST: async (req: Request, server: RequestPeerServer) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleSessionsAutomationEnable(
+                  ctxHolder,
+                  store,
+                  automationProfileId(req),
+                  req,
+                  { server }
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/sessions/automation/:id/disable": {
+            POST: async (req: Request, server: RequestPeerServer) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleSessionsAutomationDisable(
+                  ctxHolder,
+                  store,
+                  automationProfileId(req),
+                  req,
+                  { server }
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/sessions/init": {
+            POST: async (req: Request, server: RequestPeerServer) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleSessionsInit(ctxHolder, store, req, { server }),
+                isDev
+              );
+            },
+          },
+          "/api/memory/remember": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleMemoryRemember(ctxHolder, store, req),
+                isDev
+              );
+            },
+          },
+          "/api/memory/recall": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleMemoryRecall(ctxHolder, store, req)
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/docs": {
+            GET: async (req: Request) => {
+              const url = new URL(req.url);
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  (dependencies.handleDocs ?? handleDocs)(store, url)
+                ),
+                isDev
+              );
+            },
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleCreateDoc(ctxHolder, store, req),
+                isDev
+              );
+            },
+          },
+          "/api/docs/autocomplete": {
+            GET: async (req: Request) => {
+              const url = new URL(req.url);
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleDocsAutocomplete(store, url)
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/note-presets": {
+            GET: async () =>
+              withSecurityHeaders(await handleNotePresets(), isDev),
+          },
+          "/api/folders": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleCreateFolder(ctxHolder, req),
+                isDev
+              );
+            },
+          },
+          "/api/browse/tree": {
+            GET: async (req: Request) =>
+              withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleBrowseTree(store)
+                ),
+                isDev
+              ),
+          },
+          "/api/docs/:id/deactivate": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              const url = new URL(req.url);
+              // Extract id from /api/docs/:id/deactivate
+              const parts = url.pathname.split("/");
+              const id = decodeURIComponent(parts[3] || "");
+              return withSecurityHeaders(
+                await handleDeactivateDoc(ctxHolder, store, id, req),
+                isDev
+              );
+            },
+          },
+          "/api/docs/:id/rename": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              const url = new URL(req.url);
+              const parts = url.pathname.split("/");
+              const id = decodeURIComponent(parts[3] || "");
+              return withSecurityHeaders(
+                await handleRenameDoc(ctxHolder, store, id, req),
+                isDev
+              );
+            },
+          },
+          "/api/docs/:id/move": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              const url = new URL(req.url);
+              const parts = url.pathname.split("/");
+              const id = decodeURIComponent(parts[3] || "");
+              return withSecurityHeaders(
+                await handleMoveDoc(ctxHolder, store, id, req),
+                isDev
+              );
+            },
+          },
+          "/api/docs/:id/duplicate": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              const url = new URL(req.url);
+              const parts = url.pathname.split("/");
+              const id = decodeURIComponent(parts[3] || "");
+              return withSecurityHeaders(
+                await handleDuplicateDoc(ctxHolder, store, id, req),
+                isDev
+              );
+            },
+          },
+          "/api/docs/:id/refactor-plan": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              const url = new URL(req.url);
+              const parts = url.pathname.split("/");
+              const id = decodeURIComponent(parts[3] || "");
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  (dependencies.handleRefactorPlan ?? handleRefactorPlan)(
+                    ctxHolder,
+                    store,
+                    id,
+                    req
                   )
-              ),
-              isDev
-            );
+                ),
+                isDev
+              );
+            },
           },
-        },
-        "/api/query/diagnose": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleResidentRead(
-                runtime as ResidentRuntime,
-                req,
-                (signal) =>
-                  handleQueryDiagnose(
-                    ctxHolder.current,
-                    new Request(req, { signal })
+          "/api/docs/:id/trash": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              const url = new URL(req.url);
+              const parts = url.pathname.split("/");
+              const id = decodeURIComponent(parts[3] || "");
+              return withSecurityHeaders(
+                await handleTrashDoc(ctxHolder, store, id, req),
+                isDev
+              );
+            },
+          },
+          "/api/docs/:id/reveal": {
+            POST: async (req: Request, server: RequestPeerServer) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              const url = new URL(req.url);
+              const parts = url.pathname.split("/");
+              const id = decodeURIComponent(parts[3] || "");
+              return withSecurityHeaders(
+                await handleRevealDoc(ctxHolder, store, id, req, { server }),
+                isDev
+              );
+            },
+          },
+          "/api/docs/:id/editable-copy": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              const url = new URL(req.url);
+              const parts = url.pathname.split("/");
+              const id = decodeURIComponent(parts[3] || "");
+              return withSecurityHeaders(
+                await handleCreateEditableCopy(ctxHolder, store, id, req),
+                isDev
+              );
+            },
+          },
+          "/api/docs/:id": {
+            PUT: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              const url = new URL(req.url);
+              // Extract id from /api/docs/:id
+              const id = decodeURIComponent(
+                url.pathname.split("/").pop() || ""
+              );
+              return withSecurityHeaders(
+                await handleUpdateDoc(ctxHolder, store, id, req),
+                isDev
+              );
+            },
+          },
+          "/api/requests/:requestId": {
+            GET: async (req: Request) => {
+              const url = new URL(req.url);
+              const requestId = decodeURIComponent(
+                url.pathname.split("/").pop() || ""
+              );
+              return withSecurityHeaders(
+                await handleRequestStatus(store, requestId),
+                isDev
+              );
+            },
+          },
+          "/api/doc": {
+            GET: async (req: Request) => {
+              const url = new URL(req.url);
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleDoc(store, ctxHolder.config, url, req)
+                ),
+                isDev
+              );
+            },
+          },
+          // fn-112: production factories shared with route-level tests (I1-04)
+          "/api/doc-asset": createDocAssetRouteHandlers({
+            store,
+            getConfig: () => ctxHolder.config,
+            runtime: runtime as ResidentRuntime,
+            isDev,
+            withSecurityHeaders,
+          }),
+          // Vendor assets are NOT mounted as valid-only patterns here.
+          // ALL /vendor/pdfjs/* traffic is handled by handlePdfjsVendorRequest
+          // in the fetch fallback below (same production dispatcher tests use).
+          "/api/events": {
+            GET: (req: Request) => {
+              const residentRuntime = runtime as ResidentRuntime;
+              const admitted = residentRuntime.admitRequest(req.signal);
+              if (!admitted || !residentRuntime.eventBus) {
+                admitted?.finish();
+                return withSecurityHeaders(
+                  Response.json(
+                    {
+                      error: {
+                        code: "UNAVAILABLE",
+                        message: "Document event stream unavailable",
+                      },
+                    },
+                    { status: 503 }
+                  ),
+                  isDev
+                );
+              }
+              try {
+                return withSecurityHeaders(
+                  residentRuntime.eventBus.createResponse({
+                    authorizationEpoch:
+                      admitted.authorizationEpoch ??
+                      residentRuntime.authorizationEpoch,
+                    isAuthorizationEpochCurrent: () =>
+                      admitted.isAuthorizationEpochCurrent?.() ?? true,
+                    onClose: () => admitted.finish(),
+                    signal: admitted.signal,
+                  }),
+                  isDev
+                );
+              } catch (error) {
+                admitted.finish();
+                throw error;
+              }
+            },
+          },
+          "/api/metadata": {
+            GET: async (req: Request) => {
+              const url = new URL(req.url);
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleMetadata(store, url)
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/tags": {
+            GET: async (req: Request) => {
+              const url = new URL(req.url);
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleTags(store, url)
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/search": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleSearch(ctxHolder.current, req)
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/query": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleResidentRead(
+                  runtime as ResidentRuntime,
+                  req,
+                  (signal) =>
+                    handleQuery(ctxHolder.current, new Request(req, { signal }))
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/context": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleResidentRead(
+                  runtime as ResidentRuntime,
+                  req,
+                  (signal) =>
+                    handleContextBuild(
+                      ctxHolder.current,
+                      new Request(req, { signal })
+                    )
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/context/compiled/preview": {
+            POST: async (req: Request, server: RequestPeerServer) => {
+              if (!isRequestAllowed(req, port))
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              return withSecurityHeaders(
+                await handleResidentRead(
+                  runtime as ResidentRuntime,
+                  req,
+                  (signal) =>
+                    handleCompiledContext(
+                      ctxHolder.current,
+                      new Request(req, { signal }),
+                      { requestIP: () => server.requestIP(req) },
+                      "preview"
+                    )
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/context/compiled/check": {
+            POST: async (req: Request, server: RequestPeerServer) => {
+              if (!isRequestAllowed(req, port))
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              return withSecurityHeaders(
+                await handleResidentRead(
+                  runtime as ResidentRuntime,
+                  req,
+                  (signal) =>
+                    handleCompiledContext(
+                      ctxHolder.current,
+                      new Request(req, { signal }),
+                      { requestIP: () => server.requestIP(req) },
+                      "check"
+                    )
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/context/verify": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleResidentRead(
+                  runtime as ResidentRuntime,
+                  req,
+                  (signal) =>
+                    handleContextVerify(
+                      ctxHolder.current,
+                      new Request(req, { signal })
+                    )
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/query/diagnose": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleResidentRead(
+                  runtime as ResidentRuntime,
+                  req,
+                  (signal) =>
+                    handleQueryDiagnose(
+                      ctxHolder.current,
+                      new Request(req, { signal })
+                    )
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/ask": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleResidentRead(
+                  runtime as ResidentRuntime,
+                  req,
+                  (signal) =>
+                    handleAsk(ctxHolder.current, new Request(req, { signal }))
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/capabilities": {
+            GET: (req: Request, server: RequestPeerServer) =>
+              withSecurityHeaders(
+                handleCapabilities(ctxHolder.current, req, server),
+                isDev
+              ),
+          },
+          "/api/presets": {
+            GET: () =>
+              withSecurityHeaders(handlePresets(ctxHolder.current), isDev),
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleSetPreset(ctxHolder, req),
+                isDev
+              );
+            },
+          },
+          "/api/models/status": {
+            GET: () => withSecurityHeaders(handleModelStatus(), isDev),
+          },
+          "/api/models/pull": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleModelPull(ctxHolder)
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/jobs/active": {
+            GET: () =>
+              withSecurityHeaders(handleActiveJob(ctxHolder.jobManager), isDev),
+          },
+          "/api/jobs/:id": {
+            GET: (req: Request) => {
+              const url = new URL(req.url);
+              const id = decodeURIComponent(
+                url.pathname.split("/").pop() || ""
+              );
+              return withSecurityHeaders(
+                handleJob(id, ctxHolder.jobManager),
+                isDev
+              );
+            },
+          },
+          "/api/embed": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleEmbed(ctxHolder.scheduler),
+                isDev
+              );
+            },
+          },
+          "/api/embed/status": {
+            GET: () =>
+              withSecurityHeaders(
+                handleEmbedStatus(ctxHolder.scheduler),
+                isDev
+              ),
+          },
+          "/api/collections/:name": {
+            PATCH: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              const url = new URL(req.url);
+              const name = decodeURIComponent(
+                url.pathname.split("/").pop() || ""
+              );
+              return withSecurityHeaders(
+                await handleUpdateCollection(ctxHolder, store, name, req),
+                isDev
+              );
+            },
+            DELETE: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              const url = new URL(req.url);
+              const name = decodeURIComponent(
+                url.pathname.split("/").pop() || ""
+              );
+              return withSecurityHeaders(
+                await handleDeleteCollection(ctxHolder, store, name),
+                isDev
+              );
+            },
+          },
+          "/api/collections/:name/egress-policy": {
+            GET: (req: Request) => {
+              const parts = new URL(req.url).pathname.split("/");
+              const name = decodeURIComponent(parts.at(-2) ?? "");
+              return withSecurityHeaders(
+                handleCollectionEgressPolicy(ctxHolder, name),
+                isDev
+              );
+            },
+            PUT: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              const parts = new URL(req.url).pathname.split("/");
+              const name = decodeURIComponent(parts.at(-2) ?? "");
+              return withSecurityHeaders(
+                await handleUpdateCollectionEgressPolicy(
+                  ctxHolder,
+                  store,
+                  name,
+                  req
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/collections/:name/embeddings/clear": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              const url = new URL(req.url);
+              const parts = url.pathname.split("/");
+              const name = decodeURIComponent(parts.at(-3) || "");
+              return withSecurityHeaders(
+                await handleClearCollectionEmbeddings(
+                  ctxHolder,
+                  store,
+                  name,
+                  req
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/doc/:id/links": {
+            GET: async (req: Request) => {
+              const url = new URL(req.url);
+              // Extract id from /api/doc/:id/links
+              const parts = url.pathname.split("/");
+              const id = decodeURIComponent(parts[3] || "");
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleDocLinks(store, id, url)
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/doc/:id/sections": {
+            GET: async (req: Request) => {
+              const url = new URL(req.url);
+              const parts = url.pathname.split("/");
+              const id = decodeURIComponent(parts[3] || "");
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleDocSections(store, id, req)
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/doc/:id/section-targets": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              const parts = new URL(req.url).pathname.split("/");
+              const id = decodeURIComponent(parts[3] || "");
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleCreateSectionTarget(store, id, req)
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/doc/:id/section-targets/resolve": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              const parts = new URL(req.url).pathname.split("/");
+              const id = decodeURIComponent(parts[3] || "");
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleResolveSectionTarget(store, id, req)
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/doc/:id/backlinks": {
+            GET: async (req: Request) => {
+              const url = new URL(req.url);
+              // Extract id from /api/doc/:id/backlinks
+              const parts = url.pathname.split("/");
+              const id = decodeURIComponent(parts[3] || "");
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleDocBacklinks(store, id)
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/doc/:id/similar": {
+            GET: async (req: Request) => {
+              const url = new URL(req.url);
+              // Extract id from /api/doc/:id/similar
+              const parts = url.pathname.split("/");
+              const id = decodeURIComponent(parts[3] || "");
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleDocSimilar(ctxHolder.current, id, url)
+                ),
+                isDev
+              );
+            },
+          },
+          "/api/graph": {
+            GET: async (req: Request) => {
+              const url = new URL(req.url);
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleGraph(
+                    store,
+                    url,
+                    getActivePreset(ctxHolder.config).embed
                   )
-              ),
-              isDev
-            );
+                ),
+                isDev
+              );
+            },
           },
-        },
-        "/api/ask": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleResidentRead(
-                runtime as ResidentRuntime,
-                req,
-                (signal) =>
-                  handleAsk(ctxHolder.current, new Request(req, { signal }))
-              ),
-              isDev
-            );
+          "/api/graph/query": {
+            POST: async (req: Request) => {
+              if (!isRequestAllowed(req, port)) {
+                return withSecurityHeaders(forbiddenResponse(), isDev);
+              }
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleGraphQuery(store, ctxHolder.config, req)
+                ),
+                isDev
+              );
+            },
           },
-        },
-        "/api/capabilities": {
-          GET: (req: Request, server: RequestPeerServer) =>
-            withSecurityHeaders(
-              handleCapabilities(ctxHolder.current, req, server),
-              isDev
-            ),
-        },
-        "/api/presets": {
-          GET: () =>
-            withSecurityHeaders(handlePresets(ctxHolder.current), isDev),
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleSetPreset(ctxHolder, req),
-              isDev
-            );
+          "/api/changes": {
+            GET: async (req: Request) => {
+              const url = new URL(req.url);
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleChanges(store, url)
+                ),
+                isDev
+              );
+            },
           },
-        },
-        "/api/models/status": {
-          GET: () => withSecurityHeaders(handleModelStatus(), isDev),
-        },
-        "/api/models/pull": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleModelPull(ctxHolder)
-              ),
-              isDev
-            );
+          "/api/diff": {
+            GET: async (req: Request) => {
+              const url = new URL(req.url);
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleDiff(store, url)
+                ),
+                isDev
+              );
+            },
           },
-        },
-        "/api/jobs/active": {
-          GET: () =>
-            withSecurityHeaders(handleActiveJob(ctxHolder.jobManager), isDev),
-        },
-        "/api/jobs/:id": {
-          GET: (req: Request) => {
-            const url = new URL(req.url);
-            const id = decodeURIComponent(url.pathname.split("/").pop() || "");
-            return withSecurityHeaders(
-              handleJob(id, ctxHolder.jobManager),
-              isDev
-            );
+          "/api/impact": {
+            GET: async (req: Request) => {
+              const url = new URL(req.url);
+              return withSecurityHeaders(
+                await handleResidentRead(runtime as ResidentRuntime, req, () =>
+                  handleImpact(store, url)
+                ),
+                isDev
+              );
+            },
           },
-        },
-        "/api/embed": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleEmbed(ctxHolder.scheduler),
-              isDev
-            );
-          },
-        },
-        "/api/embed/status": {
-          GET: () =>
-            withSecurityHeaders(handleEmbedStatus(ctxHolder.scheduler), isDev),
-        },
-        "/api/collections/:name": {
-          PATCH: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            const url = new URL(req.url);
-            const name = decodeURIComponent(
-              url.pathname.split("/").pop() || ""
-            );
-            return withSecurityHeaders(
-              await handleUpdateCollection(ctxHolder, store, name, req),
-              isDev
-            );
-          },
-          DELETE: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            const url = new URL(req.url);
-            const name = decodeURIComponent(
-              url.pathname.split("/").pop() || ""
-            );
-            return withSecurityHeaders(
-              await handleDeleteCollection(ctxHolder, store, name),
-              isDev
-            );
-          },
-        },
-        "/api/collections/:name/egress-policy": {
-          GET: (req: Request) => {
-            const parts = new URL(req.url).pathname.split("/");
-            const name = decodeURIComponent(parts.at(-2) ?? "");
-            return withSecurityHeaders(
-              handleCollectionEgressPolicy(ctxHolder, name),
-              isDev
-            );
-          },
-          PUT: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            const parts = new URL(req.url).pathname.split("/");
-            const name = decodeURIComponent(parts.at(-2) ?? "");
-            return withSecurityHeaders(
-              await handleUpdateCollectionEgressPolicy(
-                ctxHolder,
-                store,
-                name,
-                req
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/collections/:name/embeddings/clear": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            const url = new URL(req.url);
-            const parts = url.pathname.split("/");
-            const name = decodeURIComponent(parts.at(-3) || "");
-            return withSecurityHeaders(
-              await handleClearCollectionEmbeddings(
-                ctxHolder,
-                store,
-                name,
-                req
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/doc/:id/links": {
-          GET: async (req: Request) => {
-            const url = new URL(req.url);
-            // Extract id from /api/doc/:id/links
-            const parts = url.pathname.split("/");
-            const id = decodeURIComponent(parts[3] || "");
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleDocLinks(store, id, url)
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/doc/:id/sections": {
-          GET: async (req: Request) => {
-            const url = new URL(req.url);
-            const parts = url.pathname.split("/");
-            const id = decodeURIComponent(parts[3] || "");
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleDocSections(store, id, req)
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/doc/:id/section-targets": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            const parts = new URL(req.url).pathname.split("/");
-            const id = decodeURIComponent(parts[3] || "");
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleCreateSectionTarget(store, id, req)
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/doc/:id/section-targets/resolve": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            const parts = new URL(req.url).pathname.split("/");
-            const id = decodeURIComponent(parts[3] || "");
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleResolveSectionTarget(store, id, req)
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/doc/:id/backlinks": {
-          GET: async (req: Request) => {
-            const url = new URL(req.url);
-            // Extract id from /api/doc/:id/backlinks
-            const parts = url.pathname.split("/");
-            const id = decodeURIComponent(parts[3] || "");
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleDocBacklinks(store, id)
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/doc/:id/similar": {
-          GET: async (req: Request) => {
-            const url = new URL(req.url);
-            // Extract id from /api/doc/:id/similar
-            const parts = url.pathname.split("/");
-            const id = decodeURIComponent(parts[3] || "");
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleDocSimilar(ctxHolder.current, id, url)
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/graph": {
-          GET: async (req: Request) => {
-            const url = new URL(req.url);
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleGraph(store, url, getActivePreset(ctxHolder.config).embed)
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/graph/query": {
-          POST: async (req: Request) => {
-            if (!isRequestAllowed(req, port)) {
-              return withSecurityHeaders(forbiddenResponse(), isDev);
-            }
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleGraphQuery(store, ctxHolder.config, req)
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/changes": {
-          GET: async (req: Request) => {
-            const url = new URL(req.url);
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleChanges(store, url)
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/diff": {
-          GET: async (req: Request) => {
-            const url = new URL(req.url);
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleDiff(store, url)
-              ),
-              isDev
-            );
-          },
-        },
-        "/api/impact": {
-          GET: async (req: Request) => {
-            const url = new URL(req.url);
-            return withSecurityHeaders(
-              await handleResidentRead(runtime as ResidentRuntime, req, () =>
-                handleImpact(store, url)
-              ),
-              isDev
-            );
-          },
-        },
-      }),
+        })
+      ),
       // Production catch-all: /vendor/pdfjs prefix, then hashed SPA chunks
       // (gzip + immutable) and the private SPA source — the same factory the
       // tests mount (no test-only fallback path).
