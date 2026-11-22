@@ -19,6 +19,7 @@ import {
   type CompiledCollectionExclusions,
   compileCollectionExclusions,
   matchesCompiledExclusion,
+  matchesCompiledStrictSubtreeExclusion,
   matchesCompiledSubtreeExclusion,
 } from "../core/path-rules";
 import { isCompiledContextPath } from "./compiled-context";
@@ -495,6 +496,9 @@ export class FileWalker implements WalkerPort {
     const patternBranches = patterns.map((pattern) =>
       compilePatternBranch(pattern)
     );
+    const anyBranchHasSlashBrace = patternBranches.some(
+      (branch) => branch.segments === null
+    );
     const anyBranchHasExplicitDot = patternBranches.some(
       (branch) => branch.hasExplicitDot
     );
@@ -502,87 +506,123 @@ export class FileWalker implements WalkerPort {
     const candidates: Array<{ absPath: string; relPath: string }> = [];
     const seenAbsPaths = new Set<string>();
     const symlinksToCheck: Array<{ absPath: string }> = [];
-    let currentLevel: Array<{ absPath: string; relPath: string }> = [
-      { absPath: rootReal, relPath: "" },
-    ];
 
-    while (currentLevel.length > 0) {
-      const nextLevel: Array<{ absPath: string; relPath: string }> = [];
-      await runBounded(currentLevel, READDIR_CONCURRENCY, async (dir) => {
-        let dirents;
-        try {
-          dirents = await readdir(dir.absPath, { withFileTypes: true });
-        } catch (error) {
-          if (dir.relPath === "") {
-            throw error;
-          }
-          return;
-        }
-        for (const dirent of dirents) {
-          const name = dirent.name;
-          if (name === "" || name === "." || name === "..") continue;
-          if (name.includes("\0")) continue;
-          // Fast skip dot entries when no pattern branch explicitly targets dots.
-          if (!anyBranchHasExplicitDot && name.startsWith(".")) continue;
-
-          const childAbs = join(dir.absPath, name);
-          const childRel =
-            dir.relPath === "" ? name : `${dir.relPath}/${toPosixPath(name)}`;
-
-          if (dirent.isSymbolicLink()) {
-            // Never descend through directory symlinks; validate leaf symlinks
-            // via safeRelPath below.
-            symlinksToCheck.push({ absPath: childAbs });
-            continue;
-          }
-
-          if (dirent.isDirectory()) {
-            if (isRecordVirtualPath(childRel)) continue;
-            // Prune only fully excluded subtrees without emitting synthetic
-            // directory EXCLUDED receipts that the include glob never selected.
-            if (matchesCompiledSubtreeExclusion(childRel, matcher.exclusions)) {
-              continue;
-            }
-            if (
-              name.startsWith(".") &&
-              !patternBranches.some((branch) =>
-                branchCanDescendDir(branch, childRel)
-              )
-            ) {
-              continue;
-            }
-            nextLevel.push({ absPath: childAbs, relPath: childRel });
-            continue;
-          }
-
-          if (!dirent.isFile()) continue;
-
-          // Pattern gate preserves per-branch, per-segment Bun.Glob.scan({ dot: false }) semantics.
-          if (
-            !patternBranches.some((branch) =>
-              branchMatchesPath(branch, childRel)
-            )
-          ) {
-            continue;
-          }
-
-          // Regular file under canonical rootReal with no symlink ancestors:
-          // childAbs is already canonical and contained within rootReal.
-          if (seenAbsPaths.has(childAbs)) continue;
-          seenAbsPaths.add(childAbs);
-
-          if (!matchesCompiledWalkPath(childRel, matcher)) {
+    if (anyBranchHasSlashBrace) {
+      // Brace alternatives that span path segments (e.g., `**/{a/b,c}`) have
+      // Bun.Glob.scan()-specific semantics that differ from Bun.Glob.match().
+      // Delegate discovery to Bun.Glob.scan() for exact base parity.
+      for (const pattern of patterns) {
+        const glob = new Bun.Glob(pattern);
+        for await (const match of glob.scan({
+          cwd: rootReal,
+          onlyFiles: true,
+          followSymlinks: false,
+          dot: false,
+        })) {
+          const absPath = join(rootReal, match);
+          const safePath = await safeRelPath(rootReal, absPath);
+          if (safePath === null) continue;
+          if (seenAbsPaths.has(safePath.absPath)) continue;
+          seenAbsPaths.add(safePath.absPath);
+          if (!matchesCompiledWalkPath(safePath.relPath, matcher)) {
             skipped.push({
-              absPath: childAbs,
-              relPath: childRel,
+              absPath: safePath.absPath,
+              relPath: safePath.relPath,
               reason: "EXCLUDED",
             });
             continue;
           }
-          candidates.push({ absPath: childAbs, relPath: childRel });
+          candidates.push(safePath);
         }
-      });
-      currentLevel = nextLevel;
+      }
+    } else {
+      let currentLevel: Array<{ absPath: string; relPath: string }> = [
+        { absPath: rootReal, relPath: "" },
+      ];
+
+      while (currentLevel.length > 0) {
+        const nextLevel: Array<{ absPath: string; relPath: string }> = [];
+        await runBounded(currentLevel, READDIR_CONCURRENCY, async (dir) => {
+          let dirents;
+          try {
+            dirents = await readdir(dir.absPath, { withFileTypes: true });
+          } catch (error) {
+            if (dir.relPath === "") {
+              throw error;
+            }
+            return;
+          }
+          for (const dirent of dirents) {
+            const name = dirent.name;
+            if (name === "" || name === "." || name === "..") continue;
+            if (name.includes("\0")) continue;
+            // Fast skip dot entries when no pattern branch explicitly targets dots.
+            if (!anyBranchHasExplicitDot && name.startsWith(".")) continue;
+
+            const childAbs = join(dir.absPath, name);
+            const childRel =
+              dir.relPath === "" ? name : `${dir.relPath}/${toPosixPath(name)}`;
+
+            if (dirent.isSymbolicLink()) {
+              // Never descend through directory symlinks; validate leaf symlinks
+              // via safeRelPath below.
+              symlinksToCheck.push({ absPath: childAbs });
+              continue;
+            }
+
+            if (dirent.isDirectory()) {
+              if (isRecordVirtualPath(childRel)) continue;
+              // Prune only strictly fully excluded subtrees without emitting
+              // synthetic directory EXCLUDED receipts that the include glob never selected.
+              if (
+                matchesCompiledStrictSubtreeExclusion(
+                  childRel,
+                  matcher.exclusions
+                )
+              ) {
+                continue;
+              }
+              if (
+                name.startsWith(".") &&
+                !patternBranches.some((branch) =>
+                  branchCanDescendDir(branch, childRel)
+                )
+              ) {
+                continue;
+              }
+              nextLevel.push({ absPath: childAbs, relPath: childRel });
+              continue;
+            }
+
+            if (!dirent.isFile()) continue;
+
+            // Pattern gate preserves per-branch, per-segment Bun.Glob.scan({ dot: false }) semantics.
+            if (
+              !patternBranches.some((branch) =>
+                branchMatchesPath(branch, childRel)
+              )
+            ) {
+              continue;
+            }
+
+            // Regular file under canonical rootReal with no symlink ancestors:
+            // childAbs is already canonical and contained within rootReal.
+            if (seenAbsPaths.has(childAbs)) continue;
+            seenAbsPaths.add(childAbs);
+
+            if (!matchesCompiledWalkPath(childRel, matcher)) {
+              skipped.push({
+                absPath: childAbs,
+                relPath: childRel,
+                reason: "EXCLUDED",
+              });
+              continue;
+            }
+            candidates.push({ absPath: childAbs, relPath: childRel });
+          }
+        });
+        currentLevel = nextLevel;
+      }
     }
 
     // Resolve and containment-check symlinks (matching Bun.Glob followSymlinks:false

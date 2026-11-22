@@ -106,13 +106,13 @@ export function matchesCompiledExclusion(
 }
 
 /**
- * Check whether a POSIX-normalized directory path is a fully excluded subtree.
- * Only prunes when every descendant is guaranteed excluded (`**`, bare component,
+ * Check whether a POSIX-normalized directory path is strictly a fully excluded
+ * subtree (every descendant is guaranteed excluded: `**`, bare component,
  * literal prefix, or trailing `/**` glob). Partial non-recursive globs such as
- * `docs/*` or `src/converters*` match only the directory name itself and must
- * still be traversed so eligible descendants are not dropped.
+ * `docs/*` or `src/converters*` are NOT matched here so `walkAny` still visits
+ * their eligible descendants.
  */
-export function matchesCompiledSubtreeExclusion(
+export function matchesCompiledStrictSubtreeExclusion(
   normalizedPath: string,
   compiled: CompiledCollectionExclusions
 ): boolean {
@@ -135,6 +135,22 @@ export function matchesCompiledSubtreeExclusion(
       return true;
     }
   }
+  for (const glob of compiled.subtreeGlobs) {
+    if (glob.match(normalizedPath)) return true;
+  }
+  return false;
+}
+
+/**
+ * Compiled equivalent of `matchesCollectionSubtreeExclusion` (used by `walkLocal`
+ * to preserve exact local-mode directory exclusion semantics).
+ */
+export function matchesCompiledSubtreeExclusion(
+  normalizedPath: string,
+  compiled: CompiledCollectionExclusions
+): boolean {
+  if (compiled.excludesAllSubtrees) return true;
+  if (matchesCompiledExclusion(normalizedPath, compiled)) return true;
   for (const glob of compiled.subtreeGlobs) {
     if (glob.match(normalizedPath)) return true;
   }

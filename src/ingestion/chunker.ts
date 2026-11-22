@@ -95,22 +95,6 @@ const CODE_BREAKPOINT_PATTERNS: Record<CodeChunkLanguage, RegExp[]> = {
   ],
 };
 
-const combinePatterns = (patterns: readonly RegExp[]): RegExp =>
-  new RegExp(
-    patterns.map((pattern) => `(?:${pattern.source})`).join("|"),
-    "gm"
-  );
-
-const COMBINED_CODE_BREAKPOINT_PATTERNS: Record<CodeChunkLanguage, RegExp> = {
-  typescript: combinePatterns(CODE_BREAKPOINT_PATTERNS.typescript),
-  tsx: combinePatterns(CODE_BREAKPOINT_PATTERNS.tsx),
-  javascript: combinePatterns(CODE_BREAKPOINT_PATTERNS.javascript),
-  jsx: combinePatterns(CODE_BREAKPOINT_PATTERNS.jsx),
-  python: combinePatterns(CODE_BREAKPOINT_PATTERNS.python),
-  go: combinePatterns(CODE_BREAKPOINT_PATTERNS.go),
-  rust: combinePatterns(CODE_BREAKPOINT_PATTERNS.rust),
-};
-
 export interface CodeChunkingStatus {
   mode: typeof CODE_CHUNK_MODE;
   supportedExtensions: string[];
@@ -151,51 +135,31 @@ function collectStructuralBreakPoints(
     return [];
   }
 
-  const pattern = COMBINED_CODE_BREAKPOINT_PATTERNS[language];
-  if (!pattern) {
+  const patterns = CODE_BREAKPOINT_PATTERNS[language];
+  if (!patterns) {
     return [];
   }
 
-  const points: number[] = [];
-  pattern.lastIndex = 0;
-  let match: RegExpExecArray | null = null;
-  while (true) {
-    match = pattern.exec(text);
-    if (!match) {
-      break;
-    }
-    if (match.index > 0) {
-      points.push(match.index);
-    }
-    // Preserve overlapping matches when a multiline match (e.g., `export default\nclass Foo`
-    // or a multiline arrow parameter list containing a nested declaration) spans lines:
-    // resume at the start of the line immediately after the declaration's opening line.
-    const matched = match[0];
-    if (matched.includes("\n")) {
-      const matchEnd = match.index + matched.length;
-      let firstNonWs = match.index;
-      while (firstNonWs < matchEnd) {
-        const code = text.charCodeAt(firstNonWs);
-        if (
-          code !== 32 &&
-          code !== 9 &&
-          code !== 10 &&
-          code !== 13 &&
-          code !== 12 &&
-          code !== 11
-        ) {
-          break;
-        }
-        firstNonWs += 1;
+  // Keep independent per-pattern scans so overlapping multiline matches (e.g.,
+  // `export default\nclass Foo`, U+2028 line separators, and `export\nclass`)
+  // produce bit-for-bit identical breakpoint offsets; findStructuralBreakPoint
+  // uses binary search over the sorted result.
+  const points = new Set<number>();
+  for (const pattern of patterns) {
+    pattern.lastIndex = 0;
+    let match: RegExpExecArray | null = null;
+    while (true) {
+      match = pattern.exec(text);
+      if (!match) {
+        break;
       }
-      const declLineEnd = text.indexOf("\n", firstNonWs);
-      if (declLineEnd !== -1 && declLineEnd < matchEnd) {
-        pattern.lastIndex = declLineEnd + 1;
+      if (match.index > 0) {
+        points.add(match.index);
       }
     }
   }
 
-  return points;
+  return [...points].sort((a, b) => a - b);
 }
 
 function findStructuralBreakPoint(

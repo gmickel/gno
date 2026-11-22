@@ -424,6 +424,44 @@ describe("R3: walker compiled matchers and subtree pruning", () => {
       "docs/top.md",
       "README.md",
     ]);
+
+    // Slash-spanning brace patterns delegate to Bun.Glob.scan() for exact parity
+    const slashBraceHidden = await defaultWalker.walk({
+      root: dir,
+      pattern: "**/{.github/workflows/*.yml,*.md}",
+      include: [".md", ".yml"],
+      exclude: [],
+      maxBytes: 1024 * 1024,
+    });
+    expect(slashBraceHidden.entries).toEqual([]);
+
+    const slashBraceOrdinary = await defaultWalker.walk({
+      root: dir,
+      pattern: "**/{src/converters/*.ts,README.md}",
+      include: [".ts", ".md"],
+      exclude: [],
+      maxBytes: 1024 * 1024,
+    });
+    expect(slashBraceOrdinary.entries).toEqual([]);
+
+    // local-mode walk preserves established directory exclusion semantics for `src/converters*`
+    const localPartial = await defaultWalker.walk({
+      root: dir,
+      pattern: "src/**/*.ts",
+      include: [".ts"],
+      exclude: ["src/converters*"],
+      maxBytes: 1024 * 1024,
+      sourceAvailability: "local",
+      directoryAvailability: {
+        mode: "local",
+        classify: () => Promise.resolve({ kind: "available" as const }),
+        readDirectory: <T>(_path: string, read: () => T) => ({
+          kind: "available" as const,
+          value: read(),
+        }),
+      },
+    });
+    expect(localPartial.entries).toEqual([]);
   });
 
   test("rejects invalid glob patterns identically", async () => {
@@ -742,6 +780,31 @@ describe("R5: single-pass Markdown, chunking, language detection, canonicalizati
     expect(arrowChunks[0]?.text.length).toBe(46);
     expect(arrowChunks[0]?.text).not.toContain("class Inner");
     expect(arrowChunks[1]?.text.startsWith("class Inner")).toBe(true);
+
+    // U+2028 separator and `export\nclass` match exact base chunk boundaries
+    const lsExport =
+      "// aaaaaaaaaaaaaaaaaaaaaaaaa\nexport default\u2028class Foo {}\n" +
+      "// filler\n".repeat(6);
+    const lsChunks = defaultChunker.chunk(
+      lsExport,
+      { maxTokens: 12, overlapPercent: 0 },
+      undefined,
+      "src/ls.ts"
+    );
+    expect(lsChunks[0]?.text.length).toBe(44);
+
+    const exportThenClass =
+      "// aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nexport\nclass FooBarBazQux {}\n" +
+      "// filler\n".repeat(6);
+    const exportThenClassChunks = defaultChunker.chunk(
+      exportThenClass,
+      { maxTokens: 12, overlapPercent: 0 },
+      undefined,
+      "src/export-class.ts"
+    );
+    // No spurious breakpoint at `class`: prose break occurs at `export\n` (45) or word boundary (51),
+    // matching exact independent-regex base behavior (offset 45 via single newline, not structural).
+    expect(exportThenClassChunks[0]?.text.length).toBe(45);
 
     // Language detection (ASCII/Latin/CJK + surrogate pairs)
     expect(
