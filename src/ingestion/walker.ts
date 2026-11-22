@@ -314,7 +314,7 @@ type PathEligibilityConfig = Pick<
 >;
 
 interface CompiledWalkMatcher {
-  patternGlob: Bun.Glob | null;
+  matchPattern: ((normalizedPath: string) => boolean) | null;
   exclusions: CompiledCollectionExclusions;
   includeExtensions: ReadonlySet<string>;
 }
@@ -327,11 +327,12 @@ const DEFAULT_SUPPORTED_EXTENSION_SET = new Set(
 function compileWalkMatcher(
   config: PathEligibilityConfig
 ): CompiledWalkMatcher {
-  let patternGlob: Bun.Glob | null = null;
+  let matchPattern: ((normalizedPath: string) => boolean) | null = null;
   try {
-    patternGlob = new Bun.Glob(config.pattern);
+    const glob = new Bun.Glob(config.pattern);
+    matchPattern = glob.match.bind(glob);
   } catch {
-    patternGlob = null;
+    matchPattern = null;
   }
   const exclusions = compileCollectionExclusions(config.exclude);
   let includeExtensions: ReadonlySet<string>;
@@ -355,7 +356,7 @@ function compileWalkMatcher(
     }
     includeExtensions = explicit;
   }
-  return { patternGlob, exclusions, includeExtensions };
+  return { matchPattern, exclusions, includeExtensions };
 }
 
 function matchesCompiledWalkPath(
@@ -373,7 +374,7 @@ function matchesCompiledWalkPath(
   ) {
     return false;
   }
-  if (!matcher.patternGlob?.match(normalizedPath)) {
+  if (!matcher.matchPattern?.(normalizedPath)) {
     return false;
   }
   if (matchesCompiledExclusion(normalizedPath, matcher.exclusions)) {

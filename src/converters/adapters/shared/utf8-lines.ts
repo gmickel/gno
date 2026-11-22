@@ -15,7 +15,9 @@ export type Utf8LineResult =
 const BYTE_LF = 0x0a;
 const BYTE_CR = 0x0d;
 const UTF8_BOM = new Uint8Array([0xef, 0xbb, 0xbf]);
-const UTF8_DECODER = new TextDecoder("utf-8", { fatal: true });
+
+const createUtf8Decoder = (): TextDecoder =>
+  new TextDecoder("utf-8", { fatal: true });
 
 const concatenate = (
   parts: readonly Uint8Array[],
@@ -55,17 +57,21 @@ const stripLineEnvelope = (
 const decodeSingleBytes = (
   rawBytes: Uint8Array,
   lineNumber: number,
-  terminated: boolean
+  terminated: boolean,
+  decoderState: { decoder: TextDecoder }
 ): Utf8LineResult => {
   const bytes = stripLineEnvelope(rawBytes, lineNumber);
   try {
     return {
       ok: true,
       lineNumber,
-      text: UTF8_DECODER.decode(bytes),
+      text: decoderState.decoder.decode(bytes),
       terminated,
     };
   } catch {
+    // Recreate the fatal decoder after an error so no runtime-specific error
+    // state can bleed into subsequent valid lines.
+    decoderState.decoder = createUtf8Decoder();
     return {
       ok: false,
       lineNumber,
@@ -79,9 +85,15 @@ const decodeLine = (
   parts: readonly Uint8Array[],
   byteLength: number,
   lineNumber: number,
-  terminated: boolean
+  terminated: boolean,
+  decoderState: { decoder: TextDecoder }
 ): Utf8LineResult =>
-  decodeSingleBytes(concatenate(parts, byteLength), lineNumber, terminated);
+  decodeSingleBytes(
+    concatenate(parts, byteLength),
+    lineNumber,
+    terminated,
+    decoderState
+  );
 
 /**
  * Split an async byte source without retaining an unbounded physical line.
@@ -92,6 +104,7 @@ export async function* readBoundedUtf8Lines(
   maxLineBytes: number
 ): AsyncGenerator<Utf8LineResult> {
   const safeMaxLineBytes = Math.max(1, Math.floor(maxLineBytes));
+  const decoderState = { decoder: createUtf8Decoder() };
   let parts: Uint8Array[] = [];
   let lineBytes = 0;
   let lineNumber = 1;
@@ -115,11 +128,18 @@ export async function* readBoundedUtf8Lines(
           yield decodeSingleBytes(
             chunk.subarray(segmentStart, nl),
             lineNumber,
-            true
+            true,
+            decoderState
           );
         } else {
           if (segmentLen > 0) parts.push(chunk.subarray(segmentStart, nl));
-          yield decodeLine(parts, lineBytes + segmentLen, lineNumber, true);
+          yield decodeLine(
+            parts,
+            lineBytes + segmentLen,
+            lineNumber,
+            true,
+            decoderState
+          );
         }
       } else {
         yield {
@@ -154,6 +174,6 @@ export async function* readBoundedUtf8Lines(
       terminated: false,
     };
   } else if (lineBytes > 0) {
-    yield decodeLine(parts, lineBytes, lineNumber, false);
+    yield decodeLine(parts, lineBytes, lineNumber, false, decoderState);
   }
 }

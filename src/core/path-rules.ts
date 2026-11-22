@@ -24,17 +24,27 @@ export function hasGlobMeta(pattern: string): boolean {
   return GLOB_META_PATTERN.test(pattern);
 }
 
+export type CompiledGlobMatcher = (normalizedPath: string) => boolean;
+
+function compileGlobMatcher(pattern: string): CompiledGlobMatcher {
+  const glob = new Bun.Glob(pattern);
+  // Pre-bind Bun.Glob.prototype.match so callers invoke a typed predicate
+  // rather than a polymorphic `.match(path)` call (which CodeQL misclassifies
+  // as String.prototype.match(RegExp)).
+  return glob.match.bind(glob);
+}
+
 export interface CompiledCollectionExclusions {
   /** Single-component literal exclusions (no `/` and no glob metacharacters). */
   bareComponents: ReadonlySet<string>;
   /** Multi-component literal path/prefix exclusions (contain `/`, no glob metacharacters). */
   literalPrefixes: readonly string[];
   /** Glob exclusions compiled once. */
-  globs: readonly Bun.Glob[];
+  globs: readonly CompiledGlobMatcher[];
   /** True when `"**"` excludes every subtree. */
   excludesAllSubtrees: boolean;
   /** Compiled root patterns from trailing `/**` exclusions. */
-  subtreeGlobs: readonly Bun.Glob[];
+  subtreeGlobs: readonly CompiledGlobMatcher[];
 }
 
 /** Pre-compile collection exclusion patterns once per walk. */
@@ -43,8 +53,8 @@ export function compileCollectionExclusions(
 ): CompiledCollectionExclusions {
   const bareComponents = new Set<string>();
   const literalPrefixes: string[] = [];
-  const globs: Bun.Glob[] = [];
-  const subtreeGlobs: Bun.Glob[] = [];
+  const globs: CompiledGlobMatcher[] = [];
+  const subtreeGlobs: CompiledGlobMatcher[] = [];
   let excludesAllSubtrees = false;
 
   for (const rawPattern of excludes) {
@@ -55,11 +65,11 @@ export function compileCollectionExclusions(
     if (pattern.endsWith("/**")) {
       const subtreeRootPattern = pattern.slice(0, -3);
       if (subtreeRootPattern.length > 0) {
-        subtreeGlobs.push(new Bun.Glob(subtreeRootPattern));
+        subtreeGlobs.push(compileGlobMatcher(subtreeRootPattern));
       }
     }
     if (hasGlobMeta(pattern)) {
-      globs.push(new Bun.Glob(pattern));
+      globs.push(compileGlobMatcher(pattern));
     } else if (pattern.includes("/")) {
       literalPrefixes.push(pattern);
     } else {
@@ -99,8 +109,8 @@ export function matchesCompiledExclusion(
       return true;
     }
   }
-  for (const glob of compiled.globs) {
-    if (glob.match(normalizedPath)) return true;
+  for (const matchGlob of compiled.globs) {
+    if (matchGlob(normalizedPath)) return true;
   }
   return false;
 }
@@ -135,8 +145,8 @@ export function matchesCompiledStrictSubtreeExclusion(
       return true;
     }
   }
-  for (const glob of compiled.subtreeGlobs) {
-    if (glob.match(normalizedPath)) return true;
+  for (const matchGlob of compiled.subtreeGlobs) {
+    if (matchGlob(normalizedPath)) return true;
   }
   return false;
 }
@@ -151,8 +161,8 @@ export function matchesCompiledSubtreeExclusion(
 ): boolean {
   if (compiled.excludesAllSubtrees) return true;
   if (matchesCompiledExclusion(normalizedPath, compiled)) return true;
-  for (const glob of compiled.subtreeGlobs) {
-    if (glob.match(normalizedPath)) return true;
+  for (const matchGlob of compiled.subtreeGlobs) {
+    if (matchGlob(normalizedPath)) return true;
   }
   return false;
 }
