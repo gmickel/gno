@@ -117,8 +117,10 @@ gno collection clear-embeddings <name> [--all] [--json]
 ### gno embed
 
 ```bash
-gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--new-partition]
+gno embed [collection] [--collection <name>] [--force] [--model <uri>] [--batch-size <n>] [--max-chunks <n>] [--max-seconds <n>] [--dry-run] [--new-partition]
 ```
+
+Default foreground `--batch-size` is `64` (background embedding is capped at `32`). Use `--max-chunks` or `--max-seconds` to process a large backlog in bounded slices.
 
 Switching `GNO_LLAMA_GPU`, Bun version or thread count resumes the existing
 vector partition when a measured sample of stored chunks matches. If it does
@@ -169,7 +171,7 @@ them in a collection instead.
 Generate embeddings only.
 
 ```bash
-gno embed [--force] [--model <uri>] [--batch-size <n>] [--dry-run] [--new-partition]
+gno embed [--force] [--model <uri>] [--batch-size <n>] [--max-chunks <n>] [--max-seconds <n>] [--dry-run] [--new-partition]
 ```
 
 ## Project Profiles

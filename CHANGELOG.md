@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.16.0] - 2026-11-22
+
+### Changed
+
+- Foreground `gno embed` now defaults to `--batch-size 64` instead of `32` (background embedding remains capped at `32`) to keep native and HTTP embedding workers better utilized (#357).
+- Full-stack lossless performance release across storage, retrieval, ingestion, serving, and local inference, preserving exact outputs, ranking, and security boundaries:
+  - **SQLite and vector store**: cached prepared statements, faster vec0 and variant lookups, and lower per-query SQLite overhead (#353).
+  - **Retrieval and verification**: reduced allocations and redundant work across BM25/vector fusion, hybrid query expansion/reranking, and Context Capsule verification (#354).
+  - **Ingestion, converters, and graph sync**: faster directory walking, file conversion (including large `.xlsx` workbooks), chunking, language detection, canonicalization, and graph reconciliation (#355).
+  - **CLI, `gno serve`, watcher, Web UI, and MCP**: lazy CLI command/config loading, leaner Web UI production bundle, lower watcher overhead, and faster MCP/REST hot paths (#356).
+  - **LLM worker, embedding backlogs, sessions, memory, capsules, and publish export**: Float64 binary IPC framing and signal-0 PID liveness checks in the native worker, LPT multi-context embedding with overlapped tokenization, deduplicated pre-tokenized reranking, generation context reuse, double-buffered embedding backlogs, short-TTL DNS and live policy-invalidated HTTP egress caching, single-pass session sanitization with bounded-lookahead incremental import, batched memory recall with an O(K) accepted-prefix cache, SQLite watermark caching for Context Capsules, O(V+E) graph adjacency indexing, and Buffer-backed encrypted export (#357).
+- Updated `assets/skill/cli-reference.md`, `spec/cli.md`, and `docs/integrations/skills.md` to list `--max-chunks`/`--max-seconds` on `gno embed`, the foreground `--batch-size 64` default, and the `hermes` skill target.
+
 ## [2.15.0] - 2026-11-20
 
 Thanks to @DanielKillenberger for reporting the collection-scoping issue and contributing all three changes (#349, #350, #351).
@@ -3082,6 +3095,7 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
 [Unreleased]: https://github.com/gmickel/gno/compare/v2.15.0...HEAD
+[2.16.0]: https://github.com/gmickel/gno/compare/v2.15.0...v2.16.0
 [2.15.0]: https://github.com/gmickel/gno/compare/v2.14.0...v2.15.0
 [2.14.0]: https://github.com/gmickel/gno/compare/v2.13.0...v2.14.0
 [2.13.0]: https://github.com/gmickel/gno/compare/v2.12.2...v2.13.0
