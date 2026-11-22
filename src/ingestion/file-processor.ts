@@ -547,8 +547,20 @@ function acquireProcessor(): Processor {
 /** How long a new processor may take to load before the file fails closed. */
 const PROCESSOR_START_TIMEOUT_MS = 30_000;
 
+/** Processors whose startup handshake already succeeded (zero per-file subscriptions). */
+const readyProcessors = new WeakSet<Processor>();
+/** Single shared startup race per processor while starting. */
+const startupRaces = new WeakMap<Processor, Promise<string | null>>();
+
 /** Wait for the processor to load: null once ready, else why it did not. */
 const awaitReady = (active: Processor): Promise<string | null> => {
+  if (readyProcessors.has(active)) {
+    return Promise.resolve(null);
+  }
+  const existing = startupRaces.get(active);
+  if (existing) {
+    return existing;
+  }
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timedOut = new Promise<string>((resolve) => {
     timer = setTimeout(
@@ -556,11 +568,19 @@ const awaitReady = (active: Processor): Promise<string | null> => {
       PROCESSOR_START_TIMEOUT_MS
     );
   });
-  return Promise.race([
-    active.ready.then(() => null),
+  const race = Promise.race([
+    active.ready.then(() => {
+      readyProcessors.add(active);
+      return null;
+    }),
     active.failed.then((failure) => failure.reason),
     timedOut,
-  ]).finally(() => clearTimeout(timer));
+  ]).finally(() => {
+    clearTimeout(timer);
+    startupRaces.delete(active);
+  });
+  startupRaces.set(active, race);
+  return race;
 };
 
 /** Failure of a file whose message to or from the processor was lost. */

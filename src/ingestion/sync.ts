@@ -119,7 +119,8 @@ interface ProcessFileContext {
 
 type PreparedFileSync =
   | { kind: "done"; result: FileSyncResult }
-  | { kind: "write"; persist: () => Promise<FileSyncResult> };
+  | { kind: "write"; persist: () => Promise<FileSyncResult> }
+  | { kind: "record-container"; run: () => Promise<FileSyncResult> };
 
 /** A file still being indexed this long (or half its budget) is reported. */
 export const SLOW_CONVERSION_NOTICE_MS = 10_000;
@@ -713,27 +714,41 @@ export class SyncService {
         if (isCompiledContextContent(generatedPrefix)) {
           return { kind: "done", result: generatedResult };
         }
-        const recordResult = await processRecordContainer({
-          adapter: recordAdapter,
-          chunker: this.chunker,
-          collection,
-          contentTypeRules,
-          contentTypeRulesFingerprint,
-          entry,
-          ext: extensionMime.ext,
-          extractMetadata: extractDocumentMetadata,
-          ingestVersion: INGEST_VERSION,
-          mime: extensionMime.mime,
-          options,
-          sourceCtime,
-          sourceMtime,
-          sourceSize,
-          sourceBytes: guardedBytes,
-          preloadedPriorDocuments: context?.preloaded?.priorRecordDocuments,
-          preloadedSourceDocument: context?.preloaded?.existing,
-          store,
-        });
-        return { kind: "done", result: recordResult };
+        return {
+          kind: "record-container",
+          run: async () => {
+            try {
+              return await processRecordContainer({
+                adapter: recordAdapter,
+                chunker: this.chunker,
+                collection,
+                contentTypeRules,
+                contentTypeRulesFingerprint,
+                entry,
+                ext: extensionMime.ext,
+                extractMetadata: extractDocumentMetadata,
+                ingestVersion: INGEST_VERSION,
+                mime: extensionMime.mime,
+                options,
+                sourceCtime,
+                sourceMtime,
+                sourceSize,
+                sourceBytes: guardedBytes,
+                preloadedPriorDocuments:
+                  context?.preloaded?.priorRecordDocuments,
+                preloadedSourceDocument: context?.preloaded?.existing,
+                store,
+              });
+            } catch (error) {
+              return await this.recordUnexpectedFileError(
+                collection,
+                entry,
+                store,
+                error
+              );
+            }
+          },
+        };
       }
 
       const bytes = guardedBytes ?? (await Bun.file(entry.absPath).bytes());
@@ -759,19 +774,16 @@ export class SyncService {
       const sourceHash = hasher.digest("hex");
 
       // 4. Check existing doc for skip/repair decision
-      const existing = context?.preloaded
-        ? context.preloaded.existing
-        : (() => undefined)();
-      const resolvedExisting =
-        context?.preloaded !== undefined
-          ? existing!
-          : await (async () => {
-              const existingResult = await store.getDocument(
-                collection.name,
-                entry.relPath
-              );
-              return existingResult.ok ? existingResult.value : null;
-            })();
+      let resolvedExisting: DocumentRow | null;
+      if (context?.preloaded !== undefined) {
+        resolvedExisting = context.preloaded.existing;
+      } else {
+        const existingResult = await store.getDocument(
+          collection.name,
+          entry.relPath
+        );
+        resolvedExisting = existingResult.ok ? existingResult.value : null;
+      }
       const decision = decideAction(
         resolvedExisting,
         sourceHash,
@@ -1130,6 +1142,7 @@ export class SyncService {
       context
     );
     if (prepared.kind === "done") return prepared.result;
+    if (prepared.kind === "record-container") return await prepared.run();
     return await prepared.persist();
   }
 
@@ -1552,7 +1565,7 @@ export class SyncService {
         ctime: sourceCtime,
       };
 
-      const result = await this.processFile(
+      const preparedFile = await this.prepareFileForSync(
         collection,
         entry,
         store,
@@ -1570,33 +1583,38 @@ export class SyncService {
           },
         }
       );
-      if (result.errorCode === "GENERATED_CONTEXT") {
-        const preCollectFailed = await collectPreWriteSources(
-          relPath,
-          existingDoc,
-          recordDocuments
-        );
-        if (preCollectFailed) {
-          results.push(preCollectFailed);
+      if (preparedFile.kind === "done") {
+        const result = preparedFile.result;
+        if (result.errorCode === "GENERATED_CONTEXT") {
+          const preCollectFailed = await collectPreWriteSources(
+            relPath,
+            existingDoc,
+            recordDocuments
+          );
+          if (preCollectFailed) {
+            results.push(preCollectFailed);
+            continue;
+          }
+          const inactive = await this.inactivateOneAbsentSource(
+            collection,
+            store,
+            relPath,
+            projectionSourceIds,
+            { existingDoc, recordDocuments }
+          );
+          markedInactive += inactive.markedInactive;
+          results.push(
+            inactive.result.status === "error" ? inactive.result : result
+          );
           continue;
         }
-        const inactive = await this.inactivateOneAbsentSource(
-          collection,
-          store,
-          relPath,
-          projectionSourceIds,
-          { existingDoc, recordDocuments }
-        );
-        markedInactive += inactive.markedInactive;
-        results.push(
-          inactive.result.status === "error" ? inactive.result : result
-        );
-        continue;
-      }
-      if (result.status === "unchanged") {
+        // Unchanged (or read-only NOT_FILE/NOT_FOUND): skip backlink & post-write queries.
         results.push(result);
         continue;
       }
+
+      // Collect pre-write projection sources BEFORE persisting any change so a
+      // backlink lookup failure never leaves a committed partial update.
       const preCollectFailed = await collectPreWriteSources(
         relPath,
         existingDoc,
@@ -1606,8 +1624,17 @@ export class SyncService {
         results.push(preCollectFailed);
         continue;
       }
+
+      const result =
+        preparedFile.kind === "record-container"
+          ? await preparedFile.run()
+          : await preparedFile.persist();
       results.push(result);
-      if (result.status === "error" || result.status === "skipped") {
+      if (
+        result.status === "unchanged" ||
+        result.status === "error" ||
+        result.status === "skipped"
+      ) {
         continue;
       }
       // Post-write projection identity must succeed so typed-edge cleanup can run.
@@ -2126,32 +2153,35 @@ export class SyncService {
 
       // Prepare batch outside any SQLite write transaction (sequentially or
       // with bounded concurrency), preserving deterministic `batch` order.
+      // Record containers run their own streaming + single transaction outside
+      // the batch BEGIN IMMEDIATE so they never hold a write lock while parsing.
+      const prepareBatchEntry = async (
+        entry: WalkEntry
+      ): Promise<PreparedFileSync> => {
+        const item = await this.prepareFileForSync(
+          collection,
+          entry,
+          store,
+          syncOptions,
+          buildContext(entry)
+        );
+        if (item.kind === "record-container") {
+          return { kind: "done", result: await item.run() };
+        }
+        return item;
+      };
       let preparedBatch: PreparedFileSync[];
       if (!semaphore) {
         preparedBatch = [];
         for (const entry of batch) {
-          preparedBatch.push(
-            await this.prepareFileForSync(
-              collection,
-              entry,
-              store,
-              syncOptions,
-              buildContext(entry)
-            )
-          );
+          preparedBatch.push(await prepareBatchEntry(entry));
         }
       } else {
         preparedBatch = await Promise.all(
           batch.map(async (entry) => {
             await semaphore.acquire();
             try {
-              return await this.prepareFileForSync(
-                collection,
-                entry,
-                store,
-                syncOptions,
-                buildContext(entry)
-              );
+              return await prepareBatchEntry(entry);
             } finally {
               semaphore.release();
             }
@@ -2184,7 +2214,11 @@ export class SyncService {
           const item = preparedBatch[idx];
           if (!item) continue;
           const result =
-            item.kind === "done" ? item.result : await item.persist();
+            item.kind === "done"
+              ? item.result
+              : item.kind === "record-container"
+                ? await item.run()
+                : await item.persist();
           batchResults.push(result);
         }
         return batchResults;

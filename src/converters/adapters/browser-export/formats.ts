@@ -45,7 +45,12 @@ const SUPPORTED_JSON_KEYS = new Set([
 const SUPPORTED_JSON_KEY_LIST = [...SUPPORTED_JSON_KEYS];
 const BOOKMARK_EXPORT_DOCUMENT_PATTERN =
   /<!DOCTYPE\s+(?:NETSCAPE-Bookmark-file-1\b[^>]*|html\s*)>/i;
-const NETSCAPE_STRUCTURE_TAG_PATTERN = /<(\/)?(DL|A|H3)(?:\b[^>]*>|\s*>)/gi;
+const OPENING_DL_PATTERN = /<DL\b[^>]*>/gi;
+const CLOSING_DL_PATTERN = /<\/DL\s*>/gi;
+const OPENING_ANCHOR_PATTERN = /<A\b[^>]*>/gi;
+const CLOSING_ANCHOR_PATTERN = /<\/A\s*>/gi;
+const OPENING_HEADING_PATTERN = /<H3\b[^>]*>/gi;
+const CLOSING_HEADING_PATTERN = /<\/H3\s*>/gi;
 
 const plainText = (value: string): string =>
   htmlFragmentToText(value).replace(/\s+/g, " ").trim();
@@ -64,40 +69,26 @@ const attributes = (value: string): Map<string, string> => {
 const hasSensitiveJsonKey = (value: Record<string, unknown>): boolean =>
   Object.keys(value).some((key) => SENSITIVE_JSON_KEYS.has(key.toLowerCase()));
 
+const countTagMatches = (source: string, pattern: RegExp): number => {
+  pattern.lastIndex = 0;
+  let count = 0;
+  while (pattern.exec(source) !== null) {
+    count += 1;
+  }
+  return count;
+};
+
 const hasCompleteNetscapeStructure = (source: string): boolean => {
   if (!BOOKMARK_EXPORT_DOCUMENT_PATTERN.test(source)) return false;
-  let openingDl = 0;
-  let closingDl = 0;
-  let openingAnchors = 0;
-  let closingAnchors = 0;
-  let openingHeadings = 0;
-  let closingHeadings = 0;
-  NETSCAPE_STRUCTURE_TAG_PATTERN.lastIndex = 0;
-  let match: RegExpExecArray | null = null;
-  while ((match = NETSCAPE_STRUCTURE_TAG_PATTERN.exec(source)) !== null) {
-    const raw = match[0];
-    const closing = match[1] === "/";
-    const tag = match[2]?.toLowerCase();
-    // Preserve exact original closing-tag whitespace-only rule (`</TAG\s*>`).
-    if (closing) {
-      if (!/^<\/(?:dl|a|h3)\s*>$/i.test(raw)) continue;
-      if (tag === "dl") closingDl += 1;
-      else if (tag === "a") closingAnchors += 1;
-      else if (tag === "h3") closingHeadings += 1;
-    } else if (tag === "dl") {
-      openingDl += 1;
-    } else if (tag === "a") {
-      openingAnchors += 1;
-    } else if (tag === "h3") {
-      openingHeadings += 1;
-    }
-  }
-  return (
-    openingDl > 0 &&
-    openingDl === closingDl &&
-    openingAnchors === closingAnchors &&
-    openingHeadings === closingHeadings
-  );
+  const openingDl = countTagMatches(source, OPENING_DL_PATTERN);
+  const closingDl = countTagMatches(source, CLOSING_DL_PATTERN);
+  if (openingDl <= 0 || openingDl !== closingDl) return false;
+  const openingAnchors = countTagMatches(source, OPENING_ANCHOR_PATTERN);
+  const closingAnchors = countTagMatches(source, CLOSING_ANCHOR_PATTERN);
+  if (openingAnchors !== closingAnchors) return false;
+  const openingHeadings = countTagMatches(source, OPENING_HEADING_PATTERN);
+  const closingHeadings = countTagMatches(source, CLOSING_HEADING_PATTERN);
+  return openingHeadings === closingHeadings;
 };
 
 const exportDate = (value: string | undefined): string | undefined => {

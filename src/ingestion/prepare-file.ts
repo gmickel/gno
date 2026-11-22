@@ -32,6 +32,7 @@ import {
   parseLinks,
 } from "../core/links";
 import { validateMemoryRecord } from "../core/memory-record";
+import { MarkdownChunker } from "./chunker";
 import { extractDocumentMetadata, extractTags } from "./document-metadata";
 import { parseFrontmatterDetails } from "./frontmatter";
 import { buildLineOffsets } from "./position";
@@ -232,9 +233,9 @@ export async function prepareFile(
   if (stopAfterRanges) return { ok: false, error: stopAfterRanges };
 
   hooks.onPhase("change-journal structure");
-  const lineOffsets = markdownSource ? buildLineOffsets(markdown) : undefined;
+  const lineOffsets = buildLineOffsets(markdown);
   const parsedLinks =
-    markdownSource && excludedRanges && lineOffsets
+    markdownSource && excludedRanges
       ? parseLinks(markdown, lineOffsets, excludedRanges)
       : null;
   const nextStructure = extractDocumentStructure(
@@ -253,22 +254,32 @@ export async function prepareFile(
   if (stopAfterStructure) return { ok: false, error: stopAfterStructure };
 
   hooks.onPhase("chunking");
-  const chunkInputs: ChunkInput[] = hooks.chunker
-    .chunk(
-      markdown,
-      request.chunkParams,
-      artifact.languageHint ?? request.collectionLanguageHint,
-      relPath
-    )
-    .map((c) => ({
-      seq: c.seq,
-      pos: c.pos,
-      text: c.text,
-      startLine: c.startLine,
-      endLine: c.endLine,
-      language: c.language ?? undefined,
-      tokenCount: c.tokenCount ?? undefined,
-    }));
+  const chunkLanguageHint =
+    artifact.languageHint ?? request.collectionLanguageHint;
+  const rawChunks =
+    hooks.chunker instanceof MarkdownChunker
+      ? hooks.chunker.chunk(
+          markdown,
+          request.chunkParams,
+          chunkLanguageHint,
+          relPath,
+          lineOffsets
+        )
+      : hooks.chunker.chunk(
+          markdown,
+          request.chunkParams,
+          chunkLanguageHint,
+          relPath
+        );
+  const chunkInputs: ChunkInput[] = rawChunks.map((c) => ({
+    seq: c.seq,
+    pos: c.pos,
+    text: c.text,
+    startLine: c.startLine,
+    endLine: c.endLine,
+    language: c.language ?? undefined,
+    tokenCount: c.tokenCount ?? undefined,
+  }));
   const stopAfterChunking = step("chunking");
   if (stopAfterChunking) return { ok: false, error: stopAfterChunking };
 

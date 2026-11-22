@@ -13,6 +13,7 @@ import type {
 } from "../../src/converters/types";
 import type { StorePort } from "../../src/store/types";
 
+import { normalizeContentTypes } from "../../src/config";
 import { browserExportAdapter } from "../../src/converters/adapters/browser-export/adapter";
 import { emailRecordAdapter } from "../../src/converters/adapters/email/adapter";
 import { icalAdapter } from "../../src/converters/adapters/ical/adapter";
@@ -324,13 +325,105 @@ describe("R3: walker compiled matchers and subtree pruning", () => {
       "notes/a.md",
       "notes/sub/b.md",
     ]);
-    // Subtrees pruned at directory boundary rather than descending into children.
-    expect(skipped.some((s) => s.relPath === "node_modules")).toBe(true);
+    // Subtrees pruned silently at directory boundary without descending or emitting synthetic dir skips.
     expect(skipped.some((s) => s.relPath.startsWith("node_modules/"))).toBe(
       false
     );
     expect(isCompiledContextPath("docs/brief.GNO-CONTEXT.md")).toBe(true);
     expect(isCompiledContextPath("docs/normal.md")).toBe(false);
+  });
+
+  test("preserves partial glob exclusion descendants and per-branch dotfile matching", async () => {
+    const dir = await makeTempDir("gno-walk-edge-");
+    await mkdir(join(dir, "docs", "integrations"), { recursive: true });
+    await mkdir(join(dir, "src", "converters"), { recursive: true });
+    await mkdir(join(dir, ".github", "workflows"), { recursive: true });
+    await mkdir(join(dir, ".github", ".secret"), { recursive: true });
+    await mkdir(join(dir, ".flow", "tasks"), { recursive: true });
+    await mkdir(join(dir, ".agents", "skills"), { recursive: true });
+    await Bun.write(join(dir, "README.md"), "# Root\n");
+    await Bun.write(join(dir, "docs", "top.md"), "# Top\n");
+    await Bun.write(
+      join(dir, "docs", "integrations", "clipper.md"),
+      "# Clipper\n"
+    );
+    await Bun.write(
+      join(dir, "src", "converters", "registry.ts"),
+      "export {};\n"
+    );
+    await Bun.write(join(dir, ".github", "workflows", "ci.yml"), "name: ci\n");
+    await Bun.write(
+      join(dir, ".github", ".secret", "hidden.yml"),
+      "name: secret\n"
+    );
+    await Bun.write(join(dir, ".flow", "criteria.md"), "# Criteria\n");
+    await Bun.write(join(dir, ".flow", "tasks", "task.md"), "# Task\n");
+    await Bun.write(join(dir, ".agents", "skills", "SKILL.md"), "# Skill\n");
+
+    // Partial exclusion `docs/*` must NOT prune `docs/integrations/clipper.md`.
+    const partialDocs = await defaultWalker.walk({
+      root: dir,
+      pattern: "**/*.md",
+      include: [".md"],
+      exclude: ["docs/*"],
+      maxBytes: 1024 * 1024,
+    });
+    expect(partialDocs.entries.map((e) => e.relPath)).toEqual([
+      "docs/integrations/clipper.md",
+      "README.md",
+    ]);
+
+    // Partial exclusion `src/converters*` must NOT prune `src/converters/registry.ts`.
+    const partialPrefix = await defaultWalker.walk({
+      root: dir,
+      pattern: "src/**/*.ts",
+      include: [".ts"],
+      exclude: ["src/converters*"],
+      maxBytes: 1024 * 1024,
+    });
+    expect(partialPrefix.entries.map((e) => e.relPath)).toEqual([
+      "src/converters/registry.ts",
+    ]);
+
+    // Pattern `README.md` with exclude `src` must NOT emit a synthetic `src` EXCLUDED receipt.
+    const singleFile = await defaultWalker.walk({
+      root: dir,
+      pattern: "README.md",
+      include: [".md"],
+      exclude: ["src"],
+      maxBytes: 1024 * 1024,
+    });
+    expect(singleFile.entries.map((e) => e.relPath)).toEqual(["README.md"]);
+    expect(singleFile.skipped).toEqual([]);
+
+    // Union pattern with one explicit dot branch must NOT widen wildcard branch to other hidden dirs.
+    const unionDot = await defaultWalker.walk({
+      root: dir,
+      pattern: "{.github/**/*.yml,**/*.md}",
+      include: [".md", ".yml"],
+      exclude: [],
+      maxBytes: 1024 * 1024,
+    });
+    expect(unionDot.entries.map((e) => e.relPath)).toEqual([
+      ".github/workflows/ci.yml",
+      "docs/integrations/clipper.md",
+      "docs/top.md",
+      "README.md",
+    ]);
+
+    const exactDotFile = await defaultWalker.walk({
+      root: dir,
+      pattern: "{.flow/criteria.md,**/*.md}",
+      include: [".md"],
+      exclude: [],
+      maxBytes: 1024 * 1024,
+    });
+    expect(exactDotFile.entries.map((e) => e.relPath)).toEqual([
+      ".flow/criteria.md",
+      "docs/integrations/clipper.md",
+      "docs/top.md",
+      "README.md",
+    ]);
   });
 
   test("rejects invalid glob patterns identically", async () => {
@@ -524,6 +617,55 @@ describe("R4: sync single-read, preloaded state, batching, and unchanged syncPat
       await store.close();
     }
   });
+
+  test("syncPaths collects pre-write backlinks before persisting changed documents", async () => {
+    const dir = await makeTempDir("gno-sync-prewrite-");
+    const dbPath = join(dir, "index.sqlite");
+    const colDir = join(dir, "docs");
+    await mkdir(colDir, { recursive: true });
+    await Bun.write(join(colDir, "note.md"), "# Original Title\n\nBody v1.\n");
+
+    const store = new SqliteAdapter();
+    await store.open(dbPath, "porter");
+    const collection: Collection = {
+      name: "docs",
+      path: colDir,
+      pattern: "**/*",
+      include: [],
+      exclude: [],
+    };
+    await store.syncCollections([collection]);
+
+    try {
+      const sync = new SyncService();
+      await sync.syncCollection(collection, store, {
+        projectTypedEdges: false,
+      });
+      const before = await store.getDocument("docs", "note.md");
+      expect(before.ok && before.value?.title).toBe("Original Title");
+
+      // Edit file and fail getBacklinksForDoc: update MUST NOT be committed.
+      await Bun.write(
+        join(colDir, "note.md"),
+        "# Replaced Title\n\nBody v2.\n"
+      );
+      store.getBacklinksForDoc = () =>
+        Promise.resolve(err("QUERY_FAILED", "injected backlink failure"));
+      const res = await sync.syncPaths(collection, store, ["note.md"], {
+        projectTypedEdges: false,
+      });
+      expect(res.files?.[0]?.status).toBe("error");
+      expect(res.files?.[0]?.errorCode).toBe("QUERY_FAILED");
+
+      const after = await store.getDocument("docs", "note.md");
+      expect(after.ok && after.value?.title).toBe("Original Title");
+      expect(after.ok && after.value?.sourceHash).toBe(
+        before.ok ? before.value?.sourceHash : undefined
+      );
+    } finally {
+      await store.close();
+    }
+  });
 });
 
 describe("R5: single-pass Markdown, chunking, language detection, canonicalization", () => {
@@ -575,6 +717,31 @@ describe("R5: single-pass Markdown, chunking, language detection, canonicalizati
       true
     );
     expect(defaultChunker.chunk("   \n\t  ")).toEqual([]);
+
+    // Overlapping multiline code breakpoints match independent pattern scans identically
+    const exportMultiline =
+      "// aaaaaaaaaaaaaaaaa\nexport default\nclass Foo {}\n" +
+      "// filler line to force multiple chunks\n".repeat(4);
+    const exportChunks = defaultChunker.chunk(
+      exportMultiline,
+      { maxTokens: 10, overlapPercent: 0 },
+      undefined,
+      "src/overlap.ts"
+    );
+    expect(exportChunks[0]?.text.length).toBe(36);
+
+    const arrowWithNestedClass =
+      "// header line padding text!\nconst f = (arg =\nclass Inner {}\n) => {\n  return 1;\n};\n" +
+      "// trailing comment line\n".repeat(4);
+    const arrowChunks = defaultChunker.chunk(
+      arrowWithNestedClass,
+      { maxTokens: 12, overlapPercent: 0 },
+      undefined,
+      "src/arrow.ts"
+    );
+    expect(arrowChunks[0]?.text.length).toBe(46);
+    expect(arrowChunks[0]?.text).not.toContain("class Inner");
+    expect(arrowChunks[1]?.text.startsWith("class Inner")).toBe(true);
 
     // Language detection (ASCII/Latin/CJK + surrogate pairs)
     expect(
@@ -792,6 +959,99 @@ describe("R6: converter and record-container hot loops", () => {
     expect(bmRun.authoritative).toBe(true);
     expect(bmRun.records).toHaveLength(1);
 
+    // Malformed Netscape exports with embedded tag markers stay non-authoritative
+    for (const malformedHtml of [
+      '<!DOCTYPE NETSCAPE-Bookmark-file-1><DL data="<A>"></DL>',
+      '<!DOCTYPE NETSCAPE-Bookmark-file-1><DL><DT><A HREF="https://example.com" TITLE="</H3>">Example</A></DL>',
+    ]) {
+      const badBm = await runRecordAdapter(browserExportAdapter, {
+        sourcePath: "/tmp/bad-bm.html",
+        relativePath: "bad-bm.html",
+        collection: "web",
+        mime: "text/x-gno-browser-bookmarks+html",
+        ext: ".html",
+        open: () => ({
+          async *[Symbol.asyncIterator]() {
+            yield new TextEncoder().encode(malformedHtml);
+          },
+        }),
+        limits: {
+          maxSourceBytes: 1024 * 1024,
+          maxRecords: 100,
+          maxRecordChars: 65_536,
+          maxMetadataChars: 16_384,
+          maxTotalChars: 1024 * 1024,
+          maxFailures: 50,
+          timeoutMs: 10_000,
+        },
+      });
+      expect(badBm.authoritative).toBe(false);
+    }
+
+    // Valid bookmark export with stray text before closing </DL> still imports
+    const strayClose =
+      '<!DOCTYPE NETSCAPE-Bookmark-file-1><DL><DT><A HREF="https://example.com">Example</A></DL junk </DL>';
+    const strayRun = await runRecordAdapter(browserExportAdapter, {
+      sourcePath: "/tmp/stray-bm.html",
+      relativePath: "stray-bm.html",
+      collection: "web",
+      mime: "text/x-gno-browser-bookmarks+html",
+      ext: ".html",
+      open: () => ({
+        async *[Symbol.asyncIterator]() {
+          yield new TextEncoder().encode(strayClose);
+        },
+      }),
+      limits: {
+        maxSourceBytes: 1024 * 1024,
+        maxRecords: 100,
+        maxRecordChars: 65_536,
+        maxMetadataChars: 16_384,
+        maxTotalChars: 1024 * 1024,
+        maxFailures: 50,
+        timeoutMs: 10_000,
+      },
+    });
+    expect(strayRun.authoritative).toBe(true);
+    expect(strayRun.records).toHaveLength(1);
+
+    // Synchronous adapter exceeding deadline before yielding complete still returns TIMEOUT
+    const syncHogAdapter: RecordAdapter = {
+      id: "test/sync-hog",
+      version: "1.0.0",
+      canHandle: () => true,
+      async *records(): AsyncGenerator<RecordAdapterEvent> {
+        const until = Date.now() + 40;
+        while (Date.now() < until) {
+          // intentional synchronous spin
+        }
+        yield { type: "snapshot", state: "complete" };
+      },
+    };
+    const syncTimedOut = await runRecordAdapter(syncHogAdapter, {
+      sourcePath: "/tmp/hog.dat",
+      relativePath: "hog.dat",
+      collection: "test",
+      mime: "application/octet-stream",
+      ext: ".dat",
+      open: () => ({
+        async *[Symbol.asyncIterator]() {
+          // empty
+        },
+      }),
+      limits: {
+        maxSourceBytes: 1024,
+        maxRecords: 10,
+        maxRecordChars: 1024,
+        maxMetadataChars: 1024,
+        maxTotalChars: 10_000,
+        maxFailures: 10,
+        timeoutMs: 5,
+      },
+    });
+    expect(syncTimedOut.authoritative).toBe(false);
+    expect(syncTimedOut.failures.some((f) => f.code === "TIMEOUT")).toBe(true);
+
     // Shared deadline timer fires TIMEOUT on slow adapter
     const slowAdapter: RecordAdapter = {
       id: "test/slow",
@@ -929,6 +1189,36 @@ describe("R7: incremental graph reconciliation", () => {
         expect(edges.ok).toBe(true);
         // [[Target]] still resolves via filename stem `target`!
         expect(edges.ok && edges.value.length).toBe(1);
+      }
+
+      // 3. Duplicate content-type rule IDs preserve first-rule precedence:
+      //    first rule has no graph hint, second rule has `depends_on` -> default backfill wins.
+      await Bun.write(
+        join(colDir, "memo.md"),
+        "---\ntype: memo\n---\n# Memo\n\nSee [[Renamed Target]].\n"
+      );
+      await sync.syncPaths(collection, store, ["memo.md"], {
+        contentTypeRules: normalizeContentTypes([
+          { id: "memo", preset: "note", prefixes: ["a/"], graphHints: [] },
+          {
+            id: "memo",
+            preset: "note",
+            prefixes: ["b/"],
+            graphHints: ["depends_on"],
+          },
+        ]).rules,
+      });
+      const memoDoc = await store.getDocument("notes", "memo.md");
+      expect(memoDoc.ok && memoDoc.value).toBeTruthy();
+      if (memoDoc.ok && memoDoc.value) {
+        const memoEdges = await store.getEdgesForDoc(memoDoc.value.id);
+        expect(memoEdges.ok).toBe(true);
+        if (memoEdges.ok) {
+          expect(memoEdges.value.some((e) => e.edgeType === "depends_on")).toBe(
+            false
+          );
+          expect(memoEdges.value.length).toBe(1);
+        }
       }
     } finally {
       await store.close();

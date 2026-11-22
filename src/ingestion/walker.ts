@@ -29,12 +29,163 @@ import {
   isUnprovenDirectoryResult,
 } from "./source-availability";
 
-/** Bounded concurrency for file.stat() batches and async directory reads. */
+/** Bounded concurrency for lstat() batches and async directory reads. */
 const STAT_CONCURRENCY = 32;
 const READDIR_CONCURRENCY = 16;
 
-/** Detects whether a glob pattern explicitly references a dotfile/dotdir segment. */
-const EXPLICIT_DOT_PATTERN = /(?:^|[\\/{,])\./;
+interface CompiledPatternSegment {
+  isGlobstar: boolean;
+  /** Compiled matcher for non-dot path segments. */
+  glob: Bun.Glob;
+  /** Compiled matchers for sub-patterns that explicitly begin with `.`. */
+  dotGlobs: Bun.Glob[];
+}
+
+interface CompiledPatternBranch {
+  glob: Bun.Glob;
+  hasExplicitDot: boolean;
+  segments: CompiledPatternSegment[] | null;
+}
+
+function compilePatternBranch(pattern: string): CompiledPatternBranch {
+  const normalized = pattern.replaceAll("\\", "/");
+  const glob = new Bun.Glob(pattern);
+  const rawSegments = normalized.split("/");
+  // If braces span across `/`, fall back to Bun.Glob for dot-aware matching.
+  let hasUnbalancedBrace = false;
+  let hasExplicitDot = false;
+  const segments: CompiledPatternSegment[] = [];
+  for (const rawSeg of rawSegments) {
+    let depth = 0;
+    for (let i = 0; i < rawSeg.length; i += 1) {
+      if (rawSeg[i] === "{") depth += 1;
+      else if (rawSeg[i] === "}") depth -= 1;
+      if (depth < 0) {
+        hasUnbalancedBrace = true;
+        break;
+      }
+    }
+    if (depth !== 0 || hasUnbalancedBrace) {
+      hasUnbalancedBrace = true;
+      break;
+    }
+    const isGlobstar = rawSeg === "**";
+    const alternatives =
+      rawSeg.startsWith("{") && rawSeg.endsWith("}")
+        ? scanPatterns(rawSeg)
+        : [rawSeg];
+    const dotGlobs: Bun.Glob[] = [];
+    for (const alt of alternatives) {
+      if (alt.startsWith(".")) {
+        hasExplicitDot = true;
+        dotGlobs.push(new Bun.Glob(alt));
+      }
+    }
+    segments.push({
+      isGlobstar,
+      glob: new Bun.Glob(rawSeg),
+      dotGlobs,
+    });
+  }
+  if (hasUnbalancedBrace) {
+    return {
+      glob,
+      hasExplicitDot: /(?:^|[/,{])\./.test(normalized),
+      segments: null,
+    };
+  }
+  return { glob, hasExplicitDot, segments };
+}
+
+function segmentMatches(seg: CompiledPatternSegment, name: string): boolean {
+  if (name.startsWith(".")) {
+    for (const dotGlob of seg.dotGlobs) {
+      if (dotGlob.match(name)) return true;
+    }
+    return false;
+  }
+  return seg.glob.match(name);
+}
+
+function matchBranchSegments(
+  segments: readonly CompiledPatternSegment[],
+  pathSegments: readonly string[],
+  prefixOnly: boolean
+): boolean {
+  const pLen = segments.length;
+  const sLen = pathSegments.length;
+  // Memoized DP over (pIdx, sIdx) prevents exponential blowup on multiple `**`.
+  const memo = new Int8Array((pLen + 1) * (sLen + 1));
+  const visit = (pIdx: number, sIdx: number): boolean => {
+    const key = pIdx * (sLen + 1) + sIdx;
+    const cached = memo[key];
+    if (cached !== 0) return cached === 1;
+    let ok = false;
+    if (sIdx === sLen) {
+      if (prefixOnly) {
+        ok = pIdx < pLen || (pIdx > 0 && segments[pIdx - 1]!.isGlobstar);
+      } else {
+        ok = true;
+        for (let i = pIdx; i < pLen; i += 1) {
+          if (!segments[i]!.isGlobstar) {
+            ok = false;
+            break;
+          }
+        }
+      }
+    } else if (pIdx < pLen) {
+      const seg = segments[pIdx]!;
+      const name = pathSegments[sIdx]!;
+      if (seg.isGlobstar) {
+        // Under `{ dot: false }`, `**` matches zero or more non-dot segments.
+        ok =
+          visit(pIdx + 1, sIdx) ||
+          (!name.startsWith(".") && visit(pIdx, sIdx + 1));
+      } else if (segmentMatches(seg, name)) {
+        ok = visit(pIdx + 1, sIdx + 1);
+      }
+    }
+    memo[key] = ok ? 1 : -1;
+    return ok;
+  };
+  return visit(0, 0);
+}
+
+function hasDotSegment(relPath: string): boolean {
+  return relPath.startsWith(".") || relPath.includes("/.");
+}
+
+function branchMatchesPath(
+  branch: CompiledPatternBranch,
+  relPath: string
+): boolean {
+  if (!hasDotSegment(relPath)) {
+    return branch.glob.match(relPath);
+  }
+  if (!branch.hasExplicitDot) {
+    return false;
+  }
+  if (!branch.segments) {
+    return branch.glob.match(relPath);
+  }
+  return matchBranchSegments(branch.segments, relPath.split("/"), false);
+}
+
+function branchCanDescendDir(
+  branch: CompiledPatternBranch,
+  dirRelPath: string
+): boolean {
+  if (!hasDotSegment(dirRelPath)) {
+    return true;
+  }
+  if (!branch.hasExplicitDot) {
+    return false;
+  }
+  if (!branch.segments) {
+    return true;
+  }
+  return matchBranchSegments(branch.segments, dirRelPath.split("/"), true);
+}
 
 /**
  * Regex to detect dangerous patterns with parent directory traversal.
@@ -341,9 +492,11 @@ export class FileWalker implements WalkerPort {
     }
 
     const matcher = compileWalkMatcher(config);
-    const patternGlobs = patterns.map((pattern) => new Bun.Glob(pattern));
-    const allowDotEntries = patterns.some((pattern) =>
-      EXPLICIT_DOT_PATTERN.test(pattern)
+    const patternBranches = patterns.map((pattern) =>
+      compilePatternBranch(pattern)
+    );
+    const anyBranchHasExplicitDot = patternBranches.some(
+      (branch) => branch.hasExplicitDot
     );
 
     const candidates: Array<{ absPath: string; relPath: string }> = [];
@@ -369,9 +522,8 @@ export class FileWalker implements WalkerPort {
           const name = dirent.name;
           if (name === "" || name === "." || name === "..") continue;
           if (name.includes("\0")) continue;
-          // Preserve Bun.Glob.scan({ dot: false }) behavior unless the pattern
-          // explicitly targets dot segments.
-          if (!allowDotEntries && name.startsWith(".")) continue;
+          // Fast skip dot entries when no pattern branch explicitly targets dots.
+          if (!anyBranchHasExplicitDot && name.startsWith(".")) continue;
 
           const childAbs = join(dir.absPath, name);
           const childRel =
@@ -386,12 +538,17 @@ export class FileWalker implements WalkerPort {
 
           if (dirent.isDirectory()) {
             if (isRecordVirtualPath(childRel)) continue;
+            // Prune only fully excluded subtrees without emitting synthetic
+            // directory EXCLUDED receipts that the include glob never selected.
             if (matchesCompiledSubtreeExclusion(childRel, matcher.exclusions)) {
-              skipped.push({
-                absPath: childAbs,
-                relPath: childRel,
-                reason: "EXCLUDED",
-              });
+              continue;
+            }
+            if (
+              name.startsWith(".") &&
+              !patternBranches.some((branch) =>
+                branchCanDescendDir(branch, childRel)
+              )
+            ) {
               continue;
             }
             nextLevel.push({ absPath: childAbs, relPath: childRel });
@@ -400,8 +557,14 @@ export class FileWalker implements WalkerPort {
 
           if (!dirent.isFile()) continue;
 
-          // Pattern gate matches Bun.Glob.scan semantics first.
-          if (!patternGlobs.some((glob) => glob.match(childRel))) continue;
+          // Pattern gate preserves per-branch, per-segment Bun.Glob.scan({ dot: false }) semantics.
+          if (
+            !patternBranches.some((branch) =>
+              branchMatchesPath(branch, childRel)
+            )
+          ) {
+            continue;
+          }
 
           // Regular file under canonical rootReal with no symlink ancestors:
           // childAbs is already canonical and contained within rootReal.
@@ -431,8 +594,13 @@ export class FileWalker implements WalkerPort {
         async ({ absPath }) => {
           const safePath = await safeRelPath(rootReal, absPath);
           if (safePath === null) return;
-          if (!patternGlobs.some((glob) => glob.match(safePath.relPath)))
+          if (
+            !patternBranches.some((branch) =>
+              branchMatchesPath(branch, safePath.relPath)
+            )
+          ) {
             return;
+          }
           if (seenAbsPaths.has(safePath.absPath)) return;
           seenAbsPaths.add(safePath.absPath);
           if (!matchesCompiledWalkPath(safePath.relPath, matcher)) {
@@ -448,39 +616,37 @@ export class FileWalker implements WalkerPort {
       );
     }
 
-    // Bounded concurrent stat() across matched candidates.
+    // Bounded concurrent lstat() across matched candidates: rejects entries
+    // swapped to a symlink after readdir without adding an extra syscall.
     await runBounded(candidates, STAT_CONCURRENCY, async (candidate) => {
-      const file = Bun.file(candidate.absPath);
-      let stat: {
-        size: number;
-        mtime: Date;
-        ctime?: Date;
-        birthtime?: Date;
-        isFile?: () => boolean;
-      };
+      let fileStat: Awaited<ReturnType<typeof lstat>>;
       try {
-        stat = await file.stat();
+        fileStat = await lstat(candidate.absPath);
       } catch {
         return;
       }
-      if (typeof stat.isFile === "function" && !stat.isFile()) {
+      if (!fileStat.isFile()) {
         return;
       }
-      if (stat.size > config.maxBytes) {
+      if (fileStat.size > config.maxBytes) {
         skipped.push({
           absPath: candidate.absPath,
           relPath: candidate.relPath,
           reason: "TOO_LARGE",
-          size: stat.size,
+          size: fileStat.size,
         });
         return;
       }
       entries.push({
         absPath: candidate.absPath,
         relPath: candidate.relPath,
-        size: stat.size,
-        mtime: stat.mtime.toISOString(),
-        ctime: (stat.birthtime ?? stat.ctime ?? stat.mtime).toISOString(),
+        size: fileStat.size,
+        mtime: fileStat.mtime.toISOString(),
+        ctime: (
+          fileStat.birthtime ??
+          fileStat.ctime ??
+          fileStat.mtime
+        ).toISOString(),
       });
     });
 
@@ -667,16 +833,13 @@ export class FileWalker implements WalkerPort {
     }
 
     await runBounded(regularCandidates, STAT_CONCURRENCY, async (candidate) => {
-      const file = Bun.file(candidate.absPath);
-      let fileStat: {
-        size: number;
-        mtime: Date;
-        ctime?: Date;
-        birthtime?: Date;
-      };
+      let fileStat: Awaited<ReturnType<typeof lstat>>;
       try {
-        fileStat = await file.stat();
+        fileStat = await lstat(candidate.absPath);
       } catch {
+        return;
+      }
+      if (!fileStat.isFile()) {
         return;
       }
 

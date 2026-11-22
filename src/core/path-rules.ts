@@ -105,13 +105,36 @@ export function matchesCompiledExclusion(
   return false;
 }
 
-/** Check whether a POSIX-normalized directory path is a fully excluded subtree. */
+/**
+ * Check whether a POSIX-normalized directory path is a fully excluded subtree.
+ * Only prunes when every descendant is guaranteed excluded (`**`, bare component,
+ * literal prefix, or trailing `/**` glob). Partial non-recursive globs such as
+ * `docs/*` or `src/converters*` match only the directory name itself and must
+ * still be traversed so eligible descendants are not dropped.
+ */
 export function matchesCompiledSubtreeExclusion(
   normalizedPath: string,
   compiled: CompiledCollectionExclusions
 ): boolean {
   if (compiled.excludesAllSubtrees) return true;
-  if (matchesCompiledExclusion(normalizedPath, compiled)) return true;
+  if (compiled.bareComponents.size > 0) {
+    let start = 0;
+    while (start <= normalizedPath.length) {
+      const slash = normalizedPath.indexOf("/", start);
+      const part =
+        slash === -1
+          ? normalizedPath.slice(start)
+          : normalizedPath.slice(start, slash);
+      if (compiled.bareComponents.has(part)) return true;
+      if (slash === -1) break;
+      start = slash + 1;
+    }
+  }
+  for (const prefix of compiled.literalPrefixes) {
+    if (normalizedPath === prefix || normalizedPath.startsWith(`${prefix}/`)) {
+      return true;
+    }
+  }
   for (const glob of compiled.subtreeGlobs) {
     if (glob.match(normalizedPath)) return true;
   }

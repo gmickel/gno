@@ -92,8 +92,11 @@ export async function runRecordAdapter(
   let timedOut = false;
   const abortController = new AbortController();
   // Single shared deadline timer for the entire container with a replaceable
-  // waiter slot (avoids per-record setTimeout overhead and handler accumulation).
+  // waiter slot (avoids per-record setTimeout overhead and handler accumulation)
+  // plus an absolute wall-clock check before every iterator advance so synchronous
+  // adapter work exceeding timeoutMs cannot slip through microtasks.
   const timeoutMs = input.limits.timeoutMs ?? 60_000;
+  const deadlineMs = Date.now() + timeoutMs;
   let deadlineExpired = timeoutMs <= 0;
   let onDeadline: (() => void) | undefined;
   const deadlineTimer = deadlineExpired
@@ -107,7 +110,10 @@ export async function runRecordAdapter(
   const nextBeforeDeadline = <T>(
     iter: AsyncIterator<T>
   ): Promise<IteratorResult<T> | typeof TIMEOUT> => {
-    if (deadlineExpired) return Promise.resolve(TIMEOUT);
+    if (deadlineExpired || Date.now() >= deadlineMs) {
+      deadlineExpired = true;
+      return Promise.resolve(TIMEOUT);
+    }
     return new Promise<IteratorResult<T> | typeof TIMEOUT>(
       (resolve, reject) => {
         onDeadline = () => resolve(TIMEOUT);

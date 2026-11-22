@@ -249,14 +249,17 @@ export async function projectGraph(
       current.push(refDoc);
       currentById.set(refDoc.documentId, refDoc);
     }
-    // Pre-index valid content-type graph hints once (first rule wins, matching .find()).
-    const graphHintsByContentType = new Map<string, string>();
+    // Pre-index content-type graph hints once; record the FIRST occurrence of
+    // every rule ID (including null when its hint is absent/invalid) so later
+    // duplicate IDs never override the first rule's precedence.
+    const graphHintsByContentType = new Map<string, string | null>();
     for (const rule of options.contentTypeRules ?? []) {
       if (graphHintsByContentType.has(rule.id)) continue;
       const hint = rule.graphHints?.[0];
-      if (hint && EDGE_TYPE.test(hint)) {
-        graphHintsByContentType.set(rule.id, hint);
-      }
+      graphHintsByContentType.set(
+        rule.id,
+        hint && EDGE_TYPE.test(hint) ? hint : null
+      );
     }
     // Read before begin: a new version/config deliberately resets the old inventory.
     const previous = graph?.readInventory() ?? [];
@@ -356,19 +359,30 @@ export async function projectGraph(
         } else if (changedDocids.size > 0) {
           // Body-only edits change content-derived docid without altering
           // collection/relPath/uri/title; only explicit `#docid` frontmatter
-          // relations can be affected, avoiding a full resolveOld rebuild.
-          for (const row of previous) {
-            if (row.references.length === 0) continue;
-            const source = currentById.get(row.document.documentId);
-            if (!source || selected.has(source.documentId)) continue;
-            if (
-              row.references.some(
-                (ref) =>
-                  ref.target.includes("#") &&
-                  changedDocids.has(normalizeRelationTarget(ref.target))
-              )
-            ) {
-              selected.add(source.documentId);
+          // relations can be affected. Query those directly without scanning
+          // every prior inventory row or rebuilding resolveOld.
+          if (typeof graph.docidReferenceSources === "function") {
+            for (const sourceId of graph.docidReferenceSources([
+              ...changedDocids,
+            ])) {
+              if (currentById.has(sourceId)) {
+                selected.add(sourceId);
+              }
+            }
+          } else {
+            for (const row of previous) {
+              if (row.references.length === 0) continue;
+              const source = currentById.get(row.document.documentId);
+              if (!source || selected.has(source.documentId)) continue;
+              if (
+                row.references.some(
+                  (ref) =>
+                    ref.target.includes("#") &&
+                    changedDocids.has(normalizeRelationTarget(ref.target))
+                )
+              ) {
+                selected.add(source.documentId);
+              }
             }
           }
         }
@@ -388,7 +402,7 @@ export async function projectGraph(
         if (!doc.active) return true;
         return !(
           doc.contentType !== null &&
-          graphHintsByContentType.has(doc.contentType)
+          graphHintsByContentType.get(doc.contentType)
         );
       });
       const backfill = await store.backfillDocEdges(
@@ -466,7 +480,7 @@ export async function projectGraph(
         graph?.writeInventory({ document: snapshot, references });
         const hint =
           doc.contentType !== null
-            ? graphHintsByContentType.get(doc.contentType)
+            ? (graphHintsByContentType.get(doc.contentType) ?? undefined)
             : undefined;
         if (!hint) continue;
         const links = await store.getLinksForDoc(doc.documentId);

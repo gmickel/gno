@@ -705,6 +705,8 @@ export interface GraphReferenceStore {
   readInventory(): GraphReferenceInventory[];
   /** Active parsed-link sources matching any old/new target candidate. */
   incomingLinkSources(identities: GraphReferenceDocument[]): number[];
+  /** Frontmatter-relation sources targeting any of the given `#docid` strings. */
+  docidReferenceSources?(docids: readonly string[]): number[];
   writeInventory(inventory: GraphReferenceInventory): void;
   complete(expectedEpoch: number): void;
 }

@@ -155,7 +155,7 @@ export const extractDocumentStructure = (
 
   return {
     headings: withOccurrences(
-      extractSections(markdown).map(
+      extractSections(markdown, lineOffsets).map(
         ({ level, title }) => `${"#".repeat(level)} ${title.normalize("NFC")}`
       )
     ),
