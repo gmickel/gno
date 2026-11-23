@@ -1,0 +1,102 @@
+{
+  "branch": "fn-234-lossless-vector-search-hot-fixes-and-db",
+  "findings": {
+    "backend": "receipt",
+    "headSha": "9860ff1b6ae4d04b758208623da0be1b8fb4012a",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-b5e24e595a2ebb9d3a0f9ed6454c555b7f592fd864f6efd1a468b79c6c4b9039"
+  },
+  "head_sha": "9860ff1b6ae4d04b758208623da0be1b8fb4012a",
+  "id": "fn-234-lossless-vector-search-hot-fixes-and-db",
+  "mode": "receipt",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 6,
+    "rids": [
+      {
+        "coverage": "subtracted",
+        "id": "R1"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R6"
+      }
+    ],
+    "total": 6
+  },
+  "scenarios": [
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-234-lossless-vector-search-hot-fixes-and-db/s1-doctor.log"
+      ],
+      "head_sha": "9860ff1b6ae4d04b758208623da0be1b8fb4012a",
+      "id": "S1-doctor-sqlite-mmap",
+      "outcome": "PASS",
+      "rids": [
+        "R3"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-234-lossless-vector-search-hot-fixes-and-db/s2-seed.log",
+        ".flow/tmp/qa-fn-234-lossless-vector-search-hot-fixes-and-db/s2-cli-prune-similar.log"
+      ],
+      "head_sha": "9860ff1b6ae4d04b758208623da0be1b8fb4012a",
+      "id": "S2-vec-prune-and-status-parity",
+      "outcome": "PASS",
+      "rids": [
+        "R4"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-234-lossless-vector-search-hot-fixes-and-db/s3-serve.log",
+        ".flow/tmp/qa-fn-234-lossless-vector-search-hot-fixes-and-db/s3-http.log"
+      ],
+      "head_sha": "9860ff1b6ae4d04b758208623da0be1b8fb4012a",
+      "id": "S3-serve-similar-rest",
+      "outcome": "PASS",
+      "rids": [
+        "R5"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-234-lossless-vector-search-hot-fixes-and-db/s4-cli-similar.log"
+      ],
+      "head_sha": "9860ff1b6ae4d04b758208623da0be1b8fb4012a",
+      "id": "S4-cli-similar-scoped-and-cross",
+      "outcome": "PASS",
+      "rids": [
+        "R5"
+      ],
+      "run": "live"
+    }
+  ],
+  "timestamp": "2026-11-23T14:42:39Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

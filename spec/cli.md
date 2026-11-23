@@ -1303,7 +1303,7 @@ gno update [--git-pull] [--json] [--lock-wait <duration>] [--no-wait]
 | `--lock-wait <duration>` | duration | How long to wait for the index write lease (default: `120s`). Accepts `120`, `120s`, or `2m`. |
 | `--no-wait` | boolean | Do not wait; fail immediately if another writer holds the lease |
 
-**Concurrency:** One writer at a time on the shared index database. `update` waits up to `--lock-wait` for the lease (the same `.mcp-write.lock` MCP write tools use); `index`, `embed`, `cleanup`, `vec sync`, `vec rebuild`, `vec drop`, `collection clear-embeddings`, `tags add`, and `tags rm` follow the same contract; `capture` takes the same lock internally, and single-row writes such as `collection policy set` are absorbed by `busy_timeout`. `--no-wait` opts out. Reads (`search`, `query`, `get`) never take the lease. External serialising wrappers are no longer required for CLI-vs-CLI and CLI-vs-MCP overlap. A resident (`gno serve`/`gno daemon`) takes the same lease without waiting around each watcher sync, embed preparation, background-embedding page write (never around inference), and the final vector activation; when the lease is held it defers that work (watcher retry after 5s, embed pass rescheduled) instead of writing, so resident background writes never hold a SQLite write lock outside the lease. The resident's own SQLite busy wait is capped at 500ms so a stop signal is always handled within the stop grace.
+**Concurrency:** One writer at a time on the shared index database. `update` waits up to `--lock-wait` for the lease (the same `.mcp-write.lock` MCP write tools use); `index`, `embed`, `cleanup`, `vec sync`, `vec rebuild`, `vec drop`, `vec prune`, `collection clear-embeddings`, `tags add`, and `tags rm` follow the same contract; `capture` takes the same lock internally, and single-row writes such as `collection policy set` are absorbed by `busy_timeout`. `--no-wait` opts out. Reads (`search`, `query`, `get`) never take the lease. External serialising wrappers are no longer required for CLI-vs-CLI and CLI-vs-MCP overlap. A resident (`gno serve`/`gno daemon`) takes the same lease without waiting around each watcher sync, embed preparation, background-embedding page write (never around inference), and the final vector activation; when the lease is held it defers that work (watcher retry after 5s, embed pass rescheduled) instead of writing, so resident background writes never hold a SQLite write lock outside the lease. The resident's own SQLite busy wait is capped at 500ms so a stop signal is always handled within the stop grace.
 
 **Behavior:**
 
@@ -3163,6 +3163,40 @@ included, is refused. JSON output is
 
 - 0: Dropped
 - 1: Unknown, ambiguous or protected partition
+- 4: Write lease busy with `--no-wait`
+
+---
+
+### gno vec prune
+
+Drop superseded legacy `vec_<hash>` tables and delete legacy `content_vectors`
+rows for models that already have an activated v1 vector partition, plus any
+orphaned `vec_v1_<partition>` tables absent from `vector_partitions`. Models
+whose v1 partition is still `shadow` or absent keep their legacy tables and rows.
+
+**Synopsis:**
+
+```bash
+gno vec prune [--vacuum] [--json] [--lock-wait <duration>] [--no-wait]
+```
+
+**Options:**
+| Option | Type | Description |
+|--------|------|-------------|
+| `--vacuum` | boolean | Run SQLite `VACUUM` in-place after pruning to reclaim disk space |
+| `--json` | boolean | JSON output (`{"droppedTables": string[], "removedRows": number, "vacuumed": boolean}`) |
+| `--lock-wait <duration>` | duration | How long to wait for the index write lease |
+| `--no-wait` | boolean | Fail immediately if another writer holds the lease |
+
+**Notes:**
+
+- Requires `sqlite-vec` (fails closed when the extension is unavailable or the database is read-only).
+- Without `--vacuum`, pruning frees internal SQLite pages without shrinking the file on disk. For large indexes, prefer `VACUUM INTO` a new file to reclaim disk space and defragment pages while keeping the original file as a rollback copy.
+
+**Exit Codes:**
+
+- 0: Success (including zero-op on a clean database)
+- 2: Runtime error (database open failed, read-only database, or `sqlite-vec` unavailable)
 - 4: Write lease busy with `--no-wait`
 
 ---

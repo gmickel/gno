@@ -308,7 +308,8 @@ CREATE INDEX IF NOT EXISTS idx_vector_owners_variant ON vector_owners(variant_id
 -- scan the variants index.
 CREATE TABLE IF NOT EXISTS vector_mirror_state (
   partition_id TEXT PRIMARY KEY,
-  dirty INTEGER NOT NULL CHECK (dirty IN (0, 1))
+  dirty INTEGER NOT NULL CHECK (dirty IN (0, 1)),
+  null_cosine INTEGER CHECK (null_cosine IS NULL OR null_cosine IN (0, 1))
 );
 CREATE TRIGGER IF NOT EXISTS vector_variants_mirror_before_insert
 BEFORE INSERT ON vector_variants BEGIN

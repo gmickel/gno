@@ -4,7 +4,13 @@ import type { Database } from "bun:sqlite";
 import type { VectorOwnerInput, VectorVariantIdentity } from "./types";
 
 import { formatDocForEmbedding } from "../../pipeline/contextual";
-import { markMirrorClean } from "./partition-index";
+import {
+  hasNullCosineColumn,
+  isNullCosineEmbedding,
+  markMirrorClean,
+  type NullCosineMark,
+  probePartitionNullCosine,
+} from "./partition-index";
 import { provenOwners, vectorProofKey } from "./proof-cache";
 import { decodeEmbedding } from "./sqlite-vec";
 
@@ -414,7 +420,7 @@ export class VectorVariantStore {
     this.assertWritable();
     return this.db
       .transaction(() =>
-        this.keepingMirrorMark(() => this.writeRows(rows, false))
+        this.keepingMirrorMark((mark) => this.writeRows(rows, false, mark))
       )
       .immediate();
   }
@@ -429,14 +435,18 @@ export class VectorVariantStore {
     this.assertWritable();
     return this.db
       .transaction(() =>
-        this.keepingMirrorMark(() => this.writeRows(rows, true))
+        this.keepingMirrorMark((mark) => this.writeRows(rows, true, mark))
       )
       .immediate();
   }
 
   private writeRows(
     rows: { owner: VectorOwnerInput; embedding?: Float32Array }[],
-    skipStale: boolean
+    skipStale: boolean,
+    markUpdate?: {
+      sawNullCosine: boolean;
+      nullCosineUnknown: boolean;
+    }
   ): number[] {
     if (rows.length === 0) return [];
     for (const { embedding } of rows) {
@@ -518,6 +528,15 @@ export class VectorVariantStore {
           embedding.byteOffset,
           embedding.byteLength
         );
+        if (markUpdate) {
+          if (this.searchAvailable) {
+            if (isNullCosineEmbedding(this.db, blob)) {
+              markUpdate.sawNullCosine = true;
+            }
+          } else {
+            markUpdate.nullCosineUnknown = true;
+          }
+        }
         variantId = insertVariant.get(
           this.partitionId,
           owner.inputHash,
@@ -548,6 +567,15 @@ export class VectorVariantStore {
           embedding.byteOffset,
           embedding.byteLength
         );
+        if (markUpdate) {
+          if (this.searchAvailable) {
+            if (isNullCosineEmbedding(this.db, blob)) {
+              markUpdate.sawNullCosine = true;
+            }
+          } else {
+            markUpdate.nullCosineUnknown = true;
+          }
+        }
         updateVariant.run(blob, variantId, this.partitionId);
         if (deleteVec && insertVec) {
           deleteVec.run(variantId);
@@ -870,7 +898,13 @@ export class VectorVariantStore {
           .get(this.partitionId)!.count;
         if (mismatch || orphans) throw new Error("Variant index inconsistent");
         // The mirror was just verified against every stored variant.
-        this.setMirrorMark(0);
+        const nullCosine: 0 | 1 = probePartitionNullCosine(
+          this.db,
+          this.partitionId
+        )
+          ? 1
+          : 0;
+        this.setMirrorMark(0, nullCosine);
         this.db.run(
           `UPDATE vector_partitions SET state = 'active', activated_epoch = ? WHERE partition_id = ?`,
           [expectedEpoch, this.partitionId]
@@ -920,37 +954,79 @@ export class VectorVariantStore {
       .get("vector_mirror_state");
   }
 
-  /** The partition's mark: 0 clean; 1 or null (no row) dirty. */
-  private mirrorMark(): number | null {
-    return (
-      this.db
-        .query<{ dirty: number }, [string]>(
-          "SELECT dirty FROM vector_mirror_state WHERE partition_id = ?"
+  /** The partition's mark: dirty (0 clean; 1 or null dirty) and persisted null_cosine flag. */
+  private mirrorStateMark(): {
+    dirty: number | null;
+    nullCosine: NullCosineMark;
+  } {
+    if (hasNullCosineColumn(this.db)) {
+      const row = this.db
+        .query<{ dirty: number; null_cosine: number | null }, [string]>(
+          "SELECT dirty, null_cosine FROM vector_mirror_state WHERE partition_id = ?"
         )
-        .get(this.partitionId)?.dirty ?? null
-    );
+        .get(this.partitionId);
+      if (!row) return { dirty: null, nullCosine: null };
+      const nullCosine: NullCosineMark =
+        row.null_cosine === 0 ? 0 : row.null_cosine === 1 ? 1 : null;
+      return { dirty: row.dirty, nullCosine };
+    }
+    const row = this.db
+      .query<{ dirty: number }, [string]>(
+        "SELECT dirty FROM vector_mirror_state WHERE partition_id = ?"
+      )
+      .get(this.partitionId);
+    return { dirty: row?.dirty ?? null, nullCosine: null };
   }
 
-  private setMirrorMark(mark: number | null): void {
+  private setMirrorMark(
+    mark: number | null,
+    nullCosine: NullCosineMark = null
+  ): void {
     if (!this.mirrorTracked()) return;
     if (mark !== 0)
       this.db.run("DELETE FROM vector_mirror_state WHERE partition_id = ?", [
         this.partitionId,
       ]);
-    else markMirrorClean(this.db, this.partitionId);
+    else markMirrorClean(this.db, this.partitionId, nullCosine);
   }
 
   /**
    * Runs a store write that keeps vec0 in step. The vector_variants triggers
    * mark the partition dirty on every change; when this write also updated
-   * vec0, the mark it found is restored, so only changes made outside the
-   * store leave the mirror marked stale.
+   * vec0, the mark it found is restored (updating `null_cosine` from exact
+   * SQL checks on written embeddings or clearing `1 -> NULL` after deletions),
+   * so only changes made outside the store leave the mirror marked stale.
    */
-  private keepingMirrorMark<T>(write: () => T): T {
-    if (!this.searchAvailable || !this.mirrorTracked()) return write();
-    const before = this.mirrorMark();
-    const result = write();
-    this.setMirrorMark(before);
+  private keepingMirrorMark<T>(
+    write: (mark: {
+      sawNullCosine: boolean;
+      nullCosineUnknown: boolean;
+      removedVariants: boolean;
+    }) => T
+  ): T {
+    const mark = {
+      sawNullCosine: false,
+      nullCosineUnknown: false,
+      removedVariants: false,
+    };
+    if (!this.searchAvailable || !this.mirrorTracked()) return write(mark);
+    const before = this.mirrorStateMark();
+    const result = write(mark);
+    if (before.dirty !== 0) {
+      this.setMirrorMark(before.dirty);
+      return result;
+    }
+    let nextNullCosine: NullCosineMark;
+    if (mark.sawNullCosine) {
+      nextNullCosine = 1;
+    } else if (mark.nullCosineUnknown) {
+      nextNullCosine = null;
+    } else if (mark.removedVariants && before.nullCosine === 1) {
+      nextNullCosine = null;
+    } else {
+      nextNullCosine = before.nullCosine;
+    }
+    this.setMirrorMark(0, nextNullCosine);
     return result;
   }
 
@@ -966,7 +1042,7 @@ export class VectorVariantStore {
     // there directly are caught by comparing row counts (one count each).
     // The mark and both counts are read in one snapshot.
     return this.snapshot(() => {
-      if (this.mirrorMark() !== 0) return "dirty";
+      if (this.mirrorStateMark().dirty !== 0) return "dirty";
       const stored = this.db
         .query<{ n: number }, [string]>(
           "SELECT count(*) AS n FROM vector_variants WHERE partition_id = ?"
@@ -991,7 +1067,13 @@ export class VectorVariantStore {
              SELECT variant_id, embedding FROM vector_variants WHERE partition_id = ?`
           )
           .run(this.partitionId);
-        this.setMirrorMark(0);
+        const nullCosine: 0 | 1 = probePartitionNullCosine(
+          this.db,
+          this.partitionId
+        )
+          ? 1
+          : 0;
+        this.setMirrorMark(0, nullCosine);
       })
       .immediate();
   }
@@ -1001,13 +1083,15 @@ export class VectorVariantStore {
     this.assertWritable();
     this.db
       .transaction(() =>
-        this.keepingMirrorMark(() => {
+        this.keepingMirrorMark((mark) => {
           this.db
             .query(
               "DELETE FROM vector_owners WHERE document_id = ? AND partition_id = ?"
             )
             .run(documentId, this.partitionId);
-          this.removeUnowned(true);
+          if (this.removeUnowned(true) > 0) {
+            mark.removedVariants = true;
+          }
         })
       )
       .immediate();
@@ -1018,7 +1102,13 @@ export class VectorVariantStore {
     const inOuterTx = this.db.inTransaction;
     return this.db
       .transaction(() =>
-        this.keepingMirrorMark(() => this.removeUnowned(inOuterTx))
+        this.keepingMirrorMark((mark) => {
+          const removed = this.removeUnowned(inOuterTx);
+          if (removed > 0) {
+            mark.removedVariants = true;
+          }
+          return removed;
+        })
       )
       .immediate();
   }

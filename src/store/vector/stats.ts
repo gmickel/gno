@@ -11,6 +11,8 @@ import type { StoreResult } from "../types";
 import type { BacklogItem, VectorStatsPort } from "./types";
 
 import { err, ok } from "../types";
+import { currentOwnerCount } from "./runtime-compat";
+import { storedVectorPartition } from "./status";
 
 const statsDatabases = new WeakMap<VectorStatsPort, Database>();
 
@@ -56,6 +58,12 @@ export function createVectorStatsPort(db: Database): VectorStatsPort {
   const port: VectorStatsPort = {
     countVectors(model: string): Promise<StoreResult<number>> {
       try {
+        const partition = storedVectorPartition(db, model);
+        if (partition) {
+          return Promise.resolve(
+            ok(currentOwnerCount(db, partition.partitionId))
+          );
+        }
         const result = db
           .query<{ count: number }, [string]>(
             "SELECT COUNT(*) as count FROM content_vectors WHERE model = ?"

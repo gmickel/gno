@@ -1423,7 +1423,7 @@ embedded all 800 chunks). If it recurs, keep the stderr tail and
 as separate processes.
 
 **Concurrency**: One writer at a time on the shared index. `index`, `update`,
-`embed`, `cleanup`, `vec sync`, `vec rebuild`, `collection clear-embeddings`,
+`embed`, `cleanup`, `vec sync`, `vec rebuild`, `vec drop`, `vec prune`, `collection clear-embeddings`,
 `tags add`, and `tags rm` wait by default for the same lease MCP write tools
 use (`.mcp-write.lock` next to the database); `capture` takes the same lock
 internally. Readers (`search`,
@@ -2433,6 +2433,8 @@ Vector index maintenance. Use when vector search returns empty despite embedding
 gno vec sync      # Sync the vec0 index with the stored vectors
 gno vec rebuild   # Full rebuild of the vec0 index
 gno vec drop 9a8b7c6d5e4f   # Drop an abandoned shadow partition
+gno vec prune     # Remove superseded legacy vec_<hash> tables and content_vectors rows
+gno vec prune --vacuum      # Prune and run in-place SQLite VACUUM to shrink the DB file
 ```
 
 - `sync` - Fast incremental sync, fixes drift after failed inserts
@@ -2443,6 +2445,12 @@ gno vec drop 9a8b7c6d5e4f   # Drop an abandoned shadow partition
   hint for exactly the partitions drop accepts. Active partitions, legacy ones
   included, are refused: another runtime may read them, and an active legacy
   partition may hold the only copy of the vectors until its one-time re-key.
+- `prune` - Remove superseded legacy `vec_<hash>` tables and `content_vectors`
+  rows for models that already have an activated v1 vector partition, plus
+  orphaned `vec_v1_*` tables absent from `vector_partitions`. Models without an
+  activated partition keep their legacy tables and rows. Pass `--vacuum` to
+  reclaim OS disk space in-place, or run SQLite `VACUUM INTO` a new file for
+  large databases.
 - `--json` - JSON output format
 
 `sync` and `rebuild` work on the active vector partition of the current

@@ -11,7 +11,9 @@ import type {
 import { formatDocForEmbedding } from "../../pipeline/contextual";
 import { buildEligibleDocumentQuery } from "../sqlite/eligibility";
 import {
-  hasNullCosineVariant,
+  checkNullCosineVariant,
+  type NullCosineCheckResult,
+  persistNullCosineAfterSnapshot,
   provenOwners,
   vectorProofKey,
 } from "./proof-cache";
@@ -594,7 +596,10 @@ function buildEligibleVariantQuerySpec(
     : `FROM vector_owners o${ownerPartitionVariantHint(db)}
       CROSS JOIN (${eligible.sql}) e
         ON e.id = o.document_id AND e.mirror_hash = o.mirror_hash`;
-  return { eligible, conditions, params, innerFrom };
+  const chunkJoin = options.eligibility?.language
+    ? `JOIN content_chunks c${chunkKeyHint(db)} ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq`
+    : "";
+  return { eligible, conditions, params, innerFrom, chunkJoin };
 }
 
 function searchVectorVariantsFromVariants(
@@ -615,7 +620,7 @@ function searchVectorVariantsFromVariants(
       SELECT o.variant_id AS variantId, o.mirror_hash AS mirrorHash, o.seq,
         json_group_array(o.document_id) AS documentIds
       ${spec.innerFrom}
-      JOIN content_chunks c${chunkKeyHint(db)} ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
+      ${spec.chunkJoin}
       WHERE ${spec.conditions.join(" AND ")}
       GROUP BY o.variant_id, o.mirror_hash, o.seq
     ) g
@@ -683,7 +688,8 @@ function searchVectorVariantsInSnapshot(
   embedding: Float32Array,
   k: number,
   options: VectorSearchOptions,
-  inOuterTransaction: boolean
+  inOuterTransaction: boolean,
+  pendingPersist: { value?: NullCosineCheckResult["persistAfterSnapshot"] }
 ): VectorSearchResult[] | null {
   const resolved = resolveActivePartition(
     db,
@@ -706,21 +712,30 @@ function searchVectorVariantsInSnapshot(
     hasMirror &&
     !hasSelectiveEligibility(options) &&
     !options.eligibility?.language &&
-    isMirrorClean(db, partitionId) &&
-    !hasNullCosineVariant(db, partitionId, inOuterTransaction)
+    isMirrorClean(db, partitionId)
   ) {
-    const fast = searchVectorVariantsViaVec0(
+    const nullCheck = checkNullCosineVariant(
       db,
-      model,
       partitionId,
-      tableName,
-      embedding,
-      k,
-      minScore,
-      proofs,
-      batchOwners
+      inOuterTransaction
     );
-    if (fast !== null) return fast;
+    if (nullCheck.persistAfterSnapshot) {
+      pendingPersist.value = nullCheck.persistAfterSnapshot;
+    }
+    if (!nullCheck.found) {
+      const fast = searchVectorVariantsViaVec0(
+        db,
+        model,
+        partitionId,
+        tableName,
+        embedding,
+        k,
+        minScore,
+        proofs,
+        batchOwners
+      );
+      if (fast !== null) return fast;
+    }
   }
 
   return searchVectorVariantsFromVariants(
@@ -747,7 +762,8 @@ function searchVectorVariantsBatchInSnapshot(
   embeddings: readonly Float32Array[],
   limits: readonly number[],
   options: VectorSearchOptions,
-  inOuterTransaction: boolean
+  inOuterTransaction: boolean,
+  pendingPersist: { value?: NullCosineCheckResult["persistAfterSnapshot"] }
 ): VectorSearchResult[][] | null {
   const resolved = resolveActivePartition(
     db,
@@ -767,12 +783,23 @@ function searchVectorVariantsBatchInSnapshot(
   const proofs = provenOwners(db, inOuterTransaction);
 
   // Clean unfiltered mirror: use vec0 per query inside this single snapshot.
-  const canUseVec0 =
+  let canUseVec0 = false;
+  if (
     hasMirror &&
     !hasSelectiveEligibility(options) &&
     !options.eligibility?.language &&
-    isMirrorClean(db, partitionId) &&
-    !hasNullCosineVariant(db, partitionId, inOuterTransaction);
+    isMirrorClean(db, partitionId)
+  ) {
+    const nullCheck = checkNullCosineVariant(
+      db,
+      partitionId,
+      inOuterTransaction
+    );
+    if (nullCheck.persistAfterSnapshot) {
+      pendingPersist.value = nullCheck.persistAfterSnapshot;
+    }
+    canUseVec0 = !nullCheck.found;
+  }
   if (canUseVec0) {
     return embeddings.map((embedding, i) => {
       const k = limits[i]!;
@@ -827,7 +854,7 @@ function searchVectorVariantsBatchInSnapshot(
         SELECT o.variant_id AS variantId, o.mirror_hash AS mirrorHash, o.seq,
           json_group_array(o.document_id) AS documentIds
         ${spec.innerFrom}
-        JOIN content_chunks c${chunkKeyHint(db)} ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
+        ${spec.chunkJoin}
         WHERE ${spec.conditions.join(" AND ")}
         GROUP BY o.variant_id, o.mirror_hash, o.seq
       ) g
@@ -956,7 +983,10 @@ export function searchVectorVariants(
   options: VectorSearchOptions = {}
 ): VectorSearchResult[] | null {
   const inOuterTransaction = db.inTransaction;
-  return db.transaction(() =>
+  const pendingPersist: {
+    value?: NullCosineCheckResult["persistAfterSnapshot"];
+  } = {};
+  const result = db.transaction(() =>
     searchVectorVariantsInSnapshot(
       db,
       model,
@@ -964,9 +994,14 @@ export function searchVectorVariants(
       embedding,
       k,
       options,
-      inOuterTransaction
+      inOuterTransaction,
+      pendingPersist
     )
   )();
+  if (!inOuterTransaction && pendingPersist.value) {
+    persistNullCosineAfterSnapshot(writerConnection(db), pendingPersist.value);
+  }
+  return result;
 }
 
 /** Keep batched eligibility, provenance validation and ranking on one SQLite snapshot. */
@@ -979,7 +1014,10 @@ export function searchVectorVariantsBatch(
   options: VectorSearchOptions = {}
 ): VectorSearchResult[][] | null {
   const inOuterTransaction = db.inTransaction;
-  return db.transaction(() =>
+  const pendingPersist: {
+    value?: NullCosineCheckResult["persistAfterSnapshot"];
+  } = {};
+  const result = db.transaction(() =>
     searchVectorVariantsBatchInSnapshot(
       db,
       model,
@@ -987,7 +1025,12 @@ export function searchVectorVariantsBatch(
       embeddings,
       limits,
       options,
-      inOuterTransaction
+      inOuterTransaction,
+      pendingPersist
     )
   )();
+  if (!inOuterTransaction && pendingPersist.value) {
+    persistNullCosineAfterSnapshot(writerConnection(db), pendingPersist.value);
+  }
+  return result;
 }
