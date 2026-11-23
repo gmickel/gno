@@ -5,7 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 // node:fs/promises for mkdir/rename (filesystem structure ops)
-import { mkdir, mkdtemp, rename, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rename, symlink } from "node:fs/promises";
 // Bun has no temporary-directory or path API.
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -16,11 +16,17 @@ import type {
   RelocationRequest,
 } from "../../src/ingestion/relocate";
 import type { DirectoryAvailabilityPort } from "../../src/ingestion/source-availability";
+import type { VectorRouteInfo } from "../../src/store/vector/types";
 
 import { SyncService } from "../../src/ingestion/sync";
+import { formatDocForEmbedding } from "../../src/pipeline/contextual";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
+import { syncPartitionIndexWithDetails } from "../../src/store/vector/partition-index";
+import { v2MirrorFreshnessState } from "../../src/store/vector/v2-mirror";
+import { searchVectorVariants } from "../../src/store/vector/variant-search";
 import {
   createVectorVariantStore,
+  embeddingInputHash,
   type VectorVariantStore,
 } from "../../src/store/vector/variants";
 import { safeRm } from "../helpers/cleanup";
@@ -42,7 +48,7 @@ const sync = new SyncService();
 
 const write = async (root: string, relPath: string, text: string) => {
   await mkdir(dirname(join(root, relPath)), { recursive: true });
-  await writeFile(join(root, relPath), text);
+  await Bun.write(join(root, relPath), text);
 };
 
 const move = async (from: string, to: string) => {
@@ -411,7 +417,7 @@ describe("relocateDocuments", () => {
       await write(notes.path, "c.md", "# C\n");
       await index();
       await move(join(notes.path, "c.md"), join(data.path, "c.md"));
-      await writeFile(join(data.path, "c.md"), "# C edited\n");
+      await Bun.write(join(data.path, "c.md"), "# C edited\n");
       await expectRefused(
         [{ source: "notes/c.md", destination: "data" }],
         "SOURCE_CHANGED"
@@ -673,4 +679,283 @@ describe("relocateDocuments", () => {
     );
     expect(result.items[0]?.code).toBe("SOURCE_UNAVAILABLE");
   });
+
+  test("refuses hidden destinations skipped by FileWalker unless pattern targets dots", async () => {
+    await write(notes.path, "vis.md", "# Visible\n");
+    await index();
+    await move(join(notes.path, "vis.md"), join(data.path, ".hidden/vis.md"));
+    const refused = await relocate([
+      { source: "notes/vis.md", destination: "data/.hidden/vis.md" },
+    ]);
+    expect(refused.relocated).toBe(0);
+    expect(refused.items[0]?.code).toBe("DESTINATION_NOT_ELIGIBLE");
+  });
+
+  test("preserves decomposed Unicode filenames discovered by FileWalker", async () => {
+    const nfdName = "cafe\u0301.md";
+    await write(notes.path, nfdName, "# Cafe\n");
+    await index();
+    const before = await doc("notes", nfdName);
+    // On filesystems that preserve NFD spellings (Linux), FileWalker indexes NFD verbatim.
+    if (!before) return;
+    await move(join(notes.path, nfdName), join(data.path, nfdName));
+    const result = await relocate([
+      { source: `notes/${nfdName}`, destination: `data/${nfdName}` },
+    ]);
+    expect(result.relocated).toBe(1);
+    expect(result.refused).toBe(0);
+    expect((await doc("data", nfdName))?.id).toBe(before.id);
+  });
+
+  test("allows folder relocation in local mode when moved source ancestor returns NOT_FOUND", async () => {
+    await write(notes.path, "exports/q1.md", "# Export Q1\n");
+    await index();
+    await move(join(notes.path, "exports"), join(data.path, "exports"));
+    const guarded = new SyncService(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      (): DirectoryAvailabilityPort => ({
+        mode: "local",
+        classify: async (absPath) =>
+          absPath === join(notes.path, "exports")
+            ? {
+                kind: "error",
+                code: "NOT_FOUND",
+                message: "Directory not found",
+              }
+            : { kind: "available" },
+        readDirectory: (_absPath, fn) => ({
+          kind: "available",
+          value: fn(),
+        }),
+      })
+    );
+    const result = await guarded.relocateDocuments(
+      [{ ...notes, sourceAvailability: "local" }, data],
+      adapter,
+      [{ source: "notes/exports/", destination: "data/exports/" }]
+    );
+    expect(result.relocated).toBe(1);
+    expect(result.refused).toBe(0);
+  });
+
+  test("invalidates v2 coarse mirror on cross-collection move and restores two-stage routing after sync", async () => {
+    const coarseDims = 32;
+    const coarseIdentity = {
+      model: "test-coarse-model",
+      modelFingerprint: "test-coarse-weights",
+      contextSize: 512,
+      truncationPolicy: "test-tail-v1",
+      dimensions: coarseDims,
+    };
+
+    const unitVec = (seed: number, jitterSeed?: number): Float32Array => {
+      const v = new Float32Array(coarseDims);
+      let x = (seed * 2654435761) >>> 0;
+      for (let i = 0; i < coarseDims; i++) {
+        x = (Math.imul(x ^ (x >>> 15), 2246822519) + 3266489917) >>> 0;
+        const mag = 0.25 + ((x & 0x7fff) / 32768) * 0.5;
+        v[i] = (x & 0x8000) !== 0 ? mag : -mag;
+      }
+      if (jitterSeed !== undefined) {
+        let j = (jitterSeed * 2246822519) >>> 0;
+        for (let i = 0; i < coarseDims; i++) {
+          j = (Math.imul(j ^ (j >>> 15), 2654435761) + 3266489917) >>> 0;
+          v[i] = v[i]! + ((j & 0xffff) / 32768 - 1) * 0.01;
+        }
+      }
+      let normSq = 0;
+      for (let i = 0; i < coarseDims; i++) normSq += v[i]! * v[i]!;
+      const inv = 1 / Math.sqrt(normSq || 1);
+      for (let i = 0; i < coarseDims; i++) v[i] = v[i]! * inv;
+      return v;
+    };
+
+    await write(
+      notes.path,
+      "moving.md",
+      "# Moving Doc\n\nDistinct content moving across collections.\n"
+    );
+    await write(data.path, "corpus.md", "# Destination Corpus\n\nAnchor.\n");
+    await index();
+
+    const movedBefore = (await doc("notes", "moving.md"))!;
+    const corpusDoc = (await doc("data", "corpus.md"))!;
+    const coarseStore = await createVectorVariantStore(db(), coarseIdentity);
+
+    // Embed both real documents through the store and activate the partition.
+    const movedEmbedding = unitVec(999_999);
+    const pending = coarseStore.pending({ limit: 100 });
+    coarseStore.write(
+      pending.map((owner) => ({
+        owner,
+        embedding:
+          owner.documentId === movedBefore.id
+            ? movedEmbedding
+            : unitVec(1, owner.seq),
+      }))
+    );
+    coarseStore.activate(coarseStore.epoch());
+
+    // Seed 54,000 clustered owned variants in `data` so the destination
+    // partition exceeds the 100 ms exact budget (N * 1.87 us > 100,000 us)
+    // and passes the build-time recall self-check.
+    const FILLER_COUNT = 54_000;
+    const CLUSTERS = 1_000;
+    const raw = db();
+    const corpusHash = corpusDoc.mirrorHash!;
+    raw.transaction(() => {
+      const insChunk = raw.prepare(
+        `INSERT INTO content_chunks
+           (mirror_hash, seq, pos, text, start_line, end_line, language, token_count, created_at)
+         VALUES (?, ?, ?, ?, 1, 1, 'en', 1, datetime('now'))`
+      );
+      const insVariant = raw.prepare(
+        `INSERT INTO vector_variants
+           (partition_id, input_hash, embedding)
+         VALUES (?, ?, ?)
+         RETURNING variant_id`
+      );
+      const insOwner = raw.prepare(
+        `INSERT INTO vector_owners
+           (document_id, mirror_hash, seq, partition_id, variant_id)
+         VALUES (?, ?, ?, ?, ?)`
+      );
+      const corpusTitle = corpusDoc.title ?? undefined;
+      for (let i = 1; i <= FILLER_COUNT; i++) {
+        const text = `f${i}`;
+        insChunk.run(corpusHash, i, i, text);
+        const emb = unitVec((i % CLUSTERS) + 10, i);
+        const blob = new Uint8Array(emb.buffer, emb.byteOffset, emb.byteLength);
+        const inputHash = embeddingInputHash(
+          formatDocForEmbedding(text, corpusTitle, coarseIdentity.model)
+        );
+        const row = insVariant.get(
+          coarseStore.partitionId,
+          inputHash,
+          blob
+        ) as { variant_id: number };
+        insOwner.run(
+          corpusDoc.id,
+          corpusHash,
+          i,
+          coarseStore.partitionId,
+          row.variant_id
+        );
+      }
+      insChunk.finalize();
+      insVariant.finalize();
+      insOwner.finalize();
+    })();
+
+    const initialSync = syncPartitionIndexWithDetails(raw, {
+      partitionId: coarseStore.partitionId,
+      dimensions: coarseDims,
+    });
+    expect(initialSync.checkRecall).toBeGreaterThanOrEqual(0.95);
+    expect(
+      v2MirrorFreshnessState(raw, coarseStore.partitionId, coarseDims, true)
+    ).toBe("clean");
+
+    // Move the indexed file from `notes` to `data`.
+    await move(join(notes.path, "moving.md"), join(data.path, "moving.md"));
+    const moveResult = await relocate([
+      { source: "notes/moving.md", destination: "data/moving.md" },
+    ]);
+    expect(moveResult.relocated).toBe(1);
+    expect(moveResult.refused).toBe(0);
+
+    // (a) Right after the move, the v2 mirror is no longer clean.
+    expect(
+      v2MirrorFreshnessState(raw, coarseStore.partitionId, coarseDims, true)
+    ).toBe("dirty");
+
+    // (b) A collection-scoped search in the destination returns the moved doc
+    // via the exact fallback before sync.
+    let beforeSyncRoute: VectorRouteInfo | undefined;
+    const destBeforeSync = searchVectorVariants(
+      raw,
+      coarseIdentity.model,
+      coarseDims,
+      movedEmbedding,
+      5,
+      {
+        embeddingIdentity: coarseIdentity,
+        eligibility: { collection: "data" },
+        onRoute: (info) => {
+          beforeSyncRoute = info;
+        },
+      }
+    );
+    expect(beforeSyncRoute?.route).toBe("exact-sql");
+    expect(
+      destBeforeSync?.some((hit) => hit.documentIds?.includes(movedBefore.id))
+    ).toBe(true);
+
+    // (d) The source collection no longer returns the moved doc in documentIds.
+    const srcBeforeSync = searchVectorVariants(
+      raw,
+      coarseIdentity.model,
+      coarseDims,
+      movedEmbedding,
+      5,
+      {
+        embeddingIdentity: coarseIdentity,
+        eligibility: { collection: "notes" },
+      }
+    );
+    expect(
+      srcBeforeSync?.some((hit) => hit.documentIds?.includes(movedBefore.id))
+    ).toBe(false);
+
+    // (c) After `gno vec sync`, the mirror is clean and the two-stage route
+    // returns the moved document in the destination.
+    const repaired = syncPartitionIndexWithDetails(raw, {
+      partitionId: coarseStore.partitionId,
+      dimensions: coarseDims,
+    });
+    expect(repaired.checkRecall).toBeGreaterThanOrEqual(0.95);
+    expect(
+      v2MirrorFreshnessState(raw, coarseStore.partitionId, coarseDims, true)
+    ).toBe("clean");
+
+    let afterSyncRoute: VectorRouteInfo | undefined;
+    const destAfterSync = searchVectorVariants(
+      raw,
+      coarseIdentity.model,
+      coarseDims,
+      movedEmbedding,
+      5,
+      {
+        embeddingIdentity: coarseIdentity,
+        eligibility: { collection: "data" },
+        onRoute: (info) => {
+          afterSyncRoute = info;
+        },
+      }
+    );
+    expect(afterSyncRoute?.route).toBe("coarse-bit");
+    expect(
+      destAfterSync?.some((hit) => hit.documentIds?.includes(movedBefore.id))
+    ).toBe(true);
+
+    // (d) Source collection still does not return it after sync.
+    const srcAfterSync = searchVectorVariants(
+      raw,
+      coarseIdentity.model,
+      coarseDims,
+      movedEmbedding,
+      5,
+      {
+        embeddingIdentity: coarseIdentity,
+        eligibility: { collection: "notes" },
+      }
+    );
+    expect(
+      srcAfterSync?.some((hit) => hit.documentIds?.includes(movedBefore.id))
+    ).toBe(false);
+  }, 30_000);
 });

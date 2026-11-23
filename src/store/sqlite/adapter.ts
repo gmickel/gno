@@ -176,6 +176,7 @@ import {
   listVectorPartitions,
   vectorRuntimeStatus,
 } from "../vector/status";
+import { hasV2MirrorTables } from "../vector/v2-mirror";
 import { loadSqliteVec } from "../vector/variants";
 import {
   deleteSavedCapsuleRegistration as deleteStoredSavedCapsuleRegistration,
@@ -2246,6 +2247,22 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
              WHERE id = ?`,
           [collection, relPath, newUri, oldRow.id]
         );
+        // Cross-collection moves keep vector_owners bindings intact, so a
+        // collection-partitioned v2 coarse mirror would still map this document
+        // under its old collection. Delete the plain vector_mirror_v2_state row
+        // (needs no sqlite-vec) for every partition owning this document so
+        // searches stay exact until gno embed or gno vec sync repairs the mirror.
+        if (oldRow.collection !== collection && hasV2MirrorTables(db)) {
+          db.run(
+            `DELETE FROM vector_mirror_v2_state
+             WHERE partition_id IN (
+               SELECT DISTINCT partition_id
+               FROM vector_owners
+               WHERE document_id = ?
+             )`,
+            [oldRow.id]
+          );
+        }
         // Only the searchable path changes; the body and title stay indexed.
         if (oldRow.rel_path !== relPath) {
           db.run("UPDATE documents_fts SET filepath = ? WHERE rowid = ?", [

@@ -57,7 +57,7 @@ import {
 } from "./source-availability";
 import { unavailableRootMessage } from "./source-availability/root";
 import { collectionToWalkConfig, DEFAULT_CHUNK_PARAMS } from "./types";
-import { matchesWalkPath } from "./walker";
+import { matchesDiscoverableWalkPath } from "./walker";
 
 /** Why an item was not relocated. Stable, machine-readable. */
 export type RelocationRefusalCode =
@@ -408,7 +408,6 @@ const errorCode = (error: unknown): string | undefined =>
 /** The walker's path identity: no empty, `.` or `..` segments, no backslashes. */
 const isCanonicalRelPath = (relPath: string): boolean =>
   relPath.length > 0 &&
-  relPath.normalize() === relPath &&
   !relPath.includes("\\") &&
   !relPath.startsWith("/") &&
   relPath
@@ -549,7 +548,7 @@ async function prepareMove(
   if (
     !isCanonicalRelPath(move.relPath) ||
     isCompiledContextPath(move.relPath) ||
-    !matchesWalkPath(
+    !matchesDiscoverableWalkPath(
       move.relPath,
       collectionToWalkConfig(destination, 0, options)
     )
@@ -631,7 +630,13 @@ async function prepareMove(
     document.relPath,
     deps.directoryAvailability(sourceMode)
   );
-  if (sourceUnproven) {
+  // Confirmed NOT_FOUND on a moved subdirectory (after the source root itself
+  // was proven available) is expected for folder relocations; fall through to
+  // the guarded root listing below.
+  if (
+    sourceUnproven &&
+    !(sourceUnproven.code === "NOT_FOUND" && sourceUnproven.relPath !== "")
+  ) {
     return refuse("SOURCE_UNAVAILABLE", sourceUnproven.message);
   }
   const oldPath = join(source.path, document.relPath);
@@ -644,7 +649,7 @@ async function prepareMove(
       );
     }
     if (
-      matchesWalkPath(
+      matchesDiscoverableWalkPath(
         document.relPath,
         collectionToWalkConfig(source, 0, options)
       )

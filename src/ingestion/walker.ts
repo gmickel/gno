@@ -399,6 +399,33 @@ export function matchesWalkPath(
   return matchesCompiledWalkPath(relPath, compileWalkMatcher(config));
 }
 
+/**
+ * Check whether `FileWalker.walk()` would actually discover `relPath` under
+ * `config`, including dot-segment handling (dot entries are skipped unless a
+ * pattern branch explicitly targets a dot segment).
+ */
+export function matchesDiscoverableWalkPath(
+  relPath: string,
+  config: PathEligibilityConfig
+): boolean {
+  const matcher = compileWalkMatcher(config);
+  if (!matchesCompiledWalkPath(relPath, matcher)) {
+    return false;
+  }
+  const normalizedPath = relPath.includes("\\")
+    ? relPath.replaceAll("\\", "/")
+    : relPath;
+  let branches: CompiledPatternBranch[];
+  try {
+    branches = scanPatterns(config.pattern).map((pattern) =>
+      compilePatternBranch(pattern)
+    );
+  } catch {
+    return false;
+  }
+  return branches.some((branch) => branchMatchesPath(branch, normalizedPath));
+}
+
 async function runBounded<T>(
   items: readonly T[],
   limit: number,

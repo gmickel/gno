@@ -6,7 +6,7 @@
 import { Database } from "bun:sqlite";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 // node:fs/promises for mkdir/rename (filesystem structure ops)
-import { mkdir, mkdtemp, rename, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rename } from "node:fs/promises";
 // Bun has no temporary-directory or path API.
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -40,7 +40,7 @@ const gno = async (...args: string[]) => {
 
 const put = async (relPath: string, text: string) => {
   await mkdir(dirname(join(root, relPath)), { recursive: true });
-  await writeFile(join(root, relPath), text);
+  await Bun.write(join(root, relPath), text);
 };
 
 const mv = async (from: string, to: string) => {
@@ -142,7 +142,7 @@ describe("gno collection move", () => {
     await mv("notes/a.md", "data/x/a.md");
     await mv("notes/b.md", "data/x/b.md");
     const map = join(root, "moves.tsv");
-    await writeFile(
+    await Bun.write(
       map,
       "# source\tdestination\nnotes/a.md\tdata/x/\nnotes/b.md\tdata/x/b.md\n"
     );
