@@ -636,6 +636,7 @@ export async function similar(
       candidateLimit,
       {
         ...storedVectorSearchOptions(source),
+        coarseVectorSearch: config.coarseVectorSearch,
         ...(!crossCollection
           ? { eligibility: { collection: doc.collection } }
           : {}),
