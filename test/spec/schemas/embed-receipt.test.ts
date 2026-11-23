@@ -36,6 +36,21 @@ describe("embed-receipt schema", () => {
     expect(assertValid(json, schema)).toBe(true);
   });
 
+  test("carries an automatic vector GC failure as a warning", () => {
+    const failed = {
+      ...BASE,
+      embedded: 0,
+      remaining: 0,
+      vectorGcError: "variant delete blocked",
+    };
+    const json = receipt(failed);
+    expect(json).toMatchObject({ vectorGcError: "variant delete blocked" });
+    expect(assertValid(json, schema)).toBe(true);
+    expect(formatEmbed(failed, { json: false })).toContain(
+      "Warning: automatic vector GC failed: variant delete blocked"
+    );
+  });
+
   test("accepts a completed run", () => {
     const json = receipt({ ...BASE, embedded: 20, remaining: 0 });
     expect(json).not.toHaveProperty("stopped");

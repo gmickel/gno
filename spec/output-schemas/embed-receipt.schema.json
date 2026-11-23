@@ -57,6 +57,10 @@
       "type": "string",
       "description": "Vector index sync failure after embedding."
     },
+    "vectorGcError": {
+      "type": "string",
+      "description": "Automatic vector GC at the end of the run failed; a warning only: the run's embeddings are stored and the exit status is unaffected."
+    },
     "remaining": {
       "type": "integer",
       "minimum": 0,

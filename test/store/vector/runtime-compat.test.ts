@@ -509,6 +509,19 @@ test("migration re-keys the most complete compatible partition, survives a crash
   const runtime = port("cpu-bun-c");
   const primary = embeddingPartitionIdentity(runtime.embedPort)!;
   const newId = identityPartitionId(primary);
+  // A document deactivated long ago queued its vector for GC (migration 38).
+  f.db.run(
+    "UPDATE documents SET active = 0 WHERE id = (SELECT min(id) FROM documents)"
+  );
+  f.db.run("UPDATE vector_gc_candidates SET queued_at = 1000");
+  const queued = (partition: string) =>
+    f.db
+      .query(
+        "SELECT variant_id, queued_at FROM vector_gc_candidates WHERE partition_id = ? ORDER BY variant_id"
+      )
+      .all(partition);
+  const queuedBefore = queued(complete);
+  expect(queuedBefore).toHaveLength(1);
 
   f.db.exec(`CREATE TRIGGER crash BEFORE DELETE ON vector_partitions
     BEGIN SELECT RAISE(ABORT, 'simulated crash'); END`);
@@ -545,6 +558,10 @@ test("migration re-keys the most complete compatible partition, survives a crash
       )
       .all(partial)
   ).toEqual([{ state: "shadow", legacy: 1 }]);
+  // The re-key moves queued GC candidates with their timestamps; moving
+  // owners to the new partition id is not a loss.
+  expect(queued(complete)).toEqual([]);
+  expect(queued(newId)).toEqual(queuedBefore);
   const callsAfterMigration = runtime.calls.length;
 
   expect(
@@ -556,6 +573,8 @@ test("migration re-keys the most complete compatible partition, survives a crash
   // No re-embedding: the backlog is empty and search reads the re-keyed vectors.
   const embedded = await f.embed(runtime.embedPort);
   expect(embedded.ok && embedded.value.embedded).toBe(0);
+  // ... and automatic GC finds the long-due candidate under the new id.
+  expect(embedded.ok && embedded.value.vectorGc?.variants).toBe(1);
   expect(
     (await resolveVectorSearchIdentity(runtime.embedPort, f.index)).identity
   ).toEqual(primary);

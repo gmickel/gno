@@ -1,0 +1,260 @@
+{
+  "base": "ab23c564",
+  "draws": [
+    {
+      "axis": "correctness",
+      "failed": false,
+      "model": "gpt-6.2-sol",
+      "session_id": "01a20907-eb4a-7462-9a66-ad8ac60a6e56",
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "axis": "contracts",
+      "failed": false,
+      "model": "gpt-6.2-sol",
+      "session_id": "01a20907-eb4a-7d22-a08a-4d64814e6bb8",
+      "verdict": "NEEDS_WORK"
+    },
+    {
+      "axis": "integration",
+      "failed": false,
+      "model": "gpt-6.2-sol",
+      "session_id": "01a20907-eb4a-7c23-ad77-d49abcb0471d",
+      "verdict": "NEEDS_WORK"
+    }
+  ],
+  "effort": "medium",
+  "findings": {
+    "backend": "codex",
+    "baseSha": "ab23c5640e45ae9015f76c984b779640386b95f4",
+    "headSha": "87846daa96439e515e7847f60f35d9f50830d21b",
+    "items": [
+      {
+        "anchor": {
+          "baseSha": "ab23c5640e45ae9015f76c984b779640386b95f4",
+          "headSha": "87846daa96439e515e7847f60f35d9f50830d21b",
+          "path": "src/store/vector/garbage.ts",
+          "side": "head",
+          "startLine": 294
+        },
+        "body": "GC can turn count-detectable mirror drift into an apparently clean mirror: with the clean mark set but vec0 missing a live row (or holding a stray one), removing a collectible variant equalizes the counts and restores the clean mark, so `mirrorState()` reports `clean` while vec0 is still wrong and the next embed pass skips its repair. (correctness 1; contracts 2)",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "id": "finding-45b9b7cd6957f800efee78e5c4c675c1",
+        "lastSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "ordinal": 1,
+        "rIds": [
+          "R3"
+        ],
+        "severity": "P1",
+        "status": "open",
+        "suggestion": "Restore a clean mark only when the mirror was count-consistent before the batch and the batch removed exactly one vec0 row per removed variant; otherwise leave the triggers' invalidation. Add a regression test.",
+        "title": "GC can turn count-detectable mirror drift into an apparently clean mirror: with the clean mark set but vec0 missing a live row (or holding a stray one), removing a collectible variant equalizes the counts and restores the clean mark, so `m\u2026"
+      },
+      {
+        "anchor": {
+          "baseSha": "ab23c5640e45ae9015f76c984b779640386b95f4",
+          "headSha": "87846daa96439e515e7847f60f35d9f50830d21b",
+          "path": "src/store/vector/garbage.ts",
+          "side": "head",
+          "startLine": 368
+        },
+        "body": "`vec gc --dry-run` fails on schema versions 28-30 with `no such column: legacy` (migration 31 adds the column). (correctness 2; contracts 1; integration 1)",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "id": "finding-b8ca71014bc5a737604c48a515957a1b",
+        "lastSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "ordinal": 2,
+        "rIds": [
+          "R2"
+        ],
+        "severity": "P1",
+        "status": "open",
+        "suggestion": "Detect the column; report pre-31 partitions as legacy-keyed. Test from a migration-28 fixture.",
+        "title": "`vec gc --dry-run` fails on schema versions 28-30 with `no such column: legacy` (migration 31 adds the column)"
+      },
+      {
+        "anchor": {
+          "baseSha": "ab23c5640e45ae9015f76c984b779640386b95f4",
+          "headSha": "87846daa96439e515e7847f60f35d9f50830d21b",
+          "path": "src/embed/variant-backlog.ts",
+          "side": "head",
+          "startLine": 159
+        },
+        "body": "A pass stopped by `--max-chunks`/`--max-seconds` returns before automatic GC, so repeated bounded passes with work pending can leave due candidates queued indefinitely. (correctness 3; contracts 5; integration 5)",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "id": "finding-3f64f304c65a7205a14daf6f8559bc13",
+        "lastSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "ordinal": 3,
+        "rIds": [
+          "R5"
+        ],
+        "severity": "P1",
+        "status": "open",
+        "suggestion": "Run the bounded GC step on the limit-stop path after saving the resume cursor; test with a candidate already due before the bounded pass.",
+        "title": "A pass stopped by `--max-chunks`/`--max-seconds` returns before automatic GC, so repeated bounded passes with work pending can leave due candidates queued indefinitely"
+      },
+      {
+        "anchor": {
+          "baseSha": "ab23c5640e45ae9015f76c984b779640386b95f4",
+          "headSha": "87846daa96439e515e7847f60f35d9f50830d21b",
+          "path": "src/embed/variant-backlog.ts",
+          "side": "head",
+          "startLine": 823
+        },
+        "body": "`vectorGcError` reaches the internal backlog result but `gno embed` text/JSON and the SDK result drop it, so a repeatedly failing GC is invisible. (correctness 5; contracts 4; integration 6)",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "id": "finding-93b4c55c8074c9674d59473eb30e40be",
+        "lastSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "ordinal": 5,
+        "rIds": [
+          "R5"
+        ],
+        "severity": "P1",
+        "status": "open",
+        "suggestion": "Carry it as a non-fatal warning through CLI text and JSON (and schema) and the SDK embed result.",
+        "title": "`vectorGcError` reaches the internal backlog result but `gno embed` text/JSON and the SDK result drop it, so a repeatedly failing GC is invisible"
+      },
+      {
+        "anchor": {
+          "baseSha": "ab23c5640e45ae9015f76c984b779640386b95f4",
+          "headSha": "87846daa96439e515e7847f60f35d9f50830d21b",
+          "path": "src/store/migrations/038-vector-gc-candidates.ts",
+          "side": "head",
+          "startLine": 57
+        },
+        "body": "The one-time legacy re-key moves variants and owners to a new partition id; the rebind trigger treats each moved owner as a loss and queues the old id with a fresh timestamp, stranding candidates under a deleted partition and losing their grace start. (contracts 3; integration 2)",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "id": "finding-d29ab940c96053497829bf0c190a29ec",
+        "lastSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "ordinal": 7,
+        "rIds": [
+          "R5",
+          "R8"
+        ],
+        "severity": "P1",
+        "status": "open",
+        "suggestion": "Move queue rows to the new partition in the re-key transaction, preserving `queued_at`, and do not treat a partition re-key as a rebind.",
+        "title": "The one-time legacy re-key moves variants and owners to a new partition id; the rebind trigger treats each moved owner as a loss and queues the old id with a fresh timestamp, stranding candidates under a deleted partition and losing their\u2026"
+      },
+      {
+        "anchor": {
+          "baseSha": "ab23c5640e45ae9015f76c984b779640386b95f4",
+          "headSha": "87846daa96439e515e7847f60f35d9f50830d21b",
+          "path": "src/store/vector/garbage.ts",
+          "side": "head",
+          "startLine": 199
+        },
+        "body": "The same-content liveness query joins every historical owner binding of a variant with every active document on that mirror; one variant with ~1,000-1,800 inactive bindings and as many active copies under another title yields 10^6+ rows and overruns the 250 ms budget inside one transaction. (correctness 4; integration 3)",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "id": "finding-f1fc282fe672c2cd5242eced8bda1d45",
+        "lastSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "ordinal": 4,
+        "rIds": [
+          "R5"
+        ],
+        "severity": "P1",
+        "status": "open",
+        "suggestion": "Deduplicate `(variant_id, mirror_hash, seq)` before joining active documents (and avoid repeated hashing).",
+        "title": "The same-content liveness query joins every historical owner binding of a variant with every active document on that mirror; one variant with ~1,000-1,800 inactive bindings and as many active copies under another title yields 10^6+ rows an\u2026"
+      },
+      {
+        "anchor": {
+          "baseSha": "ab23c5640e45ae9015f76c984b779640386b95f4",
+          "headSha": "87846daa96439e515e7847f60f35d9f50830d21b",
+          "path": "src/embed/variant-backlog.ts",
+          "side": "head",
+          "startLine": 810
+        },
+        "body": "SDK `GnoClient.embed()` reaches automatic GC without an `acquireWriteTurn` callback, so the collector runs without the shared write lease. (integration 4)",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "id": "finding-1078c1b1e24e37889297c61e1c9188b7",
+        "lastSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "ordinal": 8,
+        "rIds": [
+          "R5"
+        ],
+        "severity": "P1",
+        "status": "open",
+        "suggestion": "Give the SDK collector the shared lease callback, deferring on contention.",
+        "title": "SDK `GnoClient"
+      },
+      {
+        "anchor": {
+          "baseSha": "ab23c5640e45ae9015f76c984b779640386b95f4",
+          "headSha": "87846daa96439e515e7847f60f35d9f50830d21b",
+          "path": "src/cli/commands/vec.ts",
+          "side": "head",
+          "startLine": 414
+        },
+        "body": "With initialized config and an index name whose database file does not exist yet, `vec gc --dry-run` fails with `No index at ...` while a real run reports zero. (integration 7)",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "id": "finding-be6135da045622f5df42a382e28c845e",
+        "lastSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "ordinal": 9,
+        "rIds": [
+          "R2"
+        ],
+        "severity": "P2",
+        "status": "open",
+        "suggestion": "Return an empty report without creating the file or taking the lease.",
+        "title": "With initialized config and an index name whose database file does not exist yet, `vec gc --dry-run` fails with `No index at"
+      },
+      {
+        "anchor": {
+          "baseSha": "ab23c5640e45ae9015f76c984b779640386b95f4",
+          "headSha": "87846daa96439e515e7847f60f35d9f50830d21b",
+          "path": "src/store/vector/garbage.ts",
+          "side": "head",
+          "startLine": 387
+        },
+        "body": "`databaseBytes` is `page_count * page_size` of the snapshot, which includes uncheckpointed WAL growth, but is labelled the main file size. (correctness 6; contracts 6)",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "id": "finding-503b9f416e96c5cc5c90cb0370ac4359",
+        "lastSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "ordinal": 6,
+        "rIds": [
+          "R4"
+        ],
+        "severity": "P2",
+        "status": "open",
+        "suggestion": "Read the main file's size from the filesystem; keep freelist pages separate.",
+        "title": "`databaseBytes` is `page_count * page_size` of the snapshot, which includes uncheckpointed WAL growth, but is labelled the main file size"
+      }
+    ],
+    "reviewKind": "implementation",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b"
+  },
+  "focus": "concurrency and transaction safety of vector GC, mirror-state guarantees, dry-run read-only, trigger correctness and cost, identical-restoration contract",
+  "id": "fn-237-owner-aware-vector-garbage-collection.1",
+  "introduced_count": 9,
+  "mode": "codex",
+  "model": "gpt-6.2-sol",
+  "pre_existing_count": 0,
+  "review": "## Findings\n\n- **Severity**: P1\n- **Confidence**: 100\n- **Classification**: introduced\n- **File:Line**: `src/store/vector/garbage.ts:294`\n- **R-IDs**: `[R3]`\n- **Problem**: GC can turn count-detectable mirror drift into an apparently clean mirror: with the clean mark set but vec0 missing a live row (or holding a stray one), removing a collectible variant equalizes the counts and restores the clean mark, so `mirrorState()` reports `clean` while vec0 is still wrong and the next embed pass skips its repair. (correctness 1; contracts 2)\n- **Suggestion**: Restore a clean mark only when the mirror was count-consistent before the batch and the batch removed exactly one vec0 row per removed variant; otherwise leave the triggers' invalidation. Add a regression test.\n\n- **Severity**: P1\n- **Confidence**: 100\n- **Classification**: introduced\n- **File:Line**: `src/store/vector/garbage.ts:368`\n- **R-IDs**: `[R2]`\n- **Problem**: `vec gc --dry-run` fails on schema versions 28-30 with `no such column: legacy` (migration 31 adds the column). (correctness 2; contracts 1; integration 1)\n- **Suggestion**: Detect the column; report pre-31 partitions as legacy-keyed. Test from a migration-28 fixture.\n\n- **Severity**: P1\n- **Confidence**: 100\n- **Classification**: introduced\n- **File:Line**: `src/embed/variant-backlog.ts:159`\n- **R-IDs**: `[R5]`\n- **Problem**: A pass stopped by `--max-chunks`/`--max-seconds` returns before automatic GC, so repeated bounded passes with work pending can leave due candidates queued indefinitely. (correctness 3; contracts 5; integration 5)\n- **Suggestion**: Run the bounded GC step on the limit-stop path after saving the resume cursor; test with a candidate already due before the bounded pass.\n\n- **Severity**: P1\n- **Confidence**: 75\n- **Classification**: introduced\n- **File:Line**: `src/store/vector/garbage.ts:199`\n- **R-IDs**: `[R5]`\n- **Problem**: The same-content liveness query joins every historical owner binding of a variant with every active document on that mirror; one variant with ~1,000-1,800 inactive bindings and as many active copies under another title yields 10^6+ rows and overruns the 250 ms budget inside one transaction. (correctness 4; integration 3)\n- **Suggestion**: Deduplicate `(variant_id, mirror_hash, seq)` before joining active documents (and avoid repeated hashing).\n\n- **Severity**: P1\n- **Confidence**: 100\n- **Classification**: introduced\n- **File:Line**: `src/embed/variant-backlog.ts:823`\n- **R-IDs**: `[R5]`\n- **Problem**: `vectorGcError` reaches the internal backlog result but `gno embed` text/JSON and the SDK result drop it, so a repeatedly failing GC is invisible. (correctness 5; contracts 4; integration 6)\n- **Suggestion**: Carry it as a non-fatal warning through CLI text and JSON (and schema) and the SDK embed result.\n\n- **Severity**: P2\n- **Confidence**: 75\n- **Classification**: introduced\n- **File:Line**: `src/store/vector/garbage.ts:387`\n- **R-IDs**: `[R4]`\n- **Problem**: `databaseBytes` is `page_count * page_size` of the snapshot, which includes uncheckpointed WAL growth, but is labelled the main file size. (correctness 6; contracts 6)\n- **Suggestion**: Read the main file's size from the filesystem; keep freelist pages separate.\n\n- **Severity**: P1\n- **Confidence**: 100\n- **Classification**: introduced\n- **File:Line**: `src/store/migrations/038-vector-gc-candidates.ts:57`\n- **R-IDs**: `[R5, R8]`\n- **Problem**: The one-time legacy re-key moves variants and owners to a new partition id; the rebind trigger treats each moved owner as a loss and queues the old id with a fresh timestamp, stranding candidates under a deleted partition and losing their grace start. (contracts 3; integration 2)\n- **Suggestion**: Move queue rows to the new partition in the re-key transaction, preserving `queued_at`, and do not treat a partition re-key as a rebind.\n\n- **Severity**: P1\n- **Confidence**: 75\n- **Classification**: introduced\n- **File:Line**: `src/embed/variant-backlog.ts:810`\n- **R-IDs**: `[R5]`\n- **Problem**: SDK `GnoClient.embed()` reaches automatic GC without an `acquireWriteTurn` callback, so the collector runs without the shared write lease. (integration 4)\n- **Suggestion**: Give the SDK collector the shared lease callback, deferring on contention.\n\n- **Severity**: P2\n- **Confidence**: 100\n- **Classification**: introduced\n- **File:Line**: `src/cli/commands/vec.ts:414`\n- **R-IDs**: `[R2]`\n- **Problem**: With initialized config and an index name whose database file does not exist yet, `vec gc --dry-run` fails with `No index at ...` while a real run reports zero. (integration 7)\n- **Suggestion**: Return an empty report without creating the file or taking the lease.\n\n<verdict>NEEDS_WORK</verdict>\n",
+  "review_reservation_id": "3ea65c4a6577479f8267da7aa7d5d9ef",
+  "rid": "3ea65c4a6577479f8267da7aa7d5d9ef",
+  "session_id": "01a20907-eb4a-7462-9a66-ad8ac60a6e56",
+  "spec": "codex:gpt-6.2-sol:medium",
+  "timestamp": "2026-11-23T15:37:36.726515Z",
+  "type": "impl_review",
+  "verdict": "NEEDS_WORK"
+}

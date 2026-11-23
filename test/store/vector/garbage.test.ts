@@ -12,6 +12,7 @@ import { join } from "node:path";
 
 import type { VectorVariantIdentity } from "../../../src/store/vector/types";
 
+import { formatDocForEmbedding } from "../../../src/pipeline/contextual";
 import { migration as variantsMigration } from "../../../src/store/migrations/028-vector-variants";
 import { migration as runtimeMigration } from "../../../src/store/migrations/031-runtime-independent-vectors";
 import { migration as mirrorMigration } from "../../../src/store/migrations/036-vector-mirror-state";
@@ -23,6 +24,7 @@ import {
 } from "../../../src/store/vector/garbage";
 import {
   createVectorVariantStore,
+  embeddingInputHash,
   type VectorVariantStore,
 } from "../../../src/store/vector/variants";
 import { safeRm } from "../../helpers/cleanup";
@@ -470,4 +472,100 @@ test("store GC keeps its strict rule: unbound identical content does not keep a 
   // ... runtime-reference maintenance does not.
   expect(a.collectGarbage()).toBe(1);
   expect(a.reusable(a.current(5, 0)!)).toBeNull();
+});
+
+test("GC never makes a count-drifted mirror look clean", async () => {
+  const db = fixture();
+  const a = await embedAll(db, A);
+  a.activate(a.epoch());
+  expect(a.mirrorState()).toBe("clean");
+  // vec0 lost Beta's and Delta's rows and gained a stray one; the clean
+  // mark survives (vec0 has no triggers), the row counts give it away.
+  const beta = a.reusable(a.current(2, 0)!)!.variantId;
+  const delta = a.reusable(a.current(4, 0)!)!.variantId;
+  db.run(`DELETE FROM ${a.tableName} WHERE variant_id IN (?, ?)`, [
+    beta,
+    delta,
+  ]);
+  db.run(`INSERT INTO ${a.tableName}(variant_id, embedding) VALUES (999, ?)`, [
+    new Uint8Array(new Float32Array([0, 1]).buffer),
+  ]);
+  expect(a.mirrorState()).toBe("dirty");
+  // Collecting Delta (no vec0 row) would equalize the counts.
+  db.run("UPDATE documents SET active = 0 WHERE id = 4");
+  expect(
+    collectQueuedGarbage(db, gc(a), { vecLoaded: true, graceSeconds: 0 })
+      .variants
+  ).toBe(1);
+  expect(a.mirrorState()).toBe("dirty");
+});
+
+test("a dry run reads a schema from before runtime-independent partitions", () => {
+  const db = new Database(":memory:");
+  databases.push(db);
+  db.exec(`CREATE TABLE documents(id INTEGER PRIMARY KEY, mirror_hash TEXT, title TEXT, active INTEGER);
+    CREATE TABLE content_chunks(mirror_hash TEXT, seq INTEGER, text TEXT, PRIMARY KEY(mirror_hash, seq));
+    INSERT INTO documents VALUES (1, 'm', 'Kept', 1), (2, 'n', 'Gone', 0);
+    INSERT INTO content_chunks VALUES ('m', 0, 'kept body'), ('n', 0, 'gone body');`);
+  variantsMigration.up(db, "unicode61");
+  db.run(
+    "INSERT INTO vector_partitions(partition_id, version, model, fingerprint, dimensions) VALUES ('p28', 1, 'model-a', 'f', 2)"
+  );
+  const hash = (text: string, title: string) =>
+    embeddingInputHash(formatDocForEmbedding(text, title, "model-a"));
+  for (const [id, doc, mirror, text, title] of [
+    [1, 1, "m", "kept body", "Kept"],
+    [2, 2, "n", "gone body", "Gone"],
+  ] as const) {
+    db.run(
+      "INSERT INTO vector_variants(variant_id, partition_id, input_hash, embedding) VALUES (?, 'p28', ?, ?)",
+      [id, hash(text, title), new Uint8Array(8)]
+    );
+    db.run("INSERT INTO vector_owners VALUES (?, ?, 0, 'p28', ?)", [
+      doc,
+      mirror,
+      id,
+    ]);
+  }
+  const report = runVectorGc(db, { dryRun: true, vecLoaded: true });
+  expect(report.partitions).toEqual([
+    expect.objectContaining({
+      id: "p28",
+      legacy: true,
+      examined: 2,
+      variants: 1,
+      bytes: 8,
+    }),
+  ]);
+});
+
+test("many bindings of shared content are judged once per content and title", async () => {
+  const db = fixture();
+  // 60 deactivated copies bound to one variant, 60 active copies whose
+  // title differs (a different input): collectible; one active copy with
+  // the original title keeps it.
+  for (let id = 100; id < 160; id++)
+    db.run(
+      "INSERT INTO documents(id, mirror_hash, title, active) VALUES (?, 'shared', 'Same', 1)",
+      [id]
+    );
+  db.run("INSERT INTO content_chunks VALUES ('shared', 0, 'shared body')");
+  const a = await embedAll(db, A);
+  db.run("UPDATE documents SET active = 0 WHERE id >= 100");
+  for (let id = 200; id < 260; id++)
+    db.run(
+      "INSERT INTO documents(id, mirror_hash, title, active) VALUES (?, 'shared', 'Other', 1)",
+      [id]
+    );
+  const shared = db
+    .query<{ n: number }, []>(
+      "SELECT count(DISTINCT variant_id) AS n FROM vector_owners WHERE document_id >= 100"
+    )
+    .get()!.n;
+  expect(shared).toBe(1);
+  expect(runVectorGc(db, { dryRun: true, vecLoaded: true }).variants).toBe(1);
+  db.run(
+    "INSERT INTO documents(id, mirror_hash, title, active) VALUES (300, 'shared', 'Same', 1)"
+  );
+  expect(runVectorGc(db, { dryRun: true, vecLoaded: true }).variants).toBe(0);
 });

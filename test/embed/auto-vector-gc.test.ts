@@ -152,7 +152,7 @@ test("moving a file across collections re-embeds nothing with automatic GC on", 
   ).toBe(1);
 });
 
-test("a bounded pass that stops at its limit leaves garbage queued for the next pass", async () => {
+test("a bounded pass that stops at its limit still collects due garbage", async () => {
   const { db, deps } = await fixture();
   db.run("UPDATE documents SET active = 0 WHERE id = 1");
   db.run(
@@ -161,17 +161,22 @@ test("a bounded pass that stops at its limit leaves garbage queued for the next 
   db.run(
     "INSERT INTO documents(id, mirror_hash, title, active, collection) VALUES (5, 'm5', 'Five', 1, 'prose'), (6, 'm6', 'Six', 1, 'prose')"
   );
+  pastGrace(db);
   const bounded = await embedBacklog({
     ...deps,
     batchSize: 1,
     limits: { maxChunks: 1 },
   });
   expect(bounded.ok && bounded.value.stopped).toBe("limit");
-  expect(bounded.ok && bounded.value.vectorGc).toBeUndefined();
-  expect(n(db, "SELECT count(*) AS n FROM vector_gc_candidates")).toBe(1);
-  pastGrace(db);
-  const full = await embedBacklog(deps);
-  expect(full.ok && full.value.vectorGc?.variants).toBe(1);
+  expect(bounded.ok && bounded.value.vectorGc).toEqual({
+    variants: 1,
+    bytes: 12,
+    remaining: false,
+  });
+  expect(n(db, "SELECT count(*) AS n FROM vector_gc_candidates")).toBe(0);
+  // The pass still resumes where it stopped.
+  const rest = await embedBacklog(deps);
+  expect(rest.ok && rest.value.embedded).toBe(1);
 });
 
 test("the environment switch turns automatic GC off", async () => {

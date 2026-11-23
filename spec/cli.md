@@ -3198,7 +3198,7 @@ their count is reported as `legacyContentVectors`.
 
 Deleting rows makes database pages reusable without shrinking the file:
 `bytes` is the logical embedding payload removed (`sum(length(embedding))`),
-`databaseBytes` the file size in pages and `freeBytes` the free pages SQLite
+`databaseBytes` the main database file size on disk and `freeBytes` the free pages SQLite
 reuses before growing the file. Compaction is a separate, explicit step
 (`VACUUM`, see docs/CLI.md); `vec gc` never compacts.
 
@@ -3239,11 +3239,14 @@ guarantee for a file restored within the grace (`gno vec gc` collects at once).
 With nothing due this is one indexed lookup. A pass
 examines at most 5,000 queued variants and starts no new batch of 500 after
 250 ms; the rest waits for the next pass. A pass stopped by `--max-chunks` or
-`--max-seconds`, deferred, or ended by a runtime change does not collect.
-Other partitions' queued variants, and garbage from before this release that
-no deactivated document still binds, are collected by `gno vec gc`. Set
-`GNO_NO_AUTO_VECTOR_GC=1` to turn automatic collection off. A failure is
-reported on the embedding result and never fails the pass.
+`--max-seconds` collects as well (so it may run up to that budget past the
+limit); a deferred pass, or one ended by a runtime change, does not. Other
+partitions' queued variants, and garbage from before this release that no
+deactivated document still binds, are collected by `gno vec gc`. Set
+`GNO_NO_AUTO_VECTOR_GC=1` to turn automatic collection off. A failure never
+fails the pass: `gno embed` prints `Warning: automatic vector GC failed: …`
+and its `--json` receipt carries `vectorGcError`; the SDK embed result carries
+the same field.
 
 **Exit Codes:**
 

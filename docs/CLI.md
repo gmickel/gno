@@ -2464,8 +2464,10 @@ then a file brought back with the same content (restored, or a branch switched
 back) reuses its vector without embedding. The check costs one indexed lookup
 when nothing is due, and a pass handles at most 5,000 vectors (about a quarter
 of a second), so a large backlog is collected over several passes, or at once
-with `gno vec gc`. A pass stopped by `--max-chunks` or `--max-seconds` does not
-collect. Turn it off with `GNO_NO_AUTO_VECTOR_GC=1`. Run `gno vec gc` once
+with `gno vec gc`. A pass stopped by `--max-chunks` or `--max-seconds` collects
+too, so it can run up to that quarter second past the limit. A failure is shown
+as a warning (`vectorGcError` in `--json`) and does not fail the run. Turn it
+off with `GNO_NO_AUTO_VECTOR_GC=1`. Run `gno vec gc` once
 after upgrading to also collect vectors orphaned before this release, and for
 other models' partitions.
 

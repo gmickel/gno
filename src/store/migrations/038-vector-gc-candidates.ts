@@ -6,7 +6,9 @@
  * use them. These triggers record a `(partition, variant)` candidate when a
  * document goes from active to inactive, when an owner binding is deleted
  * (directly or by cascade) and when a binding is re-pointed to another
- * variant. Automatic collection then examines only queued candidates, so its
+ * variant of its partition. Moving a whole partition (the one-time legacy
+ * re-key keeps variant ids) is no loss: the re-key moves queued rows with
+ * their timestamps. Automatic collection then examines only queued candidates, so its
  * no-op check is one indexed probe instead of a partition scan.
  *
  * `queued_at` (unix seconds) restarts whenever a variant loses a binding
@@ -55,9 +57,9 @@ export const migration: Migration = {
         );
       END;
       CREATE TRIGGER IF NOT EXISTS vector_gc_owner_rebind
-      AFTER UPDATE OF partition_id, variant_id ON vector_owners
-      WHEN OLD.partition_id IS NOT NEW.partition_id
-        OR OLD.variant_id IS NOT NEW.variant_id BEGIN
+      AFTER UPDATE OF variant_id ON vector_owners
+      WHEN OLD.variant_id IS NOT NEW.variant_id
+        AND OLD.partition_id = NEW.partition_id BEGIN
         UPDATE vector_gc_candidates SET queued_at = CAST(strftime('%s', 'now') AS INTEGER)
         WHERE partition_id = OLD.partition_id AND variant_id = OLD.variant_id;
         INSERT INTO vector_gc_candidates (partition_id, variant_id)

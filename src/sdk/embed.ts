@@ -324,6 +324,9 @@ export async function runEmbed(
         duration: (Date.now() - startedAt) / 1000,
         model: modelUri,
         searchAvailable: prepared.value.variantStore.searchAvailable,
+        ...(processed.value.vectorGcError
+          ? { vectorGcError: processed.value.vectorGcError }
+          : {}),
       };
     }
     if (force) {

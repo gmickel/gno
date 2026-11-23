@@ -130,6 +130,8 @@ export type EmbedResult = (
       stopped?: "limit";
       /** The run ended early because the embedding runtime changed. */
       incomplete?: boolean;
+      /** Automatic vector GC failed; the run's embeddings are unaffected. */
+      vectorGcError?: string;
     }
   | { success: false; error: string; contention?: WriteLeaseContention }
 ) & {
@@ -1227,6 +1229,7 @@ export function formatEmbed(
         remaining: result.remaining,
         stopped: result.stopped,
         incomplete: result.incomplete || undefined,
+        vectorGcError: result.vectorGcError,
       },
       null,
       2
@@ -1245,7 +1248,9 @@ export function formatEmbed(
     !result.incomplete &&
     !result.syncError
   ) {
-    return "No chunks need embedding. All up to date.";
+    return result.vectorGcError
+      ? `No chunks need embedding. All up to date.\nWarning: automatic vector GC failed: ${result.vectorGcError}`
+      : "No chunks need embedding. All up to date.";
   }
 
   const lines: string[] = [];
@@ -1292,6 +1297,10 @@ export function formatEmbed(
 
   if (result.syncError) {
     lines.push(`Vec sync error: ${result.syncError}`);
+  }
+
+  if (result.vectorGcError) {
+    lines.push(`Warning: automatic vector GC failed: ${result.vectorGcError}`);
   }
 
   return lines.join("\n");

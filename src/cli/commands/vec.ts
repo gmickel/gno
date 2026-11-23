@@ -411,10 +411,18 @@ export async function vecGc(
   const dbPath = getIndexDbPath(options.indexName);
   const store = new SqliteAdapter();
   if (options.dryRun) {
+    // Nothing indexed yet under this name: nothing to collect, and a dry
+    // run never creates the database.
     if (!(await Bun.file(dbPath).exists()))
       return {
-        success: false,
-        error: `No index at ${dbPath}. Run: gno update`,
+        success: true,
+        dryRun: true,
+        partitions: [],
+        variants: 0,
+        bytes: 0,
+        legacyContentVectors: 0,
+        databaseBytes: 0,
+        freeBytes: 0,
       };
     const opened = store.openReadOnly(dbPath, config.busyTimeoutMs);
     if (!opened.ok) return { success: false, error: opened.error.message };

@@ -156,7 +156,9 @@ export async function embedVariantBacklog(
   };
   const stop = async () => {
     await saveResume(after);
-    return ok({ ...total, stopped: "limit" as const });
+    // A bounded pass still collects due garbage (itself bounded), so repeated
+    // bounded runs with work pending never leave it queued indefinitely.
+    return await collectAfterPass(ok({ ...total, stopped: "limit" as const }));
   };
   const handleForegroundOutcome = async (
     ownersCount: number,

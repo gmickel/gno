@@ -122,7 +122,7 @@ test("vec gc removes exactly what update left unowned; --dry-run writes nothing"
     bytes: 12,
     legacyContentVectors: 0,
   });
-  expect(dryReport.databaseBytes).toBeGreaterThan(0);
+  expect(dryReport.databaseBytes).toBe(Bun.file(dbPath).size);
   expect(await Bun.file(dbPath).bytes()).toEqual(bytes);
 
   const text = await cli("vec", "gc", "--dry-run");
@@ -151,4 +151,23 @@ test("vec gc removes exactly what update left unowned; --dry-run writes nothing"
   });
   const again = await cli("vec", "gc", "--json");
   expect(JSON.parse(again.out)).toMatchObject({ dryRun: false, variants: 0 });
+});
+
+test("vec gc --dry-run on an index name with no database reports nothing and creates nothing", async () => {
+  const path = getIndexDbPath("unused");
+  const dry = await cli(
+    "--index",
+    "unused",
+    "vec",
+    "gc",
+    "--dry-run",
+    "--json"
+  );
+  expect(dry.code).toBe(0);
+  expect(JSON.parse(dry.out)).toMatchObject({
+    dryRun: true,
+    partitions: [],
+    variants: 0,
+  });
+  expect(await Bun.file(path).exists()).toBe(false);
 });

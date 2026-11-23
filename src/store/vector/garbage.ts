@@ -103,7 +103,7 @@ export interface VectorGcReport {
   bytes: number;
   /** Legacy `content_vectors` rows; excluded here, `gno cleanup` owns them. */
   legacyContentVectors: number;
-  /** Database file size (page_count x page_size), unaffected by deletion. */
+  /** Main database file size on disk (WAL excluded), unaffected by deletion. */
   databaseBytes: number;
   /** Free pages (freelist_count x page_size) SQLite reuses before growing. */
   freeBytes: number;
@@ -189,19 +189,33 @@ function liveVariants(
   const live = new Set<number>();
   if (variants.length === 0) return live;
   const hashes = new Map(variants.map((v) => [v.variant_id, v.input_hash]));
+  // Valid owners: each binding against its own document. Same content: each
+  // distinct (variant, content, chunk) once against the active documents on
+  // that content, so many historical bindings never multiply the rows.
+  const owners = ownDocument
+    ? `vector_owners o${ownerPartitionVariantHint(db)}`
+    : `(SELECT DISTINCT variant_id, mirror_hash, seq
+        FROM vector_owners${ownerPartitionVariantHint(db)}
+        WHERE partition_id = ?1
+          AND variant_id IN (SELECT value FROM json_each(?2))) o`;
   const documentJoin = ownDocument
     ? " ON d.id = o.document_id AND d.mirror_hash = o.mirror_hash AND d.active = 1"
     : `${documentsMirrorHint(db)} ON d.mirror_hash = o.mirror_hash AND d.active = 1`;
   const evidence = db.prepare<EvidenceRow, [string, string]>(`
     SELECT o.variant_id AS variantId, d.id AS documentId,
       o.mirror_hash AS mirrorHash, o.seq AS seq, c.text AS text, d.title AS title
-    FROM vector_owners o${ownerPartitionVariantHint(db)}
+    FROM ${owners}
     JOIN documents d${documentJoin}
     JOIN content_chunks c${chunkKeyHint(db)}
       ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
-    WHERE o.partition_id = ?
-      AND o.variant_id IN (SELECT value FROM json_each(?))
+    WHERE ${
+      ownDocument
+        ? "o.partition_id = ?1 AND o.variant_id IN (SELECT value FROM json_each(?2))"
+        : "1"
+    }
   `);
+  // One hash per (variant, content, chunk, title) within this call.
+  const inputs = new Map<string, boolean>();
   try {
     const ids = JSON.stringify(variants.map((v) => v.variant_id));
     for (const row of evidence.iterate(partition.partitionId, ids)) {
@@ -216,12 +230,17 @@ function liveVariants(
       );
       let valid = proofs.get(key);
       if (valid === undefined) {
-        const input = formatDocForEmbedding(
-          row.text,
-          row.title ?? undefined,
-          partition.model
-        );
-        valid = embeddingInputHash(input) === inputHash;
+        const local = `${row.variantId}\0${row.mirrorHash}\0${row.seq}\0${row.title ?? ""}`;
+        valid = inputs.get(local);
+        if (valid === undefined) {
+          const input = formatDocForEmbedding(
+            row.text,
+            row.title ?? undefined,
+            partition.model
+          );
+          valid = embeddingInputHash(input) === inputHash;
+          inputs.set(local, valid);
+        }
         proofs.set(key, valid);
       }
       if (valid) live.add(row.variantId);
@@ -241,19 +260,24 @@ function removeVariants(
   partitionId: string,
   variantIds: readonly number[],
   access: "mirror" | "none"
-): void {
-  if (variantIds.length === 0) return;
+): number {
+  if (variantIds.length === 0) return 0;
   const ids = JSON.stringify(variantIds);
-  if (access === "mirror")
-    db.query(
-      `DELETE FROM ${mirrorTable(partitionId)} WHERE variant_id IN (SELECT value FROM json_each(?))`
-    ).run(ids);
+  const mirrored =
+    access === "mirror"
+      ? db
+          .query(
+            `DELETE FROM ${mirrorTable(partitionId)} WHERE variant_id IN (SELECT value FROM json_each(?))`
+          )
+          .run(ids).changes
+      : 0;
   db.query(
     "DELETE FROM vector_owners WHERE partition_id = ? AND variant_id IN (SELECT value FROM json_each(?))"
   ).run(partitionId, ids);
   db.query(
     "DELETE FROM vector_variants WHERE partition_id = ? AND variant_id IN (SELECT value FROM json_each(?))"
   ).run(partitionId, ids);
+  return mirrored;
 }
 
 const hasQueue = (db: Database): boolean =>
@@ -271,32 +295,66 @@ function dequeue(
 }
 
 /**
- * Run `write` and leave the partition's mirror mark as it found it when the
- * write kept vec0 in step (the vector_variants triggers clear the mark on any
- * change). Without a mirror update the triggers' invalidation stands, so a
- * dirty or never-recorded mark is never certified clean.
+ * Mirror freshness across one collection pass. Whether the mirror's row
+ * count matched the stored variants (the check `mirrorState()` makes) is
+ * measured once, on the first batch that finds the clean mark; while the
+ * caller holds the write lease only this pass changes the partition, so each
+ * later batch only has to remove exactly one vec0 row per variant.
  */
-function keepingMirrorMark<T>(
+interface MirrorPass {
+  consistent?: boolean;
+}
+
+/**
+ * Remove variants (see removeVariants) and leave the partition's mirror mark
+ * clean only when it was demonstrably clean and stayed so: marked clean,
+ * row counts matching, and every removed variant had its vec0 row. In every
+ * other case the vector_variants triggers' invalidation stands, so GC never
+ * certifies a dirty, never-recorded or count-drifted mirror clean.
+ */
+function removeKeepingMirror(
   db: Database,
   partitionId: string,
+  variantIds: readonly number[],
   access: "mirror" | "none",
-  write: () => T
-): T {
-  if (access !== "mirror" || !tableExists(db, "vector_mirror_state"))
-    return write();
-  const before =
+  pass: MirrorPass
+): void {
+  if (variantIds.length === 0) return;
+  const tracked = access === "mirror" && tableExists(db, "vector_mirror_state");
+  const table = mirrorTable(partitionId);
+  const markedClean =
+    tracked &&
     db
       .query<{ dirty: number }, [string]>(
         "SELECT dirty FROM vector_mirror_state WHERE partition_id = ?"
       )
-      .get(partitionId)?.dirty ?? null;
-  const result = write();
-  if (before === 0) markMirrorClean(db, partitionId);
-  else
+      .get(partitionId)?.dirty === 0;
+  if (markedClean && pass.consistent === undefined)
+    pass.consistent =
+      db
+        .query<{ n: number }, [string]>(
+          "SELECT count(*) AS n FROM vector_variants WHERE partition_id = ?"
+        )
+        .get(partitionId)!.n ===
+      db.query<{ n: number }, []>(`SELECT count(*) AS n FROM ${table}`).get()!
+        .n;
+  let allMirrored = false;
+  if (markedClean && pass.consistent) {
+    const lookup = db.query<unknown, [number]>(
+      `SELECT 1 FROM ${table} WHERE variant_id = ?`
+    );
+    allMirrored = variantIds.every((id) => lookup.get(id) !== null);
+  }
+  removeVariants(db, partitionId, variantIds, access);
+  if (!tracked) return;
+  if (markedClean && pass.consistent && allMirrored)
+    markMirrorClean(db, partitionId);
+  else {
+    pass.consistent = false;
     db.run("DELETE FROM vector_mirror_state WHERE partition_id = ?", [
       partitionId,
     ]);
-  return result;
+  }
 }
 
 const variantPage = (
@@ -363,9 +421,16 @@ export function collectPartitionInTransaction(
 
 function storedPartitions(db: Database): StoredPartitionRow[] {
   if (!tableExists(db, "vector_partitions")) return [];
+  // Before migration 31 every partition is runtime-keyed (it sets legacy = 1).
+  const hasLegacy = !!db
+    .query(
+      "SELECT 1 FROM pragma_table_info('vector_partitions') WHERE name = 'legacy'"
+    )
+    .get();
   return db
     .query<StoredPartitionRow, []>(
-      `SELECT partition_id, model, dimensions, state, activated_epoch, legacy
+      `SELECT partition_id, model, dimensions, state, activated_epoch,
+         ${hasLegacy ? "legacy" : "1 AS legacy"}
        FROM vector_partitions ORDER BY model, partition_id`
     )
     .all();
@@ -384,7 +449,14 @@ function sizeReport(db: Database): {
   const free =
     db.query<{ freelist_count: number }, []>("PRAGMA freelist_count").get()
       ?.freelist_count ?? 0;
-  return { databaseBytes: pages * pageSize, freeBytes: free * pageSize };
+  // The main file on disk; the snapshot's page count also covers pages still
+  // in the WAL. In-memory databases fall back to it.
+  const file =
+    db.filename && db.filename !== ":memory:" ? Bun.file(db.filename) : null;
+  return {
+    databaseBytes: file ? file.size : pages * pageSize,
+    freeBytes: free * pageSize,
+  };
 }
 
 const legacyVectorCount = (db: Database): number =>
@@ -428,6 +500,7 @@ export function runVectorGc(
       return result;
     }
     const partition = { partitionId: row.partition_id, model: row.model };
+    const mirrorPass: MirrorPass = {};
     let after = 0;
     for (;;) {
       const batch = (): VariantRow[] => {
@@ -444,9 +517,7 @@ export function runVectorGc(
         }
         if (!options.dryRun) {
           const ids = garbage.map((v) => v.variant_id);
-          keepingMirrorMark(db, row.partition_id, access, () =>
-            removeVariants(db, row.partition_id, ids, access)
-          );
+          removeKeepingMirror(db, row.partition_id, ids, access, mirrorPass);
           dequeue(
             db,
             row.partition_id,
@@ -548,6 +619,7 @@ export function collectQueuedGarbage(
     throw new Error(
       "sqlite-vec is unavailable; cannot collect vectors from an existing vec0 index"
     );
+  const mirrorPass: MirrorPass = {};
   const startedAt = performance.now();
   while (
     result.examined < maxCandidates &&
@@ -575,13 +647,12 @@ export function collectQueuedGarbage(
           variantsById(db, partition.partitionId, ids),
           provenOwners(db, false)
         );
-        keepingMirrorMark(db, partition.partitionId, access, () =>
-          removeVariants(
-            db,
-            partition.partitionId,
-            garbage.map((v) => v.variant_id),
-            access
-          )
+        removeKeepingMirror(
+          db,
+          partition.partitionId,
+          garbage.map((v) => v.variant_id),
+          access,
+          mirrorPass
         );
         // Owner deletes above re-queue their variants; clear every examined id.
         dequeue(db, partition.partitionId, ids);

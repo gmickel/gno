@@ -346,6 +346,14 @@ async function rekeyLegacy(
       "vector_variants",
       "vector_owners",
       "vector_runtime_verdicts",
+      // Queued GC candidates (migration 38) keep their grace timestamps.
+      ...(db
+        .query(
+          "SELECT 1 FROM sqlite_master WHERE name = 'vector_gc_candidates'"
+        )
+        .get()
+        ? ["vector_gc_candidates"]
+        : []),
     ])
       db.run(`UPDATE ${table} SET partition_id = ? WHERE partition_id = ?`, [
         newId,
