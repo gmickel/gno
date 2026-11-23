@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-234-lossless-vector-search-hot-fixes-and-db",
   "spec_path": ".flow/tasks/fn-234-lossless-vector-search-hot-fixes-and-db.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Lossless vector search hot fixes and DB hygiene",
   "updated_at": "2026-11-23T14:09:21.283900Z"
 }

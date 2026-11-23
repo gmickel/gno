@@ -442,7 +442,18 @@ export async function vecPrune(
       return { success: false, error: pruned.error };
     }
     if (options.vacuum) {
-      db.exec("VACUUM");
+      try {
+        db.exec("VACUUM");
+      } catch (vacuumCause) {
+        const vacuumMsg =
+          vacuumCause instanceof Error
+            ? vacuumCause.message
+            : String(vacuumCause);
+        return {
+          success: false,
+          error: `Pruned ${pruned.droppedTables.length} legacy table(s) and ${pruned.removedRows.toLocaleString()} legacy row(s), but VACUUM failed: ${vacuumMsg}. The prune already committed; reclaim disk space with VACUUM INTO or retry gno vec prune --vacuum.`,
+        };
+      }
     }
     return {
       success: true,
