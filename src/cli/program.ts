@@ -3908,6 +3908,49 @@ function wireVecCommands(program: Command): void {
       `${formatVecRebuild(result, { json: format === "json" })}\n`
     );
   });
+
+  // vec prune
+  addWriteLeaseFlags(
+    vecCmd
+      .command("prune")
+      .description(
+        "Remove superseded legacy vector tables and orphaned vec_v1 mirrors"
+      )
+      .option(
+        "--vacuum",
+        "Run SQLite VACUUM after pruning to reclaim disk space"
+      )
+      .option("--json", "JSON output")
+  ).action(async (cmdOpts: Record<string, unknown>) => {
+    const format = getFormat(cmdOpts);
+    const globals = getGlobals();
+
+    const { vecPrune, formatVecPrune } = await import("./commands/vec");
+    const lease = parseWriteLeaseFlags(cmdOpts);
+    const result = await withCliWriteLease(
+      {
+        indexName: globals.index,
+        lockWaitMs: lease.lockWaitMs,
+        noWait: lease.noWait,
+      },
+      () =>
+        vecPrune({
+          configPath: globals.config,
+          indexName: globals.index,
+          vacuum: Boolean(cmdOpts.vacuum),
+          json: format === "json",
+        })
+    );
+    throwIfWriteLeaseBusy(result, format === "json");
+
+    if (!result.success) {
+      throw new CliError("RUNTIME", result.error);
+    }
+
+    process.stdout.write(
+      `${formatVecPrune(result, { json: format === "json" })}\n`
+    );
+  });
 }
 
 function wirePublishCommand(program: Command): void {

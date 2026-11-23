@@ -14,6 +14,7 @@ import {
   createVectorStatsPort,
 } from "../../store/vector";
 import {
+  pruneLegacyVectors,
   rebuildPartitionIndex,
   syncPartitionIndex,
 } from "../../store/vector/partition-index";
@@ -387,4 +388,116 @@ export function formatVecDrop(
   return options.json
     ? JSON.stringify({ dropped: partition }, null, 2)
     : `Dropped ${partition.state} partition ${partition.id.slice(0, 12)} (${partition.provenance}, ${partition.owners} chunks)`;
+}
+
+export interface VecPruneOptions extends VecOptions {
+  /** Run SQLite VACUUM after pruning to reclaim disk space in-place. */
+  vacuum?: boolean;
+}
+
+export type VecPruneResult =
+  | {
+      success: true;
+      droppedTables: string[];
+      removedRows: number;
+      vacuumed: boolean;
+    }
+  | { success: false; error: string };
+
+/**
+ * Drop superseded legacy `vec_<hash>` tables and delete legacy `content_vectors`
+ * rows for models that already have an activated v1 partition, plus any
+ * orphaned `vec_v1_*` tables absent from `vector_partitions`.
+ */
+export async function vecPrune(
+  options: VecPruneOptions = {}
+): Promise<VecPruneResult> {
+  if (!(await isInitialized(options.configPath))) {
+    return { success: false, error: "GNO not initialized. Run: gno init" };
+  }
+  const configResult = await loadConfig(options.configPath);
+  if (!configResult.ok) {
+    return { success: false, error: configResult.error.message };
+  }
+  const config = configResult.value;
+
+  const store = new SqliteAdapter();
+  const dbPath = getIndexDbPath(options.indexName);
+  const paths = getConfigPaths();
+  store.setConfigPath(paths.configFile);
+
+  const openResult = await store.open(
+    dbPath,
+    config.ftsTokenizer,
+    config.busyTimeoutMs
+  );
+  if (!openResult.ok) {
+    return { success: false, error: openResult.error.message };
+  }
+
+  try {
+    const db = store.getRawDb();
+    const pruned = await pruneLegacyVectors(db);
+    if (!pruned.ok) {
+      return { success: false, error: pruned.error };
+    }
+    if (options.vacuum) {
+      db.exec("VACUUM");
+    }
+    return {
+      success: true,
+      droppedTables: pruned.droppedTables,
+      removedRows: pruned.removedRows,
+      vacuumed: Boolean(options.vacuum),
+    };
+  } catch (cause) {
+    return {
+      success: false,
+      error:
+        cause instanceof Error
+          ? cause.message
+          : "Failed to prune legacy vector tables",
+    };
+  } finally {
+    await store.close();
+  }
+}
+
+export function formatVecPrune(
+  result: VecPruneResult,
+  options: { json?: boolean }
+): string {
+  if (!result.success) {
+    return options.json
+      ? JSON.stringify({ error: { code: "RUNTIME", message: result.error } })
+      : `Error: ${result.error}`;
+  }
+  if (options.json) {
+    return JSON.stringify(
+      {
+        droppedTables: result.droppedTables,
+        removedRows: result.removedRows,
+        vacuumed: result.vacuumed,
+      },
+      null,
+      2
+    );
+  }
+  if (result.droppedTables.length === 0 && result.removedRows === 0) {
+    return result.vacuumed
+      ? "No legacy vector tables or rows to prune. Database vacuumed."
+      : "No legacy vector tables or rows to prune.";
+  }
+  const lines = [
+    `Pruned ${result.droppedTables.length} legacy table(s) and ${result.removedRows.toLocaleString()} legacy row(s)${result.vacuumed ? "; database vacuumed." : "."}`,
+  ];
+  if (result.droppedTables.length > 0) {
+    lines.push(`Dropped tables: ${result.droppedTables.join(", ")}`);
+  }
+  if (!result.vacuumed) {
+    lines.push(
+      "Disk space is reclaimed only after vacuuming (for large indexes, run SQLite VACUUM INTO a new file and swap it in, or rerun with --vacuum)."
+    );
+  }
+  return lines.join("\n");
 }

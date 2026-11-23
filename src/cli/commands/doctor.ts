@@ -170,22 +170,30 @@ async function checkDatabase(indexName?: string): Promise<DoctorCheck> {
 }
 
 /**
- * Report the live SQLite busy_timeout (PRAGMA), not the config echo.
+ * Report live SQLite PRAGMAs (`busy_timeout` and `mmap_size`) read back from
+ * the open index connection, not config echoes or requested ceilings.
  */
-async function checkBusyTimeout(
+async function checkSqlitePragmas(
   config: Config,
   indexName?: string
-): Promise<DoctorCheck> {
+): Promise<DoctorCheck[]> {
   const dbPath = getIndexDbPath(indexName);
 
   try {
     await stat(dbPath);
   } catch {
-    return {
-      name: "busy-timeout",
-      status: "warn",
-      message: "Database not found. Run: gno init",
-    };
+    return [
+      {
+        name: "busy-timeout",
+        status: "warn",
+        message: "Database not found. Run: gno init",
+      },
+      {
+        name: "sqlite-mmap",
+        status: "warn",
+        message: "Database not found. Run: gno init",
+      },
+    ];
   }
 
   const store = new SqliteAdapter();
@@ -198,30 +206,58 @@ async function checkBusyTimeout(
     config.busyTimeoutMs ?? DEFAULT_BUSY_TIMEOUT_MS
   );
   if (!openResult.ok) {
-    return {
-      name: "busy-timeout",
-      status: "warn",
-      message: `busy_timeout unavailable: ${openResult.error.message}`,
-    };
+    return [
+      {
+        name: "busy-timeout",
+        status: "warn",
+        message: `busy_timeout unavailable: ${openResult.error.message}`,
+      },
+      {
+        name: "sqlite-mmap",
+        status: "warn",
+        message: `mmap_size unavailable: ${openResult.error.message}`,
+      },
+    ];
   }
 
   try {
-    const timeout = store
-      .getRawDb()
+    const db = store.getRawDb();
+    const timeout = db
       .query<{ timeout: number }, []>("PRAGMA busy_timeout")
       .get()?.timeout;
-    if (timeout === undefined) {
-      return {
-        name: "busy-timeout",
-        status: "warn",
-        message: "PRAGMA busy_timeout returned no value",
-      };
-    }
-    return {
-      name: "busy-timeout",
-      status: "ok",
-      message: `busy_timeout ${timeout}ms`,
-    };
+    const busyCheck: DoctorCheck =
+      timeout === undefined
+        ? {
+            name: "busy-timeout",
+            status: "warn",
+            message: "PRAGMA busy_timeout returned no value",
+          }
+        : {
+            name: "busy-timeout",
+            status: "ok",
+            message: `busy_timeout ${timeout}ms`,
+          };
+
+    const mmapSize = db
+      .query<{ mmap_size: number }, []>("PRAGMA mmap_size")
+      .get()?.mmap_size;
+    const mmapCheck: DoctorCheck =
+      mmapSize === undefined
+        ? {
+            name: "sqlite-mmap",
+            status: "warn",
+            message: "PRAGMA mmap_size returned no value",
+          }
+        : {
+            name: "sqlite-mmap",
+            status: "ok",
+            message:
+              mmapSize > 0
+                ? `mmap_size ${mmapSize} bytes (${Math.round(mmapSize / (1024 * 1024))} MiB)`
+                : "mmap_size 0 bytes (disabled)",
+          };
+
+    return [busyCheck, mmapCheck];
   } finally {
     await store.close();
   }
@@ -805,8 +841,8 @@ export async function doctor(
   const sqliteChecks = await checkSqliteExtensions();
   checks.push(...sqliteChecks);
 
-  // Live busy_timeout from the open index (not the config echo)
-  checks.push(await checkBusyTimeout(config, options.indexName));
+  // Live busy_timeout and mmap_size from the open index (not config echoes)
+  checks.push(...(await checkSqlitePragmas(config, options.indexName)));
 
   // Code chunking capability
   checks.push(checkCodeChunking());

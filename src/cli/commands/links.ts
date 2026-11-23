@@ -640,10 +640,28 @@ export async function similar(
       return { success: false, error: searchResult.error.message };
     }
 
-    // Candidate documents from a single listDocuments call
-    const docsResult = crossCollection
-      ? await store.listDocuments()
-      : await store.listDocuments(doc.collection);
+    // Hydrate only the documents owning returned hits (targeted json_each SQL)
+    // rather than loading the entire documents table.
+    const hitDocumentIds = [
+      ...new Set(searchResult.value.flatMap((r) => r.documentIds ?? [])),
+    ];
+    const hitMirrorHashes = [
+      ...new Set(
+        searchResult.value
+          .filter((r) => !r.documentIds)
+          .map((r) => r.mirrorHash)
+      ),
+    ];
+    const docsResult =
+      typeof store.listDocumentsForSimilarity === "function"
+        ? await store.listDocumentsForSimilarity({
+            documentIds: hitDocumentIds,
+            mirrorHashes: hitMirrorHashes,
+            collection: crossCollection ? undefined : doc.collection,
+          })
+        : crossCollection
+          ? await store.listDocuments()
+          : await store.listDocuments(doc.collection);
 
     if (!docsResult.ok) {
       return { success: false, error: docsResult.error.message };
