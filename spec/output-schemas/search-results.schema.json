@@ -592,6 +592,20 @@
             "results": {
               "type": "array",
               "items": { "$ref": "#/$defs/explainResult" }
+            },
+            "vectorRoute": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["route", "mirrorRows"],
+              "properties": {
+                "route": {
+                  "type": "string",
+                  "enum": ["exact-sql", "exact-vec0", "coarse-bit"]
+                },
+                "mirrorRows": { "type": "integer", "minimum": 0 },
+                "coarseK": { "type": "integer", "minimum": 1 },
+                "rescored": { "type": "integer", "minimum": 0 }
+              }
             }
           },
           "additionalProperties": false

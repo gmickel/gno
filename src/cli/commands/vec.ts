@@ -15,8 +15,8 @@ import {
 } from "../../store/vector";
 import {
   pruneLegacyVectors,
-  rebuildPartitionIndex,
-  syncPartitionIndex,
+  rebuildPartitionIndexWithDetails,
+  syncPartitionIndexWithDetails,
 } from "../../store/vector/partition-index";
 import {
   dropVectorPartition,
@@ -36,11 +36,25 @@ export interface VecOptions {
 }
 
 export type VecSyncResult =
-  | { success: true; added: number; removed: number; model: string }
+  | {
+      success: true;
+      added: number;
+      removed: number;
+      v2Added?: number;
+      v2Removed?: number;
+      checkRecall?: number | null;
+      model: string;
+    }
   | { success: false; error: string };
 
 export type VecRebuildResult =
-  | { success: true; count: number; model: string }
+  | {
+      success: true;
+      count: number;
+      v2Count?: number;
+      checkRecall?: number | null;
+      model: string;
+    }
   | { success: false; error: string };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -131,7 +145,7 @@ export async function vecSync(
       }
       return {
         success: true,
-        ...syncPartitionIndex(db, partition),
+        ...syncPartitionIndexWithDetails(db, partition),
         model: modelUri,
       };
     }
@@ -224,9 +238,14 @@ export async function vecRebuild(
           error: "sqlite-vec not available. Cannot rebuild index.",
         };
       }
+      const rebuilt = rebuildPartitionIndexWithDetails(db, partition);
       return {
         success: true,
-        count: rebuildPartitionIndex(db, partition),
+        count: rebuilt.count,
+        ...(rebuilt.v2Count !== undefined ? { v2Count: rebuilt.v2Count } : {}),
+        ...(rebuilt.checkRecall !== undefined
+          ? { checkRecall: rebuilt.checkRecall }
+          : {}),
         model: modelUri,
       };
     }
@@ -295,6 +314,13 @@ export function formatVecSync(
       {
         added: result.added,
         removed: result.removed,
+        ...(result.v2Added !== undefined ? { v2Added: result.v2Added } : {}),
+        ...(result.v2Removed !== undefined
+          ? { v2Removed: result.v2Removed }
+          : {}),
+        ...(result.checkRecall !== undefined
+          ? { checkRecall: result.checkRecall }
+          : {}),
         model: result.model,
       },
       null,
@@ -302,7 +328,8 @@ export function formatVecSync(
     );
   }
 
-  if (result.added === 0 && result.removed === 0) {
+  const v2Changed = (result.v2Added ?? 0) > 0 || (result.v2Removed ?? 0) > 0;
+  if (result.added === 0 && result.removed === 0 && !v2Changed) {
     return "Vec index already in sync.";
   }
 
@@ -312,6 +339,15 @@ export function formatVecSync(
   }
   if (result.removed > 0) {
     parts.push(`-${result.removed} removed`);
+  }
+  if (v2Changed) {
+    const v2Parts: string[] = [];
+    if ((result.v2Added ?? 0) > 0) v2Parts.push(`+${result.v2Added}`);
+    if ((result.v2Removed ?? 0) > 0) v2Parts.push(`-${result.v2Removed}`);
+    parts.push(`coarse mirror ${v2Parts.join("/")}`);
+  }
+  if (result.checkRecall !== undefined && result.checkRecall !== null) {
+    parts.push(`recall@10=${(result.checkRecall * 100).toFixed(1)}%`);
   }
   return `Vec index synced: ${parts.join(", ")}`;
 }
@@ -330,6 +366,10 @@ export function formatVecRebuild(
     return JSON.stringify(
       {
         count: result.count,
+        ...(result.v2Count !== undefined ? { v2Count: result.v2Count } : {}),
+        ...(result.checkRecall !== undefined
+          ? { checkRecall: result.checkRecall }
+          : {}),
         model: result.model,
       },
       null,
@@ -337,7 +377,15 @@ export function formatVecRebuild(
     );
   }
 
-  return `Vec index rebuilt: ${result.count.toLocaleString()} vectors`;
+  const extras: string[] = [];
+  if (result.v2Count !== undefined) {
+    extras.push(`coarse mirror ${result.v2Count.toLocaleString()} rows`);
+  }
+  if (result.checkRecall !== undefined && result.checkRecall !== null) {
+    extras.push(`recall@10=${(result.checkRecall * 100).toFixed(1)}%`);
+  }
+  const suffix = extras.length > 0 ? ` (${extras.join(", ")})` : "";
+  return `Vec index rebuilt: ${result.count.toLocaleString()} vectors${suffix}`;
 }
 
 export type VecDropResult =

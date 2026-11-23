@@ -16,6 +16,7 @@ import type { RetrievalTraceSession } from "../core/retrieval-trace-session";
 import type { MetadataPredicate } from "../core/typed-metadata";
 import type { InferenceOptions } from "../llm/types";
 import type { StoreResult } from "../store/types";
+import type { VectorRouteInfo } from "../store/vector/types";
 import type { ClaimVerificationResult } from "./claim-verification";
 import type { SemanticVerificationCapability } from "./claim-verifier";
 import type { ContentTypeBoostScoreMetadata } from "./content-type-boost";
@@ -166,6 +167,7 @@ export interface SearchCapabilityOutcome {
 export interface SearchResultsTraceMetadata {
   capabilityOutcomes: SearchCapabilityOutcome[];
   fallbackCodes: string[];
+  vectorRoute?: VectorRouteInfo;
 }
 
 /** Complete search results wrapper */
@@ -245,6 +247,10 @@ export interface SearchOptions extends InferenceOptions {
   anyTerm?: boolean;
   /** Internal: drop hits below this fraction of the best raw BM25 score. */
   minRelativeScore?: number;
+  /** Internal: force exact vector search even when coarse routing is enabled. */
+  exactVectorSearch?: boolean;
+  /** Optional override for config.coarseVectorSearch. */
+  coarseVectorSearch?: boolean;
 }
 
 /** Structured query mode identifier */
@@ -594,4 +600,5 @@ export interface ExplainResult {
 export interface SearchExplain {
   lines: ExplainLine[];
   results: ExplainResult[];
+  vectorRoute?: VectorRouteInfo;
 }

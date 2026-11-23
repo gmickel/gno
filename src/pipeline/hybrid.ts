@@ -10,6 +10,7 @@ import type { EmbeddingPort, GenerationPort, RerankPort } from "../llm/types";
 import type { DocumentRow, StorePort } from "../store/types";
 import type {
   VectorIndexPort,
+  VectorRouteInfo,
   VectorSearchOptions,
 } from "../store/vector/types";
 import type {
@@ -257,6 +258,9 @@ async function searchVectorChunks(
     minScore?: number;
     allowedMirrorHashes?: string[];
     eligibility?: VectorSearchOptions["eligibility"];
+    coarseVectorSearch?: boolean;
+    exact?: boolean;
+    onRoute?: (info: VectorRouteInfo) => void;
   }
 ): Promise<
   | { ok: true; chunks: ChunkId[] }
@@ -291,6 +295,9 @@ async function searchVectorChunks(
       minScore: options.minScore,
       allowedMirrorHashes: options.allowedMirrorHashes,
       eligibility: options.eligibility,
+      coarseVectorSearch: options.coarseVectorSearch,
+      exact: options.exact,
+      onRoute: options.onRoute,
     }
   );
 
@@ -639,6 +646,7 @@ async function searchHybridWithHydration(
     vecCount: number;
     vectorsUsed: boolean;
     vectorNotice?: string;
+    vectorRoute?: VectorRouteInfo;
     fallbacks: string[];
     durationMs: number;
   }> => {
@@ -661,6 +669,7 @@ async function searchHybridWithHydration(
     let localVecCount = 0;
     let localVectorsUsed = false;
     let localNotice: string | undefined;
+    let localVectorRoute: VectorRouteInfo | undefined;
 
     const vectorVariantQueries = [
       ...(expansion?.vectorQueries?.map((q) => ({
@@ -681,6 +690,12 @@ async function searchHybridWithHydration(
           limit: limit * 2 * retrievalMultiplier,
           allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
           eligibility: vectorEligibility,
+          coarseVectorSearch:
+            options.coarseVectorSearch ?? deps.config.coarseVectorSearch,
+          exact: options.exactVectorSearch,
+          onRoute: (info) => {
+            localVectorRoute = info;
+          },
         }
       );
 
@@ -755,6 +770,12 @@ async function searchHybridWithHydration(
           embeddingIdentity: partition?.identity,
           allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
           eligibility: vectorEligibility,
+          coarseVectorSearch:
+            options.coarseVectorSearch ?? deps.config.coarseVectorSearch,
+          exact: options.exactVectorSearch,
+          onRoute: (info) => {
+            localVectorRoute = info;
+          },
         };
         const uniqueResults = new Map<number, ChunkId[]>();
         const uniqueFailed = new Set<number>();
@@ -854,6 +875,7 @@ async function searchHybridWithHydration(
       vecCount: localVecCount,
       vectorsUsed: localVectorsUsed,
       vectorNotice: localNotice,
+      vectorRoute: localVectorRoute,
       fallbacks,
       durationMs: performance.now() - started,
     };
@@ -894,7 +916,8 @@ async function searchHybridWithHydration(
       vecCount,
       vectorAvailable,
       vectorIndex?.loadError,
-      vectorIndex?.guidance
+      vectorIndex?.guidance,
+      vecOutcome.vectorRoute
     )
   );
 
@@ -1636,6 +1659,9 @@ async function searchHybridWithHydration(
         results: auxiliaryRankingActive
           ? buildExplainResults(filteredCandidates, docidMap, finalResults)
           : buildExplainResults(filteredCandidates.slice(0, limit), docidMap),
+        ...(vecOutcome.vectorRoute
+          ? { vectorRoute: vecOutcome.vectorRoute }
+          : {}),
       }
     : undefined;
   await attachSearchResultContexts(store, finalResults);
@@ -1764,6 +1790,7 @@ async function searchHybridWithHydration(
   attachSearchResultsTraceMetadata(output, {
     capabilityOutcomes,
     fallbackCodes,
+    ...(vecOutcome.vectorRoute ? { vectorRoute: vecOutcome.vectorRoute } : {}),
   });
   const traceResult = await options.traceSession?.recordRetrieval(
     output,

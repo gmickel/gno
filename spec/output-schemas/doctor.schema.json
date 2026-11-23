@@ -330,6 +330,33 @@
                   "items": {
                     "type": "string"
                   }
+                },
+                "coarseMirror": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "state",
+                    "checkRecall",
+                    "checkQueries",
+                    "checkCoarseK",
+                    "belowFloor"
+                  ],
+                  "properties": {
+                    "state": {
+                      "type": "string",
+                      "enum": ["clean", "dirty", "missing", "unsupported"]
+                    },
+                    "checkRecall": { "type": ["number", "null"] },
+                    "checkQueries": {
+                      "type": ["integer", "null"],
+                      "minimum": 0
+                    },
+                    "checkCoarseK": {
+                      "type": ["integer", "null"],
+                      "minimum": 1
+                    },
+                    "belowFloor": { "type": "boolean" }
+                  }
                 }
               }
             }

@@ -1478,8 +1478,11 @@ read under the same selection rule as retrieval (`vectorRuntime` reports
 `vectors`, `unavailable` with a reason, or `unresolved` before its first query
 or embed). `droppable` marks what `gno vec drop` accepts. Other partitions carry `state`, `owners` and a
 readable `provenance`; `compatibleRuntimes` names the runtimes that read a
-partition and `incompatibleRuntimes` names runtimes measured unable to
-reproduce the stored vectors, whose queries use lexical retrieval only.
+partition, `incompatibleRuntimes` names runtimes measured unable to
+reproduce the stored vectors (whose queries use lexical retrieval only), and
+optional `coarseMirror` reports the partition's v2 bit coarse mirror freshness
+and build-time recall self-check (`state`, `checkRecall`, `checkQueries`,
+`checkCoarseK`, `belowFloor`).
 
 `contentTypeBoost` is a redacted ranking-status projection. It exposes only
 normalized IDs/factors plus the rules fingerprint; path prefixes are never
@@ -2229,7 +2232,10 @@ Get documents linking TO a document.
 
 ### gno_similar
 
-Find semantically similar documents using vector embeddings.
+Find semantically similar documents using vector embeddings. When
+`crossCollection` is false (the default), the underlying vector search is scoped
+directly to the source document's collection so documents in other collections
+cannot crowd out same-collection candidates.
 
 **Input Schema:**
 

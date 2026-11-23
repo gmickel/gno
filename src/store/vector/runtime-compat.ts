@@ -19,6 +19,10 @@ import { runtimeCallerKey } from "../../llm/native-worker/embedding-identity";
 import { formatDocForEmbedding } from "../../pipeline/contextual";
 import { decodeEmbedding } from "./sqlite-vec";
 import {
+  dropV2PartitionMirrorInTx,
+  rebuildV2PartitionMirrorInTx,
+} from "./v2-mirror";
+import {
   embeddingInputHash,
   loadSqliteVec,
   SELECTED_VECTOR_PARTITION_PREFIX,
@@ -373,6 +377,8 @@ async function rekeyLegacy(
       [newId]
     );
     db.exec(`DROP TABLE IF EXISTS vec_v1_${oldId}`);
+    dropV2PartitionMirrorInTx(db, oldId);
+    rebuildV2PartitionMirrorInTx(db, newId, primary.dimensions);
   }).immediate();
   return { kind: "rekeyed", msPerChunk };
 }

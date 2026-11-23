@@ -5,6 +5,7 @@
  * @module src/pipeline/explain
  */
 
+import type { VectorRouteInfo } from "../store/vector/types";
 import type {
   ExpansionResult,
   ExplainLine,
@@ -145,7 +146,8 @@ export function explainVector(
   count: number,
   available: boolean,
   unavailableReason?: string,
-  guidance?: string
+  guidance?: string,
+  route?: VectorRouteInfo
 ): ExplainLine {
   if (!available) {
     const detail = unavailableReason ? `: ${unavailableReason}` : "";
@@ -155,7 +157,20 @@ export function explainVector(
       message: `unavailable (sqlite-vec not loaded${detail})${hint}`,
     };
   }
-  return { stage: "vector", message: `${count} candidates` };
+  if (!route) {
+    return { stage: "vector", message: `${count} candidates` };
+  }
+  const routeParts = [`route=${route.route}`, `N=${route.mirrorRows}`];
+  if (route.coarseK !== undefined) {
+    routeParts.push(`coarseK=${route.coarseK}`);
+  }
+  if (route.rescored !== undefined) {
+    routeParts.push(`rescored=${route.rescored}`);
+  }
+  return {
+    stage: "vector",
+    message: `${count} candidates (${routeParts.join(", ")})`,
+  };
 }
 
 export function explainFusion(k: number, uniqueCount: number): ExplainLine {

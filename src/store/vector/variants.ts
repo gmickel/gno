@@ -4,6 +4,7 @@ import type { Database } from "bun:sqlite";
 import type { VectorOwnerInput, VectorVariantIdentity } from "./types";
 
 import { formatDocForEmbedding } from "../../pipeline/contextual";
+import { isV2CompatibleDimensions, v2TableName } from "./coarse-router";
 import {
   hasNullCosineColumn,
   isNullCosineEmbedding,
@@ -13,6 +14,16 @@ import {
 } from "./partition-index";
 import { provenOwners, vectorProofKey } from "./proof-cache";
 import { decodeEmbedding } from "./sqlite-vec";
+import {
+  ensureV2Table,
+  hasV2MirrorTables,
+  hasV2Table,
+  markV2MirrorClean,
+  readV2MirrorState,
+  runV2RecallSelfCheck,
+  syncV2PartitionMirrorInTx,
+  v2MirrorFreshnessState,
+} from "./v2-mirror";
 
 export const SELECTED_VECTOR_PARTITION_PREFIX = "vector_selected_partition:";
 
@@ -232,6 +243,18 @@ export class VectorVariantStore {
           variant_id INTEGER PRIMARY KEY,
           embedding FLOAT[${identity.dimensions}] distance_metric=cosine
         )`);
+        if (
+          hasV2MirrorTables(db) &&
+          isV2CompatibleDimensions(identity.dimensions)
+        ) {
+          if (!hasV2Table(db, this.partitionId)) {
+            db.run(
+              "DELETE FROM vector_mirror_v2_state WHERE partition_id = ?",
+              [this.partitionId]
+            );
+          }
+          ensureV2Table(db, this.partitionId, identity.dimensions);
+        }
       }
     }).immediate();
   }
@@ -357,7 +380,7 @@ export class VectorVariantStore {
 
   private fetchCurrentByKey(
     owners: readonly VectorOwnerInput[]
-  ): Map<string, VectorOwnerInput> {
+  ): Map<string, VectorOwnerInput & { collection?: string }> {
     const uniquePairs = new Map<string, [number, number]>();
     for (const owner of owners) {
       const key = `${owner.documentId}:${owner.seq}`;
@@ -365,23 +388,30 @@ export class VectorVariantStore {
         uniquePairs.set(key, [owner.documentId, owner.seq]);
       }
     }
+    const includeCollection = hasV2MirrorTables(this.db);
     const fetchedOwners = this.db
-      .query<OwnerRow, [string]>(`
+      .query<OwnerRow & { collection?: string }, [string]>(`
         WITH req AS (
           SELECT
             json_extract(value, '$[0]') AS document_id,
             json_extract(value, '$[1]') AS seq
           FROM json_each(?)
         )
-        SELECT d.id AS documentId, d.mirror_hash AS mirrorHash, c.seq, c.text, d.title
+        SELECT d.id AS documentId, d.mirror_hash AS mirrorHash${includeCollection ? ", d.collection" : ""}, c.seq, c.text, d.title
         FROM req r
         JOIN documents d ON d.id = r.document_id AND d.active = 1
         JOIN content_chunks c ON c.mirror_hash = d.mirror_hash AND c.seq = r.seq
       `)
       .all(JSON.stringify([...uniquePairs.values()]));
-    const currentByKey = new Map<string, VectorOwnerInput>();
+    const currentByKey = new Map<
+      string,
+      VectorOwnerInput & { collection?: string }
+    >();
     for (const row of fetchedOwners) {
-      currentByKey.set(`${row.documentId}:${row.seq}`, this.input(row));
+      currentByKey.set(`${row.documentId}:${row.seq}`, {
+        ...this.input(row),
+        ...(row.collection !== undefined ? { collection: row.collection } : {}),
+      });
     }
     return currentByKey;
   }
@@ -517,10 +547,59 @@ export class VectorVariantStore {
        mirror_hash = excluded.mirror_hash, variant_id = excluded.variant_id`
     );
 
+    const maintainV2 =
+      this.searchAvailable &&
+      hasV2MirrorTables(this.db) &&
+      isV2CompatibleDimensions(this.identity.dimensions) &&
+      hasV2Table(this.db, this.partitionId);
+    const v2Table = maintainV2 ? v2TableName(this.partitionId) : null;
+    const selectV2Row = maintainV2
+      ? this.db.query<{ id: number }, [string, string, number]>(
+          "SELECT id FROM vector_partition_rows WHERE partition_id = ? AND collection = ? AND variant_id = ?"
+        )
+      : null;
+    const insertV2Map = maintainV2
+      ? this.db.query<{ id: number }, [string, string, number]>(
+          `INSERT INTO vector_partition_rows(partition_id, collection, variant_id)
+           VALUES (?, ?, ?) RETURNING id`
+        )
+      : null;
+    const listV2RowsForVariant = maintainV2
+      ? this.db.query<{ id: number }, [string, number]>(
+          "SELECT id FROM vector_partition_rows WHERE partition_id = ? AND variant_id = ?"
+        )
+      : null;
+    const deleteV2Vec = v2Table
+      ? this.db.query<unknown, [number]>(
+          `DELETE FROM "${v2Table}" WHERE rowid = ?`
+        )
+      : null;
+    const insertV2VecFromRow = v2Table
+      ? this.db.query<unknown, [number]>(
+          `INSERT INTO "${v2Table}"(rowid, collection, coarse)
+           SELECT r.id, r.collection, vec_quantize_binary(v.embedding)
+           FROM vector_partition_rows r
+           JOIN vector_variants v
+             ON v.partition_id = r.partition_id AND v.variant_id = r.variant_id
+           WHERE r.id = ?`
+        )
+      : null;
+
+    const selectPrevOwnerVariant = maintainV2
+      ? this.db.query<{ variant_id: number }, [number, number, string]>(
+          "SELECT variant_id FROM vector_owners WHERE document_id = ? AND seq = ? AND partition_id = ?"
+        )
+      : null;
+    const reboundV2Candidates: Array<{
+      collection: string;
+      variantId: number;
+    }> = [];
+
     const variantIds: number[] = [];
     for (const { owner, embedding } of validRows) {
       const existing = selectVariant.get(this.partitionId, owner.inputHash);
       let variantId: number;
+      let updatedExistingEmbedding = false;
       if (!existing) {
         if (!embedding) throw new Error("Exact input variant needs embedding");
         const blob = new Uint8Array(
@@ -562,6 +641,7 @@ export class VectorVariantStore {
         }
       } else if (embedding) {
         variantId = existing.variant_id;
+        updatedExistingEmbedding = true;
         const blob = new Uint8Array(
           embedding.buffer,
           embedding.byteOffset,
@@ -588,6 +668,17 @@ export class VectorVariantStore {
           insertVec.run(variantId, existing.embedding);
         }
       }
+      const ownerCollection = maintainV2
+        ? currentByKey.get(`${owner.documentId}:${owner.seq}`)?.collection
+        : undefined;
+      const prevOwnerVariantId =
+        selectPrevOwnerVariant && ownerCollection
+          ? selectPrevOwnerVariant.get(
+              owner.documentId,
+              owner.seq,
+              this.partitionId
+            )?.variant_id
+          : undefined;
       upsertOwner.run(
         owner.documentId,
         owner.mirrorHash,
@@ -595,7 +686,53 @@ export class VectorVariantStore {
         this.partitionId,
         variantId
       );
+      if (
+        maintainV2 &&
+        selectV2Row &&
+        insertV2Map &&
+        listV2RowsForVariant &&
+        deleteV2Vec &&
+        insertV2VecFromRow
+      ) {
+        if (ownerCollection) {
+          if (
+            prevOwnerVariantId !== undefined &&
+            prevOwnerVariantId !== variantId
+          ) {
+            reboundV2Candidates.push({
+              collection: ownerCollection,
+              variantId: prevOwnerVariantId,
+            });
+          }
+          const existingMap = selectV2Row.get(
+            this.partitionId,
+            ownerCollection,
+            variantId
+          );
+          if (!existingMap) {
+            const inserted = insertV2Map.get(
+              this.partitionId,
+              ownerCollection,
+              variantId
+            )!;
+            deleteV2Vec.run(inserted.id);
+            insertV2VecFromRow.run(inserted.id);
+          }
+        }
+        if (updatedExistingEmbedding) {
+          for (const row of listV2RowsForVariant.all(
+            this.partitionId,
+            variantId
+          )) {
+            deleteV2Vec.run(row.id);
+            insertV2VecFromRow.run(row.id);
+          }
+        }
+      }
       variantIds.push(variantId);
+    }
+    if (reboundV2Candidates.length > 0) {
+      this.pruneV2CollectionMappings(reboundV2Candidates);
     }
     return variantIds;
   }
@@ -905,6 +1042,13 @@ export class VectorVariantStore {
           ? 1
           : 0;
         this.setMirrorMark(0, nullCosine);
+        // Build/sync the v2 bit coarse mirror alongside activation when supported;
+        // unsupported dimensions or pre-v39 schemas are no-ops and never block activation.
+        syncV2PartitionMirrorInTx(
+          this.db,
+          this.partitionId,
+          this.identity.dimensions
+        );
         this.db.run(
           `UPDATE vector_partitions SET state = 'active', activated_epoch = ? WHERE partition_id = ?`,
           [expectedEpoch, this.partitionId]
@@ -1011,22 +1155,42 @@ export class VectorVariantStore {
     };
     if (!this.searchAvailable || !this.mirrorTracked()) return write(mark);
     const before = this.mirrorStateMark();
+    const trackV2 =
+      hasV2MirrorTables(this.db) &&
+      isV2CompatibleDimensions(this.identity.dimensions) &&
+      hasV2Table(this.db, this.partitionId);
+    const beforeV2 = trackV2
+      ? readV2MirrorState(this.db, this.partitionId)
+      : null;
     const result = write(mark);
     if (before.dirty !== 0) {
       this.setMirrorMark(before.dirty);
-      return result;
-    }
-    let nextNullCosine: NullCosineMark;
-    if (mark.sawNullCosine) {
-      nextNullCosine = 1;
-    } else if (mark.nullCosineUnknown) {
-      nextNullCosine = null;
-    } else if (mark.removedVariants && before.nullCosine === 1) {
-      nextNullCosine = null;
     } else {
-      nextNullCosine = before.nullCosine;
+      let nextNullCosine: NullCosineMark;
+      if (mark.sawNullCosine) {
+        nextNullCosine = 1;
+      } else if (mark.nullCosineUnknown) {
+        nextNullCosine = null;
+      } else if (mark.removedVariants && before.nullCosine === 1) {
+        nextNullCosine = null;
+      } else {
+        nextNullCosine = before.nullCosine;
+      }
+      this.setMirrorMark(0, nextNullCosine);
     }
-    this.setMirrorMark(0, nextNullCosine);
+    if (trackV2 && beforeV2?.dirty === 0) {
+      const preservedCheck =
+        beforeV2.checkRecall !== null &&
+        beforeV2.checkQueries !== null &&
+        beforeV2.checkCoarseK !== null
+          ? {
+              recall: beforeV2.checkRecall,
+              queries: beforeV2.checkQueries,
+              coarseK: beforeV2.checkCoarseK,
+            }
+          : null;
+      markV2MirrorClean(this.db, this.partitionId, preservedCheck);
+    }
     return result;
   }
 
@@ -1055,6 +1219,54 @@ export class VectorVariantStore {
     });
   }
 
+  /**
+   * V2 bit coarse mirror freshness alongside `mirrorState()`, so an upgraded
+   * index with a clean `vec_v1` and a missing or dirty `vec_v2` gets its v2
+   * mirror built at the end of the next `gno embed`.
+   */
+  v2MirrorState(): "clean" | "dirty" | "missing" | "unsupported" {
+    if (!this.searchAvailable) return "missing";
+    return this.snapshot(() =>
+      v2MirrorFreshnessState(
+        this.db,
+        this.partitionId,
+        this.identity.dimensions,
+        this.searchAvailable
+      )
+    );
+  }
+
+  /** Sync only the v2 bit coarse mirror and run recall self-check when eligible. */
+  syncV2Index(): void {
+    if (!this.searchAvailable) throw new Error("Variant index unavailable");
+    this.db
+      .transaction(() => {
+        syncV2PartitionMirrorInTx(
+          this.db,
+          this.partitionId,
+          this.identity.dimensions
+        );
+        runV2RecallSelfCheck(this.db, {
+          partitionId: this.partitionId,
+          dimensions: this.identity.dimensions,
+        });
+      })
+      .immediate();
+  }
+
+  /** Run the build-time recall self-check when above budget and unchecked. */
+  ensureV2RecallSelfCheck(): void {
+    if (!this.searchAvailable) return;
+    this.db
+      .transaction(() => {
+        runV2RecallSelfCheck(this.db, {
+          partitionId: this.partitionId,
+          dimensions: this.identity.dimensions,
+        });
+      })
+      .immediate();
+  }
+
   /** Repair materialization after storage-only backfill; never changes legacy authority. */
   syncIndex(): void {
     if (!this.searchAvailable) throw new Error("Variant index unavailable");
@@ -1074,6 +1286,15 @@ export class VectorVariantStore {
           ? 1
           : 0;
         this.setMirrorMark(0, nullCosine);
+        syncV2PartitionMirrorInTx(
+          this.db,
+          this.partitionId,
+          this.identity.dimensions
+        );
+        runV2RecallSelfCheck(this.db, {
+          partitionId: this.partitionId,
+          dimensions: this.identity.dimensions,
+        });
       })
       .immediate();
   }
@@ -1084,6 +1305,19 @@ export class VectorVariantStore {
     this.db
       .transaction(() =>
         this.keepingMirrorMark((mark) => {
+          const releasedV2Candidates = hasV2MirrorTables(this.db)
+            ? this.db
+                .query<
+                  { collection: string; variantId: number },
+                  [number, string]
+                >(
+                  `SELECT DISTINCT d.collection, o.variant_id AS variantId
+                   FROM vector_owners o
+                   JOIN documents d ON d.id = o.document_id
+                   WHERE o.document_id = ? AND o.partition_id = ?`
+                )
+                .all(documentId, this.partitionId)
+            : [];
           this.db
             .query(
               "DELETE FROM vector_owners WHERE document_id = ? AND partition_id = ?"
@@ -1091,6 +1325,9 @@ export class VectorVariantStore {
             .run(documentId, this.partitionId);
           if (this.removeUnowned(true) > 0) {
             mark.removedVariants = true;
+          }
+          if (releasedV2Candidates.length > 0) {
+            this.pruneV2CollectionMappings(releasedV2Candidates);
           }
         })
       )
@@ -1107,10 +1344,106 @@ export class VectorVariantStore {
           if (removed > 0) {
             mark.removedVariants = true;
           }
+          this.pruneAllStaleV2CollectionMappings();
           return removed;
         })
       )
       .immediate();
+  }
+
+  /**
+   * Remove targeted `(collection, variant_id)` v2 mirror rows when no remaining
+   * `vector_owners` row in that collection references the variant (e.g. after a
+   * document release or owner rebind while another collection still owns the variant).
+   */
+  private pruneV2CollectionMappings(
+    candidates: Array<{ collection: string; variantId: number }>
+  ): void {
+    if (!hasV2MirrorTables(this.db) || candidates.length === 0) return;
+    const seen = new Set<string>();
+    const hasOwnerInCollection = this.db.query<
+      { ok: number },
+      [string, number, string]
+    >(
+      `SELECT 1 AS ok
+       FROM vector_owners o
+       JOIN documents d ON d.id = o.document_id
+       WHERE o.partition_id = ? AND o.variant_id = ? AND d.collection = ?
+       LIMIT 1`
+    );
+    const selectMappingRow = this.db.query<
+      { id: number },
+      [string, string, number]
+    >(
+      `SELECT id FROM vector_partition_rows
+       WHERE partition_id = ? AND collection = ? AND variant_id = ?`
+    );
+    const staleIds: number[] = [];
+    for (const { collection, variantId } of candidates) {
+      const key = `${collection}\0${variantId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (hasOwnerInCollection.get(this.partitionId, variantId, collection)) {
+        continue;
+      }
+      const row = selectMappingRow.get(this.partitionId, collection, variantId);
+      if (row) staleIds.push(row.id);
+    }
+    this.deleteV2MappingRowIds(staleIds);
+  }
+
+  /**
+   * Sweep any `(collection, variant_id)` v2 mirror rows whose variant or
+   * collection-scoped ownership is no longer present in `vector_owners`.
+   */
+  private pruneAllStaleV2CollectionMappings(): void {
+    if (!hasV2MirrorTables(this.db)) return;
+    const staleIds = this.db
+      .query<{ id: number }, [string]>(
+        `SELECT r.id
+         FROM vector_partition_rows r
+         WHERE r.partition_id = ?
+           AND (
+             NOT EXISTS (
+               SELECT 1 FROM vector_variants v
+               WHERE v.partition_id = r.partition_id AND v.variant_id = r.variant_id
+             )
+             OR NOT EXISTS (
+               SELECT 1 FROM vector_owners o
+               JOIN documents d ON d.id = o.document_id
+               WHERE o.partition_id = r.partition_id
+                 AND o.variant_id = r.variant_id
+                 AND d.collection = r.collection
+             )
+           )`
+      )
+      .all(this.partitionId)
+      .map((r) => r.id);
+    this.deleteV2MappingRowIds(staleIds);
+  }
+
+  private deleteV2MappingRowIds(ids: number[]): void {
+    if (ids.length === 0) return;
+    const idsJson = JSON.stringify(ids);
+    const v2Exists = hasV2Table(this.db, this.partitionId);
+    if (this.searchAvailable && v2Exists) {
+      const v2Tbl = v2TableName(this.partitionId);
+      this.db
+        .query(
+          `DELETE FROM "${v2Tbl}" WHERE rowid IN (SELECT value FROM json_each(?))`
+        )
+        .run(idsJson);
+    }
+    this.db
+      .query(
+        "DELETE FROM vector_partition_rows WHERE id IN (SELECT value FROM json_each(?))"
+      )
+      .run(idsJson);
+    if (!this.searchAvailable && v2Exists) {
+      this.db.run("DELETE FROM vector_mirror_v2_state WHERE partition_id = ?", [
+        this.partitionId,
+      ]);
+    }
   }
 
   private removeUnowned(inOuterTx: boolean): number {
@@ -1199,6 +1532,31 @@ export class VectorVariantStore {
           `DELETE FROM ${this.tableName} WHERE variant_id IN (SELECT value FROM json_each(?))`
         )
         .run(removeJson);
+    }
+    if (hasV2MirrorTables(this.db)) {
+      const v2RowIds = this.db
+        .query<{ id: number }, [string, string]>(
+          `SELECT id FROM vector_partition_rows
+           WHERE partition_id = ?
+             AND variant_id IN (SELECT value FROM json_each(?))`
+        )
+        .all(this.partitionId, removeJson);
+      if (v2RowIds.length > 0) {
+        const v2IdsJson = JSON.stringify(v2RowIds.map((r) => r.id));
+        if (this.searchAvailable && hasV2Table(this.db, this.partitionId)) {
+          const v2Tbl = v2TableName(this.partitionId);
+          this.db
+            .query(
+              `DELETE FROM "${v2Tbl}" WHERE rowid IN (SELECT value FROM json_each(?))`
+            )
+            .run(v2IdsJson);
+        }
+        this.db
+          .query(
+            "DELETE FROM vector_partition_rows WHERE id IN (SELECT value FROM json_each(?))"
+          )
+          .run(v2IdsJson);
+      }
     }
     this.db
       .query(

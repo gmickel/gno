@@ -6,6 +6,9 @@
  */
 
 import type { DocumentEligibilityOptions, StoreResult } from "../types";
+import type { VectorRouteInfo } from "./coarse-router";
+
+export type { VectorRouteInfo, VectorRouteKind } from "./coarse-router";
 
 /** Full effective embedding identity, including truncation/runtime policy. */
 export interface VectorVariantIdentity {
@@ -53,6 +56,12 @@ export interface VectorSearchOptions {
   allowedMirrorHashes?: string[];
   /** Exact active owner/chunk domain, applied before the nearest-neighbor budget. */
   eligibility?: DocumentEligibilityOptions & { language?: string };
+  /** Force exact search even when coarse bit mirror routing is enabled (self-check/evals/benchmarks). */
+  exact?: boolean;
+  /** Enable cost-routed coarse two-stage bit vec0 search (default false per fn-235 R1). */
+  coarseVectorSearch?: boolean;
+  /** Optional observer invoked with the chosen vector route metadata for --explain and traces. */
+  onRoute?: (info: VectorRouteInfo) => void;
 }
 
 /** Vector search result */
