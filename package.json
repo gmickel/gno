@@ -93,6 +93,7 @@
     "bench:session-import": "bun scripts/session-import-benchmark.ts",
     "bench:relocation": "bun scripts/relocation-benchmark.ts",
     "bench:vector-search": "bun scripts/vector-search-benchmark.ts",
+    "bench:vector-gc": "bun scripts/vector-gc-benchmark.ts",
     "soak": "bun scripts/soak/index.ts",
     "smoke:watcher-reconciliation": "bun scripts/watcher-reconciliation-smoke.ts",
     "bench:code-embeddings": "bun scripts/code-embedding-benchmark.ts",

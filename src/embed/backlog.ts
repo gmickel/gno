@@ -62,6 +62,12 @@ export interface EmbedBacklogDeps {
    * after. null means another writer holds it; the pass stops as deferred.
    */
   acquireWriteTurn?: AcquireWriteTurn;
+  /**
+   * Write gate for automatic vector GC only, for callers whose embedding
+   * writes take no lease (the SDK): null defers GC. Absent, GC runs under
+   * acquireWriteTurn (the resident) or the caller's own lease (the CLI).
+   */
+  acquireGcTurn?: AcquireWriteTurn;
   /** Explicit confirmation to build a separate vector partition (never implied by --yes). */
   allowNewPartition?: boolean;
   /**
@@ -109,6 +115,10 @@ export interface EmbedBacklogResult {
   stopped?: "limit";
   /** The pass ended early because the runtime identity changed; work may remain. */
   incomplete?: boolean;
+  /** Automatic vector GC at the end of the pass, when it examined candidates. */
+  vectorGc?: { variants: number; bytes: number; remaining: boolean };
+  /** Automatic vector GC failed; the pass's embeddings are unaffected. */
+  vectorGcError?: string;
 }
 
 interface Cursor {

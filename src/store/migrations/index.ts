@@ -53,6 +53,7 @@ import { migration as m036 } from "./036-vector-mirror-state";
 import { migration as m037 } from "./037-performance-indexes";
 import { migration as m038 } from "./038-vector-mirror-null-cosine";
 import { migration as m039 } from "./039-vector-mirror-v2";
+import { migration as m040 } from "./040-vector-gc-candidates";
 
 /** All migrations in order */
 export const migrations = [
@@ -95,4 +96,5 @@ export const migrations = [
   m037,
   m038,
   m039,
+  m040,
 ];

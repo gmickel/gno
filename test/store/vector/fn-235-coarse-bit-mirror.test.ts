@@ -184,7 +184,9 @@ describe("fn-235 R2: migration v39, v2 mirror lifecycle, triggers, and cleanup",
         true
       );
       expect(getSchemaVersion(raw)).toBe(38);
-      expect(runMigrations(raw, migrations, "unicode61").ok).toBe(true);
+      expect(runMigrations(raw, migrations.slice(0, 39), "unicode61").ok).toBe(
+        true
+      );
       expect(getSchemaVersion(raw)).toBe(39);
 
       // Triggers must only touch plain tables (never vec0, never documents)

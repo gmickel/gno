@@ -10,6 +10,12 @@ import {
   withInferencePage,
 } from "../llm/inference-scope";
 import { err, ok } from "../store/types";
+import {
+  AUTO_VECTOR_GC_GRACE_SECONDS,
+  autoVectorGcDisabled,
+  collectQueuedGarbage,
+  hasQueuedGarbage,
+} from "../store/vector/garbage";
 import { getVectorStatsDatabase } from "../store/vector/stats";
 import { embedTextsWithRecovery } from "./batch";
 import {
@@ -150,7 +156,9 @@ export async function embedVariantBacklog(
   };
   const stop = async () => {
     await saveResume(after);
-    return ok({ ...total, stopped: "limit" as const });
+    // A bounded pass still collects due garbage (itself bounded), so repeated
+    // bounded runs with work pending never leave it queued indefinitely.
+    return await collectAfterPass(ok({ ...total, stopped: "limit" as const }));
   };
   const handleForegroundOutcome = async (
     ownersCount: number,
@@ -710,6 +718,15 @@ export async function embedVariantBacklog(
     // A traversal that reached its end leaves nothing to resume.
     if (!identityLost) await saveResume(undefined);
     assertInferenceActive();
+    return await collectAfterPass(await settlePass());
+  } catch (cause) {
+    return err(
+      "QUERY_FAILED",
+      cause instanceof Error ? cause.message : String(cause)
+    );
+  }
+
+  async function settlePass(): Promise<StoreResult<EmbedBacklogResult>> {
     // Retrieval authority was established by the first activation, and
     // search validates every owner at query time, so a later pass does not
     // re-prove index-wide coverage (O(index) on every run) while the vec0
@@ -794,10 +811,55 @@ export async function embedVariantBacklog(
     }
     assertInferenceActive();
     return ok(identityLost ? { ...total, incomplete: true } : total);
-  } catch (cause) {
-    return err(
-      "QUERY_FAILED",
-      cause instanceof Error ? cause.message : String(cause)
-    );
+  }
+
+  /**
+   * Automatic vector GC for this pass's partition, once its bindings have
+   * settled (a moved file's identical content was re-bound by reuse above).
+   * Only candidates queued longer than the grace period are due, so a file
+   * restored within it reuses its vector. One indexed probe when nothing is
+   * due; otherwise a bounded slice under the write turn, the rest left for
+   * the next pass. A failure is reported on the result and never fails the
+   * pass.
+   */
+  async function collectAfterPass(
+    settled: StoreResult<EmbedBacklogResult>
+  ): Promise<StoreResult<EmbedBacklogResult>> {
+    if (
+      !settled.ok ||
+      !db ||
+      identityLost ||
+      settled.value.deferred ||
+      settled.value.incomplete ||
+      autoVectorGcDisabled()
+    )
+      return settled;
+    const gcDb = db;
+    try {
+      const dueAt =
+        Math.floor(Date.now() / 1000) - AUTO_VECTOR_GC_GRACE_SECONDS;
+      if (
+        !identityStillCurrent() ||
+        !hasQueuedGarbage(gcDb, store.partitionId, dueAt)
+      )
+        return settled;
+      const turn = await inWriteTurn(
+        deps.acquireGcTurn ?? deps.acquireWriteTurn,
+        async () =>
+          collectQueuedGarbage(
+            gcDb,
+            { partitionId: store.partitionId, model: store.identity.model },
+            { vecLoaded: store.searchAvailable }
+          )
+      );
+      if (turn.deferred) return settled;
+      const { variants, bytes, remaining } = turn.value;
+      return ok({ ...settled.value, vectorGc: { variants, bytes, remaining } });
+    } catch (cause) {
+      return ok({
+        ...settled.value,
+        vectorGcError: cause instanceof Error ? cause.message : String(cause),
+      });
+    }
   }
 }

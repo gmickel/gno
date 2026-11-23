@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/vec-gc@1.0",
+  "title": "GNO Vector GC Report",
+  "description": "Report emitted by `gno vec gc --json`. With `dryRun: true`, `variants` and `bytes` are what a real run would remove and nothing was written. Logical embedding bytes are reported separately from the database file size: deleting rows makes space reusable without shrinking the file.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "dryRun",
+    "partitions",
+    "variants",
+    "bytes",
+    "legacyContentVectors",
+    "databaseBytes",
+    "freeBytes"
+  ],
+  "properties": {
+    "dryRun": { "type": "boolean" },
+    "partitions": {
+      "type": "array",
+      "description": "Every stored vector partition (active, shadow and legacy-keyed).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "model",
+          "dimensions",
+          "state",
+          "legacy",
+          "examined",
+          "variants",
+          "bytes"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "model": { "type": "string", "minLength": 1 },
+          "dimensions": { "type": "integer", "minimum": 1 },
+          "state": { "enum": ["active", "shadow"] },
+          "legacy": {
+            "type": "boolean",
+            "description": "Pre-runtime-independent partition key."
+          },
+          "examined": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Stored variants examined."
+          },
+          "variants": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Variants with no live use: collectible (dry run) or removed."
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Stored embedding bytes of those variants."
+          },
+          "skipped": {
+            "type": "string",
+            "description": "Why the partition was not processed (for example sqlite-vec unavailable for its vector index)."
+          }
+        }
+      }
+    },
+    "variants": { "type": "integer", "minimum": 0 },
+    "bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Logical embedding bytes collectible or removed."
+    },
+    "legacyContentVectors": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Legacy `content_vectors` rows; not collected here (`gno cleanup` removes orphaned ones, `gno vec prune` superseded ones)."
+    },
+    "databaseBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Size of the main database file on disk in bytes (the WAL file is not included)."
+    },
+    "freeBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Free pages SQLite reuses before growing the file."
+    }
+  }
+}

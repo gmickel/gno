@@ -1386,7 +1386,7 @@ gno update [--git-pull] [--json] [--lock-wait <duration>] [--no-wait]
 | `--lock-wait <duration>` | duration | How long to wait for the index write lease (default: `120s`). Accepts `120`, `120s`, or `2m`. |
 | `--no-wait` | boolean | Do not wait; fail immediately if another writer holds the lease |
 
-**Concurrency:** One writer at a time on the shared index database. `update` waits up to `--lock-wait` for the lease (the same `.mcp-write.lock` MCP write tools use); `index`, `embed`, `cleanup`, `vec sync`, `vec rebuild`, `vec drop`, `vec prune`, `collection clear-embeddings`, `tags add`, and `tags rm` follow the same contract; `capture` takes the same lock internally, and single-row writes such as `collection policy set` are absorbed by `busy_timeout`. `--no-wait` opts out. Reads (`search`, `query`, `get`) never take the lease. External serialising wrappers are no longer required for CLI-vs-CLI and CLI-vs-MCP overlap. A resident (`gno serve`/`gno daemon`) takes the same lease without waiting around each watcher sync, embed preparation, background-embedding page write (never around inference), and the final vector activation; when the lease is held it defers that work (watcher retry after 5s, embed pass rescheduled) instead of writing, so resident background writes never hold a SQLite write lock outside the lease. The resident's own SQLite busy wait is capped at 500ms so a stop signal is always handled within the stop grace.
+**Concurrency:** One writer at a time on the shared index database. `update` waits up to `--lock-wait` for the lease (the same `.mcp-write.lock` MCP write tools use); `index`, `embed`, `cleanup`, `vec sync`, `vec rebuild`, `vec drop`, `vec prune`, `vec gc` (not `vec gc --dry-run`, which only reads), `collection clear-embeddings`, `tags add`, and `tags rm` follow the same contract; `capture` takes the same lock internally, and single-row writes such as `collection policy set` are absorbed by `busy_timeout`. `--no-wait` opts out. Reads (`search`, `query`, `get`) never take the lease. External serialising wrappers are no longer required for CLI-vs-CLI and CLI-vs-MCP overlap. A resident (`gno serve`/`gno daemon`) takes the same lease without waiting around each watcher sync, embed preparation, background-embedding page write (never around inference), and the final vector activation; when the lease is held it defers that work (watcher retry after 5s, embed pass rescheduled) instead of writing, so resident background writes never hold a SQLite write lock outside the lease. The resident's own SQLite busy wait is capped at 500ms so a stop signal is always handled within the stop grace.
 
 **Behavior:**
 
@@ -3247,6 +3247,103 @@ included, is refused. JSON output is
 
 - 0: Dropped
 - 1: Unknown, ambiguous or protected partition
+- 4: Write lease busy with `--no-wait`
+
+---
+
+### gno vec gc
+
+Remove stored vector variants that no active document can use, in every stored
+partition (active, shadow and legacy-keyed).
+
+**Synopsis:**
+
+```bash
+gno vec gc [--dry-run] [--json] [--lock-wait <duration>] [--no-wait]
+```
+
+A variant is kept while an active document whose content matches one of its
+owner bindings (same content hash and chunk) produces the variant's exact
+embedding input under the partition's model: every valid active owner, in any
+collection, and identical content that is active but not re-bound yet (a moved
+file before the next `gno embed`, which reuses the vector). Every other variant
+is removed together with its owner bindings and its vec0 index row. Each
+partition is processed in batches of 500 variants, each its own write
+transaction that re-reads and re-validates its variants; searches see a batch
+entirely or not at all. Partition state and activation never change; a vector
+index recorded as current stays current and one recorded as stale stays stale.
+A partition whose vec0 index exists while sqlite-vec cannot load is skipped
+with `skipped`, never partly changed.
+
+`--dry-run` opens the index read-only (no schema migration, no write lease)
+and reports, from one snapshot, what a real run would remove. Legacy
+`content_vectors` rows are not collected (`gno cleanup` removes orphaned ones,
+`gno vec prune` superseded ones); their count is reported as
+`legacyContentVectors`.
+
+Deleting rows makes database pages reusable without shrinking the file:
+`bytes` is the logical embedding payload removed (`sum(length(embedding))`),
+`databaseBytes` the main database file size on disk and `freeBytes` the free pages SQLite
+reuses before growing the file. Compaction is a separate, explicit step
+(`gno vec prune --vacuum`, which first prunes superseded legacy vector
+tables and rows, or `VACUUM` by hand, see docs/CLI.md); `vec gc` never
+compacts.
+
+JSON output conforms to
+[`vec-gc.schema.json`](./output-schemas/vec-gc.schema.json):
+
+```json
+{
+  "dryRun": false,
+  "partitions": [
+    {
+      "id": "9a8b7c6d5e4f…",
+      "model": "hf:org/model/model.gguf",
+      "dimensions": 384,
+      "state": "active",
+      "legacy": false,
+      "examined": 12000,
+      "variants": 8000,
+      "bytes": 12288000
+    }
+  ],
+  "variants": 8000,
+  "bytes": 12288000,
+  "legacyContentVectors": 0,
+  "databaseBytes": 97910784,
+  "freeBytes": 67305472
+}
+```
+
+**Automatic collection:** at the end of every `gno embed` pass (CLI, `gno serve`
+and `gno daemon` background embedding, MCP and SDK embedding), GNO collects
+the same way for the partition the pass embedded into, from a queue that
+records variants whose document was deactivated or whose owner binding was
+removed or re-pointed. A queued variant is due only 7 days after it last lost
+a binding: sync keeps a deactivated document's bindings so that restoring
+identical content costs no embedding, and automatic collection keeps that
+guarantee for a file restored within the grace (`gno vec gc` collects at once).
+Passes run when `gno embed` runs and, in `gno serve`/`gno daemon`, after
+content changes (and at start when chunks are pending), so vectors that come
+due in an index that no longer changes wait for the next pass or `gno vec gc`.
+With nothing due this is one indexed lookup. A pass
+examines at most 5,000 queued variants and starts no new batch of 500 after
+250 ms; the rest waits for the next pass. A pass stopped by `--max-chunks` or
+`--max-seconds` collects as well (so it may run up to that budget past the
+limit); a deferred pass, or one ended by a runtime change, does not. Other
+partitions' queued variants, and garbage from before this release that no
+deactivated document still binds, are collected by `gno vec gc`. Set
+`GNO_NO_AUTO_VECTOR_GC=1` to turn automatic collection off. A failure never
+fails the pass: `gno embed` prints `Warning: automatic vector GC failed: …`
+and its `--json` receipt carries `vectorGcError`; the SDK embed result carries
+the same field. SDK embedding takes no write lease, so its automatic collection
+runs only when the shared index write lease is free at that moment (held by
+anyone, this process included, it waits for a later pass).
+
+**Exit Codes:**
+
+- 0: Success (including partitions reported as `skipped`)
+- 2: Runtime failure (uninitialized, database failure)
 - 4: Write lease busy with `--no-wait`
 
 ---

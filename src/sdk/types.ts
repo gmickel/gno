@@ -250,6 +250,8 @@ export interface GnoEmbedResult {
   duration: number;
   model: string;
   searchAvailable: boolean;
+  /** Automatic vector GC failed; a warning, the embeddings are stored. */
+  vectorGcError?: string;
 }
 
 export interface GnoIndexOptions extends GnoUpdateOptions, GnoEmbedOptions {

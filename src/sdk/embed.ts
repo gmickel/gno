@@ -18,9 +18,11 @@ import type {
 } from "../store/vector";
 import type { GnoEmbedOptions, GnoEmbedResult } from "./types";
 
+import { acquireCliWriteLease } from "../core/write-lease";
 import { embedBacklog, prepareEmbeddingBacklog } from "../embed/backlog";
 import { getEmbeddingFingerprint } from "../embed/fingerprint";
 import {
+  type AcquireWriteTurn,
   chunkRetryKey,
   embedAndStoreBatch,
   MAX_EMBED_CHUNK_ATTEMPTS,
@@ -30,6 +32,19 @@ import { resolveModelUri } from "../llm/registry";
 import { err, ok } from "../store/types";
 import { createVectorIndexPort, createVectorStatsPort } from "../store/vector";
 import { sdkError } from "./errors";
+
+/** Take the shared index write lease only if it is free right now. */
+function noWaitWriteLease(dbPath: string): AcquireWriteTurn {
+  return async () => {
+    const lease = await acquireCliWriteLease({
+      dbPath,
+      waitMs: 0,
+      noWait: true,
+      command: "gno sdk embed (vector gc)",
+    });
+    return lease.ok ? lease.release : null;
+  };
+}
 
 interface EmbedRuntimeOptions {
   config: Config;
@@ -313,7 +328,13 @@ export async function runEmbed(
           model: modelUri,
           searchAvailable: prepared.value.variantStore.searchAvailable,
         };
-      const processed = await embedBacklog(prepared.value);
+      const processed = await embedBacklog({
+        ...prepared.value,
+        // The SDK takes no write lease for embedding; automatic vector GC
+        // deletes only while it can take the shared lease without waiting
+        // (busy, including held by this process, defers it).
+        acquireGcTurn: noWaitWriteLease(db.filename),
+      });
       if (!processed.ok) throw sdkError("STORE", processed.error.message);
       if (processed.value.syncError)
         throw sdkError("STORE", processed.value.syncError);
@@ -324,6 +345,9 @@ export async function runEmbed(
         duration: (Date.now() - startedAt) / 1000,
         model: modelUri,
         searchAvailable: prepared.value.variantStore.searchAvailable,
+        ...(processed.value.vectorGcError
+          ? { vectorGcError: processed.value.vectorGcError }
+          : {}),
       };
     }
     if (force) {

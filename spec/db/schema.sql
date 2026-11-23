@@ -344,6 +344,66 @@ CREATE TRIGGER IF NOT EXISTS vector_variants_mirror_delete
 AFTER DELETE ON vector_variants BEGIN
   DELETE FROM vector_mirror_state WHERE partition_id = OLD.partition_id;
 END;
+-- Vector GC candidates (migration 040). A (partition, variant) is queued, or
+-- its queued_at restarted, when a document goes from active to inactive (its
+-- bindings' variants), when an owner binding is deleted (also by cascade) and
+-- when a binding is re-pointed to another variant of its partition. Automatic
+-- collection at the end of an embed pass takes candidates older than its
+-- grace (7 days); `gno vec gc` examines every stored variant. No unique key:
+-- inserts skip existing rows with NOT EXISTS, so an outer conflict clause
+-- cannot override them. The table carries no epoch trigger.
+CREATE TABLE IF NOT EXISTS vector_gc_candidates (
+  partition_id TEXT NOT NULL,
+  variant_id INTEGER NOT NULL,
+  queued_at INTEGER NOT NULL DEFAULT (CAST(strftime('%s', 'now') AS INTEGER))
+);
+CREATE INDEX IF NOT EXISTS idx_vector_gc_candidates
+  ON vector_gc_candidates(partition_id, variant_id);
+CREATE INDEX IF NOT EXISTS idx_vector_gc_candidates_due
+  ON vector_gc_candidates(partition_id, queued_at);
+CREATE TRIGGER IF NOT EXISTS vector_gc_owner_delete
+AFTER DELETE ON vector_owners BEGIN
+  UPDATE vector_gc_candidates SET queued_at = CAST(strftime('%s', 'now') AS INTEGER)
+  WHERE partition_id = OLD.partition_id AND variant_id = OLD.variant_id;
+  INSERT INTO vector_gc_candidates (partition_id, variant_id)
+  SELECT OLD.partition_id, OLD.variant_id
+  WHERE NOT EXISTS (
+    SELECT 1 FROM vector_gc_candidates
+    WHERE partition_id = OLD.partition_id AND variant_id = OLD.variant_id
+  );
+END;
+CREATE TRIGGER IF NOT EXISTS vector_gc_owner_rebind
+AFTER UPDATE OF variant_id ON vector_owners
+WHEN OLD.variant_id IS NOT NEW.variant_id
+  AND OLD.partition_id = NEW.partition_id BEGIN
+  UPDATE vector_gc_candidates SET queued_at = CAST(strftime('%s', 'now') AS INTEGER)
+  WHERE partition_id = OLD.partition_id AND variant_id = OLD.variant_id;
+  INSERT INTO vector_gc_candidates (partition_id, variant_id)
+  SELECT OLD.partition_id, OLD.variant_id
+  WHERE NOT EXISTS (
+    SELECT 1 FROM vector_gc_candidates
+    WHERE partition_id = OLD.partition_id AND variant_id = OLD.variant_id
+  );
+END;
+CREATE TRIGGER IF NOT EXISTS vector_gc_document_inactive
+AFTER UPDATE OF active ON documents
+WHEN OLD.active = 1 AND NEW.active = 0 BEGIN
+  UPDATE vector_gc_candidates SET queued_at = CAST(strftime('%s', 'now') AS INTEGER)
+  WHERE rowid IN (
+    SELECT q.rowid FROM vector_owners o
+    JOIN vector_gc_candidates q
+      ON q.partition_id = o.partition_id AND q.variant_id = o.variant_id
+    WHERE o.document_id = NEW.id
+  );
+  INSERT INTO vector_gc_candidates (partition_id, variant_id)
+  SELECT DISTINCT o.partition_id, o.variant_id
+  FROM vector_owners o
+  WHERE o.document_id = NEW.id
+    AND NOT EXISTS (
+      SELECT 1 FROM vector_gc_candidates q
+      WHERE q.partition_id = o.partition_id AND q.variant_id = o.variant_id
+    );
+END;
 -- Its writes/deletes share the authoritative variant transaction; no best effort.
 -- Mutation epoch fences all old and new writers, including raw SQL. Active state
 -- records durable variant authority after initial promotion. activated_epoch

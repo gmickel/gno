@@ -937,14 +937,20 @@ Vector index maintenance. Use when `gno similar` returns empty despite embedding
 gno vec sync               # Incremental sync of float32 (v1) and bit coarse (v2) mirrors + recall self-check
 gno vec rebuild            # Full rebuild of v1 and v2 mirrors from stored vectors (no re-embedding)
 gno vec drop <partition>   # Drop an abandoned shadow partition (id prefix from gno status)
+gno vec gc [--dry-run]     # Remove stored vectors no active document can use (all partitions)
 gno vec prune              # Drop superseded legacy vec_<hash> tables, content_vectors rows, and orphan mirrors
 gno vec prune --vacuum     # Prune and run in-place SQLite VACUUM to shrink the DB file
 ```
 
-| Option     | Description                                               |
-| ---------- | --------------------------------------------------------- |
-| `--vacuum` | (`prune` only) Run SQLite `VACUUM` in-place after pruning |
-| `--json`   | JSON output                                               |
+`gno embed` passes also collect vectors unused for 7+ days automatically (bounded per pass;
+`GNO_NO_AUTO_VECTOR_GC=1` turns it off). `vec gc` never shrinks the file; see
+docs/CLI.md for compaction.
+
+| Option      | Description                                               |
+| ----------- | --------------------------------------------------------- |
+| `--dry-run` | (`gc` only) Report without writing (read-only, no lease)  |
+| `--vacuum`  | (`prune` only) Run SQLite `VACUUM` in-place after pruning |
+| `--json`    | JSON output                                               |
 
 ## MCP Server
 

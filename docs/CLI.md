@@ -2469,6 +2469,8 @@ Vector index maintenance. Use when vector search returns empty despite embedding
 gno vec sync      # Sync the vec0 index with the stored vectors
 gno vec rebuild   # Full rebuild of the vec0 index
 gno vec drop 9a8b7c6d5e4f   # Drop an abandoned shadow partition
+gno vec gc --dry-run        # Report stored vectors no active document can use
+gno vec gc                  # Remove them
 gno vec prune     # Remove superseded legacy vec_<hash> tables and content_vectors rows
 gno vec prune --vacuum      # Prune and run in-place SQLite VACUUM to shrink the DB file
 ```
@@ -2481,6 +2483,15 @@ gno vec prune --vacuum      # Prune and run in-place SQLite VACUUM to shrink the
   hint for exactly the partitions drop accepts. Active partitions, legacy ones
   included, are refused: another runtime may read them, and an active legacy
   partition may hold the only copy of the vectors until its one-time re-key.
+- `gc` - Remove stored vector variants that no active document can use, in
+  every partition (active, shadow and legacy-keyed), with their owner bindings
+  and vector index rows. A vector stays while any active document with the same
+  content produces it, in any collection, including a moved file that has not
+  been re-embedded yet (the next `gno embed` reuses it). `--dry-run` reads the
+  index read-only, without the write lease, and reports per partition how many
+  vectors and how many bytes of embeddings would go. Legacy `content_vectors`
+  are left to `gno cleanup` (orphaned rows) and `prune` (superseded rows). `gc`
+  removes at once: a deleted file brought back afterwards is embedded again.
 - `prune` - Remove superseded legacy `vec_<hash>` tables and `content_vectors`
   rows for models that already have an activated v1 vector partition, plus
   orphaned `vec_v1_*` and `vec_v2_*` tables and mapping/state rows absent from
@@ -2488,6 +2499,42 @@ gno vec prune --vacuum      # Prune and run in-place SQLite VACUUM to shrink the
   tables and rows. Pass `--vacuum` to reclaim OS disk space in-place, or run
   SQLite `VACUUM INTO` a new file for large databases.
 - `--json` - JSON output format
+
+**Automatic vector GC.** Every `gno embed` pass, including background
+embedding in `gno serve` and `gno daemon`, ends by collecting, for the model it
+embedded, the vectors that documents deactivated by `gno update` (deleted or
+moved files) or re-embedded content left unused **at least 7 days ago**. Until
+then a file brought back with the same content (restored, or a branch switched
+back) reuses its vector without embedding. The check costs one indexed lookup
+when nothing is due, and a pass handles at most 5,000 vectors (about a quarter
+of a second), so a large backlog is collected over several passes, or at once
+with `gno vec gc`. A pass stopped by `--max-chunks` or `--max-seconds` collects
+too, so it can run up to that quarter second past the limit. A failure is shown
+as a warning (`vectorGcError` in `--json`) and does not fail the run.
+`gno serve` and `gno daemon` run a pass after content changes (and at start
+when chunks are pending), so in an index that stops changing, vectors that
+become due wait for the next pass or a `gno vec gc`. Turn it
+off with `GNO_NO_AUTO_VECTOR_GC=1`. Run `gno vec gc` once
+after upgrading to also collect vectors orphaned before this release, and for
+other models' partitions.
+
+**Reclaiming disk space.** Removing vectors makes their space reusable inside
+the database; the file does not shrink (`gno vec gc` reports the file size and
+its free space). To shrink it, compact the database as a separate step, either
+with `gno vec prune --vacuum` (under the write lease; it also removes superseded
+legacy vector tables and rows first, see `prune` above) or by hand:
+
+```bash
+# Stop gno serve, gno daemon and MCP servers using this index first.
+cp ~/.local/share/gno/index-default.sqlite ~/index-backup.sqlite   # path: gno status
+sqlite3 ~/.local/share/gno/index-default.sqlite \
+  "PRAGMA wal_checkpoint(TRUNCATE); VACUUM; PRAGMA wal_checkpoint(TRUNCATE);"
+```
+
+`VACUUM` rewrites the whole database: it needs free disk space of up to twice
+the database size while it runs, holds an exclusive lock (every read and write
+waits or fails with busy), and in WAL mode writes the rewritten pages through
+the WAL, which the final checkpoint truncates. It is never run automatically.
 
 `sync` and `rebuild` work on the active vector partition of the current
 embedding model (the vectors `gno embed` writes since 2.7) and report its

@@ -1,0 +1,164 @@
+{
+  "branch": "fn-237-owner-aware-vector-garbage-collection",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "da993f11763a26271a038d94f077bb1a3b984610",
+    "items": [
+      {
+        "body": "Text output said '1 unused vector variants'. Fixed in 2da868fc; the re-run at that head prints '1 unused vector variant'. (surface: src/cli/commands/vec.ts)",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-41645b9fd81ef0715bd43dc0ea38129a2a67df8f8585bf5d2abea2b978b33666",
+        "id": "finding-dab49ba5396b6692f1d02bc55e9846a8",
+        "lastSeenReceiptId": "review-addd139975a2baddf2f3ec7769ad7d0a51876f8721c4f0023e814c7110fc5730",
+        "ordinal": 1,
+        "rIds": [],
+        "severity": "P2",
+        "status": "not_fixed",
+        "title": "QA-1"
+      }
+    ],
+    "reviewKind": "qa",
+    "round": 2,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-addd139975a2baddf2f3ec7769ad7d0a51876f8721c4f0023e814c7110fc5730",
+    "supersedesReceiptId": "review-41645b9fd81ef0715bd43dc0ea38129a2a67df8f8585bf5d2abea2b978b33666"
+  },
+  "head_sha": "da993f11763a26271a038d94f077bb1a3b984610",
+  "id": "fn-237-owner-aware-vector-garbage-collection",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 8,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R6"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R7"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R8"
+      }
+    ],
+    "total": 8
+  },
+  "scenarios": [
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-da993f11.log"
+      ],
+      "head_sha": "da993f11763a26271a038d94f077bb1a3b984610",
+      "id": "S1",
+      "outcome": "PASS",
+      "rids": [
+        "R2"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-da993f11.log"
+      ],
+      "head_sha": "da993f11763a26271a038d94f077bb1a3b984610",
+      "id": "S2",
+      "outcome": "PASS",
+      "rids": [
+        "R1",
+        "R2",
+        "R4"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-da993f11.log"
+      ],
+      "head_sha": "da993f11763a26271a038d94f077bb1a3b984610",
+      "id": "S3",
+      "outcome": "PASS",
+      "rids": [
+        "R1"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-da993f11.log"
+      ],
+      "head_sha": "da993f11763a26271a038d94f077bb1a3b984610",
+      "id": "S4",
+      "outcome": "PASS",
+      "rids": [
+        "R1",
+        "R4"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-da993f11.log"
+      ],
+      "head_sha": "da993f11763a26271a038d94f077bb1a3b984610",
+      "id": "S5",
+      "outcome": "PASS",
+      "rids": [
+        "R1",
+        "R2"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-da993f11.log"
+      ],
+      "head_sha": "da993f11763a26271a038d94f077bb1a3b984610",
+      "id": "S6",
+      "outcome": "PASS",
+      "rids": [
+        "R1",
+        "R2"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-da993f11.log"
+      ],
+      "head_sha": "da993f11763a26271a038d94f077bb1a3b984610",
+      "id": "S7",
+      "outcome": "PASS",
+      "rids": [
+        "R2"
+      ],
+      "run": "live"
+    }
+  ],
+  "timestamp": "2026-11-23T16:21:11Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

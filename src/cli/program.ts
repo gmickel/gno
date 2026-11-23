@@ -3915,6 +3915,54 @@ function wireVecCommands(program: Command): void {
     );
   });
 
+  // vec gc
+  addWriteLeaseFlags(
+    vecCmd
+      .command("gc")
+      .description(
+        "Remove stored vector variants no active document can use (all partitions)"
+      )
+      .option(
+        "--dry-run",
+        "report what would be removed; read-only, no write lease"
+      )
+      .option("--json", "JSON output")
+  ).action(async (cmdOpts: Record<string, unknown>) => {
+    const format = getFormat(cmdOpts);
+    const globals = getGlobals();
+
+    const { vecGc, formatVecGc } = await import("./commands/vec");
+    const options = {
+      configPath: globals.config,
+      indexName: globals.index,
+      dryRun: Boolean(cmdOpts.dryRun),
+    };
+    let result: Awaited<ReturnType<typeof vecGc>>;
+    if (options.dryRun) {
+      result = await vecGc(options);
+    } else {
+      const lease = parseWriteLeaseFlags(cmdOpts);
+      const leased = await withCliWriteLease(
+        {
+          indexName: globals.index,
+          lockWaitMs: lease.lockWaitMs,
+          noWait: lease.noWait,
+        },
+        () => vecGc(options)
+      );
+      throwIfWriteLeaseBusy(leased, format === "json");
+      result = leased;
+    }
+
+    if (!result.success) {
+      throw new CliError("RUNTIME", result.error);
+    }
+
+    process.stdout.write(
+      `${formatVecGc(result, { json: format === "json" })}\n`
+    );
+  });
+
   // vec rebuild
   addWriteLeaseFlags(
     vecCmd

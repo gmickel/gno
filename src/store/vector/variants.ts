@@ -5,6 +5,7 @@ import type { VectorOwnerInput, VectorVariantIdentity } from "./types";
 
 import { formatDocForEmbedding } from "../../pipeline/contextual";
 import { isV2CompatibleDimensions, v2TableName } from "./coarse-router";
+import { collectPartitionInTransaction } from "./garbage";
 import {
   hasNullCosineColumn,
   isNullCosineEmbedding,
@@ -1447,128 +1448,16 @@ export class VectorVariantStore {
   }
 
   private removeUnowned(inOuterTx: boolean): number {
-    // 1. Collect variants with zero active mirror-matching owners in pure SQL
-    // without touching any embedding BLOBs.
-    const noActiveOwners = this.db
-      .query<{ variant_id: number }, [string]>(`
-        SELECT v.variant_id
-        FROM vector_variants v
-        WHERE v.partition_id = ?
-          AND NOT EXISTS (
-            SELECT 1
-            FROM vector_owners o
-            JOIN documents d ON d.id = o.document_id AND d.active = 1
-              AND d.mirror_hash = o.mirror_hash
-            JOIN content_chunks c ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
-            WHERE o.partition_id = v.partition_id AND o.variant_id = v.variant_id
-          )
-      `)
-      .all(this.partitionId);
-
-    const toRemove: number[] = noActiveOwners.map((row) => row.variant_id);
-
-    // 2. Stream remaining candidates ordered by variant_id (never reading
-    // v.embedding), consulting the epoch-keyed proof cache and short-circuiting
-    // as soon as a variant has one valid owner.
-    const proofs = provenOwners(this.db, inOuterTx);
-    const candidateStmt = this.db.prepare<
-      OwnerRow & { variant_id: number; input_hash: string },
-      [string]
-    >(`
-      SELECT v.variant_id, v.input_hash,
-        d.id AS documentId, d.mirror_hash AS mirrorHash,
-        c.seq, c.text, d.title
-      FROM vector_variants v
-      JOIN vector_owners o${ownerPartitionVariantHint(this.db)}
-        ON o.partition_id = v.partition_id AND o.variant_id = v.variant_id
-      JOIN documents d ON d.id = o.document_id AND d.active = 1
-        AND d.mirror_hash = o.mirror_hash
-      JOIN content_chunks c${chunkKeyHint(this.db)}
-        ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
-      WHERE v.partition_id = ?
-      ORDER BY v.variant_id
-    `);
-    try {
-      let currentVariantId: number | null = null;
-      let hasValidOwner = false;
-      for (const row of candidateStmt.iterate(this.partitionId)) {
-        if (row.variant_id !== currentVariantId) {
-          if (currentVariantId !== null && !hasValidOwner) {
-            toRemove.push(currentVariantId);
-          }
-          currentVariantId = row.variant_id;
-          hasValidOwner = false;
-        }
-        if (hasValidOwner) continue;
-        const key = vectorProofKey(
-          this.identity.model,
-          row.documentId,
-          row.mirrorHash,
-          row.seq,
-          row.input_hash
-        );
-        let valid = proofs.get(key);
-        if (valid === undefined) {
-          valid = this.input(row).inputHash === row.input_hash;
-          proofs.set(key, valid);
-        }
-        if (valid) {
-          hasValidOwner = true;
-        }
-      }
-      if (currentVariantId !== null && !hasValidOwner) {
-        toRemove.push(currentVariantId);
-      }
-    } finally {
-      candidateStmt.finalize();
-    }
-
-    if (toRemove.length === 0) return 0;
-
-    const removeJson = JSON.stringify(toRemove);
-    if (this.searchAvailable) {
-      this.db
-        .query(
-          `DELETE FROM ${this.tableName} WHERE variant_id IN (SELECT value FROM json_each(?))`
-        )
-        .run(removeJson);
-    }
-    if (hasV2MirrorTables(this.db)) {
-      const v2RowIds = this.db
-        .query<{ id: number }, [string, string]>(
-          `SELECT id FROM vector_partition_rows
-           WHERE partition_id = ?
-             AND variant_id IN (SELECT value FROM json_each(?))`
-        )
-        .all(this.partitionId, removeJson);
-      if (v2RowIds.length > 0) {
-        const v2IdsJson = JSON.stringify(v2RowIds.map((r) => r.id));
-        if (this.searchAvailable && hasV2Table(this.db, this.partitionId)) {
-          const v2Tbl = v2TableName(this.partitionId);
-          this.db
-            .query(
-              `DELETE FROM "${v2Tbl}" WHERE rowid IN (SELECT value FROM json_each(?))`
-            )
-            .run(v2IdsJson);
-        }
-        this.db
-          .query(
-            "DELETE FROM vector_partition_rows WHERE id IN (SELECT value FROM json_each(?))"
-          )
-          .run(v2IdsJson);
-      }
-    }
-    this.db
-      .query(
-        "DELETE FROM vector_owners WHERE partition_id = ? AND variant_id IN (SELECT value FROM json_each(?))"
-      )
-      .run(this.partitionId, removeJson);
-    this.db
-      .query(
-        "DELETE FROM vector_variants WHERE partition_id = ? AND variant_id IN (SELECT value FROM json_each(?))"
-      )
-      .run(this.partitionId, removeJson);
-    return toRemove.length;
+    // Strict liveness (see ./garbage): only a valid owner keeps a variant,
+    // so unmeasured vectors never survive to be reused by a new reference.
+    // `collectPartitionInTransaction` removes vec_v1, vec_v2, vector_partition_rows,
+    // vector_owners, vector_variants, and queued GC candidates in the same transaction.
+    return collectPartitionInTransaction(
+      this.db,
+      { partitionId: this.partitionId, model: this.identity.model },
+      this.searchAvailable ? "mirror" : "none",
+      inOuterTx
+    );
   }
 }
 

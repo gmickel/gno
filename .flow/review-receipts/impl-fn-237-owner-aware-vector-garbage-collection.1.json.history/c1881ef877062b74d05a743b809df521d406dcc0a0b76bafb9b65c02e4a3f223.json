@@ -1,0 +1,230 @@
+{
+  "base": "ab23c564",
+  "effort": "medium",
+  "findings": {
+    "backend": "codex",
+    "baseSha": "ab23c5640e45ae9015f76c984b779640386b95f4",
+    "headSha": "8fadf70a3a754c557406cae40f3cec85743b9cd8",
+    "items": [
+      {
+        "body": "GC can turn count-detectable mirror drift into an apparently clean mirror: with the clean mark set but vec0 missing a live row (or holding a stray one), removing a collectible variant equalizes the counts and restores the clean mark, so `mirrorState()` reports `clean` while vec0 is still wrong and the next embed pass skips its repair. (correctness 1; contracts 2)",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "id": "finding-45b9b7cd6957f800efee78e5c4c675c1",
+        "lastSeenReceiptId": "review-eafc006d90831c462a60d050740cf70894bb139f294c8dc4ae6bd36042321244",
+        "ordinal": 1,
+        "rIds": [
+          "R3"
+        ],
+        "severity": "P1",
+        "status": "fixed",
+        "suggestion": "Restore a clean mark only when the mirror was count-consistent before the batch and the batch removed exactly one vec0 row per removed variant; otherwise leave the triggers' invalidation. Add a regression test.",
+        "title": "GC can turn count-detectable mirror drift into an apparently clean mirror: with the clean mark set but vec0 missing a live row (or holding a stray one), removing a collectible variant equalizes the counts and restores the clean mark, so `m\u2026"
+      },
+      {
+        "body": "`vec gc --dry-run` fails on schema versions 28-30 with `no such column: legacy` (migration 31 adds the column). (correctness 2; contracts 1; integration 1)",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "id": "finding-b8ca71014bc5a737604c48a515957a1b",
+        "lastSeenReceiptId": "review-eafc006d90831c462a60d050740cf70894bb139f294c8dc4ae6bd36042321244",
+        "ordinal": 2,
+        "rIds": [
+          "R2"
+        ],
+        "severity": "P1",
+        "status": "fixed",
+        "suggestion": "Detect the column; report pre-31 partitions as legacy-keyed. Test from a migration-28 fixture.",
+        "title": "`vec gc --dry-run` fails on schema versions 28-30 with `no such column: legacy` (migration 31 adds the column)"
+      },
+      {
+        "body": "A pass stopped by `--max-chunks`/`--max-seconds` returns before automatic GC, so repeated bounded passes with work pending can leave due candidates queued indefinitely. (correctness 3; contracts 5; integration 5)",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "id": "finding-3f64f304c65a7205a14daf6f8559bc13",
+        "lastSeenReceiptId": "review-eafc006d90831c462a60d050740cf70894bb139f294c8dc4ae6bd36042321244",
+        "ordinal": 3,
+        "rIds": [
+          "R5"
+        ],
+        "severity": "P1",
+        "status": "fixed",
+        "suggestion": "Run the bounded GC step on the limit-stop path after saving the resume cursor; test with a candidate already due before the bounded pass.",
+        "title": "A pass stopped by `--max-chunks`/`--max-seconds` returns before automatic GC, so repeated bounded passes with work pending can leave due candidates queued indefinitely"
+      },
+      {
+        "body": "`vectorGcError` reaches the internal backlog result but `gno embed` text/JSON and the SDK result drop it, so a repeatedly failing GC is invisible. (correctness 5; contracts 4; integration 6)",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "id": "finding-93b4c55c8074c9674d59473eb30e40be",
+        "lastSeenReceiptId": "review-eafc006d90831c462a60d050740cf70894bb139f294c8dc4ae6bd36042321244",
+        "ordinal": 5,
+        "rIds": [
+          "R5"
+        ],
+        "severity": "P1",
+        "status": "fixed",
+        "suggestion": "Carry it as a non-fatal warning through CLI text and JSON (and schema) and the SDK embed result.",
+        "title": "`vectorGcError` reaches the internal backlog result but `gno embed` text/JSON and the SDK result drop it, so a repeatedly failing GC is invisible"
+      },
+      {
+        "body": "The one-time legacy re-key moves variants and owners to a new partition id; the rebind trigger treats each moved owner as a loss and queues the old id with a fresh timestamp, stranding candidates under a deleted partition and losing their grace start. (contracts 3; integration 2)",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "id": "finding-d29ab940c96053497829bf0c190a29ec",
+        "lastSeenReceiptId": "review-eafc006d90831c462a60d050740cf70894bb139f294c8dc4ae6bd36042321244",
+        "ordinal": 7,
+        "rIds": [
+          "R5",
+          "R8"
+        ],
+        "severity": "P1",
+        "status": "fixed",
+        "suggestion": "Move queue rows to the new partition in the re-key transaction, preserving `queued_at`, and do not treat a partition re-key as a rebind.",
+        "title": "The one-time legacy re-key moves variants and owners to a new partition id; the rebind trigger treats each moved owner as a loss and queues the old id with a fresh timestamp, stranding candidates under a deleted partition and losing their\u2026"
+      },
+      {
+        "body": "Prior finding #8 remains open. `GnoClient.embed()` supplies no `acquireWriteTurn`, so automatic GC can delete a due variant while another process holds the shared index write lease between SQLite transactions. This can happen on an SDK pass with zero chunks to embed. The existing SDK write behavior does not account for this new deletion path.",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-44d86af96b3d0da46ad5e5d3a4e6432182a0fcced1acb8ef65e9f273edde43a7",
+        "id": "finding-54c322183fbc169de0dedf9208e1975b",
+        "lastSeenReceiptId": "review-eafc006d90831c462a60d050740cf70894bb139f294c8dc4ae6bd36042321244",
+        "ordinal": 10,
+        "rIds": [
+          "R5"
+        ],
+        "severity": "P1",
+        "status": "fixed",
+        "suggestion": "Give SDK-triggered GC a lease acquisition callback for the actual database path. If the lease is busy, leave candidates queued and preserve the successful embed result.",
+        "title": "Prior finding #8 remains open"
+      },
+      {
+        "body": "The same-content liveness query joins every historical owner binding of a variant with every active document on that mirror; one variant with ~1,000-1,800 inactive bindings and as many active copies under another title yields 10^6+ rows and overruns the 250 ms budget inside one transaction. (correctness 4; integration 3)",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "id": "finding-f1fc282fe672c2cd5242eced8bda1d45",
+        "lastSeenReceiptId": "review-eafc006d90831c462a60d050740cf70894bb139f294c8dc4ae6bd36042321244",
+        "ordinal": 4,
+        "rIds": [
+          "R5"
+        ],
+        "severity": "P1",
+        "status": "fixed",
+        "suggestion": "Deduplicate `(variant_id, mirror_hash, seq)` before joining active documents (and avoid repeated hashing).",
+        "title": "The same-content liveness query joins every historical owner binding of a variant with every active document on that mirror; one variant with ~1,000-1,800 inactive bindings and as many active copies under another title yields 10^6+ rows an\u2026"
+      },
+      {
+        "body": "SDK `GnoClient.embed()` reaches automatic GC without an `acquireWriteTurn` callback, so the collector runs without the shared write lease. (integration 4)",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "id": "finding-1078c1b1e24e37889297c61e1c9188b7",
+        "lastSeenReceiptId": "review-eafc006d90831c462a60d050740cf70894bb139f294c8dc4ae6bd36042321244",
+        "ordinal": 8,
+        "rIds": [
+          "R5"
+        ],
+        "severity": "P1",
+        "status": "fixed",
+        "suggestion": "Give the SDK collector the shared lease callback, deferring on contention.",
+        "title": "SDK `GnoClient"
+      },
+      {
+        "body": "The mirror fix adds a full vec0 count inside the first deletion transaction of every automatic pass with a clean mirror. With one due candidate and two million mirrored variants, the pass took about 815 ms in memory against the 250 ms budget. SQLite confirmed a virtual-table scan. The candidate cap cannot bound this work because the scan scales with the entire partition.",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-44d86af96b3d0da46ad5e5d3a4e6432182a0fcced1acb8ef65e9f273edde43a7",
+        "id": "finding-937f925093fc76139e20d972689440e4",
+        "lastSeenReceiptId": "review-eafc006d90831c462a60d050740cf70894bb139f294c8dc4ae6bd36042321244",
+        "ordinal": 11,
+        "rIds": [
+          "R5"
+        ],
+        "severity": "P1",
+        "status": "not_fixed",
+        "suggestion": "Keep the mirror-drift protection and remove the full count from the automatic deletion transaction. Use maintained mirror consistency data or a resumable verification step that leaves candidates queued when the budget expires.",
+        "title": "The mirror fix adds a full vec0 count inside the first deletion transaction of every automatic pass with a clean mirror"
+      },
+      {
+        "anchor": {
+          "baseSha": "ab23c5640e45ae9015f76c984b779640386b95f4",
+          "headSha": "8fadf70a3a754c557406cae40f3cec85743b9cd8",
+          "path": "src/store/vector/garbage.ts",
+          "side": "head",
+          "startLine": 644
+        },
+        "body": "A limit-stopped embed pass skips mirror verification, so GC runs the full vec0 count while holding the write lease. The budget is checked after the count. With two million mirrored variants and one due candidate, two consecutive GC calls on this path took about 398 ms and 394 ms against the 250 ms budget. Both examined zero candidates and left the same candidate queued. Repeated limit-stopped passes can spend the budget on the same scan indefinitely.",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-eafc006d90831c462a60d050740cf70894bb139f294c8dc4ae6bd36042321244",
+        "id": "finding-b3860ea723b35cdf485248640fd3acd4",
+        "lastSeenReceiptId": "review-eafc006d90831c462a60d050740cf70894bb139f294c8dc4ae6bd36042321244",
+        "ordinal": 12,
+        "rIds": [
+          "R5"
+        ],
+        "severity": "P1",
+        "status": "open",
+        "suggestion": "Preserve the clean mark when each removed stored variant has its corresponding vec0 row. Balanced deletion preserves any existing count difference. If an expected vec0 row is missing, clear the mark. This removes the full count from the automatic path while preserving the mirror-drift protection.",
+        "title": "A limit-stopped embed pass skips mirror verification, so GC runs the full vec0 count while holding the write lease"
+      },
+      {
+        "body": "With initialized config and an index name whose database file does not exist yet, `vec gc --dry-run` fails with `No index at ...` while a real run reports zero. (integration 7)",
+        "classification": "introduced",
+        "confidence": 100,
+        "firstSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "id": "finding-be6135da045622f5df42a382e28c845e",
+        "lastSeenReceiptId": "review-eafc006d90831c462a60d050740cf70894bb139f294c8dc4ae6bd36042321244",
+        "ordinal": 9,
+        "rIds": [
+          "R2"
+        ],
+        "severity": "P2",
+        "status": "fixed",
+        "suggestion": "Return an empty report without creating the file or taking the lease.",
+        "title": "With initialized config and an index name whose database file does not exist yet, `vec gc --dry-run` fails with `No index at"
+      },
+      {
+        "body": "`databaseBytes` is `page_count * page_size` of the snapshot, which includes uncheckpointed WAL growth, but is labelled the main file size. (correctness 6; contracts 6)",
+        "classification": "introduced",
+        "confidence": 75,
+        "firstSeenReceiptId": "review-f91a5715c862148f54274f5a5d95be4be58057305376e59f3832ff2ec60f670b",
+        "id": "finding-503b9f416e96c5cc5c90cb0370ac4359",
+        "lastSeenReceiptId": "review-eafc006d90831c462a60d050740cf70894bb139f294c8dc4ae6bd36042321244",
+        "ordinal": 6,
+        "rIds": [
+          "R4"
+        ],
+        "severity": "P2",
+        "status": "fixed",
+        "suggestion": "Read the main file's size from the filesystem; keep freelist pages separate.",
+        "title": "`databaseBytes` is `page_count * page_size` of the snapshot, which includes uncheckpointed WAL growth, but is labelled the main file size"
+      }
+    ],
+    "reviewKind": "implementation",
+    "round": 3,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-eafc006d90831c462a60d050740cf70894bb139f294c8dc4ae6bd36042321244",
+    "supersedesReceiptId": "review-44d86af96b3d0da46ad5e5d3a4e6432182a0fcced1acb8ef65e9f273edde43a7"
+  },
+  "focus": "concurrency and transaction safety of vector GC, mirror-state guarantees, dry-run read-only, trigger correctness and cost, identical-restoration contract",
+  "id": "fn-237-owner-aware-vector-garbage-collection.1",
+  "introduced_count": 1,
+  "mode": "codex",
+  "model": "gpt-6.2-sol",
+  "pre_existing_count": 0,
+  "review": "Prior finding #8: fixed\nPrior finding #10: fixed\nPrior finding #11: not-fixed\n\nFindings #8 and #10 tracked the same SDK lease issue. SDK-triggered GC now takes the shared lease for the actual database path and leaves candidates queued when the lease is busy.\n\n## Findings\n\n- **Severity**: P1\n- **Confidence**: 75\n- **Classification**: introduced\n- **File:Line**: `src/store/vector/garbage.ts:644`\n- **R-IDs**: `[R5]`\n- **Problem**: A limit-stopped embed pass skips mirror verification, so GC runs the full vec0 count while holding the write lease. The budget is checked after the count. With two million mirrored variants and one due candidate, two consecutive GC calls on this path took about 398 ms and 394 ms against the 250 ms budget. Both examined zero candidates and left the same candidate queued. Repeated limit-stopped passes can spend the budget on the same scan indefinitely.\n- **Suggestion**: Preserve the clean mark when each removed stored variant has its corresponding vec0 row. Balanced deletion preserves any existing count difference. If an expected vec0 row is missing, clear the mark. This removes the full count from the automatic path while preserving the mirror-drift protection.\n\n## Requirements coverage\n\n| R-ID | Status | Evidence |\n|---|---|---|\n| R1 | met | Focused store tests still cover partition traversal and owner preservation. |\n| R2 | met | The old-schema dry-run regression test passes. |\n| R3 | met | The mirror-drift regression test passes. |\n| R4 | met | File size and reusable space remain separate. |\n| R5 | partial | SDK GC now respects the lease. Limit-stopped passes can still exceed the budget and make zero progress. |\n| R6 | met | The move test still passes without invoking the embedding provider. |\n| R7 | met | The benchmark still covers idle probes and queued collection. |\n| R8 | met | The grace-period tests pass. |\n\nUnaddressed R-IDs: []\n\nTwenty-eight focused tests passed. The new SDK lease integration test could not start because `/tmp` is read-only. The lease resolution was verified by tracing the SDK call path.\n\nClassification counts: 1 introduced, 0 pre_existing.\n\n```json\n{\"classification_counts\":{\"introduced\":1,\"pre_existing\":0},\"unaddressed\":[]}\n```\n\n<verdict>NEEDS_WORK</verdict>\n",
+  "review_reservation_id": "09768ec7b3364691b76e9d8723f8b8a0",
+  "session_id": "01a20907-eb4a-7462-9a66-ad8ac60a6e56",
+  "spec": "codex:gpt-6.2-sol:medium",
+  "timestamp": "2026-11-23T16:00:16.460103Z",
+  "type": "impl_review",
+  "unaddressed": [],
+  "verdict": "NEEDS_WORK"
+}

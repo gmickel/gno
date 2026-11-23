@@ -137,17 +137,60 @@ export async function commitVariantBatch(params: {
   if (!rows.length) return { ...empty, retryOwners };
 
   let written = 0;
+  let staleReuseOwners: VectorOwnerInput[] = [];
   const turn = await inWriteTurn(params.acquireWriteTurn, () =>
     upsertVectorsWithContentionRetry(
       {
         upsertVectors: () => {
           try {
-            // A contention wait may allow document or runtime mutations. Revalidate each attempt.
+            // A contention wait or concurrent GC may allow document, reuse, or
+            // runtime mutations. Revalidate each attempt before writing so a
+            // collected reusable variant moves to retryOwners instead of
+            // rolling back newly inferred vectors in the same batch.
             if (!identityStillCurrent()) return Promise.resolve(ok(undefined));
+            staleReuseOwners = [];
+            const reuseCandidates = rows
+              .filter((r) => r.embedding === undefined)
+              .map((r) => r.owner);
+            let attemptRows = rows;
+            if (reuseCandidates.length > 0) {
+              const stillReusable = new Set<string>();
+              if (typeof store.findReusableHashes === "function") {
+                for (const hash of store.findReusableHashes(reuseCandidates)
+                  .reusableHashes) {
+                  stillReusable.add(hash);
+                }
+              } else {
+                for (const owner of reuseCandidates) {
+                  const canReuse =
+                    typeof store.hasReusable === "function"
+                      ? store.hasReusable(owner)
+                      : Boolean(store.reusable(owner));
+                  if (canReuse) stillReusable.add(owner.inputHash);
+                }
+              }
+              attemptRows = [];
+              for (const row of rows) {
+                if (
+                  row.embedding === undefined &&
+                  !stillReusable.has(row.owner.inputHash)
+                ) {
+                  staleReuseOwners.push(row.owner);
+                } else {
+                  attemptRows.push(row);
+                }
+              }
+            }
+            if (attemptRows.length === 0) {
+              written = 0;
+              return Promise.resolve(ok(undefined));
+            }
             if (typeof store.writeCurrent === "function") {
-              written = store.writeCurrent(rows).length;
+              written = store.writeCurrent(attemptRows).length;
             } else {
-              const valid = rows.filter(({ owner }) => isCurrent(store, owner));
+              const valid = attemptRows.filter(({ owner }) =>
+                isCurrent(store, owner)
+              );
               store.write(valid);
               written = valid.length;
             }
@@ -168,17 +211,21 @@ export async function commitVariantBatch(params: {
     )
   );
   if (turn.deferred) return { ...empty, deferred: true };
+  const mergedRetryOwners =
+    staleReuseOwners.length > 0
+      ? [...retryOwners, ...filterCurrentOwners(store, staleReuseOwners)]
+      : retryOwners;
   const persisted = turn.value;
   if (!persisted.ok)
     return {
       ...empty,
-      retryOwners,
+      retryOwners: mergedRetryOwners,
       errors: isUpsertLockContention(persisted.error) ? 0 : rows.length,
       contentionErrors: isUpsertLockContention(persisted.error)
         ? rows.length
         : 0,
     };
-  return { ...empty, embedded: written, retryOwners };
+  return { ...empty, embedded: written, retryOwners: mergedRetryOwners };
 }
 
 /** Exact inputs are inferred once; successful current owners checkpoint atomically. */
