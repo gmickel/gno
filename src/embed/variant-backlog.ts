@@ -84,8 +84,6 @@ export async function embedVariantBacklog(
     attempted += texts;
   };
   let identityLost = false;
-  // The pass verified the vec0 mirror (found it clean or rebuilt it).
-  let mirrorVerified = false;
   // Bounded runs resume after the previous slice and wrap to the start, so a
   // chunk that keeps failing stays pending without blocking later chunks.
   const resumeKey = db
@@ -739,7 +737,6 @@ export async function embedVariantBacklog(
     if (identityStillCurrent() && store.hasActivated()) {
       const mirror = store.mirrorState();
       if (mirror === "clean") {
-        mirrorVerified = true;
         assertInferenceActive();
         return ok(total);
       }
@@ -748,7 +745,6 @@ export async function embedVariantBacklog(
         const turn = await inWriteTurn(deps.acquireWriteTurn, async () => {
           try {
             store.syncIndex();
-            mirrorVerified = true;
             if (identityStillCurrent() && !store.hasPending())
               store.activate(repairEpoch);
             return undefined;
@@ -769,11 +765,7 @@ export async function embedVariantBacklog(
       const turn = await inWriteTurn(deps.acquireWriteTurn, async () => {
         try {
           if (!store.isActive()) store.syncIndex();
-          if (identityStillCurrent()) {
-            // Activation verifies every stored variant against the mirror.
-            store.activate(epoch);
-            mirrorVerified = true;
-          }
+          if (identityStillCurrent()) store.activate(epoch);
           return undefined;
         } catch (cause) {
           return cause instanceof Error ? cause.message : String(cause);
@@ -823,10 +815,7 @@ export async function embedVariantBacklog(
           collectQueuedGarbage(
             gcDb,
             { partitionId: store.partitionId, model: store.identity.model },
-            {
-              vecLoaded: store.searchAvailable,
-              mirrorConsistent: mirrorVerified || undefined,
-            }
+            { vecLoaded: store.searchAvailable }
           )
       );
       if (turn.deferred) return settled;

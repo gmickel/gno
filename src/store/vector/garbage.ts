@@ -290,74 +290,43 @@ function dequeue(
 }
 
 /**
- * Mirror freshness across one collection pass. Whether the mirror's row
- * count matched the stored variants (the check `mirrorState()` makes) is
- * measured once, on the first batch that finds the clean mark; while the
- * caller holds the write lease only this pass changes the partition, so each
- * later batch only has to remove exactly one vec0 row per variant.
- */
-interface MirrorPass {
-  consistent?: boolean;
-}
-
-const mirrorMarkedClean = (db: Database, partitionId: string): boolean =>
-  tableExists(db, "vector_mirror_state") &&
-  db
-    .query<{ dirty: number }, [string]>(
-      "SELECT dirty FROM vector_mirror_state WHERE partition_id = ?"
-    )
-    .get(partitionId)?.dirty === 0;
-
-/** The row-count half of `mirrorState()`: one count of each side. */
-const mirrorCountsMatch = (db: Database, partitionId: string): boolean =>
-  db
-    .query<{ n: number }, [string]>(
-      "SELECT count(*) AS n FROM vector_variants WHERE partition_id = ?"
-    )
-    .get(partitionId)!.n ===
-  db
-    .query<{ n: number }, []>(
-      `SELECT count(*) AS n FROM ${mirrorTable(partitionId)}`
-    )
-    .get()!.n;
-
-/**
  * Remove variants (see removeVariants) and leave the partition's mirror mark
- * clean only when it was demonstrably clean and stayed so: marked clean,
- * row counts matching, and every removed variant had its vec0 row. In every
- * other case the vector_variants triggers' invalidation stands, so GC never
- * certifies a dirty, never-recorded or count-drifted mirror clean.
+ * as it was only when every removed variant took its own vec0 row with it.
+ * Such a balanced removal keeps any count difference `mirrorState()` detects,
+ * so a drifted mirror still reads dirty. An unbalanced one (a removed variant
+ * whose vec0 row was already missing) could equalize the counts and hide the
+ * drift, so the vector_variants triggers' invalidation stands; GC never
+ * certifies a dirty or never-recorded mirror clean. No full count is needed.
  */
 function removeKeepingMirror(
   db: Database,
   partitionId: string,
   variantIds: readonly number[],
-  access: "mirror" | "none",
-  pass: MirrorPass
+  access: "mirror" | "none"
 ): void {
   if (variantIds.length === 0) return;
   const tracked = access === "mirror" && tableExists(db, "vector_mirror_state");
-  const table = mirrorTable(partitionId);
-  const markedClean = tracked && mirrorMarkedClean(db, partitionId);
-  if (markedClean && pass.consistent === undefined)
-    pass.consistent = mirrorCountsMatch(db, partitionId);
-  let allMirrored = false;
-  if (markedClean && pass.consistent) {
+  const markedClean =
+    tracked &&
+    db
+      .query<{ dirty: number }, [string]>(
+        "SELECT dirty FROM vector_mirror_state WHERE partition_id = ?"
+      )
+      .get(partitionId)?.dirty === 0;
+  let balanced = false;
+  if (markedClean) {
     const lookup = db.query<unknown, [number]>(
-      `SELECT 1 FROM ${table} WHERE variant_id = ?`
+      `SELECT 1 FROM ${mirrorTable(partitionId)} WHERE variant_id = ?`
     );
-    allMirrored = variantIds.every((id) => lookup.get(id) !== null);
+    balanced = variantIds.every((id) => lookup.get(id) !== null);
   }
   removeVariants(db, partitionId, variantIds, access);
   if (!tracked) return;
-  if (markedClean && pass.consistent && allMirrored)
-    markMirrorClean(db, partitionId);
-  else {
-    pass.consistent = false;
+  if (markedClean && balanced) markMirrorClean(db, partitionId);
+  else
     db.run("DELETE FROM vector_mirror_state WHERE partition_id = ?", [
       partitionId,
     ]);
-  }
 }
 
 const variantPage = (
@@ -503,7 +472,6 @@ export function runVectorGc(
       return result;
     }
     const partition = { partitionId: row.partition_id, model: row.model };
-    const mirrorPass: MirrorPass = {};
     let after = 0;
     for (;;) {
       const batch = (): VariantRow[] => {
@@ -520,7 +488,7 @@ export function runVectorGc(
         }
         if (!options.dryRun) {
           const ids = garbage.map((v) => v.variant_id);
-          removeKeepingMirror(db, row.partition_id, ids, access, mirrorPass);
+          removeKeepingMirror(db, row.partition_id, ids, access);
           dequeue(
             db,
             row.partition_id,
@@ -603,12 +571,6 @@ export function collectQueuedGarbage(
     maxCandidates?: number;
     budgetMs?: number;
     graceSeconds?: number;
-    /**
-     * The caller verified the mirror's row counts in this write session (an
-     * embed pass found it clean or rebuilt it), so the pass skips its own
-     * full count of the vec0 index.
-     */
-    mirrorConsistent?: boolean;
   }
 ): QueuedGcResult {
   const batchSize = options.batchSize ?? VECTOR_GC_BATCH_SIZE;
@@ -629,19 +591,6 @@ export function collectQueuedGarbage(
       "sqlite-vec is unavailable; cannot collect vectors from an existing vec0 index"
     );
   const startedAt = performance.now();
-  const mirrorPass: MirrorPass = options.mirrorConsistent
-    ? { consistent: true }
-    : {};
-  // Otherwise measure consistency once, up front and inside the budget: a
-  // count of a large vec0 index that uses the budget up leaves every
-  // candidate queued rather than overrunning it inside a write transaction.
-  if (
-    mirrorPass.consistent === undefined &&
-    access === "mirror" &&
-    hasQueuedGarbage(db, partition.partitionId, dueAt) &&
-    mirrorMarkedClean(db, partition.partitionId)
-  )
-    mirrorPass.consistent = mirrorCountsMatch(db, partition.partitionId);
   while (
     result.examined < maxCandidates &&
     performance.now() - startedAt < budgetMs
@@ -672,8 +621,7 @@ export function collectQueuedGarbage(
           db,
           partition.partitionId,
           garbage.map((v) => v.variant_id),
-          access,
-          mirrorPass
+          access
         );
         // Owner deletes above re-queue their variants; clear every examined id.
         dequeue(db, partition.partitionId, ids);
