@@ -388,8 +388,8 @@ describe("fn-235 R2: migration v39, v2 mirror lifecycle, triggers, and cleanup",
 });
 
 describe("fn-235 R3: cost-based router rules 1-5", () => {
-  test("enforces all router rules, default-off gate, non-collection filter check, budget, k cap, and multi-collection cap", () => {
-    expect(COARSE_ROUTER_DEFAULTS.enabledByDefault).toBe(false);
+  test("enforces all router rules, default-on switch, non-collection filter check, budget, k cap, and multi-collection cap", () => {
+    expect(COARSE_ROUTER_DEFAULTS.enabledByDefault).toBe(true);
     expect(computeCoarseK(5)).toBe(200);
     expect(computeCoarseK(10)).toBe(250);
     expect(computeCoarseK(20)).toBe(500);
@@ -451,11 +451,26 @@ describe("fn-235 R3: cost-based router rules 1-5", () => {
       reason: "coarse-bit",
     });
 
-    // Default off when coarseVectorSearch omitted
+    // Default ON when coarseVectorSearch omitted
     expect(
       resolveVectorRoute({
         ...base,
         options: { eligibility: { collection: "notes" } },
+      })
+    ).toEqual({
+      route: "coarse-bit",
+      coarseK: 250,
+      reason: "coarse-bit",
+    });
+
+    // Explicit off switch disables coarse routing
+    expect(
+      resolveVectorRoute({
+        ...base,
+        options: {
+          coarseVectorSearch: false,
+          eligibility: { collection: "notes" },
+        },
       }).route
     ).toBe("exact-sql");
 
@@ -638,23 +653,39 @@ describe("fn-235 R4 & R5: two-stage access control, self-check, underfill, and R
       5,
       {
         embeddingIdentity: identity,
-        coarseVectorSearch: true,
         eligibility: { collection: "alpha" },
         onRoute: (info) => {
           observedRoute = info;
         },
       }
     );
+    let disabledRoute: VectorRouteInfo | undefined;
+    const disabledHits = searchVectorVariants(
+      db,
+      MODEL,
+      32,
+      makeVec(100, 32),
+      5,
+      {
+        embeddingIdentity: identity,
+        coarseVectorSearch: false,
+        eligibility: { collection: "alpha" },
+        onRoute: (info) => {
+          disabledRoute = info;
+        },
+      }
+    );
     const exactHits = searchVectorVariants(db, MODEL, 32, makeVec(100, 32), 5, {
       embeddingIdentity: identity,
-      coarseVectorSearch: true,
       exact: true,
       eligibility: { collection: "alpha" },
     });
     expect(observedRoute?.route).toBe("coarse-bit");
     expect(observedRoute?.coarseK).toBe(200);
     expect(observedRoute?.rescored).toBeGreaterThan(0);
+    expect(disabledRoute?.route).toBe("exact-sql");
     expect(coarseHits).toEqual(exactHits);
+    expect(disabledHits).toEqual(exactHits);
 
     // Critical access-control assertion: shared variant hit MUST contain ONLY sharedAlpha, NEVER sharedBeta!
     const sharedHit = coarseHits!.find((h) => h.mirrorHash === "h-shared");
@@ -662,7 +693,7 @@ describe("fn-235 R4 & R5: two-stage access control, self-check, underfill, and R
     expect(sharedHit!.documentIds).toEqual([sharedAlpha]);
     expect(sharedHit!.documentIds).not.toContain(sharedBeta);
 
-    // Batched queries routed as one unit also match exact bit-for-bit
+    // Batched queries routed as one unit (default ON when coarseVectorSearch omitted) match exact bit-for-bit
     let batchRoute: VectorRouteInfo | undefined;
     const batchCoarse = searchVectorVariantsBatch(
       db,
@@ -672,7 +703,6 @@ describe("fn-235 R4 & R5: two-stage access control, self-check, underfill, and R
       [5, 5],
       {
         embeddingIdentity: identity,
-        coarseVectorSearch: true,
         eligibility: { collection: "alpha" },
         onRoute: (info) => {
           batchRoute = info;

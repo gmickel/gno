@@ -447,13 +447,13 @@ gno query <query> [options]
 
 Additional options:
 
-| Option        | Description                                |
-| ------------- | ------------------------------------------ |
-| `--no-expand` | Disable query expansion                    |
-| `--no-rerank` | Disable reranking                          |
-| `--graph`     | Explicitly enable default graph candidates |
-| `--no-graph`  | Disable graph-neighbor candidates          |
-| `--explain`   | Print retrieval details to stderr          |
+| Option        | Description                                                                                                                                                |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--no-expand` | Disable query expansion                                                                                                                                    |
+| `--no-rerank` | Disable reranking                                                                                                                                          |
+| `--graph`     | Explicitly enable default graph candidates                                                                                                                 |
+| `--no-graph`  | Disable graph-neighbor candidates                                                                                                                          |
+| `--explain`   | Print retrieval details to stderr (timings, score breakdown, and vector route: `exact-sql`, `exact-vec0`, or `coarse-bit` with `N`, `coarseK`, `rescored`) |
 
 ### gno ask
 
@@ -904,11 +904,15 @@ gno peek [--json]
 gno status [--json|--md]
 ```
 
+Reports index counts, active vector partitions, and each partition's `coarseMirror` state (`clean`, `dirty`, `missing`, `unsupported`) and build-time recall self-check result.
+
 ### gno doctor
 
 ```bash
 gno doctor [--json|--md]
 ```
+
+Checks config, database, `sqlite-vec`, effective SQLite `mmap_size` (`sqlite-mmap`), embedding fingerprints, vector partitions, and `coarse-mirror` freshness/recall (`gno vec sync` repairs dirty or missing mirrors).
 
 ### gno cleanup
 
@@ -918,17 +922,20 @@ gno cleanup
 
 ### gno vec
 
-Vector index maintenance. Use when `gno similar` returns empty despite embeddings.
+Vector index maintenance. Use when `gno similar` returns empty despite embeddings, when `gno doctor` flags a dirty/missing `coarse-mirror`, or to reclaim superseded legacy vector tables.
 
 ```bash
-gno vec sync      # Fast incremental sync
-gno vec rebuild   # Full rebuild
+gno vec sync               # Incremental sync of float32 (v1) and bit coarse (v2) mirrors + recall self-check
+gno vec rebuild            # Full rebuild of v1 and v2 mirrors from stored vectors (no re-embedding)
 gno vec drop <partition>   # Drop an abandoned shadow partition (id prefix from gno status)
+gno vec prune              # Drop superseded legacy vec_<hash> tables, content_vectors rows, and orphan mirrors
+gno vec prune --vacuum     # Prune and run in-place SQLite VACUUM to shrink the DB file
 ```
 
-| Option   | Description |
-| -------- | ----------- |
-| `--json` | JSON output |
+| Option     | Description                                               |
+| ---------- | --------------------------------------------------------- |
+| `--vacuum` | (`prune` only) Run SQLite `VACUUM` in-place after pruning |
+| `--json`   | JSON output                                               |
 
 ## MCP Server
 

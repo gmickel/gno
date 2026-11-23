@@ -1555,20 +1555,21 @@ with `gno doctor` or `gno doctor --json`.
 
 ## Coarse vector search
 
-`coarseVectorSearch` enables the cost-routed two-stage binary (`bit`) coarse
+`coarseVectorSearch` controls the cost-routed two-stage binary (`bit`) coarse
 `vec0` mirror with exact float32 rescore for large unfiltered or
-collection-scoped vector searches. It defaults to `false` (off) until recall is
-validated on `>= 500k` real stored vectors.
+collection-scoped vector searches. It is enabled by default (`true`); set it to
+`false` to keep every search on the exact float32 paths.
 
 ```yaml
-coarseVectorSearch: true
+coarseVectorSearch: false
 ```
 
 Even when enabled, every filtered search, every scope within the 100 ms exact
 cost budget, queries with `k > 40`, partitions whose dimensions are not
 divisible by 8, and partitions whose build-time recall self-check is absent or
-below 95% remain on the exact paths. Inspect mirror freshness and stored recall
-with `gno status` or `gno doctor`, and repair with `gno vec sync`.
+below 95% remain on the exact paths. Returned scores and `minScore` cutoffs are
+always exact float32 cosine. Inspect mirror freshness and stored recall with
+`gno status` or `gno doctor`, and repair with `gno vec sync`.
 
 ## Environment Variables
 

@@ -451,6 +451,7 @@ The `--explain` flag outputs:
 - Content-type factor, raw/capped contribution, shared auxiliary cap, final
   score, rule source, and ranking fingerprint when active
 - Per-stage timing breakdown (`lang`, `expansion`, `bm25`, `vector`, `fusion`, `rerank`, `assembly`, `total`)
+- Vector search route (`exact-sql`, `exact-vec0`, or `coarse-bit`), in-scope mirror row count (`N`), and for two-stage queries `coarseK` and `rescored` variant count
 - Fallback/counter summary (`fallbacks=...`, cache counters for expansion/rerank)
 
 See [How Search Works](HOW-SEARCH-WORKS.md) for details on the scoring pipeline.
@@ -2374,13 +2375,16 @@ Checks include:
 - code-chunking mode + supported extensions
 - SQLite FTS5 availability
 - vendored `fts5-snowball` extension loading
-- `sqlite-vec` extension loading
+- `sqlite-vec` extension loading and effective SQLite memory-map size (`sqlite-mmap`)
 - local model cache readiness
 - embedding fingerprint freshness: current fingerprint, pending/stale chunks,
   legacy empty-fingerprint vectors, and mixed stored fingerprint groups
 - vector partitions: the partition this runtime's retrieval uses, every other partition with
   state, chunk count and provenance, and runtimes measured incompatible
   (`vector-partitions`, warns when anything beyond one healthy partition exists)
+- coarse vector mirror health (`coarse-mirror`): v2 bit mirror freshness (`clean`,
+  `dirty`, `missing`, `unsupported`), stored build-time recall@10 self-check
+  result, active routing state, and `gno vec sync` remediation when dirty or missing
 - per-collection corpus-derived lexical retrieval proof
 - collection folders that are missing or unreadable right now
   (`collection-roots`, warning): each names the collection, its folder and
@@ -2437,8 +2441,8 @@ gno vec prune     # Remove superseded legacy vec_<hash> tables and content_vecto
 gno vec prune --vacuum      # Prune and run in-place SQLite VACUUM to shrink the DB file
 ```
 
-- `sync` - Fast incremental sync, fixes drift after failed inserts
-- `rebuild` - Full rebuild, use when sync isn't enough
+- `sync` - Fast incremental sync of both the float32 (`vec_v1_*`) and binary coarse (`vec_v2_*`) mirrors from stored vectors without re-embedding; runs the build-time recall self-check when the partition is above the exact cost budget
+- `rebuild` - Full rebuild of the vector mirrors from stored vectors without re-embedding and re-runs the build-time recall self-check when eligible
 - `drop <partition>` - Remove an abandoned shadow vector partition (legacy
   shadows included) that this runtime's retrieval does not read (id prefix of
   at least 8 characters from `gno status`) with its vectors. Status prints the
@@ -2447,10 +2451,10 @@ gno vec prune --vacuum      # Prune and run in-place SQLite VACUUM to shrink the
   partition may hold the only copy of the vectors until its one-time re-key.
 - `prune` - Remove superseded legacy `vec_<hash>` tables and `content_vectors`
   rows for models that already have an activated v1 vector partition, plus
-  orphaned `vec_v1_*` tables absent from `vector_partitions`. Models without an
-  activated partition keep their legacy tables and rows. Pass `--vacuum` to
-  reclaim OS disk space in-place, or run SQLite `VACUUM INTO` a new file for
-  large databases.
+  orphaned `vec_v1_*` and `vec_v2_*` tables and mapping/state rows absent from
+  `vector_partitions`. Models without an activated partition keep their legacy
+  tables and rows. Pass `--vacuum` to reclaim OS disk space in-place, or run
+  SQLite `VACUUM INTO` a new file for large databases.
 - `--json` - JSON output format
 
 `sync` and `rebuild` work on the active vector partition of the current

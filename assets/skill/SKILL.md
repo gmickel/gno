@@ -766,6 +766,33 @@ MCP-equivalent write tool:
 
 - `gno_clear_collection_embeddings`
 
+## Vector Maintenance, Coarse Routing, and Diagnostics
+
+For large unfiltered or collection-scoped vector searches, GNO maintains a 1-bit
+coarse `vec0` mirror (`vec_v2_*`) alongside float32 vectors and rescores
+candidates with exact float32 cosine. Coarse routing is enabled by default for
+partitions above the exact cost budget that pass the build-time recall@10
+self-check (>= 95%); filtered searches and small scopes stay exact.
+
+- **Inspect route on a query**: pass `--explain` (`gno query ... --explain`,
+  `gno vsearch ... --explain`, or `--json --explain`) to see `vectorRoute`
+  (`exact-sql`, `exact-vec0`, or `coarse-bit`, plus `N`, `coarseK`, and
+  `rescored`).
+- **Inspect mirror and mmap health**: `gno doctor` reports `sqlite-mmap` and
+  `coarse-mirror` (mirror freshness, stored self-check recall@10, and routing
+  state); `gno status --json` exposes `vectorPartitions[].coarseMirror`.
+- **Repair mirrors without re-embedding**: run `gno vec sync` (or
+  `gno vec rebuild` for a full rebuild) when `coarse-mirror` is `missing` or
+  `dirty`.
+- **Disable coarse routing for an index**: set `coarseVectorSearch: false` in
+  the index config file (`gno doctor` prints its path) to keep every query on
+  exact float32 paths.
+- **Reclaim superseded legacy vector tables**: run `gno vec prune` to drop
+  superseded `vec_<hash>` tables, legacy `content_vectors` rows (only for models
+  with an activated partition), and orphaned `vec_v1_*` / `vec_v2_*` mirrors.
+  Add `--vacuum` for in-place SQLite `VACUUM`, or run SQLite `VACUUM INTO` a new
+  file on large databases.
+
 ## Reference Documentation
 
 | Topic                                                 | File                                 |

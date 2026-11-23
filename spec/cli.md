@@ -3175,8 +3175,10 @@ included, is refused. JSON output is
 
 Drop superseded legacy `vec_<hash>` tables and delete legacy `content_vectors`
 rows for models that already have an activated v1 vector partition, plus any
-orphaned `vec_v1_<partition>` tables absent from `vector_partitions`. Models
-whose v1 partition is still `shadow` or absent keep their legacy tables and rows.
+orphaned `vec_v1_<partition>` and `vec_v2_<partition>` tables (and orphaned
+`vector_partition_rows` / `vector_mirror_v2_state` rows) absent from
+`vector_partitions`. Models whose v1 partition is still `shadow` or absent keep
+their legacy tables and rows.
 
 **Synopsis:**
 
