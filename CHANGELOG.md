@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.18.0] - 2026-11-24
+
+Thanks to @DanielKillenberger for contributing both cross-collection document relocation and owner-aware vector garbage collection (#359, #361, #363, #365).
+
 ### Added
 
+- `gno collection move` records files you moved on disk to another collection or path without re-indexing them (#359, #363). Each moved document keeps its id, docid, content, chunks, tags and vector bindings; its collection, path, URI, full-text path, content type, links, graph edges and change journal (both collections) follow the new location, and a following `gno update` finds it unchanged. Embeddings are reused when both collections use the same model (invalidating the coarse mirror state so collection-scoped searches stay accurate until the next `gno embed` or `gno vec sync`); a renamed file whose title came from its filename is re-embedded. Accepts a document, a folder (`collection/dir/`) or a `--from-file` mapping, with `--dry-run` and a `collection-move@1.0` JSON receipt. Moves GNO cannot prove (missing, changed or copied files, destination collisions, ambiguous docids, different indexing settings) are refused and left for `gno update`. `bun run bench:relocation` compares it with re-indexing. Thanks to @DanielKillenberger for contributing this feature.
 - `gno vec gc` removes stored vectors that no active document can use, in every vector partition (active, shadow and legacy-keyed), with their owner bindings, float32 `vec_v1` rows, and bit coarse `vec_v2` mirror rows (#361, #365). A vector stays while any active document with the same content produces it, in any collection, including a moved file the next `gno embed` will reuse it for. `--dry-run` opens the index read-only without the write lease and reports per partition how many vectors and bytes of embeddings a real run would remove. Real runs work in batches of 500, each its own write transaction that re-validates its vectors, so searches never see a half-collected batch; activation and both the v1 and v2 mirror clean marks (including stored coarse recall self-check results) are preserved on balanced removals, and a partition whose vector index cannot be written without sqlite-vec is skipped and reported. Output reports the embedding bytes removed separately from the file size and its reusable free space; compaction stays a separate, explicit step (`gno vec prune --vacuum`, or `VACUUM` by hand; temporary space, locking and WAL costs documented). Thanks to @DanielKillenberger for contributing this feature.
 - Automatic vector GC: every embed pass (CLI, `gno serve`/`gno daemon` background embedding, MCP, SDK) ends by collecting, for the model it embedded, the vectors that deactivated documents and re-embedded content left unused at least 7 days ago (#361, #365). Within those 7 days a file brought back with the same content still reuses its vector without embedding. A queue filled by database triggers (schema migration 40) makes the check one indexed lookup whether nothing or only not-yet-due vectors are queued (about 11 µs on a synthetic 100,000-chunk index, versus 0.4-0.5 s for a full traversal); a pass handles at most 5,000 queued vectors and starts no new batch after 250 ms, leaving the rest for the next pass (about 0.23-0.28 s per pass). Queueing adds about 11 µs per deactivated document to `gno update`. Passes stopped by `--max-chunks`/`--max-seconds` collect too. A failure is a warning on the run (`vectorGcError` in the `gno embed --json` receipt and the SDK embed result) and never fails it. `GNO_NO_AUTO_VECTOR_GC=1` turns it off. The migration queues vectors bound only by already-deactivated documents, dated by their deactivation; run `gno vec gc` once to collect older orphans and other models' partitions. Thanks to @DanielKillenberger for contributing this feature.
-- `gno collection move` records files you moved on disk to another collection or path without re-indexing them (#359, #363). Each moved document keeps its id, docid, content, chunks, tags and vector bindings; its collection, path, URI, full-text path, content type, links, graph edges and change journal (both collections) follow the new location, and a following `gno update` finds it unchanged. Embeddings are reused when both collections use the same model (invalidating the coarse mirror state so collection-scoped searches stay accurate until the next `gno embed` or `gno vec sync`); a renamed file whose title came from its filename is re-embedded. Accepts a document, a folder (`collection/dir/`) or a `--from-file` mapping, with `--dry-run` and a `collection-move@1.0` JSON receipt. Moves GNO cannot prove (missing, changed or copied files, destination collisions, ambiguous docids, different indexing settings) are refused and left for `gno update`. `bun run bench:relocation` compares it with re-indexing. Thanks to @DanielKillenberger for contributing this feature.
+
+### Changed
+
+- Updated the shipped `gno` agent skill (`assets/skill/SKILL.md`, `assets/skill/cli-reference.md`) with `gno collection move`, `gno vec gc`, automatic embed-pass vector GC, and `GNO_NO_AUTO_VECTOR_GC=1`.
 
 ## [2.17.0] - 2026-11-23
 
@@ -3124,7 +3132,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.17.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.18.0...HEAD
+[2.18.0]: https://github.com/gmickel/gno/compare/v2.17.0...v2.18.0
 [2.17.0]: https://github.com/gmickel/gno/compare/v2.16.0...v2.17.0
 [2.16.0]: https://github.com/gmickel/gno/compare/v2.15.0...v2.16.0
 [2.15.0]: https://github.com/gmickel/gno/compare/v2.14.0...v2.15.0
