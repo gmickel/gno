@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `gno collection move` records files you moved on disk to another collection or path without re-indexing them (#359, #363). Each moved document keeps its id, docid, content, chunks, tags and vector bindings; its collection, path, URI, full-text path, content type, links, graph edges and change journal (both collections) follow the new location, and a following `gno update` finds it unchanged. Embeddings are reused when both collections use the same model (invalidating the coarse mirror state so collection-scoped searches stay accurate until the next `gno embed` or `gno vec sync`); a renamed file whose title came from its filename is re-embedded. Accepts a document, a folder (`collection/dir/`) or a `--from-file` mapping, with `--dry-run` and a `collection-move@1.0` JSON receipt. Moves GNO cannot prove (missing, changed or copied files, destination collisions, ambiguous docids, different indexing settings) are refused and left for `gno update`. `bun run bench:relocation` compares it with re-indexing. Thanks to @DanielKillenberger for contributing this feature.
+
 ## [2.17.0] - 2026-11-23
 
 ### Added

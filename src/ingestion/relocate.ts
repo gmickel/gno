@@ -140,6 +140,9 @@ type ParsedSource =
 
 const DOCID_PATTERN = /^#[a-f0-9]{6,}$/;
 
+/** Moves whose writes commit in one transaction (as `gno update` batches files). */
+const RELOCATION_BATCH_SIZE = 50;
+
 function parseLocation(ref: string): ParsedLocation | string {
   if (ref.startsWith("gno://")) {
     const parsed = parseUri(ref);
@@ -896,74 +899,97 @@ export async function executeRelocations(
 ): Promise<RelocationResult> {
   const startedAt = performance.now();
   const byName = new Map(collections.map((c) => [c.name, c]));
-  const items: RelocationItem[] = [];
+  // Filled by plan position, so the receipt keeps the request order.
+  const items: RelocationItem[] = Array.from({ length: plan.length });
   const projectionSources = new Set<number>();
-  for (const entry of plan) {
+  let pending: Array<{ index: number; prepared: PreparedMove }> = [];
+
+  const itemFor = (
+    prepared: PreparedMove,
+    patch: Partial<RelocationItem>
+  ): RelocationItem => ({
+    source: prepared.move.document.uri,
+    destination: buildUri(prepared.move.collection, prepared.move.relPath),
+    status: "refused",
+    documentId: prepared.move.document.id,
+    docid: prepared.move.document.docid,
+    ...patch,
+  });
+
+  // Files are read and converted outside any transaction; the writes of up
+  // to RELOCATION_BATCH_SIZE moves then commit together, each move in its
+  // own savepoint so one refusal never rolls back another.
+  const flush = async () => {
+    const batch = pending;
+    pending = [];
+    if (batch.length === 0) return;
+    const apply = async () => {
+      for (const { index, prepared } of batch) {
+        const before = await deps.collectProjectionSources(
+          prepared.move.document.id,
+          projectionSources
+        );
+        if (before) {
+          items[index] = itemFor(prepared, {
+            code: "STORE_ERROR",
+            message: before.message,
+          });
+          continue;
+        }
+        const written = await writeMove(store, prepared);
+        if (!written.ok) {
+          items[index] = itemFor(prepared, {
+            code: written.code,
+            message: written.message,
+          });
+          continue;
+        }
+        await deps.collectProjectionSources(written.row.id, projectionSources);
+        items[index] = itemFor(prepared, {
+          destination: written.row.uri,
+          status: "relocated",
+          titleChanged: prepared.titleChanged,
+        });
+      }
+    };
+    if (!store.withTransaction) {
+      await apply();
+      return;
+    }
+    const committed = await store.withTransaction(apply);
+    if (!committed.ok) {
+      // The batch rolled back as a whole: report every move in it as failed.
+      for (const { index, prepared } of batch) {
+        items[index] = itemFor(prepared, {
+          code: "STORE_ERROR",
+          message: committed.error.message,
+        });
+      }
+    }
+  };
+
+  for (const [index, entry] of plan.entries()) {
     if (entry.kind === "refused") {
-      items.push(entry.item);
+      items[index] = entry.item;
       continue;
     }
     const checked = await prepareMove(deps, store, byName, options, entry.move);
     if (!checked.ok) {
-      items.push(checked.item);
+      items[index] = checked.item;
       continue;
     }
-    const prepared = checked.value;
-    const { document } = prepared.move;
-    const destination = buildUri(
-      prepared.move.collection,
-      prepared.move.relPath
-    );
     if (options.dryRun) {
-      items.push({
-        source: document.uri,
-        destination,
+      items[index] = itemFor(checked.value, {
         status: "would_relocate",
-        documentId: document.id,
-        docid: document.docid,
-        titleChanged: prepared.titleChanged,
+        titleChanged: checked.value.titleChanged,
       });
       continue;
     }
-    const before = await deps.collectProjectionSources(
-      document.id,
-      projectionSources
-    );
-    if (before) {
-      items.push({
-        source: document.uri,
-        destination,
-        status: "refused",
-        documentId: document.id,
-        docid: document.docid,
-        code: "STORE_ERROR",
-        message: before.message,
-      });
-      continue;
-    }
-    const written = await writeMove(store, prepared);
-    if (!written.ok) {
-      items.push({
-        source: document.uri,
-        destination,
-        status: "refused",
-        documentId: document.id,
-        docid: document.docid,
-        code: written.code,
-        message: written.message,
-      });
-      continue;
-    }
-    await deps.collectProjectionSources(document.id, projectionSources);
-    items.push({
-      source: document.uri,
-      destination: written.row.uri,
-      status: "relocated",
-      documentId: written.row.id,
-      docid: written.row.docid,
-      titleChanged: prepared.titleChanged,
-    });
+    pending.push({ index, prepared: checked.value });
+    if (pending.length >= RELOCATION_BATCH_SIZE) await flush();
   }
+  await flush();
+
   const relocated = items.filter((item) => item.status === "relocated").length;
   const projectionErrors =
     relocated > 0 ? await deps.projectGraph(projectionSources) : [];
