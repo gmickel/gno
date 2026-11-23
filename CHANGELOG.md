@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `gno vec gc` removes stored vectors that no active document can use, in every vector partition (active, shadow and legacy-keyed), with their owner bindings and vector index rows. A vector stays while any active document with the same content produces it, in any collection, including a moved file the next `gno embed` will reuse it for. `--dry-run` opens the index read-only without the write lease and reports per partition how many vectors and bytes of embeddings a real run would remove. Real runs work in batches of 500, each its own write transaction that re-validates its vectors, so searches never see a half-collected batch; activation and the vector index's current/stale record are preserved, and a partition whose vector index cannot be written without sqlite-vec is skipped and reported. Output reports the embedding bytes removed separately from the file size and its reusable free space; compaction (`VACUUM`) is documented as a separate step (#361).
+- Automatic vector GC: every embed pass (CLI, `gno serve`/`gno daemon` background embedding, MCP, SDK) ends by collecting the vectors that deactivated documents and re-embedded content left unused, for the model it embedded. A queue filled by database triggers (schema migration 38) makes the no-op check one indexed lookup (about 13 µs on a synthetic 20,000-chunk index, versus 86 ms for a full traversal); a pass handles at most 5,000 queued vectors and starts no new batch after 250 ms, leaving the rest for the next pass (about 270 ms for 5,000 384-dimension vectors). Passes stopped by `--max-chunks`/`--max-seconds` do not collect. `GNO_NO_AUTO_VECTOR_GC=1` turns it off. The migration queues vectors bound only by already-deactivated documents; run `gno vec gc` once to collect older orphans and other models' partitions.
+
 ## [2.16.0] - 2026-11-22
 
 ### Changed

@@ -13,6 +13,7 @@ import {
   createVectorIndexPort,
   createVectorStatsPort,
 } from "../../store/vector";
+import { runVectorGc, type VectorGcReport } from "../../store/vector/garbage";
 import {
   rebuildPartitionIndex,
   syncPartitionIndex,
@@ -387,4 +388,100 @@ export function formatVecDrop(
   return options.json
     ? JSON.stringify({ dropped: partition }, null, 2)
     : `Dropped ${partition.state} partition ${partition.id.slice(0, 12)} (${partition.provenance}, ${partition.owners} chunks)`;
+}
+
+export type VecGcResult =
+  | ({ success: true } & VectorGcReport)
+  | { success: false; error: string };
+
+/**
+ * Remove stored vector variants that no active document can use, in every
+ * stored partition. `dryRun` opens the index read-only (no migrations, no
+ * write lease needed) and reports what a real run would remove.
+ */
+export async function vecGc(
+  options: VecOptions & { dryRun?: boolean } = {}
+): Promise<VecGcResult> {
+  if (!(await isInitialized(options.configPath)))
+    return { success: false, error: "GNO not initialized. Run: gno init" };
+  const configResult = await loadConfig(options.configPath);
+  if (!configResult.ok)
+    return { success: false, error: configResult.error.message };
+  const config = configResult.value;
+  const dbPath = getIndexDbPath(options.indexName);
+  const store = new SqliteAdapter();
+  if (options.dryRun) {
+    if (!(await Bun.file(dbPath).exists()))
+      return {
+        success: false,
+        error: `No index at ${dbPath}. Run: gno update`,
+      };
+    const opened = store.openReadOnly(dbPath, config.busyTimeoutMs);
+    if (!opened.ok) return { success: false, error: opened.error.message };
+  } else {
+    const opened = await store.open(
+      dbPath,
+      config.ftsTokenizer,
+      config.busyTimeoutMs
+    );
+    if (!opened.ok) return { success: false, error: opened.error.message };
+  }
+  try {
+    const db = store.getRawDb();
+    const report = runVectorGc(db, {
+      dryRun: Boolean(options.dryRun),
+      vecLoaded: await loadSqliteVec(db),
+    });
+    return { success: true, ...report };
+  } catch (cause) {
+    return {
+      success: false,
+      error: cause instanceof Error ? cause.message : String(cause),
+    };
+  } finally {
+    await store.close();
+  }
+}
+
+const formatBytes = (bytes: number): string => {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return unit === 0 ? `${bytes} B` : `${value.toFixed(1)} ${units[unit]}`;
+};
+
+export function formatVecGc(
+  result: VecGcResult,
+  options: { json?: boolean }
+): string {
+  if (!result.success) {
+    return options.json
+      ? JSON.stringify({ error: { code: "RUNTIME", message: result.error } })
+      : `Error: ${result.error}`;
+  }
+  const { success: _success, ...report } = result;
+  if (options.json) return JSON.stringify(report, null, 2);
+  const verb = report.dryRun ? "collectible" : "removed";
+  const lines: string[] = [];
+  for (const p of report.partitions) {
+    const kind = `${p.state}${p.legacy ? ", legacy key" : ""}`;
+    lines.push(
+      p.skipped
+        ? `  ${p.id.slice(0, 12)} ${p.model} (${kind}): skipped: ${p.skipped}`
+        : `  ${p.id.slice(0, 12)} ${p.model} (${kind}): ${p.variants.toLocaleString()} of ${p.examined.toLocaleString()} variants ${verb}, ${formatBytes(p.bytes)}`
+    );
+  }
+  const header = report.dryRun
+    ? `Dry run: ${report.variants.toLocaleString()} unused vector variants (${formatBytes(report.bytes)} of embeddings) would be removed.`
+    : `Removed ${report.variants.toLocaleString()} unused vector variants (${formatBytes(report.bytes)} of embeddings).`;
+  return [
+    header,
+    ...(lines.length ? ["Partitions:", ...lines] : ["No vector partitions."]),
+    `Database file: ${formatBytes(report.databaseBytes)}, of which ${formatBytes(report.freeBytes)} is free space SQLite reuses before growing. Deleting rows does not shrink the file; see \`gno vec gc\` in docs/CLI.md for compaction.`,
+    `Legacy content_vectors (${report.legacyContentVectors.toLocaleString()} rows) are not collected here; \`gno cleanup\` removes orphaned ones.`,
+  ].join("\n");
 }

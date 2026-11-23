@@ -2433,6 +2433,8 @@ Vector index maintenance. Use when vector search returns empty despite embedding
 gno vec sync      # Sync the vec0 index with the stored vectors
 gno vec rebuild   # Full rebuild of the vec0 index
 gno vec drop 9a8b7c6d5e4f   # Drop an abandoned shadow partition
+gno vec gc --dry-run        # Report stored vectors no active document can use
+gno vec gc                  # Remove them
 ```
 
 - `sync` - Fast incremental sync, fixes drift after failed inserts
@@ -2443,7 +2445,42 @@ gno vec drop 9a8b7c6d5e4f   # Drop an abandoned shadow partition
   hint for exactly the partitions drop accepts. Active partitions, legacy ones
   included, are refused: another runtime may read them, and an active legacy
   partition may hold the only copy of the vectors until its one-time re-key.
+- `gc` - Remove stored vector variants that no active document can use, in
+  every partition (active, shadow and legacy-keyed), with their owner bindings
+  and vector index rows. A vector stays while any active document with the same
+  content produces it, in any collection, including a moved file that has not
+  been re-embedded yet (the next `gno embed` reuses it). `--dry-run` reads the
+  index read-only, without the write lease, and reports per partition how many
+  vectors and how many bytes of embeddings would go. Legacy `content_vectors`
+  are left to `gno cleanup`.
 - `--json` - JSON output format
+
+**Automatic vector GC.** Every `gno embed` pass, including background
+embedding in `gno serve` and `gno daemon`, ends by collecting the vectors that
+documents deactivated by `gno update` (deleted or moved files) or re-embedded
+content left unused, for the model it embedded. It costs one indexed lookup
+when there is nothing to collect and handles at most 5,000 vectors (about a
+quarter of a second) per pass, so a large backlog is collected over several
+passes or at once with `gno vec gc`. A pass stopped by `--max-chunks` or
+`--max-seconds` does not collect. Turn it off with `GNO_NO_AUTO_VECTOR_GC=1`.
+Run `gno vec gc` once after upgrading to also collect vectors orphaned before
+this release, and for other models' partitions.
+
+**Reclaiming disk space.** Removing vectors makes their space reusable inside
+the database; the file does not shrink (`gno vec gc` reports the file size and
+its free space). To shrink it, compact the database as a separate step:
+
+```bash
+# Stop gno serve, gno daemon and MCP servers using this index first.
+cp ~/.local/share/gno/index-default.sqlite ~/index-backup.sqlite   # path: gno status
+sqlite3 ~/.local/share/gno/index-default.sqlite \
+  "PRAGMA wal_checkpoint(TRUNCATE); VACUUM; PRAGMA wal_checkpoint(TRUNCATE);"
+```
+
+`VACUUM` rewrites the whole database: it needs free disk space of up to twice
+the database size while it runs, holds an exclusive lock (every read and write
+waits or fails with busy), and in WAL mode writes the rewritten pages through
+the WAL, which the final checkpoint truncates. It is never run automatically.
 
 `sync` and `rebuild` work on the active vector partition of the current
 embedding model (the vectors `gno embed` writes since 2.7) and report its

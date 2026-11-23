@@ -1565,16 +1565,17 @@ Override paths (applied before platform defaults):
 
 Runtime/model env vars:
 
-| Variable                    | Description                                                        |
-| --------------------------- | ------------------------------------------------------------------ |
-| `GNO_LLAMA_GPU`             | Local llama backend: `auto`, `metal`, `vulkan`, `cuda`, or CPU off |
-| `NODE_LLAMA_CPP_GPU`        | Compatibility alias used when `GNO_LLAMA_GPU` is unset             |
-| `GNO_LLAMA_BUILD`           | Backend build mode: default `never`; set `autoAttempt` to opt in   |
-| `GNO_LLAMA_INIT_TIMEOUT_MS` | Backend initialization timeout; default `30000` ms                 |
-| `GNO_EMBED_CONTEXTS`        | Override CPU embedding context count, clamped to `1`-`4`           |
-| `GNO_EMBED_CONTEXT_SIZE`    | Override native embedding context size; minimum `128`              |
-| `GNO_EMBED_THREADS`         | Override CPU threads per embedding context                         |
-| `GNO_NO_AUTO_DOWNLOAD`      | Disable automatic model downloads; explicit `models pull` allowed  |
+| Variable                    | Description                                                           |
+| --------------------------- | --------------------------------------------------------------------- |
+| `GNO_LLAMA_GPU`             | Local llama backend: `auto`, `metal`, `vulkan`, `cuda`, or CPU off    |
+| `NODE_LLAMA_CPP_GPU`        | Compatibility alias used when `GNO_LLAMA_GPU` is unset                |
+| `GNO_LLAMA_BUILD`           | Backend build mode: default `never`; set `autoAttempt` to opt in      |
+| `GNO_LLAMA_INIT_TIMEOUT_MS` | Backend initialization timeout; default `30000` ms                    |
+| `GNO_EMBED_CONTEXTS`        | Override CPU embedding context count, clamped to `1`-`4`              |
+| `GNO_EMBED_CONTEXT_SIZE`    | Override native embedding context size; minimum `128`                 |
+| `GNO_EMBED_THREADS`         | Override CPU threads per embedding context                            |
+| `GNO_NO_AUTO_DOWNLOAD`      | Disable automatic model downloads; explicit `models pull` allowed     |
+| `GNO_NO_AUTO_VECTOR_GC`     | Disable vector GC at the end of embed passes; `gno vec gc` still runs |
 
 Neither `GNO_LLAMA_GPU` nor `NODE_LLAMA_CPP_GPU` changes vector identity: a
 backend switch reuses the existing vector partition when a measured sample of

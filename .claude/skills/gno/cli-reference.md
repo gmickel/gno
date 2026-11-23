@@ -924,11 +924,17 @@ Vector index maintenance. Use when `gno similar` returns empty despite embedding
 gno vec sync      # Fast incremental sync
 gno vec rebuild   # Full rebuild
 gno vec drop <partition>   # Drop an abandoned shadow partition (id prefix from gno status)
+gno vec gc [--dry-run]     # Remove stored vectors no active document can use (all partitions)
 ```
 
-| Option   | Description |
-| -------- | ----------- |
-| `--json` | JSON output |
+`gno embed` passes also collect unused vectors automatically (bounded per pass;
+`GNO_NO_AUTO_VECTOR_GC=1` turns it off). `vec gc` never shrinks the file; see
+docs/CLI.md for compaction.
+
+| Option      | Description                                  |
+| ----------- | -------------------------------------------- |
+| `--dry-run` | `gc` only: report, read-only, no write lease |
+| `--json`    | JSON output                                  |
 
 ## MCP Server
 

@@ -112,6 +112,7 @@ async function loadAllSchemas(): Promise<void> {
     "request-status",
     "index-receipt",
     "embed-receipt",
+    "vec-gc",
     "convert",
   ];
 

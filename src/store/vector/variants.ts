@@ -4,6 +4,7 @@ import type { Database } from "bun:sqlite";
 import type { VectorOwnerInput, VectorVariantIdentity } from "./types";
 
 import { formatDocForEmbedding } from "../../pipeline/contextual";
+import { collectPartitionInTransaction } from "./garbage";
 import { markMirrorClean } from "./partition-index";
 import { provenOwners, vectorProofKey } from "./proof-cache";
 import { decodeEmbedding } from "./sqlite-vec";
@@ -1024,103 +1025,14 @@ export class VectorVariantStore {
   }
 
   private removeUnowned(inOuterTx: boolean): number {
-    // 1. Collect variants with zero active mirror-matching owners in pure SQL
-    // without touching any embedding BLOBs.
-    const noActiveOwners = this.db
-      .query<{ variant_id: number }, [string]>(`
-        SELECT v.variant_id
-        FROM vector_variants v
-        WHERE v.partition_id = ?
-          AND NOT EXISTS (
-            SELECT 1
-            FROM vector_owners o
-            JOIN documents d ON d.id = o.document_id AND d.active = 1
-              AND d.mirror_hash = o.mirror_hash
-            JOIN content_chunks c ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
-            WHERE o.partition_id = v.partition_id AND o.variant_id = v.variant_id
-          )
-      `)
-      .all(this.partitionId);
-
-    const toRemove: number[] = noActiveOwners.map((row) => row.variant_id);
-
-    // 2. Stream remaining candidates ordered by variant_id (never reading
-    // v.embedding), consulting the epoch-keyed proof cache and short-circuiting
-    // as soon as a variant has one valid owner.
-    const proofs = provenOwners(this.db, inOuterTx);
-    const candidateStmt = this.db.prepare<
-      OwnerRow & { variant_id: number; input_hash: string },
-      [string]
-    >(`
-      SELECT v.variant_id, v.input_hash,
-        d.id AS documentId, d.mirror_hash AS mirrorHash,
-        c.seq, c.text, d.title
-      FROM vector_variants v
-      JOIN vector_owners o${ownerPartitionVariantHint(this.db)}
-        ON o.partition_id = v.partition_id AND o.variant_id = v.variant_id
-      JOIN documents d ON d.id = o.document_id AND d.active = 1
-        AND d.mirror_hash = o.mirror_hash
-      JOIN content_chunks c${chunkKeyHint(this.db)}
-        ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
-      WHERE v.partition_id = ?
-      ORDER BY v.variant_id
-    `);
-    try {
-      let currentVariantId: number | null = null;
-      let hasValidOwner = false;
-      for (const row of candidateStmt.iterate(this.partitionId)) {
-        if (row.variant_id !== currentVariantId) {
-          if (currentVariantId !== null && !hasValidOwner) {
-            toRemove.push(currentVariantId);
-          }
-          currentVariantId = row.variant_id;
-          hasValidOwner = false;
-        }
-        if (hasValidOwner) continue;
-        const key = vectorProofKey(
-          this.identity.model,
-          row.documentId,
-          row.mirrorHash,
-          row.seq,
-          row.input_hash
-        );
-        let valid = proofs.get(key);
-        if (valid === undefined) {
-          valid = this.input(row).inputHash === row.input_hash;
-          proofs.set(key, valid);
-        }
-        if (valid) {
-          hasValidOwner = true;
-        }
-      }
-      if (currentVariantId !== null && !hasValidOwner) {
-        toRemove.push(currentVariantId);
-      }
-    } finally {
-      candidateStmt.finalize();
-    }
-
-    if (toRemove.length === 0) return 0;
-
-    const removeJson = JSON.stringify(toRemove);
-    if (this.searchAvailable) {
-      this.db
-        .query(
-          `DELETE FROM ${this.tableName} WHERE variant_id IN (SELECT value FROM json_each(?))`
-        )
-        .run(removeJson);
-    }
-    this.db
-      .query(
-        "DELETE FROM vector_owners WHERE partition_id = ? AND variant_id IN (SELECT value FROM json_each(?))"
-      )
-      .run(this.partitionId, removeJson);
-    this.db
-      .query(
-        "DELETE FROM vector_variants WHERE partition_id = ? AND variant_id IN (SELECT value FROM json_each(?))"
-      )
-      .run(this.partitionId, removeJson);
-    return toRemove.length;
+    // One liveness rule for every caller (see ./garbage): a variant stays
+    // while an active document with matching content produces its input.
+    return collectPartitionInTransaction(
+      this.db,
+      { partitionId: this.partitionId, model: this.identity.model },
+      this.searchAvailable ? "mirror" : "none",
+      inOuterTx
+    );
   }
 }
 

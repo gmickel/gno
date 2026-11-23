@@ -156,7 +156,7 @@ describe("R2: Migration 037 covering and cleanup indexes + query plans", () => {
       );
       expect(getSchemaVersion(raw)).toBe(36);
       expect(runMigrations(raw, migrations, "unicode61").ok).toBe(true);
-      expect(getSchemaVersion(raw)).toBe(37);
+      expect(getSchemaVersion(raw)).toBe(38);
 
       const indexes = new Set(
         raw

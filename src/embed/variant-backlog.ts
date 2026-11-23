@@ -10,6 +10,11 @@ import {
   withInferencePage,
 } from "../llm/inference-scope";
 import { err, ok } from "../store/types";
+import {
+  autoVectorGcDisabled,
+  collectQueuedGarbage,
+  hasQueuedGarbage,
+} from "../store/vector/garbage";
 import { getVectorStatsDatabase } from "../store/vector/stats";
 import { embedTextsWithRecovery } from "./batch";
 import {
@@ -710,6 +715,15 @@ export async function embedVariantBacklog(
     // A traversal that reached its end leaves nothing to resume.
     if (!identityLost) await saveResume(undefined);
     assertInferenceActive();
+    return await collectAfterPass(await settlePass());
+  } catch (cause) {
+    return err(
+      "QUERY_FAILED",
+      cause instanceof Error ? cause.message : String(cause)
+    );
+  }
+
+  async function settlePass(): Promise<StoreResult<EmbedBacklogResult>> {
     // Retrieval authority was established by the first activation, and
     // search validates every owner at query time, so a later pass does not
     // re-prove index-wide coverage (O(index) on every run) while the vec0
@@ -760,10 +774,45 @@ export async function embedVariantBacklog(
     }
     assertInferenceActive();
     return ok(identityLost ? { ...total, incomplete: true } : total);
-  } catch (cause) {
-    return err(
-      "QUERY_FAILED",
-      cause instanceof Error ? cause.message : String(cause)
-    );
+  }
+
+  /**
+   * Automatic vector GC for this pass's partition, once its bindings have
+   * settled (a moved file's identical content was re-bound by reuse above).
+   * One indexed probe when nothing is queued; otherwise a bounded slice under
+   * the write turn, the rest left queued for the next pass. A failure is
+   * reported on the result and never fails the pass.
+   */
+  async function collectAfterPass(
+    settled: StoreResult<EmbedBacklogResult>
+  ): Promise<StoreResult<EmbedBacklogResult>> {
+    if (
+      !settled.ok ||
+      !db ||
+      identityLost ||
+      settled.value.deferred ||
+      settled.value.incomplete ||
+      autoVectorGcDisabled() ||
+      !identityStillCurrent() ||
+      !hasQueuedGarbage(db, store.partitionId)
+    )
+      return settled;
+    const gcDb = db;
+    const turn = await inWriteTurn(deps.acquireWriteTurn, async () => {
+      try {
+        return collectQueuedGarbage(
+          gcDb,
+          { partitionId: store.partitionId, model: store.identity.model },
+          { vecLoaded: store.searchAvailable }
+        );
+      } catch (cause) {
+        return cause instanceof Error ? cause.message : String(cause);
+      }
+    });
+    if (turn.deferred) return settled;
+    if (typeof turn.value === "string")
+      return ok({ ...settled.value, vectorGcError: turn.value });
+    const { variants, bytes, remaining } = turn.value;
+    return ok({ ...settled.value, vectorGc: { variants, bytes, remaining } });
   }
 }

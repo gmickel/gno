@@ -109,6 +109,10 @@ export interface EmbedBacklogResult {
   stopped?: "limit";
   /** The pass ended early because the runtime identity changed; work may remain. */
   incomplete?: boolean;
+  /** Automatic vector GC at the end of the pass, when it examined candidates. */
+  vectorGc?: { variants: number; bytes: number; remaining: boolean };
+  /** Automatic vector GC failed; the pass's embeddings are unaffected. */
+  vectorGcError?: string;
 }
 
 interface Cursor {

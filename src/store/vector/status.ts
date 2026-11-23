@@ -556,6 +556,17 @@ export async function dropVectorPartition(
         `DELETE FROM schema_meta WHERE key GLOB '${SELECTED_VECTOR_PARTITION_PREFIX}*' AND value = ?`,
       ])
         db.run(statement, [partition.id]);
+      // The owner deletes above queued GC candidates for a partition that is gone.
+      if (
+        db
+          .query(
+            "SELECT 1 FROM sqlite_master WHERE name = 'vector_gc_candidates'"
+          )
+          .get()
+      )
+        db.run("DELETE FROM vector_gc_candidates WHERE partition_id = ?", [
+          partition.id,
+        ]);
       db.exec(`DROP TABLE IF EXISTS ${table}`);
       return { ok: true, partition };
     })
