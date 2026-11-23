@@ -2,7 +2,7 @@
   "branch": "fn-237-owner-aware-vector-garbage-collection",
   "findings": {
     "backend": "interactive",
-    "headSha": "2da868fcb74c61325bf5b2f88c6a24ad6468720c",
+    "headSha": "da993f11763a26271a038d94f077bb1a3b984610",
     "items": [
       {
         "body": "Text output said '1 unused vector variants'. Fixed in 2da868fc; the re-run at that head prints '1 unused vector variant'. (surface: src/cli/commands/vec.ts)",
@@ -10,20 +10,21 @@
         "confidence": 100,
         "firstSeenReceiptId": "review-41645b9fd81ef0715bd43dc0ea38129a2a67df8f8585bf5d2abea2b978b33666",
         "id": "finding-dab49ba5396b6692f1d02bc55e9846a8",
-        "lastSeenReceiptId": "review-41645b9fd81ef0715bd43dc0ea38129a2a67df8f8585bf5d2abea2b978b33666",
+        "lastSeenReceiptId": "review-addd139975a2baddf2f3ec7769ad7d0a51876f8721c4f0023e814c7110fc5730",
         "ordinal": 1,
         "rIds": [],
         "severity": "P2",
-        "status": "open",
+        "status": "not_fixed",
         "title": "QA-1"
       }
     ],
     "reviewKind": "qa",
-    "round": 1,
+    "round": 2,
     "schemaVersion": 1,
-    "sourceReceiptId": "review-41645b9fd81ef0715bd43dc0ea38129a2a67df8f8585bf5d2abea2b978b33666"
+    "sourceReceiptId": "review-addd139975a2baddf2f3ec7769ad7d0a51876f8721c4f0023e814c7110fc5730",
+    "supersedesReceiptId": "review-41645b9fd81ef0715bd43dc0ea38129a2a67df8f8585bf5d2abea2b978b33666"
   },
-  "head_sha": "2da868fcb74c61325bf5b2f88c6a24ad6468720c",
+  "head_sha": "da993f11763a26271a038d94f077bb1a3b984610",
   "id": "fn-237-owner-aware-vector-garbage-collection",
   "mode": "interactive",
   "open_p0p1": [],
@@ -69,9 +70,9 @@
   "scenarios": [
     {
       "evidence": [
-        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-2da868fc.log"
+        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-da993f11.log"
       ],
-      "head_sha": "2da868fcb74c61325bf5b2f88c6a24ad6468720c",
+      "head_sha": "da993f11763a26271a038d94f077bb1a3b984610",
       "id": "S1",
       "outcome": "PASS",
       "rids": [
@@ -81,9 +82,9 @@
     },
     {
       "evidence": [
-        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-2da868fc.log"
+        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-da993f11.log"
       ],
-      "head_sha": "2da868fcb74c61325bf5b2f88c6a24ad6468720c",
+      "head_sha": "da993f11763a26271a038d94f077bb1a3b984610",
       "id": "S2",
       "outcome": "PASS",
       "rids": [
@@ -95,9 +96,9 @@
     },
     {
       "evidence": [
-        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-2da868fc.log"
+        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-da993f11.log"
       ],
-      "head_sha": "2da868fcb74c61325bf5b2f88c6a24ad6468720c",
+      "head_sha": "da993f11763a26271a038d94f077bb1a3b984610",
       "id": "S3",
       "outcome": "PASS",
       "rids": [
@@ -107,9 +108,9 @@
     },
     {
       "evidence": [
-        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-2da868fc.log"
+        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-da993f11.log"
       ],
-      "head_sha": "2da868fcb74c61325bf5b2f88c6a24ad6468720c",
+      "head_sha": "da993f11763a26271a038d94f077bb1a3b984610",
       "id": "S4",
       "outcome": "PASS",
       "rids": [
@@ -120,9 +121,9 @@
     },
     {
       "evidence": [
-        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-2da868fc.log"
+        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-da993f11.log"
       ],
-      "head_sha": "2da868fcb74c61325bf5b2f88c6a24ad6468720c",
+      "head_sha": "da993f11763a26271a038d94f077bb1a3b984610",
       "id": "S5",
       "outcome": "PASS",
       "rids": [
@@ -133,9 +134,9 @@
     },
     {
       "evidence": [
-        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-2da868fc.log"
+        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-da993f11.log"
       ],
-      "head_sha": "2da868fcb74c61325bf5b2f88c6a24ad6468720c",
+      "head_sha": "da993f11763a26271a038d94f077bb1a3b984610",
       "id": "S6",
       "outcome": "PASS",
       "rids": [
@@ -146,9 +147,9 @@
     },
     {
       "evidence": [
-        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-2da868fc.log"
+        ".flow/tmp/qa-fn-237-owner-aware-vector-garbage-collection/cli-session-da993f11.log"
       ],
-      "head_sha": "2da868fcb74c61325bf5b2f88c6a24ad6468720c",
+      "head_sha": "da993f11763a26271a038d94f077bb1a3b984610",
       "id": "S7",
       "outcome": "PASS",
       "rids": [
@@ -157,7 +158,7 @@
       "run": "live"
     }
   ],
-  "timestamp": "2026-11-23T16:13:25Z",
+  "timestamp": "2026-11-23T16:21:11Z",
   "type": "qa_verdict",
   "verdict": "SHIP"
 }
