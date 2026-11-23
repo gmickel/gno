@@ -80,24 +80,24 @@ Recipe rules:
 
 ## Command Overview
 
-| Category     | Commands                                                                                                   | Description                                                              |
-| ------------ | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| **Search**   | `search`, `vsearch`, `query`, `ask`                                                                        | Find documents by keywords, meaning, or get AI answers                   |
-| **Links**    | `links`, `backlinks`, `similar`, `graph`, `graph query`                                                    | Navigate document relationships and typed connections                    |
-| **Retrieve** | `get`, `multi-get`, `ls`, `ls --filter`                                                                    | Fetch document content by URI or ID; list documents by typed metadata    |
-| **Index**    | `setup`, `profile check/show/diff/apply`, `init`, `collection add/list/remove`, `index`, `update`, `embed` | Reproduce profile intent, prove retrieval, then maintain the index       |
-| **Tags**     | `tags`, `tags add`, `tags rm`                                                                              | Organize and filter documents                                            |
-| **Context**  | `context add/list/rm/check/build/verify/watch/watches/reverify/unwatch`                                    | Configure guidance or compile, verify, and watch saved evidence Capsules |
-| **Changes**  | `changes`, `diff`, `impact`                                                                                | Inspect bounded metadata history and dependency impact                   |
-| **Traces**   | `trace list/show/label/export/replay/delete/purge`                                                         | Manage and replay private retrieval receipts                             |
-| **Models**   | `models list/use/pull/clear/path`                                                                          | Manage local AI models                                                   |
-| **Serve**    | `serve`, `daemon`                                                                                          | One resident Web/headless gateway and watcher                            |
-| **Publish**  | `publish export`                                                                                           | Export gno.sh publish artifacts                                          |
-| **Memory**   | `remember`, `recall`                                                                                       | Fact-granular agent memory with explicit scopes and supersession         |
-| **Sessions** | `sessions discover/init/source add/source remove/import/status/prune/automation`                           | Agent-session archive: manual import, opt-in hook/schedule automation    |
-| **MCP**      | `mcp`, `mcp install/uninstall/status`                                                                      | AI assistant integration                                                 |
-| **Skill**    | `skill install/uninstall/show/paths`                                                                       | Install skill for AI agents                                              |
-| **Admin**    | `peek`, `status`, `doctor`, `cleanup`, `reset`, `vec`, `completion`                                        | Snapshot, maintenance, and diagnostics                                   |
+| Category     | Commands                                                                                                        | Description                                                              |
+| ------------ | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| **Search**   | `search`, `vsearch`, `query`, `ask`                                                                             | Find documents by keywords, meaning, or get AI answers                   |
+| **Links**    | `links`, `backlinks`, `similar`, `graph`, `graph query`                                                         | Navigate document relationships and typed connections                    |
+| **Retrieve** | `get`, `multi-get`, `ls`, `ls --filter`                                                                         | Fetch document content by URI or ID; list documents by typed metadata    |
+| **Index**    | `setup`, `profile check/show/diff/apply`, `init`, `collection add/list/remove/move`, `index`, `update`, `embed` | Reproduce profile intent, prove retrieval, then maintain the index       |
+| **Tags**     | `tags`, `tags add`, `tags rm`                                                                                   | Organize and filter documents                                            |
+| **Context**  | `context add/list/rm/check/build/verify/watch/watches/reverify/unwatch`                                         | Configure guidance or compile, verify, and watch saved evidence Capsules |
+| **Changes**  | `changes`, `diff`, `impact`                                                                                     | Inspect bounded metadata history and dependency impact                   |
+| **Traces**   | `trace list/show/label/export/replay/delete/purge`                                                              | Manage and replay private retrieval receipts                             |
+| **Models**   | `models list/use/pull/clear/path`                                                                               | Manage local AI models                                                   |
+| **Serve**    | `serve`, `daemon`                                                                                               | One resident Web/headless gateway and watcher                            |
+| **Publish**  | `publish export`                                                                                                | Export gno.sh publish artifacts                                          |
+| **Memory**   | `remember`, `recall`                                                                                            | Fact-granular agent memory with explicit scopes and supersession         |
+| **Sessions** | `sessions discover/init/source add/source remove/import/status/prune/automation`                                | Agent-session archive: manual import, opt-in hook/schedule automation    |
+| **MCP**      | `mcp`, `mcp install/uninstall/status`                                                                           | AI assistant integration                                                 |
+| **Skill**    | `skill install/uninstall/show/paths`                                                                            | Install skill for AI agents                                              |
+| **Admin**    | `peek`, `status`, `doctor`, `cleanup`, `reset`, `vec`, `completion`                                             | Snapshot, maintenance, and diagnostics                                   |
 
 ### Publishing with local images
 
@@ -792,6 +792,35 @@ self-check (>= 95%); filtered searches and small scopes stay exact.
   with an activated partition), and orphaned `vec_v1_*` / `vec_v2_*` mirrors.
   Add `--vacuum` for in-place SQLite `VACUUM`, or run SQLite `VACUUM INTO` a new
   file on large databases.
+- **Collect unowned vector variants**: run `gno vec gc --dry-run` (read-only,
+  no write lease) to preview, then `gno vec gc` to remove stored vectors no
+  active document can use across all partitions (active, shadow, and legacy)
+  while keeping v1 and v2 coarse mirrors clean. Every `gno embed` pass also
+  runs bounded automatic vector GC (5,000 candidates / 250 ms per pass) after a
+  7-day grace period so recently deleted/restored files reuse their vectors;
+  set `GNO_NO_AUTO_VECTOR_GC=1` to disable automatic GC. `gno vec gc` never
+  shrinks the database file; use `gno vec prune --vacuum` or SQLite `VACUUM`
+  separately when compaction is needed.
+
+## Cross-Collection Relocation (`gno collection move`)
+
+When the user has already moved unchanged files or folders on disk to another
+collection or path, record the move in GNO without re-indexing or re-embedding:
+
+```bash
+gno collection move notes/reports/ archive/reports/ --dry-run   # preview first
+gno collection move notes/reports/ archive/reports/             # apply folder move
+gno collection move notes/q1.md archive/q1.md                   # single file
+gno collection move --from-file moves.tsv                       # batch mapping file
+```
+
+Each relocated document keeps its id, docid, content, chunks, tags, and vector
+bindings (when both collections share the same embedding model); only a renamed
+file whose title came from its filename re-embeds. Moving across collections
+invalidates the coarse mirror state so collection-scoped searches stay exact
+until the next `gno embed` or `gno vec sync`. Unprovable moves (missing,
+changed, or copied files; occupied destinations; incompatible indexing rules)
+are refused and left for `gno update`.
 
 ## Reference Documentation
 
