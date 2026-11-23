@@ -1553,6 +1553,23 @@ busyTimeoutMs: 120000
 Inspect the live value (the pragma on the open database, not the config echo)
 with `gno doctor` or `gno doctor --json`.
 
+## Coarse vector search
+
+`coarseVectorSearch` enables the cost-routed two-stage binary (`bit`) coarse
+`vec0` mirror with exact float32 rescore for large unfiltered or
+collection-scoped vector searches. It defaults to `false` (off) until recall is
+validated on `>= 500k` real stored vectors.
+
+```yaml
+coarseVectorSearch: true
+```
+
+Even when enabled, every filtered search, every scope within the 100 ms exact
+cost budget, queries with `k > 40`, partitions whose dimensions are not
+divisible by 8, and partitions whose build-time recall self-check is absent or
+below 95% remain on the exact paths. Inspect mirror freshness and stored recall
+with `gno status` or `gno doctor`, and repair with `gno vec sync`.
+
 ## Environment Variables
 
 Override paths (applied before platform defaults):

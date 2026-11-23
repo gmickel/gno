@@ -11,6 +11,16 @@ import type {
 import { formatDocForEmbedding } from "../../pipeline/contextual";
 import { buildEligibleDocumentQuery } from "../sqlite/eligibility";
 import {
+  computeCoarseK,
+  countScopeMirrorRows,
+  extractRequestedCollections,
+  hasNonCollectionFilter,
+  isV2CompatibleDimensions,
+  resolveVectorRoute,
+  v2TableName,
+} from "./coarse-router";
+import { hasNullCosineColumn } from "./partition-index";
+import {
   checkNullCosineVariant,
   type NullCosineCheckResult,
   persistNullCosineAfterSnapshot,
@@ -30,6 +40,7 @@ import {
   writerConnection,
   writerIdle,
 } from "./sqlite-vec";
+import { hasV2MirrorTables, hasV2Table, readV2MirrorState } from "./v2-mirror";
 import {
   chunkKeyHint,
   embeddingInputHash,
@@ -680,6 +691,176 @@ function searchVectorVariantsFromVariants(
   return results;
 }
 
+function readPersistedNullCosineFlag(
+  db: Database,
+  partitionId: string
+): 0 | 1 | null {
+  if (!hasNullCosineColumn(db)) return null;
+  const row = db
+    .query<{ dirty: number; null_cosine: number | null }, [string]>(
+      "SELECT dirty, null_cosine FROM vector_mirror_state WHERE partition_id = ?"
+    )
+    .get(partitionId);
+  if (row?.dirty !== 0) return null;
+  return row.null_cosine === 0 ? 0 : row.null_cosine === 1 ? 1 : null;
+}
+
+/**
+ * Two-stage coarse bit search inside the active read snapshot (fn-235 §4):
+ * Stage 1: Hamming KNN on `vec_v2_<partitionId>` (per collection or unscoped).
+ * Stage 2: map rowids -> distinct `variant_id`s through `vector_partition_rows`,
+ *          rescore exact float32 cosine against `vector_variants`, hydrate only
+ *          eligible owners in scope (access-control boundary), run `proveUnknownOwners`,
+ *          apply exact `minScore`, sort by `(distance, mirrorHash, seq, variantId)`.
+ *
+ * Returns `null` on underfill (fewer than `k` proven hits while Stage 1 filled
+ * `coarseK` and no candidate fell below `minScore`) so the caller reruns exact.
+ */
+function searchVectorVariantsViaCoarseBit(
+  db: Database,
+  model: string,
+  partitionId: string,
+  embedding: Float32Array,
+  k: number,
+  coarseK: number,
+  collections: readonly string[],
+  minScore: number | undefined,
+  options: VectorSearchOptions,
+  proofs: Map<string, boolean>,
+  batchOwners: ReturnType<typeof createBatchOwnersStmt>
+): { results: VectorSearchResult[]; rescored: number } | null {
+  const queryVector = encodeEmbedding(embedding);
+  const v2Table = v2TableName(partitionId);
+  const rowidSet = new Set<number>();
+  let stage1ReturnedFull = false;
+
+  if (collections.length === 0) {
+    const rows = db
+      .query<{ rowid: number }, [Uint8Array, number]>(
+        `SELECT rowid FROM "${v2Table}"
+         WHERE coarse MATCH vec_quantize_binary(?) AND k = ?`
+      )
+      .all(queryVector, coarseK);
+    if (rows.length >= coarseK) stage1ReturnedFull = true;
+    for (const r of rows) rowidSet.add(r.rowid);
+  } else {
+    const legStmt = db.prepare<{ rowid: number }, [Uint8Array, number, string]>(
+      `SELECT rowid FROM "${v2Table}"
+       WHERE coarse MATCH vec_quantize_binary(?) AND k = ? AND collection = ?`
+    );
+    try {
+      for (const collection of collections) {
+        const rows = legStmt.all(queryVector, coarseK, collection);
+        if (rows.length >= coarseK) stage1ReturnedFull = true;
+        for (const r of rows) rowidSet.add(r.rowid);
+      }
+    } finally {
+      legStmt.finalize();
+    }
+  }
+
+  if (rowidSet.size === 0) {
+    return { results: [], rescored: 0 };
+  }
+
+  // Map rowids -> distinct variant_ids through plain table `vector_partition_rows`
+  // driven by json_each CROSS JOIN PK seeks (never passing rowids to vec0 `rowid IN`).
+  const variantIds = db
+    .query<{ variant_id: number }, [string, string]>(
+      `SELECT DISTINCT r.variant_id
+       FROM json_each(?) AS m
+       CROSS JOIN vector_partition_rows r ON r.id = m.value
+       WHERE r.partition_id = ?`
+    )
+    .all(JSON.stringify([...rowidSet]), partitionId)
+    .map((r) => r.variant_id);
+
+  if (variantIds.length === 0) {
+    return stage1ReturnedFull ? null : { results: [], rescored: 0 };
+  }
+
+  // Stage 2: exact float32 rescore + eligible-documents owner hydration enforcing
+  // the exact collection access-control boundary. CROSS JOIN pins json_each(cand)
+  // as the outer loop so SQLite seeks only the <= coarseK candidate variants
+  // instead of scanning all vector_owners in the partition.
+  const eligible = buildEligibleDocumentQuery(
+    { ...options.eligibility, semanticMetadata: true },
+    db
+  );
+  const hydrated = db
+    .query<RankedVariantRow, (Uint8Array | string | number)[]>(
+      `SELECT o.variant_id AS variantId, o.mirror_hash AS mirrorHash, o.seq,
+         v.input_hash AS inputHash,
+         vec_distance_cosine(v.embedding, ?) AS distance,
+         json_group_array(o.document_id) AS documentIds
+       FROM json_each(?) AS cand
+       CROSS JOIN vector_variants v${variantPartitionIdHint(db)}
+         ON v.partition_id = ? AND v.variant_id = cand.value
+       CROSS JOIN vector_owners o${ownerPartitionVariantHint(db)}
+         ON o.partition_id = v.partition_id AND o.variant_id = v.variant_id
+       CROSS JOIN (${eligible.sql}) e
+         ON e.id = o.document_id AND e.mirror_hash = o.mirror_hash
+       GROUP BY o.variant_id, o.mirror_hash, o.seq
+       ORDER BY distance, o.mirror_hash, o.seq, o.variant_id`
+    )
+    .all(
+      queryVector,
+      JSON.stringify(variantIds),
+      partitionId,
+      ...eligible.params
+    );
+
+  let hitMinScoreCutoff = false;
+  const candidateRows: CandidateRow[] = [];
+  for (const row of hydrated) {
+    if (
+      minScore !== undefined &&
+      row.distance !== null &&
+      1 - row.distance < minScore
+    ) {
+      hitMinScoreCutoff = true;
+      break;
+    }
+    candidateRows.push({
+      variantId: row.variantId ?? 0,
+      mirrorHash: row.mirrorHash,
+      seq: row.seq,
+      inputHash: row.inputHash,
+      distance: row.distance,
+      documentIds: JSON.parse(row.documentIds) as number[],
+    });
+  }
+
+  proveUnknownOwners(model, proofs, [candidateRows], batchOwners);
+
+  const results: VectorSearchResult[] = [];
+  for (const row of candidateRows) {
+    const proven = row.documentIds
+      .filter((id) =>
+        proofs.get(
+          vectorProofKey(model, id, row.mirrorHash, row.seq, row.inputHash)
+        )
+      )
+      .sort((a, b) => a - b);
+    if (proven.length === 0) continue;
+    results.push({
+      mirrorHash: row.mirrorHash,
+      seq: row.seq,
+      distance: row.distance,
+      documentIds: proven,
+    });
+    if (results.length === k) break;
+  }
+
+  // Underfill: if fewer than k proven results remain, Stage 1 returned a full
+  // coarseK, and no candidate fell below minScore, rerun exact (never raise coarseK > 500).
+  if (results.length < k && stage1ReturnedFull && !hitMinScoreCutoff) {
+    return null;
+  }
+
+  return { results, rescored: variantIds.length };
+}
+
 /** Null means legacy authority. Once promoted, unavailable provenance fails closed. */
 function searchVectorVariantsInSnapshot(
   db: Database,
@@ -708,12 +889,26 @@ function searchVectorVariantsInSnapshot(
   const batchOwners = createBatchOwnersStmt(db);
   const proofs = provenOwners(db, inOuterTransaction);
 
-  if (
+  const collections = extractRequestedCollections(options);
+  const hasV2Tables = hasV2MirrorTables(db);
+  const mirrorRows = countScopeMirrorRows(
+    db,
+    partitionId,
+    collections,
+    hasV2Tables,
+    inOuterTransaction
+  );
+
+  // Check v1 clean unfiltered mirror eligibility (for exact-vec0 fast path).
+  const v1UnfilteredClean =
     hasMirror &&
     !hasSelectiveEligibility(options) &&
     !options.eligibility?.language &&
-    isMirrorClean(db, partitionId)
-  ) {
+    isMirrorClean(db, partitionId);
+
+  let nullCosineFlag: 0 | 1 | null = null;
+  let canUseV1ExactVec0 = false;
+  if (v1UnfilteredClean) {
     const nullCheck = checkNullCosineVariant(
       db,
       partitionId,
@@ -722,22 +917,82 @@ function searchVectorVariantsInSnapshot(
     if (nullCheck.persistAfterSnapshot) {
       pendingPersist.value = nullCheck.persistAfterSnapshot;
     }
-    if (!nullCheck.found) {
-      const fast = searchVectorVariantsViaVec0(
-        db,
-        model,
-        partitionId,
-        tableName,
-        embedding,
-        k,
-        minScore,
-        proofs,
-        batchOwners
-      );
-      if (fast !== null) return fast;
+    nullCosineFlag = nullCheck.found ? 1 : 0;
+    canUseV1ExactVec0 = !nullCheck.found;
+  } else if (
+    !hasNonCollectionFilter(options) &&
+    options.coarseVectorSearch === true &&
+    options.exact !== true
+  ) {
+    // Scoped coarse check: O(1) persisted PK lookup only, never triggering a scan.
+    nullCosineFlag = readPersistedNullCosineFlag(db, partitionId);
+  }
+
+  const v2State =
+    hasV2Tables &&
+    isV2CompatibleDimensions(dimensions) &&
+    hasV2Table(db, partitionId)
+      ? readV2MirrorState(db, partitionId)
+      : null;
+
+  const decision = resolveVectorRoute({
+    options,
+    dimensions,
+    queryCount: 1,
+    maxK: k,
+    collections,
+    mirrorRows,
+    v2MirrorClean: v2State?.dirty === 0,
+    v2CheckRecall: v2State?.checkRecall ?? null,
+    nullCosineFlag,
+    canUseV1ExactVec0,
+  });
+
+  if (decision.route === "coarse-bit" && decision.coarseK !== undefined) {
+    const coarse = searchVectorVariantsViaCoarseBit(
+      db,
+      model,
+      partitionId,
+      embedding,
+      k,
+      decision.coarseK,
+      collections,
+      minScore,
+      options,
+      proofs,
+      batchOwners
+    );
+    if (coarse !== null) {
+      options.onRoute?.({
+        route: "coarse-bit",
+        mirrorRows,
+        coarseK: decision.coarseK,
+        rescored: coarse.rescored,
+      });
+      return coarse.results;
+    }
+    // Underfill fallback to exact path.
+  }
+
+  if (canUseV1ExactVec0) {
+    const fast = searchVectorVariantsViaVec0(
+      db,
+      model,
+      partitionId,
+      tableName,
+      embedding,
+      k,
+      minScore,
+      proofs,
+      batchOwners
+    );
+    if (fast !== null) {
+      options.onRoute?.({ route: "exact-vec0", mirrorRows });
+      return fast;
     }
   }
 
+  options.onRoute?.({ route: "exact-sql", mirrorRows });
   return searchVectorVariantsFromVariants(
     db,
     model,
@@ -782,14 +1037,25 @@ function searchVectorVariantsBatchInSnapshot(
   const batchOwners = createBatchOwnersStmt(db);
   const proofs = provenOwners(db, inOuterTransaction);
 
-  // Clean unfiltered mirror: use vec0 per query inside this single snapshot.
-  let canUseVec0 = false;
-  if (
+  const collections = extractRequestedCollections(options);
+  const hasV2Tables = hasV2MirrorTables(db);
+  const mirrorRows = countScopeMirrorRows(
+    db,
+    partitionId,
+    collections,
+    hasV2Tables,
+    inOuterTransaction
+  );
+
+  const v1UnfilteredClean =
     hasMirror &&
     !hasSelectiveEligibility(options) &&
     !options.eligibility?.language &&
-    isMirrorClean(db, partitionId)
-  ) {
+    isMirrorClean(db, partitionId);
+
+  let nullCosineFlag: 0 | 1 | null = null;
+  let canUseV1ExactVec0 = false;
+  if (v1UnfilteredClean) {
     const nullCheck = checkNullCosineVariant(
       db,
       partitionId,
@@ -798,10 +1064,106 @@ function searchVectorVariantsBatchInSnapshot(
     if (nullCheck.persistAfterSnapshot) {
       pendingPersist.value = nullCheck.persistAfterSnapshot;
     }
-    canUseVec0 = !nullCheck.found;
+    nullCosineFlag = nullCheck.found ? 1 : 0;
+    canUseV1ExactVec0 = !nullCheck.found;
+  } else if (
+    !hasNonCollectionFilter(options) &&
+    options.coarseVectorSearch === true &&
+    options.exact !== true
+  ) {
+    nullCosineFlag = readPersistedNullCosineFlag(db, partitionId);
   }
-  if (canUseVec0) {
-    return embeddings.map((embedding, i) => {
+
+  const v2State =
+    hasV2Tables &&
+    isV2CompatibleDimensions(dimensions) &&
+    hasV2Table(db, partitionId)
+      ? readV2MirrorState(db, partitionId)
+      : null;
+
+  const maxK = limits.reduce((acc, val) => (val > acc ? val : acc), 0);
+  const decision = resolveVectorRoute({
+    options,
+    dimensions,
+    queryCount: embeddings.length,
+    maxK,
+    collections,
+    mirrorRows,
+    v2MirrorClean: v2State?.dirty === 0,
+    v2CheckRecall: v2State?.checkRecall ?? null,
+    nullCosineFlag,
+    canUseV1ExactVec0,
+  });
+
+  if (decision.route === "coarse-bit" && decision.coarseK !== undefined) {
+    let totalRescored = 0;
+    let allCoarseSucceeded = true;
+    const out = embeddings.map((embedding, i) => {
+      const k = limits[i]!;
+      const queryCoarseK = computeCoarseK(k);
+      const coarse = searchVectorVariantsViaCoarseBit(
+        db,
+        model,
+        partitionId,
+        embedding,
+        k,
+        queryCoarseK,
+        collections,
+        minScore,
+        options,
+        proofs,
+        batchOwners
+      );
+      if (coarse !== null) {
+        totalRescored += coarse.rescored;
+        return coarse.results;
+      }
+      allCoarseSucceeded = false;
+      if (canUseV1ExactVec0) {
+        const fast = searchVectorVariantsViaVec0(
+          db,
+          model,
+          partitionId,
+          tableName,
+          embedding,
+          k,
+          minScore,
+          proofs,
+          batchOwners
+        );
+        if (fast !== null) return fast;
+      }
+      return searchVectorVariantsFromVariants(
+        db,
+        model,
+        partitionId,
+        embedding,
+        k,
+        minScore,
+        spec,
+        proofs,
+        batchOwners
+      );
+    });
+    options.onRoute?.(
+      allCoarseSucceeded
+        ? {
+            route: "coarse-bit",
+            mirrorRows,
+            coarseK: decision.coarseK,
+            rescored: totalRescored,
+          }
+        : {
+            route: canUseV1ExactVec0 ? "exact-vec0" : "exact-sql",
+            mirrorRows,
+          }
+    );
+    return out;
+  }
+
+  if (canUseV1ExactVec0) {
+    let anyFallback = false;
+    const out = embeddings.map((embedding, i) => {
       const k = limits[i]!;
       const fast = searchVectorVariantsViaVec0(
         db,
@@ -815,6 +1177,7 @@ function searchVectorVariantsBatchInSnapshot(
         batchOwners
       );
       if (fast !== null) return fast;
+      anyFallback = true;
       return searchVectorVariantsFromVariants(
         db,
         model,
@@ -827,7 +1190,14 @@ function searchVectorVariantsBatchInSnapshot(
         batchOwners
       );
     });
+    options.onRoute?.({
+      route: anyFallback ? "exact-sql" : "exact-vec0",
+      mirrorRows,
+    });
+    return out;
   }
+
+  options.onRoute?.({ route: "exact-sql", mirrorRows });
 
   // Filtered or dirty mirror: scan eligible vector_variants ONCE per chunk of up to 8 queries.
   const allResults: VectorSearchResult[][] = Array.from<VectorSearchResult[]>({

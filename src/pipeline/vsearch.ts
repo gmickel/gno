@@ -8,7 +8,7 @@
 import type { Config } from "../config/types";
 import type { EmbeddingPort } from "../llm/types";
 import type { DocumentRow, StorePort } from "../store/types";
-import type { VectorIndexPort } from "../store/vector/types";
+import type { VectorIndexPort, VectorRouteInfo } from "../store/vector/types";
 import type { SearchOptions, SearchResult, SearchResults } from "./types";
 
 import { normalizeContentTypes } from "../config/content-types";
@@ -56,7 +56,10 @@ import {
   shouldSortByRecency,
   type TemporalRange,
 } from "./temporal";
-import { attachSearchResultPlannerMetadata } from "./trace-metadata";
+import {
+  attachSearchResultPlannerMetadata,
+  attachSearchResultsTraceMetadata,
+} from "./trace-metadata";
 import { SEARCH_RESULT_PLANNER_METADATA } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -172,6 +175,7 @@ async function searchVectorWithEmbeddingOwned(
     );
   }
   // Search nearest neighbors
+  let vectorRoute: VectorRouteInfo | undefined;
   const searchResult = await vectorIndex.searchNearest(
     queryEmbedding,
     retrievalLimit,
@@ -197,6 +201,12 @@ async function searchVectorWithEmbeddingOwned(
       },
       minScore: projectAffinityActive ? undefined : minScore,
       allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
+      coarseVectorSearch:
+        options.coarseVectorSearch ?? deps.config?.coarseVectorSearch,
+      exact: options.exactVectorSearch,
+      onRoute: (info) => {
+        vectorRoute = info;
+      },
     }
   );
 
@@ -657,6 +667,13 @@ async function searchVectorWithEmbeddingOwned(
       queryLanguage,
     },
   };
+  if (vectorRoute) {
+    attachSearchResultsTraceMetadata(output, {
+      capabilityOutcomes: [{ capability: "semantic_search", status: "used" }],
+      fallbackCodes: [],
+      vectorRoute,
+    });
+  }
   const traceResult = await options.traceSession?.recordRetrieval(
     output,
     performance.now() - traceStartedAt

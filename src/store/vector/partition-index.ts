@@ -10,6 +10,11 @@
 import type { Database } from "bun:sqlite";
 
 import { modelTableName } from "./sqlite-vec";
+import {
+  rebuildV2PartitionMirrorInTx,
+  runV2RecallSelfCheck,
+  syncV2PartitionMirrorInTx,
+} from "./v2-mirror";
 
 export interface StoredPartition {
   partitionId: string;
@@ -111,10 +116,16 @@ const logicalChanges = (db: Database): number =>
  * Remove index rows without a matching variant (orphans and stale
  * embeddings), then add the variants the index lacks. Requires sqlite-vec.
  */
-export function syncPartitionIndex(
+export function syncPartitionIndexWithDetails(
   db: Database,
   partition: StoredPartition
-): { added: number; removed: number } {
+): {
+  added: number;
+  removed: number;
+  v2Added?: number;
+  v2Removed?: number;
+  checkRecall?: number | null;
+} {
   const table = tableName(partition);
   return db
     .transaction(() => {
@@ -143,16 +154,39 @@ export function syncPartitionIndex(
         ? 1
         : 0;
       markMirrorClean(db, partition.partitionId, nullCosine);
-      return { added, removed };
+      const v2 = syncV2PartitionMirrorInTx(
+        db,
+        partition.partitionId,
+        partition.dimensions
+      );
+      if (v2.skipped) {
+        return { added, removed };
+      }
+      const check = runV2RecallSelfCheck(db, partition);
+      return {
+        added,
+        removed,
+        v2Added: v2.added,
+        v2Removed: v2.removed,
+        checkRecall: check.recall,
+      };
     })
     .immediate();
 }
 
-/** Drop and repopulate the index from the partition's variants. */
-export function rebuildPartitionIndex(
+export function syncPartitionIndex(
   db: Database,
   partition: StoredPartition
-): number {
+): { added: number; removed: number } {
+  const { added, removed } = syncPartitionIndexWithDetails(db, partition);
+  return { added, removed };
+}
+
+/** Drop and repopulate the v1 and v2 mirrors from the partition's variants. */
+export function rebuildPartitionIndexWithDetails(
+  db: Database,
+  partition: StoredPartition
+): { count: number; v2Count?: number; checkRecall?: number | null } {
   const table = tableName(partition);
   return db
     .transaction(() => {
@@ -170,9 +204,26 @@ export function rebuildPartitionIndex(
         ? 1
         : 0;
       markMirrorClean(db, partition.partitionId, nullCosine);
-      return inserted;
+      if (partition.dimensions % 8 !== 0) {
+        return { count: inserted };
+      }
+      const v2Count = rebuildV2PartitionMirrorInTx(
+        db,
+        partition.partitionId,
+        partition.dimensions
+      );
+      const check = runV2RecallSelfCheck(db, partition);
+      return { count: inserted, v2Count, checkRecall: check.recall };
     })
     .immediate();
+}
+
+/** Drop and repopulate the index from the partition's variants. */
+export function rebuildPartitionIndex(
+  db: Database,
+  partition: StoredPartition
+): number {
+  return rebuildPartitionIndexWithDetails(db, partition).count;
 }
 
 export type PruneLegacyVectorsResult =
@@ -185,6 +236,7 @@ export type PruneLegacyVectorsResult =
   | { ok: false; error: string };
 
 const VEC_V1_TABLE_PATTERN = /^vec_v1_([0-9a-f]{64})$/;
+const VEC_V2_TABLE_PATTERN = /^vec_v2_([0-9a-f]{64})$/;
 
 /**
  * Safely prune superseded legacy vector tables (`vec_<hash>`), legacy
@@ -291,9 +343,10 @@ export async function pruneLegacyVectors(
           }
         }
 
-        // 2. Drop orphaned vec_v1_<partition> tables absent from vector_partitions.
+        // 2. Drop orphaned vec_v1_<partition> and vec_v2_<partition> tables absent from vector_partitions.
         for (const name of allTables) {
-          const match = VEC_V1_TABLE_PATTERN.exec(name);
+          const match =
+            VEC_V1_TABLE_PATTERN.exec(name) ?? VEC_V2_TABLE_PATTERN.exec(name);
           if (!match) continue;
           const partitionId = match[1]!;
           if (!knownPartitionIds.has(partitionId)) {
@@ -302,10 +355,23 @@ export async function pruneLegacyVectors(
           }
         }
 
-        // 3. Remove orphaned rows from vector_mirror_state if present.
+        // 3. Remove orphaned rows from vector_mirror_state, vector_mirror_v2_state,
+        // and vector_partition_rows if present.
         if (tableSet.has("vector_mirror_state")) {
           db.run(
             `DELETE FROM vector_mirror_state
+             WHERE partition_id NOT IN (SELECT partition_id FROM vector_partitions)`
+          );
+        }
+        if (tableSet.has("vector_mirror_v2_state")) {
+          db.run(
+            `DELETE FROM vector_mirror_v2_state
+             WHERE partition_id NOT IN (SELECT partition_id FROM vector_partitions)`
+          );
+        }
+        if (tableSet.has("vector_partition_rows")) {
+          db.run(
+            `DELETE FROM vector_partition_rows
              WHERE partition_id NOT IN (SELECT partition_id FROM vector_partitions)`
           );
         }

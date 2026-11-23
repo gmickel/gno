@@ -243,7 +243,10 @@ the model with `id`, `model`, `dimensions`, `state` (`active`|`shadow`),
 `legacy` (pre-runtime-independent key), `retrieval` (this runtime reads it),
 `droppable` (`gno vec drop` accepts it), `owners` (current chunks),
 `provenance` (building runtime, e.g. `CUDA, Bun 1.4.2`),
-`compatibleRuntimes` (runtimes that read it) and `incompatibleRuntimes`.
+`compatibleRuntimes` (runtimes that read it), `incompatibleRuntimes`, and
+optional `coarseMirror` (`state`: `clean`|`dirty`|`missing`|`unsupported`,
+`checkRecall`, `checkQueries`, `checkCoarseK`, `belowFloor`) describing the
+partition's v2 binary coarse `vec0` mirror and build-time recall self-check.
 Terminal output prints a `Vector partitions:` block
 unless there is exactly one healthy partition. `collections`, `totalDocuments`
 and `totalChunks` cover configured collections only. Opening an index never
@@ -1828,6 +1831,7 @@ active with `sourceCount: 1`.
 ```
 [explain] expansion: enabled (3 lexical, 2 semantic variants)
 [explain] bm25: 45 candidates
+[explain] vector: 20 candidates (route=exact-sql, N=45000)
 [explain] vector: 38 candidates
 [explain] graph: seeds=5, candidates=4/20, explicit=3, inferred=1, ambiguous=0, similarity=0
 [explain] fusion: RRF k=60, 52 unique documents (best rank per list)

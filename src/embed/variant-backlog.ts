@@ -719,7 +719,38 @@ export async function embedVariantBacklog(
     // sqlite-vec, keep the full check below.
     if (identityStillCurrent() && store.hasActivated()) {
       const mirror = store.mirrorState();
-      if (mirror === "clean") {
+      const v2Mirror = store.v2MirrorState();
+      const needsV2Repair = v2Mirror === "dirty" || v2Mirror === "missing";
+      if (mirror === "clean" && !needsV2Repair) {
+        if (v2Mirror === "clean") {
+          const checkTurn = await inWriteTurn(
+            deps.acquireWriteTurn,
+            async () => {
+              try {
+                store.ensureV2RecallSelfCheck();
+                return undefined;
+              } catch (cause) {
+                return cause instanceof Error ? cause.message : String(cause);
+              }
+            }
+          );
+          if (checkTurn.deferred) return ok({ ...total, deferred: true });
+        }
+        assertInferenceActive();
+        return ok(total);
+      }
+      if (mirror === "clean" && needsV2Repair) {
+        const turn = await inWriteTurn(deps.acquireWriteTurn, async () => {
+          try {
+            store.syncV2Index();
+            return undefined;
+          } catch (cause) {
+            return cause instanceof Error ? cause.message : String(cause);
+          }
+        });
+        if (turn.deferred) return ok({ ...total, deferred: true });
+        if (turn.value !== undefined)
+          return ok({ ...total, syncError: turn.value });
         assertInferenceActive();
         return ok(total);
       }
@@ -748,7 +779,10 @@ export async function embedVariantBacklog(
       const turn = await inWriteTurn(deps.acquireWriteTurn, async () => {
         try {
           if (!store.isActive()) store.syncIndex();
-          if (identityStillCurrent()) store.activate(epoch);
+          if (identityStillCurrent()) {
+            store.activate(epoch);
+            store.ensureV2RecallSelfCheck();
+          }
           return undefined;
         } catch (cause) {
           return cause instanceof Error ? cause.message : String(cause);

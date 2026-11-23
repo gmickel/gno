@@ -347,6 +347,9 @@ export class RetrievalTraceSession {
       capabilities,
       fallbackCodes,
       ...(latencyMs === undefined ? {} : { latencyMs }),
+      ...(traceMetadata?.vectorRoute === undefined
+        ? {}
+        : { vectorRoute: traceMetadata.vectorRoute }),
     };
     const runId = this.nextId("retrieval-run");
     const run = await this.recorder.appendRun({

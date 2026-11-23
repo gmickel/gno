@@ -683,6 +683,12 @@ export const ConfigSchema = z.object({
     )
     .default(DEFAULT_BUSY_TIMEOUT_MS),
 
+  /**
+   * Opt-in coarse two-stage bit vec0 mirror routing for large vector scopes.
+   * Default false until >= 500k real-vector recall validation passes (fn-235 R1).
+   */
+  coarseVectorSearch: z.boolean().optional(),
+
   /** Optional terminal hyperlink editor URI template */
   editorUriTemplate: z.string().min(1).optional(),
 

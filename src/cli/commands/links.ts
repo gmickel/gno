@@ -634,7 +634,12 @@ export async function similar(
     const searchResult = await vectorIndex.searchNearest(
       embedding,
       candidateLimit,
-      storedVectorSearchOptions(source)
+      {
+        ...storedVectorSearchOptions(source),
+        ...(!crossCollection
+          ? { eligibility: { collection: doc.collection } }
+          : {}),
+      }
     );
     if (!searchResult.ok) {
       return { success: false, error: searchResult.error.message };

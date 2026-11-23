@@ -143,12 +143,21 @@ const evidencePayloadSchema = z
     latencyMs: z.number().finite().nonnegative().optional(),
   })
   .strict();
+const vectorRouteSchema = z
+  .object({
+    route: z.enum(["exact-sql", "exact-vec0", "coarse-bit"]),
+    mirrorRows: z.number().int().nonnegative(),
+    coarseK: z.number().int().positive().optional(),
+    rescored: z.number().int().nonnegative().optional(),
+  })
+  .strict();
 const retrievalPayloadSchema = z
   .object({
     ranked: z.array(evidenceRefSchema).max(10_000),
     latencyMs: z.number().finite().nonnegative().optional(),
     capabilities: z.array(z.string().min(1).max(128)).max(100).optional(),
     fallbackCodes: z.array(z.string().min(1).max(128)).max(100).optional(),
+    vectorRoute: vectorRouteSchema.optional(),
   })
   .strict();
 const contextPayloadSchema = evidencePayloadSchema.extend({
