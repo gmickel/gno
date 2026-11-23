@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-238-relocate-indexed-documents-across",
   "spec_path": ".flow/tasks/fn-238-relocate-indexed-documents-across.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Relocate indexed documents across collections",
   "updated_at": "2026-11-23T14:47:56.775187Z"
 }

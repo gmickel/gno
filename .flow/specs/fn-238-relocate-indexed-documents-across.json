@@ -357,7 +357,7 @@
     "impl:fn-238-relocate-indexed-documents-across.1": 0
   },
   "spec_path": ".flow/specs/fn-238-relocate-indexed-documents-across.md",
-  "status": "open",
+  "status": "done",
   "title": "Relocate indexed documents across collections",
   "tracker": {
     "baseHashFlow": null,
@@ -370,5 +370,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-11-23T16:01:32.338339Z"
+  "updated_at": "2026-11-23T16:04:41.262989Z"
 }
