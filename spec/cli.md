@@ -76,6 +76,7 @@ equivalent files fail closed as ambiguous.
 | collection list    | yes    | no      | no    | yes  | no    | terminal |
 | collection remove  | no     | no      | no    | no   | no    | terminal |
 | collection rename  | no     | no      | no    | no   | no    | terminal |
+| collection move    | yes    | no      | no    | no   | no    | terminal |
 | update             | yes    | no      | no    | no   | no    | terminal |
 | index              | yes    | no      | no    | no   | no    | terminal |
 | embed              | no     | no      | no    | no   | no    | terminal |
@@ -1285,6 +1286,85 @@ gno collection rename <old> <new> [--lock-wait <duration>] [--no-wait]
 - 0: Success
 - 1: Old name not found, new name already exists, or new name invalid
 - 2: Config save or index sync failure, or write lease busy
+
+---
+
+### gno collection move
+
+Record that indexed documents were moved on disk to another collection and/or
+path, keeping each document's identity and derived data.
+
+**Synopsis:**
+
+```bash
+gno collection move <source> <destination> [--dry-run] [--json] [--lock-wait <duration>] [--no-wait]
+gno collection move --from-file <map> [--dry-run] [--json] [--lock-wait <duration>] [--no-wait]
+```
+
+**Arguments:**
+| Arg | Type | Description |
+|-----|------|-------------|
+| `<source>` | string | A document (`#docid`, `gno://collection/path` or `collection/path`) or a folder (`collection/dir/`, `collection/` for the whole collection) |
+| `<destination>` | string | A folder (`collection`, `collection/` or `collection/dir/`) or, for a single document, an exact path (`collection/path`) |
+
+**Options:**
+| Option | Type | Description |
+|--------|------|-------------|
+| `--from-file <map>` | path | One `source<TAB>destination` pair per line; blank lines and `#` comments are skipped |
+| `--dry-run` | boolean | Check every move without relocating anything |
+| `--json` | boolean | Print the receipt as JSON (`collection-move@1.0`) |
+
+**Behavior:**
+
+- Index-only: run it after moving the files yourself and before `gno update`.
+  GNO never moves files and never infers moves from matching hashes.
+- A single document moved to a folder keeps its filename; a folder source
+  keeps each document's path below that folder.
+- Keeps the document's database id, docid, content, chunks, tags (including
+  user tags) and vector owner bindings. Rewrites the collection, path, URI,
+  full-text filepath, path-derived metadata (content type), parsed links and
+  the graph projection, and journals a `rename` change in both collections
+  (governed by the stricter of their egress policies). A following
+  `gno update` finds the moved files unchanged.
+- Vectors are reused when both collections use the same embedding model. If
+  the new filename changes a filename-derived title (no heading), the item
+  reports `titleChanged: true` and its vectors become pending for `gno embed`.
+- Refused items are left untouched (index them with `gno update`): unknown
+  collection or document, an ambiguous `#docid` (identical copies), two items
+  with the same source or destination, a destination that is already indexed
+  (active or inactive row), not indexable in its collection, not in canonical
+  form or reached through a symlink, or missing, a file still at the old path
+  (possibly a copy; the same file in a nested collection root is accepted once
+  the outer collection no longer indexes it), changed bytes or a different
+  conversion, an inactive or not fully indexed document, chunks built under
+  another chunking policy, a changed extension, a stored language hint the
+  destination would not derive, record containers and their records,
+  memory-managed collections, and paths source availability cannot prove (for
+  the old path as well as the new one).
+- `--dry-run` relocates nothing and skips the config-to-index sync other
+  commands perform; it refuses to create an index that does not exist. Opening
+  an existing index still applies pending schema migrations, as every command
+  does.
+- Writes commit in batches; each item is atomic.
+- Waits for the index write lease (`--lock-wait`, default 120s; `--no-wait`
+  fails at once)
+
+**Output (`--json`):** `{ dryRun, relocated, refused, items[], projectionErrors[], durationMs }`;
+each item has `source`, `status` (`relocated`, `would_relocate` or `refused`)
+and, when resolved, `destination`, `documentId`, `docid`, `titleChanged`, or a
+refusal `code` (`INVALID_REFERENCE`, `NOT_FOUND`, `AMBIGUOUS`,
+`DESTINATION_EXISTS`, `DESTINATION_NOT_ELIGIBLE`, `DESTINATION_MISSING`,
+`SOURCE_STILL_PRESENT`, `SOURCE_UNAVAILABLE`, `SOURCE_CHANGED`, `NEEDS_REINDEX`,
+`INCOMPATIBLE`, `STORE_ERROR`) and `message`. Schema:
+`spec/output-schemas/collection-move.schema.json`.
+
+**Exit Codes:**
+
+- 0: Every item relocated (or would be, with `--dry-run`)
+- 1: Bad usage, or at least one item refused (the receipt is still printed and
+  the other items are committed)
+- 2: Index open failure
+- 4: Write lease busy
 
 ---
 

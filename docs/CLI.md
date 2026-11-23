@@ -1050,6 +1050,38 @@ The collection has no documents until `gno update` (or `gno index`) runs.
 Content and embeddings from before the rename are reused unless `gno cleanup`
 ran in between.
 
+### gno collection move
+
+Tell the index about files you moved on disk to another collection or path,
+without re-indexing them. Run it after the move and before `gno update`.
+
+```bash
+mv ~/notes/exports ~/data/exports
+gno collection move notes/exports/ data/exports/   # a folder
+gno collection move notes/plan.md work             # one document, same filename
+gno collection move '#a1b2c3d4' work/plans/q3.md   # by docid, new path
+gno collection move --from-file moves.tsv          # source<TAB>destination per line
+gno collection move notes/exports/ data/ --dry-run --json
+```
+
+Each moved document keeps its identity, content, chunks, tags and embeddings;
+its collection, path, URI, search path, content type, links and graph edges
+follow the new location, and `gno changes` shows the move in both collections.
+Embeddings are reused when both collections use the same embedding model; a
+renamed file whose title came from its filename is re-embedded by the next
+`gno embed`.
+
+A move is refused, and left for `gno update`, when GNO cannot prove it is the
+same file: the destination is missing, already indexed or excluded by the
+collection's rules, a file is still at the old path (a copy), the bytes
+changed, or the collections index it differently (language hint, record
+containers, memory collections, a new extension). The command exits 1 when
+anything was refused; the other moves are kept.
+
+Run it before anything indexes the moved files: if `gno update`, or a running
+`gno serve` or daemon watcher, indexes them first, the destination is already
+indexed and the move is refused.
+
 ### gno collection clear-embeddings
 
 Clear embeddings for one collection.

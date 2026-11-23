@@ -108,6 +108,15 @@ gno collection remove <name>
 gno collection rename <old> <new>
 ```
 
+### gno collection move
+
+```bash
+gno collection move <source> <destination> [--dry-run] [--json]
+gno collection move --from-file <map> [--dry-run] [--json]
+```
+
+Index-only: after moving files on disk to another collection or path, keeps their identity, chunks and embeddings instead of re-indexing. Source: `#docid`, `collection/path` or a folder `collection/dir/`; destination: `collection`, `collection/dir/` or `collection/path`. Exits 1 when an item is refused (left for `gno update`).
+
 ### gno collection clear-embeddings
 
 ```bash

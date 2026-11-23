@@ -68,6 +68,12 @@ import {
 } from "./prepare-file";
 import { processRecordContainer } from "./record-container";
 import {
+  executeRelocations,
+  planRelocations,
+  type RelocationRequest,
+  type RelocationResult,
+} from "./relocate";
+import {
   createDirectoryAvailability,
   createSourceContentReader,
   findUnprovenAvailabilityPrefix,
@@ -1911,6 +1917,62 @@ export class SyncService {
     sourceDocumentIds?: Set<number>
   ): Promise<Array<{ relPath: string; code: string; message: string }>> {
     return projectGraph(store, options, sourceDocumentIds);
+  }
+
+  /**
+   * Explicitly relocate indexed documents to another collection and/or path,
+   * keeping their identity and derived data (see `./relocate`). Refused items
+   * are left untouched for `gno update`.
+   */
+  async relocateDocuments(
+    collections: readonly Collection[],
+    store: StorePort,
+    requests: readonly RelocationRequest[],
+    options: SyncOptions & { dryRun?: boolean } = {}
+  ): Promise<RelocationResult> {
+    const syncOptions = {
+      ...options,
+      contentTypeRules: options.contentTypeRules ?? [],
+      contentTypeRulesFingerprint:
+        options.contentTypeRulesFingerprint ??
+        fingerprintContentTypeMetadataRules(options.contentTypeRules ?? []),
+    };
+    const plan = await planRelocations(store, collections, requests);
+    return executeRelocations(
+      {
+        ingestVersion: INGEST_VERSION,
+        detectMime: (relPath, sniff) =>
+          this.mimeDetector.detect(relPath, sniff),
+        reader: (mode) => this.sourceReaderFactory(mode),
+        directoryAvailability: (mode) =>
+          memoizeDirectoryAvailability(this.directoryAvailabilityFactory(mode)),
+        hasRecordAdapter: async (collection, mime, ext) =>
+          (await this.selectRecordAdapter(collection, mime, ext)) !== undefined,
+        prepare: (request) => {
+          const budget = this.fileBudget(
+            syncOptions,
+            request.input.limits?.timeoutMs ?? DEFAULT_LIMITS.timeoutMs
+          );
+          return this.prepare(request, budget, {
+            onPrevious: () => undefined,
+            onStarted: () => {
+              budget.startedAt = performance.now();
+            },
+            transferInputBytes: true,
+          });
+        },
+        collectProjectionSources: (documentId, into) =>
+          this.collectProjectionSourceIds(store, documentId, into),
+        projectGraph: (sources) =>
+          syncOptions.projectTypedEdges === false
+            ? Promise.resolve([])
+            : this.projectTypedEdges(store, syncOptions, sources),
+      },
+      store,
+      collections,
+      plan,
+      syncOptions
+    );
   }
 
   /** Run an exact global typed-edge reconciliation with cooperative yields. */

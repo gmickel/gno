@@ -2988,6 +2988,48 @@ function wireManagementCommands(program: Command): void {
 
   addWriteLeaseFlags(
     collectionCmd
+      .command("move [source] [destination]")
+      .description(
+        "Record an on-disk move of indexed documents to another collection or path, keeping their index data"
+      )
+      .option(
+        "--from-file <path>",
+        "tab-separated source/destination pairs, one per line"
+      )
+      .option("--dry-run", "check every move without relocating anything")
+      .option("--json", "JSON output")
+  ).action(
+    async (
+      source: string | undefined,
+      destination: string | undefined,
+      cmdOpts: Record<string, unknown>
+    ) => {
+      const { collectionMove } = await import("./commands/collection");
+      const json = getFormat(cmdOpts) === "json";
+      const lease = parseWriteLeaseFlags(cmdOpts);
+      const result = await withCliWriteLease(
+        {
+          indexName: getGlobals().index,
+          lockWaitMs: lease.lockWaitMs,
+          noWait: lease.noWait,
+        },
+        async () => {
+          await collectionMove(source, destination, {
+            fromFile: cmdOpts.fromFile as string | undefined,
+            dryRun: Boolean(cmdOpts.dryRun),
+            json,
+            configPath: getGlobals().config,
+            indexName: getGlobals().index,
+          });
+          return { success: true as const };
+        }
+      );
+      throwIfWriteLeaseBusy(result, json);
+    }
+  );
+
+  addWriteLeaseFlags(
+    collectionCmd
       .command("clear-embeddings <name>")
       .description("Clear stale or all embeddings for a collection")
       .option("--all", "remove all embeddings for the collection")

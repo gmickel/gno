@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gno://schemas/collection-move@1.0",
+  "title": "GNO Collection Move Receipt",
+  "description": "Result of gno collection move --json: one item per document moved, would move (dry run) or refused",
+  "type": "object",
+  "required": [
+    "dryRun",
+    "relocated",
+    "refused",
+    "items",
+    "projectionErrors",
+    "durationMs"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "dryRun": { "type": "boolean" },
+    "relocated": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Documents relocated (dry run: documents that would be)"
+    },
+    "refused": { "type": "integer", "minimum": 0 },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "URI before the move (the raw reference when it did not resolve)"
+          },
+          "destination": {
+            "type": "string",
+            "description": "URI the document moves (or would move) to"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["relocated", "would_relocate", "refused"]
+          },
+          "documentId": { "type": "integer", "minimum": 1 },
+          "docid": { "type": "string" },
+          "code": {
+            "type": "string",
+            "enum": [
+              "INVALID_REFERENCE",
+              "NOT_FOUND",
+              "AMBIGUOUS",
+              "DESTINATION_EXISTS",
+              "DESTINATION_NOT_ELIGIBLE",
+              "DESTINATION_MISSING",
+              "SOURCE_STILL_PRESENT",
+              "SOURCE_UNAVAILABLE",
+              "SOURCE_CHANGED",
+              "NEEDS_REINDEX",
+              "INCOMPATIBLE",
+              "STORE_ERROR"
+            ],
+            "description": "Why the item was refused"
+          },
+          "message": { "type": "string" },
+          "titleChanged": {
+            "type": "boolean",
+            "description": "The new filename changed the title; the document's vectors are pending re-embedding"
+          }
+        }
+      }
+    },
+    "projectionErrors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["relPath", "code", "message"],
+        "properties": {
+          "relPath": { "type": "string" },
+          "code": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    "durationMs": { "type": "integer", "minimum": 0 }
+  }
+}
