@@ -17,6 +17,8 @@
  * @module src/ingestion/relocate
  */
 
+// node:fs readdirSync: a guarded listing must be synchronous (no Bun directory API)
+import { readdirSync } from "node:fs";
 // node:fs/promises for realpath/stat (no Bun equivalent for canonical paths or file stats)
 import { realpath, stat } from "node:fs/promises";
 // node:path for join/relative/extname (no Bun path utils)
@@ -511,14 +513,9 @@ async function prepareMove(
     );
   }
   // The stored language must be the one ingestion would derive at the
-  // destination: its collection's hint, or (with no collection hint on either
-  // side) the converter's own.
-  const storedLanguage = document.languageHint ?? null;
-  const destinationLanguage = destination.languageHint ?? null;
-  if (
-    storedLanguage !== destinationLanguage &&
-    !(destinationLanguage === null && (source.languageHint ?? null) === null)
-  ) {
+  // destination. No converter reports its own hint, so that is the
+  // destination collection's hint (or none).
+  if ((document.languageHint ?? null) !== (destination.languageHint ?? null)) {
     return refuse(
       "INCOMPATIBLE",
       "The document's language hint differs from the destination collection's"
@@ -661,8 +658,19 @@ async function prepareMove(
     if (errorCode(error) !== "ENOENT") {
       return refuse("SOURCE_UNAVAILABLE", "The old path could not be checked");
     }
-    const rootError = await unavailableRootMessage(source.path);
-    if (rootError) return refuse("SOURCE_UNAVAILABLE", rootError);
+    // Absence is proof only while the source root can be listed; in `local`
+    // mode the listing itself runs under the no-materialization guard.
+    if (sourceMode === "local") {
+      const listed = deps
+        .directoryAvailability(sourceMode)
+        .readDirectory(source.path, () => readdirSync(source.path).length);
+      if (listed.kind !== "available") {
+        return refuse("SOURCE_UNAVAILABLE", listed.message);
+      }
+    } else {
+      const rootError = await unavailableRootMessage(source.path);
+      if (rootError) return refuse("SOURCE_UNAVAILABLE", rootError);
+    }
   }
 
   const read = await deps.reader(mode).readAll(absPath, stats.size);

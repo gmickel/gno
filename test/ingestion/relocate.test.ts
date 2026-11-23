@@ -584,6 +584,49 @@ describe("relocateDocuments", () => {
     expect(result.items[0]?.code).toBe("INCOMPATIBLE");
   });
 
+  test("refuses a stored language hint once both collections drop theirs", async () => {
+    notes = { ...notes, languageHint: "en" };
+    await write(notes.path, "hint.md", "# Hint\n");
+    await sync.syncCollection(notes, adapter);
+    await move(join(notes.path, "hint.md"), join(data.path, "hint.md"));
+    notes = { ...notes, languageHint: undefined };
+    const result = await relocate([
+      { source: "notes/hint.md", destination: "data" },
+    ]);
+    expect(result.items[0]?.code).toBe("INCOMPATIBLE");
+  });
+
+  test("lists a local source root only under the availability guard", async () => {
+    await write(notes.path, "g.md", "# Guarded\n");
+    await index();
+    await move(join(notes.path, "g.md"), join(data.path, "g.md"));
+    const guarded = new SyncService(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      (mode): DirectoryAvailabilityPort => ({
+        mode,
+        classify: async () => ({ kind: "available" }),
+        readDirectory: () => ({
+          kind: "dataless",
+          code: "DATALESS_DIRECTORY",
+          message: "root became dataless",
+        }),
+      })
+    );
+    const result = await guarded.relocateDocuments(
+      [{ ...notes, sourceAvailability: "local" }, data],
+      adapter,
+      [{ source: "notes/g.md", destination: "data" }]
+    );
+    expect(result.items[0]).toMatchObject({
+      code: "SOURCE_UNAVAILABLE",
+      message: "root became dataless",
+    });
+  });
+
   test("refuses when source availability cannot prove the old path is gone", async () => {
     await write(notes.path, "cloud/c.md", "# Cloud\n");
     await index();

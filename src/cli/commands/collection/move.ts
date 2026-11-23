@@ -10,6 +10,7 @@ import type {
   RelocationResult,
 } from "../../../ingestion/relocate";
 
+import { getIndexDbPath } from "../../../app/constants";
 import { defaultSyncService, withContentTypeRules } from "../../../ingestion";
 import { CliError } from "../../errors";
 import { initStore } from "../shared";
@@ -115,7 +116,14 @@ export async function collectionMove(
     throw new CliError("VALIDATION", "Nothing to relocate");
   }
 
-  // A dry run must not write, so it skips the config-to-index sync too.
+  // A dry run must not write: it never creates an index, and it skips the
+  // config-to-index sync too.
+  if (
+    options.dryRun &&
+    !(await Bun.file(getIndexDbPath(options.indexName)).exists())
+  ) {
+    throw new CliError("VALIDATION", "No index yet: nothing to relocate");
+  }
   const initialized = await initStore({
     configPath: options.configPath,
     indexName: options.indexName,
