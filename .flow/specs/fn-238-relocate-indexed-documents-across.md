@@ -30,8 +30,9 @@ Reorganizing a large index (for example splitting one collection into a prose co
 ## API Contracts
 <!-- scope: technical -->
 
-- A CLI command under `gno collection` relocates one document (by `#docid`, `gno://` URI or `collection/path` reference), a folder prefix, or a mapping file of source/destination pairs, under the write lease, with a dry-run mode and a JSON receipt listing each item as relocated or refused with a reason code. [inferred]
-- A refused item leaves the index unchanged for that item; the command reports it and exits non-zero when any item was refused, while committing the items that succeeded. [inferred]
+- `gno collection move <source> <destination>` or `gno collection move --from-file <map>` (tab-separated `source<TAB>destination` lines), with `--dry-run`, `--json` and the write-lease flags. Sources are `#docid`, `gno://collection/path`, `collection/path`, or a folder (`collection/dir/`, `collection/`); destinations are a folder (`collection`, `collection/dir/`) or, for one document, an exact `collection/path`. A document moved to a folder keeps its filename; a folder source keeps each path below that folder. [inferred]
+- The JSON receipt (`collection-move@1.0`) lists each item as `relocated`, `would_relocate` or `refused` with a reason code. A refused item leaves the index unchanged for that item; the command exits 1 when any item was refused, while committing the items that succeeded. [inferred]
+- Store contract: one operation moves a document row by id to a new `(collection, rel_path)` after checking it still matches what the caller planned, refusing a destination any row holds. [inferred]
 
 ## Edge Cases & Constraints
 <!-- scope: technical -->

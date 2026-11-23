@@ -17,6 +17,7 @@
  *   bun scripts/relocation-benchmark.ts                 # 2000 documents
  *   bun scripts/relocation-benchmark.ts --docs 500,5000
  *   bun scripts/relocation-benchmark.ts --no-links      # documents without links
+ *   bun scripts/relocation-benchmark.ts --docs 1 --workbooks 50   # plus .xlsx files
  *
  * With links (the default) every document links to the next one, so the
  * graph projection that both arms run after a move has link targets to
@@ -36,6 +37,7 @@ import { SyncService } from "../src/ingestion/sync";
 import { SqliteAdapter } from "../src/store/sqlite/adapter";
 import { createVectorVariantStore } from "../src/store/vector/variants";
 import { safeRm } from "../test/helpers/cleanup";
+import { buildLargeWorkbook } from "./generate-large-workbook";
 
 const identity = {
   model: "bench-model",
@@ -54,8 +56,19 @@ const paragraph = (i: number, p: number) =>
   `Paragraph ${p} of synthetic document ${i}. ${"Lorem ipsum dolor sit amet, consectetur adipiscing elit. ".repeat(12)}`;
 
 const withLinks = !process.argv.includes("--no-links");
+/** Spreadsheets (converted, not plain Markdown) moved alongside the documents. */
+const workbooks = Number.parseInt(flag("--workbooks", "0"), 10) || 0;
+const workbookScale = Number(flag("--workbook-scale", "0.02"));
 
 async function writeCorpus(root: string, docs: number): Promise<void> {
+  if (workbooks > 0) {
+    await mkdir(join(root, "sheets"), { recursive: true });
+    const bytes = buildLargeWorkbook({ scale: workbookScale });
+    for (let i = 0; i < workbooks; i++) {
+      // Identical bytes: each file is still its own document and conversion.
+      await Bun.write(join(root, "sheets", `sheet-${i}.xlsx`), bytes);
+    }
+  }
   for (let i = 0; i < docs; i++) {
     const dir = join(root, `folder-${i % 50}`);
     await mkdir(dir, { recursive: true });
@@ -88,7 +101,7 @@ async function runArm(
     const notes: Collection = {
       name: "notes",
       path: join(root, "notes"),
-      pattern: "**/*.md",
+      pattern: "**/*",
       include: [],
       exclude: [],
     };
