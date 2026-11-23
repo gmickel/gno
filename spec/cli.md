@@ -3246,7 +3246,9 @@ deactivated document still binds, are collected by `gno vec gc`. Set
 `GNO_NO_AUTO_VECTOR_GC=1` to turn automatic collection off. A failure never
 fails the pass: `gno embed` prints `Warning: automatic vector GC failed: …`
 and its `--json` receipt carries `vectorGcError`; the SDK embed result carries
-the same field.
+the same field. SDK embedding takes no write lease, so its automatic collection
+runs only when the shared index write lease is free at that moment (held by
+anyone, this process included, it waits for a later pass).
 
 **Exit Codes:**
 

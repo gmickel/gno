@@ -260,24 +260,19 @@ function removeVariants(
   partitionId: string,
   variantIds: readonly number[],
   access: "mirror" | "none"
-): number {
-  if (variantIds.length === 0) return 0;
+): void {
+  if (variantIds.length === 0) return;
   const ids = JSON.stringify(variantIds);
-  const mirrored =
-    access === "mirror"
-      ? db
-          .query(
-            `DELETE FROM ${mirrorTable(partitionId)} WHERE variant_id IN (SELECT value FROM json_each(?))`
-          )
-          .run(ids).changes
-      : 0;
+  if (access === "mirror")
+    db.query(
+      `DELETE FROM ${mirrorTable(partitionId)} WHERE variant_id IN (SELECT value FROM json_each(?))`
+    ).run(ids);
   db.query(
     "DELETE FROM vector_owners WHERE partition_id = ? AND variant_id IN (SELECT value FROM json_each(?))"
   ).run(partitionId, ids);
   db.query(
     "DELETE FROM vector_variants WHERE partition_id = ? AND variant_id IN (SELECT value FROM json_each(?))"
   ).run(partitionId, ids);
-  return mirrored;
 }
 
 const hasQueue = (db: Database): boolean =>
@@ -305,6 +300,27 @@ interface MirrorPass {
   consistent?: boolean;
 }
 
+const mirrorMarkedClean = (db: Database, partitionId: string): boolean =>
+  tableExists(db, "vector_mirror_state") &&
+  db
+    .query<{ dirty: number }, [string]>(
+      "SELECT dirty FROM vector_mirror_state WHERE partition_id = ?"
+    )
+    .get(partitionId)?.dirty === 0;
+
+/** The row-count half of `mirrorState()`: one count of each side. */
+const mirrorCountsMatch = (db: Database, partitionId: string): boolean =>
+  db
+    .query<{ n: number }, [string]>(
+      "SELECT count(*) AS n FROM vector_variants WHERE partition_id = ?"
+    )
+    .get(partitionId)!.n ===
+  db
+    .query<{ n: number }, []>(
+      `SELECT count(*) AS n FROM ${mirrorTable(partitionId)}`
+    )
+    .get()!.n;
+
 /**
  * Remove variants (see removeVariants) and leave the partition's mirror mark
  * clean only when it was demonstrably clean and stayed so: marked clean,
@@ -322,22 +338,9 @@ function removeKeepingMirror(
   if (variantIds.length === 0) return;
   const tracked = access === "mirror" && tableExists(db, "vector_mirror_state");
   const table = mirrorTable(partitionId);
-  const markedClean =
-    tracked &&
-    db
-      .query<{ dirty: number }, [string]>(
-        "SELECT dirty FROM vector_mirror_state WHERE partition_id = ?"
-      )
-      .get(partitionId)?.dirty === 0;
+  const markedClean = tracked && mirrorMarkedClean(db, partitionId);
   if (markedClean && pass.consistent === undefined)
-    pass.consistent =
-      db
-        .query<{ n: number }, [string]>(
-          "SELECT count(*) AS n FROM vector_variants WHERE partition_id = ?"
-        )
-        .get(partitionId)!.n ===
-      db.query<{ n: number }, []>(`SELECT count(*) AS n FROM ${table}`).get()!
-        .n;
+    pass.consistent = mirrorCountsMatch(db, partitionId);
   let allMirrored = false;
   if (markedClean && pass.consistent) {
     const lookup = db.query<unknown, [number]>(
@@ -600,6 +603,12 @@ export function collectQueuedGarbage(
     maxCandidates?: number;
     budgetMs?: number;
     graceSeconds?: number;
+    /**
+     * The caller verified the mirror's row counts in this write session (an
+     * embed pass found it clean or rebuilt it), so the pass skips its own
+     * full count of the vec0 index.
+     */
+    mirrorConsistent?: boolean;
   }
 ): QueuedGcResult {
   const batchSize = options.batchSize ?? VECTOR_GC_BATCH_SIZE;
@@ -619,8 +628,20 @@ export function collectQueuedGarbage(
     throw new Error(
       "sqlite-vec is unavailable; cannot collect vectors from an existing vec0 index"
     );
-  const mirrorPass: MirrorPass = {};
   const startedAt = performance.now();
+  const mirrorPass: MirrorPass = options.mirrorConsistent
+    ? { consistent: true }
+    : {};
+  // Otherwise measure consistency once, up front and inside the budget: a
+  // count of a large vec0 index that uses the budget up leaves every
+  // candidate queued rather than overrunning it inside a write transaction.
+  if (
+    mirrorPass.consistent === undefined &&
+    access === "mirror" &&
+    hasQueuedGarbage(db, partition.partitionId, dueAt) &&
+    mirrorMarkedClean(db, partition.partitionId)
+  )
+    mirrorPass.consistent = mirrorCountsMatch(db, partition.partitionId);
   while (
     result.examined < maxCandidates &&
     performance.now() - startedAt < budgetMs

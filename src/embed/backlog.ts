@@ -62,6 +62,12 @@ export interface EmbedBacklogDeps {
    * after. null means another writer holds it; the pass stops as deferred.
    */
   acquireWriteTurn?: AcquireWriteTurn;
+  /**
+   * Write gate for automatic vector GC only, for callers whose embedding
+   * writes take no lease (the SDK): null defers GC. Absent, GC runs under
+   * acquireWriteTurn (the resident) or the caller's own lease (the CLI).
+   */
+  acquireGcTurn?: AcquireWriteTurn;
   /** Explicit confirmation to build a separate vector partition (never implied by --yes). */
   allowNewPartition?: boolean;
   /**
