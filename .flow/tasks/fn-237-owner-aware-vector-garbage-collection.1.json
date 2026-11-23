@@ -9,7 +9,7 @@
   "priority": null,
   "spec": "fn-237-owner-aware-vector-garbage-collection",
   "spec_path": ".flow/tasks/fn-237-owner-aware-vector-garbage-collection.1.md",
-  "status": "todo",
+  "status": "done",
   "title": "Implement Owner-aware vector garbage collection",
   "updated_at": "2026-11-23T15:00:58.913401Z"
 }

@@ -523,7 +523,7 @@
     "impl:fn-237-owner-aware-vector-garbage-collection.1": 0
   },
   "spec_path": ".flow/specs/fn-237-owner-aware-vector-garbage-collection.md",
-  "status": "open",
+  "status": "done",
   "title": "Owner-aware vector garbage collection",
   "tracker": {
     "baseHashFlow": null,
@@ -536,5 +536,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-11-23T16:13:36.916652Z"
+  "updated_at": "2026-11-23T16:24:38.724726Z"
 }
