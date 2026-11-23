@@ -59,7 +59,7 @@ describe("R1: SQLite connection PRAGMAs", () => {
       expect(
         db.query<{ cache_size: number }, []>("PRAGMA cache_size").get()
           ?.cache_size
-      ).toBe(-64000);
+      ).toBe(-131072);
       expect(
         db.query<{ temp_store: number }, []>("PRAGMA temp_store").get()
           ?.temp_store
@@ -78,21 +78,21 @@ describe("R1: SQLite connection PRAGMAs", () => {
           ?.synchronous
       ).toBe(1); // NORMAL
 
-      // Secondary read connection uses -32000 cache_size and MEMORY temp_store
+      // Secondary read connection uses -65536 cache_size and MEMORY temp_store
       await store.withReadConnection(async () => {
         const readDb = store.getRawDb();
         expect(readDb).not.toBe(db);
         expect(
           readDb.query<{ cache_size: number }, []>("PRAGMA cache_size").get()
             ?.cache_size
-        ).toBe(-32000);
+        ).toBe(-65536);
         expect(
           readDb.query<{ temp_store: number }, []>("PRAGMA temp_store").get()
             ?.temp_store
         ).toBe(2);
       });
 
-      // Read-only opener uses -32000 cache_size and MEMORY temp_store
+      // Read-only opener uses -65536 cache_size and MEMORY temp_store
       const roStore = new SqliteAdapter();
       cleanupStores.push(roStore);
       const roOpened = roStore.openReadOnly(dbPath);
@@ -101,7 +101,7 @@ describe("R1: SQLite connection PRAGMAs", () => {
       expect(
         roDb.query<{ cache_size: number }, []>("PRAGMA cache_size").get()
           ?.cache_size
-      ).toBe(-32000);
+      ).toBe(-65536);
       expect(
         roDb.query<{ temp_store: number }, []>("PRAGMA temp_store").get()
           ?.temp_store
@@ -156,7 +156,7 @@ describe("R2: Migration 037 covering and cleanup indexes + query plans", () => {
       );
       expect(getSchemaVersion(raw)).toBe(36);
       expect(runMigrations(raw, migrations, "unicode61").ok).toBe(true);
-      expect(getSchemaVersion(raw)).toBe(38);
+      expect(getSchemaVersion(raw)).toBe(39);
 
       const indexes = new Set(
         raw

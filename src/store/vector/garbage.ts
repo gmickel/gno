@@ -23,7 +23,11 @@ import type { Database } from "bun:sqlite";
 
 import { envIsSet } from "../../llm/policy";
 import { formatDocForEmbedding } from "../../pipeline/contextual";
-import { markMirrorClean } from "./partition-index";
+import {
+  hasNullCosineColumn,
+  markMirrorClean,
+  type NullCosineMark,
+} from "./partition-index";
 import { provenOwners, vectorProofKey } from "./proof-cache";
 import {
   chunkKeyHint,
@@ -310,13 +314,20 @@ function removeKeepingMirror(
 ): void {
   if (variantIds.length === 0) return;
   const tracked = access === "mirror" && tableExists(db, "vector_mirror_state");
-  const markedClean =
-    tracked &&
-    db
-      .query<{ dirty: number }, [string]>(
-        "SELECT dirty FROM vector_mirror_state WHERE partition_id = ?"
-      )
-      .get(partitionId)?.dirty === 0;
+  const withNullCosine = tracked && hasNullCosineColumn(db);
+  const before = tracked
+    ? db
+        .query<{ dirty: number; null_cosine: number | null }, [string]>(
+          `SELECT dirty, ${withNullCosine ? "null_cosine" : "NULL AS null_cosine"}
+           FROM vector_mirror_state WHERE partition_id = ?`
+        )
+        .get(partitionId)
+    : null;
+  const markedClean = before?.dirty === 0;
+  // Removing vectors cannot add a null-cosine one: a known "none" (0) stays
+  // known, a known "some" (1) may have been removed and becomes unknown, as
+  // the store's own removals do (migration 38).
+  const nullCosine: NullCosineMark = before?.null_cosine === 0 ? 0 : null;
   let balanced = false;
   if (markedClean) {
     const lookup = db.query<unknown, [number]>(
@@ -326,7 +337,7 @@ function removeKeepingMirror(
   }
   removeVariants(db, partitionId, variantIds, access);
   if (!tracked) return;
-  if (markedClean && balanced) markMirrorClean(db, partitionId);
+  if (markedClean && balanced) markMirrorClean(db, partitionId, nullCosine);
   else
     db.run("DELETE FROM vector_mirror_state WHERE partition_id = ?", [
       partitionId,

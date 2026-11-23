@@ -21,7 +21,7 @@ import { runEmbed } from "../../src/sdk/embed";
 import { migration as variantsMigration } from "../../src/store/migrations/028-vector-variants";
 import { migration as runtimeMigration } from "../../src/store/migrations/031-runtime-independent-vectors";
 import { migration as mirrorMigration } from "../../src/store/migrations/036-vector-mirror-state";
-import { migration as gcMigration } from "../../src/store/migrations/038-vector-gc-candidates";
+import { migration as gcMigration } from "../../src/store/migrations/039-vector-gc-candidates";
 import { AUTO_VECTOR_GC_GRACE_SECONDS } from "../../src/store/vector/garbage";
 import { safeRm } from "../helpers/cleanup";
 

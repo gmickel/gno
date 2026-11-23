@@ -97,8 +97,9 @@ test("opening a pre-feature schema preserves schema identity, chunks and legacy 
     // collection link-workspace columns (fn-178), migration 35 only adds
     // the vector length index (fn-208), migration 36 only the vec0 mirror
     // freshness table and its triggers, migration 37 only covering/cleanup
-    // indexes (fn-229), and migration 38 only the vector GC candidate queue
-    // and its triggers (gno#361); chunk policy still performs no schema migration or
+    // indexes (fn-229), migration 38 only a column on the mirror freshness
+    // table (fn-234), and migration 39 only the vector GC candidate queue and
+    // its triggers (gno#361); chunk policy still performs no schema migration or
     // legacy vector rewrite.
     const columns = db
       .query<{ name: string }, []>("PRAGMA table_info(documents)")

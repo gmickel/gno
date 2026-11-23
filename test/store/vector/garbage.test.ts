@@ -16,7 +16,8 @@ import { formatDocForEmbedding } from "../../../src/pipeline/contextual";
 import { migration as variantsMigration } from "../../../src/store/migrations/028-vector-variants";
 import { migration as runtimeMigration } from "../../../src/store/migrations/031-runtime-independent-vectors";
 import { migration as mirrorMigration } from "../../../src/store/migrations/036-vector-mirror-state";
-import { migration as gcMigration } from "../../../src/store/migrations/038-vector-gc-candidates";
+import { migration as nullCosineMigration } from "../../../src/store/migrations/038-vector-mirror-null-cosine";
+import { migration as gcMigration } from "../../../src/store/migrations/039-vector-gc-candidates";
 import {
   collectQueuedGarbage,
   hasQueuedGarbage,
@@ -66,6 +67,7 @@ function fixture(path = ":memory:", migrate = true): Database {
   variantsMigration.up(db, "unicode61");
   runtimeMigration.up(db, "unicode61");
   mirrorMigration.up(db, "unicode61");
+  nullCosineMigration.up(db, "unicode61");
   if (migrate) gcMigration.up(db, "unicode61");
   return db;
 }
@@ -568,4 +570,23 @@ test("many bindings of shared content are judged once per content and title", as
     "INSERT INTO documents(id, mirror_hash, title, active) VALUES (300, 'shared', 'Same', 1)"
   );
   expect(runVectorGc(db, { dryRun: true, vecLoaded: true }).variants).toBe(0);
+});
+
+test("GC keeps a known null-cosine state of a clean mirror", async () => {
+  const db = fixture();
+  const a = await embedAll(db, A);
+  a.activate(a.epoch());
+  const mark = () =>
+    db
+      .query(
+        "SELECT dirty, null_cosine FROM vector_mirror_state WHERE partition_id = ?"
+      )
+      .get(a.partitionId);
+  expect(mark()).toEqual({ dirty: 0, null_cosine: 0 });
+  db.run("UPDATE documents SET active = 0 WHERE id = 4");
+  expect(
+    collectQueuedGarbage(db, gc(a), { vecLoaded: true, graceSeconds: 0 })
+      .variants
+  ).toBe(1);
+  expect(mark()).toEqual({ dirty: 0, null_cosine: 0 });
 });

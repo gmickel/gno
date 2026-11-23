@@ -72,7 +72,7 @@
     "legacyContentVectors": {
       "type": "integer",
       "minimum": 0,
-      "description": "Legacy `content_vectors` rows; not collected here (`gno cleanup` removes orphaned ones)."
+      "description": "Legacy `content_vectors` rows; not collected here (`gno cleanup` removes orphaned ones, `gno vec prune` superseded ones)."
     },
     "databaseBytes": {
       "type": "integer",

@@ -12,6 +12,8 @@ import "./setup";
 import { Database } from "bun:sqlite";
 // node:async_hooks binds nested transactions to one async request; Bun has no separate native equivalent.
 import { AsyncLocalStorage } from "node:async_hooks";
+// node:os totalmem: no Bun equivalent for total system memory.
+import { totalmem } from "node:os";
 // node:path basename: no Bun path utilities.
 import { basename } from "node:path";
 
@@ -577,6 +579,67 @@ function withoutBusyWait(db: Database, write: () => void): void {
 }
 
 /** Resolve a caller-supplied busy_timeout, defaulting rather than using 0. */
+export const SQLITE_PRIMARY_CACHE_SIZE = -131072;
+export const SQLITE_READ_CACHE_SIZE = -65536;
+
+const SQLITE_MAX_REQUESTED_MMAP_BYTES = 8 * 1024 * 1024 * 1024;
+const SQLITE_32BIT_MMAP_BYTES = 268435456;
+
+const IS_64_BIT_ARCH =
+  process.arch === "x64" ||
+  process.arch === "arm64" ||
+  process.arch === "ppc64" ||
+  process.arch === "s390x" ||
+  process.arch === "riscv64" ||
+  process.arch === "loong64";
+
+/**
+ * Compute the requested SQLite mmap_size in bytes: on 64-bit systems, up to
+ * 8 GiB bounded by half of total system memory (SQLite clamps to its compile-time
+ * MAX_MMAP_SIZE); on 32-bit systems, 256 MiB.
+ */
+export function computeRequestedMmapSizeBytes(
+  totalMemoryBytes: number = totalmem(),
+  is64Bit: boolean = IS_64_BIT_ARCH
+): number {
+  if (!is64Bit) {
+    return SQLITE_32BIT_MMAP_BYTES;
+  }
+  const halfRam = Math.floor(Math.max(0, totalMemoryBytes) * 0.5);
+  return Math.min(SQLITE_MAX_REQUESTED_MMAP_BYTES, halfRam);
+}
+
+/**
+ * Apply shared SQLite memory/I/O PRAGMAs across all database open paths
+ * (`open`, `openReadOnly`, `openReadDb`) and return the effective `mmap_size`
+ * read back from SQLite. Never throws when mmap_size is clamped or unsupported.
+ */
+export function applySqlitePerformancePragmas(
+  db: Database,
+  role: "primary" | "read"
+): number {
+  db.exec("PRAGMA temp_store = MEMORY");
+  db.exec(
+    `PRAGMA cache_size = ${
+      role === "primary" ? SQLITE_PRIMARY_CACHE_SIZE : SQLITE_READ_CACHE_SIZE
+    }`
+  );
+  const requestedMmap = computeRequestedMmapSizeBytes();
+  try {
+    db.exec(`PRAGMA mmap_size = ${requestedMmap}`);
+  } catch {
+    // Platforms/filesystems that reject mmap_size keep default file I/O.
+  }
+  try {
+    return (
+      db.query<{ mmap_size: number }, []>("PRAGMA mmap_size").get()
+        ?.mmap_size ?? 0
+    );
+  } catch {
+    return 0;
+  }
+}
+
 function resolveBusyTimeoutMs(busyTimeoutMs?: number): number {
   if (
     busyTimeoutMs === undefined ||
@@ -693,13 +756,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         // rely on the existing DB journal mode instead of failing open().
       }
 
-      this.db.exec("PRAGMA temp_store = MEMORY");
-      this.db.exec("PRAGMA cache_size = -64000");
-      try {
-        this.db.exec("PRAGMA mmap_size = 268435456");
-      } catch {
-        // Platforms/filesystems that reject mmap_size keep default file I/O.
-      }
+      applySqlitePerformancePragmas(this.db, "primary");
 
       if (process.env.CI) {
         this.db.exec("PRAGMA synchronous = OFF");
@@ -754,13 +811,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       this.db.exec(
         `PRAGMA busy_timeout = ${resolveBusyTimeoutMs(busyTimeoutMs)}`
       );
-      this.db.exec("PRAGMA temp_store = MEMORY");
-      this.db.exec("PRAGMA cache_size = -32000");
-      try {
-        this.db.exec("PRAGMA mmap_size = 268435456");
-      } catch {
-        // Platforms/filesystems that reject mmap_size keep default file I/O.
-      }
+      applySqlitePerformancePragmas(this.db, "read");
       this.contextGeneration += 1;
       return ok(undefined);
     } catch (cause) {
@@ -865,13 +916,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         main.query<{ timeout: number }, []>("PRAGMA busy_timeout").get()
           ?.timeout ?? DEFAULT_BUSY_TIMEOUT_MS;
       db.exec(`PRAGMA busy_timeout = ${busyTimeout}`);
-      db.exec("PRAGMA temp_store = MEMORY");
-      db.exec("PRAGMA cache_size = -32000");
-      try {
-        db.exec("PRAGMA mmap_size = 268435456");
-      } catch {
-        // Platforms/filesystems that reject mmap_size keep default file I/O.
-      }
+      applySqlitePerformancePragmas(db, "read");
       if (this.ftsTokenizer.startsWith("snowball")) {
         const snowball = loadFts5Snowball(db);
         if (!snowball.loaded)
@@ -2851,63 +2896,61 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }>
     >
   > {
-    if (options.documentIds.length === 0 && options.mirrorHashes.length === 0) {
+    const uniqueIds = [...new Set(options.documentIds)];
+    const uniqueHashes = [...new Set(options.mirrorHashes)];
+    if (uniqueIds.length === 0 && uniqueHashes.length === 0) {
       return ok([]);
     }
     try {
       const db = this.ensureOpen();
-      const idsJson = JSON.stringify([...new Set(options.documentIds)]);
-      const hashesJson = JSON.stringify([...new Set(options.mirrorHashes)]);
-      const rows = options.collection
-        ? db
-            .query<
-              {
-                id: number;
-                docid: string;
-                uri: string;
-                title: string | null;
-                collection: string;
-                rel_path: string;
-                mirror_hash: string;
-              },
-              [string, string, string]
-            >(
-              `SELECT id, docid, uri, title, collection, rel_path, mirror_hash
-               FROM documents
-               WHERE active = 1
-                 AND mirror_hash IS NOT NULL
-                 AND collection = ?
-                 AND (
-                   id IN (SELECT value FROM json_each(?))
-                   OR mirror_hash IN (SELECT value FROM json_each(?))
-                 )
-               ORDER BY id`
-            )
-            .all(options.collection, idsJson, hashesJson)
-        : db
-            .query<
-              {
-                id: number;
-                docid: string;
-                uri: string;
-                title: string | null;
-                collection: string;
-                rel_path: string;
-                mirror_hash: string;
-              },
-              [string, string]
-            >(
-              `SELECT id, docid, uri, title, collection, rel_path, mirror_hash
-               FROM documents
-               WHERE active = 1
-                 AND mirror_hash IS NOT NULL
-                 AND (
-                   id IN (SELECT value FROM json_each(?))
-                   OR mirror_hash IN (SELECT value FROM json_each(?))
-                 )
-               ORDER BY id`
-            )
-            .all(idsJson, hashesJson);
+      const collectionClause = options.collection
+        ? " AND d.collection = ?"
+        : "";
+      const legs: string[] = [];
+      const params: string[] = [];
+
+      // Drive each leg from json_each(?) via CROSS JOIN so SQLite seeks by PK
+      // or idx_documents_mirror_hash instead of scanning idx_documents_collection
+      // with a Bloom filter on scoped lookups.
+      if (uniqueIds.length > 0) {
+        legs.push(
+          `SELECT d.id AS id, d.docid, d.uri, d.title, d.collection, d.rel_path, d.mirror_hash
+           FROM json_each(?) AS j
+           CROSS JOIN documents d ON d.id = j.value
+           WHERE d.active = 1
+             AND d.mirror_hash IS NOT NULL${collectionClause}`
+        );
+        params.push(JSON.stringify(uniqueIds));
+        if (options.collection) params.push(options.collection);
+      }
+
+      if (uniqueHashes.length > 0) {
+        legs.push(
+          `SELECT d.id AS id, d.docid, d.uri, d.title, d.collection, d.rel_path, d.mirror_hash
+           FROM json_each(?) AS j
+           CROSS JOIN documents d INDEXED BY idx_documents_mirror_hash ON d.mirror_hash = j.value
+           WHERE d.active = 1
+             AND d.mirror_hash IS NOT NULL${collectionClause}`
+        );
+        params.push(JSON.stringify(uniqueHashes));
+        if (options.collection) params.push(options.collection);
+      }
+
+      const sql = `${legs.join("\nUNION\n")}\nORDER BY 1`;
+      const rows = db
+        .query<
+          {
+            id: number;
+            docid: string;
+            uri: string;
+            title: string | null;
+            collection: string;
+            rel_path: string;
+            mirror_hash: string;
+          },
+          string[]
+        >(sql)
+        .all(...params);
 
       return ok(
         rows.map((row) => ({

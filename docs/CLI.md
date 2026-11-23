@@ -1423,7 +1423,7 @@ embedded all 800 chunks). If it recurs, keep the stderr tail and
 as separate processes.
 
 **Concurrency**: One writer at a time on the shared index. `index`, `update`,
-`embed`, `cleanup`, `vec sync`, `vec rebuild`, `collection clear-embeddings`,
+`embed`, `cleanup`, `vec sync`, `vec rebuild`, `vec drop`, `vec prune`, `collection clear-embeddings`,
 `tags add`, and `tags rm` wait by default for the same lease MCP write tools
 use (`.mcp-write.lock` next to the database); `capture` takes the same lock
 internally. Readers (`search`,
@@ -2435,6 +2435,8 @@ gno vec rebuild   # Full rebuild of the vec0 index
 gno vec drop 9a8b7c6d5e4f   # Drop an abandoned shadow partition
 gno vec gc --dry-run        # Report stored vectors no active document can use
 gno vec gc                  # Remove them
+gno vec prune     # Remove superseded legacy vec_<hash> tables and content_vectors rows
+gno vec prune --vacuum      # Prune and run in-place SQLite VACUUM to shrink the DB file
 ```
 
 - `sync` - Fast incremental sync, fixes drift after failed inserts
@@ -2452,8 +2454,14 @@ gno vec gc                  # Remove them
   been re-embedded yet (the next `gno embed` reuses it). `--dry-run` reads the
   index read-only, without the write lease, and reports per partition how many
   vectors and how many bytes of embeddings would go. Legacy `content_vectors`
-  are left to `gno cleanup`. `gc` removes at once: a deleted file brought back
-  afterwards is embedded again.
+  are left to `gno cleanup` (orphaned rows) and `prune` (superseded rows). `gc`
+  removes at once: a deleted file brought back afterwards is embedded again.
+- `prune` - Remove superseded legacy `vec_<hash>` tables and `content_vectors`
+  rows for models that already have an activated v1 vector partition, plus
+  orphaned `vec_v1_*` tables absent from `vector_partitions`. Models without an
+  activated partition keep their legacy tables and rows. Pass `--vacuum` to
+  reclaim OS disk space in-place, or run SQLite `VACUUM INTO` a new file for
+  large databases.
 - `--json` - JSON output format
 
 **Automatic vector GC.** Every `gno embed` pass, including background
@@ -2473,7 +2481,8 @@ other models' partitions.
 
 **Reclaiming disk space.** Removing vectors makes their space reusable inside
 the database; the file does not shrink (`gno vec gc` reports the file size and
-its free space). To shrink it, compact the database as a separate step:
+its free space). To shrink it, compact the database as a separate step, either
+with `gno vec prune --vacuum` (under the write lease) or by hand:
 
 ```bash
 # Stop gno serve, gno daemon and MCP servers using this index first.

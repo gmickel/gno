@@ -167,6 +167,8 @@ export async function createVectorIndexPort(
 
   // A query-only (read) connection cannot create the table. A missing table
   // there means no vectors were ever stored for this model: search is empty.
+  // Once a v1 partition is active for this model, never create an unused legacy
+  // vec_<hash> table; variant search runs through vec_v1_<partition> instead.
   const tableExists =
     db
       .query<{ found: number }, [string]>(
@@ -176,11 +178,24 @@ export async function createVectorIndexPort(
   const queryOnly =
     db.query<{ query_only: number }, []>("PRAGMA query_only").get()
       ?.query_only === 1;
+  const hasActivatedPartition =
+    db
+      .query<{ found: number }, []>(
+        "SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = 'vector_partitions'"
+      )
+      .get() !== null &&
+    db
+      .query<{ found: number }, [string]>(
+        "SELECT 1 AS found FROM vector_partitions WHERE model = ? AND state = 'active' AND activated_epoch IS NOT NULL LIMIT 1"
+      )
+      .get(model) !== null;
   const noVectorsYet = searchAvailable && !tableExists && queryOnly;
+  const partitionActiveNoLegacy =
+    searchAvailable && !tableExists && hasActivatedPartition;
 
-  // Create per-model vec0 table if extension available
+  // Create per-model vec0 table if extension available and no v1 partition is active
   // Graceful degradation: if table creation fails, storage still works
-  if (searchAvailable && !tableExists && !queryOnly) {
+  if (searchAvailable && !tableExists && !queryOnly && !hasActivatedPartition) {
     try {
       db.exec(`
         CREATE VIRTUAL TABLE IF NOT EXISTS ${tableName} USING vec0(
@@ -207,33 +222,29 @@ export async function createVectorIndexPort(
     DELETE FROM content_vectors WHERE mirror_hash = ? AND model = ?
   `);
 
-  // Prepared statements for vec0 table (if available)
-  const deleteVecChunkStmt =
-    searchAvailable && !noVectorsYet
-      ? db.prepare(`DELETE FROM ${tableName} WHERE chunk_id = ?`)
-      : null;
+  // Prepared statements for vec0 table (if available and legacy table exists)
+  const hasLegacyVecTable =
+    searchAvailable && !noVectorsYet && !partitionActiveNoLegacy;
+  const deleteVecChunkStmt = hasLegacyVecTable
+    ? db.prepare(`DELETE FROM ${tableName} WHERE chunk_id = ?`)
+    : null;
 
-  const insertVecStmt =
-    searchAvailable && !noVectorsYet
-      ? db.prepare(
-          `INSERT INTO ${tableName} (chunk_id, embedding) VALUES (?, ?)`
-        )
-      : null;
+  const insertVecStmt = hasLegacyVecTable
+    ? db.prepare(`INSERT INTO ${tableName} (chunk_id, embedding) VALUES (?, ?)`)
+    : null;
 
-  const searchStmt =
-    searchAvailable && !noVectorsYet
-      ? db.prepare(`
+  const searchStmt = hasLegacyVecTable
+    ? db.prepare(`
         SELECT chunk_id, distance
         FROM ${tableName}
         WHERE embedding MATCH ?
           AND k = ?
       `)
-      : null;
+    : null;
 
-  const deleteVecStmt =
-    searchAvailable && !noVectorsYet
-      ? db.prepare(`DELETE FROM ${tableName} WHERE chunk_id LIKE ? || ':%'`)
-      : null;
+  const deleteVecStmt = hasLegacyVecTable
+    ? db.prepare(`DELETE FROM ${tableName} WHERE chunk_id LIKE ? || ':%'`)
+    : null;
 
   // Track if vec0 writes failed this session (needs sync)
   let vecDirty = false;
@@ -357,7 +368,10 @@ export async function createVectorIndexPort(
       k: number,
       searchOptions?: VectorSearchOptions
     ): Promise<StoreResult<VectorSearchResult[]>> {
-      if (!searchAvailable || !(searchStmt || noVectorsYet)) {
+      if (
+        !searchAvailable ||
+        !(searchStmt || noVectorsYet || partitionActiveNoLegacy)
+      ) {
         return Promise.resolve(
           err("VEC_SEARCH_UNAVAILABLE", formatUnavailableMessage(loadError))
         );
@@ -549,7 +563,10 @@ export async function createVectorIndexPort(
       limits: number[],
       searchOptions?: VectorSearchOptions
     ): Promise<StoreResult<VectorSearchResult[][]>> {
-      if (!searchAvailable || !(searchStmt || noVectorsYet)) {
+      if (
+        !searchAvailable ||
+        !(searchStmt || noVectorsYet || partitionActiveNoLegacy)
+      ) {
         return err(
           "VEC_SEARCH_UNAVAILABLE",
           formatUnavailableMessage(loadError)
@@ -612,8 +629,8 @@ export async function createVectorIndexPort(
     },
 
     rebuildVecIndex(): Promise<StoreResult<void>> {
-      if (!searchAvailable) {
-        return Promise.resolve(ok(undefined)); // No-op if no vec support
+      if (!searchAvailable || partitionActiveNoLegacy) {
+        return Promise.resolve(ok(undefined)); // No-op if no vec support or v1 active without legacy table
       }
 
       try {
@@ -646,7 +663,7 @@ export async function createVectorIndexPort(
     },
 
     syncVecIndex(): Promise<StoreResult<{ added: number; removed: number }>> {
-      if (!searchAvailable) {
+      if (!searchAvailable || partitionActiveNoLegacy) {
         return Promise.resolve(ok({ added: 0, removed: 0 }));
       }
 

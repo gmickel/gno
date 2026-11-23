@@ -23,7 +23,7 @@
  * embedding or proofs. Garbage that predates this migration and has no
  * inactive-document binding is found only by the full `gno vec gc` pass.
  *
- * @module src/store/migrations/038-vector-gc-candidates
+ * @module src/store/migrations/039-vector-gc-candidates
  */
 
 import type { Database } from "bun:sqlite";
@@ -31,7 +31,7 @@ import type { Database } from "bun:sqlite";
 import type { Migration } from "./runner";
 
 export const migration: Migration = {
-  version: 38,
+  version: 39,
   name: "vector_gc_candidates",
 
   up(db: Database): void {
