@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-237-owner-aware-vector-garbage-collection",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-11-23T16:13:36.916641Z",
   "created_at": "2026-11-23T15:00:39.801546Z",
   "default_impl": null,
   "default_review": null,
@@ -536,5 +536,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-11-23T16:04:30.211694Z"
+  "updated_at": "2026-11-23T16:13:36.916652Z"
 }
