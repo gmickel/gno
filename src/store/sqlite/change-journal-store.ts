@@ -52,6 +52,12 @@ export interface DocumentChangeDraft {
   newSnapshot: DocumentChangeSnapshot | null;
   structureDelta?: Partial<DocumentChangeStructureDelta>;
   observedAtMs: number;
+  /**
+   * Further collections whose egress policy the entry inherits. A
+   * cross-collection relocation names both sides, so the entry (which carries
+   * both URIs) is governed by the stricter policy.
+   */
+  lineageCollections?: readonly string[];
 }
 
 interface DbDocumentChangeRow {
@@ -256,30 +262,34 @@ export const appendDocumentChange = (
   } = serializeDocumentChangeStructureDelta(draft.structureDelta);
   const old = draft.oldSnapshot;
   const next = draft.newSnapshot;
-  const collectionPolicy = db
-    .query<
-      {
-        egress_policy: "local_only" | "lan" | "remote";
-        egress_policy_source: "explicit" | "config_default" | "legacy_default";
-      },
-      [string]
-    >(
-      `SELECT egress_policy, egress_policy_source
-       FROM collections WHERE name = ?`
-    )
-    .get(draft.collection);
-  if (!collectionPolicy) {
-    throw new Error(
-      `Document change policy lineage references unknown collection ${draft.collection}`
-    );
-  }
-  const egressLineage = createEgressLineage([
+  const policyQuery = db.query<
     {
-      collection: draft.collection,
-      policy: collectionPolicy.egress_policy,
-      source: collectionPolicy.egress_policy_source,
+      egress_policy: "local_only" | "lan" | "remote";
+      egress_policy_source: "explicit" | "config_default" | "legacy_default";
     },
-  ]);
+    [string]
+  >(
+    `SELECT egress_policy, egress_policy_source
+       FROM collections WHERE name = ?`
+  );
+  const lineageCollections = [
+    ...new Set([draft.collection, ...(draft.lineageCollections ?? [])]),
+  ];
+  const egressLineage = createEgressLineage(
+    lineageCollections.map((collection) => {
+      const collectionPolicy = policyQuery.get(collection);
+      if (!collectionPolicy) {
+        throw new Error(
+          `Document change policy lineage references unknown collection ${collection}`
+        );
+      }
+      return {
+        collection,
+        policy: collectionPolicy.egress_policy,
+        source: collectionPolicy.egress_policy_source,
+      };
+    })
+  );
   const egressLineageJson = JSON.stringify(egressLineage);
   const egressLineageBytes = UTF8_ENCODER.encode(egressLineageJson).byteLength;
   const storedByteSize = byteSize(draft, [

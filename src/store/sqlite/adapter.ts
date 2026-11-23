@@ -99,6 +99,7 @@ import type {
   RetrievalTraceRow,
   RetrievalTraceRunInput,
   RetrievalTraceTerminalStatus,
+  RelocateDocumentInput,
   RenameDocumentOptions,
   SavedCapsuleRegistrationInput,
   SavedCapsuleRegistrationRecord,
@@ -107,6 +108,7 @@ import type {
   SavedCapsuleVerificationExpectation,
   SavedCapsuleVerificationRecord,
   StaleCollection,
+  StoreErrorCode,
   StorePort,
   StoreResult,
   SyncCollectionsOptions,
@@ -672,6 +674,10 @@ export function staleCollectionsMessage(
     "config to delete their index data."
   );
 }
+
+type RelocationOutcome =
+  | { refused: false; row: DocumentRow }
+  | { refused: true; code: StoreErrorCode; message: string };
 
 export class SqliteAdapter implements StorePort, SqliteDbProvider {
   private db: Database | null = null;
@@ -2164,6 +2170,126 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return err(
         "QUERY_FAILED",
         cause instanceof Error ? cause.message : "Failed to rename document",
+        cause
+      );
+    }
+  }
+
+  async relocateDocument(
+    input: RelocateDocumentInput
+  ): Promise<StoreResult<DocumentRow>> {
+    const { collection, relPath, expected } = input;
+    if (!collection || !relPath) {
+      return err("INVALID_INPUT", "Relocation targets must be non-empty");
+    }
+    try {
+      const db = this.ensureOpen();
+      const transaction = db.transaction((): RelocationOutcome => {
+        const oldRow = db
+          .query<DbDocumentRow, [number]>(
+            "SELECT * FROM documents WHERE id = ?"
+          )
+          .get(input.documentId);
+        if (!oldRow) {
+          return {
+            refused: true,
+            code: "NOT_FOUND",
+            message: `Document ${input.documentId} not found`,
+          };
+        }
+        if (
+          oldRow.active !== 1 ||
+          oldRow.collection !== expected.collection ||
+          oldRow.rel_path !== expected.relPath ||
+          oldRow.source_hash !== expected.sourceHash ||
+          oldRow.mirror_hash !== expected.mirrorHash
+        ) {
+          return {
+            refused: true,
+            code: "CONSTRAINT_VIOLATION",
+            message: `Document ${oldRow.uri} changed since the relocation was planned`,
+          };
+        }
+        if (oldRow.collection === collection && oldRow.rel_path === relPath) {
+          return { refused: false, row: mapDocumentRow(oldRow) };
+        }
+        const known = db
+          .query<{ name: string }, [string]>(
+            "SELECT name FROM collections WHERE name = ?"
+          )
+          .get(collection);
+        if (!known) {
+          return {
+            refused: true,
+            code: "NOT_FOUND",
+            message: `Collection not found: ${collection}`,
+          };
+        }
+        const occupied = db
+          .query<{ id: number }, [string, string]>(
+            "SELECT id FROM documents WHERE collection = ? AND rel_path = ?"
+          )
+          .get(collection, relPath);
+        if (occupied) {
+          return {
+            refused: true,
+            code: "ALREADY_EXISTS",
+            message: `Destination is already indexed: ${buildUri(collection, relPath)}`,
+          };
+        }
+
+        const newUri = buildUri(collection, relPath);
+        db.run(
+          `UPDATE documents
+             SET collection = ?, rel_path = ?, uri = ?, updated_at = datetime('now')
+             WHERE id = ?`,
+          [collection, relPath, newUri, oldRow.id]
+        );
+        // Only the searchable path changes; the body and title stay indexed.
+        if (oldRow.rel_path !== relPath) {
+          db.run("UPDATE documents_fts SET filepath = ? WHERE rowid = ?", [
+            relPath,
+            oldRow.id,
+          ]);
+        }
+        const nextRow = db
+          .query<DbDocumentRow, [number]>(
+            "SELECT * FROM documents WHERE id = ?"
+          )
+          .get(oldRow.id);
+        if (!nextRow) {
+          throw new Error("Failed to read document after relocation");
+        }
+        const oldSnapshot = snapshotDocumentChange(mapDocumentRow(oldRow));
+        const nextDocument = mapDocumentRow(nextRow);
+        const newSnapshot = snapshotDocumentChange(nextDocument);
+        const touched = [...new Set([oldRow.collection, collection])];
+        const observedAtMs = input.observedAtMs ?? Date.now();
+        // One entry per collection, so each side's change feed sees the move;
+        // both carry the stricter of the two egress policies.
+        for (const journalCollection of touched) {
+          appendStoredDocumentChange(db, {
+            documentId: oldRow.id,
+            collection: journalCollection,
+            kind: "rename",
+            oldSnapshot,
+            newSnapshot,
+            structureDelta: input.structureDelta,
+            observedAtMs,
+            lineageCollections: touched,
+          });
+        }
+        return { refused: false, row: nextDocument };
+      });
+
+      const outcome = transaction();
+      return outcome.refused
+        ? err(outcome.code, outcome.message)
+        : ok(outcome.row);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to relocate document",
         cause
       );
     }

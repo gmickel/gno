@@ -636,6 +636,25 @@ export interface RenameDocumentOptions {
   structureDelta?: Partial<DocumentChangeStructureDelta>;
 }
 
+/** Explicit move of one indexed document to a new collection and/or path. */
+export interface RelocateDocumentInput {
+  documentId: number;
+  /**
+   * The row the caller planned against. Any difference (another writer
+   * changed it in between) refuses the move without writing.
+   */
+  expected: {
+    collection: string;
+    relPath: string;
+    sourceHash: string;
+    mirrorHash: string;
+  };
+  collection: string;
+  relPath: string;
+  observedAtMs?: number;
+  structureDelta?: Partial<DocumentChangeStructureDelta>;
+}
+
 /** Input for a single chunk */
 export interface ChunkInput {
   seq: number;
@@ -1860,6 +1879,18 @@ export interface StorePort {
     oldRelPath: string,
     newRelPath: string,
     options?: RenameDocumentOptions
+  ): Promise<StoreResult<DocumentRow>>;
+
+  /**
+   * Move one active document to another collection and/or path, keeping its
+   * database id (and so its chunks' owners, tags and links). Updates the
+   * collection, path, URI and full-text filepath and journals the move in
+   * every collection it touches. Refuses (ALREADY_EXISTS) when any row holds
+   * the destination, and (CONSTRAINT_VIOLATION) when the row no longer
+   * matches `expected`. Path-derived fields are the caller's to rewrite.
+   */
+  relocateDocument?(
+    input: RelocateDocumentInput
   ): Promise<StoreResult<DocumentRow>>;
 
   /**
