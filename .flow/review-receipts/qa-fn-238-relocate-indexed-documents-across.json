@@ -2,15 +2,15 @@
   "branch": "fn-238-relocate-indexed-documents-across",
   "findings": {
     "backend": "interactive",
-    "headSha": "921f667215f42ff3c03bac193718953d1cea334c",
+    "headSha": "ac91a1edbfbdfacac3464d3f86e83767578654f0",
     "items": [],
     "reviewKind": "qa",
-    "round": 2,
+    "round": 3,
     "schemaVersion": 1,
-    "sourceReceiptId": "review-a4bde916ceba33d9e28e17bc01256569028992cc131c2201c529bcb3ba374978",
-    "supersedesReceiptId": "review-602ee5b93be106a0cf579848233d20784b1273da996607ec33967ff96013fcc5"
+    "sourceReceiptId": "review-535b4d680e163c293624632a76a19f67e50b782c5fcd7bda23a22cc564613271",
+    "supersedesReceiptId": "review-a4bde916ceba33d9e28e17bc01256569028992cc131c2201c529bcb3ba374978"
   },
-  "head_sha": "921f667215f42ff3c03bac193718953d1cea334c",
+  "head_sha": "ac91a1edbfbdfacac3464d3f86e83767578654f0",
   "id": "fn-238-relocate-indexed-documents-across",
   "mode": "interactive",
   "open_p0p1": [],
@@ -52,9 +52,9 @@
   "scenarios": [
     {
       "evidence": [
-        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across/s1-folder-move.log"
+        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across-final/s1-folder-move.log"
       ],
-      "head_sha": "921f667215f42ff3c03bac193718953d1cea334c",
+      "head_sha": "ac91a1edbfbdfacac3464d3f86e83767578654f0",
       "id": "S1",
       "outcome": "PASS",
       "rids": [
@@ -66,9 +66,9 @@
     },
     {
       "evidence": [
-        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across/s2-rename-title.log"
+        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across-final/s2-rename-title.log"
       ],
-      "head_sha": "921f667215f42ff3c03bac193718953d1cea334c",
+      "head_sha": "ac91a1edbfbdfacac3464d3f86e83767578654f0",
       "id": "S2",
       "outcome": "PASS",
       "rids": [
@@ -78,9 +78,9 @@
     },
     {
       "evidence": [
-        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across/s3-refusals.log"
+        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across-final/s3-refusals.log"
       ],
-      "head_sha": "921f667215f42ff3c03bac193718953d1cea334c",
+      "head_sha": "ac91a1edbfbdfacac3464d3f86e83767578654f0",
       "id": "S3",
       "outcome": "PASS",
       "rids": [
@@ -90,9 +90,9 @@
     },
     {
       "evidence": [
-        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across/s4-map-and-lease.log"
+        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across-final/s4-map-and-lease.log"
       ],
-      "head_sha": "921f667215f42ff3c03bac193718953d1cea334c",
+      "head_sha": "ac91a1edbfbdfacac3464d3f86e83767578654f0",
       "id": "S4",
       "outcome": "PASS",
       "rids": [
@@ -102,9 +102,9 @@
     },
     {
       "evidence": [
-        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across/s5-bench.log"
+        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across-final/s5-bench.log"
       ],
-      "head_sha": "921f667215f42ff3c03bac193718953d1cea334c",
+      "head_sha": "ac91a1edbfbdfacac3464d3f86e83767578654f0",
       "id": "S5",
       "outcome": "PASS",
       "rids": [
@@ -114,7 +114,7 @@
       "run": "live"
     }
   ],
-  "timestamp": "2026-11-23T15:54:25Z",
+  "timestamp": "2026-11-23T16:12:45Z",
   "type": "qa_verdict",
   "verdict": "SHIP"
 }

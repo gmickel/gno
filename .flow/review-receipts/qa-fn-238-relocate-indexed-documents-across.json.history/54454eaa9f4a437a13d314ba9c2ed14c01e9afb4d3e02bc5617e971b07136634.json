@@ -1,0 +1,120 @@
+{
+  "branch": "fn-238-relocate-indexed-documents-across",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "921f667215f42ff3c03bac193718953d1cea334c",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 2,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-a4bde916ceba33d9e28e17bc01256569028992cc131c2201c529bcb3ba374978",
+    "supersedesReceiptId": "review-602ee5b93be106a0cf579848233d20784b1273da996607ec33967ff96013fcc5"
+  },
+  "head_sha": "921f667215f42ff3c03bac193718953d1cea334c",
+  "id": "fn-238-relocate-indexed-documents-across",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 7,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R5"
+      },
+      {
+        "coverage": "backend_cli",
+        "id": "R6"
+      },
+      {
+        "coverage": "live",
+        "id": "R7"
+      }
+    ],
+    "total": 7
+  },
+  "scenarios": [
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across/s1-folder-move.log"
+      ],
+      "head_sha": "921f667215f42ff3c03bac193718953d1cea334c",
+      "id": "S1",
+      "outcome": "PASS",
+      "rids": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across/s2-rename-title.log"
+      ],
+      "head_sha": "921f667215f42ff3c03bac193718953d1cea334c",
+      "id": "S2",
+      "outcome": "PASS",
+      "rids": [
+        "R5"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across/s3-refusals.log"
+      ],
+      "head_sha": "921f667215f42ff3c03bac193718953d1cea334c",
+      "id": "S3",
+      "outcome": "PASS",
+      "rids": [
+        "R4"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across/s4-map-and-lease.log"
+      ],
+      "head_sha": "921f667215f42ff3c03bac193718953d1cea334c",
+      "id": "S4",
+      "outcome": "PASS",
+      "rids": [
+        "R6"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across/s5-bench.log"
+      ],
+      "head_sha": "921f667215f42ff3c03bac193718953d1cea334c",
+      "id": "S5",
+      "outcome": "PASS",
+      "rids": [
+        "R1",
+        "R7"
+      ],
+      "run": "live"
+    }
+  ],
+  "timestamp": "2026-11-23T15:54:25Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
