@@ -1,0 +1,102 @@
+{
+  "branch": "fn-235-bit-coarse-vec0-mirror-with-exact",
+  "findings": {
+    "backend": "receipt",
+    "headSha": "47e25cef3f18e462483606c200f0da8754e1ecc6",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-49347b90c70e567a2827f6178b11acaba53f07288a02a8150f95c699b4d6b428"
+  },
+  "head_sha": "47e25cef3f18e462483606c200f0da8754e1ecc6",
+  "id": "fn-235-bit-coarse-vec0-mirror-with-exact",
+  "mode": "receipt",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 8,
+    "rids": [
+      {
+        "coverage": "subtracted",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R3"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      },
+      {
+        "coverage": "live",
+        "id": "R7"
+      },
+      {
+        "coverage": "subtracted",
+        "id": "R8"
+      }
+    ],
+    "total": 8
+  },
+  "scenarios": [
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-235-bit-coarse-vec0-mirror-with-exact/s1-seed.log",
+        ".flow/tmp/qa-fn-235-bit-coarse-vec0-mirror-with-exact/s1-sync-status-doctor.log"
+      ],
+      "head_sha": "47e25cef3f18e462483606c200f0da8754e1ecc6",
+      "id": "S1-v2-sync-rebuild-status-doctor",
+      "outcome": "PASS",
+      "rids": [
+        "R2",
+        "R5",
+        "R7"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-235-bit-coarse-vec0-mirror-with-exact/s2-cli-similar.log",
+        ".flow/tmp/qa-fn-235-bit-coarse-vec0-mirror-with-exact/s2-serve.log",
+        ".flow/tmp/qa-fn-235-bit-coarse-vec0-mirror-with-exact/s2-http-similar.log"
+      ],
+      "head_sha": "47e25cef3f18e462483606c200f0da8754e1ecc6",
+      "id": "S2-collection-scoped-similar-cli-and-rest",
+      "outcome": "PASS",
+      "rids": [
+        "R6"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-235-bit-coarse-vec0-mirror-with-exact/s3-coarse-config-repair.log"
+      ],
+      "head_sha": "47e25cef3f18e462483606c200f0da8754e1ecc6",
+      "id": "S3-coarse-config-switch-and-dirty-repair",
+      "outcome": "PASS",
+      "rids": [
+        "R2",
+        "R7"
+      ],
+      "run": "live"
+    }
+  ],
+  "timestamp": "2026-11-23T16:05:39Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}

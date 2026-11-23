@@ -1,7 +1,7 @@
 {
   "branch_name": "fn-235-bit-coarse-vec0-mirror-with-exact",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-11-23T16:05:40.530486Z",
   "created_at": "2026-11-23T11:42:21.054843Z",
   "default_impl": null,
   "default_review": null,
@@ -12,11 +12,12 @@
   "id": "fn-235-bit-coarse-vec0-mirror-with-exact",
   "impl_review_rounds": {},
   "next_task": 1,
+  "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-235-bit-coarse-vec0-mirror-with-exact.md",
-  "status": "open",
+  "status": "done",
   "title": "Bit coarse vec0 mirror with exact rescore and cost-based routing",
   "tracker": {
     "baseHashFlow": null,
@@ -29,5 +30,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-11-23T14:03:30.476540Z"
+  "updated_at": "2026-11-23T16:05:40.859712Z"
 }
