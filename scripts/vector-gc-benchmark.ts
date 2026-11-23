@@ -3,7 +3,8 @@
  *
  * Builds a synthetic index with real migrations, embeds every chunk with
  * seeded vectors (no models run), then times:
- *   - the automatic end-of-embed-pass check when nothing is queued,
+ *   - the automatic end-of-embed-pass check when nothing is queued, and
+ *     when many candidates are queued but none is past the grace period,
  *   - deactivating documents (sync's path, which feeds the candidate queue),
  *   - one automatic pass (default count and time budget) over N queued
  *     variants, and the passes needed to drain them,
@@ -23,6 +24,7 @@ import { join } from "node:path";
 
 import { SqliteAdapter } from "../src/store/sqlite/adapter";
 import {
+  AUTO_VECTOR_GC_GRACE_SECONDS,
   collectQueuedGarbage,
   hasQueuedGarbage,
   runVectorGc,
@@ -133,7 +135,7 @@ async function main(): Promise<void> {
       ).toFixed(1)} s`
     );
 
-    // 1. Nothing to collect: the end-of-pass probe.
+    // 1. Nothing queued: the end-of-pass probe.
     const probes: number[] = [];
     for (let i = 0; i < PROBES; i++) {
       const t = performance.now();
@@ -169,7 +171,25 @@ async function main(): Promise<void> {
       `markInactive ${marked.value} documents: ${ms(started)} ms (queued ${queued} candidates)`
     );
 
-    // 3. One automatic pass with the default budget, then drain.
+    // 3. Everything queued, nothing past the grace yet: the common state
+    // after a sync. The end-of-pass check must stay one lookup.
+    const dueAt = Math.floor(Date.now() / 1000) - AUTO_VECTOR_GC_GRACE_SECONDS;
+    const pending: number[] = [];
+    for (let i = 0; i < PROBES; i++) {
+      const t = performance.now();
+      hasQueuedGarbage(db, partition.partitionId, dueAt);
+      pending.push(performance.now() - t);
+    }
+    pending.sort((a, b) => a - b);
+    console.log(
+      `${queued} queued, none past the grace: probe p50 ${(pending[PROBES / 2]! * 1000).toFixed(1)} us, p99 ${(pending[Math.floor(PROBES * 0.99)]! * 1000).toFixed(1)} us`
+    );
+
+    // 4. One automatic pass with the default budget once the grace has
+    // passed (simulated by ageing the queue), then drain.
+    db.run("UPDATE vector_gc_candidates SET queued_at = queued_at - ?", [
+      AUTO_VECTOR_GC_GRACE_SECONDS + 1,
+    ]);
     started = performance.now();
     const first = collectQueuedGarbage(db, partition, { vecLoaded: true });
     console.log(
@@ -189,7 +209,7 @@ async function main(): Promise<void> {
     );
     console.log(`mirror after collection: ${store.mirrorState()}`);
 
-    // 4. Explicit traversal after deactivating another slice.
+    // 5. Explicit traversal after deactivating another slice (no grace).
     const more = Array.from(
       { length: Math.min(collectDocs, documents - paths.length) },
       (_, i) => `doc-${paths.length + i}.md`

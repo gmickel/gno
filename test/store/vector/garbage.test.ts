@@ -52,11 +52,11 @@ function fixture(path = ":memory:", migrate = true): Database {
   databases.push(db);
   if (path !== ":memory:") db.exec("PRAGMA journal_mode = WAL");
   db.exec(`PRAGMA foreign_keys = ON;
-    CREATE TABLE documents(id INTEGER PRIMARY KEY, mirror_hash TEXT, title TEXT, active INTEGER);
+    CREATE TABLE documents(id INTEGER PRIMARY KEY, mirror_hash TEXT, title TEXT, active INTEGER, updated_at TEXT);
     CREATE INDEX idx_documents_mirror_hash ON documents(mirror_hash);
     CREATE TABLE content_chunks(mirror_hash TEXT, seq INTEGER, text TEXT, PRIMARY KEY(mirror_hash, seq));
     CREATE TABLE content_vectors(mirror_hash TEXT, seq INTEGER, model TEXT, embedding BLOB);
-    INSERT INTO documents VALUES (1, 'body', 'Alpha', 1), (2, 'body', 'Beta', 1),
+    INSERT INTO documents(id, mirror_hash, title, active) VALUES (1, 'body', 'Alpha', 1), (2, 'body', 'Beta', 1),
       (3, 'body', 'Alpha', 1), (4, 'other', 'Delta', 1);
     INSERT INTO content_chunks VALUES ('body', 0, 'Shared body'), ('other', 0, 'Other body');
     INSERT INTO content_vectors VALUES ('body', 0, 'model-a', X'0000803f00000000');
@@ -166,9 +166,14 @@ test("identical content not yet re-bound keeps its variant (a moved file before 
   const db = fixture();
   const a = await embedAll(db, A);
   db.run("UPDATE documents SET active = 0 WHERE id = 4");
-  db.run("INSERT INTO documents VALUES (5, 'other', 'Delta', 1)");
+  db.run(
+    "INSERT INTO documents(id, mirror_hash, title, active) VALUES (5, 'other', 'Delta', 1)"
+  );
   expect(runVectorGc(db, { dryRun: true, vecLoaded: true }).variants).toBe(0);
-  expect(collectQueuedGarbage(db, gc(a), { vecLoaded: true }).variants).toBe(0);
+  expect(
+    collectQueuedGarbage(db, gc(a), { vecLoaded: true, graceSeconds: 0 })
+      .variants
+  ).toBe(0);
   // The next embed reuses it without a new vector.
   expect(a.reusable(a.current(5, 0)!)).not.toBeNull();
   // A title change alters the input: the old vector is garbage.
@@ -229,7 +234,9 @@ test("deactivation, unbinding and cascade deletes queue candidates; queued GC re
   const a = await embedAll(db, A);
   const b = await embedAll(db, B);
   expect(hasQueuedGarbage(db, a.partitionId)).toBe(false);
-  expect(collectQueuedGarbage(db, gc(a), { vecLoaded: true })).toEqual({
+  expect(
+    collectQueuedGarbage(db, gc(a), { vecLoaded: true, graceSeconds: 0 })
+  ).toEqual({
     examined: 0,
     variants: 0,
     bytes: 0,
@@ -238,7 +245,10 @@ test("deactivation, unbinding and cascade deletes queue candidates; queued GC re
 
   db.run("UPDATE documents SET active = 0 WHERE id IN (1, 4)");
   expect(hasQueuedGarbage(db, a.partitionId)).toBe(true);
-  const result = collectQueuedGarbage(db, gc(a), { vecLoaded: true });
+  const result = collectQueuedGarbage(db, gc(a), {
+    vecLoaded: true,
+    graceSeconds: 0,
+  });
   // Alpha (shared with 3) stays; Delta goes with its vec0 row.
   expect(result).toEqual({
     examined: 2,
@@ -263,7 +273,10 @@ test("deactivation, unbinding and cascade deletes queue candidates; queued GC re
   // A deleted document's bindings go by cascade and still queue.
   db.run("DELETE FROM documents WHERE id = 2");
   expect(hasQueuedGarbage(db, a.partitionId)).toBe(true);
-  expect(collectQueuedGarbage(db, gc(a), { vecLoaded: true }).variants).toBe(1);
+  expect(
+    collectQueuedGarbage(db, gc(a), { vecLoaded: true, graceSeconds: 0 })
+      .variants
+  ).toBe(1);
 
   // Re-pointing a binding queues the variant it left.
   db.run("UPDATE documents SET active = 1 WHERE id = 4");
@@ -277,7 +290,10 @@ test("deactivation, unbinding and cascade deletes queue candidates; queued GC re
     { owner: changed, embedding: new Float32Array([1, 1]) },
   ]);
   expect(hasQueuedGarbage(db, a.partitionId)).toBe(true);
-  expect(collectQueuedGarbage(db, gc(a), { vecLoaded: true }).variants).toBe(1);
+  expect(
+    collectQueuedGarbage(db, gc(a), { vecLoaded: true, graceSeconds: 0 })
+      .variants
+  ).toBe(1);
   expect(a.owners(newId!)).toHaveLength(1);
 });
 
@@ -288,12 +304,16 @@ test("bounded queued runs resume where they stopped", async () => {
       `m${id}`,
       `text ${id}`,
     ]);
-    db.run("INSERT INTO documents VALUES (?, ?, 'T', 1)", [id, `m${id}`]);
+    db.run(
+      "INSERT INTO documents(id, mirror_hash, title, active) VALUES (?, ?, 'T', 1)",
+      [id, `m${id}`]
+    );
   }
   const a = await embedAll(db, A);
   db.run("UPDATE documents SET active = 0 WHERE id >= 10");
   const first = collectQueuedGarbage(db, gc(a), {
     vecLoaded: true,
+    graceSeconds: 0,
     batchSize: 2,
     maxCandidates: 4,
   });
@@ -305,6 +325,7 @@ test("bounded queued runs resume where they stopped", async () => {
   });
   const second = collectQueuedGarbage(db, gc(a), {
     vecLoaded: true,
+    graceSeconds: 0,
     batchSize: 2,
   });
   expect(second).toEqual({
@@ -318,7 +339,11 @@ test("bounded queued runs resume where they stopped", async () => {
   // A zero time budget starts no batch and leaves everything queued.
   db.run("UPDATE documents SET active = 0 WHERE id = 4");
   expect(
-    collectQueuedGarbage(db, gc(a), { vecLoaded: true, budgetMs: 0 }).remaining
+    collectQueuedGarbage(db, gc(a), {
+      vecLoaded: true,
+      graceSeconds: 0,
+      budgetMs: 0,
+    }).remaining
   ).toBe(true);
 });
 
@@ -328,7 +353,10 @@ test("a clean mirror stays clean, a dirty mirror stays dirty", async () => {
   a.activate(a.epoch());
   expect(a.mirrorState()).toBe("clean");
   db.run("UPDATE documents SET active = 0 WHERE id = 4");
-  expect(collectQueuedGarbage(db, gc(a), { vecLoaded: true }).variants).toBe(1);
+  expect(
+    collectQueuedGarbage(db, gc(a), { vecLoaded: true, graceSeconds: 0 })
+      .variants
+  ).toBe(1);
   expect(a.mirrorState()).toBe("clean");
   expect(a.hasActivated()).toBe(true);
 
@@ -352,9 +380,9 @@ test("a vec0 index without sqlite-vec is skipped and reported, never mutated", a
     })
   );
   expect(variants(db, a)).toBe(3);
-  expect(() => collectQueuedGarbage(db, gc(a), { vecLoaded: false })).toThrow(
-    "sqlite-vec"
-  );
+  expect(() =>
+    collectQueuedGarbage(db, gc(a), { vecLoaded: false, graceSeconds: 0 })
+  ).toThrow("sqlite-vec");
   expect(variants(db, a)).toBe(3);
 });
 
@@ -368,7 +396,10 @@ test("a concurrent reader sees each GC batch entirely or not at all", async () =
       `m${id}`,
       `text ${id}`,
     ]);
-    db.run("INSERT INTO documents VALUES (?, ?, 'T', 1)", [id, `m${id}`]);
+    db.run(
+      "INSERT INTO documents(id, mirror_hash, title, active) VALUES (?, ?, 'T', 1)",
+      [id, `m${id}`]
+    );
   }
   const a = await embedAll(db, A);
   const reader = new Database(path);
@@ -390,6 +421,7 @@ test("a concurrent reader sees each GC batch entirely or not at all", async () =
   const before = observe();
   const collected = collectQueuedGarbage(db, gc(a), {
     vecLoaded: true,
+    graceSeconds: 0,
     batchSize: 3,
   });
   expect(collected.variants).toBe(10);
@@ -398,4 +430,44 @@ test("a concurrent reader sees each GC batch entirely or not at all", async () =
   const after = observe();
   expect(after).toEqual({ variants: 3, mirrored: 3, dangling: 0 });
   expect(before).toEqual({ variants: 13, mirrored: 13, dangling: 0 });
+});
+
+test("automatic collection waits out the grace; a new loss restarts it", async () => {
+  const db = fixture();
+  const a = await embedAll(db, A);
+  db.run("UPDATE documents SET active = 0 WHERE id = 4");
+  const age = (seconds: number) =>
+    db.run("UPDATE vector_gc_candidates SET queued_at = queued_at - ?", [
+      seconds,
+    ]);
+  // Inside the 7-day default grace nothing is due or touched.
+  expect(collectQueuedGarbage(db, gc(a), { vecLoaded: true })).toEqual({
+    examined: 0,
+    variants: 0,
+    bytes: 0,
+    remaining: false,
+  });
+  expect(hasQueuedGarbage(db, a.partitionId)).toBe(true);
+  // Restored and lost again after six days: the grace starts over.
+  age(6 * 86_400);
+  db.run("UPDATE documents SET active = 1 WHERE id = 4");
+  db.run("UPDATE documents SET active = 0 WHERE id = 4");
+  age(2 * 86_400);
+  expect(collectQueuedGarbage(db, gc(a), { vecLoaded: true }).examined).toBe(0);
+  age(6 * 86_400);
+  expect(collectQueuedGarbage(db, gc(a), { vecLoaded: true }).variants).toBe(1);
+});
+
+test("store GC keeps its strict rule: unbound identical content does not keep a variant", async () => {
+  const db = fixture();
+  const a = await embedAll(db, A);
+  db.run("UPDATE documents SET active = 0 WHERE id = 4");
+  db.run(
+    "INSERT INTO documents(id, mirror_hash, title, active) VALUES (5, 'other', 'Delta', 1)"
+  );
+  // vec gc and automatic GC keep it for reuse ...
+  expect(runVectorGc(db, { dryRun: true, vecLoaded: true }).variants).toBe(0);
+  // ... runtime-reference maintenance does not.
+  expect(a.collectGarbage()).toBe(1);
+  expect(a.reusable(a.current(5, 0)!)).toBeNull();
 });

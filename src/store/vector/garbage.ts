@@ -41,6 +41,13 @@ export const VECTOR_GC_BATCH_SIZE = 500;
 export const AUTO_VECTOR_GC_MAX_CANDIDATES = 5000;
 /** Automatic collection: stop starting new batches after this long. */
 export const AUTO_VECTOR_GC_BUDGET_MS = 250;
+/**
+ * Automatic collection: a candidate is collected only once it has been
+ * queued this long (7 days), so restoring identical content (a file deleted
+ * and brought back, a branch switched and switched back) within it costs no
+ * embedding. `gno vec gc` collects at once.
+ */
+export const AUTO_VECTOR_GC_GRACE_SECONDS = 7 * 24 * 60 * 60;
 
 /** The partition fields evaluation and removal need. */
 export interface GcPartition {
@@ -108,7 +115,7 @@ export interface QueuedGcResult {
   /** Variants removed. */
   variants: number;
   bytes: number;
-  /** Candidates remain queued for this partition. */
+  /** Candidates past the grace remain queued for this partition. */
   remaining: boolean;
 }
 
@@ -145,22 +152,51 @@ export function mirrorAccess(
   return vecLoaded ? "mirror" : "unsafe";
 }
 
-/** Variants of `variants` with no live use in their partition. */
+/**
+ * `strict`: a variant is live only through a valid owner (its own binding's
+ * document is active and produces its input). `reuse`: also through any
+ * active document with the same content that produces its input, which the
+ * next embed pass binds by input hash.
+ */
+export type GcLiveness = "strict" | "reuse";
+
+/**
+ * Variants of `variants` with no live use in their partition. Valid owners
+ * are checked first, so the same-content join only runs for the remainder.
+ */
 function collectible(
   db: Database,
   partition: GcPartition,
   variants: readonly VariantRow[],
-  proofs: Map<string, boolean>
+  proofs: Map<string, boolean>,
+  liveness: GcLiveness = "reuse"
 ): VariantRow[] {
-  if (variants.length === 0) return [];
+  const owned = liveVariants(db, partition, variants, proofs, true);
+  const rest = variants.filter((v) => !owned.has(v.variant_id));
+  if (liveness === "strict" || rest.length === 0) return rest;
+  const reusable = liveVariants(db, partition, rest, proofs, false);
+  return rest.filter((v) => !reusable.has(v.variant_id));
+}
+
+/** Ids among `variants` with live evidence (see GcLiveness). */
+function liveVariants(
+  db: Database,
+  partition: GcPartition,
+  variants: readonly VariantRow[],
+  proofs: Map<string, boolean>,
+  ownDocument: boolean
+): Set<number> {
   const live = new Set<number>();
+  if (variants.length === 0) return live;
   const hashes = new Map(variants.map((v) => [v.variant_id, v.input_hash]));
+  const documentJoin = ownDocument
+    ? " ON d.id = o.document_id AND d.mirror_hash = o.mirror_hash AND d.active = 1"
+    : `${documentsMirrorHint(db)} ON d.mirror_hash = o.mirror_hash AND d.active = 1`;
   const evidence = db.prepare<EvidenceRow, [string, string]>(`
     SELECT o.variant_id AS variantId, d.id AS documentId,
       o.mirror_hash AS mirrorHash, o.seq AS seq, c.text AS text, d.title AS title
     FROM vector_owners o${ownerPartitionVariantHint(db)}
-    JOIN documents d${documentsMirrorHint(db)}
-      ON d.mirror_hash = o.mirror_hash AND d.active = 1
+    JOIN documents d${documentJoin}
     JOIN content_chunks c${chunkKeyHint(db)}
       ON c.mirror_hash = o.mirror_hash AND c.seq = o.seq
     WHERE o.partition_id = ?
@@ -193,7 +229,7 @@ function collectible(
   } finally {
     evidence.finalize();
   }
-  return variants.filter((v) => !live.has(v.variant_id));
+  return live;
 }
 
 /**
@@ -293,9 +329,11 @@ const variantsById = (
     .all(partitionId, JSON.stringify(variantIds));
 
 /**
- * Remove every collectible variant of one partition inside the caller's
- * transaction. The store's single-partition collector and owner release
- * delegate here. Returns the number removed.
+ * Remove every variant without a valid owner (strict liveness) from one
+ * partition inside the caller's transaction. The store's single-partition
+ * collector and owner release delegate here: runtime-reference maintenance
+ * relies on unmeasured vectors without a current owner never surviving to be
+ * reused. Returns the number removed.
  */
 export function collectPartitionInTransaction(
   db: Database,
@@ -315,7 +353,7 @@ export function collectPartitionInTransaction(
     );
     if (page.length === 0) break;
     after = page.at(-1)!.variant_id;
-    for (const v of collectible(db, partition, page, proofs))
+    for (const v of collectible(db, partition, page, proofs, "strict"))
       remove.push(v.variant_id);
   }
   removeVariants(db, partition.partitionId, remove, access);
@@ -455,19 +493,32 @@ export function runVectorGc(
   return options.dryRun ? db.transaction(run).deferred() : run();
 }
 
-/** One indexed probe: does this partition have queued candidates? */
-export function hasQueuedGarbage(db: Database, partitionId: string): boolean {
+const nowSeconds = (): number => Math.floor(Date.now() / 1000);
+
+/**
+ * One indexed probe: does this partition have candidates queued at or before
+ * `dueAt` (unix seconds; default now, i.e. any queued candidate)?
+ */
+export function hasQueuedGarbage(
+  db: Database,
+  partitionId: string,
+  dueAt: number = nowSeconds()
+): boolean {
   if (!hasQueue(db)) return false;
   return !!db
-    .query("SELECT 1 FROM vector_gc_candidates WHERE partition_id = ? LIMIT 1")
-    .get(partitionId);
+    .query<unknown, [string, number]>(
+      "SELECT 1 FROM vector_gc_candidates WHERE partition_id = ? AND queued_at <= ? LIMIT 1"
+    )
+    .get(partitionId, dueAt);
 }
 
 /**
- * Examine this partition's queued candidates in bounded batches, each its
- * own immediate transaction, and remove the collectible ones. Stops after
- * `maxCandidates` candidates or once `budgetMs` has elapsed; the rest stay
- * queued for the next call. The caller holds the index write lease.
+ * Examine this partition's queued candidates older than `graceSeconds` in
+ * bounded batches, each its own immediate transaction, and remove the
+ * collectible ones. Stops after `maxCandidates` candidates or once
+ * `budgetMs` has elapsed; the rest stay queued for the next call. Candidates
+ * inside the grace stay queued untouched, so restoring identical content
+ * within it reuses the stored vector. The caller holds the index write lease.
  */
 export function collectQueuedGarbage(
   db: Database,
@@ -477,11 +528,14 @@ export function collectQueuedGarbage(
     batchSize?: number;
     maxCandidates?: number;
     budgetMs?: number;
+    graceSeconds?: number;
   }
 ): QueuedGcResult {
   const batchSize = options.batchSize ?? VECTOR_GC_BATCH_SIZE;
   const maxCandidates = options.maxCandidates ?? AUTO_VECTOR_GC_MAX_CANDIDATES;
   const budgetMs = options.budgetMs ?? AUTO_VECTOR_GC_BUDGET_MS;
+  const dueAt =
+    nowSeconds() - (options.graceSeconds ?? AUTO_VECTOR_GC_GRACE_SECONDS);
   const result: QueuedGcResult = {
     examined: 0,
     variants: 0,
@@ -501,17 +555,20 @@ export function collectQueuedGarbage(
   ) {
     const examined = db
       .transaction((): number => {
-        const ids = db
-          .query<{ variant_id: number }, [string, number]>(
-            `SELECT DISTINCT variant_id FROM vector_gc_candidates
-             WHERE partition_id = ? ORDER BY variant_id LIMIT ?`
+        let ids = db
+          .query<{ variant_id: number }, [string, number, number]>(
+            `SELECT variant_id FROM vector_gc_candidates
+             WHERE partition_id = ? AND queued_at <= ?
+             ORDER BY queued_at LIMIT ?`
           )
           .all(
             partition.partitionId,
+            dueAt,
             Math.min(batchSize, maxCandidates - result.examined)
           )
           .map((row) => row.variant_id);
         if (ids.length === 0) return 0;
+        ids = [...new Set(ids)];
         const garbage = collectible(
           db,
           partition,
@@ -538,6 +595,6 @@ export function collectQueuedGarbage(
     if (examined === 0) break;
     result.examined += examined;
   }
-  result.remaining = hasQueuedGarbage(db, partition.partitionId);
+  result.remaining = hasQueuedGarbage(db, partition.partitionId, dueAt);
   return result;
 }

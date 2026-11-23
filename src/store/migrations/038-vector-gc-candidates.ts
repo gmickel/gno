@@ -9,6 +9,12 @@
  * variant. Automatic collection then examines only queued candidates, so its
  * no-op check is one indexed probe instead of a partition scan.
  *
+ * `queued_at` (unix seconds) restarts whenever a variant loses a binding
+ * again. Automatic collection only takes candidates older than its grace
+ * period: sync keeps a deactivated document's bindings so that restoring
+ * identical content costs no embedding, and a file restored within the grace
+ * keeps that guarantee. `gno vec gc` ignores the grace.
+ *
  * The queue has no unique key: an outer statement's conflict clause would
  * override a trigger's, so inserts skip existing rows with NOT EXISTS
  * instead. The table carries no epoch trigger; queueing never fences
@@ -30,33 +36,47 @@ export const migration: Migration = {
     db.exec(`
       CREATE TABLE IF NOT EXISTS vector_gc_candidates (
         partition_id TEXT NOT NULL,
-        variant_id INTEGER NOT NULL
+        variant_id INTEGER NOT NULL,
+        queued_at INTEGER NOT NULL DEFAULT (CAST(strftime('%s', 'now') AS INTEGER))
       );
       CREATE INDEX IF NOT EXISTS idx_vector_gc_candidates
         ON vector_gc_candidates(partition_id, variant_id);
+      CREATE INDEX IF NOT EXISTS idx_vector_gc_candidates_due
+        ON vector_gc_candidates(partition_id, queued_at);
       CREATE TRIGGER IF NOT EXISTS vector_gc_owner_delete
-      AFTER DELETE ON vector_owners
-      WHEN NOT EXISTS (
-        SELECT 1 FROM vector_gc_candidates
-        WHERE partition_id = OLD.partition_id AND variant_id = OLD.variant_id
-      ) BEGIN
+      AFTER DELETE ON vector_owners BEGIN
+        UPDATE vector_gc_candidates SET queued_at = CAST(strftime('%s', 'now') AS INTEGER)
+        WHERE partition_id = OLD.partition_id AND variant_id = OLD.variant_id;
         INSERT INTO vector_gc_candidates (partition_id, variant_id)
-        VALUES (OLD.partition_id, OLD.variant_id);
+        SELECT OLD.partition_id, OLD.variant_id
+        WHERE NOT EXISTS (
+          SELECT 1 FROM vector_gc_candidates
+          WHERE partition_id = OLD.partition_id AND variant_id = OLD.variant_id
+        );
       END;
       CREATE TRIGGER IF NOT EXISTS vector_gc_owner_rebind
       AFTER UPDATE OF partition_id, variant_id ON vector_owners
-      WHEN (OLD.partition_id IS NOT NEW.partition_id
-          OR OLD.variant_id IS NOT NEW.variant_id)
-        AND NOT EXISTS (
+      WHEN OLD.partition_id IS NOT NEW.partition_id
+        OR OLD.variant_id IS NOT NEW.variant_id BEGIN
+        UPDATE vector_gc_candidates SET queued_at = CAST(strftime('%s', 'now') AS INTEGER)
+        WHERE partition_id = OLD.partition_id AND variant_id = OLD.variant_id;
+        INSERT INTO vector_gc_candidates (partition_id, variant_id)
+        SELECT OLD.partition_id, OLD.variant_id
+        WHERE NOT EXISTS (
           SELECT 1 FROM vector_gc_candidates
           WHERE partition_id = OLD.partition_id AND variant_id = OLD.variant_id
-        ) BEGIN
-        INSERT INTO vector_gc_candidates (partition_id, variant_id)
-        VALUES (OLD.partition_id, OLD.variant_id);
+        );
       END;
       CREATE TRIGGER IF NOT EXISTS vector_gc_document_inactive
       AFTER UPDATE OF active ON documents
       WHEN OLD.active = 1 AND NEW.active = 0 BEGIN
+        UPDATE vector_gc_candidates SET queued_at = CAST(strftime('%s', 'now') AS INTEGER)
+        WHERE rowid IN (
+          SELECT q.rowid FROM vector_owners o
+          JOIN vector_gc_candidates q
+            ON q.partition_id = o.partition_id AND q.variant_id = o.variant_id
+          WHERE o.document_id = NEW.id
+        );
         INSERT INTO vector_gc_candidates (partition_id, variant_id)
         SELECT DISTINCT o.partition_id, o.variant_id
         FROM vector_owners o
@@ -69,13 +89,16 @@ export const migration: Migration = {
       END;
     `);
     // Bindings already held only by inactive documents are the common
-    // existing garbage; queue them once so automatic collection finds them.
+    // existing garbage; queue them once, dated by the documents' last change
+    // (deactivation sets it), so long-deactivated ones are due at once.
     db.exec(`
-      INSERT INTO vector_gc_candidates (partition_id, variant_id)
-      SELECT DISTINCT o.partition_id, o.variant_id
+      INSERT INTO vector_gc_candidates (partition_id, variant_id, queued_at)
+      SELECT o.partition_id, o.variant_id,
+        coalesce(max(CAST(strftime('%s', d.updated_at) AS INTEGER)), CAST(strftime('%s', 'now') AS INTEGER))
       FROM documents d
       JOIN vector_owners o ON o.document_id = d.id
       WHERE d.active = 0
+      GROUP BY o.partition_id, o.variant_id
     `);
   },
 
@@ -84,6 +107,8 @@ export const migration: Migration = {
       DROP TRIGGER IF EXISTS vector_gc_owner_delete;
       DROP TRIGGER IF EXISTS vector_gc_owner_rebind;
       DROP TRIGGER IF EXISTS vector_gc_document_inactive;
+      DROP INDEX IF EXISTS idx_vector_gc_candidates_due;
+      DROP INDEX IF EXISTS idx_vector_gc_candidates;
       DROP TABLE IF EXISTS vector_gc_candidates;
     `);
   },

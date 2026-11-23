@@ -927,7 +927,7 @@ gno vec drop <partition>   # Drop an abandoned shadow partition (id prefix from 
 gno vec gc [--dry-run]     # Remove stored vectors no active document can use (all partitions)
 ```
 
-`gno embed` passes also collect unused vectors automatically (bounded per pass;
+`gno embed` passes also collect vectors unused for 7+ days automatically (bounded per pass;
 `GNO_NO_AUTO_VECTOR_GC=1` turns it off). `vec gc` never shrinks the file; see
 docs/CLI.md for compaction.
 

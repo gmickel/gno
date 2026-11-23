@@ -16,7 +16,10 @@ import { migration as variantsMigration } from "../../src/store/migrations/028-v
 import { migration as runtimeMigration } from "../../src/store/migrations/031-runtime-independent-vectors";
 import { migration as mirrorMigration } from "../../src/store/migrations/036-vector-mirror-state";
 import { migration as gcMigration } from "../../src/store/migrations/038-vector-gc-candidates";
-import { AUTO_VECTOR_GC_DISABLE_ENV } from "../../src/store/vector/garbage";
+import {
+  AUTO_VECTOR_GC_DISABLE_ENV,
+  AUTO_VECTOR_GC_GRACE_SECONDS,
+} from "../../src/store/vector/garbage";
 import { createVectorStatsPort } from "../../src/store/vector/stats";
 import { createVectorVariantStore } from "../../src/store/vector/variants";
 
@@ -55,12 +58,12 @@ async function fixture() {
   databases.push(db);
   db.exec(`PRAGMA foreign_keys = ON;
     CREATE TABLE schema_meta(key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT);
-    CREATE TABLE documents(id INTEGER PRIMARY KEY, mirror_hash TEXT, title TEXT, active INTEGER, collection TEXT);
+    CREATE TABLE documents(id INTEGER PRIMARY KEY, mirror_hash TEXT, title TEXT, active INTEGER, collection TEXT, updated_at TEXT);
     CREATE INDEX idx_documents_collection ON documents(collection);
     CREATE INDEX idx_documents_mirror_hash ON documents(mirror_hash);
     CREATE TABLE content_chunks(mirror_hash TEXT, seq INTEGER, text TEXT, PRIMARY KEY(mirror_hash, seq));
     CREATE TABLE content_vectors(mirror_hash TEXT, seq INTEGER, model TEXT, embedding BLOB);
-    INSERT INTO documents VALUES (1, 'm1', 'One', 1, 'prose'), (2, 'm2', 'Two', 1, 'prose'),
+    INSERT INTO documents(id, mirror_hash, title, active, collection) VALUES (1, 'm1', 'One', 1, 'prose'), (2, 'm2', 'Two', 1, 'prose'),
       (3, 'm3', 'Three', 1, 'data');
     INSERT INTO content_chunks VALUES ('m1', 0, 'first'), ('m2', 0, 'second'), ('m3', 0, 'third');`);
   for (const m of [
@@ -95,6 +98,13 @@ async function fixture() {
 const n = (db: Database, sql: string): number =>
   db.query<{ n: number }, []>(sql).get()!.n;
 
+/** Move every queued candidate past the automatic-collection grace. */
+const pastGrace = (db: Database): void => {
+  db.run("UPDATE vector_gc_candidates SET queued_at = queued_at - ?", [
+    AUTO_VECTOR_GC_GRACE_SECONDS + 1,
+  ]);
+};
+
 test("an embed pass collects the variants deactivation left unowned, with their mirror rows", async () => {
   const { db, store, deps } = await fixture();
   // Nothing queued: the pass reports no collection.
@@ -102,6 +112,11 @@ test("an embed pass collects the variants deactivation left unowned, with their 
   expect(idle.ok && idle.value.vectorGc).toBeUndefined();
 
   db.run("UPDATE documents SET active = 0 WHERE id = 2");
+  // Inside the grace the pass leaves it alone.
+  const early = await embedBacklog(deps);
+  expect(early.ok && early.value.vectorGc).toBeUndefined();
+  expect(n(db, "SELECT count(*) AS n FROM vector_variants")).toBe(3);
+  pastGrace(db);
   const pass = await embedBacklog(deps);
   expect(pass.ok && pass.value.vectorGc).toEqual({
     variants: 1,
@@ -119,7 +134,10 @@ test("moving a file across collections re-embeds nothing with automatic GC on", 
   const { db, deps, embedBatch } = await fixture();
   // Sync deactivates the old path and adds the identical file elsewhere.
   db.run("UPDATE documents SET active = 0 WHERE id = 3");
-  db.run("INSERT INTO documents VALUES (4, 'm3', 'Three', 1, 'prose')");
+  db.run(
+    "INSERT INTO documents(id, mirror_hash, title, active, collection) VALUES (4, 'm3', 'Three', 1, 'prose')"
+  );
+  pastGrace(db);
   const pass = await embedBacklog(deps);
   expect(pass.ok && pass.value.embedded).toBe(1);
   expect(embedBatch).not.toHaveBeenCalled();
@@ -141,7 +159,7 @@ test("a bounded pass that stops at its limit leaves garbage queued for the next 
     "INSERT INTO content_chunks VALUES ('m5', 0, 'fifth'), ('m6', 0, 'sixth')"
   );
   db.run(
-    "INSERT INTO documents VALUES (5, 'm5', 'Five', 1, 'prose'), (6, 'm6', 'Six', 1, 'prose')"
+    "INSERT INTO documents(id, mirror_hash, title, active, collection) VALUES (5, 'm5', 'Five', 1, 'prose'), (6, 'm6', 'Six', 1, 'prose')"
   );
   const bounded = await embedBacklog({
     ...deps,
@@ -151,6 +169,7 @@ test("a bounded pass that stops at its limit leaves garbage queued for the next 
   expect(bounded.ok && bounded.value.stopped).toBe("limit");
   expect(bounded.ok && bounded.value.vectorGc).toBeUndefined();
   expect(n(db, "SELECT count(*) AS n FROM vector_gc_candidates")).toBe(1);
+  pastGrace(db);
   const full = await embedBacklog(deps);
   expect(full.ok && full.value.vectorGc?.variants).toBe(1);
 });
@@ -159,6 +178,7 @@ test("the environment switch turns automatic GC off", async () => {
   const { db, deps } = await fixture();
   process.env[AUTO_VECTOR_GC_DISABLE_ENV] = "1";
   db.run("UPDATE documents SET active = 0 WHERE id = 2");
+  pastGrace(db);
   const pass = await embedBacklog(deps);
   expect(pass.ok && pass.value.vectorGc).toBeUndefined();
   expect(n(db, "SELECT count(*) AS n FROM vector_variants")).toBe(3);
@@ -168,6 +188,7 @@ test("the environment switch turns automatic GC off", async () => {
 test("a GC failure is reported on the pass result and never fails the pass", async () => {
   const { db, deps } = await fixture();
   db.run("UPDATE documents SET active = 0 WHERE id = 2");
+  pastGrace(db);
   // Variant deletion fails inside the GC transaction.
   db.run(
     "CREATE TRIGGER fail_variant_delete BEFORE DELETE ON vector_variants BEGIN SELECT RAISE(ABORT, 'variant delete blocked'); END"
@@ -179,4 +200,28 @@ test("a GC failure is reported on the pass result and never fails the pass", asy
   );
   expect(n(db, "SELECT count(*) AS n FROM vector_variants")).toBe(3);
   expect(n(db, "SELECT count(*) AS n FROM vector_gc_candidates")).toBe(1);
+});
+
+test("a file deleted and restored within the grace is not re-embedded", async () => {
+  const { db, deps, embedBatch } = await fixture();
+  for (let cycle = 0; cycle < 2; cycle++) {
+    db.run("UPDATE documents SET active = 0 WHERE id = 2");
+    const gone = await embedBacklog(deps);
+    expect(gone.ok && gone.value.vectorGc).toBeUndefined();
+    db.run("UPDATE documents SET active = 1 WHERE id = 2");
+    const back = await embedBacklog(deps);
+    expect(back.ok && back.value.embedded).toBe(0);
+  }
+  expect(embedBatch).not.toHaveBeenCalled();
+  expect(n(db, "SELECT count(*) AS n FROM vector_variants")).toBe(3);
+});
+
+test("a failing queue probe is reported and never fails the pass", async () => {
+  const { db, deps } = await fixture();
+  db.exec(
+    "DROP TABLE vector_gc_candidates; CREATE VIEW vector_gc_candidates AS SELECT 1 AS broken"
+  );
+  const pass = await embedBacklog(deps);
+  expect(pass.ok).toBe(true);
+  expect(pass.ok && pass.value.vectorGcError).toBeString();
 });

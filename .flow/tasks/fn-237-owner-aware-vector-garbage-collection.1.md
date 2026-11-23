@@ -1,5 +1,5 @@
 ---
-satisfies: [R1, R2, R3, R4, R5, R6, R7]
+satisfies: [R1, R2, R3, R4, R5, R6, R7, R8]
 ---
 # fn-237-owner-aware-vector-garbage-collection.1 Implement Owner-aware vector garbage collection
 

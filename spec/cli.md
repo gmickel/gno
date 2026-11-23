@@ -3232,7 +3232,11 @@ JSON output conforms to
 and `gno daemon` background embedding, MCP and SDK embedding), GNO collects
 the same way for the partition the pass embedded into, from a queue that
 records variants whose document was deactivated or whose owner binding was
-removed or re-pointed. With nothing queued this is one indexed lookup. A pass
+removed or re-pointed. A queued variant is due only 7 days after it last lost
+a binding: sync keeps a deactivated document's bindings so that restoring
+identical content costs no embedding, and automatic collection keeps that
+guarantee for a file restored within the grace (`gno vec gc` collects at once).
+With nothing due this is one indexed lookup. A pass
 examines at most 5,000 queued variants and starts no new batch of 500 after
 250 ms; the rest waits for the next pass. A pass stopped by `--max-chunks` or
 `--max-seconds`, deferred, or ended by a runtime change does not collect.

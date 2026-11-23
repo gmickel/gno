@@ -11,6 +11,7 @@ import {
 } from "../llm/inference-scope";
 import { err, ok } from "../store/types";
 import {
+  AUTO_VECTOR_GC_GRACE_SECONDS,
   autoVectorGcDisabled,
   collectQueuedGarbage,
   hasQueuedGarbage,
@@ -779,9 +780,11 @@ export async function embedVariantBacklog(
   /**
    * Automatic vector GC for this pass's partition, once its bindings have
    * settled (a moved file's identical content was re-bound by reuse above).
-   * One indexed probe when nothing is queued; otherwise a bounded slice under
-   * the write turn, the rest left queued for the next pass. A failure is
-   * reported on the result and never fails the pass.
+   * Only candidates queued longer than the grace period are due, so a file
+   * restored within it reuses its vector. One indexed probe when nothing is
+   * due; otherwise a bounded slice under the write turn, the rest left for
+   * the next pass. A failure is reported on the result and never fails the
+   * pass.
    */
   async function collectAfterPass(
     settled: StoreResult<EmbedBacklogResult>
@@ -792,27 +795,33 @@ export async function embedVariantBacklog(
       identityLost ||
       settled.value.deferred ||
       settled.value.incomplete ||
-      autoVectorGcDisabled() ||
-      !identityStillCurrent() ||
-      !hasQueuedGarbage(db, store.partitionId)
+      autoVectorGcDisabled()
     )
       return settled;
     const gcDb = db;
-    const turn = await inWriteTurn(deps.acquireWriteTurn, async () => {
-      try {
-        return collectQueuedGarbage(
+    try {
+      const dueAt =
+        Math.floor(Date.now() / 1000) - AUTO_VECTOR_GC_GRACE_SECONDS;
+      if (
+        !identityStillCurrent() ||
+        !hasQueuedGarbage(gcDb, store.partitionId, dueAt)
+      )
+        return settled;
+      const turn = await inWriteTurn(deps.acquireWriteTurn, async () =>
+        collectQueuedGarbage(
           gcDb,
           { partitionId: store.partitionId, model: store.identity.model },
           { vecLoaded: store.searchAvailable }
-        );
-      } catch (cause) {
-        return cause instanceof Error ? cause.message : String(cause);
-      }
-    });
-    if (turn.deferred) return settled;
-    if (typeof turn.value === "string")
-      return ok({ ...settled.value, vectorGcError: turn.value });
-    const { variants, bytes, remaining } = turn.value;
-    return ok({ ...settled.value, vectorGc: { variants, bytes, remaining } });
+        )
+      );
+      if (turn.deferred) return settled;
+      const { variants, bytes, remaining } = turn.value;
+      return ok({ ...settled.value, vectorGc: { variants, bytes, remaining } });
+    } catch (cause) {
+      return ok({
+        ...settled.value,
+        vectorGcError: cause instanceof Error ? cause.message : String(cause),
+      });
+    }
   }
 }

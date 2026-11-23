@@ -2452,19 +2452,22 @@ gno vec gc                  # Remove them
   been re-embedded yet (the next `gno embed` reuses it). `--dry-run` reads the
   index read-only, without the write lease, and reports per partition how many
   vectors and how many bytes of embeddings would go. Legacy `content_vectors`
-  are left to `gno cleanup`.
+  are left to `gno cleanup`. `gc` removes at once: a deleted file brought back
+  afterwards is embedded again.
 - `--json` - JSON output format
 
 **Automatic vector GC.** Every `gno embed` pass, including background
-embedding in `gno serve` and `gno daemon`, ends by collecting the vectors that
-documents deactivated by `gno update` (deleted or moved files) or re-embedded
-content left unused, for the model it embedded. It costs one indexed lookup
-when there is nothing to collect and handles at most 5,000 vectors (about a
-quarter of a second) per pass, so a large backlog is collected over several
-passes or at once with `gno vec gc`. A pass stopped by `--max-chunks` or
-`--max-seconds` does not collect. Turn it off with `GNO_NO_AUTO_VECTOR_GC=1`.
-Run `gno vec gc` once after upgrading to also collect vectors orphaned before
-this release, and for other models' partitions.
+embedding in `gno serve` and `gno daemon`, ends by collecting, for the model it
+embedded, the vectors that documents deactivated by `gno update` (deleted or
+moved files) or re-embedded content left unused **at least 7 days ago**. Until
+then a file brought back with the same content (restored, or a branch switched
+back) reuses its vector without embedding. The check costs one indexed lookup
+when nothing is due, and a pass handles at most 5,000 vectors (about a quarter
+of a second), so a large backlog is collected over several passes, or at once
+with `gno vec gc`. A pass stopped by `--max-chunks` or `--max-seconds` does not
+collect. Turn it off with `GNO_NO_AUTO_VECTOR_GC=1`. Run `gno vec gc` once
+after upgrading to also collect vectors orphaned before this release, and for
+other models' partitions.
 
 **Reclaiming disk space.** Removing vectors makes their space reusable inside
 the database; the file does not shrink (`gno vec gc` reports the file size and
