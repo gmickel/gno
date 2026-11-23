@@ -590,3 +590,31 @@ test("GC keeps a known null-cosine state of a clean mirror", async () => {
   ).toBe(1);
   expect(mark()).toEqual({ dirty: 0, null_cosine: 0 });
 });
+
+test("upgrading queues bindings of already-inactive documents, dated by their deactivation", async () => {
+  const db = fixture(":memory:", false);
+  const a = await embedAll(db, A);
+  db.run(
+    "UPDATE documents SET active = 0, updated_at = '2026-01-01 00:00:00' WHERE id = 4"
+  );
+  db.run(
+    "UPDATE documents SET active = 0, updated_at = datetime('now') WHERE id = 1"
+  );
+  gcMigration.up(db, "unicode61");
+  const queued = db
+    .query<{ variant_id: number; queued_at: number }, []>(
+      "SELECT variant_id, queued_at FROM vector_gc_candidates ORDER BY queued_at"
+    )
+    .all();
+  expect(queued).toHaveLength(2);
+  expect(queued[0]!.queued_at).toBe(Date.UTC(2026, 0, 1) / 1000);
+  // The long-deactivated one is due at once (and removed); the recent one
+  // (shared with active document 3) waits for its grace.
+  expect(collectQueuedGarbage(db, gc(a), { vecLoaded: true })).toEqual({
+    examined: 1,
+    variants: 1,
+    bytes: 8,
+    remaining: false,
+  });
+  expect(hasQueuedGarbage(db, a.partitionId)).toBe(true);
+});

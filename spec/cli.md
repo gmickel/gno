@@ -3201,8 +3201,9 @@ Deleting rows makes database pages reusable without shrinking the file:
 `bytes` is the logical embedding payload removed (`sum(length(embedding))`),
 `databaseBytes` the main database file size on disk and `freeBytes` the free pages SQLite
 reuses before growing the file. Compaction is a separate, explicit step
-(`gno vec prune --vacuum`, or `VACUUM` by hand, see docs/CLI.md); `vec gc`
-never compacts.
+(`gno vec prune --vacuum`, which first prunes superseded legacy vector
+tables and rows, or `VACUUM` by hand, see docs/CLI.md); `vec gc` never
+compacts.
 
 JSON output conforms to
 [`vec-gc.schema.json`](./output-schemas/vec-gc.schema.json):
@@ -3238,6 +3239,9 @@ removed or re-pointed. A queued variant is due only 7 days after it last lost
 a binding: sync keeps a deactivated document's bindings so that restoring
 identical content costs no embedding, and automatic collection keeps that
 guarantee for a file restored within the grace (`gno vec gc` collects at once).
+Passes run when `gno embed` runs and, in `gno serve`/`gno daemon`, after
+content changes (and at start when chunks are pending), so vectors that come
+due in an index that no longer changes wait for the next pass or `gno vec gc`.
 With nothing due this is one indexed lookup. A pass
 examines at most 5,000 queued variants and starts no new batch of 500 after
 250 ms; the rest waits for the next pass. A pass stopped by `--max-chunks` or

@@ -575,7 +575,7 @@ export function formatVecGc(
   return [
     header,
     ...(lines.length ? ["Partitions:", ...lines] : ["No vector partitions."]),
-    `Database file: ${formatBytes(report.databaseBytes)}, of which ${formatBytes(report.freeBytes)} is free space SQLite reuses before growing. Deleting rows does not shrink the file; compact separately with \`gno vec prune --vacuum\` (see docs/CLI.md).`,
+    `Database file: ${formatBytes(report.databaseBytes)}, of which ${formatBytes(report.freeBytes)} is free space SQLite reuses before growing. Deleting rows does not shrink the file; compact separately (docs/CLI.md: \`gno vec prune --vacuum\`, which also prunes superseded legacy vectors, or VACUUM).`,
     `Legacy content_vectors (${report.legacyContentVectors.toLocaleString()} rows) are not collected here; \`gno cleanup\` removes orphaned ones, \`gno vec prune\` superseded ones.`,
   ].join("\n");
 }

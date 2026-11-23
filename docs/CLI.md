@@ -2474,7 +2474,10 @@ when nothing is due, and a pass handles at most 5,000 vectors (about a quarter
 of a second), so a large backlog is collected over several passes, or at once
 with `gno vec gc`. A pass stopped by `--max-chunks` or `--max-seconds` collects
 too, so it can run up to that quarter second past the limit. A failure is shown
-as a warning (`vectorGcError` in `--json`) and does not fail the run. Turn it
+as a warning (`vectorGcError` in `--json`) and does not fail the run.
+`gno serve` and `gno daemon` run a pass after content changes (and at start
+when chunks are pending), so in an index that stops changing, vectors that
+become due wait for the next pass or a `gno vec gc`. Turn it
 off with `GNO_NO_AUTO_VECTOR_GC=1`. Run `gno vec gc` once
 after upgrading to also collect vectors orphaned before this release, and for
 other models' partitions.
@@ -2482,7 +2485,8 @@ other models' partitions.
 **Reclaiming disk space.** Removing vectors makes their space reusable inside
 the database; the file does not shrink (`gno vec gc` reports the file size and
 its free space). To shrink it, compact the database as a separate step, either
-with `gno vec prune --vacuum` (under the write lease) or by hand:
+with `gno vec prune --vacuum` (under the write lease; it also removes superseded
+legacy vector tables and rows first, see `prune` above) or by hand:
 
 ```bash
 # Stop gno serve, gno daemon and MCP servers using this index first.
