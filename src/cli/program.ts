@@ -2996,7 +2996,7 @@ function wireManagementCommands(program: Command): void {
         "--from-file <path>",
         "tab-separated source/destination pairs, one per line"
       )
-      .option("--dry-run", "check every move without writing")
+      .option("--dry-run", "check every move without relocating anything")
       .option("--json", "JSON output")
   ).action(
     async (

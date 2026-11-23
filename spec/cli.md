@@ -1311,7 +1311,7 @@ gno collection move --from-file <map> [--dry-run] [--json] [--lock-wait <duratio
 | Option | Type | Description |
 |--------|------|-------------|
 | `--from-file <map>` | path | One `source<TAB>destination` pair per line; blank lines and `#` comments are skipped |
-| `--dry-run` | boolean | Check every move without writing |
+| `--dry-run` | boolean | Check every move without relocating anything |
 | `--json` | boolean | Print the receipt as JSON (`collection-move@1.0`) |
 
 **Behavior:**
@@ -1341,8 +1341,10 @@ gno collection move --from-file <map> [--dry-run] [--json] [--lock-wait <duratio
   destination would not derive, record containers and their records,
   memory-managed collections, and paths source availability cannot prove (for
   the old path as well as the new one).
-- `--dry-run` writes nothing, including the config-to-index sync other
-  commands perform.
+- `--dry-run` relocates nothing and skips the config-to-index sync other
+  commands perform; it refuses to create an index that does not exist. Opening
+  an existing index still applies pending schema migrations, as every command
+  does.
 - Writes commit in batches; each item is atomic.
 - Waits for the index write lease (`--lock-wait`, default 120s; `--no-wait`
   fails at once)
