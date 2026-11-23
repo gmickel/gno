@@ -205,6 +205,8 @@ We chose a `bit`-only mirror next to the untouched `vec_v1_*` over a merged floa
 
 We deferred real ANN and a multi-threaded flat mmap slab. Both add a second vector engine, and the two-stage path covers scopes up to the low millions.
 
+**Owner override of R1 (2026-11-23):** The owner decided to enable the two-stage coarse route by default (`enabledByDefault = true`) while keeping the per-index build-time recall self-check (floor `0.95`) and `coarseVectorSearch: false` as the off switch. Recall has been measured on 46.8k real stored vectors only; the `>= 500k` real-vector and post-fusion top-`limit` overlap measurement is still owed and is not a release gate. Do not claim measured recall at scale.
+
 ## Parked unknowns
 
 - **Recall at scale and on other models:** the spike measured one 1024-dimension model at 46.8k vectors with 25 queries. R1 measures at 500k or more, and the self-check guards each index.

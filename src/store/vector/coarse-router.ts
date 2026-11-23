@@ -14,11 +14,13 @@ import type { VectorSearchOptions } from "./types";
 
 /**
  * Single source of truth for fn-235 router and self-check constants.
- * Default-off per fn-235 R1 until recall is validated on >= 500k real vectors.
+ * Enabled by default per owner decision (2026-11-23), gated by the per-index
+ * build-time recall self-check (floor 0.95) and controllable via
+ * `coarseVectorSearch: false`.
  */
 export const COARSE_ROUTER_DEFAULTS = {
-  /** Default config switch (OFF per fn-235 R1). */
-  enabledByDefault: false,
+  /** Default config switch (ON; set `coarseVectorSearch: false` to disable). */
+  enabledByDefault: true,
   /** Exact-cost budget in microseconds (100 ms). */
   exactBudgetUs: 100_000,
   /** Exact SQL scan per-vector fixed overhead (µs). */

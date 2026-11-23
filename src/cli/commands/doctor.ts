@@ -43,6 +43,7 @@ import {
   getExtensionLoadingMode,
   getLoadAttempts,
 } from "../../store/sqlite/setup";
+import { COARSE_ROUTER_DEFAULTS } from "../../store/vector/coarse-router";
 import { getStoredEmbeddingFingerprint } from "../../store/vector/freshness";
 import { currentOwnerCount } from "../../store/vector/runtime-compat";
 import { storedVectorPartition } from "../../store/vector/status";
@@ -482,7 +483,8 @@ async function checkEmbeddingFingerprints(
     const coarse = activeTarget?.coarseMirror;
     const coarseChecks: DoctorCheck[] = [];
     if (activeTarget && coarse) {
-      const enabled = config.coarseVectorSearch === true;
+      const enabled =
+        config.coarseVectorSearch ?? COARSE_ROUTER_DEFAULTS.enabledByDefault;
       let coarseStatus: DoctorCheckStatus = "ok";
       let coarseMsg: string;
       const coarseDetails: string[] = [];
@@ -499,9 +501,9 @@ async function checkEmbeddingFingerprints(
           "Two-stage coarse routing stays disabled for this partition because self-check recall is below the 95% floor."
         );
       } else if (coarse.checkRecall !== null) {
-        coarseMsg = `clean, recall@10=${(coarse.checkRecall * 100).toFixed(1)}% (${coarse.checkQueries ?? 0}q, coarseK=${coarse.checkCoarseK ?? 200}); routing ${enabled ? "enabled" : "off by default"}`;
+        coarseMsg = `clean, recall@10=${(coarse.checkRecall * 100).toFixed(1)}% (${coarse.checkQueries ?? 0}q, coarseK=${coarse.checkCoarseK ?? 200}); routing ${enabled ? "enabled" : "disabled in config"}`;
       } else {
-        coarseMsg = `clean, self-check not run (partition within exact budget or unchecked; stays exact); routing ${enabled ? "enabled" : "off by default"}`;
+        coarseMsg = `clean, self-check not run (partition within exact budget or unchecked; stays exact); routing ${enabled ? "enabled" : "disabled in config"}`;
       }
       coarseChecks.push({
         name: "coarse-mirror",

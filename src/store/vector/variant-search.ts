@@ -11,6 +11,7 @@ import type {
 import { formatDocForEmbedding } from "../../pipeline/contextual";
 import { buildEligibleDocumentQuery } from "../sqlite/eligibility";
 import {
+  COARSE_ROUTER_DEFAULTS,
   computeCoarseK,
   countScopeMirrorRows,
   extractRequestedCollections,
@@ -921,7 +922,7 @@ function searchVectorVariantsInSnapshot(
     canUseV1ExactVec0 = !nullCheck.found;
   } else if (
     !hasNonCollectionFilter(options) &&
-    options.coarseVectorSearch === true &&
+    (options.coarseVectorSearch ?? COARSE_ROUTER_DEFAULTS.enabledByDefault) &&
     options.exact !== true
   ) {
     // Scoped coarse check: O(1) persisted PK lookup only, never triggering a scan.
@@ -1068,7 +1069,7 @@ function searchVectorVariantsBatchInSnapshot(
     canUseV1ExactVec0 = !nullCheck.found;
   } else if (
     !hasNonCollectionFilter(options) &&
-    options.coarseVectorSearch === true &&
+    (options.coarseVectorSearch ?? COARSE_ROUTER_DEFAULTS.enabledByDefault) &&
     options.exact !== true
   ) {
     nullCosineFlag = readPersistedNullCosineFlag(db, partitionId);

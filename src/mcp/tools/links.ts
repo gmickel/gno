@@ -474,6 +474,7 @@ export function handleSimilar(
         candidateLimit,
         {
           ...storedVectorSearchOptions(source),
+          coarseVectorSearch: ctx.config.coarseVectorSearch,
           ...(!crossCollection
             ? { eligibility: { collection: doc.collection } }
             : {}),
