@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.17.0] - 2026-11-23
+
+### Added
+
+- **Coarse-to-exact binary (`bit`) vector mirror and cost-based router**: Activated partitions whose dimensions are divisible by 8 now maintain an additive, collection-partitioned 1-bit `vec0` coarse mirror (`vec_v2_<partitionId>`, schema migration 39) built in SQL via `vec_quantize_binary` with zero re-embedding, leaving `vec_v1_*` untouched (#364, #366).
+  - Large unfiltered or collection-scoped vector searches above the 100 ms exact cost budget route through Stage 1 Hamming KNN (`coarseK = clamp(25 * k, 200, 500)`) followed by Stage 2 exact float32 cosine rescoring against `vector_variants`, enforcing collection access control, exact `minScore` cutoffs, owner proofs, and exact fallback on underfill.
+  - Small scopes, every filtered search, queries with `k > 40`, partitions with dimensions not divisible by 8, and missing/dirty/unchecked/null-cosine mirrors stay on the exact float32 paths.
+  - A build-time recall@10 self-check (16 evenly sampled stored vectors in one streaming pass over `vector_variants`, `coarseK = 200`, floor >= 95%, no embedding model loaded) gates two-stage routing per partition during `gno vec sync`, `gno vec rebuild`, and at the end of `gno embed`.
+  - Enabled by default; set `coarseVectorSearch: false` in config to force exact float32 paths on all queries.
+- **`gno vec prune [--vacuum]`**: Safely removes superseded legacy `vec_<hash>` tables and `content_vectors` rows for models that already have an activated v1 vector partition, plus orphaned `vec_v1_*` / `vec_v2_*` mirror tables and mapping/state rows absent from `vector_partitions`, without touching models that still rely on legacy vectors (#362, #364).
+- **Vector routing and storage diagnostics**:
+  - `--explain` and retrieval trace payloads now report `vectorRoute` (`exact-sql`, `exact-vec0`, or `coarse-bit`, with in-scope mirror row count `N`, plus `coarseK` and `rescored` for two-stage queries) (#364).
+  - `gno doctor` adds `sqlite-mmap` (live effective SQLite `mmap_size`) and `coarse-mirror` (v2 mirror freshness, stored recall@10 self-check result, routing state, and `gno vec sync` remediation); `gno status --json` exposes `coarseMirror` under `vectorPartitions` (#362, #364, #366).
+
+### Changed
+
+- **Collection-scoped `gno similar`**: Same-collection `gno similar` (CLI, MCP `gno_similar`, and REST `GET /api/doc/:id/similar`) now scopes its vector search to the source document's collection so other collections cannot crowd out matches; `--cross-collection` remains unscoped (#364, #366).
+- **Lossless vector search and SQLite storage hot fixes**:
+  - Persisted per-partition `null_cosine` tracking (schema migration 38, evaluated via SQL `vec_distance_cosine(v, v) IS NULL`) eliminates the cold-process full vector scan on clean `vec0` fast-path queries (#362).
+  - Exact SQL vector scans skip the unconditional `content_chunks` join when chunk language filtering is not requested while preserving exact parity (#362).
+  - Raised SQLite `mmap_size` to the platform-bounded maximum (capped at 2,147,418,112 bytes on 64-bit hosts, never changing `page_size`) and `cache_size` to 64 MiB (#362).
+  - Skipped eager legacy `vec_<hash>` virtual table creation when an active v1 partition already serves the model, and rewrote `listDocumentsForSimilarity` to drive from `json_each` primary-key and `idx_documents_mirror_hash` seeks (#362).
+- Updated `docs/`, `spec/cli.md`, `spec/mcp.md`, output schemas, and the shipped `gno` agent skill (`assets/skill/SKILL.md`, `assets/skill/cli-reference.md`) for v2.17.0 (#362, #364, #366).
+
 ## [2.16.0] - 2026-11-22
 
 ### Changed
@@ -3094,7 +3118,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.15.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.17.0...HEAD
+[2.17.0]: https://github.com/gmickel/gno/compare/v2.16.0...v2.17.0
 [2.16.0]: https://github.com/gmickel/gno/compare/v2.15.0...v2.16.0
 [2.15.0]: https://github.com/gmickel/gno/compare/v2.14.0...v2.15.0
 [2.14.0]: https://github.com/gmickel/gno/compare/v2.13.0...v2.14.0
