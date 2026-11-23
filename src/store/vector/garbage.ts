@@ -263,10 +263,14 @@ function removeVariants(
 ): void {
   if (variantIds.length === 0) return;
   const ids = JSON.stringify(variantIds);
-  if (access === "mirror")
-    db.query(
-      `DELETE FROM ${mirrorTable(partitionId)} WHERE variant_id IN (SELECT value FROM json_each(?))`
-    ).run(ids);
+  if (access === "mirror") {
+    // One primary-key delete per variant: vec0 does not use its key for an
+    // IN (json_each) constraint and would scan the whole index.
+    const remove = db.query<unknown, [number]>(
+      `DELETE FROM ${mirrorTable(partitionId)} WHERE variant_id = ?`
+    );
+    for (const id of variantIds) remove.run(id);
+  }
   db.query(
     "DELETE FROM vector_owners WHERE partition_id = ? AND variant_id IN (SELECT value FROM json_each(?))"
   ).run(partitionId, ids);
