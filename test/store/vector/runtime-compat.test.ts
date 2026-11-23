@@ -29,6 +29,10 @@ import {
   vectorRuntimeStatus,
 } from "../../../src/store/vector/status";
 import {
+  hasV2Table,
+  v2MirrorFreshnessState,
+} from "../../../src/store/vector/v2-mirror";
+import {
   resolveVectorSearchIdentity,
   VECTOR_RUNTIME_INCOMPATIBLE,
   vectorSearchUnavailableMessage,
@@ -660,7 +664,7 @@ test("an index already at schema 31 gains the runtime caller table", () => {
     );
     const upgraded = runMigrations(db, migrations, "unicode61");
     expect(upgraded.ok && upgraded.value.applied).toEqual([
-      32, 33, 34, 35, 36, 37, 38, 39,
+      32, 33, 34, 35, 36, 37, 38, 39, 40,
     ]);
     expect(vectorRuntimeStatus(db, MODEL)).toEqual({
       label: null,
@@ -729,4 +733,150 @@ test("a legacy migration inside an open sync batch waits for that batch, then se
   expect(resolved.identity).toEqual(
     embeddingPartitionIdentity(runtime.embedPort)
   );
+});
+
+test("legacy re-key and partition drop move or remove queued GC rows and v2 coarse mirror rows together", async () => {
+  const f = await fixture();
+  const dims8 = 8;
+  const vec8 = (text: string): number[] => {
+    const hash = new Bun.CryptoHasher("sha256").update(text).digest();
+    return Array.from({ length: dims8 }, (_, i) => hash[i]! / 255 + 0.1);
+  };
+  const port8 = (runtime: string) => {
+    const embedPort: EmbeddingPort = {
+      modelUri: "v2-rekey-model",
+      init: () => Promise.resolve({ ok: true, value: undefined }),
+      dispose: () => Promise.resolve(),
+      dimensions: () => dims8,
+      embed: (text) => Promise.resolve({ ok: true, value: vec8(text) }),
+      embedBatch: (texts) =>
+        Promise.resolve({ ok: true, value: texts.map(vec8) }),
+      getIdentity: () => ({
+        modelFingerprint: "fp-v2-rekey",
+        contextSize: 512,
+        truncationPolicy: "tail-truncate",
+        runtimeFingerprint: runtime,
+        runtimeLabel: `${runtime} label`,
+      }),
+    };
+    return embedPort;
+  };
+
+  // Create an 8-dim legacy active partition with v2 mirror and a queued GC candidate.
+  const legacyId = {
+    model: "v2-rekey-model",
+    modelFingerprint: "fp-v2-rekey",
+    contextSize: 512,
+    truncationPolicy: "tail-truncate",
+    dimensions: dims8,
+    fork: "legacy-rekey-8d",
+  };
+  const vstore = await createVectorVariantStore(f.db, legacyId);
+  vstore.write(
+    vstore.pending({ limit: 100 }).map((owner) => ({
+      owner,
+      embedding: new Float32Array(vec8(owner.formattedInput)),
+    }))
+  );
+  vstore.activate(vstore.epoch());
+  const oldId = vstore.partitionId;
+  f.db.run(
+    "UPDATE vector_partitions SET legacy = 1, base_fingerprint = NULL WHERE partition_id = ?",
+    [oldId]
+  );
+  // Create a shadow 8-dim legacy partition as well to test dropVectorPartition.
+  const shadowStore = await createVectorVariantStore(f.db, {
+    ...legacyId,
+    fork: "legacy-shadow-8d",
+  });
+  shadowStore.write(
+    shadowStore.pending({ limit: 2 }).map((owner) => ({
+      owner,
+      embedding: new Float32Array(vec8(owner.formattedInput)),
+    }))
+  );
+  const shadowId = shadowStore.partitionId;
+  f.db.run(
+    "UPDATE vector_partitions SET legacy = 1, base_fingerprint = NULL WHERE partition_id = ?",
+    [shadowId]
+  );
+
+  // Deactivate one doc so both partitions have queued GC candidates.
+  f.db.run("UPDATE documents SET active = 0 WHERE id = 1");
+  f.db.run("UPDATE vector_gc_candidates SET queued_at = 2000");
+
+  expect(hasV2Table(f.db, oldId)).toBe(true);
+  expect(v2MirrorFreshnessState(f.db, oldId, dims8, true)).toBe("clean");
+  expect(
+    f.db
+      .query<{ n: number }, [string]>(
+        "SELECT count(*) AS n FROM vector_gc_candidates WHERE partition_id = ?"
+      )
+      .get(oldId)?.n
+  ).toBe(1);
+
+  const runtime = port8("cpu-v2-rekey");
+  const primary = embeddingPartitionIdentity(runtime)!;
+  const newId = identityPartitionId(primary);
+  const resolved = await resolveRuntimePartition(f.db, runtime, primary);
+  expect(resolved.verdict).toBe("compatible");
+
+  // Re-key moved queued GC rows (with timestamp) and rebuilt v2 mirror under newId.
+  expect(
+    f.db
+      .query(
+        "SELECT variant_id, queued_at FROM vector_gc_candidates WHERE partition_id = ?"
+      )
+      .all(oldId)
+  ).toEqual([]);
+  expect(
+    f.db
+      .query<{ queued_at: number }, [string]>(
+        "SELECT queued_at FROM vector_gc_candidates WHERE partition_id = ?"
+      )
+      .all(newId)
+  ).toEqual([{ queued_at: 2000 }]);
+  expect(hasV2Table(f.db, oldId)).toBe(false);
+  expect(
+    f.db
+      .query<{ n: number }, [string]>(
+        "SELECT count(*) AS n FROM vector_partition_rows WHERE partition_id = ?"
+      )
+      .get(oldId)?.n
+  ).toBe(0);
+  expect(hasV2Table(f.db, newId)).toBe(true);
+  expect(v2MirrorFreshnessState(f.db, newId, dims8, true)).toBe("clean");
+
+  // Dropping the shadow partition removes its queued GC rows and v2 mirror together.
+  expect(hasV2Table(f.db, shadowId)).toBe(true);
+  expect(
+    f.db
+      .query<{ n: number }, [string]>(
+        "SELECT count(*) AS n FROM vector_gc_candidates WHERE partition_id = ?"
+      )
+      .get(shadowId)?.n
+  ).toBe(1);
+  expect((await dropVectorPartition(f.db, shadowId)).ok).toBe(true);
+  expect(hasV2Table(f.db, shadowId)).toBe(false);
+  expect(
+    f.db
+      .query<{ n: number }, [string]>(
+        "SELECT count(*) AS n FROM vector_partition_rows WHERE partition_id = ?"
+      )
+      .get(shadowId)?.n
+  ).toBe(0);
+  expect(
+    f.db
+      .query<{ n: number }, [string]>(
+        "SELECT count(*) AS n FROM vector_mirror_v2_state WHERE partition_id = ?"
+      )
+      .get(shadowId)?.n
+  ).toBe(0);
+  expect(
+    f.db
+      .query<{ n: number }, [string]>(
+        "SELECT count(*) AS n FROM vector_gc_candidates WHERE partition_id = ?"
+      )
+      .get(shadowId)?.n
+  ).toBe(0);
 });

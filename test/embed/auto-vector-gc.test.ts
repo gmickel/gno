@@ -12,15 +12,29 @@ import type { EmbeddingPort } from "../../src/llm/types";
 import type { VectorIndexPort } from "../../src/store/vector";
 
 import { embedBacklog } from "../../src/embed/backlog";
+import {
+  commitVariantBatch,
+  prepareVariantBatch,
+} from "../../src/embed/variant-retry";
 import { migration as variantsMigration } from "../../src/store/migrations/028-vector-variants";
 import { migration as runtimeMigration } from "../../src/store/migrations/031-runtime-independent-vectors";
 import { migration as mirrorMigration } from "../../src/store/migrations/036-vector-mirror-state";
-import { migration as gcMigration } from "../../src/store/migrations/039-vector-gc-candidates";
+import { migration as nullCosineMigration } from "../../src/store/migrations/038-vector-mirror-null-cosine";
+import { migration as v2MirrorMigration } from "../../src/store/migrations/039-vector-mirror-v2";
+import { migration as gcMigration } from "../../src/store/migrations/040-vector-gc-candidates";
+import { v2TableName } from "../../src/store/vector/coarse-router";
 import {
   AUTO_VECTOR_GC_DISABLE_ENV,
   AUTO_VECTOR_GC_GRACE_SECONDS,
+  runVectorGc,
 } from "../../src/store/vector/garbage";
+import { syncPartitionIndexWithDetails } from "../../src/store/vector/partition-index";
 import { createVectorStatsPort } from "../../src/store/vector/stats";
+import {
+  markV2MirrorClean,
+  readV2MirrorState,
+  v2MirrorFreshnessState,
+} from "../../src/store/vector/v2-mirror";
 import { createVectorVariantStore } from "../../src/store/vector/variants";
 
 const databases: Database[] = [];
@@ -229,4 +243,155 @@ test("a failing queue probe is reported and never fails the pass", async () => {
   const pass = await embedBacklog(deps);
   expect(pass.ok).toBe(true);
   expect(pass.ok && pass.value.vectorGcError).toBeString();
+});
+
+test("automatic GC after an embed pass keeps the v2 coarse mirror clean and leaves vec sync with 0 v2 changes", async () => {
+  const db = new Database(":memory:");
+  databases.push(db);
+  db.exec(`PRAGMA foreign_keys = ON;
+    CREATE TABLE schema_meta(key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT);
+    CREATE TABLE documents(id INTEGER PRIMARY KEY, mirror_hash TEXT, title TEXT, active INTEGER, collection TEXT, updated_at TEXT);
+    CREATE INDEX idx_documents_collection ON documents(collection);
+    CREATE INDEX idx_documents_mirror_hash ON documents(mirror_hash);
+    CREATE TABLE content_chunks(mirror_hash TEXT, seq INTEGER, text TEXT, PRIMARY KEY(mirror_hash, seq));
+    CREATE TABLE content_vectors(mirror_hash TEXT, seq INTEGER, model TEXT, embedding BLOB);
+    INSERT INTO documents(id, mirror_hash, title, active, collection)
+      VALUES (1, 'm1', 'One', 1, 'prose'), (2, 'm2', 'Two', 1, 'data');
+    INSERT INTO content_chunks VALUES ('m1', 0, 'first'), ('m2', 0, 'second');`);
+  for (const m of [
+    variantsMigration,
+    runtimeMigration,
+    mirrorMigration,
+    nullCosineMigration,
+    v2MirrorMigration,
+    gcMigration,
+  ]) {
+    m.up(db, "unicode61");
+  }
+
+  const v2Identity = { ...identity, dimensions: 8 };
+  const store = await createVectorVariantStore(db, v2Identity);
+  const vec8 = [0.5, -0.5, 0.25, -0.25, 0.75, -0.75, 0.1, -0.1];
+  const embedBatch = mock((texts: string[]) =>
+    Promise.resolve({ ok: true, value: texts.map(() => vec8) })
+  );
+  const port = {
+    embedBatch,
+    embed: mock(() => Promise.resolve({ ok: true, value: vec8 })),
+    dimensions: () => 8,
+    init: () => Promise.resolve({ ok: true }),
+    dispose: () => Promise.resolve(),
+    modelUri: "test-model",
+  } as unknown as EmbeddingPort;
+  const deps: EmbedBacklogDeps = {
+    statsPort: createVectorStatsPort(db),
+    embedPort: port,
+    vectorIndex: {
+      searchAvailable: true,
+      model: "test-model",
+      dimensions: 8,
+      vecDirty: false,
+      upsertVectors: () => Promise.resolve({ ok: true, value: undefined }),
+      deleteVectorsForMirror: () =>
+        Promise.resolve({ ok: true, value: undefined }),
+      searchNearest: () => Promise.resolve({ ok: true, value: [] }),
+      rebuildVecIndex: () => Promise.resolve({ ok: true, value: undefined }),
+      syncVecIndex: () =>
+        Promise.resolve({ ok: true, value: { added: 0, removed: 0 } }),
+    } as unknown as VectorIndexPort,
+    modelUri: "test-model",
+    variantStore: store,
+    identityStillCurrent: () => true,
+  };
+
+  const initial = await embedBacklog(deps);
+  expect(initial.ok && initial.value.embedded).toBe(2);
+  markV2MirrorClean(db, store.partitionId, {
+    recall: 0.98,
+    queries: 16,
+    coarseK: 200,
+  });
+
+  const removedVariantId = db
+    .query<{ variant_id: number }, [string]>(
+      "SELECT variant_id FROM vector_owners WHERE partition_id = ? AND document_id = 2"
+    )
+    .get(store.partitionId)!.variant_id;
+
+  db.run("UPDATE documents SET active = 0 WHERE id = 2");
+  pastGrace(db);
+
+  const pass = await embedBacklog(deps);
+  expect(pass.ok).toBe(true);
+  expect(pass.ok && pass.value.vectorGc).toEqual({
+    variants: 1,
+    bytes: 32,
+    remaining: false,
+  });
+  expect(v2MirrorFreshnessState(db, store.partitionId, 8, true)).toBe("clean");
+  expect(readV2MirrorState(db, store.partitionId)).toEqual({
+    dirty: 0,
+    checkRecall: 0.98,
+    checkQueries: 16,
+    checkCoarseK: 200,
+  });
+  expect(
+    db
+      .query<{ n: number }, [string, number]>(
+        "SELECT count(*) AS n FROM vector_partition_rows WHERE partition_id = ? AND variant_id = ?"
+      )
+      .get(store.partitionId, removedVariantId)?.n
+  ).toBe(0);
+  const v2Tbl = v2TableName(store.partitionId);
+  expect(
+    db.query<{ n: number }, []>(`SELECT count(*) AS n FROM "${v2Tbl}"`).get()?.n
+  ).toBe(1);
+
+  const synced = syncPartitionIndexWithDetails(db, {
+    partitionId: store.partitionId,
+    dimensions: 8,
+  });
+  expect(synced.v2Added).toBe(0);
+  expect(synced.v2Removed).toBe(0);
+});
+
+test("commitVariantBatch recovers newly inferred vectors when concurrent GC removes a reusable variant", async () => {
+  const { db, store } = await fixture();
+  // Deactivate doc 2 (its vector stays stored) and add two pending docs:
+  // doc 4 has a different mirror_hash but identical formatted text as doc 2
+  // (marked reusable by prepareVariantBatch, yet NOT retained by GC's mirror_hash join);
+  // doc 5 has brand-new text that must be inferred.
+  db.run("UPDATE documents SET active = 0 WHERE id = 2");
+  db.run(
+    "INSERT INTO content_chunks VALUES ('m4-diff', 0, 'second'), ('m5-new', 0, 'brand new')"
+  );
+  db.run(
+    "INSERT INTO documents(id, mirror_hash, title, active, collection) VALUES (4, 'm4-diff', 'Two', 1, 'prose'), (5, 'm5-new', 'Five', 1, 'prose')"
+  );
+
+  const pending = store.pending({ limit: 10 });
+  const prepared = prepareVariantBatch({ store, owners: pending });
+  expect(prepared.reusable.size).toBe(1);
+  expect(prepared.inputs.size).toBe(1);
+
+  // Concurrent GC runs while doc 5 is being inferred and collects doc 2's variant.
+  const collected = runVectorGc(db, { dryRun: false, vecLoaded: true });
+  expect(collected.variants).toBe(1);
+
+  // Commit with the newly inferred vector for doc 5 only.
+  const vectors = new Map<string, Float32Array>();
+  for (const hash of prepared.inputs.keys()) {
+    vectors.set(hash, new Float32Array([0.4, 0.5, 0.6]));
+  }
+  const outcome = await commitVariantBatch({
+    store,
+    owners: prepared.owners,
+    reusable: prepared.reusable,
+    vectors,
+    identityStillCurrent: () => true,
+  });
+  // Doc 5 committed cleanly (no whole-batch rollback); doc 4 is returned in retryOwners.
+  expect(outcome.errors).toBe(0);
+  expect(outcome.embedded).toBe(1);
+  expect(outcome.retryOwners.map((o) => o.documentId)).toEqual([4]);
 });

@@ -19,6 +19,10 @@ import { runtimeCallerKey } from "../../llm/native-worker/embedding-identity";
 import { formatDocForEmbedding } from "../../pipeline/contextual";
 import { decodeEmbedding } from "./sqlite-vec";
 import {
+  dropV2PartitionMirrorInTx,
+  rebuildV2PartitionMirrorInTx,
+} from "./v2-mirror";
+import {
   embeddingInputHash,
   loadSqliteVec,
   SELECTED_VECTOR_PARTITION_PREFIX,
@@ -346,7 +350,7 @@ async function rekeyLegacy(
       "vector_variants",
       "vector_owners",
       "vector_runtime_verdicts",
-      // Queued GC candidates (migration 39) keep their grace timestamps.
+      // Queued GC candidates (migration 40) keep their grace timestamps.
       ...(db
         .query(
           "SELECT 1 FROM sqlite_master WHERE name = 'vector_gc_candidates'"
@@ -381,6 +385,8 @@ async function rekeyLegacy(
       [newId]
     );
     db.exec(`DROP TABLE IF EXISTS vec_v1_${oldId}`);
+    dropV2PartitionMirrorInTx(db, oldId);
+    rebuildV2PartitionMirrorInTx(db, newId, primary.dimensions);
   }).immediate();
   return { kind: "rekeyed", msPerChunk };
 }

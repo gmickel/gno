@@ -47,6 +47,19 @@ export function formatVectorPartitionLines(
       lines.push(`      read by: ${p.compatibleRuntimes.join("; ")}`);
     if (p.incompatibleRuntimes.length)
       lines.push(`      incompatible: ${p.incompatibleRuntimes.join("; ")}`);
+    if (p.coarseMirror && p.coarseMirror.state !== "unsupported") {
+      const recallPart =
+        p.coarseMirror.checkRecall !== null
+          ? `, recall@10=${(p.coarseMirror.checkRecall * 100).toFixed(1)}% (${p.coarseMirror.checkQueries ?? 0}q, coarseK=${p.coarseMirror.checkCoarseK ?? 200})${p.coarseMirror.belowFloor ? " [below 95% floor]" : ""}`
+          : ", self-check=not run";
+      const repairHint =
+        p.coarseMirror.state === "dirty" || p.coarseMirror.state === "missing"
+          ? " (repair with: gno vec sync)"
+          : "";
+      lines.push(
+        `      coarse mirror: ${p.coarseMirror.state}${recallPart}${repairHint}`
+      );
+    }
   }
   return lines;
 }

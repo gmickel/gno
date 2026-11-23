@@ -297,7 +297,7 @@ User query
     │
     ▼ Document-level BM25 Search (FTS5 + Snowball stemmer, weighted title/path/body)
     │
-    ▼ Chunk-level Vector Search (exact cosine scan over eligible chunks)
+    ▼ Chunk-level Vector Search (cost-routed: exact float32 or bit coarse + exact rescore)
     │
     ▼ [Optional] Bounded graph expansion (top seeds → one-hop neighbors)
     │
@@ -310,17 +310,34 @@ User query
     ▼ [Optional] Answer stage (adaptive source selection + citation hygiene)
 ```
 
-Vector search on an activated partition is exact: collection, tag,
-typed-metadata, exclusion and language filters select the eligible chunks
-first, then every eligible chunk's stored vector is scored by cosine distance
-and the top results are kept, so a selective filter never loses results to
-candidate truncation. A stored vector counts only while it matches its chunk's
-current embedding input (chunk text with title context); ranked candidates are
-checked in rank order and a stale one is skipped. The `vec_v1_*` index is kept
-in step with `vector_variants` in the same write transactions, checked at
-activation and repaired by `gno vec sync`; the search itself does not read it.
-On a 17.6k-chunk index one vector search takes about 70 ms unscoped and less
-when scoped; `bun run bench:vector-search` re-measures it.
+Vector search on an activated partition always returns exact float32 cosine
+scores and exact `minScore` cutoffs. A cost-based router selects between exact
+paths and an optional two-stage binary (`bit`) coarse path per query (or batch):
+
+- **Exact paths (`exact-sql` / `exact-vec0`)**: every filtered search (tags,
+  dates, typed metadata, language, author, categories, exclusions, memory
+  scopes, `relPathPrefix`), every scope whose estimated exact cost is within
+  100 ms, queries requesting `k > 40`, partitions whose dimensions are not
+  divisible by 8, and any partition whose v2 mirror is missing, dirty,
+  unchecked, below the 95% build-time recall self-check floor, or contains
+  null-cosine vectors stay on the exact float32 paths. Unscoped clean mirrors
+  use the `vec_v1_*` fast path; filtered and small scoped searches run an
+  eligibility-first SQL cosine scan over `vector_variants`.
+- **Two-stage bit coarse path (`coarse-bit`)**: large unfiltered or
+  collection-scoped searches above the exact budget scan the collection-partitioned
+  1-bit `vec_v2_*` mirror (`coarse bit[dims]`, built purely in SQL via
+  `vec_quantize_binary` without re-embedding) for `coarseK = clamp(25 * k, 200, 500)`
+  Hamming candidates, then rescore only those distinct variants with exact
+  float32 cosine against `vector_variants`, enforce collection access control
+  and owner input proofs, and fall back to exact on underfill. Enabled by
+  default; set `coarseVectorSearch: false` in config to force exact paths.
+
+A stored vector counts only while it matches its chunk's current embedding
+input (chunk text with title context); ranked candidates are checked in rank
+order and stale owners are skipped. Both `vec_v1_*` and `vec_v2_*` mirrors are
+kept in step with `vector_variants` inside write transactions and repaired by
+`gno vec sync` / `gno vec rebuild`. `bun run bench:vector-search` re-measures
+exact vector scan latency.
 
 Plain lexical and vector retrieval batch-load only the exact selected chunk
 sequences (sequence zero for document-level BM25). BM25 ranking never builds
@@ -426,6 +443,7 @@ diagnostic pipeline.
 ### Observability Surfaces
 
 - `--explain` includes per-stage timings (`lang`, `expansion`, `bm25`, `vector`, `fusion`, `rerank`, `assembly`, `total`).
+- `--explain` includes the vector search route (`exact-sql`, `exact-vec0`, or `coarse-bit`), in-scope mirror row count (`N`), and `coarseK`/`rescored` counts for two-stage queries.
 - `--explain` includes graph expansion seed/candidate counts, edge-confidence counts, and fallback reasons when graph expansion is enabled or skipped.
 - Explain output includes fallback + cache counters for retrieval diagnostics.
 - Result explain lines include score components (bm25/vector/fusion/rerank/blended).

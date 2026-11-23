@@ -13,16 +13,31 @@ import { join } from "node:path";
 import type { VectorVariantIdentity } from "../../../src/store/vector/types";
 
 import { formatDocForEmbedding } from "../../../src/pipeline/contextual";
+import {
+  getSchemaVersion,
+  migrations,
+  runMigrations,
+} from "../../../src/store/migrations";
 import { migration as variantsMigration } from "../../../src/store/migrations/028-vector-variants";
 import { migration as runtimeMigration } from "../../../src/store/migrations/031-runtime-independent-vectors";
 import { migration as mirrorMigration } from "../../../src/store/migrations/036-vector-mirror-state";
 import { migration as nullCosineMigration } from "../../../src/store/migrations/038-vector-mirror-null-cosine";
-import { migration as gcMigration } from "../../../src/store/migrations/039-vector-gc-candidates";
+import { migration as v2MirrorMigration } from "../../../src/store/migrations/039-vector-mirror-v2";
+import { migration as gcMigration } from "../../../src/store/migrations/040-vector-gc-candidates";
+import { v2TableName } from "../../../src/store/vector/coarse-router";
 import {
   collectQueuedGarbage,
   hasQueuedGarbage,
+  mirrorAccess,
   runVectorGc,
 } from "../../../src/store/vector/garbage";
+import { syncPartitionIndexWithDetails } from "../../../src/store/vector/partition-index";
+import {
+  hasV2Table,
+  markV2MirrorClean,
+  readV2MirrorState,
+  v2MirrorFreshnessState,
+} from "../../../src/store/vector/v2-mirror";
 import {
   createVectorVariantStore,
   embeddingInputHash,
@@ -617,4 +632,173 @@ test("upgrading queues bindings of already-inactive documents, dated by their de
     remaining: false,
   });
   expect(hasQueuedGarbage(db, a.partitionId)).toBe(true);
+});
+
+test("migration 040 upgrades a database already at schema v39 and installs the GC queue", () => {
+  const db = new Database(":memory:");
+  databases.push(db);
+  expect(runMigrations(db, migrations.slice(0, 39), "unicode61").ok).toBe(true);
+  expect(getSchemaVersion(db)).toBe(39);
+  expect(
+    db
+      .query(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'vector_gc_candidates'"
+      )
+      .get()
+  ).toBeNull();
+
+  const upgraded = runMigrations(db, migrations, "unicode61");
+  expect(upgraded.ok).toBe(true);
+  if (upgraded.ok) expect(upgraded.value.applied).toEqual([40]);
+  expect(getSchemaVersion(db)).toBe(40);
+  expect(
+    db
+      .query(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'vector_gc_candidates'"
+      )
+      .get()
+  ).not.toBeNull();
+  // v2 mirror tables from migration 39 remain intact.
+  expect(
+    db
+      .query(
+        "SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name IN ('vector_partition_rows', 'vector_mirror_v2_state')"
+      )
+      .get()
+  ).toEqual({ n: 2 });
+});
+
+test("gno vec gc removes vec_v2 and vector_partition_rows, keeps v2 mirror clean with check values, and vec sync is a no-op", async () => {
+  const db = new Database(":memory:");
+  databases.push(db);
+  db.exec(`PRAGMA foreign_keys = ON;
+    CREATE TABLE documents(id INTEGER PRIMARY KEY, collection TEXT, mirror_hash TEXT, title TEXT, active INTEGER, updated_at TEXT);
+    CREATE INDEX idx_documents_mirror_hash ON documents(mirror_hash);
+    CREATE TABLE content_chunks(mirror_hash TEXT, seq INTEGER, text TEXT, PRIMARY KEY(mirror_hash, seq));
+    CREATE TABLE content_vectors(mirror_hash TEXT, seq INTEGER, model TEXT, embedding BLOB);
+    INSERT INTO documents(id, collection, mirror_hash, title, active)
+      VALUES (1, 'alpha', 'h1', 'Keep', 1), (2, 'beta', 'h2', 'Drop', 1);
+    INSERT INTO content_chunks VALUES ('h1', 0, 'keep body'), ('h2', 0, 'drop body');`);
+  for (const m of [
+    variantsMigration,
+    runtimeMigration,
+    mirrorMigration,
+    nullCosineMigration,
+    v2MirrorMigration,
+    gcMigration,
+  ]) {
+    m.up(db, "unicode61");
+  }
+
+  const v2Id: VectorVariantIdentity = { ...A, dimensions: 8 };
+  const store = await createVectorVariantStore(db, v2Id);
+  store.write(
+    store.pending().map((owner) => ({
+      owner,
+      embedding: new Float32Array([
+        owner.documentId,
+        1,
+        -1,
+        0.5,
+        -0.5,
+        0.25,
+        -0.25,
+        1,
+      ]),
+    }))
+  );
+  store.activate(store.epoch());
+  markV2MirrorClean(db, store.partitionId, {
+    recall: 0.99,
+    queries: 16,
+    coarseK: 200,
+  });
+
+  expect(hasV2Table(db, store.partitionId)).toBe(true);
+  expect(v2MirrorFreshnessState(db, store.partitionId, 8, true)).toBe("clean");
+  expect(mirrorAccess(db, store.partitionId, false)).toBe("unsafe");
+
+  const droppedVariantId = db
+    .query<{ variant_id: number }, [string]>(
+      "SELECT variant_id FROM vector_owners WHERE partition_id = ? AND document_id = 2"
+    )
+    .get(store.partitionId)!.variant_id;
+
+  db.run("UPDATE documents SET active = 0 WHERE id = 2");
+
+  const report = runVectorGc(db, { dryRun: false, vecLoaded: true });
+  expect(report.variants).toBe(1);
+  expect(v2MirrorFreshnessState(db, store.partitionId, 8, true)).toBe("clean");
+  expect(readV2MirrorState(db, store.partitionId)).toEqual({
+    dirty: 0,
+    checkRecall: 0.99,
+    checkQueries: 16,
+    checkCoarseK: 200,
+  });
+  expect(
+    db
+      .query<{ n: number }, [string, number]>(
+        "SELECT count(*) AS n FROM vector_partition_rows WHERE partition_id = ? AND variant_id = ?"
+      )
+      .get(store.partitionId, droppedVariantId)?.n
+  ).toBe(0);
+  const v2Tbl = v2TableName(store.partitionId);
+  expect(
+    db.query<{ n: number }, []>(`SELECT count(*) AS n FROM "${v2Tbl}"`).get()?.n
+  ).toBe(1);
+
+  const synced = syncPartitionIndexWithDetails(db, {
+    partitionId: store.partitionId,
+    dimensions: 8,
+  });
+  expect(synced.v2Added).toBe(0);
+  expect(synced.v2Removed).toBe(0);
+});
+
+test("unbalanced vec_v2 removal does not re-certify a drifted v2 mirror clean", async () => {
+  const db = new Database(":memory:");
+  databases.push(db);
+  db.exec(`PRAGMA foreign_keys = ON;
+    CREATE TABLE documents(id INTEGER PRIMARY KEY, collection TEXT, mirror_hash TEXT, title TEXT, active INTEGER, updated_at TEXT);
+    CREATE INDEX idx_documents_mirror_hash ON documents(mirror_hash);
+    CREATE TABLE content_chunks(mirror_hash TEXT, seq INTEGER, text TEXT, PRIMARY KEY(mirror_hash, seq));
+    CREATE TABLE content_vectors(mirror_hash TEXT, seq INTEGER, model TEXT, embedding BLOB);
+    INSERT INTO documents(id, collection, mirror_hash, title, active)
+      VALUES (1, 'alpha', 'h1', 'Keep', 1), (2, 'beta', 'h2', 'Drop', 1);
+    INSERT INTO content_chunks VALUES ('h1', 0, 'keep body'), ('h2', 0, 'drop body');`);
+  for (const m of [
+    variantsMigration,
+    runtimeMigration,
+    mirrorMigration,
+    nullCosineMigration,
+    v2MirrorMigration,
+    gcMigration,
+  ]) {
+    m.up(db, "unicode61");
+  }
+  const v2Id: VectorVariantIdentity = { ...A, dimensions: 8 };
+  const store = await createVectorVariantStore(db, v2Id);
+  store.write(
+    store.pending().map((owner) => ({
+      owner,
+      embedding: new Float32Array([1, 2, 3, 4, 5, 6, 7, 8]),
+    }))
+  );
+  store.activate(store.epoch());
+
+  // Manually drop one vec_v2 row without touching vector_partition_rows or state.
+  const v2Tbl = v2TableName(store.partitionId);
+  const row = db
+    .query<{ id: number }, [string]>(
+      `SELECT r.id FROM vector_partition_rows r
+       JOIN vector_owners o ON o.partition_id = r.partition_id AND o.variant_id = r.variant_id
+       WHERE r.partition_id = ? AND o.document_id = 2`
+    )
+    .get(store.partitionId)!;
+  db.run(`DELETE FROM "${v2Tbl}" WHERE rowid = ?`, [row.id]);
+  db.run("UPDATE documents SET active = 0 WHERE id = 2");
+
+  expect(runVectorGc(db, { dryRun: false, vecLoaded: true }).variants).toBe(1);
+  expect(readV2MirrorState(db, store.partitionId)).toBeNull();
+  expect(v2MirrorFreshnessState(db, store.partitionId, 8, true)).toBe("dirty");
 });

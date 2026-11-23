@@ -43,6 +43,7 @@ import {
   getExtensionLoadingMode,
   getLoadAttempts,
 } from "../../store/sqlite/setup";
+import { COARSE_ROUTER_DEFAULTS } from "../../store/vector/coarse-router";
 import { getStoredEmbeddingFingerprint } from "../../store/vector/freshness";
 import { currentOwnerCount } from "../../store/vector/runtime-compat";
 import { storedVectorPartition } from "../../store/vector/status";
@@ -477,6 +478,40 @@ async function checkEmbeddingFingerprints(
     const runtime = statusResult.value.vectorRuntime;
     const partitionLines = formatVectorPartitionLines(partitions, runtime);
     const retrieval = partitions.find((p) => p.retrieval);
+    const activeTarget =
+      retrieval ?? partitions.find((p) => p.state === "active");
+    const coarse = activeTarget?.coarseMirror;
+    const coarseChecks: DoctorCheck[] = [];
+    if (activeTarget && coarse) {
+      const enabled =
+        config.coarseVectorSearch ?? COARSE_ROUTER_DEFAULTS.enabledByDefault;
+      let coarseStatus: DoctorCheckStatus = "ok";
+      let coarseMsg: string;
+      const coarseDetails: string[] = [];
+      if (coarse.state === "unsupported") {
+        coarseMsg = `unsupported (dimensions=${activeTarget.dimensions} not divisible by 8; stays exact)`;
+      } else if (coarse.state === "missing" || coarse.state === "dirty") {
+        coarseStatus = enabled ? "warn" : "info";
+        coarseMsg = `${coarse.state} (stays exact; run: gno vec sync)`;
+        coarseDetails.push("Run: gno vec sync");
+      } else if (coarse.belowFloor && coarse.checkRecall !== null) {
+        coarseStatus = enabled ? "warn" : "info";
+        coarseMsg = `clean, recall@10=${(coarse.checkRecall * 100).toFixed(1)}% below 95% floor (stays exact)`;
+        coarseDetails.push(
+          "Two-stage coarse routing stays disabled for this partition because self-check recall is below the 95% floor."
+        );
+      } else if (coarse.checkRecall !== null) {
+        coarseMsg = `clean, recall@10=${(coarse.checkRecall * 100).toFixed(1)}% (${coarse.checkQueries ?? 0}q, coarseK=${coarse.checkCoarseK ?? 200}); routing ${enabled ? "enabled" : "disabled in config"}`;
+      } else {
+        coarseMsg = `clean, self-check not run (partition within exact budget or unchecked; stays exact); routing ${enabled ? "enabled" : "disabled in config"}`;
+      }
+      coarseChecks.push({
+        name: "coarse-mirror",
+        status: coarseStatus,
+        message: coarseMsg,
+        ...(coarseDetails.length > 0 ? { details: coarseDetails } : {}),
+      });
+    }
     return [
       fingerprintCheck,
       {
@@ -491,6 +526,7 @@ async function checkEmbeddingFingerprints(
         vectorPartitions: partitions,
         vectorRuntime: runtime,
       },
+      ...coarseChecks,
     ];
   } finally {
     await store.close();

@@ -85,7 +85,7 @@ Other results:
 - **Mapping table:** `vector_partition_rows (id INTEGER PRIMARY KEY, partition_id TEXT NOT NULL, collection TEXT NOT NULL, variant_id INTEGER NOT NULL, UNIQUE(partition_id, collection, variant_id))` plus an index on `(partition_id, variant_id)`. `id` is the `vec0` rowid. This spec never passes these ids to `rowid IN`.
 - **Membership is a superset:** one row per `(collection, variant_id)` for which any `vector_owners` row binds the variant to a document of that collection, active or not. Stage 2 filters stale owners as the v1 path does today. Stale rows cost candidates, never correctness.
   - Document sync writes `documents` on a connection that does not load sqlite-vec, so the mirror must not depend on `documents.active` or `documents.mirror_hash`.
-  - A document belongs to one collection for its whole life. `gno collection rename` removes the old name's documents and re-indexes under the new name.
+  - `gno collection rename` removes the old name's documents and re-indexes under the new name. `gno collection move` updates a document's `collection` in place while keeping its `vector_owners` bindings, so `relocateDocument` deletes the `vector_mirror_v2_state` row (plain table, no `sqlite-vec` needed) for every partition owning the moved document inside the same transaction; searches stay exact until the next `gno embed` or `gno vec sync` repairs the mirror.
   - Rows are added by `VectorVariantStore` writes and removed by `removeUnowned()`, `gno vec sync`, `gno vec rebuild` and partition drop.
 - **State table:** `vector_mirror_v2_state (partition_id TEXT PRIMARY KEY, dirty INTEGER NOT NULL CHECK (dirty IN (0, 1)), check_recall REAL, check_queries INTEGER, check_coarse_k INTEGER)`. `vector_mirror_state` keeps its shape, because older binaries read and replace its rows by `partition_id` alone.
   - Delete-only triggers on `vector_variants` (insert, update, delete) and `vector_owners` (insert, update) remove the row. They write only this plain table. No trigger references a `vec0` table and none is added to `documents`.
@@ -204,6 +204,8 @@ The first design moved collection-scoped searches onto a float32 `vec0` mirror p
 We chose a `bit`-only mirror next to the untouched `vec_v1_*` over a merged float32 plus `bit` table. Both cost about 11.1 GB at 1.34M. The `bit`-only mirror builds in 2.6 s against 86.7 s at 500k, costs 0.135 MB per collection against 4.14 MB, and leaves older binaries their mirror. We rejected `int8` (float32 speed at seven times the size of `bit`), `rowid IN` (no scan saving, 32-bit comparison), and a `coarseK` above 500 (float32 cost).
 
 We deferred real ANN and a multi-threaded flat mmap slab. Both add a second vector engine, and the two-stage path covers scopes up to the low millions.
+
+**Owner override of R1 (2026-11-23):** The owner decided to enable the two-stage coarse route by default (`enabledByDefault = true`) while keeping the per-index build-time recall self-check (floor `0.95`) and `coarseVectorSearch: false` as the off switch. Recall has been measured on 46.8k real stored vectors only; the `>= 500k` real-vector and post-fusion top-`limit` overlap measurement is still owed and is not a release gate. Do not claim measured recall at scale.
 
 ## Parked unknowns
 

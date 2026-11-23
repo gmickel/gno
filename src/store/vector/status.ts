@@ -12,6 +12,12 @@ import {
   selectRuntimePartition,
 } from "./runtime-compat";
 import {
+  dropV2PartitionMirrorInTx,
+  getV2MirrorStatus,
+  hasV2MirrorTables,
+  type V2MirrorStatusInfo,
+} from "./v2-mirror";
+import {
   embeddingInputHash,
   loadSqliteVec,
   SELECTED_VECTOR_PARTITION_PREFIX,
@@ -52,6 +58,8 @@ export interface VectorPartitionStatus {
   compatibleRuntimes: string[];
   /** Runtimes measured incompatible; they need another partition or lexical. */
   incompatibleRuntimes: string[];
+  /** Bit coarse vec0 mirror status (fn-235); omitted on pre-v39 schemas. */
+  coarseMirror?: V2MirrorStatusInfo;
 }
 
 /** The calling process's runtime, resolved exactly as its queries resolve it. */
@@ -225,6 +233,7 @@ export function listVectorPartitions(
     const runtimes = db.prepare<{ label: string }, [string, string]>(
       "SELECT DISTINCT label FROM vector_runtime_verdicts WHERE partition_id = ? AND verdict = ? ORDER BY label"
     );
+    const trackV2 = hasV2MirrorTables(db);
     return partitions.map(
       (p): VectorPartitionStatus => ({
         id: p.partition_id,
@@ -247,6 +256,11 @@ export function listVectorPartitions(
         incompatibleRuntimes: runtimes
           .all(p.partition_id, "incompatible")
           .map((row) => row.label),
+        ...(trackV2
+          ? {
+              coarseMirror: getV2MirrorStatus(db, p.partition_id, p.dimensions),
+            }
+          : {}),
       })
     );
   })();
@@ -539,9 +553,11 @@ export async function dropVectorPartition(
             : `Refusing to drop active partition ${partition.id.slice(0, 12)}: other runtimes may read it, or it awaits its one-time re-key`,
         };
       const table = `vec_v1_${partition.id}`;
+      const v2Table = `vec_v2_${partition.id}`;
       if (
         !vecLoaded &&
-        db.query("SELECT 1 FROM sqlite_master WHERE name = ?").get(table)
+        (db.query("SELECT 1 FROM sqlite_master WHERE name = ?").get(table) ||
+          db.query("SELECT 1 FROM sqlite_master WHERE name = ?").get(v2Table))
       )
         return {
           ok: false,
@@ -568,6 +584,7 @@ export async function dropVectorPartition(
           partition.id,
         ]);
       db.exec(`DROP TABLE IF EXISTS ${table}`);
+      dropV2PartitionMirrorInTx(db, partition.id);
       return { ok: true, partition };
     })
     .immediate();

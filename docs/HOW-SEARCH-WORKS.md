@@ -568,7 +568,7 @@ The `--explain` flag shows what happened:
 gno query "my search" --explain
 ```
 
-This includes stage timings (`lang`, `expansion`, `bm25`, `vector`, `fusion`, `rerank`, `assembly`, `total`), fallback counters, and per-result fusion/rerank score components.
+This includes stage timings (`lang`, `expansion`, `bm25`, `vector`, `fusion`, `rerank`, `assembly`, `total`), the vector route (`exact-sql`, `exact-vec0`, or `coarse-bit`, with `N`, `coarseK`, and `rescored` for two-stage searches), fallback counters, and per-result fusion/rerank score components.
 
 ## Benchmark Your Own Retrieval
 

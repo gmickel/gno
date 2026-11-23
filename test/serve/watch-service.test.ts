@@ -17,6 +17,17 @@ import {
 
 installWatchServiceSyncReset();
 
+async function waitForCondition(
+  predicate: () => boolean,
+  timeoutMs = 3000
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!predicate()) {
+    if (Date.now() >= deadline) return;
+    await Bun.sleep(10);
+  }
+}
+
 describe("CollectionWatchService", () => {
   test("ignores paths excluded by collection rules before sync or broadcast", async () => {
     let watcherCallback:
@@ -101,13 +112,13 @@ describe("CollectionWatchService", () => {
     const updatedCollection = createCollection("notes", "/tmp/notes");
     updatedCollection.exclude = ["drafts"];
     service.updateCollections([updatedCollection]);
-    await Bun.sleep(700);
+    await waitForCondition(() => onSettled.mock.calls.length > 0);
 
     expect(seenPaths).toEqual([]);
     expect(onSettled).toHaveBeenCalled();
 
     watcherCallback?.("change", "published.md");
-    await Bun.sleep(400);
+    await waitForCondition(() => seenPaths.length > 0);
     expect(seenPaths).toEqual([["published.md"]]);
     await service.dispose();
   });
@@ -121,12 +132,14 @@ describe("CollectionWatchService", () => {
     const syncCollection = mock(async () =>
       createSyncResult({ filesMarkedInactive: 1 })
     );
+    let syncStarted = false;
     let finishSync: (() => void) | undefined;
     const syncGate = new Promise<void>((resolve) => {
       finishSync = resolve;
     });
 
     defaultSyncService.syncPaths = (async (_collection, _store, relPaths) => {
+      syncStarted = true;
       await syncGate;
       return createSyncResult({
         filesProcessed: relPaths.length,
@@ -153,13 +166,13 @@ describe("CollectionWatchService", () => {
 
     service.start();
     watcherCallback?.("change", "private/note.md");
-    await Bun.sleep(350);
+    await waitForCondition(() => syncStarted);
 
     const updatedCollection = createCollection("notes", "/tmp/notes");
     updatedCollection.exclude = ["private"];
     service.updateCollections([updatedCollection]);
     finishSync?.();
-    await Bun.sleep(700);
+    await waitForCondition(() => syncCollection.mock.calls.length > 0);
 
     // Config change + mid-flight ownership loss both drive generation reconcile.
     expect(syncCollection).toHaveBeenCalled();
@@ -202,7 +215,12 @@ describe("CollectionWatchService", () => {
 
     service.start();
     watcherCallback?.("rename", "deleted.md");
-    await Bun.sleep(350);
+    await waitForCondition(
+      () =>
+        seenPaths.length > 0 &&
+        notifySyncComplete.mock.calls.length > 0 &&
+        emit.mock.calls.length > 0
+    );
 
     expect(seenPaths).toEqual([["deleted.md"]]);
     expect(notifySyncComplete).toHaveBeenCalledTimes(1);
@@ -260,7 +278,7 @@ describe("CollectionWatchService", () => {
 
     service.start();
     watcherCallback?.("change", "doc.md");
-    await Bun.sleep(350);
+    await waitForCondition(() => onSyncComplete.mock.calls.length > 0);
 
     expect(onSyncStart).toHaveBeenCalledTimes(1);
     expect(onSyncComplete).toHaveBeenCalledTimes(1);

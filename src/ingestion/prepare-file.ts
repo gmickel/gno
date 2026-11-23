@@ -301,3 +301,73 @@ export async function prepareFile(
     },
   };
 }
+
+export interface PathProjectionRequest {
+  /** The stored mirror of the document being relocated. */
+  markdown: string;
+  previousRelPath: string;
+  relPath: string;
+  /** Extension used for path-based content-type inference. */
+  metadataExt: string;
+  contentTypeRules: NormalizedContentTypeRule[];
+  /** Whether the stored mirror came from the Markdown converter. */
+  markdownSource: boolean;
+  previousDateFields: Record<string, string> | null;
+}
+
+export interface PathProjection {
+  metadata: DocumentMetadata;
+  linkInputs: DocLinkInput[];
+  previousStructure: DocumentStructureSnapshot;
+  nextStructure: DocumentStructureSnapshot;
+}
+
+/**
+ * Re-derive what depends on a document's path (path-based content type,
+ * Markdown link resolution, the change-journal link summary) from its stored
+ * mirror, exactly as `prepareFile` would for an unchanged conversion at
+ * `relPath`. Used by explicit relocation, which never reconverts a file whose
+ * name is unchanged.
+ */
+export function projectRelocatedPath(
+  request: PathProjectionRequest
+): PathProjection {
+  const { markdown, markdownSource } = request;
+  const frontmatter = parseFrontmatterDetails(markdown);
+  const metadata = extractDocumentMetadata(
+    markdown,
+    request.relPath,
+    request.metadataExt,
+    request.contentTypeRules,
+    frontmatter
+  );
+  const excludedRanges = markdownSource ? getExcludedRanges(markdown) : null;
+  const lineOffsets = buildLineOffsets(markdown);
+  const parsedLinks =
+    markdownSource && excludedRanges
+      ? parseLinks(markdown, lineOffsets, excludedRanges)
+      : null;
+  const options = {
+    markdownSource,
+    excludedRanges: excludedRanges ?? undefined,
+    lineOffsets,
+    parsedLinks: parsedLinks ?? undefined,
+    frontmatter,
+  };
+  return {
+    metadata,
+    linkInputs: toLinkInputs(parsedLinks, request.relPath),
+    previousStructure: extractDocumentStructure(
+      markdown,
+      request.previousRelPath,
+      request.previousDateFields,
+      options
+    ),
+    nextStructure: extractDocumentStructure(
+      markdown,
+      request.relPath,
+      metadata.dateFields,
+      options
+    ),
+  };
+}

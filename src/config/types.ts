@@ -683,6 +683,12 @@ export const ConfigSchema = z.object({
     )
     .default(DEFAULT_BUSY_TIMEOUT_MS),
 
+  /**
+   * Toggle cost-routed two-stage bit coarse vec0 mirror routing for large vector scopes.
+   * Defaults to true; set to false to keep all searches on the exact paths.
+   */
+  coarseVectorSearch: z.boolean().optional(),
+
   /** Optional terminal hyperlink editor URI template */
   editorUriTemplate: z.string().min(1).optional(),
 

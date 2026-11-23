@@ -23,12 +23,19 @@ import type { Database } from "bun:sqlite";
 
 import { envIsSet } from "../../llm/policy";
 import { formatDocForEmbedding } from "../../pipeline/contextual";
+import { v2TableName } from "./coarse-router";
 import {
   hasNullCosineColumn,
   markMirrorClean,
   type NullCosineMark,
 } from "./partition-index";
 import { provenOwners, vectorProofKey } from "./proof-cache";
+import {
+  hasV2MirrorTables,
+  hasV2Table,
+  markV2MirrorClean,
+  readV2MirrorState,
+} from "./v2-mirror";
 import {
   chunkKeyHint,
   embeddingInputHash,
@@ -152,7 +159,9 @@ export function mirrorAccess(
   partitionId: string,
   vecLoaded: boolean
 ): "mirror" | "none" | "unsafe" {
-  if (!tableExists(db, mirrorTable(partitionId))) return "none";
+  const hasVecTable =
+    tableExists(db, mirrorTable(partitionId)) || hasV2Table(db, partitionId);
+  if (!hasVecTable) return "none";
   return vecLoaded ? "mirror" : "unsafe";
 }
 
@@ -257,7 +266,8 @@ function liveVariants(
 
 /**
  * Delete variants with their owner bindings and, with `"mirror"`, their vec0
- * rows. Runs inside the caller's transaction.
+ * rows (`vec_v1_<partition>` and `vec_v2_<partition>` plus `vector_partition_rows`).
+ * Runs inside the caller's transaction.
  */
 function removeVariants(
   db: Database,
@@ -267,13 +277,35 @@ function removeVariants(
 ): void {
   if (variantIds.length === 0) return;
   const ids = JSON.stringify(variantIds);
-  if (access === "mirror") {
+  if (access === "mirror" && tableExists(db, mirrorTable(partitionId))) {
     // One primary-key delete per variant: vec0 does not use its key for an
     // IN (json_each) constraint and would scan the whole index.
     const remove = db.query<unknown, [number]>(
       `DELETE FROM ${mirrorTable(partitionId)} WHERE variant_id = ?`
     );
     for (const id of variantIds) remove.run(id);
+  }
+  if (hasV2MirrorTables(db)) {
+    const v2RowIds = db
+      .query<{ id: number }, [string, string]>(
+        `SELECT id FROM vector_partition_rows
+         WHERE partition_id = ?
+           AND variant_id IN (SELECT value FROM json_each(?))`
+      )
+      .all(partitionId, ids)
+      .map((row) => row.id);
+    if (v2RowIds.length > 0) {
+      if (access === "mirror" && hasV2Table(db, partitionId)) {
+        const v2Tbl = v2TableName(partitionId);
+        const removeV2 = db.query<unknown, [number]>(
+          `DELETE FROM "${v2Tbl}" WHERE rowid = ?`
+        );
+        for (const rowid of v2RowIds) removeV2.run(rowid);
+      }
+      db.query(
+        "DELETE FROM vector_partition_rows WHERE id IN (SELECT value FROM json_each(?))"
+      ).run(JSON.stringify(v2RowIds));
+    }
   }
   db.query(
     "DELETE FROM vector_owners WHERE partition_id = ? AND variant_id IN (SELECT value FROM json_each(?))"
@@ -298,13 +330,14 @@ function dequeue(
 }
 
 /**
- * Remove variants (see removeVariants) and leave the partition's mirror mark
- * as it was only when every removed variant took its own vec0 row with it.
- * Such a balanced removal keeps any count difference `mirrorState()` detects,
- * so a drifted mirror still reads dirty. An unbalanced one (a removed variant
- * whose vec0 row was already missing) could equalize the counts and hide the
- * drift, so the vector_variants triggers' invalidation stands; GC never
- * certifies a dirty or never-recorded mirror clean. No full count is needed.
+ * Remove variants (see removeVariants) and leave the partition's v1 and v2
+ * mirror marks as they were only when every removed variant took its own vec0
+ * rows with it. Such a balanced removal keeps any count difference
+ * `mirrorState()` / `v2MirrorState()` detects, so a drifted mirror still reads
+ * dirty. An unbalanced one (a removed variant whose vec0 row was already
+ * missing) could equalize the counts and hide the drift, so the triggers'
+ * invalidation stands; GC never certifies a dirty or never-recorded mirror
+ * clean. No full count is needed.
  */
 function removeKeepingMirror(
   db: Database,
@@ -313,7 +346,9 @@ function removeKeepingMirror(
   access: "mirror" | "none"
 ): void {
   if (variantIds.length === 0) return;
-  const tracked = access === "mirror" && tableExists(db, "vector_mirror_state");
+  const hasV1 =
+    access === "mirror" && tableExists(db, mirrorTable(partitionId));
+  const tracked = hasV1 && tableExists(db, "vector_mirror_state");
   const withNullCosine = tracked && hasNullCosineColumn(db);
   const before = tracked
     ? db
@@ -335,13 +370,56 @@ function removeKeepingMirror(
     );
     balanced = variantIds.every((id) => lookup.get(id) !== null);
   }
+
+  const v2Tracked =
+    access === "mirror" && hasV2MirrorTables(db) && hasV2Table(db, partitionId);
+  const v2Before = v2Tracked ? readV2MirrorState(db, partitionId) : null;
+  const v2MarkedClean = v2Before?.dirty === 0;
+  let v2Balanced = false;
+  if (v2MarkedClean) {
+    const v2RowIds = db
+      .query<{ id: number }, [string, string]>(
+        `SELECT id FROM vector_partition_rows
+         WHERE partition_id = ?
+           AND variant_id IN (SELECT value FROM json_each(?))`
+      )
+      .all(partitionId, JSON.stringify(variantIds))
+      .map((row) => row.id);
+    const v2Tbl = v2TableName(partitionId);
+    const v2Lookup = db.query<unknown, [number]>(
+      `SELECT 1 FROM "${v2Tbl}" WHERE rowid = ?`
+    );
+    v2Balanced = v2RowIds.every((rowid) => v2Lookup.get(rowid) !== null);
+  }
+
   removeVariants(db, partitionId, variantIds, access);
-  if (!tracked) return;
-  if (markedClean && balanced) markMirrorClean(db, partitionId, nullCosine);
-  else
-    db.run("DELETE FROM vector_mirror_state WHERE partition_id = ?", [
-      partitionId,
-    ]);
+
+  if (tracked) {
+    if (markedClean && balanced) markMirrorClean(db, partitionId, nullCosine);
+    else
+      db.run("DELETE FROM vector_mirror_state WHERE partition_id = ?", [
+        partitionId,
+      ]);
+  }
+  if (v2Tracked) {
+    if (v2MarkedClean && v2Balanced) {
+      const preservedCheck =
+        v2Before.checkRecall !== null &&
+        v2Before.checkQueries !== null &&
+        v2Before.checkCoarseK !== null
+          ? {
+              recall: v2Before.checkRecall,
+              queries: v2Before.checkQueries,
+              coarseK: v2Before.checkCoarseK,
+            }
+          : null;
+      markV2MirrorClean(db, partitionId, preservedCheck);
+    } else {
+      db.run("DELETE FROM vector_mirror_v2_state WHERE partition_id = ?", [
+        partitionId,
+      ]);
+    }
+  }
 }
 
 const variantPage = (

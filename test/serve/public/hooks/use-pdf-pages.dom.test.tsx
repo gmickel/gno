@@ -1121,11 +1121,20 @@ describe("use-pdf-pages", () => {
     await settleAllTasks();
     const base = metrics.snapshot().events.length;
 
-    // Enter then leave, all within one quiescence window.
-    await emitWindow({ 40: true });
-    await emitWindow({ 40: false, 41: true });
-    await emitWindow({ 41: false, 42: true });
-    await emitWindow({ 42: false });
+    // Enter then leave within one quiescence window. Emitted inside a single
+    // act() with microtask yields (matching T1 and T7) so runner scheduling
+    // jitter cannot let SCROLL_QUIESCENCE_MS expire mid-sequence.
+    await act(async () => {
+      emitIntersections({ 40: true });
+      await Promise.resolve();
+      emitIntersections({ 40: false, 41: true });
+      await Promise.resolve();
+      emitIntersections({ 41: false, 42: true });
+      await Promise.resolve();
+      emitIntersections({ 42: false });
+      await Promise.resolve();
+    });
+    await flushReact();
 
     const transient = metrics
       .snapshot()

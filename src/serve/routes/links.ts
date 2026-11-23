@@ -412,7 +412,13 @@ export async function handleDocSimilar(
   const searchResult = await ctx.vectorIndex.searchNearest(
     embedding,
     candidateLimit,
-    storedVectorSearchOptions(source)
+    {
+      ...storedVectorSearchOptions(source),
+      coarseVectorSearch: ctx.config?.coarseVectorSearch,
+      ...(!crossCollection
+        ? { eligibility: { collection: doc.collection } }
+        : {}),
+    }
   );
 
   if (!searchResult.ok) {

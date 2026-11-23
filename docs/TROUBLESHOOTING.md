@@ -888,6 +888,38 @@ Then, if you used `--all`:
 gno embed --collection my-collection
 ```
 
+### Reclaiming disk space from superseded legacy vector tables
+
+After upgrading an older index that already has an activated vector partition,
+legacy `vec_<hash>` tables and `content_vectors` rows (plus any orphaned
+`vec_v1_*` or `vec_v2_*` tables) can remain in the SQLite database. Prune them
+safely without touching models that still rely on legacy vectors:
+
+```bash
+gno vec prune
+```
+
+Pruning frees pages inside the SQLite file. To shrink the file on disk as well,
+pass `--vacuum` (in-place `VACUUM`) or use SQLite `VACUUM INTO` a new file for
+very large databases so you keep the original file as a rollback copy.
+
+### `gno doctor` warns about `coarse-mirror`
+
+For large unfiltered or collection-scoped vector searches, GNO maintains a
+binary (`bit`) coarse mirror (`vec_v2_*`) alongside the float32 vectors and
+rescores candidates with exact float32 cosine. When `gno doctor` reports
+`coarse-mirror` as `missing` or `dirty`, searches automatically stay on the
+exact paths; repair the mirror without re-embedding:
+
+```bash
+gno vec sync
+```
+
+If `gno doctor` reports that the build-time recall@10 self-check is below the
+95% floor, two-stage routing stays disabled for that partition automatically.
+To force exact float32 paths for every query on an index, set
+`coarseVectorSearch: false` in your config file (`gno doctor` prints its path).
+
 ### Embedding run says `Object is disposed` or a batch failed partway through
 
 GNO now retries smaller batches, resets the embedding port when node-llama-cpp

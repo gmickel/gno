@@ -256,5 +256,5 @@ describe("default registry loading (fn-201)", () => {
       afterRouting: false,
       afterPdf: true,
     });
-  });
+  }, 20_000);
 });

@@ -113,6 +113,7 @@ async function loadAllSchemas(): Promise<void> {
     "index-receipt",
     "embed-receipt",
     "vec-gc",
+    "collection-move",
     "convert",
   ];
 

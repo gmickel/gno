@@ -76,6 +76,7 @@ equivalent files fail closed as ambiguous.
 | collection list    | yes    | no      | no    | yes  | no    | terminal |
 | collection remove  | no     | no      | no    | no   | no    | terminal |
 | collection rename  | no     | no      | no    | no   | no    | terminal |
+| collection move    | yes    | no      | no    | no   | no    | terminal |
 | update             | yes    | no      | no    | no   | no    | terminal |
 | index              | yes    | no      | no    | no   | no    | terminal |
 | embed              | no     | no      | no    | no   | no    | terminal |
@@ -243,7 +244,10 @@ the model with `id`, `model`, `dimensions`, `state` (`active`|`shadow`),
 `legacy` (pre-runtime-independent key), `retrieval` (this runtime reads it),
 `droppable` (`gno vec drop` accepts it), `owners` (current chunks),
 `provenance` (building runtime, e.g. `CUDA, Bun 1.4.2`),
-`compatibleRuntimes` (runtimes that read it) and `incompatibleRuntimes`.
+`compatibleRuntimes` (runtimes that read it), `incompatibleRuntimes`, and
+optional `coarseMirror` (`state`: `clean`|`dirty`|`missing`|`unsupported`,
+`checkRecall`, `checkQueries`, `checkCoarseK`, `belowFloor`) describing the
+partition's v2 binary coarse `vec0` mirror and build-time recall self-check.
 Terminal output prints a `Vector partitions:` block
 unless there is exactly one healthy partition. `collections`, `totalDocuments`
 and `totalChunks` cover configured collections only. Opening an index never
@@ -1285,6 +1289,85 @@ gno collection rename <old> <new> [--lock-wait <duration>] [--no-wait]
 
 ---
 
+### gno collection move
+
+Record that indexed documents were moved on disk to another collection and/or
+path, keeping each document's identity and derived data.
+
+**Synopsis:**
+
+```bash
+gno collection move <source> <destination> [--dry-run] [--json] [--lock-wait <duration>] [--no-wait]
+gno collection move --from-file <map> [--dry-run] [--json] [--lock-wait <duration>] [--no-wait]
+```
+
+**Arguments:**
+| Arg | Type | Description |
+|-----|------|-------------|
+| `<source>` | string | A document (`#docid`, `gno://collection/path` or `collection/path`) or a folder (`collection/dir/`, `collection/` for the whole collection) |
+| `<destination>` | string | A folder (`collection`, `collection/` or `collection/dir/`) or, for a single document, an exact path (`collection/path`) |
+
+**Options:**
+| Option | Type | Description |
+|--------|------|-------------|
+| `--from-file <map>` | path | One `source<TAB>destination` pair per line; blank lines and `#` comments are skipped |
+| `--dry-run` | boolean | Check every move without relocating anything |
+| `--json` | boolean | Print the receipt as JSON (`collection-move@1.0`) |
+
+**Behavior:**
+
+- Index-only: run it after moving the files yourself and before `gno update`.
+  GNO never moves files and never infers moves from matching hashes.
+- A single document moved to a folder keeps its filename; a folder source
+  keeps each document's path below that folder.
+- Keeps the document's database id, docid, content, chunks, tags (including
+  user tags) and vector owner bindings. Rewrites the collection, path, URI,
+  full-text filepath, path-derived metadata (content type), parsed links and
+  the graph projection, and journals a `rename` change in both collections
+  (governed by the stricter of their egress policies). A following
+  `gno update` finds the moved files unchanged.
+- Vectors are reused when both collections use the same embedding model. If
+  the new filename changes a filename-derived title (no heading), the item
+  reports `titleChanged: true` and its vectors become pending for `gno embed`.
+- Refused items are left untouched (index them with `gno update`): unknown
+  collection or document, an ambiguous `#docid` (identical copies), two items
+  with the same source or destination, a destination that is already indexed
+  (active or inactive row), not indexable in its collection, not in canonical
+  form or reached through a symlink, or missing, a file still at the old path
+  (possibly a copy; the same file in a nested collection root is accepted once
+  the outer collection no longer indexes it), changed bytes or a different
+  conversion, an inactive or not fully indexed document, chunks built under
+  another chunking policy, a changed extension, a stored language hint the
+  destination would not derive, record containers and their records,
+  memory-managed collections, and paths source availability cannot prove (for
+  the old path as well as the new one).
+- `--dry-run` relocates nothing and skips the config-to-index sync other
+  commands perform; it refuses to create an index that does not exist. Opening
+  an existing index still applies pending schema migrations, as every command
+  does.
+- Writes commit in batches; each item is atomic.
+- Waits for the index write lease (`--lock-wait`, default 120s; `--no-wait`
+  fails at once)
+
+**Output (`--json`):** `{ dryRun, relocated, refused, items[], projectionErrors[], durationMs }`;
+each item has `source`, `status` (`relocated`, `would_relocate` or `refused`)
+and, when resolved, `destination`, `documentId`, `docid`, `titleChanged`, or a
+refusal `code` (`INVALID_REFERENCE`, `NOT_FOUND`, `AMBIGUOUS`,
+`DESTINATION_EXISTS`, `DESTINATION_NOT_ELIGIBLE`, `DESTINATION_MISSING`,
+`SOURCE_STILL_PRESENT`, `SOURCE_UNAVAILABLE`, `SOURCE_CHANGED`, `NEEDS_REINDEX`,
+`INCOMPATIBLE`, `STORE_ERROR`) and `message`. Schema:
+`spec/output-schemas/collection-move.schema.json`.
+
+**Exit Codes:**
+
+- 0: Every item relocated (or would be, with `--dry-run`)
+- 1: Bad usage, or at least one item refused (the receipt is still printed and
+  the other items are committed)
+- 2: Index open failure
+- 4: Write lease busy
+
+---
+
 ### gno update
 
 Sync files from disk into the index (ingestion without embedding).
@@ -1828,6 +1911,7 @@ active with `sourceCount: 1`.
 ```
 [explain] expansion: enabled (3 lexical, 2 semantic variants)
 [explain] bm25: 45 candidates
+[explain] vector: 20 candidates (route=exact-sql, N=45000)
 [explain] vector: 38 candidates
 [explain] graph: seeds=5, candidates=4/20, explicit=3, inferred=1, ambiguous=0, similarity=0
 [explain] fusion: RRF k=60, 52 unique documents (best rank per list)
@@ -3268,8 +3352,10 @@ anyone, this process included, it waits for a later pass).
 
 Drop superseded legacy `vec_<hash>` tables and delete legacy `content_vectors`
 rows for models that already have an activated v1 vector partition, plus any
-orphaned `vec_v1_<partition>` tables absent from `vector_partitions`. Models
-whose v1 partition is still `shadow` or absent keep their legacy tables and rows.
+orphaned `vec_v1_<partition>` and `vec_v2_<partition>` tables (and orphaned
+`vector_partition_rows` / `vector_mirror_v2_state` rows) absent from
+`vector_partitions`. Models whose v1 partition is still `shadow` or absent keep
+their legacy tables and rows.
 
 **Synopsis:**
 

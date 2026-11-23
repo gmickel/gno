@@ -65,7 +65,7 @@ test("opening a pre-feature schema preserves schema identity, chunks and legacy 
   const beforeVectors = old.query("SELECT * FROM content_vectors").all();
   const beforeSchema = old
     .query(
-      "SELECT name, sql FROM sqlite_master WHERE name NOT IN ('documents', 'collections', 'idx_documents_active', 'idx_vectors_model_bytes', 'idx_vector_owners_partition_variant', 'idx_vector_owners_doc_part', 'idx_vector_owners_mirror_seq', 'idx_retrieval_traces_created', 'idx_documents_collection_mtime', 'idx_doc_tags_tag', 'idx_doc_tags_tag_doc', 'idx_chunks_mirror_hash', 'idx_doc_links_source_doc', 'idx_doc_edges_src_type', 'idx_doc_edges_dst_type', 'idx_vectors_model') AND name NOT LIKE '%vector_partitions%' AND name NOT LIKE '%vector_runtime_%' AND name NOT LIKE '%vector_mirror_state%' AND name NOT LIKE 'vector_variants_mirror_%' AND name NOT LIKE '%vector_gc_%' ORDER BY name"
+      "SELECT name, sql FROM sqlite_master WHERE name NOT IN ('documents', 'collections', 'idx_documents_active', 'idx_vectors_model_bytes', 'idx_vector_owners_partition_variant', 'idx_vector_owners_doc_part', 'idx_vector_owners_mirror_seq', 'idx_retrieval_traces_created', 'idx_documents_collection_mtime', 'idx_doc_tags_tag', 'idx_doc_tags_tag_doc', 'idx_chunks_mirror_hash', 'idx_doc_links_source_doc', 'idx_doc_edges_src_type', 'idx_doc_edges_dst_type', 'idx_vectors_model') AND name NOT LIKE '%vector_partitions%' AND name NOT LIKE '%vector_runtime_%' AND name NOT LIKE '%vector_mirror_state%' AND name NOT LIKE 'vector_variants_mirror_%' AND name NOT LIKE '%vector_partition_rows%' AND name NOT LIKE '%vector_mirror_v2_state%' AND name NOT LIKE 'trg_vector_%_v2_%' AND name NOT LIKE '%vector_gc_%' ORDER BY name"
     )
     .all();
   old.close();
@@ -87,7 +87,7 @@ test("opening a pre-feature schema preserves schema identity, chunks and legacy 
     expect(
       db
         .query(
-          "SELECT name, sql FROM sqlite_master WHERE name NOT IN ('documents', 'collections', 'idx_documents_active', 'idx_vectors_model_bytes', 'idx_vector_owners_partition_variant', 'idx_vector_owners_doc_part', 'idx_vector_owners_mirror_seq', 'idx_retrieval_traces_created', 'idx_documents_collection_mtime', 'idx_doc_tags_tag', 'idx_doc_tags_tag_doc', 'idx_chunks_mirror_hash', 'idx_doc_links_source_doc', 'idx_doc_edges_src_type', 'idx_doc_edges_dst_type', 'idx_vectors_model') AND name NOT LIKE '%vector_partitions%' AND name NOT LIKE '%vector_runtime_%' AND name NOT LIKE '%vector_mirror_state%' AND name NOT LIKE 'vector_variants_mirror_%' AND name NOT LIKE '%vector_gc_%' ORDER BY name"
+          "SELECT name, sql FROM sqlite_master WHERE name NOT IN ('documents', 'collections', 'idx_documents_active', 'idx_vectors_model_bytes', 'idx_vector_owners_partition_variant', 'idx_vector_owners_doc_part', 'idx_vector_owners_mirror_seq', 'idx_retrieval_traces_created', 'idx_documents_collection_mtime', 'idx_doc_tags_tag', 'idx_doc_tags_tag_doc', 'idx_chunks_mirror_hash', 'idx_doc_links_source_doc', 'idx_doc_edges_src_type', 'idx_doc_edges_dst_type', 'idx_vectors_model') AND name NOT LIKE '%vector_partitions%' AND name NOT LIKE '%vector_runtime_%' AND name NOT LIKE '%vector_mirror_state%' AND name NOT LIKE 'vector_variants_mirror_%' AND name NOT LIKE '%vector_partition_rows%' AND name NOT LIKE '%vector_mirror_v2_state%' AND name NOT LIKE 'trg_vector_%_v2_%' AND name NOT LIKE '%vector_gc_%' ORDER BY name"
         )
         .all()
     ).toEqual(beforeSchema);
@@ -97,10 +97,11 @@ test("opening a pre-feature schema preserves schema identity, chunks and legacy 
     // collection link-workspace columns (fn-178), migration 35 only adds
     // the vector length index (fn-208), migration 36 only the vec0 mirror
     // freshness table and its triggers, migration 37 only covering/cleanup
-    // indexes (fn-229), migration 38 only a column on the mirror freshness
-    // table (fn-234), and migration 39 only the vector GC candidate queue and
-    // its triggers (gno#361); chunk policy still performs no schema migration or
-    // legacy vector rewrite.
+    // indexes (fn-229), migration 38 only null_cosine on vector_mirror_state
+    // (fn-234), migration 39 only v2 coarse mirror tables/triggers (fn-235),
+    // and migration 40 only the vector GC candidate queue and its triggers
+    // (gno#361); chunk policy still performs no schema migration or legacy
+    // vector rewrite.
     const columns = db
       .query<{ name: string }, []>("PRAGMA table_info(documents)")
       .all();

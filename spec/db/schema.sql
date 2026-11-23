@@ -344,7 +344,7 @@ CREATE TRIGGER IF NOT EXISTS vector_variants_mirror_delete
 AFTER DELETE ON vector_variants BEGIN
   DELETE FROM vector_mirror_state WHERE partition_id = OLD.partition_id;
 END;
--- Vector GC candidates (migration 039). A (partition, variant) is queued, or
+-- Vector GC candidates (migration 040). A (partition, variant) is queued, or
 -- its queued_at restarted, when a document goes from active to inactive (its
 -- bindings' variants), when an owner binding is deleted (also by cascade) and
 -- when a binding is re-pointed to another variant of its partition. Automatic
@@ -1066,3 +1066,54 @@ CREATE TRIGGER graph_inventory_graph_reference_documents_delete AFTER DELETE ON 
 CREATE TRIGGER graph_inventory_graph_frontmatter_references_insert AFTER INSERT ON graph_frontmatter_references BEGIN UPDATE graph_projection_state SET dirty = 1, in_progress = 1 WHERE id = 1; END;
 CREATE TRIGGER graph_inventory_graph_frontmatter_references_update AFTER UPDATE ON graph_frontmatter_references BEGIN UPDATE graph_projection_state SET dirty = 1, in_progress = 1 WHERE id = 1; END;
 CREATE TRIGGER graph_inventory_graph_frontmatter_references_delete AFTER DELETE ON graph_frontmatter_references BEGIN UPDATE graph_projection_state SET dirty = 1, in_progress = 1 WHERE id = 1; END;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Vector v2 bit coarse mirror metadata (migration 039, fn-235)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS vector_partition_rows (
+  id INTEGER PRIMARY KEY,
+  partition_id TEXT NOT NULL,
+  collection TEXT NOT NULL,
+  variant_id INTEGER NOT NULL,
+  UNIQUE(partition_id, collection, variant_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vector_partition_rows_part_var
+  ON vector_partition_rows(partition_id, variant_id);
+
+CREATE TABLE IF NOT EXISTS vector_mirror_v2_state (
+  partition_id TEXT PRIMARY KEY,
+  dirty INTEGER NOT NULL CHECK (dirty IN (0, 1)),
+  check_recall REAL,
+  check_queries INTEGER,
+  check_coarse_k INTEGER
+);
+
+CREATE TRIGGER IF NOT EXISTS trg_vector_variants_v2_insert
+AFTER INSERT ON vector_variants
+BEGIN
+  DELETE FROM vector_mirror_v2_state WHERE partition_id = NEW.partition_id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_vector_variants_v2_update
+AFTER UPDATE ON vector_variants
+BEGIN
+  DELETE FROM vector_mirror_v2_state WHERE partition_id = OLD.partition_id;
+  DELETE FROM vector_mirror_v2_state WHERE partition_id = NEW.partition_id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_vector_variants_v2_delete
+AFTER DELETE ON vector_variants
+BEGIN
+  DELETE FROM vector_mirror_v2_state WHERE partition_id = OLD.partition_id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_vector_owners_v2_insert
+AFTER INSERT ON vector_owners
+BEGIN
+  DELETE FROM vector_mirror_v2_state WHERE partition_id = NEW.partition_id;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_vector_owners_v2_update
+AFTER UPDATE ON vector_owners
+BEGIN
+  DELETE FROM vector_mirror_v2_state WHERE partition_id = OLD.partition_id;
+  DELETE FROM vector_mirror_v2_state WHERE partition_id = NEW.partition_id;
+END;

@@ -108,6 +108,15 @@ gno collection remove <name>
 gno collection rename <old> <new>
 ```
 
+### gno collection move
+
+```bash
+gno collection move <source> <destination> [--dry-run] [--json]
+gno collection move --from-file <map> [--dry-run] [--json]
+```
+
+Index-only: after moving files on disk to another collection or path, keeps their identity, chunks and embeddings instead of re-indexing. Source: `#docid`, `collection/path` or a folder `collection/dir/`; destination: `collection`, `collection/dir/` or `collection/path`. Exits 1 when an item is refused (left for `gno update`).
+
 ### gno collection clear-embeddings
 
 ```bash
@@ -447,13 +456,13 @@ gno query <query> [options]
 
 Additional options:
 
-| Option        | Description                                |
-| ------------- | ------------------------------------------ |
-| `--no-expand` | Disable query expansion                    |
-| `--no-rerank` | Disable reranking                          |
-| `--graph`     | Explicitly enable default graph candidates |
-| `--no-graph`  | Disable graph-neighbor candidates          |
-| `--explain`   | Print retrieval details to stderr          |
+| Option        | Description                                                                                                                                                |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--no-expand` | Disable query expansion                                                                                                                                    |
+| `--no-rerank` | Disable reranking                                                                                                                                          |
+| `--graph`     | Explicitly enable default graph candidates                                                                                                                 |
+| `--no-graph`  | Disable graph-neighbor candidates                                                                                                                          |
+| `--explain`   | Print retrieval details to stderr (timings, score breakdown, and vector route: `exact-sql`, `exact-vec0`, or `coarse-bit` with `N`, `coarseK`, `rescored`) |
 
 ### gno ask
 
@@ -904,11 +913,15 @@ gno peek [--json]
 gno status [--json|--md]
 ```
 
+Reports index counts, active vector partitions, and each partition's `coarseMirror` state (`clean`, `dirty`, `missing`, `unsupported`) and build-time recall self-check result.
+
 ### gno doctor
 
 ```bash
 gno doctor [--json|--md]
 ```
+
+Checks config, database, `sqlite-vec`, effective SQLite `mmap_size` (`sqlite-mmap`), embedding fingerprints, vector partitions, and `coarse-mirror` freshness/recall (`gno vec sync` repairs dirty or missing mirrors).
 
 ### gno cleanup
 
@@ -918,23 +931,26 @@ gno cleanup
 
 ### gno vec
 
-Vector index maintenance. Use when `gno similar` returns empty despite embeddings.
+Vector index maintenance. Use when `gno similar` returns empty despite embeddings, when `gno doctor` flags a dirty/missing `coarse-mirror`, or to reclaim superseded legacy vector tables.
 
 ```bash
-gno vec sync      # Fast incremental sync
-gno vec rebuild   # Full rebuild
+gno vec sync               # Incremental sync of float32 (v1) and bit coarse (v2) mirrors + recall self-check
+gno vec rebuild            # Full rebuild of v1 and v2 mirrors from stored vectors (no re-embedding)
 gno vec drop <partition>   # Drop an abandoned shadow partition (id prefix from gno status)
 gno vec gc [--dry-run]     # Remove stored vectors no active document can use (all partitions)
+gno vec prune              # Drop superseded legacy vec_<hash> tables, content_vectors rows, and orphan mirrors
+gno vec prune --vacuum     # Prune and run in-place SQLite VACUUM to shrink the DB file
 ```
 
 `gno embed` passes also collect vectors unused for 7+ days automatically (bounded per pass;
 `GNO_NO_AUTO_VECTOR_GC=1` turns it off). `vec gc` never shrinks the file; see
 docs/CLI.md for compaction.
 
-| Option      | Description                                  |
-| ----------- | -------------------------------------------- |
-| `--dry-run` | `gc` only: report, read-only, no write lease |
-| `--json`    | JSON output                                  |
+| Option      | Description                                               |
+| ----------- | --------------------------------------------------------- |
+| `--dry-run` | (`gc` only) Report without writing (read-only, no lease)  |
+| `--vacuum`  | (`prune` only) Run SQLite `VACUUM` in-place after pruning |
+| `--json`    | JSON output                                               |
 
 ## MCP Server
 

@@ -451,6 +451,7 @@ The `--explain` flag outputs:
 - Content-type factor, raw/capped contribution, shared auxiliary cap, final
   score, rule source, and ranking fingerprint when active
 - Per-stage timing breakdown (`lang`, `expansion`, `bm25`, `vector`, `fusion`, `rerank`, `assembly`, `total`)
+- Vector search route (`exact-sql`, `exact-vec0`, or `coarse-bit`), in-scope mirror row count (`N`), and for two-stage queries `coarseK` and `rescored` variant count
 - Fallback/counter summary (`fallbacks=...`, cache counters for expansion/rerank)
 
 See [How Search Works](HOW-SEARCH-WORKS.md) for details on the scoring pipeline.
@@ -1048,6 +1049,38 @@ gno update
 The collection has no documents until `gno update` (or `gno index`) runs.
 Content and embeddings from before the rename are reused unless `gno cleanup`
 ran in between.
+
+### gno collection move
+
+Tell the index about files you moved on disk to another collection or path,
+without re-indexing them. Run it after the move and before `gno update`.
+
+```bash
+mv ~/notes/exports ~/data/exports
+gno collection move notes/exports/ data/exports/   # a folder
+gno collection move notes/plan.md work             # one document, same filename
+gno collection move '#a1b2c3d4' work/plans/q3.md   # by docid, new path
+gno collection move --from-file moves.tsv          # source<TAB>destination per line
+gno collection move notes/exports/ data/ --dry-run --json
+```
+
+Each moved document keeps its identity, content, chunks, tags and embeddings;
+its collection, path, URI, search path, content type, links and graph edges
+follow the new location, and `gno changes` shows the move in both collections.
+Embeddings are reused when both collections use the same embedding model; a
+renamed file whose title came from its filename is re-embedded by the next
+`gno embed`.
+
+A move is refused, and left for `gno update`, when GNO cannot prove it is the
+same file: the destination is missing, already indexed or excluded by the
+collection's rules, a file is still at the old path (a copy), the bytes
+changed, or the collections index it differently (language hint, record
+containers, memory collections, a new extension). The command exits 1 when
+anything was refused; the other moves are kept.
+
+Run it before anything indexes the moved files: if `gno update`, or a running
+`gno serve` or daemon watcher, indexes them first, the destination is already
+indexed and the move is refused.
 
 ### gno collection clear-embeddings
 
@@ -2374,13 +2407,16 @@ Checks include:
 - code-chunking mode + supported extensions
 - SQLite FTS5 availability
 - vendored `fts5-snowball` extension loading
-- `sqlite-vec` extension loading
+- `sqlite-vec` extension loading and effective SQLite memory-map size (`sqlite-mmap`)
 - local model cache readiness
 - embedding fingerprint freshness: current fingerprint, pending/stale chunks,
   legacy empty-fingerprint vectors, and mixed stored fingerprint groups
 - vector partitions: the partition this runtime's retrieval uses, every other partition with
   state, chunk count and provenance, and runtimes measured incompatible
   (`vector-partitions`, warns when anything beyond one healthy partition exists)
+- coarse vector mirror health (`coarse-mirror`): v2 bit mirror freshness (`clean`,
+  `dirty`, `missing`, `unsupported`), stored build-time recall@10 self-check
+  result, active routing state, and `gno vec sync` remediation when dirty or missing
 - per-collection corpus-derived lexical retrieval proof
 - collection folders that are missing or unreadable right now
   (`collection-roots`, warning): each names the collection, its folder and
@@ -2439,8 +2475,8 @@ gno vec prune     # Remove superseded legacy vec_<hash> tables and content_vecto
 gno vec prune --vacuum      # Prune and run in-place SQLite VACUUM to shrink the DB file
 ```
 
-- `sync` - Fast incremental sync, fixes drift after failed inserts
-- `rebuild` - Full rebuild, use when sync isn't enough
+- `sync` - Fast incremental sync of both the float32 (`vec_v1_*`) and binary coarse (`vec_v2_*`) mirrors from stored vectors without re-embedding; runs the build-time recall self-check when the partition is above the exact cost budget
+- `rebuild` - Full rebuild of the vector mirrors from stored vectors without re-embedding and re-runs the build-time recall self-check when eligible
 - `drop <partition>` - Remove an abandoned shadow vector partition (legacy
   shadows included) that this runtime's retrieval does not read (id prefix of
   at least 8 characters from `gno status`) with its vectors. Status prints the
@@ -2458,10 +2494,10 @@ gno vec prune --vacuum      # Prune and run in-place SQLite VACUUM to shrink the
   removes at once: a deleted file brought back afterwards is embedded again.
 - `prune` - Remove superseded legacy `vec_<hash>` tables and `content_vectors`
   rows for models that already have an activated v1 vector partition, plus
-  orphaned `vec_v1_*` tables absent from `vector_partitions`. Models without an
-  activated partition keep their legacy tables and rows. Pass `--vacuum` to
-  reclaim OS disk space in-place, or run SQLite `VACUUM INTO` a new file for
-  large databases.
+  orphaned `vec_v1_*` and `vec_v2_*` tables and mapping/state rows absent from
+  `vector_partitions`. Models without an activated partition keep their legacy
+  tables and rows. Pass `--vacuum` to reclaim OS disk space in-place, or run
+  SQLite `VACUUM INTO` a new file for large databases.
 - `--json` - JSON output format
 
 **Automatic vector GC.** Every `gno embed` pass, including background
