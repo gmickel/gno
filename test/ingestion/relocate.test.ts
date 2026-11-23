@@ -550,13 +550,27 @@ describe("relocateDocuments", () => {
       ]);
       expect(result.items[0]?.code).toBe("DESTINATION_NOT_ELIGIBLE");
     }
-    await symlink(join(data.path, "docs"), join(data.path, "link"));
-    const viaLink = await relocate([
-      { source: "notes/alias.md", destination: "data/link/alias.md" },
-    ]);
-    expect(viaLink.items[0]?.code).toBe("DESTINATION_NOT_ELIGIBLE");
     expect((await doc("notes", "alias.md"))?.active).toBe(true);
   });
+
+  // Creating symlinks needs elevated rights on Windows.
+  test.skipIf(process.platform === "win32")(
+    "refuses a destination reached through a symlink",
+    async () => {
+      await write(notes.path, "alias.md", "# Alias\n");
+      await index();
+      await move(
+        join(notes.path, "alias.md"),
+        join(data.path, "docs/alias.md")
+      );
+      await symlink(join(data.path, "docs"), join(data.path, "link"));
+      const viaLink = await relocate([
+        { source: "notes/alias.md", destination: "data/link/alias.md" },
+      ]);
+      expect(viaLink.items[0]?.code).toBe("DESTINATION_NOT_ELIGIBLE");
+      expect((await doc("notes", "alias.md"))?.active).toBe(true);
+    }
+  );
 
   test("refuses chunks built under another chunking policy", async () => {
     await write(notes.path, "policy.md", "# Policy\n\nBody.\n");

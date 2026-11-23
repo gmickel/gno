@@ -1078,6 +1078,10 @@ changed, or the collections index it differently (language hint, record
 containers, memory collections, a new extension). The command exits 1 when
 anything was refused; the other moves are kept.
 
+Run it before anything indexes the moved files: if `gno update`, or a running
+`gno serve` or daemon watcher, indexes them first, the destination is already
+indexed and the move is refused.
+
 ### gno collection clear-embeddings
 
 Clear embeddings for one collection.
