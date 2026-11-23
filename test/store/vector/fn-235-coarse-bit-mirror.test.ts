@@ -826,3 +826,137 @@ describe("fn-235 R6: collection-scoped similar prevents other collections from c
     expect(scoped?.some((h) => h.mirrorHash === "h-atgt")).toBe(true);
   });
 });
+
+describe("fn-235 Bugbot regression: stale collection mappings pruned on release, rebind, and GC", () => {
+  test("release, writeCurrent rebind, and collectGarbage remove stale (collection, variant_id) v2 rows while another collection keeps the variant", async () => {
+    const { db } = await openTempStore("gno-fn235-stale-map-");
+    const identity = makeIdentity(MODEL, DIMS);
+    const vstore = await createVectorVariantStore(db, identity);
+
+    // Seed identical chunk text in alpha and beta so both share one variant_id.
+    const alphaShared = seedDoc(db, {
+      collection: "alpha",
+      relPath: "shared-a.md",
+      docid: "#sa",
+      mirrorHash: "h-shared-1",
+      title: "Shared",
+      text: "identical body text",
+    });
+    const betaShared = seedDoc(db, {
+      collection: "beta",
+      relPath: "shared-b.md",
+      docid: "#sb",
+      mirrorHash: "h-shared-1",
+      title: "Shared",
+      text: "identical body text",
+    });
+    const alphaRebind = seedDoc(db, {
+      collection: "alpha",
+      relPath: "rebind-a.md",
+      docid: "#ra",
+      mirrorHash: "h-rebind-old",
+      title: "Rebind",
+      text: "rebound text",
+    });
+    const betaRebind = seedDoc(db, {
+      collection: "beta",
+      relPath: "rebind-b.md",
+      docid: "#rb",
+      mirrorHash: "h-rebind-old",
+      title: "Rebind",
+      text: "rebound text",
+    });
+    const alphaGc = seedDoc(db, {
+      collection: "alpha",
+      relPath: "gc-a.md",
+      docid: "#ga",
+      mirrorHash: "h-gc-1",
+      title: "GC",
+      text: "gc shared text",
+    });
+    const betaGc = seedDoc(db, {
+      collection: "beta",
+      relPath: "gc-b.md",
+      docid: "#gb",
+      mirrorHash: "h-gc-1",
+      title: "GC",
+      text: "gc shared text",
+    });
+
+    const ids = vstore.writeCurrent([
+      { owner: vstore.current(alphaShared, 0)!, embedding: makeVec(1, DIMS) },
+      { owner: vstore.current(betaShared, 0)!, embedding: makeVec(1, DIMS) },
+      { owner: vstore.current(alphaRebind, 0)!, embedding: makeVec(2, DIMS) },
+      { owner: vstore.current(betaRebind, 0)!, embedding: makeVec(2, DIMS) },
+      { owner: vstore.current(alphaGc, 0)!, embedding: makeVec(3, DIMS) },
+      { owner: vstore.current(betaGc, 0)!, embedding: makeVec(3, DIMS) },
+    ]);
+    vstore.activate(vstore.epoch());
+    expect(vstore.v2MirrorState()).toBe("clean");
+
+    const sharedVariantId = ids[0]!;
+    const rebindOldVariantId = ids[2]!;
+    const gcVariantId = ids[4]!;
+    const v2Table = v2TableName(vstore.partitionId);
+
+    const hasMapping = (collection: string, variantId: number): boolean => {
+      const row = db
+        .query<{ id: number }, [string, string, number]>(
+          `SELECT id FROM vector_partition_rows
+           WHERE partition_id = ? AND collection = ? AND variant_id = ?`
+        )
+        .get(vstore.partitionId, collection, variantId);
+      if (!row) return false;
+      const vecRow = db
+        .query<{ rowid: number }, [number]>(
+          `SELECT rowid FROM "${v2Table}" WHERE rowid = ?`
+        )
+        .get(row.id);
+      return Boolean(vecRow);
+    };
+
+    // 1. release(alphaShared) removes (alpha, sharedVariantId) while keeping (beta, sharedVariantId)
+    expect(hasMapping("alpha", sharedVariantId)).toBe(true);
+    expect(hasMapping("beta", sharedVariantId)).toBe(true);
+    vstore.release(alphaShared);
+    expect(hasMapping("alpha", sharedVariantId)).toBe(false);
+    expect(hasMapping("beta", sharedVariantId)).toBe(true);
+    expect(vstore.v2MirrorState()).toBe("clean");
+
+    // 2. writeCurrent rebind of alphaRebind to a new mirror/text removes (alpha, rebindOldVariantId)
+    // while keeping (beta, rebindOldVariantId) and adding (alpha, newVariantId).
+    db.run(
+      `INSERT OR IGNORE INTO content (mirror_hash, markdown, created_at)
+       VALUES ('h-rebind-new', 'brand new content', datetime('now'))`
+    );
+    db.run(
+      `INSERT INTO content_chunks
+         (mirror_hash, seq, pos, text, start_line, end_line, language, token_count, created_at)
+       VALUES ('h-rebind-new', 0, 0, 'brand new content', 1, 1, 'en', 3, datetime('now'))`
+    );
+    db.run("UPDATE documents SET mirror_hash = 'h-rebind-new' WHERE id = ?", [
+      alphaRebind,
+    ]);
+    const [rebindNewVariantId] = vstore.writeCurrent([
+      { owner: vstore.current(alphaRebind, 0)!, embedding: makeVec(99, DIMS) },
+    ]);
+    expect(rebindNewVariantId).not.toBe(rebindOldVariantId);
+    expect(hasMapping("alpha", rebindOldVariantId)).toBe(false);
+    expect(hasMapping("alpha", rebindNewVariantId!)).toBe(true);
+    expect(hasMapping("beta", rebindOldVariantId)).toBe(true);
+    expect(vstore.v2MirrorState()).toBe("clean");
+
+    // 3. collectGarbage() sweeps stale (alpha, gcVariantId) left by an external
+    // DELETE FROM vector_owners (e.g. document sync on a connection without sqlite-vec)
+    // while keeping (beta, gcVariantId).
+    db.run(
+      "DELETE FROM vector_owners WHERE document_id = ? AND partition_id = ?",
+      [alphaGc, vstore.partitionId]
+    );
+    expect(hasMapping("alpha", gcVariantId)).toBe(true);
+    vstore.collectGarbage();
+    expect(hasMapping("alpha", gcVariantId)).toBe(false);
+    expect(hasMapping("beta", gcVariantId)).toBe(true);
+    expect(vstore.v2MirrorState()).toBe("clean");
+  });
+});

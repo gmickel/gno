@@ -585,6 +585,16 @@ export class VectorVariantStore {
         )
       : null;
 
+    const selectPrevOwnerVariant = maintainV2
+      ? this.db.query<{ variant_id: number }, [number, number, string]>(
+          "SELECT variant_id FROM vector_owners WHERE document_id = ? AND seq = ? AND partition_id = ?"
+        )
+      : null;
+    const reboundV2Candidates: Array<{
+      collection: string;
+      variantId: number;
+    }> = [];
+
     const variantIds: number[] = [];
     for (const { owner, embedding } of validRows) {
       const existing = selectVariant.get(this.partitionId, owner.inputHash);
@@ -658,6 +668,17 @@ export class VectorVariantStore {
           insertVec.run(variantId, existing.embedding);
         }
       }
+      const ownerCollection = maintainV2
+        ? currentByKey.get(`${owner.documentId}:${owner.seq}`)?.collection
+        : undefined;
+      const prevOwnerVariantId =
+        selectPrevOwnerVariant && ownerCollection
+          ? selectPrevOwnerVariant.get(
+              owner.documentId,
+              owner.seq,
+              this.partitionId
+            )?.variant_id
+          : undefined;
       upsertOwner.run(
         owner.documentId,
         owner.mirrorHash,
@@ -673,10 +694,16 @@ export class VectorVariantStore {
         deleteV2Vec &&
         insertV2VecFromRow
       ) {
-        const ownerCollection = currentByKey.get(
-          `${owner.documentId}:${owner.seq}`
-        )?.collection;
         if (ownerCollection) {
+          if (
+            prevOwnerVariantId !== undefined &&
+            prevOwnerVariantId !== variantId
+          ) {
+            reboundV2Candidates.push({
+              collection: ownerCollection,
+              variantId: prevOwnerVariantId,
+            });
+          }
           const existingMap = selectV2Row.get(
             this.partitionId,
             ownerCollection,
@@ -703,6 +730,9 @@ export class VectorVariantStore {
         }
       }
       variantIds.push(variantId);
+    }
+    if (reboundV2Candidates.length > 0) {
+      this.pruneV2CollectionMappings(reboundV2Candidates);
     }
     return variantIds;
   }
@@ -1275,6 +1305,19 @@ export class VectorVariantStore {
     this.db
       .transaction(() =>
         this.keepingMirrorMark((mark) => {
+          const releasedV2Candidates = hasV2MirrorTables(this.db)
+            ? this.db
+                .query<
+                  { collection: string; variantId: number },
+                  [number, string]
+                >(
+                  `SELECT DISTINCT d.collection, o.variant_id AS variantId
+                   FROM vector_owners o
+                   JOIN documents d ON d.id = o.document_id
+                   WHERE o.document_id = ? AND o.partition_id = ?`
+                )
+                .all(documentId, this.partitionId)
+            : [];
           this.db
             .query(
               "DELETE FROM vector_owners WHERE document_id = ? AND partition_id = ?"
@@ -1282,6 +1325,9 @@ export class VectorVariantStore {
             .run(documentId, this.partitionId);
           if (this.removeUnowned(true) > 0) {
             mark.removedVariants = true;
+          }
+          if (releasedV2Candidates.length > 0) {
+            this.pruneV2CollectionMappings(releasedV2Candidates);
           }
         })
       )
@@ -1298,10 +1344,106 @@ export class VectorVariantStore {
           if (removed > 0) {
             mark.removedVariants = true;
           }
+          this.pruneAllStaleV2CollectionMappings();
           return removed;
         })
       )
       .immediate();
+  }
+
+  /**
+   * Remove targeted `(collection, variant_id)` v2 mirror rows when no remaining
+   * `vector_owners` row in that collection references the variant (e.g. after a
+   * document release or owner rebind while another collection still owns the variant).
+   */
+  private pruneV2CollectionMappings(
+    candidates: Array<{ collection: string; variantId: number }>
+  ): void {
+    if (!hasV2MirrorTables(this.db) || candidates.length === 0) return;
+    const seen = new Set<string>();
+    const hasOwnerInCollection = this.db.query<
+      { ok: number },
+      [string, number, string]
+    >(
+      `SELECT 1 AS ok
+       FROM vector_owners o
+       JOIN documents d ON d.id = o.document_id
+       WHERE o.partition_id = ? AND o.variant_id = ? AND d.collection = ?
+       LIMIT 1`
+    );
+    const selectMappingRow = this.db.query<
+      { id: number },
+      [string, string, number]
+    >(
+      `SELECT id FROM vector_partition_rows
+       WHERE partition_id = ? AND collection = ? AND variant_id = ?`
+    );
+    const staleIds: number[] = [];
+    for (const { collection, variantId } of candidates) {
+      const key = `${collection}\0${variantId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (hasOwnerInCollection.get(this.partitionId, variantId, collection)) {
+        continue;
+      }
+      const row = selectMappingRow.get(this.partitionId, collection, variantId);
+      if (row) staleIds.push(row.id);
+    }
+    this.deleteV2MappingRowIds(staleIds);
+  }
+
+  /**
+   * Sweep any `(collection, variant_id)` v2 mirror rows whose variant or
+   * collection-scoped ownership is no longer present in `vector_owners`.
+   */
+  private pruneAllStaleV2CollectionMappings(): void {
+    if (!hasV2MirrorTables(this.db)) return;
+    const staleIds = this.db
+      .query<{ id: number }, [string]>(
+        `SELECT r.id
+         FROM vector_partition_rows r
+         WHERE r.partition_id = ?
+           AND (
+             NOT EXISTS (
+               SELECT 1 FROM vector_variants v
+               WHERE v.partition_id = r.partition_id AND v.variant_id = r.variant_id
+             )
+             OR NOT EXISTS (
+               SELECT 1 FROM vector_owners o
+               JOIN documents d ON d.id = o.document_id
+               WHERE o.partition_id = r.partition_id
+                 AND o.variant_id = r.variant_id
+                 AND d.collection = r.collection
+             )
+           )`
+      )
+      .all(this.partitionId)
+      .map((r) => r.id);
+    this.deleteV2MappingRowIds(staleIds);
+  }
+
+  private deleteV2MappingRowIds(ids: number[]): void {
+    if (ids.length === 0) return;
+    const idsJson = JSON.stringify(ids);
+    const v2Exists = hasV2Table(this.db, this.partitionId);
+    if (this.searchAvailable && v2Exists) {
+      const v2Tbl = v2TableName(this.partitionId);
+      this.db
+        .query(
+          `DELETE FROM "${v2Tbl}" WHERE rowid IN (SELECT value FROM json_each(?))`
+        )
+        .run(idsJson);
+    }
+    this.db
+      .query(
+        "DELETE FROM vector_partition_rows WHERE id IN (SELECT value FROM json_each(?))"
+      )
+      .run(idsJson);
+    if (!this.searchAvailable && v2Exists) {
+      this.db.run("DELETE FROM vector_mirror_v2_state WHERE partition_id = ?", [
+        this.partitionId,
+      ]);
+    }
   }
 
   private removeUnowned(inOuterTx: boolean): number {
