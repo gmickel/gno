@@ -1,0 +1,119 @@
+{
+  "branch": "fn-238-relocate-indexed-documents-across",
+  "findings": {
+    "backend": "interactive",
+    "headSha": "ad1f2b8fd4f7b15f42a7750d5715de3699229692",
+    "items": [],
+    "reviewKind": "qa",
+    "round": 1,
+    "schemaVersion": 1,
+    "sourceReceiptId": "review-602ee5b93be106a0cf579848233d20784b1273da996607ec33967ff96013fcc5"
+  },
+  "head_sha": "ad1f2b8fd4f7b15f42a7750d5715de3699229692",
+  "id": "fn-238-relocate-indexed-documents-across",
+  "mode": "interactive",
+  "open_p0p1": [],
+  "qa_outcome": "SHIP",
+  "rid_coverage": {
+    "covered": 7,
+    "rids": [
+      {
+        "coverage": "live",
+        "id": "R1"
+      },
+      {
+        "coverage": "live",
+        "id": "R2"
+      },
+      {
+        "coverage": "live",
+        "id": "R3"
+      },
+      {
+        "coverage": "live",
+        "id": "R4"
+      },
+      {
+        "coverage": "live",
+        "id": "R5"
+      },
+      {
+        "coverage": "live",
+        "id": "R6"
+      },
+      {
+        "coverage": "live",
+        "id": "R7"
+      }
+    ],
+    "total": 7
+  },
+  "scenarios": [
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across/s1-folder-move.log"
+      ],
+      "head_sha": "ad1f2b8fd4f7b15f42a7750d5715de3699229692",
+      "id": "S1",
+      "outcome": "PASS",
+      "rids": [
+        "R1",
+        "R2",
+        "R3"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across/s2-rename-title.log"
+      ],
+      "head_sha": "ad1f2b8fd4f7b15f42a7750d5715de3699229692",
+      "id": "S2",
+      "outcome": "PASS",
+      "rids": [
+        "R5"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across/s3-refusals.log"
+      ],
+      "head_sha": "ad1f2b8fd4f7b15f42a7750d5715de3699229692",
+      "id": "S3",
+      "outcome": "PASS",
+      "rids": [
+        "R4"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across/s4-map-and-lease.log"
+      ],
+      "head_sha": "ad1f2b8fd4f7b15f42a7750d5715de3699229692",
+      "id": "S4",
+      "outcome": "PASS",
+      "rids": [
+        "R6"
+      ],
+      "run": "live"
+    },
+    {
+      "evidence": [
+        ".flow/tmp/qa-fn-238-relocate-indexed-documents-across/s5-bench.log"
+      ],
+      "head_sha": "ad1f2b8fd4f7b15f42a7750d5715de3699229692",
+      "id": "S5",
+      "outcome": "PASS",
+      "rids": [
+        "R1",
+        "R7"
+      ],
+      "run": "live"
+    }
+  ],
+  "timestamp": "2026-11-23T15:50:26Z",
+  "type": "qa_verdict",
+  "verdict": "SHIP"
+}
