@@ -9,7 +9,7 @@
   "depends_on_epics": [],
   "id": "fn-237-owner-aware-vector-garbage-collection",
   "impl_review_rounds": {
-    "fn-237-owner-aware-vector-garbage-collection.1": 3
+    "fn-237-owner-aware-vector-garbage-collection.1": 0
   },
   "next_task": 1,
   "no_plan": true,
@@ -380,9 +380,143 @@
       "task": "fn-237-owner-aware-vector-garbage-collection.1",
       "timestamp": "2026-11-23T16:00:16.460688Z",
       "verdict": "NEEDS_WORK"
+    },
+    {
+      "artifact_sha256": "cbe00dd4e5e9abee0822472602ccfa760ac05b2906fc3ac63e6fc3fd512aae35",
+      "backend": "codex",
+      "base_sha": "ab23c5640e45ae9015f76c984b779640386b95f4",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-45b9b7cd6957f800efee78e5c4c675c1",
+            "classification": "introduced",
+            "findingId": "finding-45b9b7cd6957f800efee78e5c4c675c1",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-b8ca71014bc5a737604c48a515957a1b",
+            "classification": "introduced",
+            "findingId": "finding-b8ca71014bc5a737604c48a515957a1b",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-3f64f304c65a7205a14daf6f8559bc13",
+            "classification": "introduced",
+            "findingId": "finding-3f64f304c65a7205a14daf6f8559bc13",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-93b4c55c8074c9674d59473eb30e40be",
+            "classification": "introduced",
+            "findingId": "finding-93b4c55c8074c9674d59473eb30e40be",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-d29ab940c96053497829bf0c190a29ec",
+            "classification": "introduced",
+            "findingId": "finding-d29ab940c96053497829bf0c190a29ec",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-54c322183fbc169de0dedf9208e1975b",
+            "classification": "introduced",
+            "findingId": "finding-54c322183fbc169de0dedf9208e1975b",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-f1fc282fe672c2cd5242eced8bda1d45",
+            "classification": "introduced",
+            "findingId": "finding-f1fc282fe672c2cd5242eced8bda1d45",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-1078c1b1e24e37889297c61e1c9188b7",
+            "classification": "introduced",
+            "findingId": "finding-1078c1b1e24e37889297c61e1c9188b7",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-937f925093fc76139e20d972689440e4",
+            "classification": "introduced",
+            "findingId": "finding-937f925093fc76139e20d972689440e4",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-b3860ea723b35cdf485248640fd3acd4",
+            "classification": "introduced",
+            "findingId": "finding-b3860ea723b35cdf485248640fd3acd4",
+            "firstSeenThisRound": false,
+            "severity": "P1",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-be6135da045622f5df42a382e28c845e",
+            "classification": "introduced",
+            "findingId": "finding-be6135da045622f5df42a382e28c845e",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          },
+          {
+            "chainRoot": "finding-503b9f416e96c5cc5c90cb0370ac4359",
+            "classification": "introduced",
+            "findingId": "finding-503b9f416e96c5cc5c90cb0370ac4359",
+            "firstSeenThisRound": false,
+            "severity": "P2",
+            "status": "fixed"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "ac9c54277ed8497280e1bb6b1b9c4c6f4abdb82f",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6.2-sol",
+      "outcome": "verdict",
+      "output_bytes": 1468,
+      "output_sha256": "31fa24e0108f78aaaa60f3862e97c58a32430f4781cc1302b3a1f777cb3d3bc5",
+      "reservation_id": "91da3e0780af4db3bf9e51700a0597c8",
+      "round_consumed": true,
+      "scope": "impl:fn-237-owner-aware-vector-garbage-collection.1",
+      "superseded_by": null,
+      "task": "fn-237-owner-aware-vector-garbage-collection.1",
+      "timestamp": "2026-11-23T16:04:30.207640Z",
+      "verdict": "SHIP"
     }
   ],
-  "review_hash_epoch": {},
+  "review_hash_epoch": {
+    "impl:fn-237-owner-aware-vector-garbage-collection.1": 1
+  },
   "review_pending_rounds": {},
   "review_reservations": {},
   "review_transport_failures": {
@@ -402,5 +536,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-11-23T16:00:16.464645Z"
+  "updated_at": "2026-11-23T16:04:30.211694Z"
 }

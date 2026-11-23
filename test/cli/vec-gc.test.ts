@@ -126,7 +126,7 @@ test("vec gc removes exactly what update left unowned; --dry-run writes nothing"
   expect(await Bun.file(dbPath).bytes()).toEqual(bytes);
 
   const text = await cli("vec", "gc", "--dry-run");
-  expect(text.out).toContain("Dry run: 1 unused vector variants");
+  expect(text.out).toContain("Dry run: 1 unused vector variant (");
   expect(text.out).toContain("Deleting rows does not shrink the file");
 
   const real = await vecGc();

@@ -483,9 +483,10 @@ export function formatVecGc(
         : `  ${p.id.slice(0, 12)} ${p.model} (${kind}): ${p.variants.toLocaleString()} of ${p.examined.toLocaleString()} variants ${verb}, ${formatBytes(p.bytes)}`
     );
   }
+  const count = `${report.variants.toLocaleString()} unused vector variant${report.variants === 1 ? "" : "s"}`;
   const header = report.dryRun
-    ? `Dry run: ${report.variants.toLocaleString()} unused vector variants (${formatBytes(report.bytes)} of embeddings) would be removed.`
-    : `Removed ${report.variants.toLocaleString()} unused vector variants (${formatBytes(report.bytes)} of embeddings).`;
+    ? `Dry run: ${count} (${formatBytes(report.bytes)} of embeddings) would be removed.`
+    : `Removed ${count} (${formatBytes(report.bytes)} of embeddings).`;
   return [
     header,
     ...(lines.length ? ["Partitions:", ...lines] : ["No vector partitions."]),
