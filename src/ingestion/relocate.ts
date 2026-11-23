@@ -40,6 +40,7 @@ import type { SyncOptions } from "./types";
 
 import { buildUri, parseUri } from "../app/constants";
 import { fingerprintContentTypeMetadataRules } from "../config";
+import { chunkingPolicyKey, resolveChunkingParams } from "../config/chunking";
 import { MARKDOWN_CONVERTER_ID } from "../converters/native/markdown";
 import { DEFAULT_LIMITS } from "../converters/types";
 import { diffDocumentStructure } from "../core/change-diff";
@@ -402,6 +403,16 @@ const errorCode = (error: unknown): string | undefined =>
     ? String(error.code)
     : undefined;
 
+/** The walker's path identity: no empty, `.` or `..` segments, no backslashes. */
+const isCanonicalRelPath = (relPath: string): boolean =>
+  relPath.length > 0 &&
+  relPath.normalize() === relPath &&
+  !relPath.includes("\\") &&
+  !relPath.startsWith("/") &&
+  relPath
+    .split("/")
+    .every((segment) => segment !== "" && segment !== "." && segment !== "..");
+
 const inside = (root: string, path: string): boolean => {
   const rel = relative(root, path);
   return rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
@@ -499,11 +510,35 @@ async function prepareMove(
       "Memory-managed collections are not relocated; run gno update"
     );
   }
-  if ((source.languageHint ?? null) !== (destination.languageHint ?? null)) {
+  // The stored language must be the one ingestion would derive at the
+  // destination: its collection's hint, or (with no collection hint on either
+  // side) the converter's own.
+  const storedLanguage = document.languageHint ?? null;
+  const destinationLanguage = destination.languageHint ?? null;
+  if (
+    storedLanguage !== destinationLanguage &&
+    !(destinationLanguage === null && (source.languageHint ?? null) === null)
+  ) {
     return refuse(
       "INCOMPATIBLE",
-      "The collections use different language hints"
+      "The document's language hint differs from the destination collection's"
     );
+  }
+  // Chunks are reused, so they must already follow the configured policy.
+  if (store.getAppliedChunkingPolicyKey) {
+    const applied = await store.getAppliedChunkingPolicyKey(
+      document.mirrorHash
+    );
+    if (!applied.ok) return refuse("STORE_ERROR", applied.error.message);
+    if (
+      applied.value !==
+      chunkingPolicyKey(resolveChunkingParams(options.chunking))
+    ) {
+      return refuse(
+        "NEEDS_REINDEX",
+        "The document's chunks predate the configured chunking policy; run gno update"
+      );
+    }
   }
   if (
     extname(document.relPath).toLowerCase() !==
@@ -515,7 +550,7 @@ async function prepareMove(
   // The destination must be a path `gno update` would index there.
   const limits = { ...DEFAULT_LIMITS, ...options.limits };
   if (
-    move.relPath.normalize() !== move.relPath ||
+    !isCanonicalRelPath(move.relPath) ||
     isCompiledContextPath(move.relPath) ||
     !matchesWalkPath(
       move.relPath,
@@ -562,10 +597,20 @@ async function prepareMove(
   let destinationReal: string;
   try {
     destinationReal = await realpath(absPath);
-    if (!inside(await realpath(destination.path), destinationReal)) {
+    const rootReal = await realpath(destination.path);
+    if (!inside(rootReal, destinationReal)) {
       return refuse(
         "DESTINATION_NOT_ELIGIBLE",
         "The destination resolves outside its collection root"
+      );
+    }
+    // A symlinked alias would index the file under a second path.
+    if (
+      relative(rootReal, destinationReal).split(sep).join("/") !== move.relPath
+    ) {
+      return refuse(
+        "DESTINATION_NOT_ELIGIBLE",
+        "The destination path is an alias (symlink) of another path"
       );
     }
   } catch {
@@ -581,7 +626,17 @@ async function prepareMove(
     );
   }
 
-  // The old path must be gone, or be this same file (nested collection roots).
+  // The old path must be provably gone, or be this same file in a nested
+  // collection root that the source collection no longer indexes.
+  const sourceMode = resolveSourceAvailability(source, options);
+  const sourceUnproven = await findUnprovenAvailabilityPrefix(
+    source.path,
+    document.relPath,
+    deps.directoryAvailability(sourceMode)
+  );
+  if (sourceUnproven) {
+    return refuse("SOURCE_UNAVAILABLE", sourceUnproven.message);
+  }
   const oldPath = join(source.path, document.relPath);
   try {
     const oldReal = await realpath(oldPath);
@@ -589,6 +644,17 @@ async function prepareMove(
       return refuse(
         "SOURCE_STILL_PRESENT",
         "A file still exists at the old path; it may be a copy, so both are left to gno update"
+      );
+    }
+    if (
+      matchesWalkPath(
+        document.relPath,
+        collectionToWalkConfig(source, 0, options)
+      )
+    ) {
+      return refuse(
+        "SOURCE_STILL_PRESENT",
+        `Collection ${source.name} still indexes this file at its old path; exclude it there first`
       );
     }
   } catch (error) {

@@ -8,12 +8,114 @@
   "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-238-relocate-indexed-documents-across",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-238-relocate-indexed-documents-across.1": 1
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "review_attempts": [
+    {
+      "artifact_sha256": "d2721d0dbd1fc4178ab424dbcb0a8b39fc3a6cb2975552f240b37c2f19cca234",
+      "backend": "codex",
+      "base_sha": "ab23c5640e45ae9015f76c984b779640386b95f4",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-54d8ab809bfad71628c0f3a19f53a023",
+            "classification": "introduced",
+            "findingId": "finding-54d8ab809bfad71628c0f3a19f53a023",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-415caa10d45c635122b264835cb88bc6",
+            "classification": "introduced",
+            "findingId": "finding-415caa10d45c635122b264835cb88bc6",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-fa040b9da4b477046fc2ea85a353f1f2",
+            "classification": "introduced",
+            "findingId": "finding-fa040b9da4b477046fc2ea85a353f1f2",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-214831f2d7b2057504cf8ac7cdc392a9",
+            "classification": "introduced",
+            "findingId": "finding-214831f2d7b2057504cf8ac7cdc392a9",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-ec428b55ffd7282f4c524ceaff4276ab",
+            "classification": "introduced",
+            "findingId": "finding-ec428b55ffd7282f4c524ceaff4276ab",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-9a8ea94c1b2ba432411225ab92238b28",
+            "classification": "introduced",
+            "findingId": "finding-9a8ea94c1b2ba432411225ab92238b28",
+            "firstSeenThisRound": true,
+            "severity": "P1",
+            "status": "open"
+          },
+          {
+            "chainRoot": "finding-862585d93c70dedf9ce6504d2b044d88",
+            "classification": "introduced",
+            "findingId": "finding-862585d93c70dedf9ce6504d2b044d88",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "8e1d22a1437f5c5e16896ed2195ba270abba857b",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6.2-sol",
+      "outcome": "verdict",
+      "output_bytes": 6461,
+      "output_sha256": "0ef572d9bfb0379f98035e06ebaa6fbd11076f330d24e1fd0a77c805f364c615",
+      "reservation_id": "6fda08068e5845a5a162b67e145f27cc",
+      "round_consumed": true,
+      "scope": "impl:fn-238-relocate-indexed-documents-across.1",
+      "superseded_by": null,
+      "task": "fn-238-relocate-indexed-documents-across.1",
+      "timestamp": "2026-11-23T15:37:46.943599Z",
+      "verdict": "NEEDS_WORK"
+    }
+  ],
+  "review_hash_epoch": {},
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-238-relocate-indexed-documents-across.1": 0
+  },
   "spec_path": ".flow/specs/fn-238-relocate-indexed-documents-across.md",
   "status": "open",
   "title": "Relocate indexed documents across collections",
@@ -28,5 +130,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-11-23T14:47:34.825147Z"
+  "updated_at": "2026-11-23T15:37:46.948195Z"
 }

@@ -201,6 +201,7 @@ import {
   assertChunkingTarget,
   claimChunkingTarget,
   getChunkingStatus,
+  appliedChunkingPolicyKey,
   markChunkingApplied,
   pendingChunkingMirrors,
   pruneChunkingMetadata,
@@ -3664,6 +3665,20 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         cause instanceof Error
           ? cause.message
           : "Failed to list pending chunk layouts",
+        cause
+      );
+    }
+  }
+
+  async getAppliedChunkingPolicyKey(
+    mirrorHash: string
+  ): Promise<StoreResult<string>> {
+    try {
+      return ok(appliedChunkingPolicyKey(this.ensureOpen(), mirrorHash));
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to read chunk layout",
         cause
       );
     }

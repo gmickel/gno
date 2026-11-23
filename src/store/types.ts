@@ -2197,6 +2197,11 @@ export interface StorePort {
     afterHash?: string
   ): Promise<StoreResult<PendingChunkingMirror[]>>;
 
+  /** Policy key (`chunkingPolicyKey`) a mirror's current chunks were built with. */
+  getAppliedChunkingPolicyKey?(
+    mirrorHash: string
+  ): Promise<StoreResult<string>>;
+
   /** Atomically replace a layout, refresh FTS and mark its actual policy. */
   applyChunkLayout?(
     mirrorHash: string,

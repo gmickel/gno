@@ -77,7 +77,7 @@ async function writeCorpus(root: string, docs: number): Promise<void> {
     );
     await Bun.write(
       join(dir, `doc-${i}.md`),
-      `---\ntags: [bench]\n---\n# Document ${i}\n\n${withLinks ? `See [next](doc-${i + 1}.md).\n\n` : ""}${body}\n`
+      `---\ntags: [bench]\n---\n# Document ${i}\n\n${withLinks && i + 1 < docs ? `See [next](../folder-${(i + 1) % 50}/doc-${i + 1}.md).\n\n` : ""}${body}\n`
     );
   }
 }

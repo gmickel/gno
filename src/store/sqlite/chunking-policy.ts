@@ -141,6 +141,19 @@ export function pendingChunkingMirrors(
     }));
 }
 
+/** Policy key of the layout a mirror's chunks were built with. */
+export function appliedChunkingPolicyKey(
+  db: Database,
+  mirrorHash: string
+): string {
+  const row = db
+    .query<{ policy: string | null }, [string]>(
+      "SELECT json_extract(value, '$.params') AS policy FROM schema_meta WHERE key = ?"
+    )
+    .get(`${LAYOUT_PREFIX}${mirrorHash}`);
+  return row?.policy ?? DEFAULT_CHUNKING_POLICY_KEY;
+}
+
 export function markChunkingApplied(
   db: Database,
   mirrorHash: string,

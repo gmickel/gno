@@ -3,6 +3,7 @@
  * mapping file, and the write lease.
  */
 
+import { Database } from "bun:sqlite";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 // node:fs/promises for mkdir/rename (filesystem structure ops)
 import { mkdir, mkdtemp, rename, writeFile } from "node:fs/promises";
@@ -11,6 +12,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
 import { getIndexDbPath, resolveDirs } from "../../src/app/constants";
+import { parseRelocationMap } from "../../src/cli/commands/collection/move";
+import { loadConfigFromPath, saveConfigToPath } from "../../src/config";
 import { safeRm } from "../helpers/cleanup";
 import { assertValid, loadSchema } from "../spec/schemas/validator";
 
@@ -155,6 +158,54 @@ describe("gno collection move", () => {
       relocated: 2,
       refused: 0,
     });
+  }, 30_000);
+
+  test("mapping files keep docid rows and skip comments", () => {
+    expect(
+      parseRelocationMap(
+        "# comment\tstill a comment\n#abcdef12\tdata/x/\n\nnotes/a.md\tdata\n"
+      )
+    ).toEqual([
+      { source: "#abcdef12", destination: "data/x/" },
+      { source: "notes/a.md", destination: "data" },
+    ]);
+    expect(() => parseRelocationMap("notes/a.md data\n")).toThrow(
+      "Mapping line 1"
+    );
+  });
+
+  test("a dry run does not sync the config into the index", async () => {
+    const configPath = join(root, "config", "index.yml");
+    const loaded = await loadConfigFromPath(configPath);
+    if (!loaded.ok) throw new Error(loaded.error.message);
+    await mkdir(join(root, "extra"), { recursive: true });
+    loaded.value.collections.push({
+      ...loaded.value.collections[0]!,
+      name: "extra",
+      path: join(root, "extra"),
+    });
+    await saveConfigToPath(loaded.value, configPath);
+    const dry = await gno(
+      "collection",
+      "move",
+      "data/x/a.md",
+      "extra",
+      "--dry-run",
+      "--json"
+    );
+    expect(dry.code).toBe(1);
+    const dbPath = getIndexDbPath(undefined, {
+      ...resolveDirs(),
+      data: join(root, "data-dir"),
+    });
+    const db = new Database(dbPath, { readonly: true });
+    try {
+      expect(
+        db.query("SELECT name FROM collections WHERE name = 'extra'").get()
+      ).toBeNull();
+    } finally {
+      db.close();
+    }
   }, 30_000);
 
   test("waits for, or with --no-wait refuses, a held write lease", async () => {

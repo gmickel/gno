@@ -1332,12 +1332,17 @@ gno collection move --from-file <map> [--dry-run] [--json] [--lock-wait <duratio
 - Refused items are left untouched (index them with `gno update`): unknown
   collection or document, an ambiguous `#docid` (identical copies), two items
   with the same source or destination, a destination that is already indexed
-  (active or inactive row), not indexable in its collection, or missing, a file
-  still at the old path (possibly a copy; a nested collection root holding the
-  same file is accepted), changed bytes or a different conversion, an inactive
-  or not fully indexed document, a changed extension, different collection
-  language hints, record containers and their records, memory-managed
-  collections, and paths source availability cannot prove.
+  (active or inactive row), not indexable in its collection, not in canonical
+  form or reached through a symlink, or missing, a file still at the old path
+  (possibly a copy; the same file in a nested collection root is accepted once
+  the outer collection no longer indexes it), changed bytes or a different
+  conversion, an inactive or not fully indexed document, chunks built under
+  another chunking policy, a changed extension, a stored language hint the
+  destination would not derive, record containers and their records,
+  memory-managed collections, and paths source availability cannot prove (for
+  the old path as well as the new one).
+- `--dry-run` writes nothing, including the config-to-index sync other
+  commands perform.
 - Writes commit in batches; each item is atomic.
 - Waits for the index write lease (`--lock-wait`, default 120s; `--no-wait`
   fails at once)

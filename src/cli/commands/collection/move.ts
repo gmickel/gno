@@ -23,13 +23,19 @@ export interface CollectionMoveOptions {
   indexName?: string;
 }
 
+const DOCID_SOURCE = /^#[a-f0-9]{6,}$/;
+
 /** Parse a mapping file: one `source<TAB>destination` per line. */
 export function parseRelocationMap(text: string): RelocationRequest[] {
   const requests: RelocationRequest[] = [];
   for (const [index, raw] of text.split(/\r?\n/).entries()) {
     const line = raw.trim();
-    if (!line || line.startsWith("#")) continue;
+    if (!line) continue;
     const fields = raw.split("\t");
+    // `#` starts a comment unless it starts a docid source (`#a1b2c3d4<TAB>...`).
+    if (line.startsWith("#") && !DOCID_SOURCE.test(fields[0]?.trim() ?? "")) {
+      continue;
+    }
     if (fields.length !== 2 || !fields[0]?.trim() || !fields[1]?.trim()) {
       throw new CliError(
         "VALIDATION",
@@ -109,9 +115,11 @@ export async function collectionMove(
     throw new CliError("VALIDATION", "Nothing to relocate");
   }
 
+  // A dry run must not write, so it skips the config-to-index sync too.
   const initialized = await initStore({
     configPath: options.configPath,
     indexName: options.indexName,
+    ...(options.dryRun ? { syncConfig: false } : {}),
   });
   if (!initialized.ok) {
     throw new CliError("RUNTIME", initialized.error);

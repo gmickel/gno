@@ -5,7 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 // node:fs/promises for mkdir/rename (filesystem structure ops)
-import { mkdir, mkdtemp, rename, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rename, symlink, writeFile } from "node:fs/promises";
 // Bun has no temporary-directory or path API.
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -15,6 +15,7 @@ import type {
   RelocationRefusalCode,
   RelocationRequest,
 } from "../../src/ingestion/relocate";
+import type { DirectoryAvailabilityPort } from "../../src/ingestion/source-availability";
 
 import { SyncService } from "../../src/ingestion/sync";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
@@ -511,16 +512,108 @@ describe("relocateDocuments", () => {
       include: [],
       exclude: [],
     };
-    notes = { ...notes, exclude: ["inner"] };
     expect((await adapter.syncCollections([notes, data, inner])).ok).toBe(true);
     await write(notes.path, "inner/n.md", "# Nested\n");
-    notes = { ...notes, exclude: [] };
     await sync.syncCollection(notes, adapter);
     const before = (await doc("notes", "inner/n.md"))!;
+
+    // While the outer collection still indexes the file, the move is refused.
+    const stillIndexed = await sync.relocateDocuments(
+      [notes, data, inner],
+      adapter,
+      [{ source: "notes/inner/n.md", destination: "inner" }]
+    );
+    expect(stillIndexed.items[0]?.code).toBe("SOURCE_STILL_PRESENT");
+
+    notes = { ...notes, exclude: ["inner"] };
     const result = await sync.relocateDocuments([notes, data, inner], adapter, [
       { source: "notes/inner/n.md", destination: "inner" },
     ]);
     expect(result.items[0]?.status).toBe("relocated");
     expect((await doc("inner", "n.md"))!.id).toBe(before.id);
+    const update = await sync.syncAll([notes, data, inner], adapter);
+    expect(update.totalFilesAdded).toBe(0);
+    expect(await doc("notes", "inner/n.md")).toBeNull();
+  });
+
+  test("refuses an aliased destination path", async () => {
+    await write(notes.path, "alias.md", "# Alias\n");
+    await index();
+    await move(join(notes.path, "alias.md"), join(data.path, "docs/alias.md"));
+    for (const destination of [
+      "data/docs//alias.md",
+      "data/./docs/alias.md",
+      "data/docs/../docs/alias.md",
+    ]) {
+      const result = await relocate([
+        { source: "notes/alias.md", destination },
+      ]);
+      expect(result.items[0]?.code).toBe("DESTINATION_NOT_ELIGIBLE");
+    }
+    await symlink(join(data.path, "docs"), join(data.path, "link"));
+    const viaLink = await relocate([
+      { source: "notes/alias.md", destination: "data/link/alias.md" },
+    ]);
+    expect(viaLink.items[0]?.code).toBe("DESTINATION_NOT_ELIGIBLE");
+    expect((await doc("notes", "alias.md"))?.active).toBe(true);
+  });
+
+  test("refuses chunks built under another chunking policy", async () => {
+    await write(notes.path, "policy.md", "# Policy\n\nBody.\n");
+    await index();
+    await move(join(notes.path, "policy.md"), join(data.path, "policy.md"));
+    const result = await sync.relocateDocuments(
+      [notes, data],
+      adapter,
+      [{ source: "notes/policy.md", destination: "data" }],
+      { chunking: { maxTokens: 100 } }
+    );
+    expect(result.items[0]?.code).toBe("NEEDS_REINDEX");
+  });
+
+  test("refuses a stored language that the destination would not derive", async () => {
+    notes = { ...notes, languageHint: "en" };
+    await write(notes.path, "lang.md", "# Lang\n");
+    await sync.syncCollection(notes, adapter);
+    await move(join(notes.path, "lang.md"), join(data.path, "lang.md"));
+    notes = { ...notes, languageHint: "de" };
+    data = { ...data, languageHint: "de" };
+    const result = await relocate([
+      { source: "notes/lang.md", destination: "data" },
+    ]);
+    expect(result.items[0]?.code).toBe("INCOMPATIBLE");
+  });
+
+  test("refuses when source availability cannot prove the old path is gone", async () => {
+    await write(notes.path, "cloud/c.md", "# Cloud\n");
+    await index();
+    await move(join(notes.path, "cloud/c.md"), join(data.path, "c.md"));
+    const guarded = new SyncService(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      (): DirectoryAvailabilityPort => ({
+        mode: "local",
+        classify: async (absPath) =>
+          absPath.startsWith(notes.path)
+            ? {
+                kind: "dataless",
+                code: "DATALESS_DIRECTORY",
+                message: "not materialized",
+              }
+            : { kind: "available" },
+        readDirectory: () => {
+          throw new Error("not used by relocation");
+        },
+      })
+    );
+    const result = await guarded.relocateDocuments(
+      [{ ...notes, sourceAvailability: "local" }, data],
+      adapter,
+      [{ source: "notes/cloud/c.md", destination: "data" }]
+    );
+    expect(result.items[0]?.code).toBe("SOURCE_UNAVAILABLE");
   });
 });
