@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.19.0] - 2026-11-27
+
 ### Changed
 
-- Keyword search (`gno search`) and the BM25 leg of hybrid search (`gno query`) now boost documents whose title or filename matches the query before cutting to the result limit, so a named document ranks first even when many other documents repeat the same words in their bodies (#372). Body-only queries and managed memory recall are unchanged; because BM25 display scores are min-max normalized relative to the result set, body hits below a full name match can show scores near `0` and `--min-score` can drop them. Thanks to @DanielKillenberger for reporting the issue (#372).
+- Keyword search (`gno search`) and the BM25 leg of hybrid search (`gno query`) now boost documents whose title or filename matches the query before cutting to the result limit, so a named document ranks first even when many other documents repeat the same words in their bodies (#372, #373). Body-only queries and managed memory recall are unchanged; because BM25 display scores are min-max normalized relative to the result set, body hits below a full name match can show scores near `0` and `--min-score` can drop them. Thanks to @DanielKillenberger for reporting the issue (#372).
 
 ## [2.18.1] - 2026-11-27
 
@@ -3143,7 +3145,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.18.1...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.19.0...HEAD
+[2.19.0]: https://github.com/gmickel/gno/compare/v2.18.1...v2.19.0
 [2.18.1]: https://github.com/gmickel/gno/compare/v2.18.0...v2.18.1
 [2.18.0]: https://github.com/gmickel/gno/compare/v2.17.0...v2.18.0
 [2.17.0]: https://github.com/gmickel/gno/compare/v2.16.0...v2.17.0
