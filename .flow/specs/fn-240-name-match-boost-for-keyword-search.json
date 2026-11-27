@@ -1,19 +1,76 @@
 {
   "branch_name": "fn-240-name-match-boost-for-keyword-search",
-  "completion_review_status": "unknown",
-  "completion_reviewed_at": null,
+  "completion_review_status": "not_required",
+  "completion_reviewed_at": "2026-11-27T15:50:16.771858Z",
   "created_at": "2026-11-27T15:32:21.294633Z",
   "default_impl": null,
   "default_review": null,
   "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-240-name-match-boost-for-keyword-search",
-  "impl_review_rounds": {},
+  "impl_review_rounds": {
+    "fn-240-name-match-boost-for-keyword-search.1": 0
+  },
   "next_task": 1,
   "no_plan": true,
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "review_attempts": [
+    {
+      "artifact_sha256": "49929c56b602dd32d4a506b317482b26c3c5ca2c3170dfff325d282828c78482",
+      "backend": "codex",
+      "base_sha": "6010e72456472ee3bdacd7f24a173733ea4021d8",
+      "counter_kind": "impl",
+      "effort": "medium",
+      "failure_class": null,
+      "finalized": {
+        "digest": "complete",
+        "receipt": "complete",
+        "status": "not_applicable"
+      },
+      "findings_digest": {
+        "backend": "codex",
+        "digest_truncated": false,
+        "items": [
+          {
+            "chainRoot": "finding-b4a46270e8d11a6ce3fb93ef4abb8822",
+            "classification": "introduced",
+            "findingId": "finding-b4a46270e8d11a6ce3fb93ef4abb8822",
+            "firstSeenThisRound": true,
+            "severity": "P2",
+            "status": "open"
+          }
+        ],
+        "reviewKind": "implementation"
+      },
+      "forced": false,
+      "hash_epoch": 0,
+      "head_sha": "b74fc9b1765db0aa70ba441d8486d7474531b055",
+      "head_sha_observed": true,
+      "kind": "impl",
+      "model": "gpt-6.2-sol",
+      "outcome": "verdict",
+      "output_bytes": 243984,
+      "output_sha256": "f6df56d5f19429d3322fff5bf0415ffcb06c6c24b2771ece8c1b3eb24561f939",
+      "reservation_id": "30eadfbd5d6f430797406d26be12e8dc",
+      "round_consumed": true,
+      "scope": "impl:fn-240-name-match-boost-for-keyword-search.1",
+      "superseded_by": null,
+      "task": "fn-240-name-match-boost-for-keyword-search.1",
+      "timestamp": "2026-11-27T15:48:49.219111Z",
+      "tool_calls": 34,
+      "verdict": "SHIP"
+    }
+  ],
+  "review_hash_epoch": {
+    "impl:fn-240-name-match-boost-for-keyword-search.1": 1
+  },
+  "review_pending_rounds": {},
+  "review_reservations": {},
+  "review_transport_failures": {
+    "impl:fn-240-name-match-boost-for-keyword-search.1": 0
+  },
   "spec_path": ".flow/specs/fn-240-name-match-boost-for-keyword-search.md",
   "status": "open",
   "title": "Name-match boost for keyword search",
@@ -28,5 +85,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-11-27T15:32:21.613177Z"
+  "updated_at": "2026-11-27T15:50:16.771865Z"
 }
