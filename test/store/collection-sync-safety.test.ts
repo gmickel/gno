@@ -99,9 +99,14 @@ test("a client with another config cannot delete or see indexed collections", as
   } catch (error) {
     caught = error;
   }
-  expect(String((caught as Error)?.message)).toContain(
-    "This index holds collections the config does not list: notes (1 document)"
+  const message = String((caught as Error)?.message);
+  expect(message).toContain(
+    'Index "default" holds collections the config does not list: notes (1 document).'
   );
+  expect(message.indexOf("--index <name>")).toBeLessThan(
+    message.indexOf("gno cleanup")
+  );
+  expect(message).toContain('delete their data from index "default"');
 
   expect(await indexedDocuments("notes")).toBe(1);
   expect(await indexedDocuments("sandbox")).toBe(0);

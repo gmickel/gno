@@ -1522,6 +1522,7 @@ function wireOnboardingCommands(program: Command): void {
           language: cmdOpts.language as string | undefined,
           yes: globals.yes,
           configPath: globals.config,
+          indexName: globals.index,
         });
 
         if (!result.success) {
@@ -3093,6 +3094,7 @@ function wireManagementCommands(program: Command): void {
           policy as "local_only" | "lan" | "remote",
           {
             configPath: getGlobals().config,
+            indexName: getGlobals().index,
             confirmRelaxation: cmdOpts.confirmRelaxation as string | undefined,
           }
         );
@@ -3152,31 +3154,48 @@ function wireManagementCommands(program: Command): void {
     .option("--cursor <cursor>", "opaque next-page cursor")
     .action(async (cmdOpts: Record<string, unknown>) => {
       const { egressAuditList } = await import("./commands/egress-audit");
+      const globals = getGlobals();
       await egressAuditList(
         {
           limit: cmdOpts.limit as number | undefined,
           cursor: cmdOpts.cursor as string | undefined,
         },
-        { configPath: getGlobals().config }
+        { configPath: globals.config, indexName: globals.index }
       );
     });
   egressAuditCmd.command("show <audit-id>").action(async (auditId: string) => {
     const { egressAuditShow } = await import("./commands/egress-audit");
-    await egressAuditShow(auditId, { configPath: getGlobals().config });
+    const globals = getGlobals();
+    await egressAuditShow(auditId, {
+      configPath: globals.config,
+      indexName: globals.index,
+    });
   });
   egressAuditCmd.command("status").action(async () => {
     const { egressAuditStatus } = await import("./commands/egress-audit");
-    await egressAuditStatus({ configPath: getGlobals().config });
+    const globals = getGlobals();
+    await egressAuditStatus({
+      configPath: globals.config,
+      indexName: globals.index,
+    });
   });
   egressAuditCmd
     .command("delete <audit-id>")
     .action(async (auditId: string) => {
       const { egressAuditDelete } = await import("./commands/egress-audit");
-      await egressAuditDelete(auditId, { configPath: getGlobals().config });
+      const globals = getGlobals();
+      await egressAuditDelete(auditId, {
+        configPath: globals.config,
+        indexName: globals.index,
+      });
     });
   egressAuditCmd.command("purge").action(async () => {
     const { egressAuditPurge } = await import("./commands/egress-audit");
-    await egressAuditPurge({ configPath: getGlobals().config });
+    const globals = getGlobals();
+    await egressAuditPurge({
+      configPath: globals.config,
+      indexName: globals.index,
+    });
   });
 
   // context subcommands
@@ -4104,6 +4123,7 @@ function wirePublishCommand(program: Command): void {
         await import("./commands/publish");
       const result = await publishExport(target, {
         configPath: globals.config,
+        indexName: globals.index,
         json: format === "json",
         out: typeof cmdOpts.out === "string" ? cmdOpts.out : undefined,
         encryptionPassphrase: passphrase,
@@ -4631,6 +4651,7 @@ function wireLinksCommands(program: Command): void {
       const { linksList, formatLinksList } = await import("./commands/links");
       const result = await linksList(doc, {
         configPath: globals.config,
+        indexName: globals.index,
         type: linkType as "wiki" | "markdown" | undefined,
         edgeType,
         relation,
@@ -4677,6 +4698,7 @@ function wireLinksCommands(program: Command): void {
       }
       const result = await backlinks(doc, {
         configPath: globals.config,
+        indexName: globals.index,
         collection: cmdOpts.collection as string | undefined,
         edgeType,
         relation,
@@ -4724,6 +4746,7 @@ function wireLinksCommands(program: Command): void {
       const { similar, formatSimilar } = await import("./commands/links");
       const result = await similar(doc, {
         configPath: globals.config,
+        indexName: globals.index,
         limit,
         threshold,
         crossCollection: Boolean(cmdOpts.crossCollection),

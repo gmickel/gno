@@ -213,6 +213,7 @@ import { assertSessionBinding } from "../sessions/binding";
 import { SessionsService } from "../sessions/service";
 import { SESSIONS_VALIDATION_CODES, SessionsError } from "../sessions/types";
 import {
+  indexNameFromDbPath,
   SqliteAdapter,
   staleCollectionsMessage,
 } from "../store/sqlite/adapter";
@@ -473,7 +474,13 @@ class GnoClientImpl implements GnoClient {
       this.config.collections.map(({ name }) => name)
     );
     if (stale.length > 0) {
-      throw sdkError("RUNTIME", staleCollectionsMessage(stale));
+      throw sdkError(
+        "RUNTIME",
+        staleCollectionsMessage(
+          stale,
+          indexNameFromDbPath(this.store.getDbPath()) ?? this.indexName
+        )
+      );
     }
   }
 

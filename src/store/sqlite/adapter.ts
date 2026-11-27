@@ -659,9 +659,19 @@ function resolveBusyTimeoutMs(busyTimeoutMs?: number): number {
 /** The index holds collections the config omits; the message names them. */
 export class StaleCollectionsError extends Error {}
 
+/** Derive a display index name from a SQLite path when it names a real file. */
+export function indexNameFromDbPath(dbPath: string): string | undefined {
+  if (!dbPath || dbPath === ":memory:") return undefined;
+  const derived = basename(dbPath)
+    .replace(SQLITE_EXT_REGEX, "")
+    .replace(INDEX_PREFIX_REGEX, "");
+  return derived || undefined;
+}
+
 /** Names the collections a config omits and how to resolve it. */
 export function staleCollectionsMessage(
-  stale: readonly StaleCollection[]
+  stale: readonly StaleCollection[],
+  indexName?: string
 ): string {
   const names = stale
     .map(
@@ -669,11 +679,16 @@ export function staleCollectionsMessage(
         `${c.name} (${c.documents} ${c.documents === 1 ? "document" : "documents"})`
     )
     .join(", ");
+  const target = indexName ? `Index "${indexName}"` : "This index";
+  const cleanupTarget = indexName ? `index "${indexName}"` : "this index";
+  const cleanupCmd =
+    indexName && indexName !== "default"
+      ? `gno --index ${/\s/.test(indexName) ? JSON.stringify(indexName) : indexName} cleanup`
+      : "gno cleanup";
   return (
-    `This index holds collections the config does not list: ${names}. ` +
-    "Nothing was changed. Add them back to the config, open a separate index " +
-    '(--index <name>, or dbPath in the SDK), or run "gno cleanup" with this ' +
-    "config to delete their index data."
+    `${target} holds collections the config does not list: ${names}. ` +
+    "Nothing was changed. Open a separate index (--index <name>, or dbPath in the SDK), " +
+    `add them back to the config, or run "${cleanupCmd}" with this config to delete their data from ${cleanupTarget}.`
   );
 }
 
@@ -1175,7 +1190,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return ok(undefined);
     } catch (cause) {
       if (cause instanceof StaleCollectionsError) {
-        return err("STALE_COLLECTIONS", staleCollectionsMessage(stale));
+        return err(
+          "STALE_COLLECTIONS",
+          staleCollectionsMessage(stale, indexNameFromDbPath(this.dbPath))
+        );
       }
       return err(
         "QUERY_FAILED",

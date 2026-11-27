@@ -22,6 +22,7 @@ import {
 import { tracePhase } from "../../core/phase-trace";
 import { BUDGET_ERROR_CODES } from "../../ingestion/budget-error-codes";
 import {
+  indexNameFromDbPath,
   SqliteAdapter,
   staleCollectionsMessage,
 } from "../../store/sqlite/adapter";
@@ -154,7 +155,7 @@ export async function initStore(
       return {
         ok: false,
         error: stale.ok
-          ? staleCollectionsMessage(indexed)
+          ? staleCollectionsMessage(indexed, indexNameFromDbPath(dbPath))
           : stale.error.message,
       };
     }

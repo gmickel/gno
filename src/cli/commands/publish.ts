@@ -28,6 +28,7 @@ import { initStore } from "./shared";
 
 export interface PublishExportOptions {
   configPath?: string;
+  indexName?: string;
   encryptionPassphrase?: string;
   json?: boolean;
   out?: string;
@@ -86,6 +87,7 @@ export async function publishExport(
 ): Promise<PublishExportResult> {
   const initResult = await initStore({
     configPath: options.configPath,
+    indexName: options.indexName,
     syncConfig: false,
   });
   if (!initResult.ok) {

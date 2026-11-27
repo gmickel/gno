@@ -60,6 +60,7 @@ import {
 } from "../sessions/config-refresh";
 import { remoteSafeSessionsError } from "../sessions/types";
 import {
+  indexNameFromDbPath,
   SqliteAdapter,
   StaleCollectionsError,
   staleCollectionsMessage,
@@ -589,7 +590,13 @@ export async function startResidentRuntime(
     );
     if (stale.length > 0) {
       cachedCleanStaleCheck = null;
-      throw new StaleCollectionsError(staleCollectionsMessage(stale));
+      throw new StaleCollectionsError(
+        staleCollectionsMessage(
+          stale,
+          indexNameFromDbPath(dbPath) ??
+            canonicalizeIndexName(options.index ?? DEFAULT_INDEX_NAME)
+        )
+      );
     }
     if (dbVersion) {
       cachedCleanStaleCheck = {

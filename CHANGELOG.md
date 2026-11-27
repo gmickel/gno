@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Global `--index` is now honored by `gno links list`, `gno backlinks`, `gno similar`, `gno publish export`, `gno collection policy set`, `gno egress-audit`, and `gno init` instead of opening the default index (#369).
+- Clarified the config/index collection mismatch error so it names the opened index, suggests opening a separate index (`--index <name>`, or `dbPath` in the SDK) before mentioning `gno cleanup`, and states which index `gno cleanup` would delete data from (#369).
+
 ## [2.18.0] - 2026-11-24
 
 Thanks to @DanielKillenberger for contributing both cross-collection document relocation and owner-aware vector garbage collection (#359, #361, #363, #365).

@@ -263,11 +263,10 @@ describe("CLI commands honor --index with a populated default index (#369)", () 
     ]);
     expect(res.code).toBe(0);
     const parsed = JSON.parse(res.stdout) as {
-      collection: string;
-      effectivePolicy: string;
+      current: { collection: string; effectivePolicy: string };
     };
-    expect(parsed.collection).toBe("repro");
-    expect(parsed.effectivePolicy).toBe("local_only");
+    expect(parsed.current.collection).toBe("repro");
+    expect(parsed.current.effectivePolicy).toBe("local_only");
   });
 
   test("egress-audit honors --index", async () => {
