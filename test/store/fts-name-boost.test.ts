@@ -399,6 +399,34 @@ describe("FTS name-match boost store and pipeline behavior (#372)", () => {
       expect(boostedPaths.has(row.relPath)).toBe(true);
     }
     expect(boosted.value[0]?.relPath).toBe("Acme_Overview.md");
+
+    // A weak raw match below a strict raw cutoff must not survive via boost.
+    await addDoc({
+      relPath: "Weak_Only.md",
+      title: "Acme",
+      markdown: `# Acme\n\n${longFiller}`,
+    });
+    const strictUnboosted = await adapter.searchFts("Acme Overview", {
+      limit: 10,
+      anyTerm: true,
+      minRelativeScore: 0.9,
+      nameBoost: false,
+    });
+    const strictBoosted = await adapter.searchFts("Acme Overview", {
+      limit: 10,
+      anyTerm: true,
+      minRelativeScore: 0.9,
+      nameBoost: true,
+    });
+    expect(strictUnboosted.ok && strictBoosted.ok).toBe(true);
+    if (strictUnboosted.ok && strictBoosted.ok) {
+      expect(
+        strictUnboosted.value.some((r) => r.relPath === "Weak_Only.md")
+      ).toBe(false);
+      expect(
+        strictBoosted.value.some((r) => r.relPath === "Weak_Only.md")
+      ).toBe(false);
+    }
   });
 
   test("supports anyTerm, quoted phrases, and negation with nameBoost", async () => {

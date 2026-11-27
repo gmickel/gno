@@ -4248,14 +4248,19 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         .query<FtsRow, (string | number)[]>(sql)
         .all(...queryParams);
       // Raw bm25() is negative and rows are best-first.
-      // Compute minRelativeScore floor from the best unboosted score so a
-      // boosted top row does not push ordinary rows under the floor.
+      // Apply minRelativeScore against raw BM25 scores before name boosting so
+      // a boosted top row does not push ordinary rows under the floor and weak
+      // raw matches cannot bypass the raw cutoff via the boost multiplier.
       const floor =
         options.minRelativeScore !== undefined && allRows[0]
           ? allRows[0].score * options.minRelativeScore
           : undefined;
-      const rankedRows = useNameBoost
-        ? allRows
+      const eligibleRows =
+        floor === undefined
+          ? allRows
+          : allRows.filter((row) => row.score <= floor);
+      const rows = useNameBoost
+        ? eligibleRows
             .map((row) => {
               const multiplier = computeDocumentNameMultiplier(
                 builtQuery.positiveTerms,
@@ -4268,11 +4273,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
             })
             .sort((a, b) => a.score - b.score)
             .slice(0, limit)
-        : allRows;
-      const rows =
-        floor === undefined
-          ? rankedRows
-          : rankedRows.filter((row) => row.score <= floor);
+        : eligibleRows;
 
       return ok(
         rows.map((r) => ({
