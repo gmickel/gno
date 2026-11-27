@@ -7,10 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.18.1] - 2026-11-27
+
 ### Fixed
 
-- Global `--index` is now honored by `gno links list`, `gno backlinks`, `gno similar`, `gno publish export`, `gno collection policy set`, `gno egress-audit`, and `gno init` instead of opening the default index (#369).
-- Clarified the config/index collection mismatch error so it names the opened index, suggests opening a separate index (`--index <name>`, or `dbPath` in the SDK) before mentioning `gno cleanup`, and states which index `gno cleanup` would delete data from (#369).
+- Global `--index` is now honored by `gno links list`, `gno backlinks`, `gno similar`, `gno publish export`, `gno collection policy set`, `gno egress-audit`, and `gno init` instead of opening the default index (#369, #370).
+- Clarified the config/index collection mismatch error so it names the opened index, suggests opening a separate index (`--index <name>`, or `dbPath` in the SDK) before mentioning `gno cleanup`, and states which index `gno cleanup` would delete data from (#369, #370).
 
 ## [2.18.0] - 2026-11-24
 
@@ -3137,7 +3139,8 @@ Re-release of 1.0.2 with a CHANGELOG formatting fix so the Publish workflow's
 | 0.4.0   | 2026-01-01 | Web UI and REST API                        |
 | 0.1.0   | 2025-12-30 | Initial release with full search pipeline  |
 
-[Unreleased]: https://github.com/gmickel/gno/compare/v2.18.0...HEAD
+[Unreleased]: https://github.com/gmickel/gno/compare/v2.18.1...HEAD
+[2.18.1]: https://github.com/gmickel/gno/compare/v2.18.0...v2.18.1
 [2.18.0]: https://github.com/gmickel/gno/compare/v2.17.0...v2.18.0
 [2.17.0]: https://github.com/gmickel/gno/compare/v2.16.0...v2.17.0
 [2.16.0]: https://github.com/gmickel/gno/compare/v2.15.0...v2.16.0
