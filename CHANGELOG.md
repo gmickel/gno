@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Keyword search (`gno search`) and the BM25 leg of hybrid search (`gno query`) now boost documents whose title or filename matches the query before cutting to the result limit, so a named document ranks first even when many other documents repeat the same words in their bodies (#372). Body-only queries and managed memory recall are unchanged; because BM25 display scores are min-max normalized relative to the result set, body hits below a full name match can show scores near `0` and `--min-score` can drop them. Thanks to @DanielKillenberger for reporting the issue (#372).
+
 ## [2.18.1] - 2026-11-27
 
 ### Fixed

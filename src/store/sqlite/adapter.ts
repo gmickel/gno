@@ -338,6 +338,88 @@ const FTS5_FIELD_WEIGHTS = {
   body: 1.0,
 } as const;
 
+export const FTS5_NAME_BOOST = {
+  candidateLimit: 50,
+  fullMatchBonus: 2,
+  minPrefixLength: 3,
+} as const;
+
+const NAME_TOKEN_PATTERN = /[\p{L}\p{N}]+/gu;
+
+export function tokenizeName(text: string): string[] {
+  return text.toLowerCase().match(NAME_TOKEN_PATTERN) ?? [];
+}
+
+export function extractFilenameStem(relPath: string): string {
+  const slash = Math.max(relPath.lastIndexOf("/"), relPath.lastIndexOf("\\"));
+  const base = slash >= 0 ? relPath.slice(slash + 1) : relPath;
+  const dot = base.lastIndexOf(".");
+  return dot > 0 ? base.slice(0, dot) : base;
+}
+
+function queryTermMatchesNameToken(term: string, nameToken: string): boolean {
+  if (term.length >= FTS5_NAME_BOOST.minPrefixLength) {
+    return nameToken.startsWith(term);
+  }
+  return nameToken === term;
+}
+
+export function computeNameMatchMultiplier(
+  queryTerms: readonly string[],
+  name: string
+): number {
+  if (queryTerms.length === 0) {
+    return 1;
+  }
+  const nameTokens = tokenizeName(name);
+  if (nameTokens.length === 0) {
+    return 1;
+  }
+
+  let matchedTerms = 0;
+  for (const term of queryTerms) {
+    if (nameTokens.some((token) => queryTermMatchesNameToken(term, token))) {
+      matchedTerms += 1;
+    }
+  }
+  if (matchedTerms === 0) {
+    return 1;
+  }
+
+  let matchedName = 0;
+  for (const token of nameTokens) {
+    if (queryTerms.some((term) => queryTermMatchesNameToken(term, token))) {
+      matchedName += 1;
+    }
+  }
+
+  const q = matchedTerms / queryTerms.length;
+  const n = Math.min(matchedName, matchedTerms) / nameTokens.length;
+
+  if (q === 1 && n === 1) {
+    return 1 + FTS5_NAME_BOOST.fullMatchBonus;
+  }
+  if (q === 1 || n === 1) {
+    return 1 + (q * n) ** 2;
+  }
+  return 1;
+}
+
+export function computeDocumentNameMultiplier(
+  queryTerms: readonly string[],
+  title: string | null | undefined,
+  relPath: string
+): number {
+  const titleMultiplier = title
+    ? computeNameMatchMultiplier(queryTerms, title)
+    : 1;
+  const filenameMultiplier = computeNameMatchMultiplier(
+    queryTerms,
+    extractFilenameStem(relPath)
+  );
+  return Math.max(titleMultiplier, filenameMultiplier);
+}
+
 const uniqueNonEmptyValues = (values: readonly string[]): string[] => [
   ...new Set(values.filter((value) => value.trim().length > 0)),
 ];
@@ -394,7 +476,7 @@ function normalizeDocEdgeType(edgeType: DocEdgeType): string {
 }
 
 type FtsQueryBuildResult =
-  | { ok: true; query: string }
+  | { ok: true; query: string; positiveTerms: string[] }
   | { ok: false; error: string };
 
 /**
@@ -439,7 +521,13 @@ function buildFts5Query(
   }
 
   const positive: string[] = [];
+  const positiveTermSet = new Set<string>();
   const negative: string[] = [];
+  const recordPositiveTerms = (sanitized: string): void => {
+    for (const word of tokenizeName(sanitized)) {
+      positiveTermSet.add(word);
+    }
+  };
   let i = 0;
 
   while (i < trimmed.length) {
@@ -486,6 +574,7 @@ function buildFts5Query(
         negative.push(ftsPhrase);
       } else {
         positive.push(ftsPhrase);
+        recordPositiveTerms(sanitized);
       }
       continue;
     }
@@ -509,6 +598,7 @@ function buildFts5Query(
         negative.push(ftsPhrase);
       } else {
         positive.push(ftsPhrase);
+        recordPositiveTerms(sanitized);
       }
       continue;
     }
@@ -522,6 +612,7 @@ function buildFts5Query(
       negative.push(ftsTerm);
     } else {
       positive.push(ftsTerm);
+      recordPositiveTerms(sanitized);
     }
   }
 
@@ -544,7 +635,7 @@ function buildFts5Query(
     ftsQuery = `${ftsQuery} NOT ${negation}`;
   }
 
-  return { ok: true, query: ftsQuery };
+  return { ok: true, query: ftsQuery, positiveTerms: [...positiveTermSet] };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -4025,11 +4116,46 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       }
 
       const eligible = buildEligibleDocumentQuery(options, db);
+      const useNameBoost = Boolean(options.nameBoost) && limit > 0;
 
       // Document-level FTS search using an FTS-first CTE to keep collection and
       // metadata filters from degrading the query plan into a broad scan.
-      const sql = `
-        WITH fts_matches AS (
+      const ftsMatchesCte = useNameBoost
+        ? `all_matches AS MATERIALIZED (
+          SELECT
+            rowid,
+            bm25(
+              documents_fts,
+              ${FTS5_FIELD_WEIGHTS.filepath},
+              ${FTS5_FIELD_WEIGHTS.title},
+              ${FTS5_FIELD_WEIGHTS.body}
+            ) as score,
+            bm25(
+              documents_fts,
+              ${FTS5_FIELD_WEIGHTS.filepath},
+              ${FTS5_FIELD_WEIGHTS.title},
+              0.0
+            ) as name_score
+          FROM documents_fts
+          WHERE documents_fts MATCH ?
+          AND EXISTS (
+            SELECT 1 FROM (${eligible.sql}) eligible_docs
+            WHERE eligible_docs.id = documents_fts.rowid
+          )
+        ),
+        fts_matches AS (
+          SELECT rowid, score FROM (
+            SELECT rowid, score FROM all_matches ORDER BY score LIMIT ?
+          )
+          UNION
+          SELECT rowid, score FROM (
+            SELECT rowid, score FROM all_matches
+            WHERE name_score < 0
+            ORDER BY name_score
+            LIMIT ?
+          )
+        )`
+        : `fts_matches AS (
           SELECT
             rowid,
             bm25(
@@ -4046,7 +4172,9 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
           )
           ORDER BY score
           LIMIT ?
-        )
+        )`;
+      const sql = `
+        WITH ${ftsMatchesCte}
         SELECT
           d.mirror_hash,
           ${options.chunkLanguage ? "(SELECT min(lc.seq) FROM content_chunks lc WHERE lc.mirror_hash = d.mirror_hash AND lc.language = ?) as seq," : "0 as seq,"}
@@ -4112,21 +4240,39 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
         builtQuery.query,
         ...eligible.params,
         limit,
+        ...(useNameBoost ? [FTS5_NAME_BOOST.candidateLimit] : []),
         ...(options.chunkLanguage ? [options.chunkLanguage] : []),
-        limit,
+        useNameBoost ? limit + FTS5_NAME_BOOST.candidateLimit : limit,
       ];
       const allRows = db
         .query<FtsRow, (string | number)[]>(sql)
         .all(...queryParams);
       // Raw bm25() is negative and rows are best-first.
+      // Compute minRelativeScore floor from the best unboosted score so a
+      // boosted top row does not push ordinary rows under the floor.
       const floor =
         options.minRelativeScore !== undefined && allRows[0]
           ? allRows[0].score * options.minRelativeScore
           : undefined;
+      const rankedRows = useNameBoost
+        ? allRows
+            .map((row) => {
+              const multiplier = computeDocumentNameMultiplier(
+                builtQuery.positiveTerms,
+                row.title,
+                row.rel_path
+              );
+              return multiplier > 1
+                ? { ...row, score: row.score * multiplier }
+                : row;
+            })
+            .sort((a, b) => a.score - b.score)
+            .slice(0, limit)
+        : allRows;
       const rows =
         floor === undefined
-          ? allRows
-          : allRows.filter((row) => row.score <= floor);
+          ? rankedRows
+          : rankedRows.filter((row) => row.score <= floor);
 
       return ok(
         rows.map((r) => ({

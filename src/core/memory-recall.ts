@@ -239,6 +239,7 @@ async function searchLexical(
       collection: input.collection,
       limit: MEMORY_RECALL_RETRIEVAL_LIMIT,
       memoryFilter: { scopes: input.scopes, excludeSuperseded: true },
+      nameBoost: false,
       ...(anyTerm
         ? {
             anyTerm,
