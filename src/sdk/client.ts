@@ -332,10 +332,9 @@ async function resolveClientState(
     configSource = "file";
   }
 
-  const indexName = canonicalizeIndexName(
-    options.indexName ?? DEFAULT_INDEX_NAME
-  );
-  const dbPath = options.dbPath ?? getIndexDbPath(indexName);
+  const rawIndexName = options.indexName ?? DEFAULT_INDEX_NAME;
+  const indexName = canonicalizeIndexName(rawIndexName);
+  const dbPath = options.dbPath ?? getIndexDbPath(rawIndexName);
   try {
     await assertSessionBinding({
       config,
@@ -353,6 +352,7 @@ async function resolveClientState(
 
   const store = new SqliteAdapter();
   store.setConfigPath(configPath ?? "<inline-config>");
+  store.setIndexName(rawIndexName);
   unwrapStore(
     await store.open(dbPath, config.ftsTokenizer, config.busyTimeoutMs)
   );
@@ -473,7 +473,10 @@ class GnoClientImpl implements GnoClient {
       this.config.collections.map(({ name }) => name)
     );
     if (stale.length > 0) {
-      throw sdkError("RUNTIME", staleCollectionsMessage(stale));
+      throw sdkError(
+        "RUNTIME",
+        staleCollectionsMessage(stale, this.store.getStaleCollectionsTarget())
+      );
     }
   }
 

@@ -50,6 +50,8 @@ export interface InitOptions {
   yes?: boolean;
   /** Override config path */
   configPath?: string;
+  /** Index name (defaults to 'default') */
+  indexName?: string;
   /** FTS tokenizer (unicode61, porter, trigram) */
   tokenizer?: FtsTokenizer;
   /** BCP-47 language hint for collection */
@@ -75,7 +77,7 @@ export interface InitResult {
 export async function init(options: InitOptions = {}): Promise<InitResult> {
   const paths = getConfigPaths();
   const configPath = toAbsolutePath(options.configPath ?? paths.configFile);
-  const dbPath = getIndexDbPath();
+  const dbPath = getIndexDbPath(options.indexName);
 
   const dirResult = await ensureDirectories();
   if (!dirResult.ok) {

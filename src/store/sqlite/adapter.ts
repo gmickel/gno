@@ -14,8 +14,8 @@ import { Database } from "bun:sqlite";
 import { AsyncLocalStorage } from "node:async_hooks";
 // node:os totalmem: no Bun equivalent for total system memory.
 import { totalmem } from "node:os";
-// node:path basename: no Bun path utilities.
-import { basename } from "node:path";
+// node:path basename/resolve: no Bun path utilities.
+import { basename, resolve } from "node:path";
 
 import type { EgressLineage } from "../../core/egress-provenance";
 import type {
@@ -119,7 +119,13 @@ import type {
 } from "../types";
 import type { SqliteDbProvider } from "./types";
 
-import { buildUri, deriveDocid, stripUriIndex } from "../../app/constants";
+import {
+  buildUri,
+  deriveDocid,
+  getIndexDbPath,
+  stripUriIndex,
+} from "../../app/constants";
+import { indexNamesMatch, isValidIndexName } from "../../app/index-name";
 import {
   DEFAULT_CHUNKING_PARAMS,
   resolveChunkingParams,
@@ -659,9 +665,68 @@ function resolveBusyTimeoutMs(busyTimeoutMs?: number): number {
 /** The index holds collections the config omits; the message names them. */
 export class StaleCollectionsError extends Error {}
 
+/** Target metadata for a stale-collections mismatch error. */
+export interface StaleCollectionsTarget {
+  /** Validated CLI `--index` selector verified to resolve to the opened DB. */
+  cliIndexName?: string;
+  /** Opened database file path (for custom SDK dbPath or fallback display). */
+  dbPath?: string;
+}
+
+/** Derive a display index name from a SQLite path when it names a real file. */
+function indexNameFromDbPath(dbPath: string): string | undefined {
+  if (!dbPath || dbPath === ":memory:") return undefined;
+  const derived = basename(dbPath)
+    .replace(SQLITE_EXT_REGEX, "")
+    .replace(INDEX_PREFIX_REGEX, "");
+  return derived || undefined;
+}
+
+/**
+ * Determine whether a CLI `--index <name>` selector resolves to `dbPath`.
+ * Only returns `cliIndexName` when `getIndexDbPath(selector)` resolves to the
+ * exact same path as `dbPath`; otherwise returns `{ dbPath }` so callers never
+ * emit a `gno cleanup` command that could target a different database.
+ */
+export function resolveStaleCollectionsTarget(
+  dbPath: string,
+  cliIndexName?: string
+): StaleCollectionsTarget {
+  if (!dbPath || dbPath === ":memory:") {
+    return cliIndexName && isValidIndexName(cliIndexName)
+      ? { cliIndexName }
+      : {};
+  }
+  const resolvedDbPath = resolve(dbPath);
+  if (cliIndexName && isValidIndexName(cliIndexName)) {
+    try {
+      if (resolve(getIndexDbPath(cliIndexName)) === resolvedDbPath) {
+        return { cliIndexName, dbPath };
+      }
+    } catch {
+      // Ambiguous or invalid in current dataDir: fall through to custom dbPath.
+    }
+  }
+  const fileName = basename(dbPath);
+  if (fileName.startsWith("index-") && fileName.endsWith(".sqlite")) {
+    const derived = indexNameFromDbPath(dbPath);
+    if (derived && isValidIndexName(derived)) {
+      try {
+        if (resolve(getIndexDbPath(derived)) === resolvedDbPath) {
+          return { cliIndexName: derived, dbPath };
+        }
+      } catch {
+        // Fall through to custom dbPath.
+      }
+    }
+  }
+  return { dbPath };
+}
+
 /** Names the collections a config omits and how to resolve it. */
 export function staleCollectionsMessage(
-  stale: readonly StaleCollection[]
+  stale: readonly StaleCollection[],
+  target: StaleCollectionsTarget = {}
 ): string {
   const names = stale
     .map(
@@ -669,11 +734,31 @@ export function staleCollectionsMessage(
         `${c.name} (${c.documents} ${c.documents === 1 ? "document" : "documents"})`
     )
     .join(", ");
+  const cliIndexName =
+    target.cliIndexName && isValidIndexName(target.cliIndexName)
+      ? target.cliIndexName
+      : undefined;
+  if (cliIndexName) {
+    const cleanupCmd = indexNamesMatch(cliIndexName, "default")
+      ? "gno cleanup"
+      : `gno --index ${/\s/.test(cliIndexName) ? `'${cliIndexName}'` : cliIndexName} cleanup`;
+    return (
+      `Index "${cliIndexName}" holds collections the config does not list: ${names}. ` +
+      "Nothing was changed. Open a separate index (--index <name>, or dbPath in the SDK), " +
+      `add them back to the config, or run "${cleanupCmd}" with this config to delete their data from index "${cliIndexName}".`
+    );
+  }
+  if (target.dbPath && target.dbPath !== ":memory:") {
+    return (
+      `Index "${target.dbPath}" holds collections the config does not list: ${names}. ` +
+      "Nothing was changed. Open a separate index (--index <name>, or dbPath in the SDK) " +
+      'or add them back to the config ("gno cleanup" only targets indexes in GNO_DATA_DIR).'
+    );
+  }
   return (
     `This index holds collections the config does not list: ${names}. ` +
-    "Nothing was changed. Add them back to the config, open a separate index " +
-    '(--index <name>, or dbPath in the SDK), or run "gno cleanup" with this ' +
-    "config to delete their index data."
+    "Nothing was changed. Open a separate index (--index <name>, or dbPath in the SDK), " +
+    'add them back to the config, or run "gno cleanup" with this config to delete their data from this index.'
   );
 }
 
@@ -686,6 +771,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   private dbPath = "";
   private ftsTokenizer: FtsTokenizer = "unicode61";
   private configPath = ""; // Set by CLI layer for status output
+  private indexName?: string; // Validated CLI selector set by caller when known
   private txCounter = 0; // Savepoint counter for unique names
   private readonly txContext = new AsyncLocalStorage<{
     depth: number;
@@ -1039,6 +1125,18 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
     this.configPath = configPath;
   }
 
+  /**
+   * Set the validated CLI index selector for error diagnostics.
+   */
+  setIndexName(indexName: string): void {
+    this.indexName = indexName;
+  }
+
+  /** Target metadata for stale-collections mismatch messages. */
+  getStaleCollectionsTarget(): StaleCollectionsTarget {
+    return resolveStaleCollectionsTarget(this.dbPath, this.indexName);
+  }
+
   /** Path this adapter opened; names the index's request ledger. */
   getDbPath(): string {
     return this.dbPath;
@@ -1175,7 +1273,10 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       return ok(undefined);
     } catch (cause) {
       if (cause instanceof StaleCollectionsError) {
-        return err("STALE_COLLECTIONS", staleCollectionsMessage(stale));
+        return err(
+          "STALE_COLLECTIONS",
+          staleCollectionsMessage(stale, this.getStaleCollectionsTarget())
+        );
       }
       return err(
         "QUERY_FAILED",
@@ -1520,10 +1621,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   ): Promise<StoreResult<ActivationIndexSnapshot>> {
     try {
       const db = this.ensureOpen();
-      const indexName =
-        basename(this.dbPath)
-          .replace(SQLITE_EXT_REGEX, "")
-          .replace(INDEX_PREFIX_REGEX, "") || "default";
+      const indexName = indexNameFromDbPath(this.dbPath) ?? "default";
       const rows = db
         .query<
           {
@@ -6872,10 +6970,7 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
       const version = versionRow?.value ?? "0";
 
       // Derive indexName from dbPath (basename without extension)
-      const indexName =
-        basename(this.dbPath)
-          .replace(SQLITE_EXT_REGEX, "")
-          .replace(INDEX_PREFIX_REGEX, "") || "default";
+      const indexName = indexNameFromDbPath(this.dbPath) ?? "default";
 
       // Single pass over `documents` gathers per-collection counts, configured
       // totals, global lastUpdatedAt, and global typed-metadata coverage.

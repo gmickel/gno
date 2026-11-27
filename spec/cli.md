@@ -256,7 +256,7 @@ by hand, or a different config opened this index) is reported in
 `staleCollections` (`name`, `documents`; omitted when empty) and under
 `Collections not in this config` in text and Markdown, and every command other
 than `status`, `doctor`, `cleanup` and `collection remove/rename` exits with an
-error naming it until it is added back or `gno cleanup` deletes it. The
+error naming the opened index and the unlisted collections, suggesting `--index <name>` (or `dbPath` in the SDK) before adding them back or running `gno cleanup` against that index. The
 embedding backlog likewise counts chunks of configured collections only.
 `gno collection remove` deletes the collection's documents at once. `totalChunks` counts the
 distinct chunks of active documents; chunks left by deleted documents do not

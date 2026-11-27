@@ -119,14 +119,16 @@ export async function initStore(
 
   // Open database (honor indexName option)
   const store = new SqliteAdapter();
+  const cliIndexName = options.indexName ?? DEFAULT_INDEX_NAME;
   const dbPath = getIndexDbPath(options.indexName);
   const paths = getConfigPaths();
 
   // Actual config path used (options.configPath overrides default)
   const actualConfigPath = options.configPath ?? paths.configFile;
 
-  // Set configPath for status output
+  // Set configPath and validated CLI index selector for status and errors
   store.setConfigPath(actualConfigPath);
+  store.setIndexName(cliIndexName);
 
   tracePhase("store: opening index");
   const openResult = await store.open(
@@ -150,11 +152,12 @@ export async function initStore(
     );
     const indexed = stale.ok ? stale.value.filter((c) => c.documents > 0) : [];
     if (!stale.ok || indexed.length > 0) {
+      const target = store.getStaleCollectionsTarget();
       await store.close();
       return {
         ok: false,
         error: stale.ok
-          ? staleCollectionsMessage(indexed)
+          ? staleCollectionsMessage(indexed, target)
           : stale.error.message,
       };
     }

@@ -17,6 +17,8 @@ import { initStore } from "./shared";
 export interface LinksListOptions {
   /** Override config path */
   configPath?: string;
+  /** Index name (defaults to 'default') */
+  indexName?: string;
   /** Filter by link type */
   type?: "wiki" | "markdown";
   /** Filter semantic edges by relationship type */
@@ -133,6 +135,8 @@ function isSemanticBacklink(
 export interface BacklinksOptions {
   /** Override config path */
   configPath?: string;
+  /** Index name (defaults to 'default') */
+  indexName?: string;
   /** Filter by collection */
   collection?: string;
   /** Filter semantic edges by relationship type */
@@ -191,6 +195,8 @@ export type BacklinksResult =
 export interface SimilarOptions {
   /** Override config path */
   configPath?: string;
+  /** Index name (defaults to 'default') */
+  indexName?: string;
   /** Max results */
   limit?: number;
   /** Minimum similarity threshold (0-1) */
@@ -292,6 +298,7 @@ export async function linksList(
 
   const initResult = await initStore({
     configPath: options.configPath,
+    indexName: options.indexName,
     syncConfig: false,
   });
   if (!initResult.ok) {
@@ -432,6 +439,7 @@ export async function backlinks(
 
   const initResult = await initStore({
     configPath: options.configPath,
+    indexName: options.indexName,
     syncConfig: false,
   });
   if (!initResult.ok) {
@@ -546,6 +554,7 @@ export async function similar(
 
   const initResult = await initStore({
     configPath: options.configPath,
+    indexName: options.indexName,
     syncConfig: false,
   });
   if (!initResult.ok) {
