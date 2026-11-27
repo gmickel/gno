@@ -217,6 +217,7 @@ async function searchFtsChunks(
     excludeMetadata: true,
     semanticMetadata: true,
     memoryScopesAny: options.memoryScopesAny,
+    nameBoost: true,
     excludeSuperseded: options.excludeSuperseded,
     exclude: options.exclude,
     allowedMirrorHashes: options.allowedMirrorHashes,

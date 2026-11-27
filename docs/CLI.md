@@ -259,7 +259,7 @@ gno search "deploy" -c work -c ops --json   # only these collections
 - hyphenated technical terms like `real-time`, `gpt-4`, and `DEC-0054` are handled intentionally
 - malformed lexical syntax returns a validation error instead of leaking raw SQLite FTS errors
 
-Keyword retrieval applies collection/path scope, caller allowlists, tags, modified-date bounds, category and author filters, managed-memory visibility, and whole-document exclusions before its ranked candidate limit. Higher-ranked ineligible documents cannot consume that window; fewer eligible matches still produce a short result. Existing BM25 weights, query syntax, recency/project-affinity reranking and minimum-score behavior are unchanged.
+Keyword retrieval applies collection/path scope, caller allowlists, tags, modified-date bounds, category and author filters, managed-memory visibility, and whole-document exclusions before its ranked candidate limit. Higher-ranked ineligible documents cannot consume that window; fewer eligible matches still produce a short result. Documents whose title or filename matches the query are boosted so named documents rank first even when many other documents repeat those words in their bodies. Normalised scores are relative to the returned result set (min-max scaled to `0–1`), so ordinary body matches below a full name match can show scores near `0` and `--min-score` can drop them. Existing BM25 field weights, query syntax, and recency/project-affinity reranking are unchanged.
 
 **Recency intent sorting**: Queries containing `latest`, `newest`, or `recent` are ordered newest-first using frontmatter date when present, falling back to file modified time.
 

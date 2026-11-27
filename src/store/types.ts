@@ -792,6 +792,11 @@ export interface FtsSearchOptions extends DocumentEligibilityOptions {
    * row's score, so matches carried only by near-zero-IDF terms fall away.
    */
   minRelativeScore?: number;
+  /**
+   * Opt-in title/filename match boost: widens the FTS candidate pool in one
+   * scan with top name-hit rows and scales raw BM25 scores by name coverage.
+   */
+  nameBoost?: boolean;
 }
 
 /** Managed-memory eligibility query (unbounded, executed in one SQL query). */

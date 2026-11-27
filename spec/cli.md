@@ -1677,7 +1677,8 @@ Scores are normalized per query to a 0-1 range using min-max scaling:
 
 Important notes:
 
-- Scores are **relative within a single query's result set**, not comparable across different queries
+- A document whose title or filename matches the query receives a coverage-based name-match boost before the result limit so named documents rank first even when many other documents repeat the same terms in their bodies
+- Scores are **relative within a single query's result set**, not comparable across different queries; results below a full name match can show normalised scores near `0` and `--min-score` can drop them
 - `--min-score` filters based on this normalized score (e.g., `--min-score 0.5` keeps top half)
 - Raw SQLite FTS5 BM25 scores vary with corpus size; normalization ensures consistent UX
 - When all results have equal raw scores, they all receive `1.0`
@@ -1801,7 +1802,7 @@ uses the unscoped default; when they agree, their shared model is used.
 
 ---
 
-Keyword retrieval applies collection/path scope, caller allowlists, tags, modified-date bounds, category and author filters, managed-memory visibility, and whole-document exclusions before its ranked candidate limit. Higher-ranked ineligible documents cannot consume that window; fewer eligible matches still produce a short result. Existing BM25 weights, query syntax, recency/project-affinity reranking and minimum-score behavior are unchanged.
+Keyword retrieval applies collection/path scope, caller allowlists, tags, modified-date bounds, category and author filters, managed-memory visibility, and whole-document exclusions before its ranked candidate limit. Higher-ranked ineligible documents cannot consume that window; fewer eligible matches still produce a short result. Documents whose title or filename matches the query receive a name-match boost before cutting to the result limit; normalized scores remain relative to the result set, so body-only hits below a full name match can score near `0` and `--min-score` can drop them. Existing BM25 field weights, query syntax, and recency/project-affinity reranking are unchanged.
 
 ### gno vsearch
 

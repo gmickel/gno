@@ -367,6 +367,7 @@ export async function searchBm25(
     excludeSuperseded: options.memoryFilter?.excludeSuperseded,
     anyTerm: options.anyTerm,
     minRelativeScore: options.minRelativeScore,
+    nameBoost: options.nameBoost ?? true,
   });
 
   if (!ftsResult.ok) {

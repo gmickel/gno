@@ -60,6 +60,17 @@ Decision:
 - filepath hits should beat weak body-only mentions for path-oriented queries
 - body remains the broad recall surface, but not the only ranking signal
 
+### Name-match boost
+
+Column weights alone (`filepath: 1.5`, `title: 4.0`, `body: 1.0`) were not enough to make a document whose title or filename is the query rank first when dozens of other documents repeat those words in their bodies. Raising the column weights high enough to compete with dense body term-frequency still topped out around 75% on name lookups while flattening ordinary body ranking, so `FTS5_FIELD_WEIGHTS` stay unchanged.
+
+Instead, keyword search (`gno search`) and the BM25 leg of hybrid search (`gno query`) opt into a coverage-based name-match boost inside `SqliteAdapter.searchFts` (internal callers such as managed memory remember/recall and activation probes leave it off):
+
+- **Single-scan candidate union**: one materialized FTS scan computes both normal BM25 (`score`) and title/filepath-only BM25 (`name_score`, body weight `0.0`), then unions the top `limit` normal rows with up to 50 eligible rows where `name_score < 0`. Eligibility filters apply inside the scan, so ineligible name hits cannot consume slots.
+- **Name coverage**: distinct positive query terms (expanding quoted phrases and hyphenated compounds, excluding negated terms) are compared against lowercased alphanumeric tokens of the document title and of the filename stem (the last path segment without its extension; directory names do not count), taking the larger multiplier. Terms of 3+ characters may prefix-match name tokens; 1–2 character terms require exact equality. Query coverage is `q = matchedTerms / terms.length` and name coverage is `n = min(matchedName, matchedTerms) / nameTokens.length` so repeated words in a title cannot inflate coverage.
+- **Multiplier on raw BM25**: a full match (`q == 1 && n == 1`) multiplies the raw negative BM25 score by `3`; a subset match where all query terms appear in the name or all name tokens appear in the query (`q == 1 || n == 1`) multiplies by `1 + (q * n)^2`; partial overlaps leave the score unchanged.
+- **Floor and cut**: `minRelativeScore` keeps computing its floor from the best unboosted score before re-sorting by adjusted score and cutting to `limit`.
+
 ### Filtered FTS query shape
 
 Collection-filtered lexical search must use an FTS-first query shape so SQLite does not regress into poor planner choices.

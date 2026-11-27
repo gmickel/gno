@@ -247,6 +247,8 @@ export interface SearchOptions extends InferenceOptions {
   anyTerm?: boolean;
   /** Internal: drop hits below this fraction of the best raw BM25 score. */
   minRelativeScore?: number;
+  /** Internal: enable title/filename match boost in BM25 search (default: true). */
+  nameBoost?: boolean;
   /** Internal: force exact vector search even when coarse routing is enabled. */
   exactVectorSearch?: boolean;
   /** Optional override for config.coarseVectorSearch. */
