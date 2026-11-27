@@ -522,10 +522,12 @@ describe("stale collections mismatch error names index and puts cleanup last (#3
         `Index "${customDb}" holds collections the config does not list: repro (2 documents).`
       );
       expect(openMsg).toContain("--index <name>, or dbPath in the SDK");
+      expect(openMsg).toContain("or add them back to the config");
+      expect(openMsg).not.toContain("remove those collections");
       expect(openMsg).not.toContain("gno --index ");
       expect(openMsg).toContain("GNO_DATA_DIR");
       expect(openMsg.indexOf("dbPath in the SDK")).toBeLessThan(
-        openMsg.indexOf(`"${customDb}" directly`)
+        openMsg.indexOf("GNO_DATA_DIR")
       );
 
       // Runtime assertOpen mismatch on an already-open client

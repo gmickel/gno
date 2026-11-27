@@ -751,8 +751,8 @@ export function staleCollectionsMessage(
   if (target.dbPath && target.dbPath !== ":memory:") {
     return (
       `Index "${target.dbPath}" holds collections the config does not list: ${names}. ` +
-      "Nothing was changed. Open a separate index (--index <name>, or dbPath in the SDK), " +
-      `add them back to the config, or remove those collections from "${target.dbPath}" directly ("gno cleanup" only targets indexes in GNO_DATA_DIR).`
+      "Nothing was changed. Open a separate index (--index <name>, or dbPath in the SDK) " +
+      'or add them back to the config ("gno cleanup" only targets indexes in GNO_DATA_DIR).'
     );
   }
   return (
