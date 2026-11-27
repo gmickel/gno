@@ -60,7 +60,7 @@ import {
 } from "../sessions/config-refresh";
 import { remoteSafeSessionsError } from "../sessions/types";
 import {
-  indexNameFromDbPath,
+  resolveStaleCollectionsTarget,
   SqliteAdapter,
   StaleCollectionsError,
   staleCollectionsMessage,
@@ -306,6 +306,9 @@ export async function startResidentRuntime(
 
   const store = deps.storeFactory?.() ?? new SqliteAdapter();
   store.setConfigPath(actualConfigPath);
+  if (typeof store.setIndexName === "function") {
+    store.setIndexName(options.index ?? DEFAULT_INDEX_NAME);
+  }
   const openResult = await store.open(
     dbPath,
     initialConfig.ftsTokenizer,
@@ -590,13 +593,14 @@ export async function startResidentRuntime(
     );
     if (stale.length > 0) {
       cachedCleanStaleCheck = null;
-      throw new StaleCollectionsError(
-        staleCollectionsMessage(
-          stale,
-          indexNameFromDbPath(dbPath) ??
-            canonicalizeIndexName(options.index ?? DEFAULT_INDEX_NAME)
-        )
-      );
+      const target =
+        typeof store.getStaleCollectionsTarget === "function"
+          ? store.getStaleCollectionsTarget()
+          : resolveStaleCollectionsTarget(
+              dbPath,
+              options.index ?? DEFAULT_INDEX_NAME
+            );
+      throw new StaleCollectionsError(staleCollectionsMessage(stale, target));
     }
     if (dbVersion) {
       cachedCleanStaleCheck = {

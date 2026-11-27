@@ -213,7 +213,6 @@ import { assertSessionBinding } from "../sessions/binding";
 import { SessionsService } from "../sessions/service";
 import { SESSIONS_VALIDATION_CODES, SessionsError } from "../sessions/types";
 import {
-  indexNameFromDbPath,
   SqliteAdapter,
   staleCollectionsMessage,
 } from "../store/sqlite/adapter";
@@ -333,10 +332,9 @@ async function resolveClientState(
     configSource = "file";
   }
 
-  const indexName = canonicalizeIndexName(
-    options.indexName ?? DEFAULT_INDEX_NAME
-  );
-  const dbPath = options.dbPath ?? getIndexDbPath(indexName);
+  const rawIndexName = options.indexName ?? DEFAULT_INDEX_NAME;
+  const indexName = canonicalizeIndexName(rawIndexName);
+  const dbPath = options.dbPath ?? getIndexDbPath(rawIndexName);
   try {
     await assertSessionBinding({
       config,
@@ -354,6 +352,7 @@ async function resolveClientState(
 
   const store = new SqliteAdapter();
   store.setConfigPath(configPath ?? "<inline-config>");
+  store.setIndexName(rawIndexName);
   unwrapStore(
     await store.open(dbPath, config.ftsTokenizer, config.busyTimeoutMs)
   );
@@ -476,10 +475,7 @@ class GnoClientImpl implements GnoClient {
     if (stale.length > 0) {
       throw sdkError(
         "RUNTIME",
-        staleCollectionsMessage(
-          stale,
-          indexNameFromDbPath(this.store.getDbPath()) ?? this.indexName
-        )
+        staleCollectionsMessage(stale, this.store.getStaleCollectionsTarget())
       );
     }
   }

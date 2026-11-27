@@ -197,20 +197,26 @@ remain `target_runtime_unverifiable`; the client must load and use them itself.
 
 A command opened an index that contains documents of collections its config
 does not list, and refused so nothing is deleted. The error names the opened
-index (for example `Index "default"`), suggests opening a separate index first,
-and names which index `gno cleanup` would delete from. This happens when you
-remove a collection by editing the config file, or when a different config
-(`--config other.yml`, or an SDK client given a config but no `dbPath`) points
-at your normal index. `gno status` lists them under `Collections not in this
-config`.
+index (for example `Index "default"`, or the database path for a custom SDK
+`dbPath`), suggests opening a separate index first, and states what any cleanup
+action would affect. For CLI-managed indexes under `GNO_DATA_DIR`, the hint
+names the matching `gno cleanup` (or `gno --index <name> cleanup`) command; for
+a custom SDK `dbPath` outside `GNO_DATA_DIR`, no `gno cleanup` command is
+suggested because `gno cleanup` only targets indexes in `GNO_DATA_DIR`. This
+happens when you remove a collection by editing the config file, or when a
+different config (`--config other.yml`, or an SDK client given a config but no
+`dbPath`) points at your normal index. `gno status` lists them under
+`Collections not in this config`.
 
 - The config is wrong (a test or second config): use a separate index with
   `--index <name>` (SDK: pass `dbPath`), or run with your usual config.
 - You want the collection back: add it to the config again.
-- You meant to remove the collection from that index: run `gno cleanup` (with
-  `--index <name>` for a non-default index) using your usual config; it names
-  each collection it deletes. `gno collection remove <name>` does this in one
-  step next time.
+- You meant to remove the collection from a CLI-managed index: run
+  `gno cleanup` (with `--index <name>` for a non-default index) using your
+  usual config; it names each collection it deletes. `gno collection remove
+<name>` does this in one step next time. For a custom SDK `dbPath` outside
+  `GNO_DATA_DIR`, remove the collection through the SDK or delete that database
+  file directly.
 
 ### "Collection not found"
 

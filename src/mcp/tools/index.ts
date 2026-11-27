@@ -45,7 +45,7 @@ import {
 } from "../../llm/inference-scope";
 import { envIsSet } from "../../llm/policy";
 import {
-  indexNameFromDbPath,
+  resolveStaleCollectionsTarget,
   staleCollectionsMessage,
 } from "../../store/sqlite/adapter";
 import { MCP_ACTIVATION_VERIFICATION_ENV } from "../activation-verification-mode";
@@ -1227,11 +1227,14 @@ function assertConfiguredCollections(ctx: ToolContext, name: string): void {
     ctx.collections.map((collection) => collection.name)
   );
   if (stale.length > 0) {
-    const indexLabel =
-      (typeof store.getDbPath === "function"
-        ? indexNameFromDbPath(store.getDbPath())
-        : undefined) ?? ctx.indexName;
-    throw new Error(staleCollectionsMessage(stale, indexLabel));
+    const target =
+      typeof store.getStaleCollectionsTarget === "function"
+        ? store.getStaleCollectionsTarget()
+        : resolveStaleCollectionsTarget(
+            typeof store.getDbPath === "function" ? store.getDbPath() : "",
+            ctx.indexName
+          );
+    throw new Error(staleCollectionsMessage(stale, target));
   }
 }
 

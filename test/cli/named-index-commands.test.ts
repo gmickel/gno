@@ -18,6 +18,7 @@ import { getIndexDbPath } from "../../src/app/constants";
 import { runCli } from "../../src/cli/run";
 import { createDefaultConfig, saveConfigToPath } from "../../src/config";
 import { getActivePreset } from "../../src/llm/registry";
+import { createGnoClient } from "../../src/sdk";
 import { SqliteAdapter } from "../../src/store/sqlite/adapter";
 import { safeRm } from "../helpers/cleanup";
 import { embedStoredSimilarityVectors } from "../helpers/stored-similarity-fixture";
@@ -269,7 +270,43 @@ describe("CLI commands honor --index with a populated default index (#369)", () 
     expect(parsed.current.effectivePolicy).toBe("local_only");
   });
 
-  test("egress-audit honors --index", async () => {
+  test("egress-audit honors --index across status, list, show, delete, and purge", async () => {
+    // Seed one audit receipt in the default index and two in repro-links via publish export.
+    const defaultExport = await execCli([
+      "publish",
+      "export",
+      "gno://other/other.md",
+      "--preview",
+      "--json",
+    ]);
+    expect(defaultExport.code).toBe(0);
+
+    const reproExport1 = await execCli([
+      "--config",
+      reproConfigPath,
+      "--index",
+      "repro-links",
+      "publish",
+      "export",
+      "gno://repro/a.md",
+      "--preview",
+      "--json",
+    ]);
+    expect(reproExport1.code).toBe(0);
+
+    const reproExport2 = await execCli([
+      "--config",
+      reproConfigPath,
+      "--index",
+      "repro-links",
+      "publish",
+      "export",
+      "gno://repro/b.md",
+      "--preview",
+      "--json",
+    ]);
+    expect(reproExport2.code).toBe(0);
+
     const statusRes = await execCli([
       "--config",
       reproConfigPath,
@@ -279,6 +316,7 @@ describe("CLI commands honor --index with a populated default index (#369)", () 
       "status",
     ]);
     expect(statusRes.code).toBe(0);
+    expect(JSON.parse(statusRes.stdout).receipts).toBe(2);
 
     const listRes = await execCli([
       "--config",
@@ -289,6 +327,51 @@ describe("CLI commands honor --index with a populated default index (#369)", () 
       "list",
     ]);
     expect(listRes.code).toBe(0);
+    const listed = JSON.parse(listRes.stdout) as {
+      receipts: Array<{ auditId: string }>;
+    };
+    expect(listed.receipts.length).toBe(2);
+    const firstId = listed.receipts[0]!.auditId;
+
+    const showRes = await execCli([
+      "--config",
+      reproConfigPath,
+      "--index",
+      "repro-links",
+      "egress-audit",
+      "show",
+      firstId,
+    ]);
+    expect(showRes.code).toBe(0);
+    expect(JSON.parse(showRes.stdout).receipt.auditId).toBe(firstId);
+
+    const deleteRes = await execCli([
+      "--config",
+      reproConfigPath,
+      "--index",
+      "repro-links",
+      "egress-audit",
+      "delete",
+      firstId,
+    ]);
+    expect(deleteRes.code).toBe(0);
+    expect(JSON.parse(deleteRes.stdout).deleted).toBe(1);
+
+    const purgeRes = await execCli([
+      "--config",
+      reproConfigPath,
+      "--index",
+      "repro-links",
+      "egress-audit",
+      "purge",
+    ]);
+    expect(purgeRes.code).toBe(0);
+    expect(JSON.parse(purgeRes.stdout).deleted).toBe(1);
+
+    // Purging repro-links must leave the default index's audit receipt intact.
+    const defaultStatus = await execCli(["egress-audit", "status"]);
+    expect(defaultStatus.code).toBe(0);
+    expect(JSON.parse(defaultStatus.stdout).receipts).toBe(1);
   });
 
   test("init honors --index when creating a named index database", async () => {
@@ -348,5 +431,135 @@ describe("stale collections mismatch error names index and puts cleanup last (#3
     expect(msg.indexOf("--index <name>")).toBeLessThan(
       msg.indexOf("gno --index repro-links cleanup")
     );
+  });
+
+  test("valid Unicode index name preserves a CLI-accepted cleanup selector on read and sync paths", async () => {
+    // 33x 'ß' is valid (length 33 <= 64) and canonicalizes to 66x 's' on disk (> 64).
+    const unicodeIndex = "ß".repeat(33);
+    const indexed = await execCli([
+      "--config",
+      reproConfigPath,
+      "--index",
+      unicodeIndex,
+      "index",
+      "--no-embed",
+    ]);
+    expect(indexed.code).toBe(0);
+
+    // Read path (syncConfig: false)
+    const readMismatch = await execCli([
+      "--config",
+      defaultConfigPath,
+      "--index",
+      unicodeIndex,
+      "search",
+      "Other",
+    ]);
+    expect(readMismatch.code).not.toBe(0);
+    expect(readMismatch.stderr).toContain(
+      `Index "${unicodeIndex}" holds collections the config does not list: repro (2 documents).`
+    );
+    expect(readMismatch.stderr).toContain(
+      `"gno --index ${unicodeIndex} cleanup"`
+    );
+    expect(readMismatch.stderr).not.toContain("s".repeat(66));
+
+    // Config-sync path (syncConfig: true via SqliteAdapter.syncCollections)
+    const syncMismatch = await execCli([
+      "--config",
+      defaultConfigPath,
+      "--index",
+      unicodeIndex,
+      "update",
+    ]);
+    expect(syncMismatch.code).not.toBe(0);
+    expect(syncMismatch.stderr).toContain(
+      `Index "${unicodeIndex}" holds collections the config does not list: repro (2 documents).`
+    );
+    expect(syncMismatch.stderr).toContain(
+      `"gno --index ${unicodeIndex} cleanup"`
+    );
+    expect(syncMismatch.stderr).not.toContain("s".repeat(66));
+
+    // The emitted selector must be accepted by `gno --index <selector> cleanup`.
+    const cleaned = await execCli([
+      "--config",
+      defaultConfigPath,
+      "--index",
+      unicodeIndex,
+      "cleanup",
+    ]);
+    expect(cleaned.code).toBe(0);
+  });
+
+  test("custom SDK dbPath outside GNO_DATA_DIR never suggests a wrong CLI cleanup command", async () => {
+    const customDir = join(root, "external-sdk");
+    await mkdir(customDir, { recursive: true });
+    for (const fileName of ["archive.sqlite", "index-repro.sqlite"]) {
+      const customDb = join(customDir, fileName);
+      const owner = await createGnoClient({
+        config: makeConfig("repro"),
+        dbPath: customDb,
+      });
+      try {
+        await owner.update();
+      } finally {
+        await owner.close();
+      }
+
+      // Sync-time mismatch on open
+      let openErr: unknown;
+      try {
+        await createGnoClient({
+          config: makeConfig("other"),
+          dbPath: customDb,
+        });
+      } catch (error) {
+        openErr = error;
+      }
+      const openMsg = String((openErr as Error)?.message);
+      expect(openMsg).toContain(
+        `Index "${customDb}" holds collections the config does not list: repro (2 documents).`
+      );
+      expect(openMsg).toContain("--index <name>, or dbPath in the SDK");
+      expect(openMsg).not.toContain("gno --index ");
+      expect(openMsg).toContain("GNO_DATA_DIR");
+      expect(openMsg.indexOf("dbPath in the SDK")).toBeLessThan(
+        openMsg.indexOf(`"${customDb}" directly`)
+      );
+
+      // Runtime assertOpen mismatch on an already-open client
+      const otherClient = await createGnoClient({
+        config: makeConfig("other"),
+        dbPath: join(customDir, `open-${fileName}`),
+      });
+      const openCustomDb = join(customDir, `open-${fileName}`);
+      try {
+        // Seed another collection into the same custom DB while otherClient is open.
+        const second = await createGnoClient({
+          config: makeConfig("other", "repro"),
+          dbPath: openCustomDb,
+        });
+        try {
+          await second.update();
+        } finally {
+          await second.close();
+        }
+        let runtimeErr: unknown;
+        try {
+          await otherClient.search("Target");
+        } catch (error) {
+          runtimeErr = error;
+        }
+        const runtimeMsg = String((runtimeErr as Error)?.message);
+        expect(runtimeMsg).toContain(
+          `Index "${openCustomDb}" holds collections the config does not list: repro (2 documents).`
+        );
+        expect(runtimeMsg).not.toContain("gno --index ");
+        expect(runtimeMsg).toContain("GNO_DATA_DIR");
+      } finally {
+        await otherClient.close();
+      }
+    }
   });
 });
