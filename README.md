@@ -145,7 +145,7 @@ See the [guide](docs/COMPILED-CONTEXT.md).
 
 > Full release history: [CHANGELOG.md](./CHANGELOG.md)
 
-- **Title and filename name-match boost** (v2.19.0): `gno search` and the BM25 leg of `gno query` now boost documents whose title or filename matches the query before cutting to the result limit, so named documents rank first even when many other documents repeat those terms in their bodies (#372, #373).
+- **Title and filename name-match boost** (v2.19.0): `gno search` and the BM25 leg of `gno query` now boost documents whose title or filename matches the query before cutting to the result limit, so named documents rank first even when many other documents repeat those terms in their bodies.
 
 - **Cross-collection relocation & owner-aware vector GC** (v2.18.0): `gno collection move` records files or folders you moved on disk to another collection or path without re-indexing or re-embedding (preserving ids, docids, chunks, tags, and vectors; invalidating the coarse mirror until the next `gno embed` or `gno vec sync`). `gno vec gc [--dry-run]` removes stored vectors no active document can use across all partitions while keeping v1 and v2 coarse mirrors clean, and every `gno embed` pass collects vectors unused for 7+ days automatically in bounded batches (`GNO_NO_AUTO_VECTOR_GC=1` disables it).
 
