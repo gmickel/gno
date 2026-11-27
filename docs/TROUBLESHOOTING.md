@@ -213,10 +213,10 @@ different config (`--config other.yml`, or an SDK client given a config but no
 - You want the collection back: add it to the config again.
 - You meant to remove the collection from a CLI-managed index: run
   `gno cleanup` (with `--index <name>` for a non-default index) using your
-  usual config; it names each collection it deletes. `gno collection remove
-<name>` does this in one step next time. For a custom SDK `dbPath` outside
-  `GNO_DATA_DIR`, remove the collection through the SDK or delete that database
-  file directly.
+  usual config; it names each collection it deletes. `gno collection remove <name>`
+  does this in one step next time. For a custom SDK `dbPath` outside
+  `GNO_DATA_DIR`, restore the omitted collection in the config or open a
+  separate `dbPath` instead.
 
 ### "Collection not found"
 
